@@ -1,24 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState,  PillGrid } from "react";
+import { Card } from "./ui";
 
 // ---------- TG SDK helper ----------
 const tg = typeof window !== "undefined" && (window as any).Telegram ? (window as any).Telegram.WebApp : null;
 const cx = (...cls: string[]) => cls.filter(Boolean).join(" ");
 
 // ---------- UI atoms ----------
-function Badge({ children }: { children: React.ReactNode }) {
-  return <span className="px-2 py-1 rounded-full text-xs bg-zinc-100 border border-zinc-200">{children}</span>;
-}
-function ProgressStep({ idx, total }: { idx: number; total: number }) {
-  const pct = Math.round(((idx + 1) / total) * 100);
+const cx = (...a: Array<string | false | null | undefined>) =>
+  a.filter(Boolean).join(" ");
+
+// здесь уже идёт твой основной App компонент, без лишних return
+export default function App() {
   return (
-    <div className="w-full">
-      <div className="flex justify-between text-xs mb-1 text-zinc-500">
-        <span>Шаг {idx + 1}/{total}</span>
-        <span>{pct}%</span>
-      </div>
-      <div className="w-full h-3 bg-white/60 rounded-full overflow-hidden shadow-inner">
-        <div className="h-3 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" style={{ width: `${pct}%` }} />
-      </div>
+    <div className="min-h-screen p-6 bg-gradient-to-b from-rose-50 via-slate-50 to-orange-50">
+      <Header />
+      <Card title="Привет!" subtitle="Тестовое описание">
+        <p>Контент карточки</p>
+      </Card>
     </div>
   );
 }

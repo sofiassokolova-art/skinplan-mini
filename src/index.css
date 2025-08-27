@@ -2,10 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+@layer base {
+  html, body, #root { height: 100%; }
+  body { @apply bg-gradient-to-b from-rose-50 via-slate-50 to-orange-50 text-ink antialiased; }
 }
-body {
-  background:#F6F3EF; /* linen */
-  color:#111827;      /* ink */
+
+@layer components {
+  .card {
+    @apply rounded-3xl border border-white/70 bg-white/70 backdrop-blur-xl shadow-soft;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 font-semibold;
+  }
+  .btn-primary {
+@apply btn text-white bg-gradient-to-r from-indigo-600 to-fuchsia-600 shadow-lg hover:opacity-95;
+
+  }
+  .chip {
+    @apply rounded-full px-4 py-2 border border-slate-200 bg-white/70 hover:bg-white/90 text-sm;
+  }
+  .chip-active {
+    @apply border-indigo-300 ring-2 ring-indigo-300/30 bg-indigo-50;
+  }
 }
+
