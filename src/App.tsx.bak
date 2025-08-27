@@ -1,7 +1,1290 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App";   // ✅ работает, если в App.tsx есть export default App
+// src/App.tsx
+// src/App.tsx
+import { Header, Card, Progress, Button } from "./ui";
 
-createRoot(document.getElementById("root")!).render(<App />);
+/* ------------------------- UI helpers ------------------------- */
+const cx = (...a: Array<string | false | null | undefined>) =>
+  a.filter(Boolean).join(" ");
+
+  title: string;
+  subtitle?: string;
+  help?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="p-5 rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl shadow-[0_6px_30px_rgba(0,0,0,0.06)]">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 className="text-lg font-bold">{title}</h2>
+          {subtitle && <p className="text-sm text-zinc-600">{subtitle}</p>}
+        </div>
+        {help && (
+          <details className="text-sm text-indigo-700 cursor-pointer select-none">
+            <summary className="list-none underline decoration-dotted">
+              Помощь
+            </summary>
+            <div className="max-w-prose pt-2 text-zinc-700">{help}</div>
+          </details>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Progress({ idx, total }: { idx: number; total: number }) {
+  const pct = Math.round(((idx + 1) / total) * 100);
+  return (
+    <div className="w-full">
+      <div className="flex justify-between text-xs mb-1 text-zinc-500">
+        <span>
+          Шаг {idx + 1}/{total}
+        </span>
+        <span>{pct}%</span>
+      </div>
+      <div className="w-full h-3 bg-white/60 rounded-full overflow-hidden shadow-inner">
+        <div
+          className="h-3 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PrimaryBtn({
+  children,
+  onClick,
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        "w-full px-6 py-3 rounded-full font-semibold transition",
+        disabled
+          ? "bg-white/60 text-stone-400 border border-white/70"
+          : "bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white shadow-[0_10px_20px_rgba(99,102,241,0.25)] hover:brightness-110"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function GhostBtn({
+  children,
+  onClick,
+  className,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cx(
+        "px-4 py-2 rounded-full border border-white/70 bg-white/60 backdrop-blur shadow-sm",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ------------------------- Domain types ------------------------- */
+
+type SkinType = "dry" | "normal" | "combo" | "oily" | "unknown";
+type BudgetKey = "min" | "opt" | "prem";
+type BudgetBand = "low" | "mid" | "high";
+
+type SuggItem = { n: string; b: BudgetBand };
+
+type Answers = {
+  // базовый тип/ощущения
+  q1_skin?: SkinType;
+  q2_tight?: "never" | "sometimes" | "often";
+  q3_oilyMidday?: "never" | "sometimes" | "often";
+  q4_sensitive?: "no" | "some" | "often";
+  // цели/мотивация
+  q5_goalMain?: "tone" | "acne" | "antiage" | "glow";
+  q6_idealChange?: string;
+  q7_antiageScale?: 1 | 2 | 3 | 4 | 5;
+  q8_style?: "minimal" | "ritual";
+  q9_motivation?: "look" | "health";
+  // зоны/проблемы
+  q10_acneKinds?: string[]; // acne/postacne/blackheads
+  q11_pigment?: string[]; // melasma/postinflammatory/freckles
+  q12_pores?: "yes" | "no";
+  q13_rosacea?: "yes" | "no";
+  q14_eyesDark?: "yes" | "no";
+  // база ухода
+  q15_cleanser?: string;
+  q16_tonic?: "yes" | "no";
+  q17_moist?: "yes" | "no";
+  q18_actives?: string[]; // retinoid/acids/niacin/vitc/azelaic/bpo/none
+  q19_spf?: "always" | "sometimes" | "no";
+  // время
+  q20_am?: "1_2" | "5_7" | "10p";
+  q21_pm?: "1_2" | "5_7" | "10p";
+  // lifestyle
+  q22_sleep?: "yes" | "no";
+  q23_stress?: 1 | 2 | 3 | 4 | 5;
+  q24_diet?: "balanced" | "sweet" | "dairy" | "irregular";
+  // safety
+  q25_preg?: "yes" | "no";
+  q26_hormones?: "yes" | "no";
+  q27_allergy?: "yes" | "no";
+  q28_badProducts?: string;
+  q29_procedures?: string[]; // peels_lasers / injections / none
+  // бюджет/предпочтения
+  q30_budget?: BudgetKey; // min/opt/prem
+  q31_prefs?: string[]; // ff/light/noalcoeo/vegan/none
+};
+
+/* ------------------------- Suggestions DB ------------------------- */
+
+const SUGG = {
+  base: {
+    cleanser: {
+      dry: [
+        { n: "CeraVe Hydrating Cleanser", b: "low" },
+        { n: "La Roche-Posay Toleriane Dermo-Cleanser", b: "mid" },
+      ],
+      normal: [
+        { n: "CeraVe Hydrating/Foaming", b: "low" },
+        { n: "Uriage Thermal", b: "mid" },
+      ],
+      combo: [
+        { n: "CeraVe Foaming Cleanser", b: "low" },
+        { n: "La Roche-Posay Effaclar Gel", b: "mid" },
+      ],
+      oily: [
+        { n: "Bioderma Sebium Gel", b: "mid" },
+        { n: "CeraVe SA Cleanser", b: "mid" },
+      ],
+      unknown: [{ n: "La Roche-Posay Toleriane Dermo-Cleanser", b: "mid" }],
+    } as Record<SkinType, SuggItem[]>,
+    moisturizer: {
+      dry: [
+        { n: "CeraVe Moisturizing Cream", b: "low" },
+        { n: "La Roche-Posay Lipikar AP+M", b: "mid" },
+      ],
+      normal: [
+        { n: "CeraVe PM", b: "low" },
+        { n: "LRP Toleriane Sensitive", b: "mid" },
+      ],
+      combo: [
+        { n: "Uriage Eau Thermale Light", b: "mid" },
+        { n: "LRP Effaclar H/Mat", b: "mid" },
+      ],
+      oily: [
+        { n: "Bioderma Sebium Hydra", b: "mid" },
+        { n: "LRP Effaclar Mat", b: "mid" },
+      ],
+      unknown: [{ n: "LRP Toleriane Sensitive", b: "mid" }],
+    } as Record<SkinType, SuggItem[]>,
+    spf: [
+      { n: "Garnier Ambre Solaire SPF50", b: "low" },
+      { n: "Bioderma Photoderm", b: "mid" },
+      { n: "LRP Anthelios UVMune 400", b: "high" },
+    ] as SuggItem[],
+    barrier: [
+      { n: "Bepanthen Derma Repair", b: "low" },
+      { n: "La Roche-Posay Cicaplast Baume B5", b: "mid" },
+    ] as SuggItem[],
+  },
+  actives: {
+    azelaic: [
+      { n: "The Ordinary Azelaic Acid 10%", b: "low" },
+      { n: "Geek & Gorgeous Stress Less", b: "mid" },
+    ],
+    bha: [
+      { n: "COSRX BHA", b: "mid" },
+      { n: "Paula's Choice BHA 2%", b: "high" },
+    ],
+    vitc: [
+      { n: "The Ordinary AA 8%/MAP", b: "low" },
+      { n: "LRP Pure Vitamin C 10", b: "high" },
+    ],
+    niacin: [
+      { n: "The Ordinary Niacinamide 10%", b: "low" },
+      { n: "Geek & Gorgeous B-Bomb", b: "mid" },
+    ],
+    retinoid: [
+      { n: "Geek & Gorgeous A-Game (ретиналь)", b: "mid" },
+      { n: "LRP Retinol B3", b: "high" },
+    ],
+    ha: [
+      { n: "The Ordinary Hyaluronic Acid 2%+B5", b: "low" },
+      { n: "LRP Hyalu B5", b: "high" },
+    ],
+  } as Record<string, SuggItem[]>,
+};
+
+/* ------------------------- Planning logic ------------------------- */
+
+function inferSkinType(a: Answers): { type: SkinType; sensitivity: boolean } {
+  if (a.q1_skin && a.q1_skin !== "unknown") {
+    return {
+      type: a.q1_skin,
+      sensitivity: a.q4_sensitive === "often",
+    };
+  }
+  // простое правило, если тип «не знаю»
+  let type: SkinType = "normal";
+  if (a.q3_oilyMidday === "often") type = "oily";
+  if (a.q2_tight === "often") type = "dry";
+  if (a.q3_oilyMidday === "sometimes" && a.q2_tight === "sometimes")
+    type = "combo";
+  return { type, sensitivity: a.q4_sensitive === "often" };
+}
+
+function pickByBudget(budget: BudgetKey) {
+  const band: BudgetBand =
+    budget === "min" ? "low" : budget === "opt" ? "mid" : "high";
+  const order = band === "low" ? ["low", "mid", "high"] : band === "mid" ? ["mid", "low", "high"] : ["high", "mid", "low"];
+  return (arr: SuggItem[]) =>
+    [...arr].sort(
+      (a, b) => order.indexOf(a.b) - order.indexOf(b.b)
+    )[0]?.n;
+}
+
+type Plan = {
+  detected_type: SkinType;
+  sensitivity: boolean;
+  goals: string[];
+  routine: { am: string[]; pm: string[] };
+  picks: {
+    cleanser: string;
+    moisturizer: string;
+    barrier: string;
+    spf: string;
+    actives: string[];
+  };
+  schedule28: { day: number; pmPhase: "A" | "B" | "Rest" }[];
+  notes: string[];
+  coverage: Record<string, boolean>;
+};
+
+function buildPlan(a: Answers): Plan {
+  const { type, sensitivity } = inferSkinType(a);
+  const budget = a.q30_budget ?? "opt";
+  const pick = pickByBudget(budget);
+
+  const goals: string[] = [];
+  if (a.q5_goalMain) goals.push(a.q5_goalMain);
+  (a.q10_acneKinds || []).length && goals.push("acne");
+  (a.q11_pigment || []).length && goals.push("pigmentation");
+  if (a.q7_antiageScale && a.q7_antiageScale >= 4) goals.push("antiage");
+  if (a.q9_motivation === "glow") goals.push("glow");
+  if (a.q12_pores === "yes" || a.q3_oilyMidday === "often") goals.push("seb");
+
+  const prefs = new Set(a.q31_prefs || []);
+  const preg = a.q25_preg === "yes";
+  const wantsMild = sensitivity || preg || (a.q13_rosacea === "yes");
+
+  // базовые шаги
+  const am: string[] = [];
+  const pm: string[] = [];
+
+  const compactAM = a.q20_am === "1_2";
+  const richPM = a.q21_pm === "10p";
+  const compactPM = a.q21_pm === "1_2";
+
+  am.push(compactAM ? "Нежное очищение" : "Очищение");
+  if (!compactAM) {
+    if (goals.includes("pigmentation"))
+      am.push(wantsMild ? "Азелаиновая кислота 10%" : "Витамин C 8–15%");
+    else if (goals.includes("glow")) am.push("Эссенция/Ниацинамид");
+  }
+  am.push("Увлажнение", "SPF 30–50");
+
+  if (richPM && !compactPM) pm.push("Демакияж/масло");
+  pm.push("Очищение");
+  if (!compactPM) {
+    if (goals.includes("acne") || goals.includes("seb"))
+      pm.push(wantsMild ? "Азелаиновая кислота (PM через день)" : "BHA 1–2%");
+    if (goals.includes("antiage") && !preg)
+      pm.push(sensitivity ? "Ретиналь 0.05–0.1% (2–3р/нед)" : "Ретиноид (по схеме)");
+  }
+  pm.push("Крем/барьер");
+
+  // подбор продуктов
+  const picks = {
+    cleanser: pick(SUGG.base.cleanser[type]),
+    moisturizer: pick(SUGG.base.moisturizer[type]),
+    barrier: pick(SUGG.base.barrier),
+    spf: pick(SUGG.base.spf),
+    actives: [] as string[],
+  };
+
+  const activeMap: Record<string, SuggItem[]> = {
+    azelaic: SUGG.actives.azelaic,
+    bha: SUGG.actives.bha,
+    vitc: SUGG.actives.vitc,
+    niacin: SUGG.actives.niacin,
+    retinoid: SUGG.actives.retinoid,
+    ha: SUGG.actives.ha,
+  };
+
+  const activePool: Array<{ id: keyof typeof activeMap }> = [];
+  if (goals.includes("pigmentation"))
+    activePool.push({ id: wantsMild ? "azelaic" : "vitc" });
+  if (goals.includes("acne") || goals.includes("seb"))
+    activePool.push({ id: wantsMild ? "azelaic" : "bha" });
+  if (goals.includes("antiage") && !preg) activePool.push({ id: "retinoid" });
+  if (sensitivity || a.q19_spf !== "always") activePool.push({ id: "niacin" });
+  if (a.q2_tight !== "never") activePool.push({ id: "ha" });
+
+  activePool.forEach(({ id }) => {
+    const list = activeMap[id];
+    if (list) picks.actives.push(pick(list)!);
+  });
+
+  // 28-дневный график A/B/Rest
+  const phases: Array<"A" | "B" | "Rest"> = ["A", "B", "Rest"];
+  const schedule28 = Array.from({ length: 28 }, (_, i) => ({
+    day: i + 1,
+    pmPhase: phases[i % 3],
+  }));
+
+  // заметки / safety
+  const notes: string[] = [];
+  if (sensitivity) notes.push("Начинайте активы через день, патч-тест перед первым применением.");
+  if (a.q13_rosacea === "yes")
+    notes.push("Розацеа: избегайте горячей воды, агрессивных кислот, трения.");
+  if (preg) notes.push("Беременность/ГВ: избегайте ретиноидов, ориентир — мягкие активы.");
+  if (a.q19_spf !== "always") notes.push("SPF ежедневно — ключ к тону и профилактике старения.");
+
+  // покрытие ролей (для инфографики)
+  const cartRoles = ["cleanser", "moisturizer", "barrier", "spf", "activeA", "activeB"] as const;
+  const coverage = cartRoles.reduce<Record<string, boolean>>((acc, r, i) => {
+    if (r === "activeA") acc[r] = !!picks.actives[0];
+    else if (r === "activeB") acc[r] = !!picks.actives[1];
+    else acc[r] = true;
+    return acc;
+  }, {});
+
+  return {
+    detected_type: type,
+    sensitivity,
+    goals,
+    routine: { am, pm },
+    picks,
+    schedule28,
+    notes,
+    coverage,
+  };
+}
+
+/* ------------------------- Survey pages ------------------------- */
+
+type Page =
+  | {
+      kind: "q";
+      key: keyof Answers;
+      title: string;
+      subtitle?: string;
+      control:
+        | {
+            type: "single";
+            options: { label: string; value: any }[];
+          }
+        | {
+            type: "multi";
+            options: { label: string; value: string }[];
+            exclusive?: string; // значение, которое «очищает» остальные, например "none"
+            limit?: number;
+          }
+        | {
+            type: "text" | "textarea";
+            placeholder?: string;
+            normalize?: (v: string) => any;
+          };
+    }
+  | {
+      kind: "insight";
+      title: string;
+      bullets: string[];
+      cta?: string;
+    }
+  | { kind: "final"; title: string };
+
+const PAGES: Page[] = [
+  // блок 1 — базовый тип/ощущения
+  {
+    kind: "q",
+    key: "q1_skin",
+    title: "Как ты описала бы свою кожу?",
+    control: {
+      type: "single",
+      options: [
+        { label: "Сухая", value: "dry" },
+        { label: "Нормальная", value: "normal" },
+        { label: "Комбинированная", value: "combo" },
+        { label: "Жирная", value: "oily" },
+        { label: "Не знаю", value: "unknown" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q2_tight",
+    title: "Стянутость после умывания?",
+    control: {
+      type: "single",
+      options: [
+        { label: "Никогда", value: "never" },
+        { label: "Иногда", value: "sometimes" },
+        { label: "Часто", value: "often" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q3_oilyMidday",
+    title: "Жирный блеск к середине дня?",
+    control: {
+      type: "single",
+      options: [
+        { label: "Никогда", value: "never" },
+        { label: "Иногда", value: "sometimes" },
+        { label: "Часто", value: "often" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q4_sensitive",
+    title: "Чувствительность/реактивность?",
+    control: {
+      type: "single",
+      options: [
+        { label: "Нет", value: "no" },
+        { label: "Иногда", value: "some" },
+        { label: "Часто", value: "often" },
+      ],
+    },
+  },
+  {
+    kind: "insight",
+    title: "Первичные выводы",
+    bullets: [
+      "Тип и реактивность — базис для выбора активов.",
+      "Если сомневаешься с типом — начнём мягко и аккуратно усилим.",
+    ],
+    cta: "Окей, дальше",
+  },
+
+  // блок 2 — цели/мотивация
+  {
+    kind: "q",
+    key: "q5_goalMain",
+    title: "Главная цель ухода на 4–8 недель",
+    control: {
+      type: "single",
+      options: [
+        { label: "Ровный тон/сияние", value: "tone" },
+        { label: "Анти-акне", value: "acne" },
+        { label: "Anti-age", value: "antiage" },
+        { label: "Сияние/здоровый вид", value: "glow" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q6_idealChange",
+    title: "Что должно измениться первым?",
+    control: { type: "text", placeholder: "Опиши коротко" },
+  },
+  {
+    kind: "q",
+    key: "q7_antiageScale",
+    title: "Насколько важна профилактика старения?",
+    control: {
+      type: "single",
+      options: [
+        { label: "1", value: 1 },
+        { label: "2", value: 2 },
+        { label: "3", value: 3 },
+        { label: "4", value: 4 },
+        { label: "5", value: 5 },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q8_style",
+    title: "Стиль ухода",
+    control: {
+      type: "single",
+      options: [
+        { label: "Минимализм (быстро)", value: "minimal" },
+        { label: "Ритуал (несколько шагов)", value: "ritual" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q9_motivation",
+    title: "Что мотивирует больше?",
+    control: {
+      type: "single",
+      options: [
+        { label: "Выглядеть лучше", value: "look" },
+        { label: "Здоровье кожи", value: "health" },
+      ],
+    },
+  },
+  {
+    kind: "insight",
+    title: "Отлично! Видим фокус",
+    bullets: [
+      "Цели и стиль ритуала помогут составить реалистичный план.",
+      "Дальше уточним зоны и базу — чтобы всё легло в рутину.",
+    ],
+  },
+
+  // блок 3 — зоны/проблемы
+  {
+    kind: "q",
+    key: "q10_acneKinds",
+    title: "Есть ли из этого?",
+    subtitle: "Выбери всё подходящее",
+    control: {
+      type: "multi",
+      options: [
+        { label: "Высыпания/комедоны", value: "acne" },
+        { label: "Пост-акне/пятна", value: "postacne" },
+        { label: "Чёрные точки", value: "blackheads" },
+        { label: "Ничего", value: "none" },
+      ],
+      exclusive: "none",
+      limit: 3,
+    },
+  },
+  {
+    kind: "q",
+    key: "q11_pigment",
+    title: "Пигментация",
+    subtitle: "Выбери всё подходящее",
+    control: {
+      type: "multi",
+      options: [
+        { label: "Поствоспалительная", value: "piH" },
+        { label: "Мелазма", value: "melasma" },
+        { label: "Веснушки", value: "freckles" },
+        { label: "Нет", value: "none" },
+      ],
+      exclusive: "none",
+    },
+  },
+  {
+    kind: "q",
+    key: "q12_pores",
+    title: "Расширенные поры",
+    control: {
+      type: "single",
+      options: [
+        { label: "Да", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q13_rosacea",
+    title: "Купероз/розацеа",
+    control: {
+      type: "single",
+      options: [
+        { label: "Да", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q14_eyesDark",
+    title: "Тёмные круги под глазами",
+    control: {
+      type: "single",
+      options: [
+        { label: "Да", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "insight",
+    title: "Вижу ключевые зоны",
+    bullets: [
+      "Комбинируем мягкие и активные ночи, чтобы не перегружать барьер.",
+      "Если сосудистая лабильность — делаем более деликатный план.",
+    ],
+  },
+
+  // блок 4 — база ухода и активы
+  {
+    kind: "q",
+    key: "q15_cleanser",
+    title: "Чем умываешься?",
+    control: { type: "text", placeholder: "Бренд/средство (если есть)" },
+  },
+  {
+    kind: "q",
+    key: "q16_tonic",
+    title: "Тоник/эссенция",
+    control: {
+      type: "single",
+      options: [
+        { label: "Есть", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q17_moist",
+    title: "Крем каждый день?",
+    control: {
+      type: "single",
+      options: [
+        { label: "Да", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q18_actives",
+    title: "Какие активы используешь?",
+    subtitle: "Выбери всё подходящее",
+    control: {
+      type: "multi",
+      options: [
+        { label: "Ретиноид", value: "retinoid" },
+        { label: "Кислоты AHA/BHA/PHA", value: "acids" },
+        { label: "Ниацинамид", value: "niacin" },
+        { label: "Витамин C", value: "vitc" },
+        { label: "Азелаиновая", value: "azelaic" },
+        { label: "БПО", value: "bpo" },
+        { label: "Ничего", value: "none" },
+      ],
+      exclusive: "none",
+    },
+  },
+  {
+    kind: "q",
+    key: "q19_spf",
+    title: "SPF днём?",
+    control: {
+      type: "single",
+      options: [
+        { label: "Всегда", value: "always" },
+        { label: "Иногда", value: "sometimes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "insight",
+    title: "База определена",
+    bullets: [
+      "SPF — главный фактор тона и anti-age.",
+      "Встроим твои активы так, чтобы они работали, а не конфликтовали.",
+    ],
+  },
+
+  // блок 5 — время, lifestyle, safety, бюджет
+  {
+    kind: "q",
+    key: "q20_am",
+    title: "Время утром",
+    control: {
+      type: "single",
+      options: [
+        { label: "1–2 мин", value: "1_2" },
+        { label: "5–7 мин", value: "5_7" },
+        { label: "10+ мин", value: "10p" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q21_pm",
+    title: "Время вечером",
+    control: {
+      type: "single",
+      options: [
+        { label: "1–2 мин", value: "1_2" },
+        { label: "5–7 мин", value: "5_7" },
+        { label: "10+ мин", value: "10p" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q22_sleep",
+    title: "Сон 7–8 часов",
+    control: {
+      type: "single",
+      options: [
+        { label: "Да", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q23_stress",
+    title: "Стресс",
+    control: {
+      type: "single",
+      options: [
+        { label: "1", value: 1 },
+        { label: "2", value: 2 },
+        { label: "3", value: 3 },
+        { label: "4", value: 4 },
+        { label: "5", value: 5 },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q24_diet",
+    title: "Питание",
+    control: {
+      type: "single",
+      options: [
+        { label: "Сбалансировано", value: "balanced" },
+        { label: "Много сладкого", value: "sweet" },
+        { label: "Много молочного", value: "dairy" },
+        { label: "Нерегулярно", value: "irregular" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q25_preg",
+    title: "Беременность/ГВ",
+    control: {
+      type: "single",
+      options: [
+        { label: "Да", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q26_hormones",
+    title: "Гормоны/лекарства",
+    control: {
+      type: "single",
+      options: [
+        { label: "Да", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q27_allergy",
+    title: "Были аллергии на косметику",
+    control: {
+      type: "single",
+      options: [
+        { label: "Да", value: "yes" },
+        { label: "Нет", value: "no" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q28_badProducts",
+    title: "Какие продукты точно не подходят?",
+    control: { type: "textarea", placeholder: "Опиши, что не зашло/реакции" },
+  },
+  {
+    kind: "q",
+    key: "q29_procedures",
+    title: "Процедуры за 6 мес",
+    control: {
+      type: "multi",
+      options: [
+        { label: "Пилинги/лазеры", value: "peels_lasers" },
+        { label: "Инъекции", value: "injections" },
+        { label: "Ничего", value: "none" },
+      ],
+      exclusive: "none",
+    },
+  },
+  {
+    kind: "q",
+    key: "q30_budget",
+    title: "Бюджет",
+    control: {
+      type: "single",
+      options: [
+        { label: "Минимум", value: "min" },
+        { label: "Оптимум", value: "opt" },
+        { label: "Премиум", value: "prem" },
+      ],
+    },
+  },
+  {
+    kind: "q",
+    key: "q31_prefs",
+    title: "Формулы/ощущения",
+    control: {
+      type: "multi",
+      options: [
+        { label: "Без отдушек", value: "ff" },
+        { label: "Лёгкие текстуры", value: "light" },
+        { label: "Без спирта/эфирных масел", value: "noalcoeo" },
+        { label: "Веган/CF", value: "vegan" },
+        { label: "Нет предпочтений", value: "none" },
+      ],
+      exclusive: "none",
+    },
+  },
+  {
+    kind: "insight",
+    title: "Готово! Составим план",
+    bullets: [
+      "Подберём продукты под бюджет.",
+      "Выстроим A/B/Rest на 28 дней с учётом чувствительности.",
+      "Дадим памятку: что делать/чего избегать.",
+    ],
+  },
+  { kind: "final", title: "Итоговый план" },
+];
+
+/* ------------------------- App ------------------------- */
+
+export default function App() {
+  const [idx, setIdx] = useState(0);
+  const [answers, setAnswers] = useState<Answers>(() => {
+    try {
+      const raw = localStorage.getItem("skinplan.answers");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const total = PAGES.length;
+
+  useEffect(() => {
+    localStorage.setItem("skinplan.answers", JSON.stringify(answers));
+  }, [answers]);
+
+  function setA<K extends keyof Answers>(key: K, value: Answers[K]) {
+    setAnswers((p) => ({ ...p, [key]: value }));
+  }
+
+  function next() {
+    setIdx((i) => Math.min(total - 1, i + 1));
+  }
+  function back() {
+    setIdx((i) => Math.max(0, i - 1));
+  }
+
+  function finalize() {
+    const p = buildPlan(answers);
+    setPlan(p);
+  }
+
+  function saveToCabinet() {
+    const entry = {
+      id: String(Date.now()),
+      date: new Date().toISOString(),
+      answers,
+      plan,
+      title: `План от ${new Date().toLocaleDateString()}`,
+    };
+    const raw = localStorage.getItem("skinplan.plans");
+    const list = raw ? JSON.parse(raw) : [];
+    list.unshift(entry);
+    localStorage.setItem("skinplan.plans", JSON.stringify(list));
+    alert("Сохранено в кабинет (браузер). Раздел «Мои планы» можно добавить на главной.");
+  }
+
+  async function copyJSON() {
+    const payload = JSON.stringify({ type: "skincare_plan", answers, plan }, null, 2);
+    await navigator.clipboard.writeText(payload);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  function renderControl(page: Extract<Page, { kind: "q" }>) {
+    const v = answers[page.key];
+
+    if (page.control.type === "single") {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {page.control.options.map((o) => (
+            <button
+              key={String(o.value)}
+              onClick={() => setA(page.key, o.value as any)}
+              className={cx(
+                "px-4 py-3 rounded-2xl border text-left shadow-sm transition-all",
+                v === o.value
+                  ? "border-indigo-400/60 bg-indigo-50/70 ring-2 ring-indigo-400/20"
+                  : "border-white/70 bg-white/60 hover:bg-white/80"
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    if (page.control.type === "multi") {
+      const value = (v as string[]) || [];
+      const toggle = (val: string) => {
+        let next = new Set(value);
+        if (page.control.exclusive && val === page.control.exclusive) {
+          next = new Set([val]);
+        } else {
+          if (page.control.exclusive && next.has(page.control.exclusive))
+            next.delete(page.control.exclusive);
+          next.has(val) ? next.delete(val) : next.add(val);
+          if (page.control.limit && next.size > page.control.limit) return;
+        }
+        setA(page.key, Array.from(next) as any);
+      };
+      return (
+        <div className="space-y-2">
+          {page.control.options.map((opt) => {
+            const on = value.includes(opt.value);
+            return (
+              <button
+                key={opt.value}
+                onClick={() => toggle(opt.value)}
+                className={cx(
+                  "w-full text-left px-4 py-3 rounded-2xl border shadow-sm transition-all",
+                  on
+                    ? "border-indigo-400/60 bg-indigo-50/70 ring-2 ring-indigo-400/20"
+                    : "border-white/70 bg-white/60 hover:bg-white/80"
+                )}
+              >
+                {(on ? "✓ " : "• ") + opt.label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (page.control.type === "text" || page.control.type === "textarea") {
+      const isTA = page.control.type === "textarea";
+      const common =
+        "w-full px-4 py-3 rounded-2xl border border-white/70 bg-white/70 shadow-sm outline-none focus:ring-2 focus:ring-indigo-300";
+      return isTA ? (
+        <textarea
+          rows={4}
+          className={common}
+          placeholder={page.control.placeholder}
+          value={(v as string) || ""}
+          onChange={(e) => setA(page.key, (e.target.value as any) || "")}
+        />
+      ) : (
+        <input
+          className={common}
+          placeholder={page.control.placeholder}
+          value={(v as string) || ""}
+          onChange={(e) => setA(page.key, (e.target.value as any) || "")}
+        />
+      );
+    }
+
+    return null;
+  }
+
+  function TypeBadge({ type, sensitivity }: { type: SkinType; sensitivity: boolean }) {
+    const RU: Record<SkinType, string> = {
+      dry: "сухая",
+      normal: "нормальная",
+      combo: "комбинированная",
+      oily: "жирная",
+      unknown: "неопределённая",
+    };
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200">
+          Тип: {RU[type]}
+        </span>
+        {sensitivity && (
+          <span className="px-3 py-1 rounded-full bg-amber-100 border border-amber-200">
+            чувствительная
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  function CoverageBar({ coverage }: { coverage: Record<string, boolean> }) {
+    const items = Object.entries(coverage);
+    const ok = items.filter(([, v]) => v).length;
+    const pct = Math.round((ok / items.length) * 100);
+    return (
+      <div>
+        <div className="text-sm mb-1">Покрытие ролей: {pct}%</div>
+        <div className="h-2 rounded-full bg-zinc-200 overflow-hidden">
+          <div
+            className="h-2 bg-gradient-to-r from-emerald-500 to-teal-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs text-zinc-600">
+          {items.map(([k, v]) => (
+            <span
+              key={k}
+              className={cx(
+                "px-2 py-0.5 rounded-full border",
+                v
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : "bg-zinc-50 border-zinc-200"
+              )}
+            >
+              {k}: {v ? "✓" : "—"}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function Calendar28({ schedule }: { schedule: Plan["schedule28"] }) {
+    return (
+      <div>
+        <div className="text-sm text-zinc-600 mb-2">
+          PM-фазы: <b>A</b> — активная, <b>B</b> — барьер/мягкая, <b>Rest</b> — отдых
+        </div>
+        <div className="grid grid-cols-7 gap-2">
+          {schedule.map((d) => {
+            const cls =
+              d.pmPhase === "A"
+                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                : d.pmPhase === "B"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-zinc-50 text-zinc-700 border-zinc-200";
+            return (
+              <div
+                key={d.day}
+                className={cx(
+                  "p-2 rounded-xl border text-center text-xs shadow-sm",
+                  cls
+                )}
+              >
+                <div className="text-[10px] text-zinc-500">День {d.day}</div>
+                <div className="font-semibold">{d.pmPhase}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const page = PAGES[idx];
+
+  return (
+    <div className="min-h-dvh p-5 sm:p-8 bg-gradient-to-b from-rose-50 via-amber-50 to-stone-100 text-stone-900">
+      <div className="max-w-3xl mx-auto space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              SkinPlan — экспертный подбор
+            </h1>
+            <p className="text-sm text-stone-600">
+              Длинная диагностика как у дерматолога-коуча
+            </p>
+          </div>
+          <GhostBtn onClick={() => setIdx(0)} className="hidden sm:inline-flex">
+            Сбросить
+          </GhostBtn>
+        </div>
+
+        <Progress idx={idx} total={total} />
+
+        {/* Question page */}
+        {page.kind === "q" && (
+          <Card title={page.title} subtitle={page.subtitle}>
+            <div className="space-y-3">{renderControl(page)}</div>
+            <div className="flex justify-between mt-4">
+              <GhostBtn onClick={back}>Назад</GhostBtn>
+              <PrimaryBtn onClick={next}>Далее</PrimaryBtn>
+            </div>
+          </Card>
+        )}
+
+        {/* Insight page */}
+        {page.kind === "insight" && (
+          <Card title={page.title}>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-zinc-700">
+              {page.bullets.map((b, i) => (
+                <li key={i}>{b}</li>
+              ))}
+            </ul>
+            <div className="flex justify-end mt-4">
+              <PrimaryBtn onClick={next}>{page.cta || "Продолжить"}</PrimaryBtn>
+            </div>
+          </Card>
+        )}
+
+        {/* Final plan */}
+        {page.kind === "final" && (
+          <div className="space-y-4">
+            <Card title="Проверь ответы и сгенерируй план">
+              <div className="grid gap-2 text-sm text-zinc-700">
+                <div>
+                  Тип кожи: <b>{answers.q1_skin || "—"}</b> ·
+                  Реактивность: <b>{answers.q4_sensitive || "—"}</b>
+                </div>
+                <div>
+                  Цель: <b>{answers.q5_goalMain || "—"}</b>
+                </div>
+                <div>
+                  Время: AM <b>{answers.q20_am || "—"}</b> / PM{" "}
+                  <b>{answers.q21_pm || "—"}</b>
+                </div>
+                <div>
+                  Бюджет: <b>{answers.q30_budget || "—"}</b>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-3">
+                <PrimaryBtn onClick={finalize}>Сформировать план</PrimaryBtn>
+                <GhostBtn onClick={() => setIdx(0)}>С начала</GhostBtn>
+              </div>
+            </Card>
+
+            {plan && (
+              <>
+                <Card title="Ваш план — кратко">
+                  <div className="space-y-3">
+                    <TypeBadge
+                      type={plan.detected_type}
+                      sensitivity={plan.sensitivity}
+                    />
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+                        <div className="font-semibold mb-2">Утро</div>
+                        <ul className="list-disc pl-5 space-y-1 text-sm">
+                          {plan.routine.am.map((s, i) => (
+                            <li key={i}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200">
+                        <div className="font-semibold mb-2">Вечер</div>
+                        <ul className="list-disc pl-5 space-y-1 text-sm">
+                          {plan.routine.pm.map((s, i) => (
+                            <li key={i}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="p-3 rounded-xl bg-white border border-zinc-200">
+                        <div className="font-semibold mb-2">
+                          Подбор продуктов
+                        </div>
+                        <ul className="space-y-1 text-sm">
+                          <li>
+                            <b>Очищение:</b> {plan.picks.cleanser}
+                          </li>
+                          <li>
+                            <b>Крем:</b> {plan.picks.moisturizer}
+                          </li>
+                          <li>
+                            <b>SPF:</b> {plan.picks.spf}
+                          </li>
+                          <li>
+                            <b>Барьер на ночь:</b> {plan.picks.barrier}
+                          </li>
+                        </ul>
+                        {plan.picks.actives.length > 0 && (
+                          <div className="mt-2">
+                            <div className="font-medium mb-1">Активы:</div>
+                            <ul className="list-disc pl-5 space-y-1 text-sm">
+                              {plan.picks.actives.map((a, i) => (
+                                <li key={i}>{a}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-white border border-zinc-200">
+                        <div className="font-semibold mb-2">Покрытие</div>
+                        <CoverageBar coverage={plan.coverage} />
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white border border-zinc-200">
+                      <div className="font-semibold mb-2">Примечания</div>
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        {(plan.notes.length
+                          ? plan.notes
+                          : ["Используйте SPF ежедневно."]).map((n, i) => (
+                          <li key={i}>{n}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card title="Инфографика — 28 дней">
+                  <Calendar28 schedule={plan.schedule28} />
+                </Card>
+
+                <Card title="Почему так (кратко)">
+                  <ul className="list-disc pl-5 space-y-2 text-sm text-zinc-700">
+                    <li>
+                      Разводим «активные» ночи и «барьерные/отдых», чтобы
+                      улучшить переносимость активов.
+                    </li>
+                    <li>
+                      Утром — защита и выравнивание тона; вечером — коррекция
+                      целей (акне/пигмент/anti-age).
+                    </li>
+                    <li>
+                      Подбор продуктов под бюджет: при «min» — максимально
+                      эффективные основы; при «prem» — больше сенсорики.
+                    </li>
+                  </ul>
+                </Card>
+
+                <div className="flex flex-wrap gap-2">
+                  <PrimaryBtn onClick={saveToCabinet}>Сохранить в кабинет</PrimaryBtn>
+                  <GhostBtn onClick={copyJSON}>
+                    {copied ? "Скопировано ✓" : "Скопировать JSON"}
+                  </GhostBtn>
+                  <GhostBtn onClick={() => window.print()}>
+                    Скачать/распечатать
+                  </GhostBtn>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
