@@ -1,6 +1,4 @@
-{
-  "version": 2,
-  "builds": [{ "src": "index.html", "use": "@vercel/static-build" }],
-  "routes": [{ "src": "/(.*)", "dest": "/index.html" }],
-  "framework": "vite"
-}
+{ "framework":"vite",
+  "buildCommand":"npm run build",
+  "outputDirectory":"dist",
+  "rewrites":[{ "source":"/(.*)", "destination":"/" }] }
