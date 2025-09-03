@@ -68,11 +68,6 @@ export default function Home() {
       {userName && (
         <div className="text-center sm:text-left">
           <h1 className="text-xl sm:text-2xl font-bold mb-2">{greeting}!</h1>
-          {hasCompletedQuiz && (
-            <Link to="/quiz" className="text-sm text-neutral-500 underline">
-              Перепройти анкету
-            </Link>
-          )}
         </div>
       )}
 
@@ -154,6 +149,14 @@ export default function Home() {
           </div>
         </Card>
       </div>
+      
+      {hasCompletedQuiz && (
+        <div className="text-center mt-6 pt-4 border-t border-neutral-200">
+          <Link to="/quiz" className="text-sm text-neutral-500 underline hover:text-neutral-700">
+            Перепройти анкету
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
