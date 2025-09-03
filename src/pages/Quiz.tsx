@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { analyzeSkinPhoto } from "../lib/skinAnalysis";
 
 const STORAGE_KEY = "skiniq.answers";
 
@@ -14,8 +15,8 @@ interface Answers {
   
   // Фото (опционально)
   photo_data_url?: string | null;
-  photo_analysis?: string | null;
-  photo_scans?: { ts: number; preview: string; analysis: string }[];
+  photo_analysis?: any | null;
+  photo_scans?: { ts: number; preview: string; analysis: any; problemAreas?: any[] }[];
 }
 
 function loadAnswers(): Answers {
@@ -156,6 +157,7 @@ const allSteps = createSteps();
 
 function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: Answers) => void }) {
   const [error, setError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const onFile = async (file: File) => {
     setError(null);
@@ -173,15 +175,31 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const dataUrl = String(reader.result || "");
-      const analysis = "Обнаружены признаки лёгкой жирности T-зоны, единичные воспаления.";
-      setAnswers({ 
-        ...answers, 
-        photo_data_url: dataUrl, 
-        photo_analysis: analysis,
-        photo_scans: [...(answers.photo_scans || []), { ts: Date.now(), preview: dataUrl, analysis }]
-      });
+      setAnswers({ ...answers, photo_data_url: dataUrl, photo_analysis: null });
+      
+      setIsAnalyzing(true);
+      try {
+        const analysis = await analyzeSkinPhoto(dataUrl);
+        const scanEntry = { 
+          ts: Date.now(), 
+          preview: dataUrl, 
+          analysis,
+          problemAreas: analysis.problemAreas
+        };
+        
+        setAnswers({ 
+          ...answers, 
+          photo_data_url: dataUrl, 
+          photo_analysis: analysis,
+          photo_scans: [...(answers.photo_scans || []), scanEntry]
+        });
+      } catch (err) {
+        setError("Ошибка анализа. Попробуйте другое фото.");
+      } finally {
+        setIsAnalyzing(false);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -214,10 +232,53 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
 
       {answers.photo_data_url && (
         <div className="mt-4">
-          <img src={answers.photo_data_url} alt="Предпросмотр" className="max-h-64 rounded-2xl border" />
-          {answers.photo_analysis && (
-            <div className="mt-2 text-sm text-zinc-700">{answers.photo_analysis}</div>
+          <div className="relative inline-block">
+            <img src={answers.photo_data_url} alt="Предпросмотр" className="max-h-64 rounded-2xl border" />
+            
+            {/* Подсветка проблемных областей */}
+            {answers.photo_analysis?.problemAreas?.map((area: any, idx: number) => (
+              <div
+                key={idx}
+                className="absolute border-2 border-red-500 bg-red-500/20 rounded"
+                style={{
+                  left: `${area.coordinates?.x || 0}%`,
+                  top: `${area.coordinates?.y || 0}%`,
+                  width: `${area.coordinates?.width || 10}%`,
+                  height: `${area.coordinates?.height || 10}%`,
+                }}
+                title={`${area.type}: ${area.description}`}
+              />
+            ))}
+          </div>
+          
+          {isAnalyzing && (
+            <div className="mt-2 text-sm text-blue-600">
+              🔍 Анализируем кожу с помощью ИИ...
+            </div>
           )}
+          
+          {answers.photo_analysis && !isAnalyzing && (
+            <div className="mt-2 space-y-2">
+              <div className="text-sm font-medium">Результат анализа:</div>
+              <div className="text-sm text-zinc-700">
+                <div><strong>Тип кожи:</strong> {answers.photo_analysis.skinType}</div>
+                <div><strong>Проблемы:</strong> {answers.photo_analysis.concerns?.join(", ")}</div>
+                <div><strong>Уверенность:</strong> {Math.round((answers.photo_analysis.confidence || 0) * 100)}%</div>
+              </div>
+              
+              {answers.photo_analysis.recommendations && (
+                <div className="mt-2">
+                  <div className="text-sm font-medium mb-1">Рекомендации:</div>
+                  <ul className="text-xs text-zinc-600 list-disc list-inside space-y-1">
+                    {answers.photo_analysis.recommendations.map((rec: string, idx: number) => (
+                      <li key={idx}>{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          
           <button 
             className="mt-3 text-sm text-zinc-600 underline" 
             onClick={() => setAnswers({...answers, photo_data_url: null, photo_analysis: null})}
