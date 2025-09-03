@@ -4,6 +4,7 @@ import Quiz from "./pages/Quiz";
 import Cart from "./pages/Cart";
 import Plan from "./pages/Plan";
 import Photo from "./pages/Photo";
+import PhotoResults from "./pages/PhotoResults";
 import Insights from "./pages/Insights";
 import Header from "./ui/Header";
 
@@ -18,6 +19,7 @@ function App() {
           <Route path="/cart" element={<Cart/>} />
           <Route path="/plan" element={<Plan/>} />
           <Route path="/photo" element={<Photo/>} />
+          <Route path="/photo/results" element={<PhotoResults/>} />
           <Route path="/insights" element={<Insights/>} />
         </Routes>
       </main>
