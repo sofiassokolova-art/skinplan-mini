@@ -160,7 +160,6 @@ function createSteps() {
 const allSteps = createSteps();
 
 function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: Answers) => void }) {
-  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState<any | null>(null);
@@ -211,15 +210,8 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
         
         setAnswers(updatedAnswers);
         
-        // На мобильных переходим на отдельную страницу результатов
-        if (isMobile()) {
-          navigate("/photo/results", { 
-            state: { 
-              analysisData: { ...analysis, imageUrl: dataUrl } 
-            } 
-          });
-          return;
-        }
+        // Просто обновляем состояние, не переходим на другую страницу
+        // Все результаты показываем inline в анкете
         
       } catch (err) {
         console.error('Photo analysis error:', err);
@@ -345,12 +337,40 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
           
           {answers.photo_analysis && !isAnalyzing && (
             <div className="mt-2 space-y-2">
-              <div className="text-sm font-medium">Результат анализа:</div>
-              <div className="text-sm text-zinc-700">
-                <div><strong>Тип кожи:</strong> {answers.photo_analysis.skinType}</div>
-                <div><strong>Проблемы:</strong> {answers.photo_analysis.concerns?.join(", ")}</div>
-                <div><strong>Уверенность:</strong> {Math.round((answers.photo_analysis.confidence || 0) * 100)}%</div>
-              </div>
+              {/* Мобильный полноэкранный вид */}
+              {isMobile() ? (
+                <div className="bg-white rounded-2xl p-4 border-2 border-green-500">
+                  <div className="text-center mb-4">
+                    <h3 className="text-lg font-bold text-green-700">🎯 Анализ завершён!</h3>
+                    <div className="text-sm text-zinc-600">Нажмите на цветные области для деталей</div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="text-center p-3 rounded-xl bg-blue-50 border border-blue-200">
+                      <div className="text-xs text-blue-600 mb-1">Тип кожи</div>
+                      <div className="font-bold">{answers.photo_analysis.skinType}</div>
+                    </div>
+                    <div className="text-center p-3 rounded-xl bg-green-50 border border-green-200">
+                      <div className="text-xs text-green-600 mb-1">Уверенность</div>
+                      <div className="font-bold">{Math.round((answers.photo_analysis.confidence || 0) * 100)}%</div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-zinc-700 mb-3">
+                    <strong>Найденные проблемы:</strong> {answers.photo_analysis.concerns?.join(", ")}
+                  </div>
+                </div>
+              ) : (
+                // Десктопный компактный вид
+                <>
+                  <div className="text-sm font-medium">Результат анализа:</div>
+                  <div className="text-sm text-zinc-700">
+                    <div><strong>Тип кожи:</strong> {answers.photo_analysis.skinType}</div>
+                    <div><strong>Проблемы:</strong> {answers.photo_analysis.concerns?.join(", ")}</div>
+                    <div><strong>Уверенность:</strong> {Math.round((answers.photo_analysis.confidence || 0) * 100)}%</div>
+                  </div>
+                </>
+              )}
               
               {/* Детали выбранной проблемной области */}
               {selectedProblem && (
