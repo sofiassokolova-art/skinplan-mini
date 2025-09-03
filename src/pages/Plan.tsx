@@ -1,10 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { analyzeSkinPhoto } from "../lib/skinAnalysis";
-
-const isMobile = () => {
-  return typeof window !== 'undefined' && window.innerWidth <= 768;
-};
 
 const STORAGE_KEY = "skiniq.answers";
 const PREMIUM_KEY = "skiniq.premium";
@@ -317,75 +312,14 @@ export default function Plan() {
     return !!(answers.photo_data_url || (answers.photo_scans && answers.photo_scans.length > 0));
   }, [answers]);
   
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+
   
   const unlockPremium = async () => {
     setPremium(true);
     setHasPremium(true);
   };
 
-  const handlePhotoUpload = async (file: File) => {
-    setUploadError(null);
-    
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowed.includes(file.type)) {
-      setUploadError("Формат не поддерживается. Загрузите JPEG/PNG/WebP.");
-      return;
-    }
-    
-    const maxBytes = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxBytes) {
-      setUploadError("Слишком большой файл. До 5 МБ.");
-      return;
-    }
 
-    setIsUploadingPhoto(true);
-    
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const dataUrl = String(reader.result || "");
-        
-        try {
-          const photoAnalysis = await analyzeSkinPhoto(dataUrl);
-          const updatedAnswers = {
-            ...answers,
-            photo_data_url: dataUrl,
-            photo_analysis: photoAnalysis,
-            photo_scans: [...(answers.photo_scans || []), {
-              ts: Date.now(),
-              preview: dataUrl,
-              analysis: photoAnalysis,
-              problemAreas: photoAnalysis.problemAreas || []
-            }]
-          };
-          
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAnswers));
-          
-          // На мобильных переходим на страницу результатов
-          if (isMobile()) {
-            navigate("/photo/results", { 
-              state: { 
-                analysisData: { ...photoAnalysis, imageUrl: dataUrl } 
-              } 
-            });
-          } else {
-            // На десктопе перезагружаем страницу для обновления виджета
-            window.location.reload();
-          }
-        } catch (err) {
-          setUploadError("Ошибка анализа фото. Попробуйте другое изображение.");
-        } finally {
-          setIsUploadingPhoto(false);
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      setUploadError("Ошибка загрузки файла.");
-      setIsUploadingPhoto(false);
-    }
-  };
 
   const addAllToCart = () => {
     [...plan.morning, ...plan.evening].forEach(addToCart);
@@ -420,9 +354,7 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
     }
   };
 
-  const printPlan = () => {
-    window.print();
-  };
+
 
   useEffect(() => {
     try {
@@ -517,32 +449,12 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
               <h3 className="text-lg font-medium mb-1">📸 Улучшить план с помощью фото</h3>
               <p className="text-sm text-neutral-600">Загрузите фото лица для более точных рекомендаций с ИИ-анализом</p>
             </div>
-            <div className="flex gap-2">
+            <div>
               <Link to="/photo">
                 <Button variant="secondary">Перейти к скану</Button>
               </Link>
-              <label className="cursor-pointer">
-                <Button disabled={isUploadingPhoto}>
-                  {isUploadingPhoto ? "🔍 Анализируем..." : "📷 Быстро загрузить"}
-                </Button>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handlePhotoUpload(file);
-                  }}
-                />
-              </label>
             </div>
           </div>
-          
-          {uploadError && (
-            <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-2">
-              {uploadError}
-            </div>
-          )}
         </Card>
       );
     }
@@ -584,32 +496,14 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
               <Link to="/photo">
                 <Button size="sm" variant="secondary">📷 Новое фото</Button>
               </Link>
-              <label className="cursor-pointer">
-                <Button size="sm" disabled={isUploadingPhoto}>
-                  {isUploadingPhoto ? "🔍" : "⚡"}
-                </Button>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handlePhotoUpload(file);
-                  }}
-                />
-              </label>
+
             </div>
             <Link to="/photo/results" state={{ analysisData: photoAnalysis }}>
               <Button size="sm" variant="ghost">👁️ Подробнее</Button>
             </Link>
           </div>
         </div>
-        
-        {uploadError && (
-          <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-2">
-            {uploadError}
-          </div>
-        )}
+
       </Card>
     );
   };
@@ -622,10 +516,7 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
           🛒 Корзина
         </Button>
         <Button variant="ghost" onClick={sendToTelegram} size="sm">
-          💬 В чат
-        </Button>
-        <Button onClick={printPlan} size="sm">
-          📄 PDF
+          💬 Отправить PDF
         </Button>
       </div>
     </div>
