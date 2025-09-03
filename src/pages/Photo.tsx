@@ -112,6 +112,7 @@ export default function Photo() {
     setPreviewUrl(null);
     setIsAnalyzing(false);
     setAnalysisResult(null);
+    setSelectedProblem(null);
   };
 
   const analyzePhoto = async () => {
@@ -234,57 +235,14 @@ export default function Photo() {
               {error ?? ""}
             </div>
 
-            {previewUrl && (
+            {previewUrl && !analysisResult && (
               <div className="pt-2">
-                <div className="relative inline-block w-full">
-                  <img
-                    src={previewUrl}
-                    alt="Предпросмотр фото"
-                    className="w-full max-h-72 object-contain rounded-xl border"
-                    data-testid="preview"
-                  />
-                  
-                  {/* Интерактивные проблемные области если есть анализ */}
-                  {analysisResult?.problemAreas?.map((area: any, idx: number) => {
-                    const colors = {
-                      'акне': 'border-red-500 bg-red-500/20',
-                      'жирность': 'border-yellow-500 bg-yellow-500/20', 
-                      'поры': 'border-orange-500 bg-orange-500/20',
-                      'покраснение': 'border-pink-500 bg-pink-500/20',
-                      'сухость': 'border-blue-500 bg-blue-500/20'
-                    };
-                    
-                    const colorClass = colors[area.type as keyof typeof colors] || 'border-red-500 bg-red-500/20';
-                    
-                    return (
-                      <div key={idx} className="absolute">
-                        {/* Цветная область */}
-                        <div
-                          className={`absolute border-2 rounded cursor-pointer hover:opacity-80 transition ${colorClass}`}
-                          style={{
-                            left: `${area.coordinates?.x || 0}%`,
-                            top: `${area.coordinates?.y || 0}%`,
-                            width: `${area.coordinates?.width || 10}%`,
-                            height: `${area.coordinates?.height || 10}%`,
-                          }}
-                          onClick={() => setSelectedProblem(selectedProblem?.type === area.type ? null : area)}
-                        />
-                        
-                        {/* Подпись проблемы */}
-                        <div
-                          className="absolute text-xs font-medium px-2 py-1 rounded bg-white border shadow-sm whitespace-nowrap pointer-events-none"
-                          style={{
-                            left: `${(area.coordinates?.x || 0) + (area.coordinates?.width || 10)}%`,
-                            top: `${area.coordinates?.y || 0}%`,
-                            transform: 'translateX(4px)'
-                          }}
-                        >
-                          {area.type}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <img
+                  src={previewUrl}
+                  alt="Предпросмотр фото"
+                  className="w-full max-h-72 object-contain rounded-xl border"
+                  data-testid="preview"
+                />
               </div>
             )}
 
@@ -310,6 +268,56 @@ export default function Photo() {
 
         {analysisResult && !isAnalyzing && (
           <div className="mt-4 space-y-3">
+            {/* Фото с интерактивными областями */}
+            <div className="relative">
+              <img
+                src={analysisResult.previewDataUrl || previewUrl}
+                alt="Анализ фото"
+                className="w-full max-h-72 object-contain rounded-xl border"
+              />
+              
+              {/* Интерактивные проблемные области */}
+              {analysisResult.problemAreas?.map((area: any, idx: number) => {
+                const colors = {
+                  'акне': 'border-red-500 bg-red-500/20',
+                  'жирность': 'border-yellow-500 bg-yellow-500/20', 
+                  'поры': 'border-orange-500 bg-orange-500/20',
+                  'покраснение': 'border-pink-500 bg-pink-500/20',
+                  'сухость': 'border-blue-500 bg-blue-500/20'
+                };
+                
+                const colorClass = colors[area.type as keyof typeof colors] || 'border-red-500 bg-red-500/20';
+                
+                return (
+                  <div key={idx} className="absolute">
+                    {/* Цветная область */}
+                    <div
+                      className={`absolute border-2 rounded cursor-pointer hover:opacity-80 transition ${colorClass}`}
+                      style={{
+                        left: `${area.coordinates?.x || 0}%`,
+                        top: `${area.coordinates?.y || 0}%`,
+                        width: `${area.coordinates?.width || 10}%`,
+                        height: `${area.coordinates?.height || 10}%`,
+                      }}
+                      onClick={() => setSelectedProblem(selectedProblem?.type === area.type ? null : area)}
+                    />
+                    
+                    {/* Подпись проблемы */}
+                    <div
+                      className="absolute text-xs font-medium px-2 py-1 rounded bg-white border shadow-sm whitespace-nowrap pointer-events-none"
+                      style={{
+                        left: `${(area.coordinates?.x || 0) + (area.coordinates?.width || 10)}%`,
+                        top: `${area.coordinates?.y || 0}%`,
+                        transform: 'translateX(4px)'
+                      }}
+                    >
+                      {area.type}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
               <h3 className="text-lg font-medium text-green-700 mb-2">✅ Анализ завершён!</h3>
               <div className="space-y-2 text-sm">
