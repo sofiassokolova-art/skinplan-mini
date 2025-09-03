@@ -12,10 +12,23 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="grid sm:grid-cols-2 gap-4">
-        <Card title="Корзина продуктов" to="/cart" />
-        <Card title="Инсайты/статистика" to="/insights" />
+      <section className="grid sm:grid-cols-3 gap-4">
+        <PhotoCard />
+        <Card title="Мой план ухода" to="/plan" />
+        <Card title="Корзина" to="/cart" />
       </section>
+    </div>
+  );
+}
+
+function PhotoCard() {
+  return (
+    <div className="bg-white/70 border border-white/60 rounded-3xl p-5">
+      <div className="font-semibold">Скан по фото</div>
+      <div className="text-sm text-zinc-600 mt-1 mb-3">Загрузите фото — мы подскажем тип кожи и проблемы.</div>
+      <Link to="/quiz" className="inline-block px-4 py-2 rounded-full border bg-white/70 text-sm">
+        Перейти к скану
+      </Link>
     </div>
   );
 }
