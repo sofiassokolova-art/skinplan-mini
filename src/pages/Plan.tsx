@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { sendPlanToTelegram } from "../lib/telegramBot";
 
 const STORAGE_KEY = "skiniq.answers";
 const PREMIUM_KEY = "skiniq.premium";
@@ -326,31 +327,30 @@ export default function Plan() {
     alert("Все продукты добавлены в корзину.");
   };
 
-  const sendToTelegram = () => {
-    const text = `SkinIQ — персональный план ухода (28 дней)
-Тип кожи: ${analysis.skinType}; Чувствительность: ${analysis.sensitivity ? "да" : "нет"}; Жирность: ${analysis.oiliness}
-${analysis.concerns?.length ? `Проблемы: ${analysis.concerns.join(", ")}` : ""}
-Цель: ${analysis.primaryGoal}
+  const sendToTelegram = async () => {
+    try {
+      const planData = {
+        userName: answers.name || "Пользователь",
+        skinType: analysis.skinType,
+        sensitivity: analysis.sensitivity,
+        oiliness: analysis.oiliness,
+        primaryGoal: analysis.primaryGoal,
+        concerns: analysis.concerns || [],
+        morningSteps: plan.morning,
+        eveningSteps: plan.evening,
+        schedule: schedule
+      };
 
-Утро:
-${plan.morning.map((step, i) => `${i + 1}. ${step.name}`).join("\n")}
-
-Вечер:
-${plan.evening.map((step, i) => `${i + 1}. ${step.name}`).join("\n")}
-
-Расписание 28 дней (кратко):
-${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join("; ")} | вечер — ${day.eveningNotes.join("; ")}`).join("\n")}`;
-
-    if ((window as any).Telegram?.WebApp?.sendData) {
-      (window as any).Telegram.WebApp.sendData(JSON.stringify({ type: "plan", text }));
-      alert("План отправлен в чат боту.");
-    } else {
-      const success = (window.navigator as any).clipboard?.writeText(text);
-      if (success) {
-        alert("Я скопировал план в буфер обмена — вставь в чат вручную.");
+      const result = await sendPlanToTelegram(planData);
+      
+      if (result.success) {
+        alert("📋 План отправлен в Telegram как PDF-документ!");
       } else {
-        alert("Не удалось отправить. Открой в Telegram Mini App или скопируй содержимое вручную.");
+        alert(`Ошибка отправки: ${result.error || "Неизвестная ошибка"}`);
       }
+    } catch (error) {
+      console.error('Error sending to Telegram:', error);
+      alert("Ошибка отправки. Проверьте подключение к интернету.");
     }
   };
 
