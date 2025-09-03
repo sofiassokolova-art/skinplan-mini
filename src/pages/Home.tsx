@@ -127,24 +127,22 @@ export default function Home() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {plan && (
-          <Card className="p-4 flex flex-col">
-            <h2 className="text-lg font-medium">Мой план ухода</h2>
-            <p className="text-sm text-neutral-600 mt-1">Посмотреть рекомендации и расписание на 28 дней.</p>
-            <div className="mt-auto pt-3">
-              <Link to="/plan">
-                <Button variant="secondary">Открыть план</Button>
-              </Link>
-            </div>
-          </Card>
-        )}
-
         <Card className="p-4 flex flex-col">
           <h2 className="text-lg font-medium">Корзина</h2>
           <p className="text-sm text-neutral-600 mt-1">Товары из плана, которые вы добавили.</p>
           <div className="mt-auto pt-3">
             <Link to="/cart">
               <Button variant="ghost">Перейти в корзину</Button>
+            </Link>
+          </div>
+        </Card>
+        
+        <Card className="p-4 flex flex-col">
+          <h2 className="text-lg font-medium">Инсайты</h2>
+          <p className="text-sm text-neutral-600 mt-1">Статистика и анализ вашего ухода.</p>
+          <div className="mt-auto pt-3">
+            <Link to="/insights">
+              <Button variant="ghost">Посмотреть</Button>
             </Link>
           </div>
         </Card>
