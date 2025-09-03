@@ -53,7 +53,7 @@ export default function Home() {
       {hasCompletedQuiz && plan && (
         <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-900">РУТИНА {userName?.toUpperCase()}</h2>
+            <h2 className="text-lg font-bold text-gray-900">ТВОЙ УХОД СЕГОДНЯ</h2>
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTime('morning')}
@@ -79,27 +79,39 @@ export default function Home() {
           </div>
 
           <div className="space-y-4">
-            {(activeTime === 'morning' ? plan.morning : plan.evening)?.slice(0, 4).map((step: any, idx: number) => (
-              <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+            {(activeTime === 'morning' ? plan.morning : plan.evening)?.slice(0, 4).map((step: any, idx: number) => {
+              const getStepStatus = (stepType: string, timeOfDay: string) => {
+                const statuses = {
+                  'cleanser': timeOfDay === 'morning' ? 'НА ВЛАЖНУЮ КОЖУ' : 'ДВОЙНОЕ ОЧИЩЕНИЕ',
+                  'hydrator': timeOfDay === 'morning' ? 'ПОСЛЕ ОЧИЩЕНИЯ' : 'НА ВЛАЖНУЮ КОЖУ', 
+                  'treatment': timeOfDay === 'morning' ? 'ПЕРЕД УВЛАЖНЕНИЕМ' : 'НА СУХУЮ КОЖУ',
+                  'moisturizer': timeOfDay === 'morning' ? 'ПЕРЕД SPF' : 'ЗАВЕРШАЮЩИЙ ЭТАП',
+                  'spf': 'ЗА 15 МИН ДО ВЫХОДА'
+                };
+                return statuses[stepType as keyof typeof statuses] || 'ПО ИНСТРУКЦИИ';
+              };
+
+              return (
+                <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                      <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">{step.name.split('(')[0].trim()}</div>
+                      <div className="text-xs text-gray-500 uppercase tracking-wide">
+                        {getStepStatus(step.step, activeTime)}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">{step.name.split('(')[0].trim()}</div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wide">
-                      {activeTime === 'morning' ? 'ПЕРЕД НАНЕСЕНИЕМ СЫВОРОТКИ' : 'ПОСЛЕ ОЧИЩЕНИЯ'}
+                  <div className="text-right">
+                    <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                      <span className="text-xs text-gray-600">✓</span>
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-gray-900">2°</div>
-                  <div className="text-xs text-gray-500">
-                    {activeTime === 'morning' ? 'КАПЛИ УТРОМ' : 'КАПЛИ ВЕЧЕРОМ'}
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
           <div className="mt-6 text-center">
