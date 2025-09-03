@@ -1,10 +1,7 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useMemo } from "react";
-import ModernCard from "../ui/ModernCard";
-import ModernButton from "../ui/ModernButton";
 
 export default function Home() {
-  const navigate = useNavigate();
   
   const userName = useMemo(() => {
     try {
@@ -43,112 +40,84 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {userName && (
-        <div className="text-center">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2 tracking-tight">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
             {greeting}!
           </h1>
         </div>
       )}
 
       {hasCompletedQuiz && plan && (
-        <ModernCard variant="gradient" className="p-6">
-          <div className="flex items-start justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-1">Ближайшая рутина</h2>
-              <p className="text-sm text-gray-600">Короткий дайджест твоих шагов на сегодня</p>
+        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">{userName?.toUpperCase()}'S ROUTINE</h2>
+            <div className="flex gap-2">
+              <span className="px-3 py-1 bg-black text-white text-xs font-semibold rounded-full">MORNING</span>
+              <span className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">EVENING</span>
             </div>
-            <ModernButton onClick={() => navigate("/plan")} size="sm">
-              Открыть план
-            </ModernButton>
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <ModernCard variant="glass" className="p-4">
-              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <span className="text-lg">🌅</span> Утро
-              </h3>
-              {plan.morning?.length ? (
-                <ul className="space-y-2">
-                  {plan.morning.slice(0, 3).map((step: any, idx: number) => (
-                    <li key={`m-${idx}`} className="flex items-center gap-2 text-sm text-gray-700">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      {step.name}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-500">Шаги не найдены</p>
-              )}
-            </ModernCard>
-            
-            <ModernCard variant="glass" className="p-4">
-              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <span className="text-lg">🌙</span> Вечер
-              </h3>
-              {plan.evening?.length ? (
-                <ul className="space-y-2">
-                  {plan.evening.slice(0, 3).map((step: any, idx: number) => (
-                    <li key={`e-${idx}`} className="flex items-center gap-2 text-sm text-gray-700">
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                      {step.name}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-500">Шаги не найдены</p>
-              )}
-            </ModernCard>
+
+          <div className="space-y-4">
+            {plan.morning?.slice(0, 4).map((step: any, idx: number) => (
+              <div key={`routine-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                    <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900 text-sm">{step.name.split('(')[0].trim()}</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide">{step.step}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-bold text-gray-900">2°</div>
+                  <div className="text-xs text-gray-500">DROPS IN THE MORNING</div>
+                </div>
+              </div>
+            ))}
           </div>
-          
-          <div className="mt-6 text-center">
-            <ModernButton variant="ghost" onClick={() => navigate("/plan")}>
-              Перейти к подробному плану →
-            </ModernButton>
-          </div>
-        </ModernCard>
+        </div>
       )}
 
       {!hasCompletedQuiz && (
-        <ModernCard variant="gradient" className="p-6 text-center">
-          <div className="mb-6">
-            <h2 className="text-xl sm:text-2xl font-black text-gray-800 mb-3 tracking-tight">
-              Запланируйте свою рутину
-            </h2>
-            <p className="text-gray-600 leading-relaxed">
-              Пройдите короткую анкету, и мы соберём персональный уход
-            </p>
-          </div>
+        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm text-center">
+          <h2 className="text-xl font-bold text-gray-900 mb-3">
+            ЗАПЛАНИРУЙТЕ СВОЮ РУТИНУ
+          </h2>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            Пройдите короткую анкету, и мы соберём персональный уход
+          </p>
           <Link to="/quiz">
-            <ModernButton fullWidth size="lg">
-              Заполнить анкету
-            </ModernButton>
+            <button className="w-full bg-black text-white py-4 rounded-2xl font-semibold hover:bg-gray-800 transition-colors">
+              ЗАПОЛНИТЬ АНКЕТУ
+            </button>
           </Link>
-        </ModernCard>
+        </div>
       )}
 
-      <ModernCard className="p-6">
+      <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center text-white text-xl">
-            🛒
+          <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center">
+            <span className="text-xl">🛒</span>
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-bold text-gray-800">Корзина</h2>
+            <h2 className="text-lg font-bold text-gray-900">КОРЗИНА</h2>
             <p className="text-sm text-gray-600">Товары из плана, которые вы добавили</p>
           </div>
           <Link to="/cart">
-            <ModernButton variant="secondary" size="sm">
-              Открыть
-            </ModernButton>
+            <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold hover:bg-gray-200 transition-colors">
+              ОТКРЫТЬ
+            </button>
           </Link>
         </div>
-      </ModernCard>
+      </div>
       
       {hasCompletedQuiz && (
-        <div className="text-center pt-6">
-          <Link to="/quiz" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            Перепройти анкету →
+        <div className="text-center pt-4">
+          <Link to="/quiz" className="text-sm text-gray-500 hover:text-gray-700 transition-colors font-medium">
+            ПЕРЕПРОЙТИ АНКЕТУ
           </Link>
         </div>
       )}
