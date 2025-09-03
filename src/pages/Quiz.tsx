@@ -8,9 +8,7 @@ const Card = ({ children, className = "" }: { children: React.ReactNode; classNa
   </div>
 );
 
-const isMobile = () => {
-  return typeof window !== 'undefined' && window.innerWidth <= 768;
-};
+
 
 const STORAGE_KEY = "skiniq.answers";
 
@@ -239,17 +237,25 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
           confidence: 0.75
         };
         
-        setAnswers({ 
-          ...answers, 
-          photo_data_url: dataUrl, 
-          photo_analysis: demoAnalysis,
-          photo_scans: [...(answers.photo_scans || []), { 
-            ts: Date.now(), 
-            preview: dataUrl, 
-            analysis: demoAnalysis,
-            problemAreas: demoAnalysis.problemAreas
-          }]
-        });
+        try {
+          const updatedAnswers = { 
+            ...answers, 
+            photo_data_url: dataUrl, 
+            photo_analysis: demoAnalysis,
+            photo_scans: [...(answers.photo_scans || []), { 
+              ts: Date.now(), 
+              preview: dataUrl, 
+              analysis: demoAnalysis,
+              problemAreas: demoAnalysis.problemAreas || []
+            }]
+          };
+          
+          setAnswers(updatedAnswers);
+          saveAnswers(updatedAnswers);
+        } catch (saveError) {
+          console.error('Error saving photo analysis:', saveError);
+          setError("Ошибка сохранения. Попробуйте ещё раз.");
+        }
       } finally {
         setIsAnalyzing(false);
       }
@@ -350,41 +356,20 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
           )}
           
           {answers.photo_analysis && !isAnalyzing && (
-            <div className="mt-2 space-y-2">
-              {/* Мобильный полноэкранный вид */}
-              {isMobile() ? (
-                <div className="bg-white rounded-2xl p-4 border-2 border-green-500">
-                  <div className="text-center mb-4">
-                    <h3 className="text-lg font-bold text-green-700">🎯 Анализ завершён!</h3>
-                    <div className="text-sm text-zinc-600">Нажмите на цветные области для деталей</div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="text-center p-3 rounded-xl bg-blue-50 border border-blue-200">
-                      <div className="text-xs text-blue-600 mb-1">Тип кожи</div>
-                      <div className="font-bold">{answers.photo_analysis.skinType}</div>
-                    </div>
-                    <div className="text-center p-3 rounded-xl bg-green-50 border border-green-200">
-                      <div className="text-xs text-green-600 mb-1">Уверенность</div>
-                      <div className="font-bold">{Math.round((answers.photo_analysis.confidence || 0) * 100)}%</div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-sm text-zinc-700 mb-3">
-                    <strong>Найденные проблемы:</strong> {answers.photo_analysis.concerns?.join(", ")}
-                  </div>
+            <div className="mt-4 space-y-3">
+              {/* Упрощённый единый вид для всех устройств */}
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="text-center mb-3">
+                  <h3 className="text-lg font-bold text-green-700">✅ Анализ завершён!</h3>
+                  <div className="text-sm text-zinc-600">Результаты ИИ-анализа кожи</div>
                 </div>
-              ) : (
-                // Десктопный компактный вид
-                <>
-                  <div className="text-sm font-medium">Результат анализа:</div>
-                  <div className="text-sm text-zinc-700">
-                    <div><strong>Тип кожи:</strong> {answers.photo_analysis.skinType}</div>
-                    <div><strong>Проблемы:</strong> {answers.photo_analysis.concerns?.join(", ")}</div>
-                    <div><strong>Уверенность:</strong> {Math.round((answers.photo_analysis.confidence || 0) * 100)}%</div>
-                  </div>
-                </>
-              )}
+                
+                <div className="space-y-2 text-sm">
+                  <div><strong>Тип кожи:</strong> {answers.photo_analysis?.skinType || "не определён"}</div>
+                  <div><strong>Проблемы:</strong> {(answers.photo_analysis?.concerns || []).join(", ") || "не обнаружены"}</div>
+                  <div><strong>Уверенность:</strong> {Math.round((answers.photo_analysis?.confidence || 0) * 100)}%</div>
+                </div>
+              </div>
               
               {/* Детали выбранной проблемной области */}
               {selectedProblem && (
