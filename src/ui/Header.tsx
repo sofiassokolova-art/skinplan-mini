@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function Header() {
   return (
-    <header className="px-4 py-3" style={{position: "sticky", top: 0, zIndex: 40}}>
+    <header className="px-4 py-3">
       <div style={{
         maxWidth: 1200, 
         margin: "0 auto", 
