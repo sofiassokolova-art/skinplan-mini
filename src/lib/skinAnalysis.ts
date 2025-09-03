@@ -20,12 +20,12 @@ const OPENAI_API_KEY = (import.meta.env?.VITE_OPENAI_API_KEY as string) ||
 export async function analyzeSkinPhoto(imageDataUrl: string): Promise<SkinAnalysisResult> {
   try {
     // Пробуем бесплатный Hugging Face сначала
-    if (HUGGINGFACE_API_KEY) {
+    if (HUGGINGFACE_API_KEY && HUGGINGFACE_API_KEY !== 'sk-proj-demo') {
       return await analyzeWithHuggingFace(imageDataUrl);
     }
     
     // Fallback на OpenAI если есть ключ
-    if (OPENAI_API_KEY) {
+    if (OPENAI_API_KEY && OPENAI_API_KEY !== 'sk-proj-demo') {
       return await analyzeWithOpenAI(imageDataUrl);
     }
     
@@ -38,31 +38,45 @@ export async function analyzeSkinPhoto(imageDataUrl: string): Promise<SkinAnalys
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function analyzeWithHuggingFace(imageDataUrl: string): Promise<SkinAnalysisResult> {
-  // Конвертируем data URL в blob
-  const response = await fetch(imageDataUrl);
-  const blob = await response.blob();
+  try {
+    // Конвертируем data URL в blob
+    const response = await fetch(imageDataUrl);
+    const blob = await response.blob();
 
-  // Используем бесплатную модель для классификации изображений
-  const hfResponse = await fetch('https://api-inference.huggingface.co/models/microsoft/resnet-50', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: blob
-  });
+    // Используем бесплатную модель для классификации изображений
+    const hfResponse = await fetch('https://api-inference.huggingface.co/models/microsoft/resnet-50', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${HUGGINGFACE_API_KEY}`,
+      },
+      body: blob
+    });
 
-  if (!hfResponse.ok) {
-    throw new Error(`Hugging Face API error: ${hfResponse.status}`);
+    if (!hfResponse.ok) {
+      console.warn(`Hugging Face API error: ${hfResponse.status}`);
+      // Fallback на демо если API недоступен
+      return getDemoAnalysis();
+    }
+
+    const hfData = await hfResponse.json();
+    
+    // Проверяем что получили валидные данные
+    if (!Array.isArray(hfData) || hfData.length === 0) {
+      console.warn('Invalid Hugging Face response format');
+      return getDemoAnalysis();
+    }
+    
+    // Преобразуем результат классификации в анализ кожи
+    return interpretHuggingFaceResults(hfData);
+  } catch (error) {
+    console.warn('Hugging Face analysis failed:', error);
+    return getDemoAnalysis();
   }
-
-  const hfData = await hfResponse.json();
-  
-  // Преобразуем результат классификации в анализ кожи
-  return interpretHuggingFaceResults(hfData);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function analyzeWithOpenAI(imageDataUrl: string): Promise<SkinAnalysisResult> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
