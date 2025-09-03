@@ -158,6 +158,7 @@ const allSteps = createSteps();
 function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: Answers) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedProblem, setSelectedProblem] = useState<any | null>(null);
 
   const onFile = async (file: File) => {
     setError(null);
@@ -233,22 +234,53 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
       {answers.photo_data_url && (
         <div className="mt-4">
           <div className="relative inline-block">
-            <img src={answers.photo_data_url} alt="Предпросмотр" className="max-h-64 rounded-2xl border" />
+            <img 
+              src={answers.photo_data_url} 
+              alt="Предпросмотр" 
+              className="max-h-64 rounded-2xl border" 
+
+            />
             
-            {/* Подсветка проблемных областей */}
-            {answers.photo_analysis?.problemAreas?.map((area: any, idx: number) => (
-              <div
-                key={idx}
-                className="absolute border-2 border-red-500 bg-red-500/20 rounded"
-                style={{
-                  left: `${area.coordinates?.x || 0}%`,
-                  top: `${area.coordinates?.y || 0}%`,
-                  width: `${area.coordinates?.width || 10}%`,
-                  height: `${area.coordinates?.height || 10}%`,
-                }}
-                title={`${area.type}: ${area.description}`}
-              />
-            ))}
+            {/* Интерактивные проблемные области */}
+            {answers.photo_analysis?.problemAreas?.map((area: any, idx: number) => {
+              const colors = {
+                'акне': 'border-red-500 bg-red-500/20',
+                'жирность': 'border-yellow-500 bg-yellow-500/20', 
+                'поры': 'border-orange-500 bg-orange-500/20',
+                'покраснение': 'border-pink-500 bg-pink-500/20',
+                'сухость': 'border-blue-500 bg-blue-500/20'
+              };
+              
+              const colorClass = colors[area.type as keyof typeof colors] || 'border-red-500 bg-red-500/20';
+              
+              return (
+                <div key={idx} className="absolute">
+                  {/* Цветная область */}
+                  <div
+                    className={`absolute border-2 rounded cursor-pointer hover:opacity-80 transition ${colorClass}`}
+                    style={{
+                      left: `${area.coordinates?.x || 0}%`,
+                      top: `${area.coordinates?.y || 0}%`,
+                      width: `${area.coordinates?.width || 10}%`,
+                      height: `${area.coordinates?.height || 10}%`,
+                    }}
+                    onClick={() => setSelectedProblem(selectedProblem?.type === area.type ? null : area)}
+                  />
+                  
+                  {/* Подпись проблемы */}
+                  <div
+                    className="absolute text-xs font-medium px-2 py-1 rounded bg-white border shadow-sm whitespace-nowrap pointer-events-none"
+                    style={{
+                      left: `${(area.coordinates?.x || 0) + (area.coordinates?.width || 10)}%`,
+                      top: `${area.coordinates?.y || 0}%`,
+                      transform: 'translateX(4px)'
+                    }}
+                  >
+                    {area.type}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           
           {isAnalyzing && (
@@ -266,9 +298,33 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
                 <div><strong>Уверенность:</strong> {Math.round((answers.photo_analysis.confidence || 0) * 100)}%</div>
               </div>
               
+              {/* Детали выбранной проблемной области */}
+              {selectedProblem && (
+                <div className="mt-3 p-3 rounded-xl border-l-4 border-blue-500 bg-blue-50">
+                  <div className="text-sm font-medium mb-1">
+                    🎯 {selectedProblem.type} ({selectedProblem.severity === 'high' ? 'высокая' : selectedProblem.severity === 'medium' ? 'средняя' : 'низкая'} степень)
+                  </div>
+                  <div className="text-xs text-zinc-600 mb-2">{selectedProblem.description}</div>
+                  
+                  {/* Рекомендации для конкретной проблемы */}
+                  <div className="text-xs text-zinc-700">
+                    <strong>Что делать:</strong>
+                    {selectedProblem.type === 'акне' && " BHA 2-3 раза в неделю, точечные средства"}
+                    {selectedProblem.type === 'жирность' && " Лёгкие гели, матирующие средства, ниацинамид"}
+                    {selectedProblem.type === 'поры' && " BHA, ретиноиды, ниацинамид для сужения пор"}
+                    {selectedProblem.type === 'покраснение' && " Успокаивающие средства, цика, пантенол"}
+                    {selectedProblem.type === 'сухость' && " Интенсивное увлажнение, керамиды, гиалуронка"}
+                  </div>
+                </div>
+              )}
+              
+              <div className="text-xs text-zinc-500 mt-2">
+                💡 Кликни на цветные области для детальной информации
+              </div>
+              
               {answers.photo_analysis.recommendations && (
                 <div className="mt-2">
-                  <div className="text-sm font-medium mb-1">Рекомендации:</div>
+                  <div className="text-sm font-medium mb-1">Общие рекомендации:</div>
                   <ul className="text-xs text-zinc-600 list-disc list-inside space-y-1">
                     {answers.photo_analysis.recommendations.map((rec: string, idx: number) => (
                       <li key={idx}>{rec}</li>
