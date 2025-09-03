@@ -1,147 +1,168 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
-/** Храним все ответы в одном объекте (и в localStorage) */
-export type Answers = {
-  goals: string[];
-  skin_type: "dry"|"normal"|"combo"|"oily"|null;
-  sensitivity: boolean|null;
-  acne_level: "none"|"mild"|"moderate"|"severe"|null;
-  redness: boolean|null;
-  dehydration: boolean|null;
-  pores: boolean|null;
-  tone_dullness: boolean|null;
-  aging: boolean|null;
+const STORAGE_KEY = "skiniq.answers";
 
-  triggers: string[];                // солнце, жара, духи, алкоголь и т.п.
-  allergies: string[];               // известные аллергены
-  meds: string[];                    // ретиноиды/изотретиноин/антибиотики
-  procedures6m: string[];            // пилинг/лазер/микротоки
-
-  spf_use: "never"|"sometimes"|"daily"|null;
-  cleansing_pref: "gel"|"milk"|"oil"|null;
-  textures: string[];                // gel/cream/balm
-  dislikes: string[];                // perfume/sticky/tingling
-  budget: "low"|"mid"|"high"|null;
-  morning_time: "1m"|"3m"|"5m+"|null;
-  evening_time: "1m"|"3m"|"5m+"|null;
-
-  actives_ok: string[];              // aha/bha/azelaic/vitc/niacin/retinoid/ha
-  actives_no: string[];              // что нельзя
-  inventory: string[];               // что уже есть (cleanser/moist/spf/actives)
-  pregnancy: boolean|null;
-
-  climate: "humid"|"dry"|"cold"|"hot"|null;
-  water: "soft"|"medium"|"hard"|null;
-  lifestyle: string[];               // gym/swim/office-ac/travel
-
+interface Answers {
+  name?: string;
+  pdConsent?: boolean;
+  skinType?: "сухая" | "жирная" | "комбинированная" | "нормальная";
+  sensitivity?: boolean;
+  concerns?: string[];
+  oiliness?: "низкая" | "средняя" | "высокая";
+  primaryGoal?: "снять воспаления" | "увлажнить" | "осветлить постакне" | "сузить поры";
+  
   // Фото (опционально)
-  photo_data_url: string|null;       // data: URL для предпросмотра
-  photo_analysis: string|null;       // краткий результат распознавания
-  photo_scans: { ts:number; preview:string; analysis:string }[]; // архив
-};
-
-const DEFAULT_ANS: Answers = {
-  goals: [],
-  skin_type: null,
-  sensitivity: null,
-  acne_level: "none",
-  redness: null,
-  dehydration: null,
-  pores: null,
-  tone_dullness: null,
-  aging: null,
-
-  triggers: [],
-  allergies: [],
-  meds: [],
-  procedures6m: [],
-
-  spf_use: null,
-  cleansing_pref: null,
-  textures: [],
-  dislikes: [],
-  budget: "mid",
-  morning_time: null,
-  evening_time: null,
-
-  actives_ok: [],
-  actives_no: [],
-  inventory: [],
-  pregnancy: null,
-
-  climate: null,
-  water: null,
-  lifestyle: [],
-
-  photo_data_url: null,
-  photo_analysis: null,
-  photo_scans: [],
-};
-
-const save = (a: Answers) => localStorage.setItem("skinplan_answers", JSON.stringify(a));
-const load = (): Answers => {
-  try { const raw = localStorage.getItem("skinplan_answers"); return raw ? { ...DEFAULT_ANS, ...JSON.parse(raw) } : DEFAULT_ANS; }
-  catch { return DEFAULT_ANS; }
-};
-
-/* ----------- маленькие кирпичики UI ----------- */
-const Pill = ({active, children, onClick}:{active?:boolean;children:React.ReactNode;onClick?:()=>void}) => (
-  <button onClick={onClick}
-    className={`inline-flex items-center px-3 py-1.5 mr-2 mb-2 rounded-full border text-sm
-      ${active ? "bg-black text-white border-black" : "bg-white/60 hover:bg-white/80"}`}>
-    {children}
-  </button>
-);
-
-function Multi({label, options, value, onChange, limit}:{label:string; options:{key:string;label:string}[]; value:string[]; onChange:(v:string[])=>void; limit?:number}) {
-  const toggle = (k:string) => {
-    const next = value.includes(k) ? value.filter(x=>x!==k) : [...value, k];
-    if (limit && next.length>limit) return;
-    onChange(next);
-  };
-  return (
-    <Block title={label}>
-      <div className="flex flex-wrap">{options.map(o=>(
-        <Pill key={o.key} active={value.includes(o.key)} onClick={()=>toggle(o.key)}>{o.label}</Pill>
-      ))}</div>
-    </Block>
-  );
-}
-function Single({label, options, value, onChange}:{label:string; options:{key:string;label:string}[]; value:string|null; onChange:(v:any)=>void}) {
-  return (
-    <Block title={label}>
-      <div className="flex flex-wrap">{options.map(o=>(
-        <Pill key={o.key} active={value===o.key} onClick={()=>onChange(o.key)}>{o.label}</Pill>
-      ))}</div>
-    </Block>
-  );
-}
-function Bool({label, value, onChange}:{label:string; value:boolean|null; onChange:(v:boolean)=>void}) {
-  return (
-    <Block title={label}>
-      <Pill active={value===true} onClick={()=>onChange(true)}>Да</Pill>
-      <Pill active={value===false} onClick={()=>onChange(false)}>Нет</Pill>
-    </Block>
-  );
-}
-function Block({title, children}:{title:string; children:React.ReactNode}) {
-  return (
-    <div className="bg-white/70 border border-white/60 rounded-3xl p-6 mb-5 backdrop-blur-xl">
-      <h3 className="text-lg font-bold mb-2">{title}</h3>
-      {children}
-    </div>
-  );
+  photo_data_url?: string | null;
+  photo_analysis?: string | null;
+  photo_scans?: { ts: number; preview: string; analysis: string }[];
 }
 
-/* ----------- Шаг: Фото (опционально) ----------- */
-function PhotoStep({a, set}:{a:Answers; set:(p:Partial<Answers>)=>void}) {
-  const [error, setError] = useState<string|null>(null);
+function loadAnswers(): Answers {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAnswers(answers: Answers) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+}
+
+const questions = [
+  {
+    kind: "question" as const,
+    id: "name",
+    title: "Как вас зовут?",
+    description: "Чтобы мы могли обращаться по имени.",
+    type: "text" as const,
+    required: true,
+    needsConsent: true
+  },
+  {
+    kind: "question" as const,
+    id: "skinType",
+    title: "Какой у вас тип кожи?",
+    type: "single" as const,
+    required: true,
+    options: ["сухая", "жирная", "комбинированная", "нормальная"]
+  },
+  {
+    kind: "question" as const,
+    id: "sensitivity",
+    title: "Ваша кожа чувствительная?",
+    type: "switch" as const,
+    required: true
+  },
+  {
+    kind: "question" as const,
+    id: "concerns",
+    title: "Что вас беспокоит?",
+    description: "Можно выбрать несколько вариантов.",
+    type: "multi" as const,
+    required: true,
+    options: ["акне", "постакне", "расширенные поры", "покраснение", "сухость"]
+  },
+  {
+    kind: "question" as const,
+    id: "oiliness",
+    title: "Насколько кожа склонна к жирности?",
+    type: "single" as const,
+    required: true,
+    options: ["низкая", "средняя", "высокая"]
+  },
+  {
+    kind: "question" as const,
+    id: "primaryGoal",
+    title: "Главная цель ухода на 28 дней?",
+    type: "single" as const,
+    required: true,
+    options: ["снять воспаления", "увлажнить", "осветлить постакне", "сузить поры"]
+  }
+];
+
+const insights = questions.map(q => ({
+  kind: "insight" as const,
+  id: `insight_${q.id}`,
+  forQuestionId: q.id,
+  title: "Небольшой инсайт",
+  renderBody: (answers: Answers) => {
+    switch (q.id) {
+      case "skinType":
+        return (
+          <p className="opacity-80">
+            Для типа кожи <b>{answers.skinType ?? "—"}</b> мы осторожнее подбираем очищение и активы: избегаем пересушивания и соблюдаем баланс pH.
+          </p>
+        );
+      case "sensitivity":
+        return answers.sensitivity ? (
+          <p className="opacity-80">
+            Чувствительная кожа любит мягкое очищение, SPF без отдушек и постепенный ввод активов.
+          </p>
+        ) : (
+          <p className="opacity-80">
+            Отлично: при отсутствии высокой чувствительности можно смелее использовать кислоты и ретиноиды (по схеме).
+          </p>
+        );
+      case "concerns":
+        return (
+          <p className="opacity-80">
+            По вашим жалобам ({(answers.concerns || []).join(", ") || "—"}) мы настроим приоритеты: сначала — снятие воспалений/раздражений, затем работа с текстурой и тонизацией.
+          </p>
+        );
+      case "oiliness":
+        return (
+          <p className="opacity-80">
+            Уровень жирности: <b>{answers.oiliness ?? "—"}</b>. Это влияет на выбор форматов: гели/флюиды днём, более плотное увлажнение — вечером.
+          </p>
+        );
+      case "primaryGoal":
+        return (
+          <p className="opacity-80">
+            Главная цель — <b>{answers.primaryGoal ?? "—"}</b>. План и активы будут выстроены вокруг этой цели на ближайшие 28 дней.
+          </p>
+        );
+      default:
+        return null;
+    }
+  }
+}));
+
+function createSteps() {
+  const steps: any[] = [];
+  questions.forEach((question, index) => {
+    steps.push(question);
+    if (index > 0) {
+      steps.push(insights[index]);
+    }
+  });
+  
+  // Добавляем финальный опциональный шаг фото
+  steps.push({
+    kind: "question" as const,
+    id: "photo",
+    title: "Фото-скан (опционально)",
+    description: "Можно добавить фото без макияжа при дневном свете — я учту это при планировании. Можно пропустить.",
+    type: "photo" as const,
+    required: false
+  });
+  
+  return steps;
+}
+
+const allSteps = createSteps();
+const totalQuestions = questions.length;
+
+function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: Answers) => void }) {
+  const [error, setError] = useState<string | null>(null);
 
   const onFile = async (file: File) => {
     setError(null);
     if (!file) return;
 
-    const allowed = ["image/jpeg","image/png","image/webp"];
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) {
       setError("Формат не поддерживается. Загрузите JPEG/PNG/WebP.");
       return;
@@ -156,23 +177,29 @@ function PhotoStep({a, set}:{a:Answers; set:(p:Partial<Answers>)=>void}) {
     reader.onload = () => {
       const dataUrl = String(reader.result || "");
       const analysis = "Обнаружены признаки лёгкой жирности T-зоны, единичные воспаления.";
-      set({ photo_data_url: dataUrl, photo_analysis: analysis });
-      // Пишем в архив
-      const entry = { ts: Date.now(), preview: dataUrl, analysis };
-      set({ photo_scans: [...(a.photo_scans||[]), entry] });
+      setAnswers({ 
+        ...answers, 
+        photo_data_url: dataUrl, 
+        photo_analysis: analysis,
+        photo_scans: [...(answers.photo_scans || []), { ts: Date.now(), preview: dataUrl, analysis }]
+      });
     };
     reader.readAsDataURL(file);
   };
 
   return (
-    <Block title="Фото-скан (опционально)">
-      <p className="text-sm text-zinc-600 mb-3">Можно добавить фото без макияжа при дневном свете — я учту это при планировании. Можно пропустить.</p>
+    <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm p-6 mb-5">
+      <h3 className="text-lg font-bold mb-2">Фото-скан (опционально)</h3>
+      <p className="text-sm text-neutral-600 mb-3">
+        Можно добавить фото без макияжа при дневном свете — я учту это при планировании. Можно пропустить.
+      </p>
+      
       <label className="inline-flex items-center px-4 py-2 rounded-full border bg-white/70 cursor-pointer">
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
-          onChange={(e)=>{
+          onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) onFile(f);
           }}
@@ -186,21 +213,26 @@ function PhotoStep({a, set}:{a:Answers; set:(p:Partial<Answers>)=>void}) {
         </div>
       )}
 
-      {a.photo_data_url && (
+      {answers.photo_data_url && (
         <div className="mt-4">
-          <img src={a.photo_data_url} alt="Предпросмотр" className="max-h-64 rounded-2xl border" />
-          {a.photo_analysis && (
-            <div className="mt-2 text-sm text-zinc-700">{a.photo_analysis}</div>
+          <img src={answers.photo_data_url} alt="Предпросмотр" className="max-h-64 rounded-2xl border" />
+          {answers.photo_analysis && (
+            <div className="mt-2 text-sm text-zinc-700">{answers.photo_analysis}</div>
           )}
-          <button className="mt-3 text-sm text-zinc-600 underline" onClick={()=>set({photo_data_url:null, photo_analysis:null})}>Очистить фото</button>
+          <button 
+            className="mt-3 text-sm text-zinc-600 underline" 
+            onClick={() => setAnswers({...answers, photo_data_url: null, photo_analysis: null})}
+          >
+            Очистить фото
+          </button>
         </div>
       )}
 
-      {a.photo_scans.length>0 && (
+      {(answers.photo_scans?.length || 0) > 0 && (
         <div className="mt-5">
           <div className="font-semibold mb-2">История сканов</div>
           <div className="grid sm:grid-cols-3 gap-3">
-            {a.photo_scans.slice().reverse().map((s, idx)=> (
+            {answers.photo_scans!.slice().reverse().map((s, idx) => (
               <div key={idx} className="p-2 rounded-xl border bg-white/60">
                 <img src={s.preview} alt="Скан" className="h-28 w-full object-cover rounded-lg" />
                 <div className="mt-1 text-xs text-zinc-600">{new Date(s.ts).toLocaleString()}</div>
@@ -209,225 +241,294 @@ function PhotoStep({a, set}:{a:Answers; set:(p:Partial<Answers>)=>void}) {
           </div>
         </div>
       )}
-    </Block>
+    </div>
   );
 }
 
-/* ----------- Анкета с шагами и инсайтами ----------- */
-type Step =
- | { type:"q"; id:string; render:(a:Answers, set:(p:Partial<Answers>)=>void)=>React.ReactNode }
- | { type:"insight"; id:string; render:(a:Answers)=>React.ReactNode }
- | { type:"done" };
-
-const steps: Step[] = [
-  // Блок 1 — цели и базовая кожа
-  { type:"q", id:"goals", render:(a, set)=>(
-      <Multi label="Цели на 4–8 недель (до 3)"
-        options={[
-          {key:"acne",label:"Высыпания/комедоны"},
-          {key:"postacne",label:"Пост-акне/пятна"},
-          {key:"redness",label:"Покраснение/чувствительность"},
-          {key:"pores",label:"Жирность/поры"},
-          {key:"dry",label:"Сухость/шелушение"},
-          {key:"tone",label:"Ровный тон/сияние"},
-          {key:"aging",label:"Анти-эйдж"},
-        ]}
-        value={a.goals} limit={3} onChange={(v)=>set({goals:v})} />
-  )},
-  { type:"q", id:"type", render:(a,set)=>(
-      <Single label="Тип кожи"
-        options={[{key:"dry",label:"Сухая"},{key:"normal",label:"Нормальная"},{key:"combo",label:"Комбинированная"},{key:"oily",label:"Жирная"}]}
-        value={a.skin_type} onChange={(v)=>set({skin_type:v})}/>
-  )},
-  { type:"q", id:"acne", render:(a,set)=>(
-      <Single label="Уровень высыпаний"
-        options={[{key:"none",label:"Нет"},{key:"mild",label:"Лёгкие"},{key:"moderate",label:"Средние"},{key:"severe",label:"Выраженные"}]}
-        value={a.acne_level} onChange={(v)=>set({acne_level:v})}/>
-  )},
-  { type:"q", id:"symptoms", render:(a,set)=>(
-      <>
-        <Bool label="Есть склонность к покраснению/реактивности?" value={a.redness} onChange={(v)=>set({redness:v})}/>
-        <Bool label="Есть чувство стянутости/обезвоживание?" value={a.dehydration} onChange={(v)=>set({dehydration:v})}/>
-        <Bool label="Беспокоят расширенные поры/жирный блеск?" value={a.pores} onChange={(v)=>set({pores:v})}/>
-        <Bool label="Тусклый тон?" value={a.tone_dullness} onChange={(v)=>set({tone_dullness:v})}/>
-        <Bool label="Есть цель замедлить возрастные изменения?" value={a.aging} onChange={(v)=>set({aging:v})}/>
-      </>
-  )},
-  // Инсайт после блока 1
-  { type:"insight", id:"insight1", render:(a)=>(
-    <Block title="Предварительные наблюдения">
-      <ul className="list-disc pl-5 text-zinc-700 space-y-1">
-        {a.goals.length>0 && <li>Фокус на: {a.goals.map(g=>({
-          acne:"высыпания",postacne:"пост-акне",redness:"покраснение",
-          pores:"поры/жирность",dry:"сухость",tone:"тон",aging:"анти-эйдж"
-        } as any)[g]).join(", ")}.</li>}
-        {a.skin_type && <li>Базовый тип: {({dry:"сухая",normal:"нормальная",combo:"комбинированная",oily:"жирная"} as any)[a.skin_type]}.</li>}
-        {a.redness && <li>Отмечена реактивность — будем смягчать формулы и частоту активов.</li>}
-        {a.dehydration && <li>Добавим увлажнение/барьерные шаги для снятия стянутости.</li>}
-      </ul>
-      <div className="mt-4 text-sm text-zinc-500">Нажми «Далее», продолжим уточнения.</div>
-    </Block>
-  )},
-
-  // Блок 2 — чувствительность, триггеры, ограничения
-  { type:"q", id:"sensitivity", render:(a,set)=>(
-    <Bool label="Кожа чувствительная?" value={a.sensitivity} onChange={(v)=>set({sensitivity:v})}/>
-  )},
-  { type:"q", id:"triggers", render:(a,set)=>(
-    <Multi label="Известные триггеры"
-      options={[
-        {key:"sun",label:"Солнце/жара"},
-        {key:"fragrance",label:"Отдушки"},
-        {key:"alcohol",label:"Спирты"},
-        {key:"overwash",label:"Частое умывание"},
-        {key:"peels",label:"Жёсткие скрабы/пилинги"},
-      ]}
-      value={a.triggers} onChange={(v)=>set({triggers:v})}/>
-  )},
-  { type:"q", id:"allergies", render:(a,set)=>(
-    <Multi label="Аллергии/непереносимость"
-      options={[{key:"niacin",label:"Ниацинамид"},{key:"vitc",label:"Кисл. витамин C"},{key:"aha",label:"AHA"},{key:"bha",label:"BHA"}]}
-      value={a.allergies} onChange={(v)=>set({allergies:v})}/>
-  )},
-  { type:"q", id:"meds", render:(a,set)=>(
-    <Multi label="Текущие препараты (по назначению врача)"
-      options={[{key:"topical_retinoid",label:"Топический ретиноид"},{key:"isotretinoin",label:"Изотретиноин"},{key:"antibiotics",label:"Антибиотики"}]}
-      value={a.meds} onChange={(v)=>set({meds:v})}/>
-  )},
-  { type:"q", id:"procedures6m", render:(a,set)=>(
-    <Multi label="Процедуры за 6 мес."
-      options={[{key:"peel",label:"Пилинг"},{key:"laser",label:"Лазер"},{key:"microneedling",label:"Микронидлинг"}]}
-      value={a.procedures6m} onChange={(v)=>set({procedures6m:v})}/>
-  )},
-  // инсайт после блока 2
-  { type:"insight", id:"insight2", render:(a)=>(
-    <Block title="Безопасность и частота активов">
-      <div className="text-zinc-700">
-        {a.meds.includes("isotretinoin") && <p>Изотретиноин — исключаем кислоты и ретиноиды; упор на барьер.</p>}
-        {a.procedures6m.includes("peel") && <p>Недавний пилинг — аккуратный ввод кислот не раньше 2–3 недель от процедуры.</p>}
-        {a.sensitivity && <p>Чувствительность — начнём с «через день», патч-тест обязателен.</p>}
-        {!a.sensitivity && a.actives_ok.length===0 && <p>Можно стартовать мягко: азелаиновая/ниацинамид, затем при необходимости ретиноид.</p>}
-      </div>
-    </Block>
-  )},
-
-  // Блок 3 — привычки и предпочтения
-  { type:"q", id:"spf", render:(a,set)=>(
-    <Single label="SPF привычка" options={[{key:"never",label:"Почти не наношу"},{key:"sometimes",label:"Иногда"},{key:"daily",label:"Ежедневно"}]}
-      value={a.spf_use} onChange={(v)=>set({spf_use:v})}/>
-  )},
-  { type:"q", id:"cleansing", render:(a,set)=>(
-    <Single label="Предпочитаемый формат очищения"
-      options={[{key:"gel",label:"Гель/пенка"},{key:"milk",label:"Крем/молочко"},{key:"oil",label:"Масло/бальзам"}]}
-      value={a.cleansing_pref} onChange={(v)=>set({cleansing_pref:v})}/>
-  )},
-  { type:"q", id:"textures", render:(a,set)=>(
-    <Multi label="Любимые текстуры"
-      options={[{key:"gel",label:"Гель"},{key:"lotion",label:"Лосьон"},{key:"cream",label:"Крем"},{key:"balm",label:"Бальзам"}]}
-      value={a.textures} onChange={(v)=>set({textures:v})}/>
-  )},
-  { type:"q", id:"dislikes", render:(a,set)=>(
-    <Multi label="Не люблю"
-      options={[{key:"perfume",label:"Ароматы"},{key:"sticky",label:"Липкость"},{key:"tingling",label:"Пощипывание"}]}
-      value={a.dislikes} onChange={(v)=>set({dislikes:v})}/>
-  )},
-  { type:"q", id:"budget", render:(a,set)=>(
-    <Single label="Бюджет" options={[{key:"low",label:"Бюджетно"},{key:"mid",label:"Средний"},{key:"high",label:"Премиум"}]}
-      value={a.budget} onChange={(v)=>set({budget:v})}/>
-  )},
-  { type:"q", id:"time", render:(a,set)=>(
-    <>
-      <Single label="Время утром" options={[{key:"1m",label:"~1 мин"},{key:"3m",label:"~3 мин"},{key:"5m+",label:"5+ мин"}]}
-        value={a.morning_time} onChange={(v)=>set({morning_time:v})}/>
-      <Single label="Время вечером" options={[{key:"1m",label:"~1 мин"},{key:"3m",label:"~3 мин"},{key:"5m+",label:"5+ мин"}]}
-        value={a.evening_time} onChange={(v)=>set({evening_time:v})}/>
-    </>
-  )},
-  // Блок 4 — активы, инвентарь, условия среды
-  { type:"q", id:"actives_ok", render:(a,set)=>(
-    <Multi label="Какие активы уже нормально переносишь?"
-      options={[{key:"aha",label:"AHA"},{key:"bha",label:"BHA"},{key:"azelaic",label:"Азелаиновая"},{key:"niacin",label:"Ниацинамид"},{key:"vitc",label:"Витамин C"},{key:"retinoid",label:"Ретиноид"},{key:"ha",label:"Гиалуронка"}]}
-      value={a.actives_ok} onChange={(v)=>set({actives_ok:v})}/>
-  )},
-  { type:"q", id:"actives_no", render:(a,set)=>(
-    <Multi label="Что точно НЕ подходит?"
-      options={[{key:"aha",label:"AHA"},{key:"bha",label:"BHA"},{key:"azelaic",label:"Азелаиновая"},{key:"niacin",label:"Ниацинамид"},{key:"vitc",label:"Витамин C"},{key:"retinoid",label:"Ретиноид"}]}
-      value={a.actives_no} onChange={(v)=>set({actives_no:v})}/>
-  )},
-  { type:"q", id:"inventory", render:(a,set)=>(
-    <Multi label="Что уже есть дома?"
-      options={[{key:"cleanser",label:"Очищение"},{key:"moist",label:"Крем"},{key:"spf",label:"SPF"},{key:"actives",label:"Активы"}]}
-      value={a.inventory} onChange={(v)=>set({inventory:v})}/>
-  )},
-  { type:"q", id:"pregnancy", render:(a,set)=>(
-    <Bool label="Беременность/ГВ?" value={a.pregnancy} onChange={(v)=>set({pregnancy:v})}/>
-  )},
-  { type:"q", id:"env", render:(a,set)=>(
-    <>
-      <Single label="Климат" options={[{key:"humid",label:"Влажно"},{key:"dry",label:"Сухо"},{key:"cold",label:"Холодно"},{key:"hot",label:"Жарко"}]}
-        value={a.climate} onChange={(v)=>set({climate:v})}/>
-      <Single label="Жёсткость воды" options={[{key:"soft",label:"Мягкая"},{key:"medium",label:"Средняя"},{key:"hard",label:"Жёсткая"}]}
-        value={a.water} onChange={(v)=>set({water:v})}/>
-      <Multi label="Образ жизни"
-        options={[{key:"gym",label:"Зал/потливость"},{key:"swim",label:"Бассейн"},{key:"office-ac",label:"Офис/кондиционер"},{key:"travel",label:"Частые перелёты"}]}
-        value={a.lifestyle} onChange={(v)=>set({lifestyle:v})}/>
-    </>
-  )},
-  // инсайт после блока 4
-  { type:"insight", id:"insight3", render:(a)=>(
-    <Block title="Что это значит для плана">
-      <ul className="list-disc pl-5 text-zinc-700 space-y-1">
-        {a.budget && <li>Бюджет: {({low:"бюджет",mid:"средний",high:"премиум"} as any)[a.budget]} — под него подберу бренды.</li>}
-        {a.morning_time && <li>Утренний лимит времени: {a.morning_time}. Никаких лишних шагов.</li>}
-        {a.inventory.length>0 && <li>Учту, что уже есть: {a.inventory.join(", ")} — не дублирую.</li>}
-        {a.pregnancy && <li>Исключим ретиноиды и сильные кислоты; акцент на мягких активах.</li>}
-      </ul>
-    </Block>
-  )},
-  // Финальный шаг: опциональное фото
-  { type:"q", id:"photo", render:(a,set)=>(
-      <PhotoStep a={a} set={set} />
-  )},
-  { type:"done" },
-];
-
-/* ----------- Главный компонент ----------- */
-export default function Quiz() {
-  const [ans, setAns] = useState<Answers>(load());
-  const [idx, setIdx] = useState(0);
-
-  useEffect(()=> save(ans), [ans]);
-
-  const step = steps[idx];
-  const total = steps.length;
-
-  const go = (d:number) => setIdx(i => Math.min(total-1, Math.max(0, i + d)));
-
-  const setter = (patch: Partial<Answers>) => setAns(a => ({ ...a, ...patch }));
+function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
+  const completedQuestions = useMemo(() => 
+    allSteps.slice(0, currentStepIndex + 1).filter(step => step.kind === "question").length,
+    [currentStepIndex]
+  );
+  
+  const percentage = Math.round((completedQuestions / totalQuestions) * 100);
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-3 text-sm text-zinc-600">Шаг {idx+1}/{total}</div>
-      <div className="w-full h-2 bg-white/70 rounded-full overflow-hidden mb-5">
-        <div className="h-2 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" style={{width:`${Math.round(((idx+1)/total)*100)}%`}}/>
+    <div className="mb-4">
+      <div className="flex items-center justify-between text-sm mb-1">
+        <span>Шаг {completedQuestions} из {totalQuestions}</span>
+        <span>{percentage}%</span>
       </div>
+      <div className="h-2 w-full bg-neutral-200 rounded">
+        <div 
+          className="h-2 bg-black rounded" 
+          style={{ width: `${percentage}%` }}
+          aria-label="Прогресс анкеты"
+        />
+      </div>
+    </div>
+  );
+}
 
-      {step.type==="q" && step.render(ans, setter)}
-      {step.type==="insight" && step.render(ans)}
-      {step.type==="done" && (
-        <Block title="Готово">
-          <p className="text-zinc-700">Анкета заполнена. На основе ответов я соберу план на 28 дней, бюджет и продукты — на следующем экране.</p>
-        </Block>
-      )}
+function SingleChoice({ options, value, onChange }: { options: string[]; value?: string; onChange: (v: string) => void }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {options.map(option => {
+        const isSelected = value === option;
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onChange(option)}
+            className={`px-4 py-3 rounded-xl border transition text-left ${
+              isSelected ? "bg-black text-white border-black" : "border-neutral-300 hover:border-black"
+            }`}
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-      <div className="mt-6 flex justify-between">
-        <button disabled={idx===0} onClick={()=>go(-1)} className="px-5 py-3 rounded-full border disabled:opacity-50">Назад</button>
-        {idx<total-1 ? (
-          <button onClick={()=>go(+1)} className="px-5 py-3 rounded-full text-white bg-black">Далее</button>
+function MultiChoice({ options, value, onChange }: { options: string[]; value?: string[]; onChange: (v: string[]) => void }) {
+  const selected = new Set(value || []);
+  
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(option => {
+        const isSelected = selected.has(option);
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => {
+              const newSelected = new Set(selected);
+              if (isSelected) {
+                newSelected.delete(option);
+              } else {
+                newSelected.add(option);
+              }
+              onChange(Array.from(newSelected));
+            }}
+            className={`px-3 py-2 rounded-full border text-sm transition ${
+              isSelected ? "bg-black text-white border-black" : "border-neutral-300 hover:border-black"
+            }`}
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SwitchInput({ checked, onChange, labelYes = "Да", labelNo = "Нет" }: { checked?: boolean; onChange: (v: boolean) => void; labelYes?: string; labelNo?: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className={`text-sm ${checked ? "opacity-60" : "font-semibold"}`}>
+        {labelNo}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`w-12 h-7 rounded-full relative transition ${
+          checked ? "bg-black" : "bg-neutral-300"
+        }`}
+      >
+        <span className={`absolute top-1 left-1 h-5 w-5 rounded-full bg-white transition ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`} />
+      </button>
+      <span className={`text-sm ${checked ? "font-semibold" : "opacity-60"}`}>
+        {labelYes}
+      </span>
+    </div>
+  );
+}
+
+export default function Quiz() {
+  const navigate = useNavigate();
+  const [answers, setAnswers] = useState<Answers>(loadAnswers);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  useEffect(() => {
+    saveAnswers(answers);
+  }, [answers]);
+
+  const currentStep = allSteps[currentStepIndex];
+  
+  const isStepValid = useMemo(() => {
+    if (currentStep.kind !== "question") return true;
+    
+    switch (currentStep.id) {
+      case "name":
+        return currentStep.needsConsent && !answers.pdConsent ? false : !!(answers.name && answers.name.trim().length > 0);
+      case "skinType":
+        return !!answers.skinType;
+      case "sensitivity":
+        return typeof answers.sensitivity === "boolean";
+      case "concerns":
+        return Array.isArray(answers.concerns) && answers.concerns.length > 0;
+      case "oiliness":
+        return !!answers.oiliness;
+      case "primaryGoal":
+        return !!answers.primaryGoal;
+      case "photo":
+        return true; // Опциональный шаг
+      default:
+        return false;
+    }
+  }, [currentStep, answers]);
+
+  const goNext = () => {
+    if (currentStepIndex < allSteps.length - 1) {
+      setCurrentStepIndex(prev => prev + 1);
+    } else {
+      navigate("/plan");
+    }
+  };
+
+  const goBack = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(prev => prev - 1);
+    }
+  };
+
+  const renderQuestionInput = (step: any) => {
+    switch (step.id) {
+      case "name":
+        return (
+          <>
+            <input
+              autoFocus
+              type="text"
+              placeholder="Введите имя"
+              className="w-full px-4 py-3 rounded-xl border border-neutral-300 focus:outline-none focus:border-black"
+              value={answers.name ?? ""}
+              onChange={e => setAnswers({ ...answers, name: e.target.value })}
+            />
+            <label className="flex items-start gap-2 mt-3 text-sm">
+              <input
+                type="checkbox"
+                checked={!!answers.pdConsent}
+                onChange={e => setAnswers({ ...answers, pdConsent: e.target.checked })}
+              />
+              <span>Я согласен(-на) на обработку персональных данных.</span>
+            </label>
+          </>
+        );
+      case "skinType":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.skinType}
+            onChange={v => setAnswers({ ...answers, skinType: v as any })}
+          />
+        );
+      case "sensitivity":
+        return (
+          <SwitchInput
+            checked={!!answers.sensitivity}
+            onChange={v => setAnswers({ ...answers, sensitivity: v })}
+            labelNo="Нет"
+            labelYes="Да"
+          />
+        );
+      case "concerns":
+        return (
+          <MultiChoice
+            options={step.options}
+            value={answers.concerns}
+            onChange={v => setAnswers({ ...answers, concerns: v })}
+          />
+        );
+      case "oiliness":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.oiliness}
+            onChange={v => setAnswers({ ...answers, oiliness: v as any })}
+          />
+        );
+      case "primaryGoal":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.primaryGoal}
+            onChange={v => setAnswers({ ...answers, primaryGoal: v as any })}
+          />
+        );
+      case "photo":
+        return <PhotoStep answers={answers} setAnswers={setAnswers} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
+      <button
+        type="button"
+        onClick={goBack}
+        className="mb-4 text-sm underline opacity-70 hover:opacity-100 disabled:opacity-40"
+        disabled={currentStepIndex === 0}
+        aria-label="Назад"
+      >
+        ← Назад
+      </button>
+
+      <ProgressBar currentStepIndex={currentStepIndex} />
+
+      <section className="rounded-2xl p-5 border border-neutral-200">
+        {currentStep.kind === "question" ? (
+          <>
+            <h1 className="text-xl md:text-2xl font-semibold mb-2">
+              {currentStep.title}
+            </h1>
+            {currentStep.description && (
+              <p className="opacity-70 mb-4">{currentStep.description}</p>
+            )}
+            <div className="mb-6">
+              {renderQuestionInput(currentStep)}
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={!isStepValid}
+                className={`rounded-xl px-4 py-2 border transition ${
+                  isStepValid 
+                    ? "border-black hover:bg-black hover:text-white" 
+                    : "border-neutral-300 opacity-60 cursor-not-allowed"
+                }`}
+                aria-label="Далее"
+              >
+                Далее
+              </button>
+            </div>
+          </>
         ) : (
-          <a href="/plan" className="px-5 py-3 rounded-full text-white bg-black">Сформировать план</a>
+          <>
+            <h2 className="text-xl md:text-2xl font-semibold mb-2">
+              {currentStep.title}
+            </h2>
+            <div className="mb-6">
+              {currentStep.renderBody(answers)}
+            </div>
+            <button
+              type="button"
+              onClick={goNext}
+              className="rounded-xl px-4 py-2 border border-black hover:bg-black hover:text-white transition"
+            >
+              Продолжить
+            </button>
+          </>
         )}
-      </div>
+      </section>
     </div>
   );
 }
