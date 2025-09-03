@@ -153,7 +153,6 @@ function createSteps() {
 }
 
 const allSteps = createSteps();
-const totalQuestions = questions.length;
 
 function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: Answers) => void }) {
   const [error, setError] = useState<string | null>(null);
@@ -246,17 +245,19 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
 }
 
 function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
-  const completedQuestions = useMemo(() => 
-    allSteps.slice(0, currentStepIndex + 1).filter(step => step.kind === "question").length,
-    [currentStepIndex]
-  );
+  const completedQuestions = useMemo(() => {
+    const questionSteps = allSteps.slice(0, currentStepIndex + 1).filter(step => step.kind === "question");
+    // Исключаем опциональный фото-шаг из подсчёта
+    return questionSteps.filter(step => step.id !== "photo").length;
+  }, [currentStepIndex]);
   
-  const percentage = Math.round((completedQuestions / totalQuestions) * 100);
+  const totalRequiredQuestions = questions.length; // Без фото-шага
+  const percentage = Math.min(100, Math.round((completedQuestions / totalRequiredQuestions) * 100));
 
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between text-sm mb-1">
-        <span>Шаг {completedQuestions} из {totalQuestions}</span>
+        <span>Шаг {completedQuestions} из {totalRequiredQuestions}</span>
         <span>{percentage}%</span>
       </div>
       <div className="h-2 w-full bg-neutral-200 rounded">
