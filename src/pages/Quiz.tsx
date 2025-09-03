@@ -309,37 +309,45 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
             
             {/* Интерактивные проблемные области */}
             {answers.photo_analysis?.problemAreas?.map((area: any, idx: number) => {
+              console.log('Quiz rendering area:', area); // Для отладки
+              
               const colors = {
-                'акне': 'border-red-500 bg-red-500/20',
-                'жирность': 'border-yellow-500 bg-yellow-500/20', 
-                'поры': 'border-orange-500 bg-orange-500/20',
-                'покраснение': 'border-pink-500 bg-pink-500/20',
-                'сухость': 'border-blue-500 bg-blue-500/20'
+                'акне': 'border-red-600 bg-red-600/50',
+                'жирность': 'border-yellow-600 bg-yellow-600/50', 
+                'поры': 'border-orange-600 bg-orange-600/50',
+                'покраснение': 'border-pink-600 bg-pink-600/50',
+                'сухость': 'border-blue-600 bg-blue-600/50'
               };
               
-              const colorClass = colors[area.type as keyof typeof colors] || 'border-red-500 bg-red-500/20';
+              const colorClass = colors[area.type as keyof typeof colors] || 'border-red-600 bg-red-600/50';
               
               return (
-                <div key={idx} className="absolute">
-                  {/* Цветная область */}
+                <div key={idx}>
+                  {/* Цветная область - увеличенная */}
                   <div
-                    className={`absolute border-2 rounded cursor-pointer hover:opacity-80 transition ${colorClass}`}
+                    className={`absolute border-4 rounded-lg cursor-pointer hover:opacity-70 transition-all duration-200 ${colorClass}`}
                     style={{
                       left: `${area.coordinates?.x || 0}%`,
                       top: `${area.coordinates?.y || 0}%`,
-                      width: `${area.coordinates?.width || 10}%`,
-                      height: `${area.coordinates?.height || 10}%`,
+                      width: `${area.coordinates?.width || 15}%`,
+                      height: `${area.coordinates?.height || 15}%`,
+                      zIndex: 10,
+                      minWidth: '40px',
+                      minHeight: '40px'
                     }}
                     onClick={() => setSelectedProblem(selectedProblem?.type === area.type ? null : area)}
                   />
                   
-                  {/* Подпись проблемы */}
+                  {/* Подпись проблемы - более заметная */}
                   <div
-                    className="absolute text-xs font-medium px-2 py-1 rounded bg-white border shadow-sm whitespace-nowrap pointer-events-none"
+                    className="absolute text-sm font-bold px-3 py-1 rounded-full bg-white border-2 shadow-lg whitespace-nowrap pointer-events-none"
                     style={{
-                      left: `${(area.coordinates?.x || 0) + (area.coordinates?.width || 10)}%`,
-                      top: `${area.coordinates?.y || 0}%`,
-                      transform: 'translateX(4px)'
+                      left: `${(area.coordinates?.x || 0) + (area.coordinates?.width || 15) + 2}%`,
+                      top: `${(area.coordinates?.y || 0) + 5}%`,
+                      zIndex: 20,
+                      color: area.type === 'жирность' ? '#d97706' : 
+                             area.type === 'акне' ? '#dc2626' :
+                             area.type === 'поры' ? '#ea580c' : '#6366f1'
                     }}
                   >
                     {area.type}

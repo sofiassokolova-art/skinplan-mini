@@ -182,19 +182,19 @@ function getDemoAnalysis(): SkinAnalysisResult {
         type: "жирность",
         description: "Повышенная жирность в T-зоне",
         severity: "medium",
-        coordinates: { x: 35, y: 25, width: 30, height: 15 }
+        coordinates: { x: 20, y: 20, width: 40, height: 25 }
       },
       {
-        type: "воспаления",
+        type: "акне",
         description: "Единичные воспаления на подбородке",
         severity: "low",
-        coordinates: { x: 40, y: 65, width: 20, height: 10 }
+        coordinates: { x: 35, y: 70, width: 25, height: 15 }
       },
       {
         type: "поры",
         description: "Расширенные поры на носу",
         severity: "medium", 
-        coordinates: { x: 45, y: 45, width: 10, height: 15 }
+        coordinates: { x: 42, y: 40, width: 15, height: 20 }
       }
     ],
     recommendations: [
