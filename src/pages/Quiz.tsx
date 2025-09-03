@@ -37,6 +37,7 @@ export type Answers = {
   // Фото (опционально)
   photo_data_url: string|null;       // data: URL для предпросмотра
   photo_analysis: string|null;       // краткий результат распознавания
+  photo_scans: { ts:number; preview:string; analysis:string }[]; // архив
 };
 
 const DEFAULT_ANS: Answers = {
@@ -74,6 +75,7 @@ const DEFAULT_ANS: Answers = {
 
   photo_data_url: null,
   photo_analysis: null,
+  photo_scans: [],
 };
 
 const save = (a: Answers) => localStorage.setItem("skinplan_answers", JSON.stringify(a));
@@ -153,9 +155,11 @@ function PhotoStep({a, set}:{a:Answers; set:(p:Partial<Answers>)=>void}) {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result || "");
-      set({ photo_data_url: dataUrl });
-      // Демонстрационный «анализ» — в реальности тут вызов API
-      set({ photo_analysis: "Обнаружены признаки лёгкой жирности T-зоны, единичные воспаления." });
+      const analysis = "Обнаружены признаки лёгкой жирности T-зоны, единичные воспаления.";
+      set({ photo_data_url: dataUrl, photo_analysis: analysis });
+      // Пишем в архив
+      const entry = { ts: Date.now(), preview: dataUrl, analysis };
+      set({ photo_scans: [...(a.photo_scans||[]), entry] });
     };
     reader.readAsDataURL(file);
   };
@@ -189,6 +193,20 @@ function PhotoStep({a, set}:{a:Answers; set:(p:Partial<Answers>)=>void}) {
             <div className="mt-2 text-sm text-zinc-700">{a.photo_analysis}</div>
           )}
           <button className="mt-3 text-sm text-zinc-600 underline" onClick={()=>set({photo_data_url:null, photo_analysis:null})}>Очистить фото</button>
+        </div>
+      )}
+
+      {a.photo_scans.length>0 && (
+        <div className="mt-5">
+          <div className="font-semibold mb-2">История сканов</div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {a.photo_scans.slice().reverse().map((s, idx)=> (
+              <div key={idx} className="p-2 rounded-xl border bg-white/60">
+                <img src={s.preview} alt="Скан" className="h-28 w-full object-cover rounded-lg" />
+                <div className="mt-1 text-xs text-zinc-600">{new Date(s.ts).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </Block>
