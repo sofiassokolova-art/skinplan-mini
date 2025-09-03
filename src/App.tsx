@@ -10,9 +10,9 @@ import Header from "./ui/Header";
 
 function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-slate-50 to-orange-50 text-stone-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       <Header />
-      <main style={{maxWidth: 1200, margin: "0 auto", padding: "0 16px 48px"}}>
+      <main className="px-4 py-4 max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl sm:px-6">
         <Routes>
           <Route path="/" element={<Home/>} />
           <Route path="/quiz" element={<Quiz/>} />

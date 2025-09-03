@@ -2,6 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
 
+const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`rounded-2xl border border-neutral-200 bg-white shadow-sm ${className}`}>
+    {children}
+  </div>
+);
+
 const isMobile = () => {
   return typeof window !== 'undefined' && window.innerWidth <= 768;
 };
@@ -252,13 +258,15 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
   };
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm p-6 mb-5">
-      <h3 className="text-lg font-bold mb-2">Фото-скан (опционально)</h3>
-      <p className="text-sm text-neutral-600 mb-3">
-        Можно добавить фото без макияжа при дневном свете — я учту это при планировании. Можно пропустить.
-      </p>
+    <div className="space-y-4">
+      <div className="text-center">
+        <h3 className="text-lg font-bold mb-2">📸 Фото-скан (опционально)</h3>
+        <p className="text-sm text-neutral-600 mb-4">
+          Можно добавить фото без макияжа при дневном свете — я учту это при планировании. Можно пропустить.
+        </p>
+      </div>
       
-      <label className="inline-flex items-center px-4 py-2 rounded-full border bg-white/70 cursor-pointer">
+      <label className="block w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-center cursor-pointer hover:border-gray-400 transition">
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
@@ -268,7 +276,13 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
             if (f) onFile(f);
           }}
         />
-        Загрузить фото
+        <div className="text-2xl mb-2">📷</div>
+        <div className="text-sm font-medium text-gray-600">
+          {isAnalyzing ? "Анализируем..." : "Нажмите для загрузки фото"}
+        </div>
+        <div className="text-xs text-gray-500 mt-1">
+          JPEG, PNG, WebP до 5 МБ
+        </div>
       </label>
 
       {error && (
@@ -757,20 +771,21 @@ export default function Quiz() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 md:py-8">
-      <button
-        type="button"
-        onClick={goBack}
-        className="mb-4 text-sm underline opacity-70 hover:opacity-100 disabled:opacity-40"
-        disabled={currentStepIndex === 0}
-        aria-label="Назад"
-      >
-        ← Назад
-      </button>
+    <div className="space-y-4">
+      {currentStepIndex > 0 && (
+        <button
+          type="button"
+          onClick={goBack}
+          className="text-sm text-neutral-600 flex items-center gap-1 mb-2"
+          aria-label="Назад"
+        >
+          ← Назад
+        </button>
+      )}
 
       <ProgressBar currentStepIndex={currentStepIndex} />
 
-      <section className="rounded-2xl p-5 border border-neutral-200">
+      <Card className="p-4 sm:p-6">
         {currentStep.kind === "question" ? (
           <>
             <h1 className="text-xl md:text-2xl font-semibold mb-2">
@@ -782,19 +797,19 @@ export default function Quiz() {
             <div className="mb-6">
               {renderQuestionInput(currentStep)}
             </div>
-            <div className="flex gap-3">
+            <div className="mt-6">
               <button
                 type="button"
                 onClick={goNext}
                 disabled={!isStepValid}
-                className={`rounded-xl px-4 py-2 border transition ${
+                className={`w-full rounded-xl px-6 py-3 border transition text-base font-medium ${
                   isStepValid 
-                    ? "border-black hover:bg-black hover:text-white" 
-                    : "border-neutral-300 opacity-60 cursor-not-allowed"
+                    ? "border-black bg-black text-white hover:bg-gray-800" 
+                    : "border-neutral-300 bg-neutral-100 text-neutral-400 cursor-not-allowed"
                 }`}
                 aria-label="Далее"
               >
-                Далее
+                {currentStepIndex >= allSteps.length - 2 ? "Завершить анкету" : "Далее"}
               </button>
             </div>
           </>
@@ -809,13 +824,13 @@ export default function Quiz() {
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl px-4 py-2 border border-black hover:bg-black hover:text-white transition"
+              className="w-full rounded-xl px-6 py-3 border border-black bg-black text-white hover:bg-gray-800 transition font-medium"
             >
               Продолжить
             </button>
           </>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

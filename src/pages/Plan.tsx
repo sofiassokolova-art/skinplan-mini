@@ -615,17 +615,17 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
   };
 
   const Header = () => (
-    <div className="flex items-center justify-between mb-5">
-      <div className="text-2xl md:text-3xl font-bold">Мой план ухода</div>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={() => navigate("/cart")}>
-          Корзина
+    <div className="text-center sm:flex sm:items-center sm:justify-between mb-4">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3 sm:mb-0">Мой план ухода</h1>
+      <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
+        <Button variant="secondary" onClick={() => navigate("/cart")} size="sm">
+          🛒 Корзина
         </Button>
-        <Button variant="ghost" onClick={sendToTelegram}>
-          Отправить в чат
+        <Button variant="ghost" onClick={sendToTelegram} size="sm">
+          💬 В чат
         </Button>
-        <Button onClick={printPlan}>
-          Скачать PDF
+        <Button onClick={printPlan} size="sm">
+          📄 PDF
         </Button>
       </div>
     </div>
@@ -749,7 +749,7 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
   );
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-5 md:py-8 print:px-0">
+    <div className="space-y-4 print:px-0">
       <Header />
       
       <PhotoSection />
