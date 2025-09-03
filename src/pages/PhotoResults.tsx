@@ -27,22 +27,55 @@ export default function PhotoResults() {
   const [selectedProblem, setSelectedProblem] = useState<any | null>(null);
 
   useEffect(() => {
+    console.log('PhotoResults mounted, location.state:', location.state);
+    
     // Получаем данные анализа из state или localStorage
-    const data = location.state?.analysisData || getLatestPhotoAnalysis();
+    let data = location.state?.analysisData;
+    
+    if (!data) {
+      console.log('No state data, trying localStorage...');
+      data = getLatestPhotoAnalysis();
+    }
+    
     if (data) {
+      console.log('Setting analysis data:', data);
       setAnalysisData(data);
     } else {
-      navigate("/photo");
+      console.log('No analysis data found, redirecting to photo');
+      navigate("/photo", { replace: true });
     }
   }, [location, navigate]);
 
   function getLatestPhotoAnalysis() {
     try {
       const answers = localStorage.getItem("skiniq.answers");
-      if (!answers) return null;
+      if (!answers) {
+        console.log('No answers in localStorage');
+        return null;
+      }
+      
       const parsed = JSON.parse(answers);
-      return parsed.photo_analysis || null;
-    } catch {
+      console.log('Parsed answers:', parsed);
+      
+      // Пробуем получить данные из разных мест
+      let photoData = parsed.photo_analysis;
+      
+      if (!photoData && parsed.photo_scans?.length > 0) {
+        const latestScan = parsed.photo_scans[parsed.photo_scans.length - 1];
+        photoData = latestScan.analysis;
+        if (photoData) {
+          photoData.imageUrl = latestScan.preview;
+        }
+      }
+      
+      if (!photoData && parsed.photo_data_url) {
+        photoData = { imageUrl: parsed.photo_data_url };
+      }
+      
+      console.log('Returning photo data:', photoData);
+      return photoData;
+    } catch (error) {
+      console.error('Error getting photo analysis:', error);
       return null;
     }
   }
@@ -70,11 +103,19 @@ export default function PhotoResults() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
         <Card className="p-6 text-center">
-          <h2 className="text-lg font-bold mb-2">Результаты не найдены</h2>
-          <p className="text-zinc-600 mb-4">Сначала загрузите фото для анализа</p>
-          <Button onClick={() => navigate("/photo")}>
-            Перейти к фото-скану
-          </Button>
+          <div className="mb-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-2"></div>
+            <h2 className="text-lg font-bold mb-2">Загружаем результаты...</h2>
+            <p className="text-zinc-600 text-sm">Если загрузка затянулась, попробуйте сделать фото заново</p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={() => navigate("/photo")} variant="secondary">
+              Перейти к фото-скану
+            </Button>
+            <Button onClick={() => navigate("/quiz")}>
+              Вернуться к анкете
+            </Button>
+          </div>
         </Card>
       </div>
     );
