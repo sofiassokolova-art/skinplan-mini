@@ -1,12 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
-
-const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-2xl border border-neutral-200 bg-white shadow-sm ${className}`}>
-    {children}
-  </div>
-);
+import ModernCard from "../ui/ModernCard";
+import ModernButton from "../ui/ModernButton";
 
 
 
@@ -566,7 +562,7 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
 
 function SingleChoice({ options, value, onChange }: { options: string[]; value?: string; onChange: (v: string) => void }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {options.map(option => {
         const isSelected = value === option;
         return (
@@ -574,8 +570,10 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
             key={option}
             type="button"
             onClick={() => onChange(option)}
-            className={`px-4 py-3 rounded-xl border transition text-left ${
-              isSelected ? "bg-black text-white border-black" : "border-neutral-300 hover:border-black"
+            className={`px-6 py-4 rounded-2xl border-2 transition-all duration-200 text-left font-medium shadow-lg ${
+              isSelected 
+                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-blue-500 shadow-blue-500/25 scale-105" 
+                : "bg-white/80 text-gray-700 border-gray-200/50 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1"
             }`}
           >
             {option}
@@ -778,7 +776,7 @@ export default function Quiz() {
 
       <ProgressBar currentStepIndex={currentStepIndex} />
 
-      <Card className="p-4 sm:p-6">
+      <ModernCard variant="gradient" className="p-6">
         {currentStep.kind === "question" ? (
           <>
             <h1 className="text-xl md:text-2xl font-semibold mb-2">
@@ -791,19 +789,14 @@ export default function Quiz() {
               {renderQuestionInput(currentStep)}
             </div>
             <div className="mt-6">
-              <button
-                type="button"
+              <ModernButton
                 onClick={goNext}
                 disabled={!isStepValid}
-                className={`w-full rounded-xl px-6 py-3 border transition text-base font-medium ${
-                  isStepValid 
-                    ? "border-black bg-black text-white hover:bg-gray-800" 
-                    : "border-neutral-300 bg-neutral-100 text-neutral-400 cursor-not-allowed"
-                }`}
-                aria-label="Далее"
+                fullWidth
+                size="lg"
               >
                 {currentStepIndex >= allSteps.length - 2 ? "Завершить анкету" : "Далее"}
-              </button>
+              </ModernButton>
             </div>
           </>
         ) : (
@@ -814,16 +807,16 @@ export default function Quiz() {
             <div className="mb-6">
               {currentStep.renderBody(answers)}
             </div>
-            <button
-              type="button"
+            <ModernButton
               onClick={goNext}
-              className="w-full rounded-xl px-6 py-3 border border-black bg-black text-white hover:bg-gray-800 transition font-medium"
+              fullWidth
+              size="lg"
             >
               Продолжить
-            </button>
+            </ModernButton>
           </>
         )}
-      </Card>
+      </ModernCard>
     </div>
   );
 }
