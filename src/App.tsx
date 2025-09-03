@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Quiz from "./pages/Quiz";
 import Cart from "./pages/Cart";
 import Plan from "./pages/Plan";
+import Photo from "./pages/Photo";
 import Insights from "./pages/Insights";
 
 const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/quiz" element={<Quiz/>} />
         <Route path="/cart" element={<Cart/>} />
         <Route path="/plan" element={<Plan/>} />
+        <Route path="/photo" element={<Photo/>} />
         <Route path="/insights" element={<Insights/>} />
       </Routes>
     </Shell>
