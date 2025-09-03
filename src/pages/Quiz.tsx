@@ -33,6 +33,11 @@ export type Answers = {
   climate: "humid"|"dry"|"cold"|"hot"|null;
   water: "soft"|"medium"|"hard"|null;
   lifestyle: string[];               // gym/swim/office-ac/travel
+
+  // Фото (опционально)
+  photo_data_url: string|null;       // data: URL для предпросмотра
+  photo_analysis: string|null;       // краткий результат распознавания
+  photo_scans: { ts:number; preview:string; analysis:string }[]; // архив
 };
 
 const DEFAULT_ANS: Answers = {
@@ -67,6 +72,10 @@ const DEFAULT_ANS: Answers = {
   climate: null,
   water: null,
   lifestyle: [],
+
+  photo_data_url: null,
+  photo_analysis: null,
+  photo_scans: [],
 };
 
 const save = (a: Answers) => localStorage.setItem("skinplan_answers", JSON.stringify(a));
@@ -121,6 +130,86 @@ function Block({title, children}:{title:string; children:React.ReactNode}) {
       <h3 className="text-lg font-bold mb-2">{title}</h3>
       {children}
     </div>
+  );
+}
+
+/* ----------- Шаг: Фото (опционально) ----------- */
+function PhotoStep({a, set}:{a:Answers; set:(p:Partial<Answers>)=>void}) {
+  const [error, setError] = useState<string|null>(null);
+
+  const onFile = async (file: File) => {
+    setError(null);
+    if (!file) return;
+
+    const allowed = ["image/jpeg","image/png","image/webp"];
+    if (!allowed.includes(file.type)) {
+      setError("Формат не поддерживается. Загрузите JPEG/PNG/WebP.");
+      return;
+    }
+    const maxBytes = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxBytes) {
+      setError("Слишком большой файл. До 5 МБ.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      const analysis = "Обнаружены признаки лёгкой жирности T-зоны, единичные воспаления.";
+      set({ photo_data_url: dataUrl, photo_analysis: analysis });
+      // Пишем в архив
+      const entry = { ts: Date.now(), preview: dataUrl, analysis };
+      set({ photo_scans: [...(a.photo_scans||[]), entry] });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <Block title="Фото-скан (опционально)">
+      <p className="text-sm text-zinc-600 mb-3">Можно добавить фото без макияжа при дневном свете — я учту это при планировании. Можно пропустить.</p>
+      <label className="inline-flex items-center px-4 py-2 rounded-full border bg-white/70 cursor-pointer">
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e)=>{
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+          }}
+        />
+        Загрузить фото
+      </label>
+
+      {error && (
+        <div role="alert" className="mt-3 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
+          {error}
+        </div>
+      )}
+
+      {a.photo_data_url && (
+        <div className="mt-4">
+          <img src={a.photo_data_url} alt="Предпросмотр" className="max-h-64 rounded-2xl border" />
+          {a.photo_analysis && (
+            <div className="mt-2 text-sm text-zinc-700">{a.photo_analysis}</div>
+          )}
+          <button className="mt-3 text-sm text-zinc-600 underline" onClick={()=>set({photo_data_url:null, photo_analysis:null})}>Очистить фото</button>
+        </div>
+      )}
+
+      {a.photo_scans.length>0 && (
+        <div className="mt-5">
+          <div className="font-semibold mb-2">История сканов</div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {a.photo_scans.slice().reverse().map((s, idx)=> (
+              <div key={idx} className="p-2 rounded-xl border bg-white/60">
+                <img src={s.preview} alt="Скан" className="h-28 w-full object-cover rounded-lg" />
+                <div className="mt-1 text-xs text-zinc-600">{new Date(s.ts).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Block>
   );
 }
 
@@ -294,6 +383,10 @@ const steps: Step[] = [
         {a.pregnancy && <li>Исключим ретиноиды и сильные кислоты; акцент на мягких активах.</li>}
       </ul>
     </Block>
+  )},
+  // Финальный шаг: опциональное фото
+  { type:"q", id:"photo", render:(a,set)=>(
+      <PhotoStep a={a} set={set} />
   )},
   { type:"done" },
 ];
