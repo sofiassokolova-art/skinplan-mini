@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Quiz from "./pages/Quiz";
 import Cart from "./pages/Cart";
 import Plan from "./pages/Plan";
+import Insights from "./pages/Insights";
 
 const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="min-h-dvh bg-gradient-to-b from-rose-50 via-slate-50 to-orange-50 text-stone-900">
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/quiz" element={<Quiz/>} />
         <Route path="/cart" element={<Cart/>} />
         <Route path="/plan" element={<Plan/>} />
+        <Route path="/insights" element={<Insights/>} />
       </Routes>
     </Shell>
   );
