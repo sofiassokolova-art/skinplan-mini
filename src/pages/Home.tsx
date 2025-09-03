@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 export default function Home() {
+  const [activeTime, setActiveTime] = useState<'morning' | 'evening'>('morning');
   
   const userName = useMemo(() => {
     try {
@@ -51,32 +52,62 @@ export default function Home() {
 
       {hasCompletedQuiz && plan && (
         <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">{userName?.toUpperCase()}'S ROUTINE</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-gray-900">РУТИНА {userName?.toUpperCase()}</h2>
             <div className="flex gap-2">
-              <span className="px-3 py-1 bg-black text-white text-xs font-semibold rounded-full">MORNING</span>
-              <span className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">EVENING</span>
+              <button
+                onClick={() => setActiveTime('morning')}
+                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+                  activeTime === 'morning' 
+                    ? 'bg-black text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                УТРО
+              </button>
+              <button
+                onClick={() => setActiveTime('evening')}
+                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+                  activeTime === 'evening' 
+                    ? 'bg-black text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                ВЕЧЕР
+              </button>
             </div>
           </div>
 
           <div className="space-y-4">
-            {plan.morning?.slice(0, 4).map((step: any, idx: number) => (
-              <div key={`routine-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+            {(activeTime === 'morning' ? plan.morning : plan.evening)?.slice(0, 4).map((step: any, idx: number) => (
+              <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                     <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
                   </div>
                   <div>
                     <div className="font-medium text-gray-900 text-sm">{step.name.split('(')[0].trim()}</div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wide">{step.step}</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide">
+                      {activeTime === 'morning' ? 'ПЕРЕД НАНЕСЕНИЕМ СЫВОРОТКИ' : 'ПОСЛЕ ОЧИЩЕНИЯ'}
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold text-gray-900">2°</div>
-                  <div className="text-xs text-gray-500">DROPS IN THE MORNING</div>
+                  <div className="text-xs text-gray-500">
+                    {activeTime === 'morning' ? 'КАПЛИ УТРОМ' : 'КАПЛИ ВЕЧЕРОМ'}
+                  </div>
                 </div>
               </div>
             ))}
+          </div>
+          
+          <div className="mt-6 text-center">
+            <Link to="/plan">
+              <button className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium">
+                ПЕРЕЙТИ К ПОДРОБНОМУ ПЛАНУ
+              </button>
+            </Link>
           </div>
         </div>
       )}
