@@ -41,7 +41,51 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {/* Анимированный жидкий фон */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-purple-50 to-pink-50"></div>
+        <div className="liquid-bg absolute inset-0"></div>
+      </div>
+      
+      <style dangerouslySetInnerHTML={{__html: `
+        .liquid-bg {
+          background: linear-gradient(-45deg, 
+            rgba(219, 234, 254, 0.4), 
+            rgba(196, 181, 253, 0.3), 
+            rgba(253, 230, 138, 0.2), 
+            rgba(191, 219, 254, 0.4),
+            rgba(233, 213, 255, 0.3)
+          );
+          background-size: 400% 400%;
+          animation: liquidFlow 15s ease-in-out infinite;
+        }
+        
+        @keyframes liquidFlow {
+          0% {
+            background-position: 0% 50%;
+            transform: scale(1) rotate(0deg);
+          }
+          25% {
+            background-position: 100% 50%;
+            transform: scale(1.1) rotate(1deg);
+          }
+          50% {
+            background-position: 100% 100%;
+            transform: scale(1.05) rotate(-0.5deg);
+          }
+          75% {
+            background-position: 0% 100%;
+            transform: scale(1.1) rotate(0.5deg);
+          }
+          100% {
+            background-position: 0% 50%;
+            transform: scale(1) rotate(0deg);
+          }
+        }
+      `}} />
+      
+      <div className="relative z-10">
       {userName && (
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
@@ -164,6 +208,7 @@ export default function Home() {
           </Link>
         </div>
       )}
+      </div>
     </div>
   );
 }
