@@ -134,6 +134,26 @@ export default function Photo() {
         // Add to history
         setHistory(prev => [result, ...prev].slice(0, 20));
         setAnalysisResult(result);
+        
+        // Также сохраняем в answers для синхронизации с Quiz
+        try {
+          const existingAnswers = localStorage.getItem("skiniq.answers");
+          const answers = existingAnswers ? JSON.parse(existingAnswers) : {};
+          const updatedAnswers = {
+            ...answers,
+            photo_data_url: previewUrl,
+            photo_analysis: analysis,
+            photo_scans: [...(answers.photo_scans || []), {
+              ts: Date.now(),
+              preview: previewUrl,
+              analysis,
+              problemAreas: analysis.problemAreas
+            }]
+          };
+          localStorage.setItem("skiniq.answers", JSON.stringify(updatedAnswers));
+        } catch (syncError) {
+          console.error('Error syncing to answers:', syncError);
+        }
       } catch (err) {
         setError("Ошибка анализа. Попробуйте другое фото.");
       } finally {
@@ -386,31 +406,47 @@ export default function Photo() {
         <div className="mt-6">
           <Card className="p-4">
             <h3 className="text-lg font-medium mb-2">История сканов</h3>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {history.map((item, index) => (
-                <li key={`${item.timestamp}-${index}`} className="flex items-center gap-3">
-                  {item.previewDataUrl && (
-                    <img
-                      src={item.previewDataUrl}
-                      alt=""
-                      className="w-12 h-12 object-cover rounded"
-                    />
-                  )}
-                  <div className="text-sm flex-1">
-                    <div className="font-medium">
-                      {new Date(item.timestamp).toLocaleString()}
+                <li key={`${item.timestamp}-${index}`} className="border border-neutral-200 rounded-xl p-3">
+                  <div className="flex items-center gap-3">
+                    {item.previewDataUrl && (
+                      <div 
+                        className="w-16 h-16 rounded-lg overflow-hidden cursor-pointer border-2 border-blue-200 hover:border-blue-400 transition"
+                        onClick={() => {
+                          setAnalysisResult({
+                            ...item,
+                            previewDataUrl: item.previewDataUrl
+                          });
+                          setSelectedProblem(null);
+                        }}
+                      >
+                        <img
+                          src={item.previewDataUrl}
+                          alt="Клик для просмотра"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="text-sm flex-1">
+                      <div className="font-medium">
+                        {new Date(item.timestamp).toLocaleString()}
+                      </div>
+                      <div className="text-neutral-600">
+                        {item.skinType}; {item.concerns?.join(", ") || "анализ"}
+                      </div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        👆 Нажмите на фото для просмотра с зонами
+                      </div>
                     </div>
-                    <div className="text-neutral-600">
-                      {item.skinType}; {item.concerns.join(", ")}
-                    </div>
+                    <button
+                      type="button"
+                      className="text-sm text-red-600 underline"
+                      onClick={() => removeFromHistory(index)}
+                    >
+                      Удалить
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="text-sm underline"
-                    onClick={() => removeFromHistory(index)}
-                  >
-                    Удалить
-                  </button>
                 </li>
               ))}
             </ul>
