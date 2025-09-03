@@ -9,7 +9,7 @@ import Header from "./ui/Header";
 
 function App() {
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-slate-50 to-orange-50 text-stone-900">
       <Header />
       <main style={{maxWidth: 1200, margin: "0 auto", padding: "0 16px 48px"}}>
         <Routes>
@@ -21,7 +21,7 @@ function App() {
           <Route path="/insights" element={<Insights/>} />
         </Routes>
       </main>
-    </>
+    </div>
   );
 }
 
