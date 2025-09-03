@@ -12,7 +12,7 @@ export default function Header() {
           <img 
             src="/skiniq-logo.png" 
             alt="Skin IQ" 
-            className="h-16 w-auto sm:h-20 md:h-24"
+            className="h-20 w-auto sm:h-24 md:h-28 lg:h-32"
           />
         </Link>
       </div>
