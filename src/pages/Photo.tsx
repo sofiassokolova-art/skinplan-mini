@@ -167,8 +167,11 @@ export default function Photo() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Скан по фото</h1>
+    <div className="space-y-4">
+      <div className="text-center">
+        <h1 className="text-xl sm:text-2xl font-bold mb-2">📸 Скан по фото</h1>
+        <p className="text-sm text-neutral-600">Загрузите фото лица для ИИ-анализа кожи</p>
+      </div>
       
       <Card className="p-4">
         <div className="flex items-start justify-between gap-3">

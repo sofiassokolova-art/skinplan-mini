@@ -64,10 +64,10 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="space-y-4">
       {userName && (
-        <div className="flex items-start justify-between mb-4">
-          <h1 className="text-2xl font-semibold">{greeting}!</h1>
+        <div className="text-center sm:text-left">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2">{greeting}!</h1>
           {hasCompletedQuiz && (
             <Link to="/quiz" className="text-sm text-neutral-500 underline">
               Перепройти анкету
@@ -122,18 +122,16 @@ export default function Home() {
       )}
 
       {!hasCompletedQuiz && (
-        <Card className="mb-6 p-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-medium mb-1">Запланируйте свою рутину</h2>
-            <p className="text-sm text-neutral-600">Пройдите короткую анкету, и мы соберём персональный уход.</p>
-          </div>
+        <Card className="p-4 text-center sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold mb-2">Запланируйте свою рутину</h2>
+          <p className="text-sm text-neutral-600 mb-4">Пройдите короткую анкету, и мы соберём персональный уход.</p>
           <Link to="/quiz">
-            <Button>Заполнить анкету</Button>
+            <Button className="w-full sm:w-auto">Заполнить анкету</Button>
           </Link>
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {plan && (
           <Card className="p-4 flex flex-col">
             <h2 className="text-lg font-medium">Мой план ухода</h2>
