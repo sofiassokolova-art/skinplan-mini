@@ -363,23 +363,21 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
     );
   }
 
-  const PremiumOverlay = ({ children }: { children: React.ReactNode }) => (
+  const BlurredContent = ({ children, showOverlay = true }: { children: React.ReactNode; showOverlay?: boolean }) => (
     <div className="relative">
-      <div className="pointer-events-none select-none blur-md brightness-95">
+      <div className="pointer-events-none select-none blur-sm brightness-95">
         {children}
       </div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/70 backdrop-blur-sm">
-        <div className="text-center">
-          <div className="text-lg font-semibold mb-1">Персональные рекомендации</div>
-          <div className="opacity-70 mb-3">Разблокируй план ухода и расписание на 28 дней</div>
+      {showOverlay && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-2xl">
+          <div className="text-center p-4">
+            <div className="text-sm font-medium mb-2">🔒 Премиум-контент</div>
+            <Button size="sm" onClick={unlockPremium}>
+              Разблокировать за 199₽
+            </Button>
+          </div>
         </div>
-        <Button onClick={unlockPremium}>
-          Разблокировать рекомендации за 199₽
-        </Button>
-        <div className="text-xs opacity-60">
-          Оплата единовременная · доступ сразу
-        </div>
-      </div>
+      )}
     </div>
   );
 
@@ -387,26 +385,48 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
     <Card className="p-4 md:p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xl font-semibold">{title}</h3>
-        <Button variant="ghost" onClick={() => items.forEach(addToCart)}>
-          Добавить всё
-        </Button>
+        {hasPremium && (
+          <Button variant="ghost" onClick={() => items.forEach(addToCart)}>
+            Добавить всё
+          </Button>
+        )}
       </div>
-      <div className="grid gap-3">
-        {items.map(item => (
-          <div 
-            key={`${item.timeOfDay}-${item.step}-${item.name}`}
-            className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3"
-          >
-            <div>
-              <div className="text-base font-medium">{item.name}</div>
-              <div className="text-xs opacity-60">{item.step}</div>
+      
+      {hasPremium ? (
+        <div className="grid gap-3">
+          {items.map(item => (
+            <div 
+              key={`${item.timeOfDay}-${item.step}-${item.name}`}
+              className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3"
+            >
+              <div>
+                <div className="text-base font-medium">{item.name}</div>
+                <div className="text-xs opacity-60">{item.step}</div>
+              </div>
+              <Button size="sm" onClick={() => addToCart(item)}>
+                Добавить в корзину
+              </Button>
             </div>
-            <Button size="sm" onClick={() => addToCart(item)}>
-              Добавить в корзину
-            </Button>
+          ))}
+        </div>
+      ) : (
+        <BlurredContent>
+          <div className="grid gap-3">
+            {items.map(item => (
+              <div 
+                key={`${item.timeOfDay}-${item.step}-${item.name}`}
+                className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3"
+              >
+                <div>
+                  <div className="text-base font-medium">{item.name}</div>
+                  <div className="text-xs opacity-60">{item.step}</div>
+                </div>
+                <Button size="sm">Добавить в корзину</Button>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </BlurredContent>
+      )}
     </Card>
   );
 
@@ -434,50 +454,94 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
         <div className="text-sm text-neutral-500">Базируется на ваших ответах</div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        <div className="rounded-xl border border-neutral-200 p-3">
-          <div className="text-xs text-neutral-500 mb-1">Тип кожи</div>
-          <div className="text-lg font-semibold">{analysis.skinType}</div>
-        </div>
-        <div className="rounded-xl border border-neutral-200 p-3">
-          <div className="text-xs text-neutral-500 mb-2">Чувствительность</div>
-          <div className="flex items-center gap-3">
-            <div className="w-full">
-              <ProgressBar value={analysis.sensitivity ? 70 : 30} />
+      {hasPremium ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-1">Тип кожи</div>
+              <div className="text-lg font-semibold">{analysis.skinType}</div>
             </div>
-            <div className="text-sm font-medium w-8 text-right">
-              {analysis.sensitivity ? 9 : 3}
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-2">Чувствительность</div>
+              <div className="flex items-center gap-3">
+                <div className="w-full">
+                  <ProgressBar value={analysis.sensitivity ? 70 : 30} />
+                </div>
+                <div className="text-sm font-medium w-8 text-right">
+                  {analysis.sensitivity ? 9 : 3}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-2">Жирность</div>
+              <div className="flex items-center gap-3">
+                <div className="w-full">
+                  <ProgressBar value={
+                    analysis.oiliness === "высокая" ? 85 : 
+                    analysis.oiliness === "средняя" ? 55 : 25
+                  } />
+                </div>
+                <div className="text-sm font-medium w-12 text-right">
+                  {analysis.oiliness}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="rounded-xl border border-neutral-200 p-3">
-          <div className="text-xs text-neutral-500 mb-2">Жирность</div>
-          <div className="flex items-center gap-3">
-            <div className="w-full">
-              <ProgressBar value={
-                analysis.oiliness === "высокая" ? 85 : 
-                analysis.oiliness === "средняя" ? 55 : 25
-              } />
-            </div>
-            <div className="text-sm font-medium w-12 text-right">
-              {analysis.oiliness}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-neutral-200 p-3">
-          <div className="text-xs text-neutral-500 mb-1">Основная цель</div>
-          <div className="font-medium">{analysis.primaryGoal}</div>
-        </div>
-        <div className="rounded-xl border border-neutral-200 p-3">
-          <div className="text-xs text-neutral-500 mb-1">Ключевые активы</div>
-          <div className="text-sm text-neutral-700">
-            {analysis.recommendedActives.slice(0, 3).join(", ")}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-1">Основная цель</div>
+              <div className="font-medium">{analysis.primaryGoal}</div>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-1">Ключевые активы</div>
+              <div className="text-sm text-neutral-700">
+                {analysis.recommendedActives.slice(0, 3).join(", ")}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      ) : (
+        <BlurredContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-1">Тип кожи</div>
+              <div className="text-lg font-semibold">комбинированная</div>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-2">Чувствительность</div>
+              <div className="flex items-center gap-3">
+                <div className="w-full">
+                  <ProgressBar value={50} />
+                </div>
+                <div className="text-sm font-medium w-8 text-right">5</div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-2">Жирность</div>
+              <div className="flex items-center gap-3">
+                <div className="w-full">
+                  <ProgressBar value={60} />
+                </div>
+                <div className="text-sm font-medium w-12 text-right">средняя</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-1">Основная цель</div>
+              <div className="font-medium">улучшить состояние</div>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3">
+              <div className="text-xs text-neutral-500 mb-1">Ключевые активы</div>
+              <div className="text-sm text-neutral-700">
+                BHA, Ниацинамид, SPF
+              </div>
+            </div>
+          </div>
+        </BlurredContent>
+      )}
     </Card>
   );
 
@@ -500,29 +564,66 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
     </Card>
   );
 
-  const planContent = (
-    <div className="space-y-4">
-      <MetricsSection />
-      <ProductSection title="Утро" items={plan.morning} />
-      <ProductSection title="Вечер" items={plan.evening} />
-      <Card className="p-4 md:p-5">
-        <div className="flex items-center justify-between">
-          <div className="text-sm opacity-70">
-            Быстро добавить все средства в корзину
-          </div>
-          <Button onClick={addAllToCart}>
-            Добавить все
-          </Button>
-        </div>
-      </Card>
-      <ScheduleSection />
-    </div>
-  );
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-5 md:py-8 print:px-0">
       <Header />
-      {hasPremium ? planContent : <PremiumOverlay>{planContent}</PremiumOverlay>}
+      
+      {!hasPremium && (
+        <Card className="p-6 text-center mb-4 bg-gradient-to-r from-indigo-50 to-purple-50">
+          <div className="text-lg font-semibold mb-2">🔒 Персональные рекомендации</div>
+          <div className="text-sm opacity-70 mb-4">Разблокируй детальный план ухода и расписание на 28 дней</div>
+          <Button onClick={unlockPremium}>
+            Разблокировать рекомендации за 199₽
+          </Button>
+          <div className="text-xs opacity-60 mt-2">
+            Оплата единовременная · доступ сразу
+          </div>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        <MetricsSection />
+        <ProductSection title="Утро" items={plan.morning} />
+        <ProductSection title="Вечер" items={plan.evening} />
+        
+        <Card className="p-4 md:p-5">
+          <div className="flex items-center justify-between">
+            <div className="text-sm opacity-70">
+              Быстро добавить все средства в корзину
+            </div>
+            {hasPremium ? (
+              <Button onClick={addAllToCart}>Добавить все</Button>
+            ) : (
+              <BlurredContent showOverlay={false}>
+                <Button>Добавить все</Button>
+              </BlurredContent>
+            )}
+          </div>
+        </Card>
+        
+        {hasPremium ? (
+          <ScheduleSection />
+        ) : (
+          <Card className="p-4 md:p-5">
+            <h3 className="text-xl font-semibold mb-3">Расписание 28 дней</h3>
+            <BlurredContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {schedule.slice(0, 6).map(day => (
+                  <div key={day.day} className="rounded-xl border border-neutral-200 p-3">
+                    <div className="text-sm font-semibold mb-1">День {day.day}</div>
+                    <div className="text-sm">
+                      <span className="opacity-60">Утро:</span> {day.morningNotes.join("; ")}
+                    </div>
+                    <div className="text-sm">
+                      <span className="opacity-60">Вечер:</span> {day.eveningNotes.join("; ")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </BlurredContent>
+          </Card>
+        )}
+      </div>
       
       <style>{`
         @media print {
