@@ -12,10 +12,7 @@ import ErrorBoundary from "./ErrorBoundary";
 function App() {
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
-        {/* Декоративные элементы */}
-        <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-blue-200/30 to-purple-200/30 rounded-full blur-xl"></div>
-        <div className="absolute bottom-20 right-10 w-40 h-40 bg-gradient-to-br from-pink-200/30 to-orange-200/30 rounded-full blur-xl"></div>
+      <div className="min-h-screen bg-gray-50 relative overflow-hidden">
         
         <Header />
         <main className="px-4 py-6 max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl sm:px-6 relative z-10">
