@@ -9,9 +9,11 @@ export default function Header() {
           aria-label="На главную" 
           className="flex items-center group"
         >
-          <div className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent tracking-tight group-hover:scale-105 transition-transform duration-200">
-            SkinIQ
-          </div>
+          <img 
+            src="/skiniq-logo.png" 
+            alt="Skin IQ" 
+            className="h-16 w-auto sm:h-18 md:h-20 lg:h-22 group-hover:scale-105 transition-transform duration-200 drop-shadow-lg"
+          />
         </Link>
       </div>
     </header>
