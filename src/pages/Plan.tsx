@@ -437,25 +437,70 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
     </Card>
   );
 
-  const PhotoEnhanceSection = () => (
-    !hasPhotoData && (
-      <Card className="p-4 mb-4 border-2 border-dashed border-blue-200 bg-blue-50/30">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-medium mb-1">📸 Улучшить план с помощью фото</h3>
-            <p className="text-sm text-neutral-600">Загрузите фото лица для более точных рекомендаций с ИИ-анализом</p>
+  const PhotoSection = () => {
+    if (!hasPhotoData) {
+      // Пользователи без фото - предложение добавить
+      return (
+        <Card className="p-4 mb-4 border-2 border-dashed border-blue-200 bg-blue-50/30">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-medium mb-1">📸 Улучшить план с помощью фото</h3>
+              <p className="text-sm text-neutral-600">Загрузите фото лица для более точных рекомендаций с ИИ-анализом</p>
+            </div>
+            <div>
+              <Link to="/photo">
+                <Button variant="secondary">Перейти к скану</Button>
+              </Link>
+            </div>
           </div>
-          <div>
+        </Card>
+      );
+    }
+
+    // Пользователи с фото - виджет с результатами
+    const latestScan = answers.photo_scans?.[answers.photo_scans.length - 1];
+    const photoAnalysis = answers.photo_analysis || latestScan?.analysis;
+
+    return (
+      <Card className="p-4 mb-4 bg-green-50/50 border border-green-200">
+        <div className="flex items-start gap-4">
+          {/* Миниатюра последнего фото */}
+          <div className="relative">
+            <img 
+              src={answers.photo_data_url || latestScan?.preview} 
+              alt="Анализ кожи" 
+              className="w-20 h-20 rounded-xl border object-cover"
+            />
+            <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+              ✓
+            </div>
+          </div>
+          
+          {/* Информация об анализе */}
+          <div className="flex-1">
+            <h3 className="text-lg font-medium mb-1">🎯 ИИ-анализ кожи</h3>
+            <div className="text-sm text-zinc-700 space-y-1">
+              <div><strong>Тип:</strong> {photoAnalysis?.skinType}</div>
+              <div><strong>Проблемы:</strong> {photoAnalysis?.concerns?.join(", ")}</div>
+              <div className="text-xs text-zinc-500">
+                Последний анализ: {latestScan ? new Date(latestScan.ts).toLocaleString() : "сейчас"}
+              </div>
+            </div>
+          </div>
+          
+          {/* Действия */}
+          <div className="flex flex-col gap-2">
             <Link to="/photo">
-              <Button variant="secondary">Перейти к скану</Button>
+              <Button size="sm" variant="secondary">📷 Новое фото</Button>
+            </Link>
+            <Link to="/photo/results" state={{ analysisData: photoAnalysis }}>
+              <Button size="sm" variant="ghost">👁️ Подробнее</Button>
             </Link>
           </div>
         </div>
-        
-
       </Card>
-    )
-  );
+    );
+  };
 
   const Header = () => (
     <div className="flex items-center justify-between mb-5">
@@ -595,7 +640,7 @@ ${schedule.map(day => `День ${day.day}: утро — ${day.morningNotes.join
     <div className="max-w-3xl mx-auto px-4 py-5 md:py-8 print:px-0">
       <Header />
       
-      <PhotoEnhanceSection />
+      <PhotoSection />
       
       {!hasPremium && (
         <Card className="p-6 text-center mb-4">

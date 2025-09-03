@@ -2,6 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
 
+const isMobile = () => {
+  return typeof window !== 'undefined' && window.innerWidth <= 768;
+};
+
 const STORAGE_KEY = "skiniq.answers";
 
 interface Answers {
@@ -156,6 +160,7 @@ function createSteps() {
 const allSteps = createSteps();
 
 function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: Answers) => void }) {
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState<any | null>(null);
@@ -205,6 +210,16 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
         };
         
         setAnswers(updatedAnswers);
+        
+        // На мобильных переходим на отдельную страницу результатов
+        if (isMobile()) {
+          navigate("/photo/results", { 
+            state: { 
+              analysisData: { ...analysis, imageUrl: dataUrl } 
+            } 
+          });
+          return;
+        }
         
       } catch (err) {
         console.error('Photo analysis error:', err);
