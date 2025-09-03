@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { analyzeSkinPhoto } from "../lib/skinAnalysis";
 
 const Button = ({ children, onClick, disabled, variant = "primary", ...props }: any) => {
   const baseClass = "inline-flex items-center justify-center rounded-xl transition focus:outline-none disabled:opacity-50 disabled:pointer-events-none px-4 py-2";
@@ -113,22 +114,26 @@ export default function Photo() {
   };
 
   const analyzePhoto = async () => {
-    if (selectedFile) {
+    if (selectedFile && previewUrl) {
       setIsAnalyzing(true);
       try {
-        // Simulate analysis delay
-        await new Promise(resolve => setTimeout(resolve, 50));
+        const analysis = await analyzeSkinPhoto(previewUrl);
         
         const result = {
-          skinType: "Нормальная",
-          concerns: ["Чёрные точки", "Сухость"],
+          skinType: analysis.skinType,
+          concerns: analysis.concerns,
           timestamp: Date.now(),
-          previewDataUrl: previewUrl
+          previewDataUrl: previewUrl,
+          problemAreas: analysis.problemAreas,
+          recommendations: analysis.recommendations,
+          confidence: analysis.confidence
         };
 
         // Add to history
         setHistory(prev => [result, ...prev].slice(0, 20));
         setAnalysisResult(result);
+      } catch (err) {
+        setError("Ошибка анализа. Попробуйте другое фото.");
       } finally {
         setIsAnalyzing(false);
       }
