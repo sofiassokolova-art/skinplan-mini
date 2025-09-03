@@ -133,17 +133,7 @@ export default function Home() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 flex flex-col">
-          <h2 className="text-lg font-medium">Скан по фото</h2>
-          <p className="text-sm text-neutral-600 mt-1">Загрузите фото — мы подскажем тип кожи и проблемы.</p>
-          <div className="mt-auto pt-3">
-            <Link to="/photo">
-              <Button>Перейти к скану</Button>
-            </Link>
-          </div>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {plan && (
           <Card className="p-4 flex flex-col">
             <h2 className="text-lg font-medium">Мой план ухода</h2>
