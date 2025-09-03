@@ -12,8 +12,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="grid sm:grid-cols-3 gap-4">
-        <Card title="Личный кабинет" to="/account" />
+      <section className="grid sm:grid-cols-2 gap-4">
         <Card title="Корзина продуктов" to="/cart" />
         <Card title="Инсайты/статистика" to="/insights" />
       </section>

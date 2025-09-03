@@ -1,7 +1,7 @@
 import { Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import Quiz from "./pages/Quiz";
-import Account from "./pages/Account";
+
 import Cart from "./pages/Cart";
 import Plan from "./pages/Plan";
 
@@ -13,7 +13,7 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         <Link className="px-3 py-1.5 rounded-full hover:bg-white/70 border" to="/quiz">Анкета</Link>
         <Link className="px-3 py-1.5 rounded-full hover:bg-white/70 border" to="/plan">План</Link>
         <Link className="px-3 py-1.5 rounded-full hover:bg-white/70 border" to="/cart">Корзина</Link>
-        <Link className="px-3 py-1.5 rounded-full hover:bg-white/70 border" to="/account">Профиль</Link>
+
       </nav>
     </header>
     <main className="px-6 sm:px-10 pb-14">{children}</main>
@@ -26,7 +26,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home/>} />
         <Route path="/quiz" element={<Quiz/>} />
-        <Route path="/account" element={<Account/>} />
+
         <Route path="/cart" element={<Cart/>} />
         <Route path="/plan" element={<Plan/>} />
       </Routes>
