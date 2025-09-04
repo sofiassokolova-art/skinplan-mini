@@ -190,119 +190,127 @@ function interpretHuggingFaceResults(hfResults: any[]): SkinAnalysisResult {
 }
 
 function getDemoAnalysis(): SkinAnalysisResult {
+  // Генерируем более реалистичные координаты
+  const generateRandomCoords = (baseX: number, baseY: number, spread: number = 5) => ({
+    x: Math.max(5, Math.min(90, baseX + (Math.random() - 0.5) * spread)),
+    y: Math.max(5, Math.min(90, baseY + (Math.random() - 0.5) * spread)),
+    width: 3 + Math.random() * 4, // 3-7px
+    height: 3 + Math.random() * 4
+  });
+
   return {
     skinType: "комбинированная",
     concerns: [
+      "воспалительные элементы", 
       "жирность T-зоны", 
-      "единичные воспаления", 
       "расширенные поры",
-      "легкая пигментация",
-      "недостаток увлажнения в щеках",
-      "мимические морщины",
-      "неровная текстура",
-      "потеря упругости",
-      "тусклый тон",
+      "поствоспалительная пигментация",
+      "недостаток увлажнения",
       "черные точки",
-      "шелушения",
-      "покраснения после умывания"
+      "неровная текстура",
+      "покраснения"
     ],
     problemAreas: [
-      // Точечные проблемы - маленькие конкретные зоны
+      // Акне - видимые воспаления
       {
         type: "акне",
-        description: "Воспалительный элемент на подбородке",
+        description: "Воспалительная папула на правой щеке",
         severity: "medium",
-        coordinates: { x: 45, y: 75, width: 8, height: 6 }
+        coordinates: generateRandomCoords(72, 58, 3)
+      },
+      {
+        type: "акне",
+        description: "Воспаление на подбородке",
+        severity: "medium", 
+        coordinates: generateRandomCoords(48, 78, 4)
       },
       {
         type: "акне",
         description: "Папула на левой щеке",
-        severity: "low", 
-        coordinates: { x: 25, y: 55, width: 6, height: 6 }
+        severity: "low",
+        coordinates: generateRandomCoords(28, 62, 3)
       },
       {
         type: "акне",
-        description: "Комедон на правой щеке",
+        description: "Воспалительный элемент у рта",
         severity: "low",
-        coordinates: { x: 70, y: 60, width: 5, height: 5 }
+        coordinates: generateRandomCoords(42, 72, 3)
       },
       {
+        type: "акне",
+        description: "Комедон на лбу",
+        severity: "low",
+        coordinates: generateRandomCoords(52, 22, 3)
+      },
+      
+      // Черные точки на носу
+      {
         type: "черные точки",
-        description: "Комедоны на крыльях носа",
+        description: "Комедон на левом крыле носа",
         severity: "medium",
-        coordinates: { x: 40, y: 50, width: 4, height: 4 }
+        coordinates: generateRandomCoords(42, 52, 2)
       },
       {
         type: "черные точки", 
-        description: "Комедоны на правом крыле носа",
+        description: "Комедон на правом крыле носа",
         severity: "medium",
-        coordinates: { x: 56, y: 52, width: 4, height: 4 }
+        coordinates: generateRandomCoords(58, 54, 2)
       },
+      {
+        type: "черные точки",
+        description: "Комедон на кончике носа",
+        severity: "low",
+        coordinates: generateRandomCoords(50, 48, 2)
+      },
+      
+      // Поры
       {
         type: "поры",
         description: "Расширенная пора на носу",
         severity: "high",
-        coordinates: { x: 48, y: 45, width: 3, height: 3 }
+        coordinates: generateRandomCoords(49, 46, 2)
       },
       {
         type: "поры",
-        description: "Видимые поры на лбу",
+        description: "Видимые поры на щеке",
         severity: "medium", 
-        coordinates: { x: 45, y: 25, width: 8, height: 5 }
+        coordinates: generateRandomCoords(35, 55, 3)
       },
+      
+      // Пигментация
       {
-        type: "поры",
-        description: "Поры на левой щеке",
+        type: "пигментация",
+        description: "Поствоспалительная пигментация",
         severity: "low",
-        coordinates: { x: 30, y: 50, width: 6, height: 4 }
+        coordinates: generateRandomCoords(38, 65, 3)
       },
       {
         type: "пигментация",
-        description: "Пигментное пятно под левым глазом",
+        description: "Пигментное пятно на щеке", 
         severity: "low",
-        coordinates: { x: 35, y: 35, width: 8, height: 6 }
+        coordinates: generateRandomCoords(68, 50, 3)
       },
-      {
-        type: "пигментация",
-        description: "Веснушки на правой щеке", 
-        severity: "low",
-        coordinates: { x: 65, y: 45, width: 10, height: 8 }
-      },
-      {
-        type: "морщины",
-        description: "Мимическая морщина у левого глаза",
-        severity: "low",
-        coordinates: { x: 20, y: 30, width: 12, height: 3 }
-      },
-      {
-        type: "морщины",
-        description: "Носогубная складка слева",
-        severity: "low",
-        coordinates: { x: 35, y: 60, width: 3, height: 15 }
-      },
-      {
-        type: "сухость",
-        description: "Шелушение на левой щеке",
-        severity: "medium",
-        coordinates: { x: 20, y: 50, width: 12, height: 10 }
-      },
+      
+      // Покраснения
       {
         type: "покраснения",
-        description: "Локальное покраснение на подбородке",
+        description: "Локальное покраснение",
         severity: "low", 
-        coordinates: { x: 42, y: 70, width: 10, height: 8 }
+        coordinates: generateRandomCoords(45, 68, 3)
+      },
+      
+      // Жирность в T-зоне
+      {
+        type: "жирность",
+        description: "Жирный блеск на носу",
+        severity: "medium",
+        coordinates: generateRandomCoords(50, 45, 4)
       },
       {
         type: "жирность",
-        description: "Жирный блеск в T-зоне",
+        description: "Жирность на лбу",
         severity: "medium",
-        coordinates: { x: 40, y: 30, width: 20, height: 25 }
-      },
-      {
-        type: "текстура",
-        description: "Неровность кожи на правой щеке",
-        severity: "low",
-        coordinates: { x: 60, y: 55, width: 15, height: 12 }
+        coordinates: generateRandomCoords(48, 28, 5)
       }
     ],
     recommendations: [
