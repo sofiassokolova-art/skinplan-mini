@@ -318,6 +318,7 @@ export default function Plan() {
   const plan = useMemo(() => buildPlan(analysis), [analysis]);
   const schedule = useMemo(() => build28DaySchedule(analysis), [analysis]);
   const [hasPremium, setHasPremium] = useState(isPremium());
+  const [itemsAddedToCart, setItemsAddedToCart] = useState(false);
   
   const hasPhotoData = useMemo(() => {
     return !!(answers.photo_data_url || (answers.photo_scans && answers.photo_scans.length > 0));
@@ -338,16 +339,23 @@ export default function Plan() {
       [...plan.morning, ...plan.evening].forEach(addToCart);
       console.log("Все продукты добавлены в корзину");
       
-      // Показываем уведомление и переходим в корзину
-      setTimeout(() => {
-        navigate("/cart");
-      }, 500);
+      // Меняем состояние кнопки
+      setItemsAddedToCart(true);
       
       alert("Все продукты добавлены в корзину!");
     } catch (error) {
       console.error("Ошибка добавления товаров:", error);
       alert("Ошибка при добавлении товаров в корзину");
     }
+  };
+
+  const goToCart = () => {
+    navigate("/cart");
+  };
+
+  // Функция для сброса состояния корзины (если пользователь хочет добавить еще)
+  const resetCartState = () => {
+    setItemsAddedToCart(false);
   };
 
   const sendToTelegram = async () => {
@@ -418,9 +426,15 @@ export default function Plan() {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xl font-semibold">{title}</h3>
         {hasPremium && (
-          <Button variant="ghost" onClick={() => items.forEach(addToCart)}>
-            Добавить всё
-          </Button>
+          itemsAddedToCart ? (
+            <Button variant="ghost" onClick={goToCart}>
+              🛒 В корзину
+            </Button>
+          ) : (
+            <Button variant="ghost" onClick={() => items.forEach(addToCart)}>
+              Добавить всё
+            </Button>
+          )
         )}
       </div>
       
@@ -692,7 +706,20 @@ export default function Plan() {
               Быстро добавить все средства в корзину
             </div>
             {hasPremium ? (
-              <Button onClick={addAllToCart}>Добавить все</Button>
+              <div className="flex gap-2">
+                {itemsAddedToCart ? (
+                  <>
+                    <Button onClick={goToCart} variant="secondary">
+                      🛒 Перейти в корзину
+                    </Button>
+                    <Button onClick={resetCartState} variant="ghost" size="sm">
+                      ↻
+                    </Button>
+                  </>
+                ) : (
+                  <Button onClick={addAllToCart}>Добавить все</Button>
+                )}
+              </div>
             ) : (
               <BlurredContent showOverlay={false}>
                 <Button>Добавить все</Button>
