@@ -23,10 +23,10 @@ export default function Header({ onShowHelp }: HeaderProps) {
         {onShowHelp && (
           <button 
             onClick={onShowHelp}
-            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition"
-            title="Показать инструкцию"
+            className="px-3 py-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 border border-gray-300 rounded-full hover:bg-white/70 transition-all duration-200"
+            title="Показать инструкцию по использованию"
           >
-            ❓
+            Помощь
           </button>
         )}
       </div>
