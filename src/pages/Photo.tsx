@@ -305,10 +305,15 @@ export default function Photo() {
                   'жирность': 'border-yellow-600 bg-yellow-600/50', 
                   'поры': 'border-orange-600 bg-orange-600/50',
                   'покраснение': 'border-pink-600 bg-pink-600/50',
+                  'покраснения': 'border-pink-600 bg-pink-600/50',
                   'сухость': 'border-blue-600 bg-blue-600/50',
                   'пигментация': 'border-purple-600 bg-purple-600/50',
                   'морщины': 'border-gray-600 bg-gray-600/50',
-                  'чувствительность': 'border-pink-500 bg-pink-500/50'
+                  'чувствительность': 'border-pink-500 bg-pink-500/50',
+                  'черные точки': 'border-black bg-black/60',
+                  'текстура': 'border-indigo-600 bg-indigo-600/50',
+                  'тон': 'border-amber-600 bg-amber-600/50',
+                  'упругость': 'border-emerald-600 bg-emerald-600/50'
                 };
                 
                 const colorClass = colors[area.type as keyof typeof colors] || 'border-red-600 bg-red-600/50';
@@ -342,7 +347,12 @@ export default function Photo() {
                                area.type === 'поры' ? '#ea580c' :
                                area.type === 'пигментация' ? '#9333ea' :
                                area.type === 'сухость' ? '#2563eb' :
-                               area.type === 'морщины' ? '#4b5563' : '#6366f1'
+                               area.type === 'морщины' ? '#4b5563' :
+                               area.type === 'черные точки' ? '#000000' :
+                               area.type === 'текстура' ? '#4f46e5' :
+                               area.type === 'тон' ? '#d97706' :
+                               area.type === 'упругость' ? '#059669' :
+                               area.type === 'покраснения' ? '#ec4899' : '#6366f1'
                       }}
                     >
                       {area.type}
@@ -372,14 +382,19 @@ export default function Photo() {
                 {/* Рекомендации для конкретной проблемы */}
                 <div className="text-xs text-zinc-700">
                   <strong>Что делать:</strong>
-                  {selectedProblem.type === 'акне' && " BHA 2-3 раза в неделю, точечные средства"}
-                  {selectedProblem.type === 'жирность' && " Лёгкие гели, матирующие средства, ниацинамид"}
+                  {selectedProblem.type === 'акне' && " BHA 2-3 раза в неделю, точечные средства с бензоилпероксидом"}
+                  {selectedProblem.type === 'жирность' && " Лёгкие гели, матирующие средства, ниацинамид 5-10%"}
                   {selectedProblem.type === 'поры' && " BHA, ретиноиды, ниацинамид для сужения пор"}
                   {selectedProblem.type === 'покраснение' && " Успокаивающие средства, цика, пантенол"}
+                  {selectedProblem.type === 'покраснения' && " Успокаивающие средства, цика, пантенол"}
                   {selectedProblem.type === 'сухость' && " Интенсивное увлажнение, керамиды, гиалуронка"}
-                  {selectedProblem.type === 'пигментация' && " Витамин C, арбутин, койевая кислота"}
-                  {selectedProblem.type === 'морщины' && " Ретинол, пептиды, гиалуроновая кислота"}
+                  {selectedProblem.type === 'пигментация' && " Витамин C 10-20%, арбутин, койевая кислота"}
+                  {selectedProblem.type === 'морщины' && " Ретинол 0.25-1%, пептиды, гиалуроновая кислота"}
                   {selectedProblem.type === 'чувствительность' && " Мягкие формулы без отдушек, цика"}
+                  {selectedProblem.type === 'черные точки' && " BHA ежедневно, глиняные маски 1-2 раза в неделю"}
+                  {selectedProblem.type === 'текстура' && " AHA-пилинги, ретинол, энзимные маски"}
+                  {selectedProblem.type === 'тон' && " Витамин C, ниацинамид, отшелушивание AHA"}
+                  {selectedProblem.type === 'упругость' && " Пептиды, витамин C, массаж лица, ретинол"}
                 </div>
               </div>
             )}
