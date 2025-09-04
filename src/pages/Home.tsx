@@ -208,15 +208,26 @@ export default function Home() {
                   <div className="text-sm text-gray-600 mb-4">
                     Пошаговые инструкции и точное время применения
                   </div>
-                  <button
-                    onClick={() => {
-                      setPremium(true);
-                      setHasPremium(true);
-                    }}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-semibold hover:bg-indigo-700 transition"
-                  >
-                    Разблокировать за 199₽
-                  </button>
+                  <div className="flex gap-2 flex-wrap justify-center">
+                    <button
+                      onClick={() => {
+                        setPremium(true);
+                        setHasPremium(true);
+                      }}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-semibold hover:bg-indigo-700 transition"
+                    >
+                      Разблокировать за 199₽
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPremium(false);
+                        setHasPremium(false);
+                      }}
+                      className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs hover:bg-gray-300 transition"
+                    >
+                      Тест: сбросить
+                    </button>
+                  </div>
                   <div className="text-xs text-gray-500 mt-2">
                     или 7 дней бесплатно
                   </div>

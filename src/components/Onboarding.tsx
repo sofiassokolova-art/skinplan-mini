@@ -125,28 +125,21 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           <div className="text-center mb-6">
             {step.image === 'skin-model' ? (
               <div className="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden relative shadow-2xl border-4 border-white">
-                <div 
-                  className="w-full h-full rounded-full relative"
+                <img 
+                  src="/skin-model.jpg" 
+                  alt="Красивая кожа"
+                  className="w-full h-full object-cover"
                   style={{
-                    background: `
-                      radial-gradient(circle at 40% 30%, rgba(255, 228, 196, 1) 0%, rgba(255, 218, 185, 0.8) 30%),
-                      radial-gradient(circle at 60% 40%, rgba(250, 214, 165, 0.9) 0%, transparent 40%),
-                      radial-gradient(circle at 30% 70%, rgba(245, 198, 160, 0.8) 0%, transparent 35%),
-                      linear-gradient(145deg, #FFDAB9 0%, #F5C6A0 25%, #E6A875 50%, #D2B48C 75%, #DEB887 100%)
-                    `,
-                    boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.15), inset 0 -2px 6px rgba(255,255,255,0.2)'
+                    filter: 'brightness(1.1) contrast(1.05) saturate(1.1)'
                   }}
-                >
-                  {/* Текстура кожи */}
-                  <div className="absolute top-3 left-4 w-1.5 h-1.5 bg-white/20 rounded-full blur-[0.5px]"></div>
-                  <div className="absolute top-6 right-5 w-1 h-1 bg-white/15 rounded-full"></div>
-                  <div className="absolute bottom-4 left-1/3 w-2 h-1 bg-rose-300/30 rounded-full blur-[0.5px]"></div>
-                  <div className="absolute top-1/2 right-3 w-0.5 h-0.5 bg-white/25 rounded-full"></div>
-                  
-                  {/* Блики как на настоящей коже */}
-                  <div className="absolute top-4 left-6 w-3 h-2 bg-white/10 rounded-full blur-sm transform rotate-12"></div>
-                  <div className="absolute bottom-6 right-6 w-2 h-3 bg-white/8 rounded-full blur-sm transform -rotate-12"></div>
-                </div>
+                />
+                {/* Мягкий оверлей для стиля */}
+                <div 
+                  className="absolute inset-0 bg-gradient-to-br from-rose-100/20 to-amber-100/20"
+                  style={{
+                    mixBlendMode: 'soft-light'
+                  }}
+                />
               </div>
             ) : (
               <div className="flex justify-center items-center gap-4 mb-4">
