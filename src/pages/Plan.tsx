@@ -517,7 +517,7 @@ export default function Plan() {
           
           {/* Информация об анализе */}
           <div className="flex-1">
-            <h3 className="text-lg font-medium mb-1">🎯 ИИ-анализ кожи</h3>
+            <h3 className="text-lg font-medium mb-1">ИИ-анализ кожи</h3>
             <div className="text-sm text-zinc-700 space-y-1">
               <div><strong>Тип:</strong> {photoAnalysis?.skinType}</div>
               <div><strong>Проблемы:</strong> {photoAnalysis?.concerns?.join(", ")}</div>
