@@ -124,53 +124,30 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           {/* Иконка и изображение */}
           <div className="text-center mb-6">
             {step.image === 'skin-model' ? (
-              <div className="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden relative shadow-2xl border-4 border-white bg-gradient-to-br from-amber-50 to-rose-50">
-                <div 
-                  className="w-full h-full rounded-full relative"
+              <div className="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden relative shadow-2xl border-4 border-white">
+                <img 
+                  src="/skiniq-logo.png"
+                  alt="Красивая кожа"
+                  className="w-full h-full object-cover"
                   style={{
-                    background: `
-                      /* Основной тон кожи как на твоем фото */
-                      radial-gradient(ellipse at 40% 20%, rgba(255, 235, 210, 1) 0%, rgba(255, 220, 190, 0.9) 30%, transparent 65%),
-                      radial-gradient(ellipse at 65% 30%, rgba(250, 215, 180, 0.95) 0%, rgba(245, 200, 165, 0.85) 35%, transparent 60%),
-                      radial-gradient(ellipse at 30% 80%, rgba(245, 200, 170, 0.9) 0%, rgba(235, 185, 155, 0.8) 40%, transparent 55%),
-                      radial-gradient(ellipse at 80% 75%, rgba(240, 195, 160, 0.85) 0%, rgba(230, 180, 145, 0.7) 35%, transparent 50%),
-                      /* Базовый градиент в тонах твоего фото */
-                      linear-gradient(140deg, 
-                        #FFEEE6 0%, 
-                        #FFE4D6 12%, 
-                        #FFDCC7 25%, 
-                        #F5C99B 40%, 
-                        #E8B887 55%, 
-                        #D4A574 70%, 
-                        #C19660 85%, 
-                        #B08A55 100%
-                      )
-                    `,
-                    boxShadow: `
-                      inset 0 8px 20px rgba(0,0,0,0.08), 
-                      inset 0 -4px 12px rgba(255,255,255,0.4),
-                      inset 3px 3px 6px rgba(255,255,255,0.3),
-                      inset -3px -3px 6px rgba(0,0,0,0.05)
-                    `
+                    filter: 'sepia(0.3) brightness(1.2) contrast(1.1) saturate(0.8) hue-rotate(15deg)'
                   }}
-                >
-                  {/* Естественная текстура кожи */}
-                  <div className="absolute top-5 left-6 w-2.5 h-2 bg-white/30 rounded-full blur-[0.4px] opacity-70"></div>
-                  <div className="absolute top-8 right-7 w-2 h-1.5 bg-white/25 rounded-full blur-[0.3px] opacity-60"></div>
-                  <div className="absolute bottom-6 left-1/3 w-3 h-2 bg-rose-300/35 rounded-full blur-[0.5px] opacity-50"></div>
-                  <div className="absolute top-1/2 right-5 w-1.5 h-1 bg-white/35 rounded-full blur-[0.2px]"></div>
-                  <div className="absolute bottom-8 right-1/3 w-1.5 h-1.5 bg-amber-200/40 rounded-full blur-[0.3px]"></div>
-                  
-                  {/* Мягкие блики как на фото */}
-                  <div className="absolute top-7 left-8 w-5 h-3 bg-gradient-to-br from-white/18 to-transparent rounded-full blur-sm transform rotate-20 opacity-80"></div>
-                  <div className="absolute bottom-9 right-8 w-4 h-5 bg-gradient-to-tl from-white/15 to-transparent rounded-full blur-sm transform -rotate-25 opacity-70"></div>
-                  <div className="absolute top-1/3 left-1/4 w-3 h-2 bg-gradient-to-r from-white/12 to-transparent rounded-full blur-sm transform rotate-45 opacity-60"></div>
-                  
-                  {/* Тонкие детали текстуры */}
-                  <div className="absolute top-4 right-4 w-0.5 h-0.5 bg-white/50 rounded-full"></div>
-                  <div className="absolute bottom-4 left-5 w-0.5 h-0.5 bg-amber-300/50 rounded-full"></div>
-                  <div className="absolute top-2/3 left-2/3 w-0.5 h-0.5 bg-white/45 rounded-full"></div>
-                </div>
+                  onError={(e) => {
+                    // Fallback на CSS градиент если изображение не загрузится
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.style.background = `
+                        radial-gradient(ellipse at 40% 20%, rgba(255, 235, 210, 1) 0%, rgba(255, 220, 190, 0.9) 30%, transparent 65%),
+                        radial-gradient(ellipse at 65% 30%, rgba(250, 215, 180, 0.95) 0%, rgba(245, 200, 165, 0.85) 35%, transparent 60%),
+                        linear-gradient(140deg, #FFEEE6 0%, #FFE4D6 12%, #FFDCC7 25%, #F5C99B 40%, #E8B887 55%, #D4A574 70%, #C19660 85%, #B08A55 100%)
+                      `;
+                    }
+                  }}
+                />
+                {/* Мягкий оверлей */}
+                <div className="absolute inset-0 bg-gradient-to-br from-rose-100/10 to-amber-100/10 mix-blend-soft-light"></div>
               </div>
             ) : (
               <div className="flex justify-center items-center gap-4 mb-4">
