@@ -9,6 +9,7 @@ import ModernButton from "../ui/ModernButton";
 const STORAGE_KEY = "skiniq.answers";
 
 interface Answers {
+  // Базовые поля (сохраняем совместимость)
   name?: string;
   pdConsent?: boolean;
   skinType?: "сухая" | "жирная" | "комбинированная" | "нормальная";
@@ -16,6 +17,41 @@ interface Answers {
   concerns?: string[];
   oiliness?: "низкая" | "средняя" | "высокая";
   primaryGoal?: "снять воспаления" | "увлажнить" | "осветлить постакне" | "сузить поры";
+  
+  // 1. Общая информация
+  age?: "under18" | "18-24" | "25-34" | "35-44" | "45+";
+  gender?: "female" | "male";
+
+  // 2. Особенности кожи (расширенные)
+  skin_concerns?: string[]; // детальные проблемы
+  after_cleansing?: "comfortable" | "tight";
+  daily_behavior?: "oily_2-3h" | "oily_evening" | "stays_matte";
+  sensitivity_level?: "high" | "medium" | "low";
+  seasonal_changes?: "summer_oily" | "winter_dry" | "same_year_round";
+
+  // 3. Медицинский анамнез
+  medical_diagnoses?: string[];
+  pregnancy_status?: "pregnant" | "breastfeeding" | "none";
+  allergies?: string[];
+  medications?: string[];
+
+  // 4. Опыт ухода
+  retinol_experience?: "yes" | "no";
+  retinol_reaction?: "good" | "irritation" | "dont_know";
+  prescription_creams?: string[];
+  oral_medications?: string[];
+
+  // 6. Образ жизни
+  makeup_frequency?: "daily" | "sometimes" | "rarely";
+  spf_use?: "daily" | "sometimes" | "never";
+  sun_exposure?: "0-1h" | "1-3h" | "3h+" | "dont_know";
+  lifestyle_habits?: string[];
+
+  // 7. Предпочтения в уходе
+  care_type?: "standard" | "natural" | "medical" | "dont_know";
+  avoid_ingredients?: string[];
+  routine_steps?: "minimal" | "medium" | "maximum" | "dont_know";
+  budget?: "light" | "affordable" | "high_end" | "elite";
   
   // Фото (опционально)
   photo_data_url?: string | null;
@@ -46,45 +82,148 @@ const questions = [
     required: true,
     needsConsent: true
   },
+  // 1. Общая информация
   {
     kind: "question" as const,
-    id: "skinType",
-    title: "Какой у вас тип кожи?",
+    id: "age",
+    title: "Возраст",
     type: "single" as const,
     required: true,
-    options: ["сухая", "жирная", "комбинированная", "нормальная"]
+    options: ["До 18 лет", "18–24", "25–34", "35–44", "45+"]
   },
   {
     kind: "question" as const,
-    id: "sensitivity",
-    title: "Ваша кожа чувствительная?",
-    type: "switch" as const,
-    required: true
+    id: "gender", 
+    title: "Пол",
+    type: "single" as const,
+    required: true,
+    options: ["Женский", "Мужской"]
   },
+  
+  // 2. Особенности кожи
   {
     kind: "question" as const,
-    id: "concerns",
-    title: "Что вас беспокоит?",
-    description: "Можно выбрать несколько вариантов.",
+    id: "skin_concerns",
+    title: "Что вас больше всего беспокоит в коже сейчас?",
+    description: "Можно выбрать несколько вариантов",
     type: "multi" as const,
     required: true,
-    options: ["акне", "постакне", "расширенные поры", "покраснение", "сухость"]
+    options: [
+      "Акне / высыпания",
+      "Жирность и блеск кожи", 
+      "Сухость и стянутость",
+      "Неровный тон / пигментация",
+      "Морщины, возрастные изменения",
+      "Краснота, раздражение, чувствительность",
+      "Расширенные поры",
+      "Проблемы в зоне под глазами (отёки, круги, морщины)",
+      "В целом всё устраивает, хочу поддерживающий уход"
+    ]
   },
   {
     kind: "question" as const,
-    id: "oiliness",
-    title: "Насколько кожа склонна к жирности?",
+    id: "after_cleansing",
+    title: "Какие ощущения у вас после умывания?",
     type: "single" as const,
     required: true,
-    options: ["низкая", "средняя", "высокая"]
+    options: ["Комфортные", "Стянутость и сухость"]
   },
   {
     kind: "question" as const,
-    id: "primaryGoal",
-    title: "Главная цель ухода на 28 дней?",
+    id: "daily_behavior",
+    title: "Как ведёт себя кожа в течение дня?",
     type: "single" as const,
     required: true,
-    options: ["снять воспаления", "увлажнить", "осветлить постакне", "сузить поры"]
+    options: [
+      "Жирный блеск через 2–3 часа после умывания",
+      "Жирный блеск к вечеру", 
+      "Кожа остаётся матовой"
+    ]
+  },
+  {
+    kind: "question" as const,
+    id: "sensitivity_level",
+    title: "Насколько чувствительна кожа?",
+    type: "single" as const,
+    required: true,
+    options: ["Высокая", "Средняя", "Низкая"]
+  },
+  
+  // 3. Медицинский анамнез
+  {
+    kind: "question" as const,
+    id: "medical_diagnoses",
+    title: "Есть ли у вас диагнозы, поставленные врачом?",
+    type: "multi" as const,
+    required: false,
+    options: [
+      "Акне",
+      "Розацеа", 
+      "Себорейный дерматит",
+      "Атопический дерматит / сухая кожа",
+      "Пигментация (мелазма)",
+      "Нет"
+    ]
+  },
+  {
+    kind: "question" as const,
+    id: "pregnancy_status",
+    title: "Вы беременны/ находитесь на грудном вскармливании?",
+    type: "single" as const,
+    required: true,
+    options: ["Да, беременность", "Да, грудное вскармливание", "Нет"]
+  },
+  
+  // 4. Образ жизни
+  {
+    kind: "question" as const,
+    id: "spf_use",
+    title: "Как часто используете солнцезащитный крем?",
+    type: "single" as const,
+    required: true,
+    options: ["Каждый день", "Иногда", "Никогда"]
+  },
+  {
+    kind: "question" as const,
+    id: "lifestyle_habits",
+    title: "Ваши привычки (можно выбрать несколько):",
+    type: "multi" as const,
+    required: false,
+    options: [
+      "Курю",
+      "Употребляю алкоголь",
+      "Часто не высыпаюсь", 
+      "Испытываю стресс",
+      "Всё в норме"
+    ]
+  },
+  
+  // 5. Предпочтения в уходе
+  {
+    kind: "question" as const,
+    id: "budget",
+    title: "Какой бюджет для ухода комфортен?",
+    type: "single" as const,
+    required: true,
+    options: [
+      "Light (базовый)",
+      "Affordable (средний)", 
+      "High End (премиум)",
+      "Elite (люкс, без ограничений)"
+    ]
+  },
+  {
+    kind: "question" as const,
+    id: "routine_steps",
+    title: "Сколько шагов в уходе для вас комфортно?",
+    type: "single" as const,
+    required: true,
+    options: [
+      "Минимум (1–3 шага)",
+      "Средний (3–5 шагов)",
+      "Максимум (5+ шагов)",
+      "Не знаю"
+    ]
   }
 ];
 
