@@ -808,6 +808,31 @@ export default function Quiz() {
         return !!answers.oiliness;
       case "primaryGoal":
         return !!answers.primaryGoal;
+      // Новые поля
+      case "age":
+        return !!answers.age;
+      case "gender":
+        return !!answers.gender;
+      case "skin_concerns":
+        return Array.isArray(answers.skin_concerns) && answers.skin_concerns.length > 0;
+      case "after_cleansing":
+        return !!answers.after_cleansing;
+      case "daily_behavior":
+        return !!answers.daily_behavior;
+      case "sensitivity_level":
+        return !!answers.sensitivity_level;
+      case "medical_diagnoses":
+        return true; // Опциональный
+      case "pregnancy_status":
+        return !!answers.pregnancy_status;
+      case "spf_use":
+        return !!answers.spf_use;
+      case "lifestyle_habits":
+        return true; // Опциональный
+      case "budget":
+        return !!answers.budget;
+      case "routine_steps":
+        return !!answers.routine_steps;
       case "photo":
         return true; // Опциональный шаг
       default:
@@ -891,6 +916,103 @@ export default function Quiz() {
             options={step.options}
             value={answers.primaryGoal}
             onChange={v => setAnswers({ ...answers, primaryGoal: v as any })}
+          />
+        );
+      // Новые расширенные вопросы
+      case "age":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.age}
+            onChange={v => setAnswers({ ...answers, age: v as any })}
+          />
+        );
+      case "gender":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.gender}
+            onChange={v => setAnswers({ ...answers, gender: v as any })}
+          />
+        );
+      case "skin_concerns":
+        return (
+          <MultiChoice
+            options={step.options}
+            value={answers.skin_concerns}
+            onChange={v => setAnswers({ ...answers, skin_concerns: v })}
+          />
+        );
+      case "after_cleansing":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.after_cleansing}
+            onChange={v => setAnswers({ ...answers, after_cleansing: v as any })}
+          />
+        );
+      case "daily_behavior":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.daily_behavior}
+            onChange={v => setAnswers({ ...answers, daily_behavior: v as any })}
+          />
+        );
+      case "sensitivity_level":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.sensitivity_level}
+            onChange={v => setAnswers({ ...answers, sensitivity_level: v as any })}
+          />
+        );
+      case "medical_diagnoses":
+        return (
+          <MultiChoice
+            options={step.options}
+            value={answers.medical_diagnoses}
+            onChange={v => setAnswers({ ...answers, medical_diagnoses: v })}
+          />
+        );
+      case "pregnancy_status":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.pregnancy_status}
+            onChange={v => setAnswers({ ...answers, pregnancy_status: v as any })}
+          />
+        );
+      case "spf_use":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.spf_use}
+            onChange={v => setAnswers({ ...answers, spf_use: v as any })}
+          />
+        );
+      case "lifestyle_habits":
+        return (
+          <MultiChoice
+            options={step.options}
+            value={answers.lifestyle_habits}
+            onChange={v => setAnswers({ ...answers, lifestyle_habits: v })}
+          />
+        );
+      case "budget":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.budget}
+            onChange={v => setAnswers({ ...answers, budget: v as any })}
+          />
+        );
+      case "routine_steps":
+        return (
+          <SingleChoice
+            options={step.options}
+            value={answers.routine_steps}
+            onChange={v => setAnswers({ ...answers, routine_steps: v as any })}
           />
         );
       case "photo":
