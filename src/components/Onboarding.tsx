@@ -19,11 +19,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Добро пожаловать в SkinIQ! 👋',
     description: 'Персональный ИИ-помощник по уходу за кожей. Пройдите анкету → загрузите фото → получите план ухода.',
     icon: '✨',
-    image: '🧴',
-    action: {
-      label: 'Начать анкету',
-      path: '/quiz'
-    }
+    image: 'skin-model' // Используем специальное изображение
   },
   {
     id: 'process',
@@ -37,7 +33,11 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Премиум за 199₽ 💎',
     description: '🆓 Базовый план бесплатно\n💰 Премиум: детальное расписание + PDF отчеты + полный анализ',
     icon: '🔓',
-    image: '💳'
+    image: '💳',
+    action: {
+      label: 'Начать анкету',
+      path: '/quiz'
+    }
   }
 ];
 
@@ -123,12 +123,18 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         <div className="px-6 pb-6">
           {/* Иконка и изображение */}
           <div className="text-center mb-6">
-            <div className="flex justify-center items-center gap-4 mb-4">
-              <div className="text-4xl">{step.icon}</div>
-              {step.image && (
-                <div className="text-4xl opacity-70">{step.image}</div>
-              )}
-            </div>
+            {step.image === 'skin-model' ? (
+              <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-rose-100 to-orange-100 flex items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-200 via-rose-200 to-orange-200 shadow-inner"></div>
+              </div>
+            ) : (
+              <div className="flex justify-center items-center gap-4 mb-4">
+                <div className="text-4xl">{step.icon}</div>
+                {step.image && step.image !== 'skin-model' && (
+                  <div className="text-4xl opacity-70">{step.image}</div>
+                )}
+              </div>
+            )}
             <h2 className="text-2xl font-bold mb-3 text-gray-900">
               {step.title}
             </h2>
