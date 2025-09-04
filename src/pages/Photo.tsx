@@ -317,30 +317,27 @@ export default function Photo() {
                       }}
                       onClick={() => setSelectedProblem(selectedProblem?.type === area.type ? null : area)}
                     >
-                      {/* Органичная форма зоны */}
+                      {/* Точечная маркировка как на профессиональных анализах */}
                       <div
-                        className="w-full h-full relative"
+                        className="w-full h-full relative flex items-center justify-center"
                         style={{
-                          background: area.type === 'жирность' ? 'rgba(234, 179, 8, 0.8)' : 
-                                     area.type === 'акне' ? 'rgba(239, 68, 68, 0.8)' :
-                                     area.type === 'поры' ? 'rgba(249, 115, 22, 0.8)' :
-                                     area.type === 'пигментация' ? 'rgba(147, 51, 234, 0.8)' :
-                                     area.type === 'сухость' ? 'rgba(59, 130, 246, 0.8)' :
-                                     area.type === 'морщины' ? 'rgba(107, 114, 128, 0.8)' :
-                                     area.type === 'черные точки' ? 'rgba(0, 0, 0, 0.9)' :
-                                     area.type === 'текстура' ? 'rgba(79, 70, 229, 0.8)' :
-                                     area.type === 'тон' ? 'rgba(217, 119, 6, 0.8)' :
-                                     area.type === 'упругость' ? 'rgba(5, 150, 105, 0.8)' :
-                                     area.type === 'покраснения' ? 'rgba(236, 72, 153, 0.8)' : 'rgba(99, 102, 241, 0.8)',
-                          borderRadius: area.type === 'жирность' ? '60% 40% 70% 30%' :
-                                       area.type === 'акне' ? '50% 60% 40% 70%' :
-                                       area.type === 'поры' ? '70% 30% 60% 40%' :
-                                       area.type === 'пигментация' ? '40% 70% 50% 60%' :
-                                       area.type === 'сухость' ? '65% 35% 45% 75%' :
-                                       area.type === 'морщины' ? '80% 20% 30% 80%' :
-                                       area.type === 'черные точки' ? '50% 50% 70% 30%' :
-                                       '55% 45% 65% 35%',
-                          border: `3px solid ${
+                          background: area.type === 'жирность' ? 'rgba(234, 179, 8, 0.9)' : 
+                                     area.type === 'акне' ? 'rgba(239, 68, 68, 0.9)' :
+                                     area.type === 'поры' ? 'rgba(249, 115, 22, 0.9)' :
+                                     area.type === 'пигментация' ? 'rgba(147, 51, 234, 0.9)' :
+                                     area.type === 'сухость' ? 'rgba(59, 130, 246, 0.9)' :
+                                     area.type === 'морщины' ? 'rgba(107, 114, 128, 0.9)' :
+                                     area.type === 'черные точки' ? 'rgba(0, 0, 0, 0.95)' :
+                                     area.type === 'текстура' ? 'rgba(79, 70, 229, 0.9)' :
+                                     area.type === 'тон' ? 'rgba(217, 119, 6, 0.9)' :
+                                     area.type === 'упругость' ? 'rgba(5, 150, 105, 0.9)' :
+                                     area.type === 'покраснения' ? 'rgba(236, 72, 153, 0.9)' : 'rgba(99, 102, 241, 0.9)',
+                          borderRadius: area.type === 'морщины' ? '50px' : 
+                                       area.type === 'поры' ? '50%' :
+                                       area.type === 'черные точки' ? '50%' :
+                                       area.type === 'акне' ? '60% 40% 50% 70%' :
+                                       '45% 55% 60% 40%',
+                          border: `2px solid ${
                             area.type === 'жирность' ? '#eab308' : 
                             area.type === 'акне' ? '#ef4444' :
                             area.type === 'поры' ? '#f97316' :
@@ -353,18 +350,25 @@ export default function Photo() {
                             area.type === 'упругость' ? '#059669' :
                             area.type === 'покраснения' ? '#ec4899' : '#6366f1'
                           }`,
-                          filter: 'blur(1px)',
-                          boxShadow: `0 0 20px ${
-                            area.type === 'жирность' ? 'rgba(234, 179, 8, 0.6)' : 
-                            area.type === 'акне' ? 'rgba(239, 68, 68, 0.6)' :
-                            area.type === 'поры' ? 'rgba(249, 115, 22, 0.6)' :
-                            area.type === 'пигментация' ? 'rgba(147, 51, 234, 0.6)' :
-                            area.type === 'сухость' ? 'rgba(59, 130, 246, 0.6)' :
-                            area.type === 'морщины' ? 'rgba(107, 114, 128, 0.6)' :
-                            'rgba(99, 102, 241, 0.6)'
-                          }`
+                          boxShadow: `0 0 15px ${
+                            area.type === 'жирность' ? 'rgba(234, 179, 8, 0.7)' : 
+                            area.type === 'акне' ? 'rgba(239, 68, 68, 0.7)' :
+                            area.type === 'поры' ? 'rgba(249, 115, 22, 0.7)' :
+                            area.type === 'пигментация' ? 'rgba(147, 51, 234, 0.7)' :
+                            area.type === 'сухость' ? 'rgba(59, 130, 246, 0.7)' :
+                            area.type === 'морщины' ? 'rgba(107, 114, 128, 0.7)' :
+                            'rgba(99, 102, 241, 0.7)'
+                          }, inset 0 1px 2px rgba(255,255,255,0.3)`
                         }}
-                      />
+                      >
+                        {/* Центральная точка для лучшей видимости */}
+                        <div 
+                          className="w-2 h-2 rounded-full bg-white/80"
+                          style={{
+                            boxShadow: '0 0 4px rgba(0,0,0,0.5)'
+                          }}
+                        />
+                      </div>
                     </div>
                     
                     {/* Подпись проблемы - яркая и заметная */}
