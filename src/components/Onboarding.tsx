@@ -126,11 +126,11 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             {step.image === 'skin-model' ? (
               <div className="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden relative shadow-2xl border-4 border-white">
                 <img 
-                  src="/skiniq-logo.png"
+                  src="/onboarding-skin.jpg"
                   alt="Красивая кожа"
                   className="w-full h-full object-cover"
                   style={{
-                    filter: 'sepia(0.3) brightness(1.2) contrast(1.1) saturate(0.8) hue-rotate(15deg)'
+                    filter: 'brightness(1.05) contrast(1.02) saturate(1.1)'
                   }}
                   onError={(e) => {
                     // Fallback на CSS градиент если изображение не загрузится
