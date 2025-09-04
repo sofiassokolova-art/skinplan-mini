@@ -7,7 +7,6 @@
   body { 
     @apply text-ink antialiased;
     position: relative;
-    overflow: hidden;
   }
   
   body::before {
