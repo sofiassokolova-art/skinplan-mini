@@ -207,101 +207,102 @@ function getDemoAnalysis(): SkinAnalysisResult {
       "покраснения после умывания"
     ],
     problemAreas: [
+      // Точечные проблемы - маленькие конкретные зоны
       {
-        type: "жирность",
-        description: "Повышенная жирность в T-зоне, активные сальные железы",
+        type: "акне",
+        description: "Воспалительный элемент на подбородке",
         severity: "medium",
-        coordinates: { x: 25, y: 15, width: 50, height: 35 }
-      },
-      {
-        type: "акне", 
-        description: "Воспалительные элементы на подбородке",
-        severity: "low",
-        coordinates: { x: 35, y: 70, width: 30, height: 20 }
+        coordinates: { x: 45, y: 75, width: 8, height: 6 }
       },
       {
         type: "акне",
-        description: "Единичные высыпания на левой щеке", 
+        description: "Папула на левой щеке",
+        severity: "low", 
+        coordinates: { x: 25, y: 55, width: 6, height: 6 }
+      },
+      {
+        type: "акне",
+        description: "Комедон на правой щеке",
         severity: "low",
-        coordinates: { x: 15, y: 50, width: 20, height: 15 }
+        coordinates: { x: 70, y: 60, width: 5, height: 5 }
+      },
+      {
+        type: "черные точки",
+        description: "Комедоны на крыльях носа",
+        severity: "medium",
+        coordinates: { x: 40, y: 50, width: 4, height: 4 }
+      },
+      {
+        type: "черные точки", 
+        description: "Комедоны на правом крыле носа",
+        severity: "medium",
+        coordinates: { x: 56, y: 52, width: 4, height: 4 }
       },
       {
         type: "поры",
-        description: "Расширенные поры на носу",
-        severity: "medium",
-        coordinates: { x: 42, y: 40, width: 16, height: 20 }
+        description: "Расширенная пора на носу",
+        severity: "high",
+        coordinates: { x: 48, y: 45, width: 3, height: 3 }
       },
       {
         type: "поры",
         description: "Видимые поры на лбу",
-        severity: "low",
-        coordinates: { x: 30, y: 20, width: 40, height: 15 }
+        severity: "medium", 
+        coordinates: { x: 45, y: 25, width: 8, height: 5 }
       },
       {
-        type: "черные точки",
-        description: "Комедоны в области носа и подбородка",
-        severity: "medium",
-        coordinates: { x: 40, y: 45, width: 20, height: 30 }
+        type: "поры",
+        description: "Поры на левой щеке",
+        severity: "low",
+        coordinates: { x: 30, y: 50, width: 6, height: 4 }
       },
       {
         type: "пигментация",
-        description: "Поствоспалительная гиперпигментация на левой щеке",
-        severity: "low", 
-        coordinates: { x: 15, y: 45, width: 25, height: 20 }
+        description: "Пигментное пятно под левым глазом",
+        severity: "low",
+        coordinates: { x: 35, y: 35, width: 8, height: 6 }
       },
       {
         type: "пигментация",
-        description: "Легкая пигментация на правой щеке",
+        description: "Веснушки на правой щеке", 
         severity: "low",
-        coordinates: { x: 60, y: 45, width: 25, height: 20 }
+        coordinates: { x: 65, y: 45, width: 10, height: 8 }
+      },
+      {
+        type: "морщины",
+        description: "Мимическая морщина у левого глаза",
+        severity: "low",
+        coordinates: { x: 20, y: 30, width: 12, height: 3 }
+      },
+      {
+        type: "морщины",
+        description: "Носогубная складка слева",
+        severity: "low",
+        coordinates: { x: 35, y: 60, width: 3, height: 15 }
       },
       {
         type: "сухость",
-        description: "Недостаток увлажнения и шелушения на щеках",
+        description: "Шелушение на левой щеке",
         severity: "medium",
-        coordinates: { x: 10, y: 40, width: 30, height: 30 }
-      },
-      {
-        type: "сухость", 
-        description: "Обезвоженность правой щеки",
-        severity: "medium",
-        coordinates: { x: 60, y: 40, width: 30, height: 30 }
-      },
-      {
-        type: "морщины",
-        description: "Мимические морщины вокруг глаз (гусиные лапки)",
-        severity: "low",
-        coordinates: { x: 15, y: 25, width: 25, height: 15 }
-      },
-      {
-        type: "морщины",
-        description: "Морщины вокруг правого глаза",
-        severity: "low",
-        coordinates: { x: 60, y: 25, width: 25, height: 15 }
-      },
-      {
-        type: "текстура",
-        description: "Неровная текстура кожи в области щек",
-        severity: "medium",
-        coordinates: { x: 20, y: 50, width: 60, height: 25 }
-      },
-      {
-        type: "тон",
-        description: "Тусклый тон кожи, недостаток сияния",
-        severity: "low",
-        coordinates: { x: 25, y: 30, width: 50, height: 40 }
-      },
-      {
-        type: "упругость",
-        description: "Снижение упругости в области щек и подбородка",
-        severity: "low",
-        coordinates: { x: 20, y: 55, width: 60, height: 35 }
+        coordinates: { x: 20, y: 50, width: 12, height: 10 }
       },
       {
         type: "покраснения",
-        description: "Легкие покраснения после очищения",
+        description: "Локальное покраснение на подбородке",
+        severity: "low", 
+        coordinates: { x: 42, y: 70, width: 10, height: 8 }
+      },
+      {
+        type: "жирность",
+        description: "Жирный блеск в T-зоне",
+        severity: "medium",
+        coordinates: { x: 40, y: 30, width: 20, height: 25 }
+      },
+      {
+        type: "текстура",
+        description: "Неровность кожи на правой щеке",
         severity: "low",
-        coordinates: { x: 25, y: 35, width: 50, height: 30 }
+        coordinates: { x: 60, y: 55, width: 15, height: 12 }
       }
     ],
     recommendations: [
