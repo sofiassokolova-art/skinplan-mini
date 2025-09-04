@@ -9,6 +9,22 @@ interface SkinAnalysisResult {
   }>;
   recommendations: string[];
   confidence: number;
+  
+  // Профессиональные метрики как у HautAI
+  metrics?: {
+    skinType: { value: string; score: number };
+    skinColor: { value: string; score: number };
+    perceivedAge: { value: string; score: number };
+    eyeAge: { value: string; score: number };
+    redness: { value: string; score: number };
+    evenness: { value: string; score: number };
+    acne: { value: string; score: number };
+    wrinkles: { value: string; score: number };
+    darkCircles: { value: string; score: number };
+    pores: { value: string; score: number };
+    oiliness: { value: string; score: number };
+    hydration: { value: string; score: number };
+  };
 }
 
 const HUGGINGFACE_API_KEY = (import.meta.env?.VITE_HUGGINGFACE_API_KEY as string) || 
@@ -302,7 +318,23 @@ function getDemoAnalysis(): SkinAnalysisResult {
       "Успокаивающие компоненты (аллантоин, пантенол) для чувствительности",
       "Еженедельные увлажняющие маски для интенсивного ухода"
     ],
-    confidence: 0.94
+    confidence: 0.94,
+    
+    // Профессиональные метрики как у HautAI
+    metrics: {
+      skinType: { value: "Жирная", score: 75 },
+      skinColor: { value: "Средняя, светлая", score: 68 },
+      perceivedAge: { value: "24 лет (года)", score: 24 },
+      eyeAge: { value: "19 лет (года)", score: 19 },
+      redness: { value: "Повышенная", score: 55 },
+      evenness: { value: "Пониженная", score: 45 },
+      acne: { value: "Легкая степень", score: 35 },
+      wrinkles: { value: "Минимальные", score: 15 },
+      darkCircles: { value: "Легкие", score: 25 },
+      pores: { value: "Расширенные", score: 65 },
+      oiliness: { value: "Повышенная", score: 70 },
+      hydration: { value: "Недостаточная", score: 40 }
+    }
   };
 }
 
