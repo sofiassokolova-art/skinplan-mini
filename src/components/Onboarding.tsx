@@ -26,14 +26,14 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'ИИ анализ за 3 шага 🔬',
     description: '📋 Анкета (2 мин) → 📸 Фото анализ (ИИ найдет зоны) → 📅 Персональный план (28 дней)',
     icon: '🎯',
-    image: '🔍'
+    image: 'process-flow'
   },
   {
     id: 'premium',
     title: 'Премиум за 199₽ 💎',
     description: '🆓 Базовый план бесплатно\n💰 Премиум: детальное расписание + PDF отчеты + полный анализ',
     icon: '🔓',
-    image: '💳',
+    image: 'premium-features',
     action: {
       label: 'Начать анкету',
       path: '/quiz'
@@ -148,6 +148,28 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 />
                 {/* Мягкий оверлей */}
                 <div className="absolute inset-0 bg-gradient-to-br from-rose-100/10 to-amber-100/10 mix-blend-soft-light"></div>
+              </div>
+            ) : step.image === 'process-flow' ? (
+              <div className="w-32 h-20 mx-auto mb-4 rounded-2xl overflow-hidden relative shadow-lg border-2 border-white bg-gradient-to-r from-blue-50 to-purple-50">
+                <div className="flex items-center justify-center h-full gap-1">
+                  <div className="flex items-center gap-1">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">📋</div>
+                    <div className="text-gray-400">→</div>
+                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">📸</div>
+                    <div className="text-gray-400">→</div>
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">📅</div>
+                  </div>
+                </div>
+              </div>
+            ) : step.image === 'premium-features' ? (
+              <div className="w-32 h-20 mx-auto mb-4 rounded-2xl overflow-hidden relative shadow-lg border-2 border-white bg-gradient-to-r from-amber-50 to-green-50">
+                <div className="flex items-center justify-center h-full gap-2">
+                  <div className="text-2xl">🆓</div>
+                  <div className="text-gray-400">+</div>
+                  <div className="text-2xl">💰</div>
+                  <div className="text-gray-400">=</div>
+                  <div className="text-2xl">💎</div>
+                </div>
               </div>
             ) : (
               <div className="flex justify-center items-center gap-4 mb-4">
