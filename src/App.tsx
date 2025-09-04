@@ -15,7 +15,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50 relative">
+      <div className="min-h-screen relative">
         
         <Header onShowHelp={resetOnboarding} />
         <main className="px-4 py-6 max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl sm:px-6 relative z-10">
