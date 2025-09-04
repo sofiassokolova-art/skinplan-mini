@@ -19,6 +19,40 @@ function setPremium(value: boolean) {
 export default function Home() {
   const [activeTime, setActiveTime] = useState<'morning' | 'evening'>('morning');
   const [hasPremium, setHasPremium] = useState(isPremium());
+  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('skiniq.routine_progress');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Функция для переключения статуса выполнения шага
+  const toggleStepCompleted = (stepId: string) => {
+    const newCompletedSteps = {
+      ...completedSteps,
+      [stepId]: !completedSteps[stepId]
+    };
+    setCompletedSteps(newCompletedSteps);
+    
+    // Сохраняем в localStorage
+    try {
+      localStorage.setItem('skiniq.routine_progress', JSON.stringify(newCompletedSteps));
+    } catch (error) {
+      console.error('Ошибка сохранения прогресса:', error);
+    }
+  };
+
+  // Функция для сброса прогресса (новый день)
+  const resetDailyProgress = () => {
+    setCompletedSteps({});
+    try {
+      localStorage.removeItem('skiniq.routine_progress');
+    } catch (error) {
+      console.error('Ошибка сброса прогресса:', error);
+    }
+  };
   
   const userName = useMemo(() => {
     try {
@@ -113,7 +147,14 @@ export default function Home() {
       {hasCompletedQuiz && plan && (
         <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm relative">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-900">ТВОЙ УХОД СЕГОДНЯ</h2>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">ТВОЙ УХОД СЕГОДНЯ</h2>
+              {hasPremium && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Прогресс: {Object.values(completedSteps).filter(Boolean).length} из {(plan.morning?.length || 0) + (plan.evening?.length || 0)} шагов
+                </div>
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTime('morning')}
@@ -135,6 +176,15 @@ export default function Home() {
               >
                 ВЕЧЕР
               </button>
+              {hasPremium && Object.values(completedSteps).some(Boolean) && (
+                <button
+                  onClick={resetDailyProgress}
+                  className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 transition"
+                  title="Сбросить прогресс"
+                >
+                  🔄
+                </button>
+              )}
             </div>
           </div>
 
@@ -152,6 +202,9 @@ export default function Home() {
                   return statuses[stepType as keyof typeof statuses] || 'ПО ИНСТРУКЦИИ';
                 };
 
+                const stepId = `${activeTime}-${step.step}-${idx}`;
+                const isCompleted = completedSteps[stepId] || false;
+
                 return (
                   <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                     <div className="flex items-center gap-3">
@@ -159,16 +212,26 @@ export default function Home() {
                         <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900 text-sm">{step.name.split('(')[0].trim()}</div>
+                        <div className={`font-medium text-sm transition-colors ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                          {step.name.split('(')[0].trim()}
+                        </div>
                         <div className="text-xs text-gray-500 uppercase tracking-wide">
                           {getStepStatus(step.step, activeTime)}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="text-xs text-gray-600">✓</span>
-                      </div>
+                      <button
+                        onClick={() => toggleStepCompleted(stepId)}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
+                          isCompleted 
+                            ? 'bg-green-500 text-white shadow-lg transform scale-110' 
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:scale-105'
+                        }`}
+                        title={isCompleted ? 'Отменить выполнение' : 'Отметить как выполнено'}
+                      >
+                        <span className="text-xs font-bold">✓</span>
+                      </button>
                     </div>
                   </div>
                 );
