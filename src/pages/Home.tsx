@@ -44,15 +44,6 @@ export default function Home() {
     }
   };
 
-  // Функция для сброса прогресса (новый день)
-  const resetDailyProgress = () => {
-    setCompletedSteps({});
-    try {
-      localStorage.removeItem('skiniq.routine_progress');
-    } catch (error) {
-      console.error('Ошибка сброса прогресса:', error);
-    }
-  };
   
   const userName = useMemo(() => {
     try {
@@ -179,18 +170,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Кнопка сброса прогресса */}
-          {hasPremium && Object.values(completedSteps).some(Boolean) && (
-            <div className="text-center mb-4">
-              <button
-                onClick={resetDailyProgress}
-                className="text-xs text-gray-500 hover:text-gray-700 transition underline"
-                title="Сбросить прогресс на новый день"
-              >
-                Сбросить прогресс
-              </button>
-            </div>
-          )}
 
           {hasPremium ? (
             <div className="space-y-4">

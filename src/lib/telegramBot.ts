@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const BOT_TOKEN = "8138388674:AAHt8HqnPS3LRwo7l_g_q1Bw05c9vTqsfEw";
 const BOT_API_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
@@ -43,7 +44,212 @@ function transliterate(text: string): string {
   return text.replace(/[а-яё]/gi, (char) => map[char] || char);
 }
 
-// Генерировать настоящий PDF с помощью jsPDF
+// Генерировать красивый HTML для PDF
+function createPDFHTML(data: PlanData): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+          margin: 0;
+          padding: 20px;
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+          color: #1f2937;
+          line-height: 1.6;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          padding: 20px;
+          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+          color: white;
+          border-radius: 15px;
+          box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);
+        }
+        .title { font-size: 28px; font-weight: bold; margin-bottom: 5px; }
+        .subtitle { font-size: 14px; opacity: 0.9; }
+        .section {
+          background: white;
+          padding: 20px;
+          margin-bottom: 20px;
+          border-radius: 12px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e5e7eb;
+        }
+        .section-title {
+          font-size: 18px;
+          font-weight: bold;
+          color: #374151;
+          margin-bottom: 15px;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #e5e7eb;
+        }
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 15px;
+          margin-bottom: 15px;
+        }
+        .info-item {
+          padding: 10px;
+          background: #f9fafb;
+          border-radius: 8px;
+          border-left: 4px solid #6366f1;
+        }
+        .info-label { font-weight: 600; color: #6b7280; font-size: 12px; }
+        .info-value { color: #111827; font-size: 14px; }
+        .routine-list { list-style: none; padding: 0; }
+        .routine-item {
+          padding: 12px;
+          margin-bottom: 8px;
+          background: #f8fafc;
+          border-radius: 8px;
+          border-left: 4px solid #10b981;
+          display: flex;
+          align-items: center;
+        }
+        .routine-number {
+          background: #6366f1;
+          color: white;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: bold;
+          margin-right: 12px;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 30px;
+          padding: 15px;
+          background: #f3f4f6;
+          border-radius: 8px;
+          font-size: 12px;
+          color: #6b7280;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">SkinIQ - Персональный план ухода</div>
+        <div class="subtitle">Создано: ${new Date().toLocaleDateString('ru-RU')}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">👤 Профиль пользователя</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Имя</div>
+            <div class="info-value">${data.userName}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Тип кожи</div>
+            <div class="info-value">${data.skinType}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Чувствительность</div>
+            <div class="info-value">${data.sensitivity ? 'Да' : 'Нет'}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Главная цель</div>
+            <div class="info-value">${data.primaryGoal}</div>
+          </div>
+        </div>
+        ${data.concerns.length > 0 ? `
+          <div class="info-item">
+            <div class="info-label">Проблемы</div>
+            <div class="info-value">${data.concerns.join(', ')}</div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="section">
+        <div class="section-title">🌅 Утренний уход</div>
+        <ul class="routine-list">
+          ${data.morningSteps.map((step, index) => `
+            <li class="routine-item">
+              <div class="routine-number">${index + 1}</div>
+              <div>
+                <div style="font-weight: 600;">${step.name}</div>
+                <div style="font-size: 12px; color: #6b7280;">${step.step}</div>
+              </div>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+
+      <div class="section">
+        <div class="section-title">🌙 Вечерний уход</div>
+        <ul class="routine-list">
+          ${data.eveningSteps.map((step, index) => `
+            <li class="routine-item">
+              <div class="routine-number">${index + 1}</div>
+              <div>
+                <div style="font-weight: 600;">${step.name}</div>
+                <div style="font-size: 12px; color: #6b7280;">${step.step}</div>
+              </div>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+
+      <div class="footer">
+        Создано в SkinIQ - персональный уход за кожей
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+// Генерировать красивый PDF из HTML
+async function generateBeautifulPDF(data: PlanData): Promise<Blob> {
+  try {
+    // Создаем временный HTML элемент
+    const htmlContent = createPDFHTML(data);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.style.width = '800px';
+    document.body.appendChild(tempDiv);
+
+    // Генерируем PDF из HTML
+    const canvas = await html2canvas(tempDiv, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      width: 800,
+      height: tempDiv.scrollHeight
+    });
+
+    // Удаляем временный элемент
+    document.body.removeChild(tempDiv);
+
+    // Создаем PDF
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgWidth = pageWidth - 20;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+    
+    return pdf.output('blob');
+  } catch (error) {
+    console.error('Ошибка создания красивого PDF:', error);
+    // Fallback на старый способ
+    return generatePDFBlob(data);
+  }
+}
+
+// Старая функция как fallback
 function generatePDFBlob(data: PlanData): Blob {
   const doc = new jsPDF();
   
@@ -159,8 +365,8 @@ ${planData.eveningSteps.map((step, i) => `${i + 1}. ${step.name}`).join('\n')}`;
       return { success: true };
     }
 
-    // Генерируем настоящий PDF-документ
-    const pdfBlob = generatePDFBlob(planData);
+    // Генерируем красивый PDF-документ на русском языке
+    const pdfBlob = await generateBeautifulPDF(planData);
     
     // Создаём FormData для отправки файла
     const formData = new FormData();
