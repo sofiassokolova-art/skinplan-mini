@@ -176,34 +176,75 @@ function interpretHuggingFaceResults(hfResults: any[]): SkinAnalysisResult {
 function getDemoAnalysis(): SkinAnalysisResult {
   return {
     skinType: "комбинированная",
-    concerns: ["жирность T-зоны", "единичные воспаления", "расширенные поры"],
+    concerns: [
+      "жирность T-зоны", 
+      "единичные воспаления", 
+      "расширенные поры",
+      "легкая пигментация",
+      "недостаток увлажнения в щеках",
+      "мимические морщины"
+    ],
     problemAreas: [
       {
         type: "жирность",
-        description: "Повышенная жирность в T-зоне",
+        description: "Повышенная жирность в T-зоне, особенно лоб и нос",
         severity: "medium",
-        coordinates: { x: 20, y: 20, width: 40, height: 25 }
+        coordinates: { x: 25, y: 15, width: 50, height: 35 }
       },
       {
-        type: "акне",
-        description: "Единичные воспаления на подбородке",
+        type: "акне", 
+        description: "Единичные воспаления на подбородке и щеках",
         severity: "low",
-        coordinates: { x: 35, y: 70, width: 25, height: 15 }
+        coordinates: { x: 30, y: 65, width: 40, height: 25 }
       },
       {
         type: "поры",
-        description: "Расширенные поры на носу",
-        severity: "medium", 
-        coordinates: { x: 42, y: 40, width: 15, height: 20 }
+        description: "Расширенные поры на носу и центральной части лица",
+        severity: "medium",
+        coordinates: { x: 40, y: 35, width: 20, height: 25 }
+      },
+      {
+        type: "пигментация",
+        description: "Легкие пигментные пятна на щеках",
+        severity: "low", 
+        coordinates: { x: 15, y: 45, width: 25, height: 20 }
+      },
+      {
+        type: "пигментация",
+        description: "Пигментация на правой щеке",
+        severity: "low",
+        coordinates: { x: 60, y: 45, width: 25, height: 20 }
+      },
+      {
+        type: "сухость",
+        description: "Недостаток увлажнения в области щек",
+        severity: "medium",
+        coordinates: { x: 10, y: 40, width: 30, height: 30 }
+      },
+      {
+        type: "сухость", 
+        description: "Сухость правой щеки",
+        severity: "medium",
+        coordinates: { x: 60, y: 40, width: 30, height: 30 }
+      },
+      {
+        type: "морщины",
+        description: "Мимические морщины в области глаз",
+        severity: "low",
+        coordinates: { x: 20, y: 25, width: 60, height: 15 }
       }
     ],
     recommendations: [
       "Используйте мягкое очищение 2 раза в день",
-      "Добавьте BHA 2-3 раза в неделю для T-зоны",
-      "Увлажнение лёгкими текстурами",
-      "SPF ежедневно для предотвращения пост-акне"
+      "Добавьте BHA 2-3 раза в неделю для T-зоны и пор", 
+      "Увлажнение: легкие текстуры для T-зоны, более плотные для щек",
+      "SPF ежедневно для предотвращения пигментации",
+      "Витамин C утром для борьбы с пигментными пятнами",
+      "Ретинол вечером 2-3 раза в неделю для профилактики старения",
+      "Гиалуроновая кислота для увлажнения сухих зон",
+      "Ниацинамид для контроля жирности и уменьшения пор"
     ],
-    confidence: 0.87
+    confidence: 0.92
   };
 }
 
