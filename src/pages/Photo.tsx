@@ -363,11 +363,84 @@ export default function Photo() {
             </div>
             
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <h3 className="text-lg font-medium text-green-700 mb-2">✅ Анализ завершён!</h3>
+              <h3 className="text-lg font-medium text-green-700 mb-3">✅ Анализ завершён!</h3>
+              
+              {/* Профессиональные метрики как у HautAI */}
+              {analysisResult.metrics && (
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  {Object.entries(analysisResult.metrics).map(([key, metric]: [string, any]) => {
+                    const getScoreColor = (score: number) => {
+                      if (score <= 30) return 'text-green-600';
+                      if (score <= 60) return 'text-yellow-600'; 
+                      return 'text-red-600';
+                    };
+                    
+                    const getScoreBackground = (score: number) => {
+                      if (score <= 30) return 'bg-green-100';
+                      if (score <= 60) return 'bg-yellow-100';
+                      return 'bg-red-100';
+                    };
+
+                    const metricLabels: Record<string, string> = {
+                      skinType: 'Тип кожи',
+                      skinColor: 'Цвет кожи', 
+                      perceivedAge: 'Воспринимаемый возраст',
+                      eyeAge: 'Возраст глаз',
+                      redness: 'Покраснение',
+                      evenness: 'Однородность',
+                      acne: 'Акне',
+                      wrinkles: 'Морщины',
+                      darkCircles: 'Темные круги',
+                      pores: 'Поры',
+                      oiliness: 'Жирность',
+                      hydration: 'Увлажненность'
+                    };
+
+                    return (
+                      <div key={key} className={`p-3 rounded-lg ${getScoreBackground(metric.score)}`}>
+                        <div className="text-xs text-gray-600 mb-1">{metricLabels[key]}</div>
+                        <div className="font-medium text-sm mb-1">{metric.value}</div>
+                        <div className="flex items-center justify-between">
+                          <div className={`text-lg font-bold ${getScoreColor(metric.score)}`}>
+                            {metric.score}
+                          </div>
+                          <div className="text-xs text-gray-500">из 100</div>
+                        </div>
+                        {/* Круговой прогресс как у HautAI */}
+                        <div className="relative w-8 h-8 ml-auto">
+                          <svg className="w-8 h-8 transform -rotate-90" viewBox="0 0 32 32">
+                            <circle
+                              cx="16" cy="16" r="14"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              className="text-gray-200"
+                            />
+                            <circle
+                              cx="16" cy="16" r="14"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              className={getScoreColor(metric.score)}
+                              strokeDasharray={`${metric.score * 0.88} 88`}
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className={`text-xs font-bold ${getScoreColor(metric.score)}`}>
+                              {metric.score}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="space-y-2 text-sm">
-                <div><strong>Тип кожи:</strong> {analysisResult.skinType}</div>
-                <div><strong>Проблемы:</strong> {analysisResult.concerns?.join(", ") || "не обнаружены"}</div>
-                <div><strong>Уверенность:</strong> {Math.round((analysisResult.confidence || 0) * 100)}%</div>
+                <div><strong>Общая оценка:</strong> {Math.round((analysisResult.confidence || 0) * 100)}% точность</div>
+                <div><strong>Обнаружено проблем:</strong> {analysisResult.problemAreas?.length || 0} зон</div>
               </div>
             </div>
             
