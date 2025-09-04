@@ -17,29 +17,34 @@
     width: 200%;
     height: 200%;
     background: linear-gradient(45deg, 
-      rgba(219, 234, 254, 0.8) 0%,
-      rgba(243, 232, 255, 0.8) 25%,
-      rgba(254, 242, 242, 0.8) 50%,
-      rgba(240, 249, 255, 0.8) 75%,
-      rgba(219, 234, 254, 0.8) 100%
+      rgba(219, 234, 254, 0.9) 0%,
+      rgba(243, 232, 255, 0.9) 15%,
+      rgba(254, 242, 242, 0.9) 30%,
+      rgba(240, 249, 255, 0.9) 45%,
+      rgba(229, 231, 235, 0.9) 60%,
+      rgba(243, 232, 255, 0.9) 75%,
+      rgba(219, 234, 254, 0.9) 100%
     );
-    animation: liquidFlow 20s ease-in-out infinite;
-    z-index: -1;
+    background-size: 400% 400%;
+    animation: liquidFlow 25s ease-in-out infinite;
+    z-index: -2;
   }
   
   body::after {
     content: '';
     position: fixed;
-    top: -30%;
-    right: -30%;
-    width: 150%;
-    height: 150%;
+    top: -40%;
+    right: -40%;
+    width: 180%;
+    height: 180%;
     background: radial-gradient(ellipse at center,
-      rgba(167, 139, 250, 0.3) 0%,
-      rgba(196, 181, 253, 0.2) 30%,
-      transparent 70%
+      rgba(167, 139, 250, 0.4) 0%,
+      rgba(196, 181, 253, 0.3) 20%,
+      rgba(255, 182, 193, 0.2) 40%,
+      rgba(173, 216, 230, 0.2) 60%,
+      transparent 80%
     );
-    animation: liquidPulse 15s ease-in-out infinite reverse;
+    animation: liquidPulse 18s ease-in-out infinite reverse;
     z-index: -1;
   }
 }
@@ -64,36 +69,57 @@
 }
 
 @keyframes liquidFlow {
-  0%, 100% {
+  0% {
     transform: rotate(0deg) scale(1);
     filter: hue-rotate(0deg);
+    background-position: 0% 50%;
   }
   25% {
     transform: rotate(90deg) scale(1.1);
-    filter: hue-rotate(90deg);
+    filter: hue-rotate(60deg);
+    background-position: 100% 0%;
   }
   50% {
-    transform: rotate(180deg) scale(0.9);
-    filter: hue-rotate(180deg);
+    transform: rotate(180deg) scale(0.95);
+    filter: hue-rotate(120deg);
+    background-position: 100% 100%;
   }
   75% {
     transform: rotate(270deg) scale(1.05);
-    filter: hue-rotate(270deg);
+    filter: hue-rotate(180deg);
+    background-position: 0% 100%;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    filter: hue-rotate(240deg);
+    background-position: 0% 50%;
   }
 }
 
 @keyframes liquidPulse {
-  0%, 100% {
+  0% {
     transform: scale(1) rotate(0deg);
+    opacity: 0.4;
+  }
+  20% {
+    transform: scale(1.15) rotate(72deg);
+    opacity: 0.6;
+  }
+  40% {
+    transform: scale(0.9) rotate(144deg);
     opacity: 0.3;
   }
-  33% {
-    transform: scale(1.2) rotate(120deg);
+  60% {
+    transform: scale(1.08) rotate(216deg);
     opacity: 0.5;
   }
-  66% {
-    transform: scale(0.8) rotate(240deg);
-    opacity: 0.2;
+  80% {
+    transform: scale(0.95) rotate(288deg);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 0.4;
   }
 }
 
