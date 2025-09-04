@@ -126,7 +126,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             {step.image === 'skin-model' ? (
               <div className="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden relative shadow-2xl border-4 border-white">
                 <img 
-                  src="/onboarding-skin.jpg"
+                  src="/photo_2025-09-04 12.37.36.jpeg"
                   alt="Красивая кожа"
                   className="w-full h-full object-cover"
                   style={{
