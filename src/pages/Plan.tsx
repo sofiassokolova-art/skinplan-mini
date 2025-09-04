@@ -4,7 +4,6 @@ import { sendPlanToTelegram } from "../lib/telegramBot";
 
 const STORAGE_KEY = "skiniq.answers";
 const PREMIUM_KEY = "skiniq.premium";
-const CART_KEY = "skiniq.cart";
 
 interface Answers {
   name?: string;
@@ -43,16 +42,27 @@ function setPremium(value: boolean) {
 
 function addToCart(item: any) {
   try {
-    const cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
-    if (!cart.some((existing: any) => 
-      existing.name === item.name && 
-      existing.timeOfDay === item.timeOfDay && 
-      existing.step === item.step
-    )) {
-      cart.push(item);
-      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    const cartItems = JSON.parse(localStorage.getItem("skinplan_cart") || "[]");
+    const newItem = {
+      id: `${item.step}-${Date.now()}`,
+      name: item.name,
+      qty: 1,
+      feedback: ""
+    };
+    
+    // Проверяем, нет ли уже такого товара
+    const existingIndex = cartItems.findIndex((cartItem: any) => cartItem.name === item.name);
+    if (existingIndex >= 0) {
+      cartItems[existingIndex].qty += 1;
+    } else {
+      cartItems.push(newItem);
     }
-  } catch {}
+    
+    localStorage.setItem("skinplan_cart", JSON.stringify(cartItems));
+    console.log("Товар добавлен в корзину:", newItem.name);
+  } catch (error) {
+    console.error("Ошибка добавления в корзину:", error);
+  }
 }
 
 const Button = ({ children, onClick, variant = "primary", size = "md", disabled, ...props }: any) => {
@@ -322,9 +332,22 @@ export default function Plan() {
 
 
 
+
   const addAllToCart = () => {
-    [...plan.morning, ...plan.evening].forEach(addToCart);
-    alert("Все продукты добавлены в корзину.");
+    try {
+      [...plan.morning, ...plan.evening].forEach(addToCart);
+      console.log("Все продукты добавлены в корзину");
+      
+      // Показываем уведомление и переходим в корзину
+      setTimeout(() => {
+        navigate("/cart");
+      }, 500);
+      
+      alert("Все продукты добавлены в корзину!");
+    } catch (error) {
+      console.error("Ошибка добавления товаров:", error);
+      alert("Ошибка при добавлении товаров в корзину");
+    }
   };
 
   const sendToTelegram = async () => {
