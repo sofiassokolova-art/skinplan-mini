@@ -301,46 +301,47 @@ export default function Photo() {
                 console.log('Rendering area:', area); // Для отладки
                 
                 const colors = {
-                  'акне': 'border-red-600 bg-red-600/50',
-                  'жирность': 'border-yellow-600 bg-yellow-600/50', 
-                  'поры': 'border-orange-600 bg-orange-600/50',
-                  'покраснение': 'border-pink-600 bg-pink-600/50',
-                  'покраснения': 'border-pink-600 bg-pink-600/50',
-                  'сухость': 'border-blue-600 bg-blue-600/50',
-                  'пигментация': 'border-purple-600 bg-purple-600/50',
-                  'морщины': 'border-gray-600 bg-gray-600/50',
-                  'чувствительность': 'border-pink-500 bg-pink-500/50',
-                  'черные точки': 'border-black bg-black/60',
-                  'текстура': 'border-indigo-600 bg-indigo-600/50',
-                  'тон': 'border-amber-600 bg-amber-600/50',
-                  'упругость': 'border-emerald-600 bg-emerald-600/50'
+                  'акне': 'border-red-500 bg-red-500/70 shadow-lg',
+                  'жирность': 'border-yellow-500 bg-yellow-500/70 shadow-lg', 
+                  'поры': 'border-orange-500 bg-orange-500/70 shadow-lg',
+                  'покраснение': 'border-pink-500 bg-pink-500/70 shadow-lg',
+                  'покраснения': 'border-pink-500 bg-pink-500/70 shadow-lg',
+                  'сухость': 'border-blue-500 bg-blue-500/70 shadow-lg',
+                  'пигментация': 'border-purple-500 bg-purple-500/70 shadow-lg',
+                  'морщины': 'border-gray-500 bg-gray-500/70 shadow-lg',
+                  'чувствительность': 'border-pink-400 bg-pink-400/70 shadow-lg',
+                  'черные точки': 'border-black bg-black/80 shadow-lg',
+                  'текстура': 'border-indigo-500 bg-indigo-500/70 shadow-lg',
+                  'тон': 'border-amber-500 bg-amber-500/70 shadow-lg',
+                  'упругость': 'border-emerald-500 bg-emerald-500/70 shadow-lg'
                 };
                 
                 const colorClass = colors[area.type as keyof typeof colors] || 'border-red-600 bg-red-600/50';
                 
                 return (
                   <div key={idx}>
-                    {/* Цветная область - увеличенная и более заметная */}
+                    {/* Цветная область - яркая и заметная */}
                     <div
-                      className={`absolute border-4 rounded-lg cursor-pointer hover:opacity-70 transition-all duration-200 ${colorClass}`}
+                      className={`absolute border-3 rounded-xl cursor-pointer hover:scale-105 hover:shadow-xl transition-all duration-300 animate-pulse ${colorClass}`}
                       style={{
                         left: `${area.coordinates?.x || 0}%`,
                         top: `${area.coordinates?.y || 0}%`,
                         width: `${area.coordinates?.width || 15}%`,
                         height: `${area.coordinates?.height || 15}%`,
                         zIndex: 10,
-                        minWidth: '40px',
-                        minHeight: '40px'
+                        minWidth: '45px',
+                        minHeight: '45px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
                       }}
                       onClick={() => setSelectedProblem(selectedProblem?.type === area.type ? null : area)}
                     />
                     
-                    {/* Подпись проблемы - более заметная */}
+                    {/* Подпись проблемы - яркая и заметная */}
                     <div
-                      className="absolute text-sm font-bold px-3 py-1 rounded-full bg-white border-2 shadow-lg whitespace-nowrap pointer-events-none"
+                      className="absolute text-sm font-bold px-3 py-1.5 rounded-full bg-white border-3 shadow-xl whitespace-nowrap pointer-events-none animate-bounce"
                       style={{
-                        left: `${(area.coordinates?.x || 0) + (area.coordinates?.width || 15) + 2}%`,
-                        top: `${(area.coordinates?.y || 0) + 5}%`,
+                        left: `${(area.coordinates?.x || 0) + (area.coordinates?.width || 15) + 3}%`,
+                        top: `${(area.coordinates?.y || 0) + 8}%`,
                         zIndex: 20,
                         color: area.type === 'жирность' ? '#d97706' : 
                                area.type === 'акне' ? '#dc2626' :
@@ -352,10 +353,21 @@ export default function Photo() {
                                area.type === 'текстура' ? '#4f46e5' :
                                area.type === 'тон' ? '#d97706' :
                                area.type === 'упругость' ? '#059669' :
-                               area.type === 'покраснения' ? '#ec4899' : '#6366f1'
+                               area.type === 'покраснения' ? '#ec4899' : '#6366f1',
+                        borderColor: area.type === 'жирность' ? '#d97706' : 
+                                     area.type === 'акне' ? '#dc2626' :
+                                     area.type === 'поры' ? '#ea580c' :
+                                     area.type === 'пигментация' ? '#9333ea' :
+                                     area.type === 'сухость' ? '#2563eb' :
+                                     area.type === 'морщины' ? '#4b5563' :
+                                     area.type === 'черные точки' ? '#000000' :
+                                     area.type === 'текстура' ? '#4f46e5' :
+                                     area.type === 'тон' ? '#d97706' :
+                                     area.type === 'упругость' ? '#059669' :
+                                     area.type === 'покраснения' ? '#ec4899' : '#6366f1'
                       }}
                     >
-                      {area.type}
+                      {area.type.toUpperCase()}
                     </div>
                   </div>
                 );
@@ -367,74 +379,77 @@ export default function Photo() {
               
               {/* Профессиональные метрики как у HautAI */}
               {analysisResult.metrics && (
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  {Object.entries(analysisResult.metrics).map(([key, metric]: [string, any]) => {
-                    const getScoreColor = (score: number) => {
-                      if (score <= 30) return 'text-green-600';
-                      if (score <= 60) return 'text-yellow-600'; 
-                      return 'text-red-600';
-                    };
-                    
-                    const getScoreBackground = (score: number) => {
-                      if (score <= 30) return 'bg-green-100';
-                      if (score <= 60) return 'bg-yellow-100';
-                      return 'bg-red-100';
-                    };
+                <div className="space-y-3 mb-4">
+                  <h4 className="text-sm font-bold text-gray-700 mb-3">📊 Детальные показатели</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    {Object.entries(analysisResult.metrics).map(([key, metric]: [string, any]) => {
+                      const getScoreColor = (score: number) => {
+                        if (score <= 30) return '#10b981'; // green
+                        if (score <= 60) return '#f59e0b'; // yellow
+                        return '#ef4444'; // red
+                      };
+                      
+                      const getScoreLevel = (score: number) => {
+                        if (score <= 30) return 'Хорошо';
+                        if (score <= 60) return 'Умеренно';
+                        return 'Требует внимания';
+                      };
 
-                    const metricLabels: Record<string, string> = {
-                      skinType: 'Тип кожи',
-                      skinColor: 'Цвет кожи', 
-                      perceivedAge: 'Воспринимаемый возраст',
-                      eyeAge: 'Возраст глаз',
-                      redness: 'Покраснение',
-                      evenness: 'Однородность',
-                      acne: 'Акне',
-                      wrinkles: 'Морщины',
-                      darkCircles: 'Темные круги',
-                      pores: 'Поры',
-                      oiliness: 'Жирность',
-                      hydration: 'Увлажненность'
-                    };
+                      const metricLabels: Record<string, string> = {
+                        skinType: 'Тип кожи',
+                        skinColor: 'Цвет кожи', 
+                        perceivedAge: 'Воспринимаемый возраст',
+                        eyeAge: 'Возраст глаз',
+                        redness: 'Покраснение',
+                        evenness: 'Однородность',
+                        acne: 'Акне',
+                        wrinkles: 'Морщины',
+                        darkCircles: 'Темные круги',
+                        pores: 'Поры',
+                        oiliness: 'Жирность',
+                        hydration: 'Увлажненность'
+                      };
 
-                    return (
-                      <div key={key} className={`p-3 rounded-lg ${getScoreBackground(metric.score)}`}>
-                        <div className="text-xs text-gray-600 mb-1">{metricLabels[key]}</div>
-                        <div className="font-medium text-sm mb-1">{metric.value}</div>
-                        <div className="flex items-center justify-between">
-                          <div className={`text-lg font-bold ${getScoreColor(metric.score)}`}>
-                            {metric.score}
+                      return (
+                        <div key={key} className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="text-sm text-gray-600 mb-1">{metricLabels[key]}</div>
+                              <div className="font-semibold text-gray-900">{metric.value}</div>
+                              <div className="text-xs text-gray-500 mt-1">{getScoreLevel(metric.score)}</div>
+                            </div>
+                            
+                            {/* Круговой индикатор как у HautAI */}
+                            <div className="relative w-16 h-16">
+                              <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                                <circle
+                                  cx="32" cy="32" r="28"
+                                  fill="none"
+                                  stroke="#e5e7eb"
+                                  strokeWidth="6"
+                                />
+                                <circle
+                                  cx="32" cy="32" r="28"
+                                  fill="none"
+                                  stroke={getScoreColor(metric.score)}
+                                  strokeWidth="6"
+                                  strokeLinecap="round"
+                                  strokeDasharray={`${metric.score * 1.76} 176`}
+                                  className="transition-all duration-1000"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-lg font-bold" style={{color: getScoreColor(metric.score)}}>
+                                  {metric.score}
+                                </span>
+                                <span className="text-xs text-gray-500">из 100</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500">из 100</div>
                         </div>
-                        {/* Круговой прогресс как у HautAI */}
-                        <div className="relative w-8 h-8 ml-auto">
-                          <svg className="w-8 h-8 transform -rotate-90" viewBox="0 0 32 32">
-                            <circle
-                              cx="16" cy="16" r="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              className="text-gray-200"
-                            />
-                            <circle
-                              cx="16" cy="16" r="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                              className={getScoreColor(metric.score)}
-                              strokeDasharray={`${metric.score * 0.88} 88`}
-                            />
-                          </svg>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className={`text-xs font-bold ${getScoreColor(metric.score)}`}>
-                              {metric.score}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
