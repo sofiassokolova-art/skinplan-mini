@@ -300,41 +300,72 @@ export default function Photo() {
               {analysisResult?.problemAreas?.map((area: any, idx: number) => {
                 console.log('Rendering area:', area); // Для отладки
                 
-                const colors = {
-                  'акне': 'border-red-500 bg-red-500/70 shadow-lg',
-                  'жирность': 'border-yellow-500 bg-yellow-500/70 shadow-lg', 
-                  'поры': 'border-orange-500 bg-orange-500/70 shadow-lg',
-                  'покраснение': 'border-pink-500 bg-pink-500/70 shadow-lg',
-                  'покраснения': 'border-pink-500 bg-pink-500/70 shadow-lg',
-                  'сухость': 'border-blue-500 bg-blue-500/70 shadow-lg',
-                  'пигментация': 'border-purple-500 bg-purple-500/70 shadow-lg',
-                  'морщины': 'border-gray-500 bg-gray-500/70 shadow-lg',
-                  'чувствительность': 'border-pink-400 bg-pink-400/70 shadow-lg',
-                  'черные точки': 'border-black bg-black/80 shadow-lg',
-                  'текстура': 'border-indigo-500 bg-indigo-500/70 shadow-lg',
-                  'тон': 'border-amber-500 bg-amber-500/70 shadow-lg',
-                  'упругость': 'border-emerald-500 bg-emerald-500/70 shadow-lg'
-                };
-                
-                const colorClass = colors[area.type as keyof typeof colors] || 'border-red-600 bg-red-600/50';
                 
                 return (
                   <div key={idx}>
-                    {/* Цветная область - яркая и заметная */}
+                    {/* Цветная область как на референсе - органичная форма */}
                     <div
-                      className={`absolute border-3 rounded-xl cursor-pointer hover:scale-105 hover:shadow-xl transition-all duration-300 animate-pulse ${colorClass}`}
+                      className="absolute cursor-pointer hover:scale-110 transition-all duration-300"
                       style={{
                         left: `${area.coordinates?.x || 0}%`,
                         top: `${area.coordinates?.y || 0}%`,
                         width: `${area.coordinates?.width || 15}%`,
                         height: `${area.coordinates?.height || 15}%`,
                         zIndex: 10,
-                        minWidth: '45px',
-                        minHeight: '45px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)'
+                        minWidth: '60px',
+                        minHeight: '40px'
                       }}
                       onClick={() => setSelectedProblem(selectedProblem?.type === area.type ? null : area)}
-                    />
+                    >
+                      {/* Органичная форма зоны */}
+                      <div
+                        className="w-full h-full relative"
+                        style={{
+                          background: area.type === 'жирность' ? 'rgba(234, 179, 8, 0.8)' : 
+                                     area.type === 'акне' ? 'rgba(239, 68, 68, 0.8)' :
+                                     area.type === 'поры' ? 'rgba(249, 115, 22, 0.8)' :
+                                     area.type === 'пигментация' ? 'rgba(147, 51, 234, 0.8)' :
+                                     area.type === 'сухость' ? 'rgba(59, 130, 246, 0.8)' :
+                                     area.type === 'морщины' ? 'rgba(107, 114, 128, 0.8)' :
+                                     area.type === 'черные точки' ? 'rgba(0, 0, 0, 0.9)' :
+                                     area.type === 'текстура' ? 'rgba(79, 70, 229, 0.8)' :
+                                     area.type === 'тон' ? 'rgba(217, 119, 6, 0.8)' :
+                                     area.type === 'упругость' ? 'rgba(5, 150, 105, 0.8)' :
+                                     area.type === 'покраснения' ? 'rgba(236, 72, 153, 0.8)' : 'rgba(99, 102, 241, 0.8)',
+                          borderRadius: area.type === 'жирность' ? '60% 40% 70% 30%' :
+                                       area.type === 'акне' ? '50% 60% 40% 70%' :
+                                       area.type === 'поры' ? '70% 30% 60% 40%' :
+                                       area.type === 'пигментация' ? '40% 70% 50% 60%' :
+                                       area.type === 'сухость' ? '65% 35% 45% 75%' :
+                                       area.type === 'морщины' ? '80% 20% 30% 80%' :
+                                       area.type === 'черные точки' ? '50% 50% 70% 30%' :
+                                       '55% 45% 65% 35%',
+                          border: `3px solid ${
+                            area.type === 'жирность' ? '#eab308' : 
+                            area.type === 'акне' ? '#ef4444' :
+                            area.type === 'поры' ? '#f97316' :
+                            area.type === 'пигментация' ? '#9333ea' :
+                            area.type === 'сухость' ? '#3b82f6' :
+                            area.type === 'морщины' ? '#6b7280' :
+                            area.type === 'черные точки' ? '#000000' :
+                            area.type === 'текстура' ? '#4f46e5' :
+                            area.type === 'тон' ? '#d97706' :
+                            area.type === 'упругость' ? '#059669' :
+                            area.type === 'покраснения' ? '#ec4899' : '#6366f1'
+                          }`,
+                          filter: 'blur(1px)',
+                          boxShadow: `0 0 20px ${
+                            area.type === 'жирность' ? 'rgba(234, 179, 8, 0.6)' : 
+                            area.type === 'акне' ? 'rgba(239, 68, 68, 0.6)' :
+                            area.type === 'поры' ? 'rgba(249, 115, 22, 0.6)' :
+                            area.type === 'пигментация' ? 'rgba(147, 51, 234, 0.6)' :
+                            area.type === 'сухость' ? 'rgba(59, 130, 246, 0.6)' :
+                            area.type === 'морщины' ? 'rgba(107, 114, 128, 0.6)' :
+                            'rgba(99, 102, 241, 0.6)'
+                          }`
+                        }}
+                      />
+                    </div>
                     
                     {/* Подпись проблемы - яркая и заметная */}
                     <div
