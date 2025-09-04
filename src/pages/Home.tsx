@@ -1,8 +1,24 @@
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 
+// Функция проверки премиум доступа (из Plan.tsx)
+function isPremium(): boolean {
+  try {
+    return localStorage.getItem("skiniq.premium") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function setPremium(value: boolean) {
+  try {
+    localStorage.setItem("skiniq.premium", value ? "true" : "false");
+  } catch {}
+}
+
 export default function Home() {
   const [activeTime, setActiveTime] = useState<'morning' | 'evening'>('morning');
+  const [hasPremium, setHasPremium] = useState(isPremium());
   
   const userName = useMemo(() => {
     try {
@@ -95,7 +111,7 @@ export default function Home() {
       )}
 
       {hasCompletedQuiz && plan && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm relative">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-gray-900">ТВОЙ УХОД СЕГОДНЯ</h2>
             <div className="flex gap-2">
@@ -122,41 +138,92 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            {(activeTime === 'morning' ? plan.morning : plan.evening)?.slice(0, 4).map((step: any, idx: number) => {
-              const getStepStatus = (stepType: string, timeOfDay: string) => {
-                const statuses = {
-                  'cleanser': timeOfDay === 'morning' ? 'НА ВЛАЖНУЮ КОЖУ' : 'ДВОЙНОЕ ОЧИЩЕНИЕ',
-                  'hydrator': timeOfDay === 'morning' ? 'ПОСЛЕ ОЧИЩЕНИЯ' : 'НА ВЛАЖНУЮ КОЖУ', 
-                  'treatment': timeOfDay === 'morning' ? 'ПЕРЕД УВЛАЖНЕНИЕМ' : 'НА СУХУЮ КОЖУ',
-                  'moisturizer': timeOfDay === 'morning' ? 'ПЕРЕД SPF' : 'ЗАВЕРШАЮЩИЙ ЭТАП',
-                  'spf': 'ЗА 15 МИН ДО ВЫХОДА'
+          {hasPremium ? (
+            <div className="space-y-4">
+              {(activeTime === 'morning' ? plan.morning : plan.evening)?.slice(0, 4).map((step: any, idx: number) => {
+                const getStepStatus = (stepType: string, timeOfDay: string) => {
+                  const statuses = {
+                    'cleanser': timeOfDay === 'morning' ? 'НА ВЛАЖНУЮ КОЖУ' : 'ДВОЙНОЕ ОЧИЩЕНИЕ',
+                    'hydrator': timeOfDay === 'morning' ? 'ПОСЛЕ ОЧИЩЕНИЯ' : 'НА ВЛАЖНУЮ КОЖУ', 
+                    'treatment': timeOfDay === 'morning' ? 'ПЕРЕД УВЛАЖНЕНИЕМ' : 'НА СУХУЮ КОЖУ',
+                    'moisturizer': timeOfDay === 'morning' ? 'ПЕРЕД SPF' : 'ЗАВЕРШАЮЩИЙ ЭТАП',
+                    'spf': 'ЗА 15 МИН ДО ВЫХОДА'
+                  };
+                  return statuses[stepType as keyof typeof statuses] || 'ПО ИНСТРУКЦИИ';
                 };
-                return statuses[stepType as keyof typeof statuses] || 'ПО ИНСТРУКЦИИ';
-              };
 
-              return (
-                <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                return (
+                  <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                        <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">{step.name.split('(')[0].trim()}</div>
+                        <div className="text-xs text-gray-500 uppercase tracking-wide">
+                          {getStepStatus(step.step, activeTime)}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium text-gray-900 text-sm">{step.name.split('(')[0].trim()}</div>
-                      <div className="text-xs text-gray-500 uppercase tracking-wide">
-                        {getStepStatus(step.step, activeTime)}
+                    <div className="text-right">
+                      <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-gray-600">✓</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="text-xs text-gray-600">✓</span>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="relative">
+              {/* Заблюренный контент */}
+              <div className="filter blur-sm pointer-events-none">
+                <div className="space-y-4">
+                  {[1, 2, 3, 4].map((idx) => (
+                    <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 text-sm">Средство {idx}</div>
+                          <div className="text-xs text-gray-500 uppercase tracking-wide">ИНСТРУКЦИЯ</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="text-xs text-gray-600">✓</span>
+                        </div>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Оверлей с призывом к покупке */}
+              <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center rounded-xl">
+                <div className="text-center p-4">
+                  <div className="text-3xl mb-2">🔒</div>
+                  <div className="font-bold text-gray-900 mb-2">Детальная рутина</div>
+                  <div className="text-sm text-gray-600 mb-4">
+                    Пошаговые инструкции и точное время применения
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPremium(true);
+                      setHasPremium(true);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-semibold hover:bg-indigo-700 transition"
+                  >
+                    Разблокировать за 199₽
+                  </button>
+                  <div className="text-xs text-gray-500 mt-2">
+                    или 7 дней бесплатно
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+          )}
           
           <div className="mt-6 text-center">
             <Link to="/plan">
