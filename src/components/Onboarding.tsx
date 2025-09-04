@@ -124,8 +124,23 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           {/* Иконка и изображение */}
           <div className="text-center mb-6">
             {step.image === 'skin-model' ? (
-              <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden bg-gradient-to-br from-rose-100 to-orange-100 flex items-center justify-center">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-200 via-rose-200 to-orange-200 shadow-inner"></div>
+              <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden relative bg-gradient-to-br from-amber-50 to-rose-50 shadow-lg border-4 border-white">
+                <div 
+                  className="w-full h-full rounded-full"
+                  style={{
+                    background: `
+                      radial-gradient(circle at 30% 20%, rgba(255, 220, 177, 0.9) 0%, transparent 50%),
+                      radial-gradient(circle at 70% 30%, rgba(255, 200, 160, 0.8) 0%, transparent 40%),
+                      radial-gradient(circle at 50% 70%, rgba(255, 185, 140, 0.7) 0%, transparent 45%),
+                      linear-gradient(135deg, #FFE4C4 0%, #FFDAB9 30%, #F5C6A0 60%, #E6A875 100%)
+                    `,
+                    boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <div className="absolute top-2 left-3 w-1 h-1 bg-white/30 rounded-full"></div>
+                  <div className="absolute top-4 right-4 w-0.5 h-0.5 bg-white/20 rounded-full"></div>
+                  <div className="absolute bottom-3 left-1/2 w-1.5 h-0.5 bg-rose-200/40 rounded-full"></div>
+                </div>
               </div>
             ) : (
               <div className="flex justify-center items-center gap-4 mb-4">
