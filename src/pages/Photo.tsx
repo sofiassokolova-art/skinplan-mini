@@ -134,10 +134,15 @@ export default function Photo() {
   };
 
   const analyze = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      console.log("No file selected");
+      return;
+    }
+    console.log("Starting analysis...");
     setIsAnalyzing(true);
     try {
       // имитация расширенного анализа
+      console.log("Waiting for analysis...");
       await new Promise((r) => setTimeout(r, 2000));
 
       // Генерируем более реалистичные результаты анализа
@@ -207,8 +212,13 @@ export default function Photo() {
       }
 
       // показываем результат на странице
+      console.log("Analysis completed, setting result:", result);
       setAnalysisResult(result);
+    } catch (error) {
+      console.error("Analysis error:", error);
+      setError("Ошибка при анализе. Попробуйте ещё раз.");
     } finally {
+      console.log("Setting isAnalyzing to false");
       setIsAnalyzing(false);
     }
   };
@@ -339,7 +349,10 @@ export default function Photo() {
             <button
               type="button"
               disabled={!selectedFile || !!error || isAnalyzing}
-              onClick={analyze}
+              onClick={() => {
+                console.log("Analyze button clicked", { selectedFile: !!selectedFile, error, isAnalyzing });
+                analyze();
+              }}
               className="inline-flex items-center justify-center rounded-xl transition focus:outline-none disabled:opacity-50 disabled:pointer-events-none px-4 py-2 border border-black hover:bg-black hover:text-white"
             >
               Отправить на анализ
