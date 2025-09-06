@@ -55,6 +55,7 @@ export default function Photo() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<Analysis | null>(null);
+  const [showDetailedMetrics, setShowDetailedMetrics] = useState(false);
 
   // По умолчанию историю сохраняем
   const saveHistoryEnabled = true;
@@ -129,6 +130,7 @@ export default function Photo() {
     setPreview(null);
     setIsAnalyzing(false);
     setAnalysisResult(null);
+    setShowDetailedMetrics(false);
   };
 
   const analyze = async () => {
@@ -420,7 +422,11 @@ export default function Photo() {
                   <div className="text-sm text-gray-600 mb-3">
                     {analysisResult.concerns.includes("Воспаления") ? "умеренная форма" : "лёгкая форма"}
                   </div>
-                  <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700">
+                  <button 
+                    type="button"
+                    onClick={() => alert('Детальная информация об акне будет доступна в следующих версиях')}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
                     Показать больше
                   </button>
                 </div>
@@ -445,7 +451,11 @@ export default function Photo() {
                   <div className="text-sm text-gray-600 mb-3">
                     {analysisResult.texture.smoothness > 7 ? "Хорошо" : "Плохо"}
                   </div>
-                  <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700">
+                  <button 
+                    type="button"
+                    onClick={() => alert('Детальная информация о прозрачности будет доступна в следующих версиях')}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
                     Показать
                   </button>
                 </div>
@@ -453,6 +463,7 @@ export default function Photo() {
             </div>
 
             {/* Детальные метрики с прогресс-барами */}
+            {showDetailedMetrics && (
             <div className="space-y-4">
               <h4 className="text-lg font-semibold text-gray-900">Детальные показатели</h4>
               
@@ -528,6 +539,7 @@ export default function Photo() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Рекомендации */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
@@ -544,8 +556,17 @@ export default function Photo() {
                     Мягко очистите кожу от макияжа и поверхностных загрязнений
                   </div>
                 </div>
-                <button className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button 
+                  type="button"
+                  onClick={() => setShowDetailedMetrics(!showDetailedMetrics)}
+                  className="w-full bg-gray-900 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
+                >
+                  <svg 
+                    className={`w-4 h-4 transition-transform ${showDetailedMetrics ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                   РЕКОМЕНДАЦИИ ДЛЯ ВАС
