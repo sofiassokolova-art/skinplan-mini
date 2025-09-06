@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { sendPlanToTelegram } from "../lib/telegramBot";
 
 const STORAGE_KEY = "skiniq.answers";
 const PREMIUM_KEY = "skiniq.premium";
@@ -360,25 +359,8 @@ export default function Plan() {
 
   const sendToTelegram = async () => {
     try {
-      const planData = {
-        userName: answers.name || "Пользователь",
-        skinType: analysis.skinType,
-        sensitivity: analysis.sensitivity,
-        oiliness: analysis.oiliness,
-        primaryGoal: analysis.primaryGoal,
-        concerns: analysis.concerns || [],
-        morningSteps: plan.morning,
-        eveningSteps: plan.evening,
-        schedule: schedule
-      };
-
-      const result = await sendPlanToTelegram(planData);
-      
-      if (result.success) {
-        alert("📋 План отправлен в Telegram как PDF-документ!");
-      } else {
-        alert(`Ошибка отправки: ${result.error || "Неизвестная ошибка"}`);
-      }
+      // Временно отключено
+      alert("📋 Функция отправки в Telegram временно недоступна");
     } catch (error) {
       console.error('Error sending to Telegram:', error);
       alert("Ошибка отправки. Проверьте подключение к интернету.");
