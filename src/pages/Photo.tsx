@@ -134,68 +134,134 @@ export default function Photo() {
   };
 
   const analyze = async () => {
-    if (!selectedFile) {
-      console.log("No file selected");
-      return;
-    }
-    console.log("Starting analysis...");
+    if (!selectedFile) return;
     setIsAnalyzing(true);
     try {
-      // имитация расширенного анализа
-      console.log("Waiting for analysis...");
+      // Имитация ИИ анализа с более реалистичными и связанными результатами
       await new Promise((r) => setTimeout(r, 2000));
-
-      // Генерируем более реалистичные результаты анализа
-      const skinTypes = ["Сухая", "Нормальная", "Комбинированная", "Жирная"];
-      const oilinessLevels: ("низкая" | "средняя" | "высокая")[] = ["низкая", "средняя", "высокая"];
-      const poreSizes: ("мелкие" | "средние" | "расширенные")[] = ["мелкие", "средние", "расширенные"];
-      const tones: ("светлый" | "средний" | "тёмный")[] = ["светлый", "средний", "тёмный"];
       
-      const possibleConcerns = [
-        "Чёрные точки", "Белые угри", "Воспаления", "Постакне", 
-        "Пигментные пятна", "Сухость", "Шелушение", "Покраснение",
-        "Расширенные поры", "Неровная текстура", "Тусклость", "Морщины"
-      ];
-
-      // Случайный, но логически связанный анализ
-      const skinType = skinTypes[Math.floor(Math.random() * skinTypes.length)];
-      const oiliness = oilinessLevels[Math.floor(Math.random() * oilinessLevels.length)];
-      const sensitivity = Math.floor(Math.random() * 8) + 1; // 1-8
-      const hydration = Math.floor(Math.random() * 8) + 2; // 2-9
+      // Базовые параметры для более реалистичного анализа
       
-      // Генерируем 2-4 связанные проблемы
-      const numConcerns = Math.floor(Math.random() * 3) + 2;
-      const concerns = possibleConcerns
-        .sort(() => 0.5 - Math.random())
-        .slice(0, numConcerns);
+      // Расширенный список проблем с категориями
+      const concernCategories = {
+        acne: ["Чёрные точки", "Белые угри", "Воспаления", "Постакне", "Кистозные угри"],
+        pigmentation: ["Пигментные пятна", "Мелазма", "Постакне", "Веснушки", "Неровный тон"],
+        aging: ["Морщины", "Потеря упругости", "Глубокие складки", "Обвисание"],
+        texture: ["Расширенные поры", "Неровная текстура", "Шероховатость", "Бугристость"],
+        sensitivity: ["Покраснение", "Раздражение", "Шелушение", "Жжение", "Зуд"],
+        hydration: ["Сухость", "Обезвоженность", "Стянутость", "Тусклость"]
+      };
 
-      // Логически связанные параметры
+      // Генерируем логически связанный профиль кожи
+      const baseProfile = Math.random();
+      let skinType, oiliness, sensitivity, hydration, concerns;
+      
+      if (baseProfile < 0.25) {
+        // Сухая кожа
+        skinType = "Сухая";
+        oiliness = "низкая";
+        sensitivity = Math.floor(Math.random() * 4) + 6; // 6-9 (высокая чувствительность)
+        hydration = Math.floor(Math.random() * 3) + 2; // 2-4 (низкая увлажнённость)
+        concerns = [
+          ...concernCategories.hydration.slice(0, 2),
+          ...concernCategories.sensitivity.slice(0, 2),
+          ...concernCategories.aging.slice(0, 1)
+        ];
+      } else if (baseProfile < 0.5) {
+        // Жирная кожа
+        skinType = "Жирная";
+        oiliness = "высокая";
+        sensitivity = Math.floor(Math.random() * 4) + 2; // 2-5 (низкая чувствительность)
+        hydration = Math.floor(Math.random() * 3) + 6; // 6-8 (хорошая увлажнённость)
+        concerns = [
+          ...concernCategories.acne.slice(0, 3),
+          ...concernCategories.texture.slice(0, 2)
+        ];
+      } else if (baseProfile < 0.75) {
+        // Комбинированная кожа
+        skinType = "Комбинированная";
+        oiliness = "средняя";
+        sensitivity = Math.floor(Math.random() * 4) + 3; // 3-6 (средняя чувствительность)
+        hydration = Math.floor(Math.random() * 4) + 4; // 4-7 (средняя увлажнённость)
+        concerns = [
+          ...concernCategories.acne.slice(0, 2),
+          ...concernCategories.texture.slice(0, 1),
+          ...concernCategories.pigmentation.slice(0, 1)
+        ];
+      } else {
+        // Нормальная кожа
+        skinType = "Нормальная";
+        oiliness = "средняя";
+        sensitivity = Math.floor(Math.random() * 3) + 2; // 2-4 (низкая чувствительность)
+        hydration = Math.floor(Math.random() * 3) + 6; // 6-8 (хорошая увлажнённость)
+        concerns = [
+          ...concernCategories.aging.slice(0, 1),
+          ...concernCategories.pigmentation.slice(0, 1)
+        ];
+      }
+
+      // Логически связанные параметры на основе профиля кожи
       const baseAge = 25;
       const ageVariation = Math.floor(Math.random() * 15) - 7; // -7 to +7
       const perceivedAge = Math.max(18, baseAge + ageVariation);
       const eyeAge = Math.max(16, perceivedAge + Math.floor(Math.random() * 6) - 3);
       
-      const smoothness = Math.floor(Math.random() * 6) + 4; // 4-9
-      const elasticity = Math.floor(Math.random() * 6) + 4; // 4-9
-      const firmness = Math.floor(Math.random() * 6) + 4; // 4-9
+      // Текстура зависит от типа кожи и возраста
+      let smoothness, elasticity, firmness, poreSize;
+      
+      if (skinType === "Жирная") {
+        smoothness = Math.floor(Math.random() * 3) + 6; // 6-8 (гладкая)
+        elasticity = Math.floor(Math.random() * 3) + 6; // 6-8 (хорошая)
+        firmness = Math.floor(Math.random() * 3) + 6; // 6-8 (хорошая)
+        poreSize = Math.random() > 0.5 ? "расширенные" : "средние";
+      } else if (skinType === "Сухая") {
+        smoothness = Math.floor(Math.random() * 3) + 3; // 3-5 (шероховатая)
+        elasticity = Math.floor(Math.random() * 3) + 3; // 3-5 (сниженная)
+        firmness = Math.floor(Math.random() * 3) + 3; // 3-5 (сниженная)
+        poreSize = "мелкие";
+      } else if (skinType === "Комбинированная") {
+        smoothness = Math.floor(Math.random() * 4) + 4; // 4-7 (смешанная)
+        elasticity = Math.floor(Math.random() * 4) + 4; // 4-7 (смешанная)
+        firmness = Math.floor(Math.random() * 4) + 4; // 4-7 (смешанная)
+        poreSize = Math.random() > 0.3 ? "средние" : "расширенные";
+      } else {
+        smoothness = Math.floor(Math.random() * 3) + 6; // 6-8 (хорошая)
+        elasticity = Math.floor(Math.random() * 3) + 6; // 6-8 (хорошая)
+        firmness = Math.floor(Math.random() * 3) + 6; // 6-8 (хорошая)
+        poreSize = "мелкие";
+      }
+      
+      // Возрастные корректировки
+      if (perceivedAge > 30) {
+        elasticity = Math.max(3, elasticity - 2);
+        firmness = Math.max(3, firmness - 2);
+        smoothness = Math.max(4, smoothness - 1);
+      }
+      
+      // Пигментация зависит от возраста и типа кожи
+      const hasSpots = perceivedAge > 25 && Math.random() > 0.4;
+      const hasPostAcne = concerns.some(c => c.includes("Постакне") || c.includes("акне"));
+      const overallTone = perceivedAge > 30 ? 
+        (Math.random() > 0.5 ? "средний" : "тёмный") : 
+        (Math.random() > 0.3 ? "светлый" : "средний");
       
       const result: Analysis = {
         skinType,
-        oiliness,
+        oiliness: oiliness as "низкая" | "средняя" | "высокая",
         sensitivity,
         concerns,
         texture: {
           smoothness,
-          poreSize: poreSizes[Math.floor(Math.random() * poreSizes.length)],
-          evenness: Math.floor(Math.random() * 6) + 3, // 3-8
+          poreSize: poreSize as "мелкие" | "средние" | "расширенные",
+          evenness: Math.floor(Math.random() * 4) + Math.max(4, smoothness - 2), // связан с гладкостью
         },
         pigmentation: {
-          spots: Math.random() > 0.6,
-          postAcne: concerns.includes("Постакне"),
-          overallTone: tones[Math.floor(Math.random() * tones.length)],
+          spots: hasSpots,
+          postAcne: hasPostAcne,
+          overallTone: overallTone as "светлый" | "средний" | "тёмный",
         },
         aging: {
-          fineLines: perceivedAge > 28 || Math.random() > 0.7,
+          fineLines: perceivedAge > 28 || (skinType === "Сухая" && perceivedAge > 25),
           elasticity,
           firmness,
         },
@@ -212,13 +278,11 @@ export default function Photo() {
       }
 
       // показываем результат на странице
-      console.log("Analysis completed, setting result:", result);
       setAnalysisResult(result);
     } catch (error) {
       console.error("Analysis error:", error);
       setError("Ошибка при анализе. Попробуйте ещё раз.");
     } finally {
-      console.log("Setting isAnalyzing to false");
       setIsAnalyzing(false);
     }
   };
@@ -349,10 +413,7 @@ export default function Photo() {
             <button
               type="button"
               disabled={!selectedFile || !!error || isAnalyzing}
-              onClick={() => {
-                console.log("Analyze button clicked", { selectedFile: !!selectedFile, error, isAnalyzing });
-                analyze();
-              }}
+              onClick={analyze}
               className="inline-flex items-center justify-center rounded-xl transition focus:outline-none disabled:opacity-50 disabled:pointer-events-none px-4 py-2 border border-black hover:bg-black hover:text-white"
             >
               Отправить на анализ
@@ -414,26 +475,45 @@ export default function Photo() {
               </div>
             </div>
 
-            {/* Визуальные метрики с изображениями */}
+            {/* Визуальные метрики с изображениями - 4 карточки */}
             <div className="grid grid-cols-2 gap-4">
-              {/* Левая карточка - Акне */}
+              {/* Карточка 1 - Акне */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="relative">
                   {preview && (
-                    <img
-                      src={preview}
-                      alt="Анализ акне"
-                      className="w-full h-48 object-cover"
-                    />
+                    <div className="relative">
+                      <img
+                        src={preview}
+                        alt="Анализ акне"
+                        className="w-full h-48 object-cover"
+                      />
+                      {/* Области проблем на изображении */}
+                      {analysisResult.concerns.some(c => c.includes("Воспаления") || c.includes("Кистозные")) && (
+                        <>
+                          <div className="absolute top-8 left-8 w-6 h-6 bg-red-500 rounded-full opacity-70 animate-pulse"></div>
+                          <div className="absolute top-12 right-12 w-4 h-4 bg-red-500 rounded-full opacity-70 animate-pulse"></div>
+                          <div className="absolute bottom-16 left-16 w-5 h-5 bg-red-500 rounded-full opacity-70 animate-pulse"></div>
+                        </>
+                      )}
+                      {analysisResult.concerns.some(c => c.includes("Чёрные") || c.includes("Белые")) && (
+                        <>
+                          <div className="absolute top-10 right-8 w-3 h-3 bg-gray-600 rounded-full opacity-80"></div>
+                          <div className="absolute bottom-20 right-16 w-2 h-2 bg-gray-600 rounded-full opacity-80"></div>
+                        </>
+                      )}
+                    </div>
                   )}
-                  <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+                  <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
                     Акне
                   </div>
                 </div>
                 <div className="p-4">
                   <div className="text-lg font-semibold text-gray-900">Акне</div>
                   <div className="text-sm text-gray-600 mb-3">
-                    {analysisResult.concerns.includes("Воспаления") ? "умеренная форма" : "лёгкая форма"}
+                    {analysisResult.concerns.some(c => c.includes("Воспаления") || c.includes("Кистозные")) ? 
+                      "умеренная форма" : 
+                      analysisResult.concerns.some(c => c.includes("Чёрные") || c.includes("Белые")) ?
+                      "лёгкая форма" : "отсутствует"}
                   </div>
                   <button 
                     type="button"
@@ -445,28 +525,131 @@ export default function Photo() {
                 </div>
               </div>
 
-              {/* Правая карточка - Прозрачность */}
+              {/* Карточка 2 - Прозрачность */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="relative">
                   {preview && (
-                    <img
-                      src={preview}
-                      alt="Анализ прозрачности"
-                      className="w-full h-48 object-cover"
-                    />
+                    <div className="relative">
+                      <img
+                        src={preview}
+                        alt="Анализ прозрачности"
+                        className="w-full h-48 object-cover"
+                      />
+                      {/* Области проблем с прозрачностью */}
+                      {analysisResult.texture.smoothness < 6 && (
+                        <>
+                          <div className="absolute top-6 left-6 w-8 h-8 bg-yellow-400 rounded-full opacity-50"></div>
+                          <div className="absolute bottom-12 right-8 w-6 h-6 bg-yellow-400 rounded-full opacity-50"></div>
+                        </>
+                      )}
+                    </div>
                   )}
-                  <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+                  <div className="absolute top-2 right-2 bg-yellow-600 text-white px-2 py-1 rounded text-xs font-medium">
                     Прозрачность
                   </div>
                 </div>
                 <div className="p-4">
                   <div className="text-lg font-semibold text-gray-900">Прозрачность</div>
                   <div className="text-sm text-gray-600 mb-3">
-                    {analysisResult.texture.smoothness > 7 ? "Хорошо" : "Плохо"}
+                    {analysisResult.texture.smoothness > 7 ? "Отличная" : 
+                     analysisResult.texture.smoothness > 5 ? "Хорошая" : 
+                     analysisResult.texture.smoothness > 3 ? "Средняя" : "Требует улучшения"}
                   </div>
                   <button 
                     type="button"
                     onClick={() => alert('Детальная информация о прозрачности будет доступна в следующих версиях')}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Показать
+                  </button>
+                </div>
+              </div>
+
+              {/* Карточка 3 - Пигментация */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="relative">
+                  {preview && (
+                    <div className="relative">
+                      <img
+                        src={preview}
+                        alt="Анализ пигментации"
+                        className="w-full h-48 object-cover"
+                      />
+                      {/* Области пигментации */}
+                      {analysisResult.pigmentation.spots && (
+                        <>
+                          <div className="absolute top-10 left-12 w-4 h-4 bg-brown-500 rounded-full opacity-70"></div>
+                          <div className="absolute bottom-14 right-10 w-3 h-3 bg-brown-500 rounded-full opacity-70"></div>
+                          <div className="absolute top-16 right-6 w-2 h-2 bg-brown-500 rounded-full opacity-70"></div>
+                        </>
+                      )}
+                      {analysisResult.pigmentation.postAcne && (
+                        <>
+                          <div className="absolute top-8 right-14 w-5 h-5 bg-purple-500 rounded-full opacity-60"></div>
+                          <div className="absolute bottom-18 left-8 w-4 h-4 bg-purple-500 rounded-full opacity-60"></div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <div className="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded text-xs font-medium">
+                    Пигментация
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="text-lg font-semibold text-gray-900">Пигментация</div>
+                  <div className="text-sm text-gray-600 mb-3">
+                    {analysisResult.pigmentation.spots ? "Пятна обнаружены" : 
+                     analysisResult.pigmentation.postAcne ? "Постакне" : "Равномерный тон"}
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => alert('Детальная информация о пигментации будет доступна в следующих версиях')}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Показать
+                  </button>
+                </div>
+              </div>
+
+              {/* Карточка 4 - Возрастные изменения */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="relative">
+                  {preview && (
+                    <div className="relative">
+                      <img
+                        src={preview}
+                        alt="Анализ возрастных изменений"
+                        className="w-full h-48 object-cover"
+                      />
+                      {/* Области возрастных изменений */}
+                      {analysisResult.aging.fineLines && (
+                        <>
+                          <div className="absolute top-6 left-8 w-12 h-1 bg-orange-400 opacity-70"></div>
+                          <div className="absolute top-8 right-6 w-8 h-1 bg-orange-400 opacity-70"></div>
+                          <div className="absolute bottom-16 left-10 w-10 h-1 bg-orange-400 opacity-70"></div>
+                        </>
+                      )}
+                      {analysisResult.aging.elasticity < 6 && (
+                        <>
+                          <div className="absolute top-12 left-12 w-6 h-6 bg-pink-400 rounded-full opacity-50"></div>
+                          <div className="absolute bottom-14 right-12 w-5 h-5 bg-pink-400 rounded-full opacity-50"></div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <div className="absolute top-2 right-2 bg-orange-600 text-white px-2 py-1 rounded text-xs font-medium">
+                    Возраст
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="text-lg font-semibold text-gray-900">Возрастные изменения</div>
+                  <div className="text-sm text-gray-600 mb-3">
+                    {analysisResult.aging.fineLines ? "Морщинки обнаружены" : 
+                     analysisResult.aging.elasticity < 6 ? "Сниженная упругость" : "Хорошее состояние"}
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => alert('Детальная информация о возрастных изменениях будет доступна в следующих версиях')}
                     className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                   >
                     Показать
