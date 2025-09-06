@@ -1,6 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+type ProblemZone = {
+  id: string;
+  type: 'acne' | 'pigmentation' | 'wrinkles' | 'pores' | 'dark_circles' | 'redness';
+  severity: 'low' | 'medium' | 'high';
+  coordinates: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  description: string;
+  confidence: number; // 0-100
+};
+
 type Analysis = {
   skinType: string;
   oiliness: "низкая" | "средняя" | "высокая";
@@ -26,6 +40,7 @@ type Analysis = {
   eyeAge: number;
   timestamp: number;
   previewDataUrl?: string | null;
+  problemZones: ProblemZone[];
 };
 
 const isBrowser = typeof window !== "undefined";
@@ -56,6 +71,16 @@ export default function Photo() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<Analysis | null>(null);
   const [showDetailedMetrics, setShowDetailedMetrics] = useState(false);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+
+
+
+  
+
+
+
+
 
   // По умолчанию историю сохраняем
   const saveHistoryEnabled = true;
@@ -131,7 +156,23 @@ export default function Photo() {
     setIsAnalyzing(false);
     setAnalysisResult(null);
     setShowDetailedMetrics(false);
+    setCurrentCardIndex(0);
+    setSelectedZone(null);
   };
+
+  // Функция для получения цвета зоны по типу
+  const getZoneColor = (type: ProblemZone['type'], severity: ProblemZone['severity']) => {
+    const colors = {
+      acne: { low: 'bg-yellow-400', medium: 'bg-orange-400', high: 'bg-red-500' },
+      pigmentation: { low: 'bg-yellow-300', medium: 'bg-amber-400', high: 'bg-amber-600' },
+      wrinkles: { low: 'bg-gray-400', medium: 'bg-gray-500', high: 'bg-gray-600' },
+      pores: { low: 'bg-blue-300', medium: 'bg-blue-400', high: 'bg-blue-500' },
+      dark_circles: { low: 'bg-purple-300', medium: 'bg-purple-400', high: 'bg-purple-500' },
+      redness: { low: 'bg-pink-300', medium: 'bg-pink-400', high: 'bg-pink-500' },
+    };
+    return colors[type][severity];
+  };
+
 
   const analyze = async () => {
     if (!selectedFile) return;
@@ -244,7 +285,78 @@ export default function Photo() {
       const overallTone = perceivedAge > 30 ? 
         (Math.random() > 0.5 ? "средний" : "тёмный") : 
         (Math.random() > 0.3 ? "светлый" : "средний");
+
+      // Генерируем проблемные зоны на основе анализа
+      const problemZones: ProblemZone[] = [];
       
+      // Зоны акне
+      if (concerns.some(c => c.includes("Воспаления") || c.includes("Кистозные"))) {
+        problemZones.push({
+          id: 'acne-1',
+          type: 'acne',
+          severity: 'high',
+          coordinates: { x: 120, y: 80, width: 25, height: 25 },
+          description: 'Воспаленный прыщ',
+          confidence: 85
+        });
+        problemZones.push({
+          id: 'acne-2',
+          type: 'acne',
+          severity: 'medium',
+          coordinates: { x: 200, y: 120, width: 15, height: 15 },
+          description: 'Комедон',
+          confidence: 78
+        });
+      }
+      
+      // Зоны пигментации
+      if (hasSpots) {
+        problemZones.push({
+          id: 'pigment-1',
+          type: 'pigmentation',
+          severity: 'medium',
+          coordinates: { x: 150, y: 100, width: 20, height: 20 },
+          description: 'Пигментное пятно',
+          confidence: 82
+        });
+      }
+      
+      // Зоны морщин
+      if (perceivedAge > 28 || (skinType === "Сухая" && perceivedAge > 25)) {
+        problemZones.push({
+          id: 'wrinkle-1',
+          type: 'wrinkles',
+          severity: 'low',
+          coordinates: { x: 100, y: 60, width: 40, height: 3 },
+          description: 'Мелкие морщинки',
+          confidence: 75
+        });
+      }
+      
+      // Зоны пор
+      if (poreSize === "расширенные") {
+        problemZones.push({
+          id: 'pores-1',
+          type: 'pores',
+          severity: 'medium',
+          coordinates: { x: 180, y: 90, width: 30, height: 30 },
+          description: 'Расширенные поры',
+          confidence: 88
+        });
+      }
+      
+      // Зоны покраснения
+      if (sensitivity > 7) {
+        problemZones.push({
+          id: 'redness-1',
+          type: 'redness',
+          severity: 'medium',
+          coordinates: { x: 140, y: 70, width: 35, height: 25 },
+          description: 'Покраснение кожи',
+          confidence: 80
+        });
+      }
+
       const result: Analysis = {
         skinType,
         oiliness: oiliness as "низкая" | "средняя" | "высокая",
@@ -271,6 +383,7 @@ export default function Photo() {
         // Добавляем вычисляемые возрасты
         perceivedAge,
         eyeAge,
+        problemZones,
       };
 
       if (saveHistoryEnabled) {
@@ -452,7 +565,7 @@ export default function Photo() {
               </button>
             </div>
 
-            {/* Основные характеристики - 4 карточки в ряд */}
+            {/* Основные характеристики - 2 карточки в ряд */}
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
                 <div className="text-2xl font-bold text-gray-900">{analysisResult.skinType}</div>
@@ -465,195 +578,280 @@ export default function Photo() {
                 </div>
                 <div className="text-sm text-gray-600 mt-1">Жирность</div>
               </div>
-              <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div className="text-2xl font-bold text-gray-900">{analysisResult.perceivedAge} лет</div>
-                <div className="text-sm text-gray-600 mt-1">Воспринимаемый возраст</div>
-              </div>
-              <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div className="text-2xl font-bold text-gray-900">{analysisResult.eyeAge} лет</div>
-                <div className="text-sm text-gray-600 mt-1">Возраст глаз</div>
-              </div>
             </div>
 
-            {/* Визуальные метрики с изображениями - 4 карточки */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Карточка 1 - Акне */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="relative">
-                  {preview && (
-                    <div className="relative">
-                      <img
-                        src={preview}
-                        alt="Анализ акне"
-                        className="w-full h-48 object-cover"
-                      />
-                      {/* Области проблем на изображении */}
-                      {analysisResult.concerns.some(c => c.includes("Воспаления") || c.includes("Кистозные")) && (
-                        <>
-                          <div className="absolute top-8 left-8 w-6 h-6 bg-red-500 rounded-full opacity-70 animate-pulse"></div>
-                          <div className="absolute top-12 right-12 w-4 h-4 bg-red-500 rounded-full opacity-70 animate-pulse"></div>
-                          <div className="absolute bottom-16 left-16 w-5 h-5 bg-red-500 rounded-full opacity-70 animate-pulse"></div>
-                        </>
-                      )}
-                      {analysisResult.concerns.some(c => c.includes("Чёрные") || c.includes("Белые")) && (
-                        <>
-                          <div className="absolute top-10 right-8 w-3 h-3 bg-gray-600 rounded-full opacity-80"></div>
-                          <div className="absolute bottom-20 right-16 w-2 h-2 bg-gray-600 rounded-full opacity-80"></div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
-                    Акне
-                  </div>
+            {/* Визуальные метрики с изображениями - листаемые карточки */}
+            <div className="space-y-4">
+              {/* Навигация */}
+              <div className="flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={() => setCurrentCardIndex(Math.max(0, currentCardIndex - 1))}
+                  disabled={currentCardIndex === 0}
+                  className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="flex space-x-2">
+                  {[0, 1, 2, 3].map((index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setCurrentCardIndex(index)}
+                      className={`w-2 h-2 rounded-full ${
+                        currentCardIndex === index ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
                 </div>
-                <div className="p-4">
-                  <div className="text-lg font-semibold text-gray-900">Акне</div>
-                  <div className="text-sm text-gray-600 mb-3">
-                    {analysisResult.concerns.some(c => c.includes("Воспаления") || c.includes("Кистозные")) ? 
-                      "умеренная форма" : 
-                      analysisResult.concerns.some(c => c.includes("Чёрные") || c.includes("Белые")) ?
-                      "лёгкая форма" : "отсутствует"}
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => alert('Детальная информация об акне будет доступна в следующих версиях')}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Показать больше
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentCardIndex(Math.min(3, currentCardIndex + 1))}
+                  disabled={currentCardIndex === 3}
+                  className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
               </div>
 
-              {/* Карточка 2 - Прозрачность */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="relative">
-                  {preview && (
-                    <div className="relative">
-                      <img
-                        src={preview}
-                        alt="Анализ прозрачности"
-                        className="w-full h-48 object-cover"
-                      />
-                      {/* Области проблем с прозрачностью */}
-                      {analysisResult.texture.smoothness < 6 && (
-                        <>
-                          <div className="absolute top-6 left-6 w-8 h-8 bg-yellow-400 rounded-full opacity-50"></div>
-                          <div className="absolute bottom-12 right-8 w-6 h-6 bg-yellow-400 rounded-full opacity-50"></div>
-                        </>
-                      )}
+              {/* Карточки */}
+              <div className="relative overflow-hidden">
+                <div 
+                  className="flex transition-transform duration-300 ease-in-out"
+                  style={{ transform: `translateX(-${currentCardIndex * 100}%)` }}
+                >
+                  {/* Карточка 1 - Акне */}
+                  <div className="w-full flex-shrink-0">
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="relative">
+                        {preview && (
+                          <div className="relative">
+                            <img
+                              src={preview}
+                              alt="Анализ акне"
+                              className="w-full h-48 object-cover"
+                            />
+                            {/* Проблемные зоны акне */}
+                            {analysisResult.problemZones
+                              .filter(zone => zone.type === 'acne')
+                              .map((zone) => (
+                                <div
+                                  key={zone.id}
+                                  className={`absolute border-2 border-white rounded-full cursor-pointer transition-all duration-200 hover:scale-110 ${getZoneColor(zone.type, zone.severity)} opacity-80`}
+                                  style={{
+                                    left: `${zone.coordinates.x}px`,
+                                    top: `${zone.coordinates.y}px`,
+                                    width: `${zone.coordinates.width}px`,
+                                    height: `${zone.coordinates.height}px`,
+                                  }}
+                                  onClick={() => setSelectedZone(selectedZone === zone.id ? null : zone.id)}
+                                >
+                                  {selectedZone === zone.id && (
+                                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                                      {zone.description} ({zone.confidence}%)
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
+                          Акне
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-lg font-semibold text-gray-900">Акне</div>
+                        <div className="text-sm text-gray-600 mb-3">
+                          {analysisResult.problemZones.filter(z => z.type === 'acne').length > 0 ? 
+                            `Обнаружено ${analysisResult.problemZones.filter(z => z.type === 'acne').length} проблемных зон` : 
+                            "Проблемы не обнаружены"}
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => alert('Детальная информация об акне будет доступна в следующих версиях')}
+                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Показать больше
+                        </button>
+                      </div>
                     </div>
-                  )}
-                  <div className="absolute top-2 right-2 bg-yellow-600 text-white px-2 py-1 rounded text-xs font-medium">
-                    Прозрачность
                   </div>
-                </div>
-                <div className="p-4">
-                  <div className="text-lg font-semibold text-gray-900">Прозрачность</div>
-                  <div className="text-sm text-gray-600 mb-3">
-                    {analysisResult.texture.smoothness > 7 ? "Отличная" : 
-                     analysisResult.texture.smoothness > 5 ? "Хорошая" : 
-                     analysisResult.texture.smoothness > 3 ? "Средняя" : "Требует улучшения"}
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => alert('Детальная информация о прозрачности будет доступна в следующих версиях')}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Показать
-                  </button>
-                </div>
-              </div>
 
-              {/* Карточка 3 - Пигментация */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="relative">
-                  {preview && (
-                    <div className="relative">
-                      <img
-                        src={preview}
-                        alt="Анализ пигментации"
-                        className="w-full h-48 object-cover"
-                      />
-                      {/* Области пигментации */}
-                      {analysisResult.pigmentation.spots && (
-                        <>
-                          <div className="absolute top-10 left-12 w-4 h-4 bg-brown-500 rounded-full opacity-70"></div>
-                          <div className="absolute bottom-14 right-10 w-3 h-3 bg-brown-500 rounded-full opacity-70"></div>
-                          <div className="absolute top-16 right-6 w-2 h-2 bg-brown-500 rounded-full opacity-70"></div>
-                        </>
-                      )}
-                      {analysisResult.pigmentation.postAcne && (
-                        <>
-                          <div className="absolute top-8 right-14 w-5 h-5 bg-purple-500 rounded-full opacity-60"></div>
-                          <div className="absolute bottom-18 left-8 w-4 h-4 bg-purple-500 rounded-full opacity-60"></div>
-                        </>
-                      )}
+                  {/* Карточка 2 - Поры */}
+                  <div className="w-full flex-shrink-0">
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="relative">
+                        {preview && (
+                          <div className="relative">
+                            <img
+                              src={preview}
+                              alt="Анализ пор"
+                              className="w-full h-48 object-cover"
+                            />
+                            {/* Проблемные зоны пор */}
+                            {analysisResult.problemZones
+                              .filter(zone => zone.type === 'pores')
+                              .map((zone) => (
+                                <div
+                                  key={zone.id}
+                                  className={`absolute border-2 border-white rounded-full cursor-pointer transition-all duration-200 hover:scale-110 ${getZoneColor(zone.type, zone.severity)} opacity-80`}
+                                  style={{
+                                    left: `${zone.coordinates.x}px`,
+                                    top: `${zone.coordinates.y}px`,
+                                    width: `${zone.coordinates.width}px`,
+                                    height: `${zone.coordinates.height}px`,
+                                  }}
+                                  onClick={() => setSelectedZone(selectedZone === zone.id ? null : zone.id)}
+                                >
+                                  {selectedZone === zone.id && (
+                                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                                      {zone.description} ({zone.confidence}%)
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+                          Поры
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-lg font-semibold text-gray-900">Поры</div>
+                        <div className="text-sm text-gray-600 mb-3">
+                          {analysisResult.problemZones.filter(z => z.type === 'pores').length > 0 ? 
+                            `Обнаружено ${analysisResult.problemZones.filter(z => z.type === 'pores').length} проблемных зон` : 
+                            "Поры в норме"}
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => alert('Детальная информация о порах будет доступна в следующих версиях')}
+                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Показать
+                        </button>
+                      </div>
                     </div>
-                  )}
-                  <div className="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded text-xs font-medium">
-                    Пигментация
                   </div>
-                </div>
-                <div className="p-4">
-                  <div className="text-lg font-semibold text-gray-900">Пигментация</div>
-                  <div className="text-sm text-gray-600 mb-3">
-                    {analysisResult.pigmentation.spots ? "Пятна обнаружены" : 
-                     analysisResult.pigmentation.postAcne ? "Постакне" : "Равномерный тон"}
-                  </div>
-                  <button 
-                    type="button"
-                    onClick={() => alert('Детальная информация о пигментации будет доступна в следующих версиях')}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Показать
-                  </button>
-                </div>
-              </div>
 
-              {/* Карточка 4 - Возрастные изменения */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="relative">
-                  {preview && (
-                    <div className="relative">
-                      <img
-                        src={preview}
-                        alt="Анализ возрастных изменений"
-                        className="w-full h-48 object-cover"
-                      />
-                      {/* Области возрастных изменений */}
-                      {analysisResult.aging.fineLines && (
-                        <>
-                          <div className="absolute top-6 left-8 w-12 h-1 bg-orange-400 opacity-70"></div>
-                          <div className="absolute top-8 right-6 w-8 h-1 bg-orange-400 opacity-70"></div>
-                          <div className="absolute bottom-16 left-10 w-10 h-1 bg-orange-400 opacity-70"></div>
-                        </>
-                      )}
-                      {analysisResult.aging.elasticity < 6 && (
-                        <>
-                          <div className="absolute top-12 left-12 w-6 h-6 bg-pink-400 rounded-full opacity-50"></div>
-                          <div className="absolute bottom-14 right-12 w-5 h-5 bg-pink-400 rounded-full opacity-50"></div>
-                        </>
-                      )}
+                  {/* Карточка 3 - Пигментация */}
+                  <div className="w-full flex-shrink-0">
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="relative">
+                        {preview && (
+                          <div className="relative">
+                            <img
+                              src={preview}
+                              alt="Анализ пигментации"
+                              className="w-full h-48 object-cover"
+                            />
+                            {/* Проблемные зоны пигментации */}
+                            {analysisResult.problemZones
+                              .filter(zone => zone.type === 'pigmentation')
+                              .map((zone) => (
+                                <div
+                                  key={zone.id}
+                                  className={`absolute border-2 border-white rounded-full cursor-pointer transition-all duration-200 hover:scale-110 ${getZoneColor(zone.type, zone.severity)} opacity-80`}
+                                  style={{
+                                    left: `${zone.coordinates.x}px`,
+                                    top: `${zone.coordinates.y}px`,
+                                    width: `${zone.coordinates.width}px`,
+                                    height: `${zone.coordinates.height}px`,
+                                  }}
+                                  onClick={() => setSelectedZone(selectedZone === zone.id ? null : zone.id)}
+                                >
+                                  {selectedZone === zone.id && (
+                                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                                      {zone.description} ({zone.confidence}%)
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        <div className="absolute top-2 left-2 bg-amber-600 text-white px-2 py-1 rounded text-xs font-medium">
+                          Пигментация
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-lg font-semibold text-gray-900">Пигментация</div>
+                        <div className="text-sm text-gray-600 mb-3">
+                          {analysisResult.problemZones.filter(z => z.type === 'pigmentation').length > 0 ? 
+                            `Обнаружено ${analysisResult.problemZones.filter(z => z.type === 'pigmentation').length} проблемных зон` : 
+                            "Равномерный тон"}
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => alert('Детальная информация о пигментации будет доступна в следующих версиях')}
+                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Показать
+                        </button>
+                      </div>
                     </div>
-                  )}
-                  <div className="absolute top-2 right-2 bg-orange-600 text-white px-2 py-1 rounded text-xs font-medium">
-                    Возраст
                   </div>
-                </div>
-                <div className="p-4">
-                  <div className="text-lg font-semibold text-gray-900">Возрастные изменения</div>
-                  <div className="text-sm text-gray-600 mb-3">
-                    {analysisResult.aging.fineLines ? "Морщинки обнаружены" : 
-                     analysisResult.aging.elasticity < 6 ? "Сниженная упругость" : "Хорошее состояние"}
+
+                  {/* Карточка 4 - Морщины */}
+                  <div className="w-full flex-shrink-0">
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="relative">
+                        {preview && (
+                          <div className="relative">
+                            <img
+                              src={preview}
+                              alt="Анализ морщин"
+                              className="w-full h-48 object-cover"
+                            />
+                            {/* Проблемные зоны морщин */}
+                            {analysisResult.problemZones
+                              .filter(zone => zone.type === 'wrinkles')
+                              .map((zone) => (
+                                <div
+                                  key={zone.id}
+                                  className={`absolute border-2 border-white cursor-pointer transition-all duration-200 hover:scale-110 ${getZoneColor(zone.type, zone.severity)} opacity-80`}
+                                  style={{
+                                    left: `${zone.coordinates.x}px`,
+                                    top: `${zone.coordinates.y}px`,
+                                    width: `${zone.coordinates.width}px`,
+                                    height: `${zone.coordinates.height}px`,
+                                    borderRadius: zone.coordinates.height < 5 ? '2px' : '50%',
+                                  }}
+                                  onClick={() => setSelectedZone(selectedZone === zone.id ? null : zone.id)}
+                                >
+                                  {selectedZone === zone.id && (
+                                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                                      {zone.description} ({zone.confidence}%)
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium">
+                          Морщины
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <div className="text-lg font-semibold text-gray-900">Морщины</div>
+                        <div className="text-sm text-gray-600 mb-3">
+                          {analysisResult.problemZones.filter(z => z.type === 'wrinkles').length > 0 ? 
+                            `Обнаружено ${analysisResult.problemZones.filter(z => z.type === 'wrinkles').length} проблемных зон` : 
+                            "Кожа гладкая"}
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => alert('Детальная информация о морщинах будет доступна в следующих версиях')}
+                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Показать
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <button 
-                    type="button"
-                    onClick={() => alert('Детальная информация о возрастных изменениях будет доступна в следующих версиях')}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Показать
-                  </button>
                 </div>
               </div>
             </div>
@@ -824,3 +1022,4 @@ export default function Photo() {
     </div>
   );
 }
+
