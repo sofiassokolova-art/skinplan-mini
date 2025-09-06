@@ -1,0 +1,270 @@
+*** a/src/pages/Photo.tsx
+--- b/src/pages/Photo.tsx
+@@
+-import React, { useEffect, useMemo, useState } from "react";
++import React, { useEffect, useMemo, useRef, useState } from "react";
+ import { useNavigate } from "react-router-dom";
+ 
+ type Analysis = {
+   skinType: string;
+   concerns: string[];
+   timestamp: number;
+-  previewUrl?: string | null;
++  id: string;                 // безопасный ключ
++  previewDataUrl?: string;    // Data URL для истории (персистентно)
+ };
+ 
+ export default function Photo() {
+   const navigate = useNavigate();
+ 
++  // --- SSR-safe localStorage helpers
++  const hasWindow = typeof window !== "undefined";
++  const safeGet = (k: string) => {
++    try { return hasWindow ? window.localStorage.getItem(k) : null; } catch { return null; }
++  };
++  const safeSet = (k: string, v: string) => {
++    try { if (hasWindow) window.localStorage.setItem(k, v); } catch {}
++  };
++
+   // UI state
+-  const [showHowto, setShowHowto] = useState<boolean>(() => {
+-    // показываем инструкцию, если ранее не скрывали
+-    return localStorage.getItem("photo.hideHowto") !== "1";
+-  });
++  const [showHowto, setShowHowto] = useState<boolean>(() => safeGet("photo.hideHowto") !== "1");
+   const [error, setError] = useState<string | null>(null);
+   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+-  const [preview, setPreview] = useState<string | null>(null);
++  // runtime object URL (НЕ сохраняем в историю)
++  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+   const [isAnalyzing, setIsAnalyzing] = useState(false);
++  // храним последнюю objectURL чтобы корректно revoke
++  const lastObjectUrlRef = useRef<string | null>(null);
+ 
+   // История (по требованию тестов — включаем, если в localStorage выставлено)
+-  const saveHistoryEnabled = useMemo(
+-    () => localStorage.getItem("photo.saveHistory") === "1",
+-    []
+-  );
++  const saveHistoryEnabled = useMemo(() => safeGet("photo.saveHistory") === "1", []);
+   const [history, setHistory] = useState<Analysis[]>(() => {
+     try {
+-      const raw = localStorage.getItem("photo.history");
++      const raw = safeGet("photo.history");
+       return raw ? (JSON.parse(raw) as Analysis[]) : [];
+     } catch {
+       return [];
+     }
+   });
+ 
+   useEffect(() => {
+-    try {
+-      localStorage.setItem("photo.history", JSON.stringify(history));
+-    } catch {}
++    safeSet("photo.history", JSON.stringify(history));
+   }, [history]);
+ 
+   // Очистка objectURL при размонтировании/смене файла
+   useEffect(() => {
+-    return () => {
+-      if (preview) URL.revokeObjectURL(preview);
+-    };
+-  }, [preview]);
++    return () => {
++      if (lastObjectUrlRef.current) {
++        URL.revokeObjectURL(lastObjectUrlRef.current);
++        lastObjectUrlRef.current = null;
++      }
++    };
++  }, []);
+ 
+   const hideHowtoForever = () => {
+     setShowHowto(false);
+-    try {
+-      localStorage.setItem("photo.hideHowto", "1");
+-    } catch {}
++    safeSet("photo.hideHowto", "1");
+   };
+ 
+   const onGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+     const file = e.target.files?.[0] ?? null;
+     if (!file) return;
+ 
+     // Валидация формата
+     const allowed = ["image/jpeg", "image/png", "image/jpg"];
+     if (!allowed.includes(file.type)) {
+       setSelectedFile(null);
+-      if (preview) URL.revokeObjectURL(preview);
+-      setPreview(null);
++      if (lastObjectUrlRef.current) {
++        URL.revokeObjectURL(lastObjectUrlRef.current);
++        lastObjectUrlRef.current = null;
++      }
++      setPreviewUrl(null);
+       setError("Формат не поддерживается. Загрузите JPG/PNG до 10 МБ.");
+       // сбрасываем сам инпут на всякий
+       e.currentTarget.value = "";
+       return;
+     }
+ 
+     // Валидация размера (<= 10 МБ)
+     if (file.size > 10 * 1024 * 1024) {
+       setSelectedFile(null);
+-      if (preview) URL.revokeObjectURL(preview);
+-      setPreview(null);
++      if (lastObjectUrlRef.current) {
++        URL.revokeObjectURL(lastObjectUrlRef.current);
++        lastObjectUrlRef.current = null;
++      }
++      setPreviewUrl(null);
+       setError("Файл слишком большой. Максимум 10 МБ.");
+       e.currentTarget.value = "";
+       return;
+     }
+ 
+     // Валидный файл
+     setError(null);
+     setSelectedFile(file);
+     try {
+-      const url = (window.URL || URL).createObjectURL(file);
+-      setPreview(url);
++      // убираем прежний objectURL
++      if (lastObjectUrlRef.current) {
++        URL.revokeObjectURL(lastObjectUrlRef.current);
++      }
++      const url = (window.URL || URL).createObjectURL(file);
++      lastObjectUrlRef.current = url;
++      setPreviewUrl(url);
+     } catch {
+-      setPreview(null);
++      setPreviewUrl(null);
+     }
+   };
+ 
+   const restart = () => {
+     setError(null);
+     setSelectedFile(null);
+-    if (preview) URL.revokeObjectURL(preview);
+-    setPreview(null);
++    if (lastObjectUrlRef.current) {
++      URL.revokeObjectURL(lastObjectUrlRef.current);
++      lastObjectUrlRef.current = null;
++    }
++    setPreviewUrl(null);
+     setIsAnalyzing(false);
+   };
+ 
+   const analyze = async () => {
+     if (!selectedFile) return;
+     setIsAnalyzing(true);
+     // имитация анализа
+     await new Promise((r) => setTimeout(r, 50));
+ 
+-    const result: Analysis = {
++    // получаем Data URL для истории
++    const previewDataUrl = await new Promise<string | undefined>((resolve) => {
++      try {
++        const fr = new FileReader();
++        fr.onload = () => resolve(typeof fr.result === "string" ? fr.result : undefined);
++        fr.onerror = () => resolve(undefined);
++        fr.readAsDataURL(selectedFile);
++      } catch { resolve(undefined); }
++    });
++
++    const result: Analysis = {
+       skinType: "Нормальная",
+       concerns: ["Чёрные точки", "Сухость"],
+       timestamp: Date.now(),
+-      previewUrl: preview,
++      id:
++        (typeof crypto !== "undefined" && "randomUUID" in crypto
++          ? (crypto as any).randomUUID()
++          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
++      previewDataUrl,
+     };
+ 
+-    if (saveHistoryEnabled) {
+-      setHistory((h) => [result, ...h].slice(0, 20));
+-    }
+-
+-    // навигируем на /plan с результатом (тест обычно мокает навигацию)
+-    navigate("/plan", { state: { from: "photo", analysis: result } });
++    try {
++      if (saveHistoryEnabled) {
++        setHistory((h) => [result, ...h].slice(0, 20));
++      }
++      // навигируем на /plan с результатом (тест обычно мокает навигацию)
++      navigate("/plan", { state: { from: "photo", analysis: result } });
++    } finally {
++      setIsAnalyzing(false); // всегда сбрасываем
++    }
+   };
+ 
+   const removeFromHistory = (idx: number) => {
+     setHistory((h) => {
+       const copy = [...h];
+       copy.splice(idx, 1);
+       return copy;
+     });
+   };
+ 
+   return (
+     <div className="max-w-3xl mx-auto">
+       <h1 className="text-2xl font-semibold mb-4">Скан по фото</h1>
+@@
+-          {preview && (
++          {previewUrl && (
+             <div className="pt-2">
+               <img
+-                src={preview}
++                src={previewUrl}
+                 alt="Предпросмотр"
+                 className="w-full max-h-72 object-contain rounded-xl border"
+                 data-testid="preview"
+               />
+             </div>
+           )}
+@@
+-      {history.length > 0 && (
++      {history.length > 0 && (
+         <div className="mt-6">
+           <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm p-4">
+             <h3 className="text-lg font-medium mb-2">История</h3>
+             <ul className="space-y-2">
+               {history.map((h, idx) => (
+-                <li key={h.timestamp} className="flex items-center gap-3">
+-                  {h.previewUrl && (
++                <li key={h.id} className="flex items-center gap-3">
++                  {h.previewDataUrl && (
+                     <img
+-                      src={h.previewUrl}
++                      src={h.previewDataUrl}
+                       alt=""
+                       className="w-12 h-12 object-cover rounded"
+                     />
+                   )}
+                   <div className="text-sm flex-1">
+                     <div className="font-medium">
+                       {new Date(h.timestamp).toLocaleString()}
+                     </div>
+                     <div className="text-neutral-600">
+                       {h.skinType}; {h.concerns.join(", ")}
+                     </div>
+                   </div>
+                   <button
+                     type="button"
+                     className="text-sm underline"
+                     onClick={() => removeFromHistory(idx)}
+                   >
+                     Удалить
+                   </button>
+                 </li>
+               ))}
+             </ul>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ }
+

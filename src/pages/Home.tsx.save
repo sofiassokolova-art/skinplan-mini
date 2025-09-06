@@ -1,0 +1,101 @@
+// pages/Home.tsx
+import React, { useMemo } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { hasAnswers, loadAnswers, getUserName } from "../lib/storage";
+
+type PlanProduct = {
+  id: string;
+  name: string;
+  timeOfDay?: "morning" | "evening";
+  // опционально: brand, step ("cleanser/toner/etc"), price, image, etc.
+};
+
+type CarePlan = {
+  morning?: PlanProduct[];
+  evening?: PlanProduct[];
+};
+
+function safeParsePlan(): CarePlan | null {
+  try {
+    const raw = localStorage.getItem("skiniq.plan");
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (typeof p !== "object") return null;
+    return {
+      morning: Array.isArray(p.morning) ? p.morning : [],
+      evening: Array.isArray(p.evening) ? p.evening : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function getGreetingRu(): "Доброе утро" | "Добрый вечер" | "Здравствуйте" {
+  const h = new Date().getHours();
+  // AC требует утро/вечер; на дневное/ночь отдадим «Здравствуйте»
+  if (h >= 5 && h < 12) return "Доброе утро";
+  if (h >= 18 || h < 5) return "Добрый вечер";
+  return "Здравствуйте";
+}
+
+function NextRoutineWidget({ plan }: { plan: CarePlan | null }) {
+  const h = new Date().getHours();
+  const isMorningNow = h < 15; // «ближайшую» рутину трактуем как утро до 15:00, иначе — вечер
+  const slot = isMorningNow ? "morning" : "evening";
+  const title = isMorningNow ? "Утро" : "Вечер";
+
+  const steps = (plan?.[slot] ?? []).slice(0, 4); // короткий тизер шагов
+
+  return (
+    <section
+      className="rounded-2xl p-4 md:p-5 border border-neutral-200"
+      data-testid="home-next-routine"
+    >
+      <div className="text-sm opacity-70 mb-1">Ближайшая рутина</div>
+      <h3 className="text-xl font-semibold mb-3">{title}</h3>
+
+      {steps.length > 0 ? (
+        <ul className="list-disc pl-5 mb-4">
+          {steps.map((p) => (
+            <li key={p.id || p.name}>{p.name}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="opacity-70 mb-4">
+          План пока пуст — открой рекомендации, чтобы увидеть шаги.
+        </p>
+      )}
+
+      <Link
+        to="/plan"
+        className="inline-block rounded-xl px-4 py-2 border border-black hover:bg-black hover:text-white transition"
+      >
+        Перейти к плану
+      </Link>
+    </section>
+  );
+}
+
+function SkinMetricsWidget() {
+  // базово подтянем ответы и попытаемся отрисовать ключевые поля (если есть)
+  const answers: any = loadAnswers() || {};
+  const rows: Array<[string, string]> = [
+    ["Тип кожи", answers?.skinType ?? "—"],
+    ["Жирность", answers?.oiliness ?? "—"],
+    ["Чувствительность", answers?.sensitivity ?? "—"],
+    ["Основная цель", answers?.primaryGoal ?? "—"],
+  ];
+
+  return (
+    <section
+      className="rounded-2xl p-4 md:p-5 border border-neutral-200"
+      data-testid="home-skin-metrics"
+    >
+      <h3 className="text-xl font-semibold mb-3">Мои skin-метрики</h3>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex flex-col">
+            <dt className="text-sm opacity-70">{k}</dt>
+            <dd className="text-base">{String(v)}</dd>
+          </)
+

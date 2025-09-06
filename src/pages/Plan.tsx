@@ -1,181 +1,281 @@
-import { useMemo } from "react";
-import type { Answers } from "./Quiz";
-type Budget = 'low' | 'mid' | 'high';
-type PickItem = { n: string; b: Budget };
-type AnyPick = { n: string; b: string };
+// src/pages/Plan.tsx
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button, Card, Progress } from "../ui";
+import SkinMetrics from "../ui/SkinMetrics";
+import { computeSkinMetrics, generateCarePlan, generate28DaySchedule } from "../lib/plan";
+import type { CarePlan, DayPlan } from "../lib/plan";
+import * as storage from "../lib/storage";
+import { sendToTG } from "../lib/tg";
 
-const getAnswers = (): Answers | null => {
-  try { const raw = localStorage.getItem("skinplan_answers"); return raw ? JSON.parse(raw) : null; }
-  catch { return null; }
-};
+type Answers = Parameters<typeof computeSkinMetrics>[0];
 
-const CATALOG = {
-  cleanser: {
-    gel:   [{n:"CeraVe Foaming Cleanser", b:"mid"}, {n:"COSRX Low pH Good Morning", b:"mid"}, {n:"Garnier Micellar Gel", b:"low"}] as PickItem[],
-    milk:  [{n:"La Roche-Posay Toleriane Dermo-Cleanser", b:"high"}, {n:"Bioderma Sensibio", b:"mid"}],
-    oil:   [{n:"Hada Labo Cleansing Oil", b:"mid"}, {n:"Heimish All Clean Balm", b:"mid"}],
-  },
-  moisturizer: [{n:"CeraVe Moisturizing Cream", b:"mid"}, {n:"La Roche-Posay Toleriane Sensitive", b:"high"}, {n:"The Ordinary Natural Moisturizing Factors", b:"low"}] as PickItem[],
-  spf: [{n:"LRP Anthelios UVMune 400", b:"high"}, {n:"Bioderma Photoderm", b:"mid"}, {n:"Garnier Ambre Solaire SPF50", b:"low"}] as PickItem[],
-  barrier: [{n:"La Roche-Posay Cicaplast Baume B5", b:"mid"}, {n:"Bepanthen Derma Repair", b:"low"}] as PickItem[],
-  actives: {
-    azelaic: [{n:"The Ordinary Azelaic Acid 10%", b:"low"}, {n:"Geek & Gorgeous Azelaic", b:"mid"}] as PickItem[],
-    bha:     [{n:"Paula's Choice BHA 2%", b:"high"}, {n:"COSRX BHA", b:"mid"}] as PickItem[],
-    vitc:    [{n:"La Roche-Posay Pure Vitamin C 10", b:"high"}, {n:"The Ordinary AA 8%/MAP", b:"low"}] as PickItem[],
-    niacin:  [{n:"Geek & Gorgeous B-Bomb", b:"mid"}, {n:"The Ordinary Niacinamide 10%", b:"low"}] as PickItem[],
-    retinoid:[{n:"Geek & Gorgeous A-Game (ретиналь)", b:"mid"}, {n:"La Roche-Posay Retinol B3", b:"high"}] as PickItem[],
-    ha:      [{n:"The Ordinary Hyaluronic Acid 2%+B5", b:"low"}, {n:"LRP Hyalu B5", b:"high"}] as PickItem[],
+const PREMIUM_KEY = "skiniq.premium";
+const CART_KEY = "skiniq.cart";
+
+function isPaid(): boolean {
+  try {
+    return localStorage.getItem(PREMIUM_KEY) === "true";
+  } catch {
+    return false;
   }
-};
-
-const byBudget = (arr: ReadonlyArray<AnyPick>, b: Budget) => {
-  const order =
-    b === 'low' ? ['low', 'mid', 'high'] :
-    b === 'mid' ? ['mid', 'low', 'high'] :
-                  ['high', 'mid', 'low'];
-  return [...arr]
-    .sort((x, y) => order.indexOf(x.b as Budget) - order.indexOf(y.b as Budget))[0]?.n ?? '';
-};
-
-type DayPlan = { morning:string[]; evening:string[] };
-type FullPlan = { products:Record<string,string>; days:DayPlan[]; notes:string[] };
-
-function buildPlan(a: Answers): FullPlan {
-  const b = (a.budget ?? "mid") as Budget;
-  const cleanserList = CATALOG.cleanser[a.cleansing_pref ?? "gel"] ?? CATALOG.cleanser.gel;
-
-  const products: Record<string,string> = {
-    cleanser: byBudget(cleanserList, b),
-    moisturizer: byBudget(CATALOG.moisturizer, b),
-    spf: byBudget(CATALOG.spf, b),
-    barrier: byBudget(CATALOG.barrier, b),
-  };
-
-  const avoid = new Set(a.actives_no);
-  const ok = new Set(a.actives_ok);
-  const pickActive = (key:"azelaic"|"bha"|"vitc"|"niacin"|"retinoid"|"ha") => byBudget(CATALOG.actives[key], b);
-
-  let activeA = ok.has("vitc") && !avoid.has("vitc") ? pickActive("vitc")
-              : ok.has("niacin") && !avoid.has("niacin") ? pickActive("niacin")
-              : pickActive("azelaic");
-
-  let activeB = (!a.pregnancy && !avoid.has("retinoid")) ? pickActive("retinoid")
-              : (!avoid.has("bha")) ? pickActive("bha")
-              : pickActive("azelaic");
-
-  if (a.sensitivity) {
-    if (!avoid.has("niacin")) activeA = pickActive("niacin");
-    if (!avoid.has("azelaic")) activeB = pickActive("azelaic");
-  }
-
-  products["activeA"] = activeA;
-  products["activeB"] = activeB;
-
-  const notes: string[] = [];
-  if (a.redness || a.sensitivity) notes.push("Стартуем «через день», патч-тест перед первым применением активов.");
-  if (a.spf_use!=="daily") notes.push("Добавь ежедневный SPF — это ключ к пост-акне и фотостарению.");
-  if (a.meds.includes("isotretinoin")) notes.push("Изотретиноин — исключим ретиноид и сильные кислоты; упор на барьер.");
-
-  const days: DayPlan[] = [];
-  for (let i=1;i<=28;i++) {
-    const isEven = i%2===0;
-    const week = Math.ceil(i/7);
-    const morning: string[] = ["Очищение ("+products.cleanser+")"];
-    if (!a.sensitivity && week>=2 && !a.dehydration) morning.push("Актив A ("+products.activeA+")");
-    morning.push("SPF ("+products.spf+")");
-    const evening: string[] = ["Очищение ("+products.cleanser+")"];
-    if ((a.sensitivity ? (week>=3 && isEven) : (week>=2))) evening.push("Актив B ("+products.activeB+")");
-    evening.push("Крем/барьер ("+products.moisturizer+")");
-    if (a.dehydration || a.redness) evening.push("Барьерная поддержка ("+products.barrier+")");
-    if (week===1) { morning.splice(1,1); if (evening.length>1) evening.splice(1,1); }
-    days.push({morning, evening});
-  }
-
-  return { products, days, notes };
 }
 
-type CartItem = { id:string; name:string; qty:number; feedback?:string };
+function persistPaid(v: boolean) {
+  try {
+    localStorage.setItem(PREMIUM_KEY, v ? "true" : "false");
+  } catch {}
+}
+
+/** Простая локальная корзина (если у тебя уже есть в storage — можно заменить импорты) */
+function getCart(): any[] {
+  try {
+    return JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function setCart(items: any[]) {
+  localStorage.setItem(CART_KEY, JSON.stringify(items));
+}
+function addToCart(item: any) {
+  const cart = getCart();
+  // избегаем дубликатов по name+timeOfDay+step
+  if (!cart.some((x) => x.name === item.name && x.timeOfDay === item.timeOfDay && x.step === item.step)) {
+    cart.push(item);
+    setCart(cart);
+  }
+}
 
 export default function Plan() {
-  const ans = getAnswers();
-  const plan = useMemo(()=> ans ? buildPlan(ans) : null, [ans]);
+  const navigate = useNavigate();
 
-  if (!ans || !plan) {
-    return (
-      <div className="max-w-3xl mx-auto bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
-        <h2 className="text-lg font-bold mb-2">План недоступен</h2>
-        <p className="text-zinc-700">Сначала пройди анкету — затем я соберу план автоматически.</p>
-        <a href="/quiz" className="inline-block mt-4 px-5 py-3 rounded-full bg-black text-white">К анкете</a>
-      </div>
-    );
-  }
+  // 1) читаем ответы и делаем маппинг
+  const answers: Answers = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("skiniq.answers") || "{}");
+    } catch {
+      return {};
+    }
+  }, []);
 
-  const TYPE_RU: any = { dry:"сухая", normal:"нормальная", combo:"комбинированная", oily:"жирная" };
+  const hasAnswers = useMemo(() => {
+    if (!answers) return false;
+    return Object.keys(answers).length > 0 && typeof (answers as any).name === "string" && ((answers as any).name as string).trim().length > 0;
+  }, [answers]);
 
-  const addAllToCart = () => {
-    const list: CartItem[] = [
-      { id:"cleanser", name: plan.products.cleanser, qty:1 },
-      { id:"moisturizer", name: plan.products.moisturizer, qty:1 },
-      { id:"spf", name: plan.products.spf, qty:1 },
-      { id:"barrier", name: plan.products.barrier, qty:1 },
-      { id:"activeA", name: plan.products.activeA, qty:1 },
-      { id:"activeB", name: plan.products.activeB, qty:1 },
-    ];
-    localStorage.setItem("skinplan_cart", JSON.stringify(list));
-    window.location.href = "/cart";
+  // Если анкета не пройдена — отправляем на /quiz
+  useEffect(() => {
+    if (!hasAnswers) {
+      navigate("/quiz");
+    }
+  }, [hasAnswers, navigate]);
+
+  const metrics = useMemo(() => computeSkinMetrics(answers), [answers]);
+  const plan: CarePlan = useMemo(() => generateCarePlan(metrics), [metrics]);
+  const schedule28: DayPlan[] = useMemo(() => generate28DaySchedule(metrics), [metrics]);
+
+  // 2) premium-gate
+  const [paid, setPaidState] = useState<boolean>(isPaid());
+  const unlock = async () => {
+    persistPaid(true);
+    setPaidState(true);
+  };
+  const setPaidFlag = (v: boolean) => {
+    setPaidState(v);
+    persistPaid(v);
   };
 
-  return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <section className="bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
-        <h2 className="text-xl font-bold mb-2">Итоговый профиль</h2>
-        <div className="text-zinc-700">
-          {ans.skin_type && <div>Тип кожи: <b>{TYPE_RU[ans.skin_type]}</b></div>}
-          {ans.goals.length>0 && <div>Цели: {ans.goals.join(", ")}</div>}
-          {ans.sensitivity && <div>Чувствительная кожа — частота активов снижена.</div>}
-          {plan.notes.length>0 && <ul className="list-disc pl-5 mt-2">{plan.notes.map((n,i)=><li key={i}>{n}</li>)}</ul>}
+  // 3) экспорт
+  const planToText = () => {
+    const lines: string[] = [];
+    lines.push(`SkinIQ — персональный план ухода (28 дней)`);
+    lines.push(`Тип кожи: ${metrics.skinType}; Чувствительность: ${metrics.sensitivity ? "да" : "нет"}; Жирность: ${metrics.oiliness}`);
+    if (metrics.concerns?.length) lines.push(`Проблемы: ${metrics.concerns.join(", ")}`);
+    lines.push(`Цель: ${metrics.primaryGoal}`);
+    lines.push(`\nУтро:`);
+    plan.morning.forEach((p, i) => lines.push(`${i + 1}. ${p.name}`));
+    lines.push(`\nВечер:`);
+    plan.evening.forEach((p, i) => lines.push(`${i + 1}. ${p.name}`));
+    lines.push(`\nРасписание 28 дней (кратко):`);
+    schedule28.forEach((d) => {
+      lines.push(
+        `День ${d.day}: утро — ${d.morningNotes.join("; ")} | вечер — ${d.eveningNotes.join("; ")}`
+      );
+    });
+    return lines.join("\n");
+  };
+
+  const exportToTelegram = () => {
+    const payload = { type: "plan", text: planToText() };
+    // если это Telegram WebApp — отправим боту
+    if ((window as any)?.Telegram?.WebApp?.sendData) {
+      (window as any).Telegram.WebApp.sendData(JSON.stringify(payload));
+      alert("План отправлен в чат боту.");
+    } else {
+      const { ok } = sendToTG(payload);
+      if (ok) {
+        alert("План отправлен в чат боту.");
+      } else {
+        // fallback: копирование
+        navigator.clipboard.writeText(payload.text);
+        alert("Я скопировал план в буфер обмена — вставь в чат вручную.");
+      }
+    }
+  };
+
+  const exportToPDF = () => {
+    // простой принт-вид: браузер позволит сохранить как PDF
+    window.print();
+  };
+
+  // 4) add to cart
+  const addAllToCart = () => {
+    [...plan.morning, ...plan.evening].forEach(addToCart);
+    alert("Все продукты добавлены в корзину.");
+  };
+
+  useEffect(() => {
+    // сохраним план, чтобы Главная показывала «Ближайшую рутину»
+    try {
+      localStorage.setItem("skiniq.plan", JSON.stringify(plan));
+    } catch {}
+  }, [plan]);
+
+  // UI helpers
+  const Blurred: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className="relative">
+      <div className="pointer-events-none select-none blur-md brightness-95">{children}</div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/70 backdrop-blur-sm">
+        <div className="text-center">
+          <div className="text-lg font-semibold mb-1">Персональные рекомендации</div>
+          <div className="opacity-70 mb-3">Разблокируй план ухода и расписание на 28 дней</div>
         </div>
-      </section>
+        <Button onClick={unlock}>Разблокировать рекомендации за 199₽</Button>
+        <div className="text-xs opacity-60">Оплата единовременная · доступ сразу</div>
+      </div>
+    </div>
+  );
 
-      <section className="bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
-        <h3 className="text-lg font-bold mb-3">Подобранные продукты</h3>
-        <ul className="grid sm:grid-cols-2 gap-3 text-zinc-800">
-          <li><b>Очищение:</b> {plan.products.cleanser}</li>
-          <li><b>Крем:</b> {plan.products.moisturizer}</li>
-          <li><b>SPF:</b> {plan.products.spf}</li>
-          <li><b>Барьер:</b> {plan.products.barrier}</li>
-          <li><b>Актив A (утро):</b> {plan.products.activeA}</li>
-          <li><b>Актив B (вечер):</b> {plan.products.activeB}</li>
-        </ul>
-      </section>
-
-      <section className="bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
-        <h3 className="text-lg font-bold mb-3">Расписание на 28 дней</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          {plan.days.map((d,idx)=>(
-            <div key={idx} className="p-4 rounded-2xl border bg-white/60">
-              <div className="font-semibold mb-2">День {idx+1}</div>
-              <div className="text-sm"><b>Утро:</b> {d.morning.join(" → ")}</div>
-              <div className="text-sm mt-1"><b>Вечер:</b> {d.evening.join(" → ")}</div>
+  const ProductsBlock: React.FC<{ title: string; items: CarePlan["morning"] }> = ({ title, items }) => (
+    <Card className="p-4 md:p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xl font-semibold">{title}</h3>
+        <Button variant="ghost" onClick={() => items.forEach(addToCart)}>Добавить всё</Button>
+      </div>
+      <div className="grid gap-3">
+        {items.map((p) => (
+          <div key={`${p.timeOfDay}-${p.step}-${p.name}`} className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3">
+            <div>
+              <div className="text-base font-medium">{p.name}</div>
+              <div className="text-xs opacity-60">{p.step}</div>
             </div>
-          ))}
-        </div>
-        <div className="mt-4 text-sm text-zinc-500">Неделя 1 — без активов, Недели 2–4 — постепенный ввод согласно чувствительности.</div>
-      </section>
+            <Button size="sm" onClick={() => addToCart(p)}>Добавить в корзину</Button>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
 
-      <section className="bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
-        <h3 className="text-lg font-bold mb-2">Как читать план</h3>
-        <ol className="list-decimal pl-5 space-y-1 text-zinc-700">
-          <li>Вводи новые активы «через день». Если нет дискомфорта — увеличивай до через день/ежедневно.</li>
-          <li>Патч-тест: нанеси немного на участок за ухом 24 ч.</li>
-          <li>SPF ежедневно, даже зимой.</li>
-          <li>При реакции — неделя барьерного ухода и откат частоты.</li>
-        </ol>
-        <div className="mt-4 flex gap-3">
-          <button onClick={()=>window.print()} className="px-5 py-3 rounded-full border">Скачать/распечатать</button>
-          <button onClick={addAllToCart} className="px-5 py-3 rounded-full bg-black text-white">Положить всё в корзину</button>
+  const HeaderBar = () => (
+    <div className="flex items-center justify-between mb-5">
+      <div className="text-2xl md:text-3xl font-bold">Мой план ухода</div>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={() => navigate("/cart")}>Корзина</Button>
+        <Button variant="ghost" onClick={exportToTelegram}>Отправить в чат</Button>
+        <Button onClick={exportToPDF}>Скачать PDF</Button>
+      </div>
+    </div>
+  );
+
+  const MetricsBlock = () => (
+    <Card className="p-4 md:p-5">
+      <div className="flex items-start justify-between mb-4">
+        <h3 className="text-xl font-semibold">Skin-характеристики</h3>
+        <div className="text-sm text-neutral-500">Базируется на ваших ответах</div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div className="rounded-xl border border-neutral-200 p-3">
+          <div className="text-xs text-neutral-500 mb-1">Тип кожи</div>
+          <div className="text-lg font-semibold">{metrics.skinType}</div>
         </div>
-      </section>
+        <div className="rounded-xl border border-neutral-200 p-3">
+          <div className="text-xs text-neutral-500 mb-2">Чувствительность</div>
+          <div className="flex items-center gap-3">
+            <div className="w-full"><Progress value={metrics.sensitivity ? 70 : 30} /></div>
+            <div className="text-sm font-medium w-8 text-right">{metrics.sensitivity ? 9 : 3}</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-neutral-200 p-3">
+          <div className="text-xs text-neutral-500 mb-2">Жирность</div>
+          <div className="flex items-center gap-3">
+            <div className="w-full"><Progress value={metrics.oiliness === "высокая" ? 85 : metrics.oiliness === "средняя" ? 55 : 25} /></div>
+            <div className="text-sm font-medium w-12 text-right">{metrics.oiliness}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-neutral-200 p-3">
+          <div className="text-xs text-neutral-500 mb-1">Основная цель</div>
+          <div className="font-medium">{metrics.primaryGoal}</div>
+        </div>
+        <div className="rounded-xl border border-neutral-200 p-3">
+          <div className="text-xs text-neutral-500 mb-1">Ключевые активы</div>
+          <div className="text-sm text-neutral-700">{metrics.recommendedActives.slice(0, 3).join(", ")}</div>
+        </div>
+      </div>
+    </Card>
+  );
+
+  const Days28Block = () => (
+    <Card className="p-4 md:p-5">
+      <h3 className="text-xl font-semibold mb-3">Расписание 28 дней</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {schedule28.map((d) => (
+          <div key={d.day} className="rounded-xl border border-neutral-200 p-3">
+            <div className="text-sm font-semibold mb-1">День {d.day}</div>
+            <div className="text-sm"><span className="opacity-60">Утро:</span> {d.morningNotes.join("; ")}</div>
+            <div className="text-sm"><span className="opacity-60">Вечер:</span> {d.eveningNotes.join("; ")}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+
+  const CorePlan = (
+    <div className="space-y-4">
+      <MetricsBlock />
+      <ProductsBlock title="Утро" items={plan.morning} />
+      <ProductsBlock title="Вечер" items={plan.evening} />
+      <Card className="p-4 md:p-5">
+        <div className="flex items-center justify-between">
+          <div className="text-sm opacity-70">Быстро добавить все средства в корзину</div>
+          <Button onClick={addAllToCart}>Добавить все</Button>
+        </div>
+      </Card>
+      <Days28Block />
+    </div>
+  );
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-5 md:py-8 print:px-0">
+      <HeaderBar />
+
+      {/* Если не оплачено — показываем заблюренный план с CTA; если оплачено — обычный контент */}
+      {!paid ? <Blurred>{CorePlan}</Blurred> : CorePlan}
+
+      {/* Подсказка для печати/экспорта */}
+      <style>{`
+        @media print {
+          .print\\:px-0 { padding-left: 0 !important; padding-right: 0 !important; }
+          button, a { display: none !important; }
+          .blur-md { filter: none !important; }
+          .backdrop-blur-sm, .bg-white\\/70 { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
+

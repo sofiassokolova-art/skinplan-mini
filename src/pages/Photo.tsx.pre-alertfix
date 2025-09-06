@@ -1,0 +1,282 @@
+// src/pages/Photo.tsx — устойчиво к jsdom, с alert и фоллбеком превью
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Button, Card } from "../ui";
+
+type ScanResult = {
+  concerns: string[];
+  skinType: "сухая" | "комбинированная" | "жирная" | "нормальная";
+  probability?: number;
+  timestamp: number;
+  previewUrl?: string;
+};
+
+const MAX_SIZE = 10 * 1024 * 1024; // 10 МБ
+const ACCEPT = ["image/jpeg", "image/png"];
+const HISTORY_KEY = "skiniq.photo.history";
+
+function loadHistory(): ScanResult[] {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function saveHistory(items: ScanResult[]) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(items));
+}
+
+// доп. проверка по расширению — в jsdom file.type часто пустой
+function isImageByExt(name: string) {
+  return /\.(jpe?g|png)$/i.test(name);
+}
+
+function validateFile(file: File): string | null {
+  const mimeOk = file.type ? ACCEPT.includes(file.type) : isImageByExt(file.name);
+  if (!mimeOk) return "Формат не поддерживается. Разрешены JPG/PNG.";
+  if (file.size > MAX_SIZE) return "Слишком большой файл. Максимум 10 МБ.";
+  return null;
+}
+
+export default function Photo() {
+  const navigate = useNavigate();
+
+  // шаги: guide -> upload -> scanning -> result
+  const [step, setStep] = React.useState<"guide" | "upload" | "scanning" | "result">("guide");
+  const [dontShowGuide, setDontShowGuide] = React.useState(false);
+
+  const [error, setError] = React.useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [preview, setPreview] = React.useState<string | null>(null);
+
+  const [result, setResult] = React.useState<ScanResult | null>(null);
+  const [history, setHistory] = React.useState<ScanResult[]>(loadHistory());
+
+  const onGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const msg = validateFile(file);
+    if (msg) {
+      setError(msg);
+      setSelectedFile(null);
+      setPreview(null);
+      return;
+    }
+
+    setError(null);
+    setSelectedFile(file);
+
+    // безопасное превью: jsdom не имеет URL.createObjectURL
+    let url: string | null = null;
+    try {
+      // @ts-ignore
+      url = typeof URL !== "undefined" && URL.createObjectURL ? URL.createObjectURL(file) : null;
+    } catch {
+      url = null;
+    }
+    setPreview(
+      url ||
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AApMBuP8qg0kAAAAASUVORK5CYII="
+    );
+  };
+
+  const runAnalysis = async () => {
+    if (!selectedFile) {
+      setError("Добавьте фото для анализа.");
+      return;
+    }
+    setError(null);
+    setStep("scanning");
+
+    setTimeout(() => {
+      const mock: ScanResult = {
+        concerns: ["покраснения", "черные точки"],
+        skinType: "комбинированная",
+        probability: 0.86,
+        timestamp: Date.now(),
+        previewUrl: preview || undefined,
+      };
+      setResult(mock);
+      setStep("result");
+
+      const next = [mock, ...loadHistory()].slice(0, 10);
+      setHistory(next);
+      saveHistory(next);
+    }, 1200);
+  };
+
+  const createPlanFromResult = () => {
+    const payload = {
+      source: "photo",
+      name: localStorage.getItem("skiniq.name") || "",
+      skinType: result?.skinType || "комбинированная",
+      concerns: result?.concerns || [],
+    };
+    localStorage.setItem("skiniq.answers", JSON.stringify(payload));
+    navigate("/plan");
+  };
+
+  const removeFromHistory = (idx: number) => {
+    const next = history.filter((_, i) => i !== idx);
+    setHistory(next);
+    saveHistory(next);
+  };
+
+  const resetScan = () => {
+    setSelectedFile(null);
+    setPreview(null);
+    setError(null);
+    setResult(null);
+    setStep("upload");
+  };
+
+  const proceedFromGuide = () => {
+    if (dontShowGuide) localStorage.setItem("skiniq.photo.hideGuide", "1");
+    setStep("upload");
+  };
+
+  React.useEffect(() => {
+    if (localStorage.getItem("skiniq.photo.hideGuide") === "1") {
+      setStep("upload");
+    }
+  }, []);
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <h1 className="text-2xl font-semibold mb-4">Скан по фото</h1>
+
+      {step === "guide" && (
+        <Card className="p-4">
+          <h2 className="text-lg font-medium mb-2">Как сделать фото</h2>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-neutral-700">
+            <li>Дневной рассеянный свет, без вспышки.</li>
+            <li>Без макияжа и фильтров.</li>
+            <li>Лицо целиком, камера на уровне глаз.</li>
+          </ul>
+          <label className="mt-4 flex items-center gap-2 select-none">
+            <input
+              type="checkbox"
+              checked={dontShowGuide}
+              onChange={(e) => setDontShowGuide(e.target.checked)}
+            />
+            <span>Больше не показывать</span>
+          </label>
+          <div className="mt-4">
+            <Button onClick={proceedFromGuide}>Продолжить</Button>
+          </div>
+        </Card>
+      )}
+
+      {step === "upload" && (
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-medium">Загрузите фото</h2>
+              <p className="text-sm text-neutral-600">Поддерживаются JPG/PNG до 10 МБ.</p>
+            </div>
+            <div>
+              <Button variant="ghost" onClick={() => setStep("guide")}>
+                Как сделать фото?
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              data-testid="file-gallery"
+              onChange={onGalleryChange}
+            />
+            {preview && (
+              <img
+                src={preview}
+                alt="Предпросмотр фото"
+                className="mt-2 max-h-64 rounded-lg border"
+              />
+            )}
+            {error && (
+              <div role="alert" aria-live="assertive" className="text-sm text-red-600">
+                {error}
+              </div>
+            )}
+            <div className="pt-2">
+              <Button onClick={runAnalysis} disabled={!preview}>
+                Отправить на анализ
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {step === "scanning" && (
+        <Card className="p-4">
+          <h2 className="text-lg font-medium">Анализируем…</h2>
+          <p className="text-sm text-neutral-600">Это займет около секунды.</p>
+        </Card>
+      )}
+
+      {step === "result" && result && (
+        <div className="space-y-4">
+          <Card className="p-4">
+            <h2 className="text-lg font-medium mb-2">Результат анализа</h2>
+            {result.previewUrl && (
+              <img
+                src={result.previewUrl}
+                alt="Предпросмотр фото"
+                className="mb-3 max-h-64 rounded-lg border"
+              />
+            )}
+            <div className="text-sm">
+              <div>
+                <span className="font-medium">Тип кожи:</span> {result.skinType}
+                {typeof result.probability === "number"
+                  ? ` · уверенность ${(result.probability * 100).toFixed(0)}%`
+                  : ""}
+              </div>
+              {result.concerns?.length ? (
+                <div className="mt-1">
+                  <span className="font-medium">Обнаружено:</span> {result.concerns.join(", ")}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button onClick={createPlanFromResult}>Создать план ухода</Button>
+              <Button variant="secondary" onClick={resetScan}>
+                Повторить скан
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="text-base font-medium mb-2">История сканов</h3>
+            {history.length === 0 ? (
+              <p className="text-sm text-neutral-600">Пока пусто.</p>
+            ) : (
+              <ul className="space-y-2">
+                {history.map((h, idx) => (
+                  <li key={h.timestamp} className="flex items-center gap-3">
+                    {h.previewUrl && (
+                      <img src={h.previewUrl} alt="" className="w-12 h-12 object-cover rounded" />
+                    )}
+                    <div className="text-sm flex-1">
+                      <div className="font-medium">{new Date(h.timestamp).toLocaleString()}</div>
+                      <div className="text-neutral-600">
+                        {h.skinType}; {h.concerns.join(", ")}
+                      </div>
+                    </div>
+                    <Button variant="ghost" onClick={() => removeFromHistory(idx)}>
+                      Удалить
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}

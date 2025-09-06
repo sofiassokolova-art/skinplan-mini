@@ -1,108 +1,182 @@
-import { useEffect, useState } from "react";
-import { tg, sendToTG } from "../lib/tg";
+// src/pages/Cart.tsx
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button, Card } from "../ui";
+import logo from "../assets/skiniq-logo.png";
 
-type CartItem = { id:string; name:string; qty:number; feedback?:string };
-const LS_KEY = "skinplan_cart";
-const NOTE_KEY = "skinplan_cart_note";
-
-const load = (): CartItem[] => {
-  try { const raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : []; }
-  catch { return []; }
+type CartItem = {
+  id?: string;
+  name: string;
+  step?: "cleanser" | "toner" | "hydrator" | "treatment" | "moisturizer" | "spf";
+  timeOfDay?: "morning" | "evening";
+  image?: string;
+  url?: string;
 };
-const save = (items: CartItem[]) => localStorage.setItem(LS_KEY, JSON.stringify(items));
+
+const CART_KEY = "skiniq.cart";
+
+function loadCart(): CartItem[] {
+  try {
+    return JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function saveCart(items: CartItem[]) {
+  localStorage.setItem(CART_KEY, JSON.stringify(items));
+}
+
+const ruTime = (t?: CartItem["timeOfDay"]) =>
+  t === "morning" ? "Утро" : t === "evening" ? "Вечер" : "—";
+
+const stepRu: Record<NonNullable<CartItem["step"]>, string> = {
+  cleanser: "Очищение",
+  toner: "Тонер",
+  hydrator: "Увлажнение",
+  treatment: "Актив",
+  moisturizer: "Крем",
+  spf: "SPF",
+};
+
+const linkOzon = (q: string) =>
+  `https://www.ozon.ru/search/?from_global=true&text=${encodeURIComponent(q)}`;
+const linkWB = (q: string) =>
+  `https://www.wildberries.ru/catalog/0/search.aspx?search=${encodeURIComponent(q)}`;
+const linkGoogle = (q: string) =>
+  `https://www.google.com/search?q=${encodeURIComponent(`${q} купить`)}`;
 
 export default function Cart() {
-  const [items, setItems] = useState<CartItem[]>(load());
-  const [note, setNote] = useState<string>(() => localStorage.getItem(NOTE_KEY) || "");
+  const navigate = useNavigate();
+  const [items, setItems] = useState<CartItem[]>(() => loadCart());
 
-  useEffect(()=> save(items), [items]);
-  useEffect(()=> localStorage.setItem(NOTE_KEY, note), [note]);
+  useEffect(() => {
+    saveCart(items);
+  }, [items]);
 
-  const update = (i:number, patch: Partial<CartItem>) =>
-    setItems(list => list.map((it,idx)=> idx===i ? {...it, ...patch} : it));
+  const isEmpty = items.length === 0;
 
-  const addCustom = () =>
-    setItems(list => [...list, { id: "custom-"+Date.now(), name:"Мой продукт", qty:1 }]);
+  const removeAt = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
+  const clearAll = () => setItems([]);
 
-  const remove = (i:number) => setItems(list => list.filter((_,idx)=> idx!==i));
+  const Header = () => (
+    <div className="flex items-center justify-between mb-5">
+      <h1 className="text-2xl font-bold">Корзина</h1>
+      <div className="flex gap-2">
+        <Button variant="secondary" onClick={() => navigate("/plan")}>
+          Вернуться к плану
+        </Button>
+        {!isEmpty && (
+          <Button variant="ghost" onClick={clearAll} aria-label="Очистить корзину">
+            Очистить корзину
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 
-  const clear = () => { setItems([]); setNote(""); };
-
-  const handleSend = () => {
-    const payload = { type: "skinplan_cart", items, note, ts: Date.now() };
-    const res = sendToTG(payload);
-    if (!res.ok) {
-      // фолбэк: копируем JSON в буфер, чтобы можно было вставить в чат вручную
-      const json = JSON.stringify(payload, null, 2);
-      navigator.clipboard.writeText(json).then(()=>{
-        alert("Я не вижу Telegram WebApp (браузерный режим). Скопировала данные в буфер — вставь в чат вручную.");
-      }).catch(()=>{
-        alert("Не удалось отправить. Открой в Telegram Mini App или скопируй содержимое вручную.");
-      });
-    }
-  };
+  if (isEmpty) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-6 md:py-8">
+        <Header />
+        <Card className="p-8 text-center">
+          <img src={logo} alt="SkinIQ" className="mx-auto mb-4 w-16 h-16 opacity-80" />
+          <h2 className="text-xl font-semibold mb-2">Пока тут пусто…</h2>
+          <p className="opacity-70 mb-4">
+            Добавьте продукты из плана ухода — они появятся здесь.
+          </p>
+          <Button onClick={() => navigate("/plan")}>Перейти к плану</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <section className="bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
-        <h2 className="text-xl font-bold mb-3">Корзина продуктов</h2>
+    <div className="max-w-3xl mx-auto px-4 py-6 md:py-8">
+      <Header />
 
-        {items.length===0 ? (
-          <div className="text-zinc-600">
-            Корзина пуста. Перейди в <a href="/plan" className="underline">План</a> и добавь всё в корзину.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {items.map((it, i)=>(
-              <div key={it.id} className="border rounded-2xl p-4 bg-white/60">
-                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-                  <input
-                    value={it.name}
-                    onChange={e=>update(i,{name:e.target.value})}
-                    className="flex-1 rounded-xl border px-3 py-2"
-                  />
-                  <div className="flex items-center gap-2">
-                    <button onClick={()=>update(i,{qty: Math.max(1, it.qty-1)})} className="px-3 py-2 rounded-full border">−</button>
-                    <span className="min-w-6 text-center">{it.qty}</span>
-                    <button onClick={()=>update(i,{qty: it.qty+1})} className="px-3 py-2 rounded-full border">+</button>
-                  </div>
-                  <button onClick={()=>remove(i)} className="px-3 py-2 rounded-full border text-red-600">Удалить</button>
-                </div>
-                <textarea
-                  value={it.feedback || ""}
-                  onChange={e=>update(i,{feedback:e.target.value})}
-                  placeholder="Фидбек по продукту (например: липкий, сильная отдушка, хочу альтернативу без отдушек)"
-                  className="mt-3 w-full rounded-xl border px-3 py-2 text-sm"
-                  rows={2}
+      <div className="space-y-3">
+        {items.map((it, idx) => (
+          <Card key={`${it.timeOfDay}-${it.step}-${it.name}-${idx}`} className="p-3">
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 shrink-0 rounded-xl overflow-hidden border border-neutral-200 bg-white">
+                <img
+                  src={it.image || logo}
+                  alt={it.name}
+                  className="w-full h-full object-contain p-1.5"
                 />
               </div>
-            ))}
-          </div>
-        )}
 
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button onClick={addCustom} className="px-5 py-3 rounded-full border">Добавить позицию</button>
-          <button onClick={()=>save(items)} className="px-5 py-3 rounded-full border">Сохранить</button>
-          <button onClick={clear} className="px-5 py-3 rounded-full border">Очистить</button>
-          <button onClick={handleSend} className="px-5 py-3 rounded-full bg-black text-white">
-            {tg ? "Отправить в Telegram" : "Скопировать для Telegram"}
-          </button>
-        </div>
-      </section>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{it.name}</div>
+                <div className="text-xs opacity-60">
+                  {ruTime(it.timeOfDay)} • {it.step ? stepRu[it.step] : "Шаг"}
+                </div>
 
-      <section className="bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
-        <h3 className="text-lg font-bold mb-2">Общий комментарий</h3>
-        <textarea
-          value={note}
-          onChange={e=>setNote(e.target.value)}
-          placeholder="Общее: бюджет, магазины, аллергии, что заменить или чего опасаешься"
-          className="w-full rounded-xl border px-3 py-2"
-          rows={3}
-        />
-        <div className="mt-3 text-sm text-zinc-500">
-          Комментарий сохранится и будет приложен к сообщению/заявке.
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {it.url ? (
+                    <a
+                      className="inline-flex items-center rounded-xl px-3 py-1.5 border border-neutral-300 hover:border-black text-sm"
+                      href={it.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Купить
+                    </a>
+                  ) : (
+                    <>
+                      <a
+                        className="inline-flex items-center rounded-xl px-3 py-1.5 border border-neutral-300 hover:border-black text-sm"
+                        href={linkOzon(it.name)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Купить на OZON
+                      </a>
+                      <a
+                        className="inline-flex items-center rounded-xl px-3 py-1.5 border border-neutral-300 hover:border-black text-sm"
+                        href={linkWB(it.name)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Купить на WB
+                      </a>
+                      <a
+                        className="inline-flex items-center rounded-xl px-3 py-1.5 border border-neutral-300 hover:border-black text-sm"
+                        href={linkGoogle(it.name)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Поиск в Google
+                      </a>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Удалить"
+                onClick={() => removeAt(idx)}
+                className="shrink-0"
+                title="Удалить"
+              >
+                ✕
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="mt-5 flex items-center justify-between">
+        <div className="text-sm opacity-70">Позиции: {items.length}</div>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => navigate("/plan")}>
+            Добавить ещё
+          </Button>
+          <Button variant="ghost" onClick={clearAll}>Очистить корзину</Button>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
