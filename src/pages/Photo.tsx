@@ -128,7 +128,8 @@ export default function Photo() {
           previewDataUrl: previewUrl,
           problemAreas: analysis.problemAreas,
           recommendations: analysis.recommendations,
-          confidence: analysis.confidence
+          confidence: analysis.confidence,
+          metrics: analysis.metrics // Добавляем метрики!
         };
 
         // Add to history
