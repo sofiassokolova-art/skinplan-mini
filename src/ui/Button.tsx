@@ -17,7 +17,7 @@ export default function Button({
   const baseClasses = "btn font-sans font-semibold transition-all duration-300 ease-out";
   
   const variantClasses = {
-    primary: "btn-primary",
+    primary: "btn-primary hover:shadow-glow-strong",
     secondary: "bg-pearl-card text-text-primary shadow-neumorphism hover:shadow-glow border border-accent/20",
     ghost: "bg-transparent text-text-primary hover:bg-pearl-card/50"
   };

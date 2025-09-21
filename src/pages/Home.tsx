@@ -89,7 +89,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* 🔝 Hero Section */}
+      {/* Hero Section */}
       <div className="container-premium pt-8 pb-6">
         {/* Логотип */}
         <div className="text-center mb-6">
@@ -111,7 +111,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* 📋 Центральная часть - Сегодняшний уход */}
+      {/* Центральная часть - Сегодняшний уход */}
       {hasCompletedQuiz && plan ? (
         <div className="container-premium space-y-element">
           <Card>
@@ -165,7 +165,7 @@ export default function Home() {
             </div>
           </Card>
 
-          {/* 🔘 CTA Кнопка */}
+          {/* CTA Кнопка */}
           <div className="text-center">
             <Link to="/plan">
               <Button size="lg" fullWidth className="text-lg py-4">
