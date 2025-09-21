@@ -4,21 +4,32 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Премиальная палитра SkinIQ Daylight Pearl
+        // Премиальная палитра SkinIQ - точные цвета из ТЗ
         pearl: {
-          light: "#F7F3EF", // жемчужно-бежевый
-          rose: "#F9E3E5",   // пудрово-розовый
+          light: "#F9F6F3", // новый светлый перламутровый
+          rose: "#F5E6E8",   // новый розовый перламутровый
           card: "#F5F1ED",   // молочный белый для карточек
         },
         text: {
-          primary: "#1C1C1C",   // глубокий чёрный для заголовков
-          secondary: "#7A7A7A", // тёплый серый для описаний
+          primary: "#000000",   // чистый черный для заголовков
+          secondary: "#666666", // серый для подзаголовков
         },
         accent: "#E6CADF", // розово-лиловый акцент
         accent2: "#D6BCE2", // лиловый для чеков и прогресса
+        progress: {
+          from: "#E4D3FF", // начало градиента прогресса
+          to: "#F8D8E7",   // конец градиента прогресса
+        },
         button: {
           from: "#FADADD", // начало градиента кнопки
-          to: "#F7F3EF",   // конец градиента кнопки
+          to: "#F6EAEF",   // конец градиента кнопки (обновлен)
+        },
+        // Цвета для иконок задач
+        task: {
+          cleanser: "#9B8AA3", // лилово-серый для очистки
+          serum: "#A8D8EA",    // светлый голубой для сыворотки
+          cream: "#F4D4BA",    // бежево-розовый для крема
+          spf: "#F2C94C",      // золотистый для SPF
         },
         // Совместимость со старыми стилями
         linen: "#F7F3EF",
@@ -30,7 +41,7 @@ export default {
       },
       fontFamily: {
         'serif': ['Playfair Display', 'serif'],
-        'sans': ['Inter', 'Neue Haas Grotesk', 'system-ui', 'sans-serif'],
+        'sans': ['SF Pro Display', 'Inter', 'Neue Haas Grotesk', 'system-ui', 'sans-serif'],
       },
       borderRadius: { 
         card: "16px", 
@@ -46,9 +57,10 @@ export default {
         e2: "0 8px 28px rgba(28, 28, 28, 0.06)",
       },
       backgroundImage: {
-        'pearl-gradient': 'linear-gradient(to bottom, #F7F3EF, #F9E3E5)',
-        'button-gradient': 'linear-gradient(135deg, #FADADD, #F7F3EF)',
-        'card-gradient': 'linear-gradient(135deg, #F5F1ED, #F7F3EF)',
+        'pearl-gradient': 'linear-gradient(to bottom, #F9F6F3, #F5E6E8)',
+        'button-gradient': 'linear-gradient(135deg, #FADADD, #F6EAEF)',
+        'progress-gradient': 'linear-gradient(135deg, #E4D3FF, #F8D8E7)',
+        'card-gradient': 'linear-gradient(135deg, #F5F1ED, #F9F6F3)',
       },
       spacing: {
         // Отступы согласно гайду
