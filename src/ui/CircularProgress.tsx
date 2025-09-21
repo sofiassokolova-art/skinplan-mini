@@ -50,8 +50,8 @@ export default function CircularProgress({
         {/* Gradient definition */}
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#E4D3FF" />
-            <stop offset="100%" stopColor="#F8D8E7" />
+            <stop offset="0%" stopColor="#E7C0F9" />
+            <stop offset="100%" stopColor="#C9A3FF" />
           </linearGradient>
         </defs>
       </svg>
@@ -59,8 +59,11 @@ export default function CircularProgress({
       {/* Progress text */}
       <div className="absolute inset-0 flex items-center justify-center">
         <span 
-          className="font-sans font-medium text-black"
-          style={{ fontSize: size >= 60 ? '12px' : '10px' }}
+          className="font-sans font-medium"
+          style={{ 
+            fontSize: '12px',
+            color: '#4E4E4E'
+          }}
         >
           {Math.round(progress)}%
         </span>
