@@ -49,10 +49,12 @@ export default {
         input: "12px"
       },
       boxShadow: {
-        // Эндоморфизм - мягкие выпуклые тени
-        neumorphism: "8px 8px 16px rgba(230, 202, 223, 0.2), -8px -8px 16px rgba(255, 255, 255, 0.8)",
-        "neumorphism-inset": "inset 4px 4px 8px rgba(230, 202, 223, 0.2), inset -4px -4px 8px rgba(255, 255, 255, 0.8)",
-        glow: "0 0 20px rgba(230, 202, 223, 0.3)",
+        // Усиленный эндоморфизм для премиального вида
+        neumorphism: "12px 12px 24px rgba(230, 202, 223, 0.15), -12px -12px 24px rgba(255, 255, 255, 0.9)",
+        "neumorphism-inset": "inset 6px 6px 12px rgba(230, 202, 223, 0.15), inset -6px -6px 12px rgba(255, 255, 255, 0.9)",
+        "neumorphism-subtle": "6px 6px 12px rgba(230, 202, 223, 0.1), -6px -6px 12px rgba(255, 255, 255, 0.8)",
+        glow: "0 0 30px rgba(230, 202, 223, 0.4)",
+        "glow-strong": "0 0 40px rgba(230, 202, 223, 0.6)",
         e1: "0 4px 16px rgba(28, 28, 28, 0.04)",
         e2: "0 8px 28px rgba(28, 28, 28, 0.06)",
       },
