@@ -1,7 +1,4 @@
-import TaskIcon from './TaskIcon';
-
 interface TaskCardProps {
-  iconType: 'cleanser' | 'serum' | 'cream' | 'spf';
   title: string;
   subtitle?: string;
   completed?: boolean;
@@ -10,7 +7,6 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({
-  iconType,
   title,
   subtitle,
   completed = false,
@@ -27,16 +23,22 @@ export default function TaskCard({
       onClick={onClick}
     >
       <div className="flex items-center gap-4">
-        {/* Иконка */}
+        {/* Галочка вместо иконки */}
         <div className={`
           w-12 h-12 rounded-2xl flex items-center justify-center
           transition-all duration-300
           ${completed 
-            ? 'bg-accent2/20 shadow-neumorphism-inset' 
-            : 'bg-accent2/10 shadow-neumorphism'
+            ? 'bg-gradient-to-br from-lavender-light to-lavender-medium shadow-neumorphism-inset' 
+            : 'bg-pearl-card shadow-neumorphism border border-accent2/20 hover:border-lavender-medium/50'
           }
         `}>
-          <TaskIcon type={iconType} />
+          {completed ? (
+            <svg className="w-6 h-6 text-lavender-dark drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <div className="w-6 h-6 rounded-full border-2 border-accent2/40 hover:border-lavender-medium/60 transition-colors duration-300"></div>
+          )}
         </div>
         
         {/* Контент */}
