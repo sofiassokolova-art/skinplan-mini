@@ -1,0 +1,1222 @@
+From 05c0af1aceef0c9fd1ca40dd5421a6788c37de1f Mon Sep 17 00:00:00 2001
+From: sofiassokolova-art <cursoragent@cursor.com>
+Date: Sun, 21 Sep 2025 11:55:37 +0000
+Subject: [PATCH] =?UTF-8?q?=F0=9F=8E=A8=20=D0=9F=D1=80=D0=B5=D0=BC=D0=B8?=
+ =?UTF-8?q?=D0=B0=D0=BB=D1=8C=D0=BD=D1=8B=D0=B9=20=D1=80=D0=B5=D0=B4=D0=B8?=
+ =?UTF-8?q?=D0=B7=D0=B0=D0=B9=D0=BD=20=D0=B3=D0=BB=D0=B0=D0=B2=D0=BD=D0=BE?=
+ =?UTF-8?q?=D0=B3=D0=BE=20=D1=8D=D0=BA=D1=80=D0=B0=D0=BD=D0=B0=20SkinIQ?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+✨ Новые возможности:
+- Hero секция с логотипом и персональным приветствием
+- Центральный блок с сегодняшним уходом и переключателем Утро/Вечер
+- Кольцевой прогресс-индикатор с перламутровым градиентом
+- Объемные карточки задач с эндоморфизмом
+- Нижняя навигация с корзиной и анкетой
+
+🎨 Дизайн:
+- Премиальная цветовая палитра Daylight Pearl
+- Типографика: Playfair Display + Inter
+- Эндоморфные UI компоненты с мягкими тенями
+- Перламутровые градиенты и блики
+- Адаптивная верстка
+
+🔧 Технические улучшения:
+- Новые UI компоненты: CircularProgress, TaskCard, Chip
+- Обновленные Button, Card, Header
+- Оптимизированные стили и анимации
+- Улучшенная структура приложения
+---
+ index.html                  |   2 +-
+ src/App.tsx                 |  10 +-
+ src/index.css               | 213 ++++++++++++++-------
+ src/pages/Home.tsx          | 371 ++++++++++++++----------------------
+ src/ui/Button.tsx           |  39 +++-
+ src/ui/Card.tsx             |  52 ++++-
+ src/ui/Chip.tsx             |  39 ++++
+ src/ui/CircularProgress.tsx |  67 +++++++
+ src/ui/Header.tsx           |  10 +-
+ src/ui/TaskCard.tsx         |  73 +++++++
+ src/ui/index.ts             |   3 +
+ tailwind.config.js          |  60 ++++--
+ 12 files changed, 609 insertions(+), 330 deletions(-)
+ create mode 100644 src/ui/Chip.tsx
+ create mode 100644 src/ui/CircularProgress.tsx
+ create mode 100644 src/ui/TaskCard.tsx
+
+diff --git a/index.html b/index.html
+index ce2d4cb..cc3b2af 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,7 @@
+   <head>
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
++<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1" />
+     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+diff --git a/src/App.tsx b/src/App.tsx
+index ed7d70c..871e3f9 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,4 @@
+-import { Routes, Route } from "react-router-dom";
++import { Routes, Route, useLocation } from "react-router-dom";
+ import Home from "./pages/Home";
+ import Quiz from "./pages/Quiz";
+ import Cart from "./pages/Cart";
+@@ -12,13 +12,17 @@ import Onboarding, { useOnboarding } from "./components/Onboarding";
+ 
+ function App() {
+   const { showOnboarding, completeOnboarding, skipOnboarding, resetOnboarding } = useOnboarding();
++  const location = useLocation();
++  
++  // Показываем Header только на страницах, где он нужен (не на главной)
++  const showHeader = location.pathname !== '/';
+ 
+   return (
+     <ErrorBoundary>
+       <div className="min-h-screen relative">
++        {showHeader && <Header onShowHelp={resetOnboarding} />}
+         
+-        <Header onShowHelp={resetOnboarding} />
+-        <main className="px-4 py-6 max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl sm:px-6 relative z-10">
++        <main className={showHeader ? "px-4 py-6 max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl sm:px-6 relative z-10" : "relative z-10"}>
+           <ErrorBoundary>
+             <Routes>
+               <Route path="/" element={<Home/>} />
+diff --git a/src/index.css b/src/index.css
+index ef87d66..bc93742 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -3,123 +3,202 @@
+ @tailwind utilities;
+ 
+ @layer base {
+-  html, body, #root { height: 100%; }
++  html, body, #root { 
++    height: 100%; 
++    font-family: 'Inter', 'Neue Haas Grotesk', system-ui, sans-serif;
++  }
++  
+   body { 
+-    @apply text-ink antialiased;
++    @apply text-text-primary antialiased bg-pearl-gradient;
+     position: relative;
++    min-height: 100vh;
+   }
+   
++  /* Премиальный перламутровый фон */
+   body::before {
+     content: '';
+     position: fixed;
+-    top: -50%;
+-    left: -50%;
+-    width: 200%;
+-    height: 200%;
+-    background: linear-gradient(45deg, 
+-      rgba(219, 234, 254, 0.9) 0%,
+-      rgba(243, 232, 255, 0.9) 15%,
+-      rgba(254, 242, 242, 0.9) 30%,
+-      rgba(240, 249, 255, 0.9) 45%,
+-      rgba(229, 231, 235, 0.9) 60%,
+-      rgba(243, 232, 255, 0.9) 75%,
+-      rgba(219, 234, 254, 0.9) 100%
++    top: 0;
++    left: 0;
++    width: 100%;
++    height: 100%;
++    background: linear-gradient(135deg, 
++      #F7F3EF 0%,
++      #F9E3E5 50%,
++      #F7F3EF 100%
+     );
+-    background-size: 400% 400%;
+-    animation: liquidFlow 25s ease-in-out infinite;
++    opacity: 0.9;
+     z-index: -2;
+   }
+   
++  /* Мягкий перламутровый блеск */
+   body::after {
+     content: '';
+     position: fixed;
+-    top: -40%;
+-    right: -40%;
+-    width: 180%;
+-    height: 180%;
++    top: -50%;
++    left: -50%;
++    width: 200%;
++    height: 200%;
+     background: radial-gradient(ellipse at center,
+-      rgba(167, 139, 250, 0.4) 0%,
+-      rgba(196, 181, 253, 0.3) 20%,
+-      rgba(255, 182, 193, 0.2) 40%,
+-      rgba(173, 216, 230, 0.2) 60%,
+-      transparent 80%
++      rgba(230, 202, 223, 0.1) 0%,
++      rgba(247, 243, 239, 0.05) 30%,
++      transparent 70%
+     );
+-    animation: liquidPulse 18s ease-in-out infinite reverse;
++    animation: pearlShimmer 20s ease-in-out infinite;
+     z-index: -1;
+   }
++  
++  /* Типографика */
++  h1, h2, h3 {
++    font-family: 'Playfair Display', serif;
++    @apply text-text-primary;
++    font-weight: 500;
++  }
++  
++  h1 {
++    @apply text-3xl md:text-4xl;
++    line-height: 1.2;
++  }
++  
++  h2 {
++    @apply text-2xl md:text-3xl;
++    line-height: 1.3;
++  }
++  
++  h3 {
++    @apply text-xl md:text-2xl;
++    line-height: 1.4;
++  }
++  
++  p, span, div {
++    @apply text-text-secondary;
++    line-height: 1.6;
++  }
+ }
+ 
+ @layer components {
++  /* Премиальные карточки с эндоморфизмом */
+   .card {
+-    @apply rounded-3xl border border-white/70 bg-white/70 backdrop-blur-xl shadow-soft;
++    @apply rounded-card bg-pearl-card backdrop-blur-sm shadow-neumorphism;
++    border: 1px solid rgba(230, 202, 223, 0.2);
++    transition: all 0.3s ease;
++  }
++  
++  .card:hover {
++    @apply shadow-glow;
++    transform: translateY(-2px);
++  }
++  
++  .card-active {
++    @apply shadow-neumorphism-inset;
++    border: 2px solid #E6CADF;
++    background: linear-gradient(135deg, #F5F1ED, #FADADD);
+   }
++  
++  /* Премиальные кнопки-капсулы */
+   .btn {
+-    @apply inline-flex items-center justify-center rounded-full px-6 py-3 font-semibold;
++    @apply inline-flex items-center justify-center rounded-btn px-6 py-3 font-sans font-semibold;
++    transition: all 0.3s ease;
+   }
++  
+   .btn-primary {
+-@apply btn text-white bg-gradient-to-r from-indigo-600 to-fuchsia-600 shadow-lg hover:opacity-95;
+-
++    @apply btn text-text-primary bg-button-gradient shadow-neumorphism;
++    border: 1px solid rgba(230, 202, 223, 0.3);
++  }
++  
++  .btn-primary:hover {
++    @apply shadow-glow;
++    transform: translateY(-1px);
++  }
++  
++  .btn-primary:active {
++    @apply shadow-neumorphism-inset;
++    transform: translateY(0);
+   }
++  
++  /* Премиальные чипы для выбора */
+   .chip {
+-    @apply rounded-full px-4 py-2 border border-slate-200 bg-white/70 hover:bg-white/90 text-sm;
++    @apply rounded-btn px-4 py-2 text-sm font-sans font-medium;
++    @apply bg-pearl-card text-text-secondary shadow-neumorphism;
++    border: 1px solid rgba(230, 202, 223, 0.2);
++    transition: all 0.3s ease;
++  }
++  
++  .chip:hover {
++    @apply text-text-primary;
++    transform: translateY(-1px);
+   }
++  
+   .chip-active {
+-    @apply border-indigo-300 ring-2 ring-indigo-300/30 bg-indigo-50;
++    @apply text-accent bg-card-gradient shadow-neumorphism-inset;
++    border: 2px solid #E6CADF;
++  }
++  
++  /* Поля ввода */
++  .input {
++    @apply rounded-input px-4 py-3 bg-pearl-card;
++    @apply text-text-primary placeholder-text-secondary;
++    @apply shadow-neumorphism-inset;
++    border: 1px solid rgba(230, 202, 223, 0.2);
++    transition: all 0.3s ease;
++  }
++  
++  .input:focus {
++    @apply outline-none;
++    border-color: #E6CADF;
++    box-shadow: 0 0 0 3px rgba(230, 202, 223, 0.1);
++  }
++  
++  /* Контейнер с максимальной шириной 85% */
++  .container-premium {
++    @apply mx-auto px-4;
++    max-width: 85%;
+   }
+ }
+ 
+-@keyframes liquidFlow {
++/* Премиальная анимация перламутрового блеска */
++@keyframes pearlShimmer {
+   0% {
+     transform: rotate(0deg) scale(1);
+-    filter: hue-rotate(0deg);
+-    background-position: 0% 50%;
++    opacity: 0.1;
+   }
+   25% {
+-    transform: rotate(90deg) scale(1.1);
+-    filter: hue-rotate(60deg);
+-    background-position: 100% 0%;
++    transform: rotate(90deg) scale(1.05);
++    opacity: 0.15;
+   }
+   50% {
+-    transform: rotate(180deg) scale(0.95);
+-    filter: hue-rotate(120deg);
+-    background-position: 100% 100%;
++    transform: rotate(180deg) scale(0.98);
++    opacity: 0.08;
+   }
+   75% {
+-    transform: rotate(270deg) scale(1.05);
+-    filter: hue-rotate(180deg);
+-    background-position: 0% 100%;
++    transform: rotate(270deg) scale(1.02);
++    opacity: 0.12;
+   }
+   100% {
+     transform: rotate(360deg) scale(1);
+-    filter: hue-rotate(240deg);
+-    background-position: 0% 50%;
++    opacity: 0.1;
+   }
+ }
+ 
+-@keyframes liquidPulse {
+-  0% {
+-    transform: scale(1) rotate(0deg);
+-    opacity: 0.4;
++/* Мягкое появление элементов */
++@keyframes fadeInUp {
++  from {
++    opacity: 0;
++    transform: translateY(20px);
+   }
+-  20% {
+-    transform: scale(1.15) rotate(72deg);
+-    opacity: 0.6;
++  to {
++    opacity: 1;
++    transform: translateY(0);
+   }
+-  40% {
+-    transform: scale(0.9) rotate(144deg);
+-    opacity: 0.3;
+-  }
+-  60% {
+-    transform: scale(1.08) rotate(216deg);
+-    opacity: 0.5;
+-  }
+-  80% {
+-    transform: scale(0.95) rotate(288deg);
+-    opacity: 0.35;
++}
++
++/* Элегантное пульсирование для активных элементов */
++@keyframes gentlePulse {
++  0%, 100% {
++    box-shadow: 0 0 20px rgba(230, 202, 223, 0.3);
+   }
+-  100% {
+-    transform: scale(1) rotate(360deg);
+-    opacity: 0.4;
++  50% {
++    box-shadow: 0 0 30px rgba(230, 202, 223, 0.5);
+   }
+ }
+ 
+diff --git a/src/pages/Home.tsx b/src/pages/Home.tsx
+index 8b6b09c..f680f96 100644
+--- a/src/pages/Home.tsx
++++ b/src/pages/Home.tsx
+@@ -1,5 +1,6 @@
+ import { Link } from "react-router-dom";
+ import { useMemo, useState } from "react";
++import { Button, Card, Chip, CircularProgress, TaskCard } from "../ui";
+ 
+ // Функция проверки премиум доступа (из Plan.tsx)
+ function isPremium(): boolean {
+@@ -81,257 +82,169 @@ export default function Home() {
+     }
+   }, []);
+ 
++  // Данные для задач ухода
++  const skincareTasks = useMemo(() => {
++    const morningTasks = [
++      { id: 'morning-cleanser', icon: '🧴', title: 'Очищение', subtitle: 'На влажную кожу' },
++      { id: 'morning-serum', icon: '💧', title: 'Сыворотка', subtitle: 'После очищения' },
++      { id: 'morning-moisturizer', icon: '🧴', title: 'Увлажнение', subtitle: 'Перед SPF' },
++      { id: 'morning-spf', icon: '☀️', title: 'Защита SPF', subtitle: 'За 15 мин до выхода' }
++    ];
++    
++    const eveningTasks = [
++      { id: 'evening-cleanser', icon: '🧴', title: 'Двойное очищение', subtitle: 'Масло + гель' },
++      { id: 'evening-treatment', icon: '✨', title: 'Активы', subtitle: 'На сухую кожу' },
++      { id: 'evening-moisturizer', icon: '🧴', title: 'Питание', subtitle: 'Завершающий этап' }
++    ];
++    
++    return activeTime === 'morning' ? morningTasks : eveningTasks;
++  }, [activeTime]);
++
++  // Подсчет прогресса
++  const progress = useMemo(() => {
++    const totalTasks = skincareTasks.length;
++    const completedTasks = skincareTasks.filter(task => completedSteps[task.id]).length;
++    return totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
++  }, [skincareTasks, completedSteps]);
++
+   return (
+-    <div className="space-y-4 relative">
+-      {/* Анимированный жидкий фон */}
+-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+-        <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-purple-50 to-pink-50"></div>
+-        <div className="liquid-bg absolute inset-0"></div>
+-      </div>
+-      
+-      <style dangerouslySetInnerHTML={{__html: `
+-        .liquid-bg {
+-          background: linear-gradient(-45deg, 
+-            rgba(219, 234, 254, 0.4), 
+-            rgba(196, 181, 253, 0.3), 
+-            rgba(253, 230, 138, 0.2), 
+-            rgba(191, 219, 254, 0.4),
+-            rgba(233, 213, 255, 0.3)
+-          );
+-          background-size: 400% 400%;
+-          animation: liquidFlow 15s ease-in-out infinite;
+-        }
+-        
+-        @keyframes liquidFlow {
+-          0% {
+-            background-position: 0% 50%;
+-            transform: scale(1) rotate(0deg);
+-          }
+-          25% {
+-            background-position: 100% 50%;
+-            transform: scale(1.1) rotate(1deg);
+-          }
+-          50% {
+-            background-position: 100% 100%;
+-            transform: scale(1.05) rotate(-0.5deg);
+-          }
+-          75% {
+-            background-position: 0% 100%;
+-            transform: scale(1.1) rotate(0.5deg);
+-          }
+-          100% {
+-            background-position: 0% 50%;
+-            transform: scale(1) rotate(0deg);
+-          }
+-        }
+-      `}} />
+-      
+-      <div className="relative z-10">
+-      {userName && (
++    <div className="min-h-screen">
++      {/* 🔝 Hero Section */}
++      <div className="container-premium pt-8 pb-6">
++        {/* Логотип */}
+         <div className="text-center mb-6">
+-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+-            {greeting}!
++          <h1 className="font-serif text-4xl text-text-primary mb-2">
++            SkinIQ
+           </h1>
+         </div>
+-      )}
+-
+-      {hasCompletedQuiz && plan && (
+-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm relative">
+-          <div className="flex items-center justify-between mb-6">
+-            <div>
+-              <h2 className="text-lg font-bold text-gray-900">ТВОЙ УХОД СЕГОДНЯ</h2>
+-              {hasPremium && (
+-                <div className="text-xs text-gray-500 mt-1">
+-                  Прогресс: {Object.values(completedSteps).filter(Boolean).length} из {(plan.morning?.length || 0) + (plan.evening?.length || 0)} шагов
+-                </div>
+-              )}
+-            </div>
+-            <div className="flex gap-2">
+-              <button
+-                onClick={() => setActiveTime('morning')}
+-                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+-                  activeTime === 'morning' 
+-                    ? 'bg-black text-white' 
+-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+-                }`}
+-              >
+-                УТРО
+-              </button>
+-              <button
+-                onClick={() => setActiveTime('evening')}
+-                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
+-                  activeTime === 'evening' 
+-                    ? 'bg-black text-white' 
+-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+-                }`}
+-              >
+-                ВЕЧЕР
+-              </button>
+-            </div>
++        
++        {/* Приветствие */}
++        {userName && (
++          <div className="text-center mb-4">
++            <h2 className="font-serif text-2xl text-text-primary mb-2">
++              Привет, {userName}!
++            </h2>
++            <p className="text-text-secondary font-sans">
++              Твой персональный гид по уходу за кожей
++            </p>
+           </div>
++        )}
++      </div>
+ 
+-
+-          {hasPremium ? (
+-            <div className="space-y-4">
+-              {(activeTime === 'morning' ? plan.morning : plan.evening)?.slice(0, 4).map((step: any, idx: number) => {
+-                const getStepStatus = (stepType: string, timeOfDay: string) => {
+-                  const statuses = {
+-                    'cleanser': timeOfDay === 'morning' ? 'НА ВЛАЖНУЮ КОЖУ' : 'ДВОЙНОЕ ОЧИЩЕНИЕ',
+-                    'hydrator': timeOfDay === 'morning' ? 'ПОСЛЕ ОЧИЩЕНИЯ' : 'НА ВЛАЖНУЮ КОЖУ', 
+-                    'treatment': timeOfDay === 'morning' ? 'ПЕРЕД УВЛАЖНЕНИЕМ' : 'НА СУХУЮ КОЖУ',
+-                    'moisturizer': timeOfDay === 'morning' ? 'ПЕРЕД SPF' : 'ЗАВЕРШАЮЩИЙ ЭТАП',
+-                    'spf': 'ЗА 15 МИН ДО ВЫХОДА'
+-                  };
+-                  return statuses[stepType as keyof typeof statuses] || 'ПО ИНСТРУКЦИИ';
+-                };
+-
+-                const stepId = `${activeTime}-${step.step}-${idx}`;
+-                const isCompleted = completedSteps[stepId] || false;
+-
+-                return (
+-                  <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+-                    <div className="flex items-center gap-3">
+-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+-                        <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+-                      </div>
+-                      <div>
+-                        <div className={`font-medium text-sm transition-colors ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+-                          {step.name.split('(')[0].trim()}
+-                        </div>
+-                        <div className="text-xs text-gray-500 uppercase tracking-wide">
+-                          {getStepStatus(step.step, activeTime)}
+-                        </div>
+-                      </div>
+-                    </div>
+-                    <div className="text-right">
+-                      <button
+-                        onClick={() => toggleStepCompleted(stepId)}
+-                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
+-                          isCompleted 
+-                            ? 'bg-green-500 text-white shadow-lg transform scale-110' 
+-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:scale-105'
+-                        }`}
+-                        title={isCompleted ? 'Отменить выполнение' : 'Отметить как выполнено'}
+-                      >
+-                        <span className="text-xs font-bold">✓</span>
+-                      </button>
+-                    </div>
+-                  </div>
+-                );
+-              })}
+-            </div>
+-          ) : (
+-            <div className="relative">
+-              {/* Заблюренный контент */}
+-              <div className="filter blur-sm pointer-events-none">
+-                <div className="space-y-4">
+-                  {[1, 2, 3, 4].map((idx) => (
+-                    <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+-                      <div className="flex items-center gap-3">
+-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+-                          <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+-                        </div>
+-                        <div>
+-                          <div className="font-medium text-gray-900 text-sm">Средство {idx}</div>
+-                          <div className="text-xs text-gray-500 uppercase tracking-wide">ИНСТРУКЦИЯ</div>
+-                        </div>
+-                      </div>
+-                      <div className="text-right">
+-                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+-                          <span className="text-xs text-gray-600">✓</span>
+-                        </div>
+-                      </div>
+-                    </div>
+-                  ))}
++      {/* 📋 Центральная часть - Сегодняшний уход */}
++      {hasCompletedQuiz && plan ? (
++        <div className="container-premium space-y-element">
++          <Card>
++            {/* Заголовок и переключатель */}
++            <div className="flex items-center justify-between mb-element">
++              <div className="flex items-center gap-4">
++                <div>
++                  <h3 className="font-serif text-xl text-text-primary">
++                    Сегодняшний уход
++                  </h3>
+                 </div>
++                {/* Прогресс-индикатор */}
++                <CircularProgress 
++                  progress={progress} 
++                  size={60} 
++                  strokeWidth={4}
++                />
+               </div>
+               
+-              {/* Оверлей с призывом к покупке */}
+-              <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center rounded-xl">
+-                <div className="text-center p-4">
+-                  <div className="text-3xl mb-2">🔒</div>
+-                  <div className="font-bold text-gray-900 mb-2">Детальная рутина</div>
+-                  <div className="text-sm text-gray-600 mb-4">
+-                    Пошаговые инструкции и точное время применения
+-                  </div>
+-                  <div className="flex gap-2 flex-wrap justify-center">
+-                    <button
+-                      onClick={() => {
+-                        setPremium(true);
+-                        setHasPremium(true);
+-                      }}
+-                      className="px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-semibold hover:bg-indigo-700 transition"
+-                    >
+-                      Разблокировать за 199₽
+-                    </button>
+-                    <button
+-                      onClick={() => {
+-                        setPremium(false);
+-                        setHasPremium(false);
+-                      }}
+-                      className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs hover:bg-gray-300 transition"
+-                    >
+-                      Тест: сбросить
+-                    </button>
+-                  </div>
+-                  <div className="text-xs text-gray-500 mt-2">
+-                    или 7 дней бесплатно
+-                  </div>
+-                </div>
++              {/* Переключатель Утро/Вечер */}
++              <div className="flex gap-2">
++                <Chip
++                  active={activeTime === 'morning'}
++                  onClick={() => setActiveTime('morning')}
++                  size="md"
++                >
++                  Утро
++                </Chip>
++                <Chip
++                  active={activeTime === 'evening'}
++                  onClick={() => setActiveTime('evening')}
++                  size="md"
++                >
++                  Вечер
++                </Chip>
+               </div>
+             </div>
+-          )}
+-          
+-          <div className="mt-6 text-center">
++
++            {/* Список задач */}
++            <div className="space-y-3">
++              {skincareTasks.map((task) => (
++                <TaskCard
++                  key={task.id}
++                  icon={task.icon}
++                  title={task.title}
++                  subtitle={task.subtitle}
++                  completed={completedSteps[task.id] || false}
++                  onClick={() => toggleStepCompleted(task.id)}
++                />
++              ))}
++            </div>
++          </Card>
++
++          {/* 🔘 CTA Кнопка */}
++          <div className="text-center">
+             <Link to="/plan">
+-              <button className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium">
+-                ПЕРЕЙТИ К ПОДРОБНОМУ ПЛАНУ
+-              </button>
++              <Button size="lg" fullWidth className="text-lg py-4">
++                Открыть подробный план
++              </Button>
+             </Link>
+           </div>
+         </div>
+-      )}
+-
+-      {!hasCompletedQuiz && (
+-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm text-center">
+-          <h2 className="text-xl font-bold text-gray-900 mb-3">
+-            ЗАПЛАНИРУЙТЕ СВОЮ РУТИНУ
+-          </h2>
+-          <p className="text-gray-600 mb-6 leading-relaxed">
+-            Пройдите короткую анкету, и мы соберём персональный уход
+-          </p>
+-          <Link to="/quiz">
+-            <button className="w-full bg-black text-white py-4 rounded-2xl font-semibold hover:bg-gray-800 transition-colors">
+-              ЗАПОЛНИТЬ АНКЕТУ
+-            </button>
+-          </Link>
++      ) : (
++        /* Экран для новых пользователей */
++        <div className="container-premium">
++          <Card className="text-center">
++            <div className="py-8">
++              <div className="text-6xl mb-4">✨</div>
++              <h2 className="font-serif text-2xl text-text-primary mb-text">
++                Создай свой план ухода
++              </h2>
++              <p className="text-text-secondary mb-element leading-relaxed max-w-sm mx-auto">
++                Пройди короткую анкету и получи персональные рекомендации
++              </p>
++              <Link to="/quiz">
++                <Button size="lg" fullWidth>
++                  Начать анкету
++                </Button>
++              </Link>
++            </div>
++          </Card>
+         </div>
+       )}
+ 
+-      <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+-        <div className="flex items-center gap-4">
+-          <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center">
+-            <span className="text-xl">🛒</span>
+-          </div>
+-          <div className="flex-1">
+-            <h2 className="text-lg font-bold text-gray-900">КОРЗИНА</h2>
+-            <p className="text-sm text-gray-600">Товары из плана, которые вы добавили</p>
+-          </div>
++      {/* 🛍 Нижняя навигация */}
++      <div className="container-premium mt-section pb-8">
++        <div className="grid grid-cols-2 gap-4">
++          {/* Корзина */}
+           <Link to="/cart">
+-            <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold hover:bg-gray-200 transition-colors">
+-              ОТКРЫТЬ
+-            </button>
++            <Card clickable className="text-center py-6 bg-gradient-to-br from-pearl-card to-button-from">
++              <div className="text-3xl mb-2">🛍️</div>
++              <h4 className="font-sans font-medium text-text-primary">
++                Корзина
++              </h4>
++              <p className="text-sm text-text-secondary mt-1">
++                Товары из плана
++              </p>
++            </Card>
+           </Link>
+-        </div>
+-      </div>
+-      
+-      {hasCompletedQuiz && (
+-        <div className="text-center pt-4">
+-          <Link to="/quiz" className="text-sm text-gray-500 hover:text-gray-700 transition-colors font-medium">
+-            ПЕРЕПРОЙТИ АНКЕТУ
++          
++          {/* Анкета */}
++          <Link to="/quiz">
++            <Card clickable className="text-center py-6 bg-gradient-to-br from-pearl-card to-accent/10">
++              <div className="text-3xl mb-2">📋</div>
++              <h4 className="font-sans font-medium text-text-primary">
++                Анкета
++              </h4>
++              <p className="text-sm text-text-secondary mt-1">
++                {hasCompletedQuiz ? 'Обновить данные' : 'Заполнить профиль'}
++              </p>
++            </Card>
+           </Link>
+         </div>
+-      )}
+       </div>
+     </div>
+   );
+diff --git a/src/ui/Button.tsx b/src/ui/Button.tsx
+index f2db335..7dc2d06 100644
+--- a/src/ui/Button.tsx
++++ b/src/ui/Button.tsx
+@@ -1,16 +1,45 @@
+ 
+ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+   children: React.ReactNode;
++  variant?: 'primary' | 'secondary' | 'ghost';
++  size?: 'sm' | 'md' | 'lg';
++  fullWidth?: boolean;
+ };
+ 
+-export default function Button({ children, className = "", ...props }: ButtonProps) {
++export default function Button({ 
++  children, 
++  className = "", 
++  variant = 'primary',
++  size = 'md',
++  fullWidth = false,
++  ...props 
++}: ButtonProps) {
++  const baseClasses = "btn font-sans font-semibold transition-all duration-300 ease-out";
++  
++  const variantClasses = {
++    primary: "btn-primary",
++    secondary: "bg-pearl-card text-text-primary shadow-neumorphism hover:shadow-glow border border-accent/20",
++    ghost: "bg-transparent text-text-primary hover:bg-pearl-card/50"
++  };
++  
++  const sizeClasses = {
++    sm: "px-4 py-2 text-sm",
++    md: "px-6 py-3 text-base", 
++    lg: "px-8 py-4 text-lg"
++  };
++  
++  const widthClass = fullWidth ? "w-full" : "";
++  
+   return (
+     <button
+       {...props}
+-      className={
+-        "px-4 py-2 rounded-full bg-black text-white hover:bg-stone-800 transition " +
+-        className
+-      }
++      className={`
++        ${baseClasses} 
++        ${variantClasses[variant]} 
++        ${sizeClasses[size]} 
++        ${widthClass} 
++        ${className}
++      `.trim()}
+     >
+       {children}
+     </button>
+diff --git a/src/ui/Card.tsx b/src/ui/Card.tsx
+index dcc1f48..9909940 100644
+--- a/src/ui/Card.tsx
++++ b/src/ui/Card.tsx
+@@ -1,21 +1,55 @@
+ 
+ type CardProps = {
+-  title: string;
++  title?: string;
+   subtitle?: string;
+   help?: React.ReactNode;
+   children: React.ReactNode;
++  className?: string;
++  clickable?: boolean;
++  active?: boolean;
++  onClick?: () => void;
+ };
+ 
+-export default function Card({ title, subtitle, help, children }: CardProps) {
++export default function Card({ 
++  title, 
++  subtitle, 
++  help, 
++  children, 
++  className = "",
++  clickable = false,
++  active = false,
++  onClick
++}: CardProps) {
++  const cardClasses = `
++    card p-6
++    ${active ? 'card-active' : ''}
++    ${clickable ? 'cursor-pointer hover:shadow-glow' : ''}
++    ${className}
++  `.trim();
++
+   return (
+-    <div className="p-5 rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl shadow-lg">
+-      <div className="flex items-start justify-between gap-3 mb-3">
+-        <div>
+-          <h2 className="text-lg font-bold">{title}</h2>
+-          {subtitle && <p className="text-sm text-zinc-600">{subtitle}</p>}
++    <div className={cardClasses} onClick={clickable ? onClick : undefined}>
++      {(title || subtitle || help) && (
++        <div className="flex items-start justify-between gap-3 mb-text">
++          <div>
++            {title && (
++              <h3 className="font-serif text-text-primary font-medium">
++                {title}
++              </h3>
++            )}
++            {subtitle && (
++              <p className="text-sm text-text-secondary mt-1">
++                {subtitle}
++              </p>
++            )}
++          </div>
++          {help && (
++            <div className="text-sm text-text-secondary">
++              {help}
++            </div>
++          )}
+         </div>
+-        {help && <div className="text-sm text-zinc-500">{help}</div>}
+-      </div>
++      )}
+       <div>{children}</div>
+     </div>
+   );
+diff --git a/src/ui/Chip.tsx b/src/ui/Chip.tsx
+new file mode 100644
+index 0000000..723ea05
+--- /dev/null
++++ b/src/ui/Chip.tsx
+@@ -0,0 +1,39 @@
++type ChipProps = {
++  children: React.ReactNode;
++  active?: boolean;
++  onClick?: () => void;
++  className?: string;
++  size?: 'sm' | 'md' | 'lg';
++};
++
++export default function Chip({ 
++  children, 
++  active = false, 
++  onClick, 
++  className = "",
++  size = 'md'
++}: ChipProps) {
++  const sizeClasses = {
++    sm: "px-3 py-1.5 text-xs",
++    md: "px-4 py-2 text-sm",
++    lg: "px-6 py-3 text-base"
++  };
++
++  const chipClasses = `
++    chip
++    ${active ? 'chip-active' : ''}
++    ${onClick ? 'cursor-pointer' : ''}
++    ${sizeClasses[size]}
++    ${className}
++  `.trim();
++
++  return (
++    <button 
++      className={chipClasses} 
++      onClick={onClick}
++      type="button"
++    >
++      {children}
++    </button>
++  );
++}
+\ No newline at end of file
+diff --git a/src/ui/CircularProgress.tsx b/src/ui/CircularProgress.tsx
+new file mode 100644
+index 0000000..ca72efa
+--- /dev/null
++++ b/src/ui/CircularProgress.tsx
+@@ -0,0 +1,67 @@
++interface CircularProgressProps {
++  progress: number; // 0-100
++  size?: number;
++  strokeWidth?: number;
++  className?: string;
++}
++
++export default function CircularProgress({ 
++  progress, 
++  size = 80, 
++  strokeWidth = 6,
++  className = ""
++}: CircularProgressProps) {
++  const radius = (size - strokeWidth) / 2;
++  const circumference = radius * 2 * Math.PI;
++  const strokeDasharray = `${circumference} ${circumference}`;
++  const strokeDashoffset = circumference - (progress / 100) * circumference;
++
++  return (
++    <div className={`relative inline-flex items-center justify-center ${className}`}>
++      <svg
++        className="transform -rotate-90"
++        width={size}
++        height={size}
++      >
++        {/* Background circle */}
++        <circle
++          cx={size / 2}
++          cy={size / 2}
++          r={radius}
++          stroke="rgba(230, 202, 223, 0.2)"
++          strokeWidth={strokeWidth}
++          fill="transparent"
++        />
++        
++        {/* Progress circle */}
++        <circle
++          cx={size / 2}
++          cy={size / 2}
++          r={radius}
++          stroke="url(#progressGradient)"
++          strokeWidth={strokeWidth}
++          fill="transparent"
++          strokeDasharray={strokeDasharray}
++          strokeDashoffset={strokeDashoffset}
++          strokeLinecap="round"
++          className="transition-all duration-500 ease-out"
++        />
++        
++        {/* Gradient definition */}
++        <defs>
++          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
++            <stop offset="0%" stopColor="#D6BCE2" />
++            <stop offset="100%" stopColor="#E6CADF" />
++          </linearGradient>
++        </defs>
++      </svg>
++      
++      {/* Progress text */}
++      <div className="absolute inset-0 flex items-center justify-center">
++        <span className="text-lg font-serif font-medium text-text-primary">
++          {Math.round(progress)}%
++        </span>
++      </div>
++    </div>
++  );
++}
+\ No newline at end of file
+diff --git a/src/ui/Header.tsx b/src/ui/Header.tsx
+index caf0570..c1b8711 100644
+--- a/src/ui/Header.tsx
++++ b/src/ui/Header.tsx
+@@ -6,8 +6,8 @@ interface HeaderProps {
+ 
+ export default function Header({ onShowHelp }: HeaderProps) {
+   return (
+-    <header className="px-4 py-4 bg-white border-b border-gray-100 relative z-20">
+-      <div className="max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl flex items-center justify-between">
++    <header className="container-premium py-6 relative z-20">
++      <div className="flex items-center justify-between">
+         <Link 
+           to="/" 
+           aria-label="На главную" 
+@@ -15,15 +15,15 @@ export default function Header({ onShowHelp }: HeaderProps) {
+         >
+           <img 
+             src="/skiniq-logo.png" 
+-            alt="Skin IQ" 
+-            className="h-16 w-auto sm:h-18 md:h-20 lg:h-22 group-hover:scale-105 transition-transform duration-200 drop-shadow-lg"
++            alt="SkinIQ" 
++            className="h-12 w-auto group-hover:scale-105 transition-transform duration-300 drop-shadow-sm"
+           />
+         </Link>
+         
+         {onShowHelp && (
+           <button 
+             onClick={onShowHelp}
+-            className="px-3 py-1.5 text-sm font-semibold text-gray-600 hover:text-gray-800 border border-gray-300 rounded-full hover:bg-white/70 transition-all duration-200"
++            className="chip text-text-secondary hover:text-text-primary"
+             title="Показать инструкцию по использованию"
+           >
+             Помощь
+diff --git a/src/ui/TaskCard.tsx b/src/ui/TaskCard.tsx
+new file mode 100644
+index 0000000..a5be6f2
+--- /dev/null
++++ b/src/ui/TaskCard.tsx
+@@ -0,0 +1,73 @@
++interface TaskCardProps {
++  icon: string;
++  title: string;
++  subtitle?: string;
++  completed?: boolean;
++  onClick?: () => void;
++  className?: string;
++}
++
++export default function TaskCard({
++  icon,
++  title,
++  subtitle,
++  completed = false,
++  onClick,
++  className = ""
++}: TaskCardProps) {
++  return (
++    <div 
++      className={`
++        card p-4 cursor-pointer transition-all duration-300
++        ${completed ? 'card-active opacity-75' : 'hover:shadow-glow'}
++        ${className}
++      `}
++      onClick={onClick}
++    >
++      <div className="flex items-center gap-4">
++        {/* Иконка */}
++        <div className={`
++          w-12 h-12 rounded-2xl flex items-center justify-center text-xl
++          transition-all duration-300
++          ${completed 
++            ? 'bg-accent2/20 shadow-neumorphism-inset' 
++            : 'bg-accent2/10 shadow-neumorphism'
++          }
++        `}>
++          {icon}
++        </div>
++        
++        {/* Контент */}
++        <div className="flex-1">
++          <h4 className={`
++            font-sans font-medium text-text-primary transition-colors duration-300
++            ${completed ? 'line-through opacity-60' : ''}
++          `}>
++            {title}
++          </h4>
++          {subtitle && (
++            <p className="text-sm text-text-secondary mt-1">
++              {subtitle}
++            </p>
++          )}
++        </div>
++        
++        {/* Чекбокс */}
++        <div className={`
++          w-6 h-6 rounded-full border-2 flex items-center justify-center
++          transition-all duration-300
++          ${completed 
++            ? 'bg-accent2 border-accent2 shadow-glow' 
++            : 'border-accent2/40 hover:border-accent2'
++          }
++        `}>
++          {completed && (
++            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
++              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
++            </svg>
++          )}
++        </div>
++      </div>
++    </div>
++  );
++}
+\ No newline at end of file
+diff --git a/src/ui/index.ts b/src/ui/index.ts
+index 70b595e..e432c59 100644
+--- a/src/ui/index.ts
++++ b/src/ui/index.ts
+@@ -1,5 +1,8 @@
+ export { default as Button } from "./Button";
+ export { default as Card } from "./Card";
++export { default as Chip } from "./Chip";
++export { default as CircularProgress } from "./CircularProgress";
++export { default as TaskCard } from "./TaskCard";
+ export { default as Progress } from "./Progress";
+ export { default as Header } from "./Header";
+ export { default as Tag } from "./Tag";
+diff --git a/tailwind.config.js b/tailwind.config.js
+index 5b25164..108c984 100644
+--- a/tailwind.config.js
++++ b/tailwind.config.js
+@@ -4,19 +4,57 @@ export default {
+   theme: {
+     extend: {
+       colors: {
+-        linen: "#F6F3EF",
+-        surface: "#FFFFFF",
+-        ink: "#111827",
+-        muted: "#6B7280",
+-        primary: "#3D5AFE",
+-        primary2: "#304FFE",
+-        sage: "#E2F1EB",
+-        sageInk: "#1C594A",
++        // Премиальная палитра SkinIQ Daylight Pearl
++        pearl: {
++          light: "#F7F3EF", // жемчужно-бежевый
++          rose: "#F9E3E5",   // пудрово-розовый
++          card: "#F5F1ED",   // молочный белый для карточек
++        },
++        text: {
++          primary: "#1C1C1C",   // глубокий чёрный для заголовков
++          secondary: "#7A7A7A", // тёплый серый для описаний
++        },
++        accent: "#E6CADF", // розово-лиловый акцент
++        accent2: "#D6BCE2", // лиловый для чеков и прогресса
++        button: {
++          from: "#FADADD", // начало градиента кнопки
++          to: "#F7F3EF",   // конец градиента кнопки
++        },
++        // Совместимость со старыми стилями
++        linen: "#F7F3EF",
++        surface: "#F5F1ED",
++        ink: "#1C1C1C",
++        muted: "#7A7A7A",
++        primary: "#E6CADF",
++        primary2: "#FADADD",
++      },
++      fontFamily: {
++        'serif': ['Playfair Display', 'serif'],
++        'sans': ['Inter', 'Neue Haas Grotesk', 'system-ui', 'sans-serif'],
++      },
++      borderRadius: { 
++        card: "16px", 
++        btn: "20px", // капсулы для кнопок
++        input: "12px"
+       },
+-      borderRadius: { card: "16px", btn: "12px" },
+       boxShadow: {
+-        e1: "0 4px 16px rgba(17,24,39,.06)",
+-        e2: "0 8px 28px rgba(17,24,39,.08)",
++        // Эндоморфизм - мягкие выпуклые тени
++        neumorphism: "8px 8px 16px rgba(230, 202, 223, 0.2), -8px -8px 16px rgba(255, 255, 255, 0.8)",
++        "neumorphism-inset": "inset 4px 4px 8px rgba(230, 202, 223, 0.2), inset -4px -4px 8px rgba(255, 255, 255, 0.8)",
++        glow: "0 0 20px rgba(230, 202, 223, 0.3)",
++        e1: "0 4px 16px rgba(28, 28, 28, 0.04)",
++        e2: "0 8px 28px rgba(28, 28, 28, 0.06)",
++      },
++      backgroundImage: {
++        'pearl-gradient': 'linear-gradient(to bottom, #F7F3EF, #F9E3E5)',
++        'button-gradient': 'linear-gradient(135deg, #FADADD, #F7F3EF)',
++        'card-gradient': 'linear-gradient(135deg, #F5F1ED, #F7F3EF)',
++      },
++      spacing: {
++        // Отступы согласно гайду
++        'section': '32px', // между секциями
++        'element': '24px',  // между элементами UI
++        'text': '16px',     // между заголовком и описанием
+       },
+     },
+   },
+-- 
+2.48.1
+
