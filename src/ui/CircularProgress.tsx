@@ -58,7 +58,10 @@ export default function CircularProgress({
       
       {/* Progress text */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-lg font-serif font-medium text-text-primary">
+        <span 
+          className="font-sans font-medium text-black"
+          style={{ fontSize: size >= 60 ? '12px' : '10px' }}
+        >
           {Math.round(progress)}%
         </span>
       </div>

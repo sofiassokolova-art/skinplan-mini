@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
-import { Button, Card, Chip, CircularProgress, TaskCard } from "../ui";
+import { Card, CircularProgress } from "../ui";
 
 
 export default function Home() {
@@ -90,80 +90,156 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="container-premium pt-8 pb-6">
-        {/* Логотип */}
-        <div className="text-center mb-6">
-          <h1 className="font-serif text-4xl text-text-primary mb-2">
-            SkinIQ
+      <div className="pt-8">
+        {/* Заголовок */}
+        <div className="text-center" style={{ marginTop: '32px' }}>
+          <h1 className="font-serif font-bold" style={{ fontSize: '24px', lineHeight: '1.2', color: '#000000' }}>
+            Привет, {userName || 'Пользователь'}!
           </h1>
+          {/* Подзаголовок */}
+          <p className="font-sans" style={{ fontSize: '16px', marginTop: '8px', color: '#777777' }}>
+            Твой уход на сегодня
+          </p>
         </div>
-        
-        {/* Приветствие */}
-        {userName && (
-          <div className="text-center mb-4">
-            <h2 className="font-serif text-2xl text-text-primary mb-2 drop-shadow-sm">
-              Привет, {userName}!
-            </h2>
-            <p className="text-text-secondary font-sans text-sm">
-              Твой уход на сегодня
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Центральная часть - Сегодняшний уход */}
       {hasCompletedQuiz && plan ? (
-        <div className="container-premium space-y-element">
-          {/* Переключатель Утро/Вечер - отдельный блок */}
-          <Card className="text-center py-4">
-            <div className="flex gap-2 justify-center">
-              <Chip
-                active={activeTime === 'morning'}
-                onClick={() => setActiveTime('morning')}
-                size="md"
-              >
-                Утро
-              </Chip>
-              <Chip
-                active={activeTime === 'evening'}
-                onClick={() => setActiveTime('evening')}
-                size="md"
-              >
-                Вечер
-              </Chip>
+        <div className="container-premium">
+          {/* Объединенный блок: Переключатель + Прогресс */}
+          <div className="mt-6">
+            <div 
+              className="flex items-center justify-between px-4 py-2 rounded-2xl"
+              style={{ 
+                backgroundColor: '#F8F5F4',
+                height: '40px'
+              }}
+            >
+              {/* Переключатель Утро/Вечер */}
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setActiveTime('morning')}
+                  className={`
+                    font-sans font-medium text-black transition-all duration-300 px-4 py-1 rounded-full
+                    ${activeTime === 'morning' 
+                      ? 'shadow-inner' 
+                      : 'hover:bg-gray-200/50'
+                    }
+                  `}
+                  style={{ 
+                    fontSize: '14px',
+                    backgroundColor: activeTime === 'morning' 
+                      ? 'transparent' 
+                      : '#F5F5F5',
+                    backgroundImage: activeTime === 'morning' 
+                      ? 'linear-gradient(to right, #FADADD, #F6EAEF)' 
+                      : 'none'
+                  }}
+                >
+                  Утро
+                </button>
+                <button
+                  onClick={() => setActiveTime('evening')}
+                  className={`
+                    font-sans font-medium text-black transition-all duration-300 px-4 py-1 rounded-full
+                    ${activeTime === 'evening' 
+                      ? 'shadow-inner' 
+                      : 'hover:bg-gray-200/50'
+                    }
+                  `}
+                  style={{ 
+                    fontSize: '14px',
+                    backgroundColor: activeTime === 'evening' 
+                      ? 'transparent' 
+                      : '#F5F5F5',
+                    backgroundImage: activeTime === 'evening' 
+                      ? 'linear-gradient(to right, #FADADD, #F6EAEF)' 
+                      : 'none'
+                  }}
+                >
+                  Вечер
+                </button>
+              </div>
+              
+              {/* Прогресс-бар справа */}
+              <CircularProgress 
+                progress={progress} 
+                size={32} 
+                strokeWidth={2}
+              />
             </div>
-          </Card>
-
-          {/* Прогресс-бар - отдельный блок */}
-          <div className="text-center">
-            <CircularProgress 
-              progress={progress} 
-              size={80} 
-              strokeWidth={6}
-            />
           </div>
 
-          {/* Список задач */}
-          <Card>
-            <div className="space-y-3">
-              {skincareTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  title={task.title}
-                  subtitle={task.subtitle}
-                  completed={completedSteps[task.id] || false}
-                  onClick={() => toggleStepCompleted(task.id)}
-                />
-              ))}
-            </div>
-          </Card>
+          {/* Карточки ухода */}
+          <div className="mt-4 space-y-4">
+            {skincareTasks.map((task, index) => (
+              <div
+                key={task.id}
+                onClick={() => toggleStepCompleted(task.id)}
+                className="bg-white rounded-2xl shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md flex items-center justify-between px-4"
+                style={{ 
+                  height: '72px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}
+              >
+                {/* Левая часть: иконка и текст */}
+                <div className="flex items-center gap-4">
+                  {/* Иконка */}
+                  <div 
+                    className="w-6 h-6 rounded-full"
+                    style={{ 
+                      backgroundColor: index === 0 ? '#A8D8EA' : index === 1 ? '#F4D4BA' : index === 2 ? '#F2C94C' : '#9B8AA3'
+                    }}
+                  ></div>
+                  
+                  {/* Текст */}
+                  <div>
+                    <h4 className="font-sans font-bold" style={{ fontSize: '16px', color: '#000000' }}>
+                      {task.title}
+                    </h4>
+                    <p className="font-sans" style={{ fontSize: '14px', color: '#777777' }}>
+                      {task.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Эндоморфный чекбокс справа */}
+                <div 
+                  className={`
+                    w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300
+                    ${completedSteps[task.id] 
+                      ? 'bg-gradient-to-br from-lavender-light to-lavender-medium' 
+                      : 'bg-gray-100 hover:bg-gray-200'
+                    }
+                  `}
+                  style={{
+                    boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  {completedSteps[task.id] && (
+                    <svg className="w-3 h-3 text-lavender-dark" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
 
           {/* CTA Кнопка */}
-          <div className="text-center">
+          <div style={{ marginTop: '24px' }}>
             <Link to="/plan">
-              <Button size="lg" fullWidth className="text-lg py-4">
+              <button 
+                className="w-full text-black font-sans font-medium rounded-2xl hover:shadow-lg transition-all duration-200"
+                style={{ 
+                  height: '56px', 
+                  fontSize: '16px',
+                  background: 'linear-gradient(to right, #FADADD, #F6EAEF)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}
+              >
                 Открыть подробный план
-              </Button>
+              </button>
             </Link>
           </div>
         </div>
@@ -190,64 +266,77 @@ export default function Home() {
                 Пройди короткую анкету и получи персональные рекомендации
               </p>
               <Link to="/quiz">
-                <Button size="lg" fullWidth>
+                <button 
+                  className="w-full bg-gradient-to-r from-button-from to-button-to text-black font-sans font-medium rounded-2xl shadow-sm hover:shadow-md transition-all duration-200"
+                  style={{ 
+                    height: '56px', 
+                    fontSize: '16px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  }}
+                >
                   Начать анкету
-                </Button>
+                </button>
               </Link>
             </div>
           </Card>
         </div>
       )}
 
-      {/* Нижняя навигация */}
-      <div className="container-premium mt-section pb-8">
-        <div className="grid grid-cols-2 gap-4">
+      {/* Нижние карточки */}
+      <div className="container-premium pb-8" style={{ marginTop: '16px' }}>
+        <div className="grid grid-cols-2" style={{ gap: '8px' }}>
           {/* Корзина */}
           <Link to="/cart">
-            <Card clickable className="text-center py-6 bg-gradient-to-br from-pearl-card to-button-from">
-              <div className="w-8 h-8 mx-auto mb-3">
+            <div 
+              className="bg-white rounded-2xl hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col items-center justify-center"
+              style={{ 
+                height: '72px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
+              }}
+            >
+              <div className="w-6 h-6 mb-1">
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                   <path
                     d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                    stroke="#F4D4BA"
+                    stroke="#F6C2D9"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    fill="#F4D4BA20"
+                    fill="none"
                   />
                 </svg>
               </div>
-              <h4 className="font-sans font-medium text-text-primary">
+              <span className="font-sans font-medium text-black" style={{ fontSize: '14px' }}>
                 Корзина
-              </h4>
-              <p className="text-sm text-text-secondary mt-1">
-                Товары из плана
-              </p>
-            </Card>
+              </span>
+            </div>
           </Link>
           
           {/* Анкета */}
           <Link to="/quiz">
-            <Card clickable className="text-center py-6 bg-gradient-to-br from-pearl-card to-accent/10">
-              <div className="w-8 h-8 mx-auto mb-3">
+            <div 
+              className="bg-white rounded-2xl hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col items-center justify-center"
+              style={{ 
+                height: '72px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
+              }}
+            >
+              <div className="w-6 h-6 mb-1">
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                   <path
                     d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                    stroke="#9B8AA3"
+                    stroke="#C7B6F9"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    fill="#9B8AA320"
+                    fill="none"
                   />
                 </svg>
               </div>
-              <h4 className="font-sans font-medium text-text-primary">
+              <span className="font-sans font-medium text-black" style={{ fontSize: '14px' }}>
                 Анкета
-              </h4>
-              <p className="text-sm text-text-secondary mt-1">
-                {hasCompletedQuiz ? 'Обновить данные' : 'Заполнить профиль'}
-              </p>
-            </Card>
+              </span>
+            </div>
           </Link>
         </div>
       </div>
