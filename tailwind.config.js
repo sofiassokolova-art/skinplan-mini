@@ -67,10 +67,12 @@ export default {
         e2: "0 8px 28px rgba(28, 28, 28, 0.06)",
       },
       backgroundImage: {
-        'pearl-gradient': 'linear-gradient(to bottom, #FDF7F6, #F8EDEA, #F6E8E5)',
-        'active-gradient': 'linear-gradient(135deg, #FBD6CF, #F7E6E2)',
-        'progress-gradient': 'linear-gradient(135deg, #E7C0F9, #C9A3FF)',
-        'checkbox-gradient': 'linear-gradient(135deg, #EAC3F8, #C7A2F9)',
+        'pearl-gradient': 'linear-gradient(to bottom, #FDFCFB, #F7F1EF)',
+        'switcher-gradient': 'linear-gradient(135deg, #FDFDFD, #F7F1EF)',
+        'active-gradient': 'linear-gradient(135deg, #F2C8C2, #F2C8C2)',
+        'progress-gradient': 'linear-gradient(135deg, #D7A6E8, #F2C8C2)',
+        'checkbox-gradient': 'linear-gradient(135deg, #D7A6E8, #F2C8C2)',
+        'cta-gradient': 'linear-gradient(135deg, #F2C8C2, #E9D8E9)',
       },
       spacing: {
         // Отступы согласно гайду
