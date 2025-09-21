@@ -3,123 +3,202 @@
 @tailwind utilities;
 
 @layer base {
-  html, body, #root { height: 100%; }
-  body { 
-    @apply text-ink antialiased;
-    position: relative;
+  html, body, #root { 
+    height: 100%; 
+    font-family: 'Inter', 'Neue Haas Grotesk', system-ui, sans-serif;
   }
   
+  body { 
+    @apply text-text-primary antialiased bg-pearl-gradient;
+    position: relative;
+    min-height: 100vh;
+  }
+  
+  /* Премиальный перламутровый фон */
   body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, 
+      #F7F3EF 0%,
+      #F9E3E5 50%,
+      #F7F3EF 100%
+    );
+    opacity: 0.9;
+    z-index: -2;
+  }
+  
+  /* Мягкий перламутровый блеск */
+  body::after {
     content: '';
     position: fixed;
     top: -50%;
     left: -50%;
     width: 200%;
     height: 200%;
-    background: linear-gradient(45deg, 
-      rgba(219, 234, 254, 0.9) 0%,
-      rgba(243, 232, 255, 0.9) 15%,
-      rgba(254, 242, 242, 0.9) 30%,
-      rgba(240, 249, 255, 0.9) 45%,
-      rgba(229, 231, 235, 0.9) 60%,
-      rgba(243, 232, 255, 0.9) 75%,
-      rgba(219, 234, 254, 0.9) 100%
+    background: radial-gradient(ellipse at center,
+      rgba(230, 202, 223, 0.1) 0%,
+      rgba(247, 243, 239, 0.05) 30%,
+      transparent 70%
     );
-    background-size: 400% 400%;
-    animation: liquidFlow 25s ease-in-out infinite;
-    z-index: -2;
+    animation: pearlShimmer 20s ease-in-out infinite;
+    z-index: -1;
   }
   
-  body::after {
-    content: '';
-    position: fixed;
-    top: -40%;
-    right: -40%;
-    width: 180%;
-    height: 180%;
-    background: radial-gradient(ellipse at center,
-      rgba(167, 139, 250, 0.4) 0%,
-      rgba(196, 181, 253, 0.3) 20%,
-      rgba(255, 182, 193, 0.2) 40%,
-      rgba(173, 216, 230, 0.2) 60%,
-      transparent 80%
-    );
-    animation: liquidPulse 18s ease-in-out infinite reverse;
-    z-index: -1;
+  /* Типографика */
+  h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+    @apply text-text-primary;
+    font-weight: 500;
+  }
+  
+  h1 {
+    @apply text-3xl md:text-4xl;
+    line-height: 1.2;
+  }
+  
+  h2 {
+    @apply text-2xl md:text-3xl;
+    line-height: 1.3;
+  }
+  
+  h3 {
+    @apply text-xl md:text-2xl;
+    line-height: 1.4;
+  }
+  
+  p, span, div {
+    @apply text-text-secondary;
+    line-height: 1.6;
   }
 }
 
 @layer components {
+  /* Премиальные карточки с эндоморфизмом */
   .card {
-    @apply rounded-3xl border border-white/70 bg-white/70 backdrop-blur-xl shadow-soft;
+    @apply rounded-card bg-pearl-card backdrop-blur-sm shadow-neumorphism;
+    border: 1px solid rgba(230, 202, 223, 0.2);
+    transition: all 0.3s ease;
   }
+  
+  .card:hover {
+    @apply shadow-glow;
+    transform: translateY(-2px);
+  }
+  
+  .card-active {
+    @apply shadow-neumorphism-inset;
+    border: 2px solid #E6CADF;
+    background: linear-gradient(135deg, #F5F1ED, #FADADD);
+  }
+  
+  /* Премиальные кнопки-капсулы */
   .btn {
-    @apply inline-flex items-center justify-center rounded-full px-6 py-3 font-semibold;
+    @apply inline-flex items-center justify-center rounded-btn px-6 py-3 font-sans font-semibold;
+    transition: all 0.3s ease;
   }
+  
   .btn-primary {
-@apply btn text-white bg-gradient-to-r from-indigo-600 to-fuchsia-600 shadow-lg hover:opacity-95;
-
+    @apply btn text-text-primary bg-button-gradient shadow-neumorphism;
+    border: 1px solid rgba(230, 202, 223, 0.3);
   }
+  
+  .btn-primary:hover {
+    @apply shadow-glow;
+    transform: translateY(-1px);
+  }
+  
+  .btn-primary:active {
+    @apply shadow-neumorphism-inset;
+    transform: translateY(0);
+  }
+  
+  /* Премиальные чипы для выбора */
   .chip {
-    @apply rounded-full px-4 py-2 border border-slate-200 bg-white/70 hover:bg-white/90 text-sm;
+    @apply rounded-btn px-4 py-2 text-sm font-sans font-medium;
+    @apply bg-pearl-card text-text-secondary shadow-neumorphism;
+    border: 1px solid rgba(230, 202, 223, 0.2);
+    transition: all 0.3s ease;
   }
+  
+  .chip:hover {
+    @apply text-text-primary;
+    transform: translateY(-1px);
+  }
+  
   .chip-active {
-    @apply border-indigo-300 ring-2 ring-indigo-300/30 bg-indigo-50;
+    @apply text-accent bg-card-gradient shadow-neumorphism-inset;
+    border: 2px solid #E6CADF;
+  }
+  
+  /* Поля ввода */
+  .input {
+    @apply rounded-input px-4 py-3 bg-pearl-card;
+    @apply text-text-primary placeholder-text-secondary;
+    @apply shadow-neumorphism-inset;
+    border: 1px solid rgba(230, 202, 223, 0.2);
+    transition: all 0.3s ease;
+  }
+  
+  .input:focus {
+    @apply outline-none;
+    border-color: #E6CADF;
+    box-shadow: 0 0 0 3px rgba(230, 202, 223, 0.1);
+  }
+  
+  /* Контейнер с максимальной шириной 85% */
+  .container-premium {
+    @apply mx-auto px-4;
+    max-width: 85%;
   }
 }
 
-@keyframes liquidFlow {
+/* Премиальная анимация перламутрового блеска */
+@keyframes pearlShimmer {
   0% {
     transform: rotate(0deg) scale(1);
-    filter: hue-rotate(0deg);
-    background-position: 0% 50%;
+    opacity: 0.1;
   }
   25% {
-    transform: rotate(90deg) scale(1.1);
-    filter: hue-rotate(60deg);
-    background-position: 100% 0%;
+    transform: rotate(90deg) scale(1.05);
+    opacity: 0.15;
   }
   50% {
-    transform: rotate(180deg) scale(0.95);
-    filter: hue-rotate(120deg);
-    background-position: 100% 100%;
+    transform: rotate(180deg) scale(0.98);
+    opacity: 0.08;
   }
   75% {
-    transform: rotate(270deg) scale(1.05);
-    filter: hue-rotate(180deg);
-    background-position: 0% 100%;
+    transform: rotate(270deg) scale(1.02);
+    opacity: 0.12;
   }
   100% {
     transform: rotate(360deg) scale(1);
-    filter: hue-rotate(240deg);
-    background-position: 0% 50%;
+    opacity: 0.1;
   }
 }
 
-@keyframes liquidPulse {
-  0% {
-    transform: scale(1) rotate(0deg);
-    opacity: 0.4;
+/* Мягкое появление элементов */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  20% {
-    transform: scale(1.15) rotate(72deg);
-    opacity: 0.6;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  40% {
-    transform: scale(0.9) rotate(144deg);
-    opacity: 0.3;
+}
+
+/* Элегантное пульсирование для активных элементов */
+@keyframes gentlePulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(230, 202, 223, 0.3);
   }
-  60% {
-    transform: scale(1.08) rotate(216deg);
-    opacity: 0.5;
-  }
-  80% {
-    transform: scale(0.95) rotate(288deg);
-    opacity: 0.35;
-  }
-  100% {
-    transform: scale(1) rotate(360deg);
-    opacity: 0.4;
+  50% {
+    box-shadow: 0 0 30px rgba(230, 202, 223, 0.5);
   }
 }
 

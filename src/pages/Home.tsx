@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
+import { Button, Card, Chip, CircularProgress, TaskCard } from "../ui";
 
 // Функция проверки премиум доступа (из Plan.tsx)
 function isPremium(): boolean {
@@ -81,257 +82,169 @@ export default function Home() {
     }
   }, []);
 
+  // Данные для задач ухода
+  const skincareTasks = useMemo(() => {
+    const morningTasks = [
+      { id: 'morning-cleanser', icon: '🧴', title: 'Очищение', subtitle: 'На влажную кожу' },
+      { id: 'morning-serum', icon: '💧', title: 'Сыворотка', subtitle: 'После очищения' },
+      { id: 'morning-moisturizer', icon: '🧴', title: 'Увлажнение', subtitle: 'Перед SPF' },
+      { id: 'morning-spf', icon: '☀️', title: 'Защита SPF', subtitle: 'За 15 мин до выхода' }
+    ];
+    
+    const eveningTasks = [
+      { id: 'evening-cleanser', icon: '🧴', title: 'Двойное очищение', subtitle: 'Масло + гель' },
+      { id: 'evening-treatment', icon: '✨', title: 'Активы', subtitle: 'На сухую кожу' },
+      { id: 'evening-moisturizer', icon: '🧴', title: 'Питание', subtitle: 'Завершающий этап' }
+    ];
+    
+    return activeTime === 'morning' ? morningTasks : eveningTasks;
+  }, [activeTime]);
+
+  // Подсчет прогресса
+  const progress = useMemo(() => {
+    const totalTasks = skincareTasks.length;
+    const completedTasks = skincareTasks.filter(task => completedSteps[task.id]).length;
+    return totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  }, [skincareTasks, completedSteps]);
+
   return (
-    <div className="space-y-4 relative">
-      {/* Анимированный жидкий фон */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-purple-50 to-pink-50"></div>
-        <div className="liquid-bg absolute inset-0"></div>
-      </div>
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        .liquid-bg {
-          background: linear-gradient(-45deg, 
-            rgba(219, 234, 254, 0.4), 
-            rgba(196, 181, 253, 0.3), 
-            rgba(253, 230, 138, 0.2), 
-            rgba(191, 219, 254, 0.4),
-            rgba(233, 213, 255, 0.3)
-          );
-          background-size: 400% 400%;
-          animation: liquidFlow 15s ease-in-out infinite;
-        }
-        
-        @keyframes liquidFlow {
-          0% {
-            background-position: 0% 50%;
-            transform: scale(1) rotate(0deg);
-          }
-          25% {
-            background-position: 100% 50%;
-            transform: scale(1.1) rotate(1deg);
-          }
-          50% {
-            background-position: 100% 100%;
-            transform: scale(1.05) rotate(-0.5deg);
-          }
-          75% {
-            background-position: 0% 100%;
-            transform: scale(1.1) rotate(0.5deg);
-          }
-          100% {
-            background-position: 0% 50%;
-            transform: scale(1) rotate(0deg);
-          }
-        }
-      `}} />
-      
-      <div className="relative z-10">
-      {userName && (
+    <div className="min-h-screen">
+      {/* 🔝 Hero Section */}
+      <div className="container-premium pt-8 pb-6">
+        {/* Логотип */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            {greeting}!
+          <h1 className="font-serif text-4xl text-text-primary mb-2">
+            SkinIQ
           </h1>
         </div>
-      )}
-
-      {hasCompletedQuiz && plan && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm relative">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">ТВОЙ УХОД СЕГОДНЯ</h2>
-              {hasPremium && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Прогресс: {Object.values(completedSteps).filter(Boolean).length} из {(plan.morning?.length || 0) + (plan.evening?.length || 0)} шагов
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTime('morning')}
-                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
-                  activeTime === 'morning' 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                УТРО
-              </button>
-              <button
-                onClick={() => setActiveTime('evening')}
-                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
-                  activeTime === 'evening' 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                ВЕЧЕР
-              </button>
-            </div>
+        
+        {/* Приветствие */}
+        {userName && (
+          <div className="text-center mb-4">
+            <h2 className="font-serif text-2xl text-text-primary mb-2">
+              Привет, {userName}!
+            </h2>
+            <p className="text-text-secondary font-sans">
+              Твой персональный гид по уходу за кожей
+            </p>
           </div>
+        )}
+      </div>
 
-
-          {hasPremium ? (
-            <div className="space-y-4">
-              {(activeTime === 'morning' ? plan.morning : plan.evening)?.slice(0, 4).map((step: any, idx: number) => {
-                const getStepStatus = (stepType: string, timeOfDay: string) => {
-                  const statuses = {
-                    'cleanser': timeOfDay === 'morning' ? 'НА ВЛАЖНУЮ КОЖУ' : 'ДВОЙНОЕ ОЧИЩЕНИЕ',
-                    'hydrator': timeOfDay === 'morning' ? 'ПОСЛЕ ОЧИЩЕНИЯ' : 'НА ВЛАЖНУЮ КОЖУ', 
-                    'treatment': timeOfDay === 'morning' ? 'ПЕРЕД УВЛАЖНЕНИЕМ' : 'НА СУХУЮ КОЖУ',
-                    'moisturizer': timeOfDay === 'morning' ? 'ПЕРЕД SPF' : 'ЗАВЕРШАЮЩИЙ ЭТАП',
-                    'spf': 'ЗА 15 МИН ДО ВЫХОДА'
-                  };
-                  return statuses[stepType as keyof typeof statuses] || 'ПО ИНСТРУКЦИИ';
-                };
-
-                const stepId = `${activeTime}-${step.step}-${idx}`;
-                const isCompleted = completedSteps[stepId] || false;
-
-                return (
-                  <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                      </div>
-                      <div>
-                        <div className={`font-medium text-sm transition-colors ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                          {step.name.split('(')[0].trim()}
-                        </div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wide">
-                          {getStepStatus(step.step, activeTime)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <button
-                        onClick={() => toggleStepCompleted(stepId)}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
-                          isCompleted 
-                            ? 'bg-green-500 text-white shadow-lg transform scale-110' 
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:scale-105'
-                        }`}
-                        title={isCompleted ? 'Отменить выполнение' : 'Отметить как выполнено'}
-                      >
-                        <span className="text-xs font-bold">✓</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="relative">
-              {/* Заблюренный контент */}
-              <div className="filter blur-sm pointer-events-none">
-                <div className="space-y-4">
-                  {[1, 2, 3, 4].map((idx) => (
-                    <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                          <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">Средство {idx}</div>
-                          <div className="text-xs text-gray-500 uppercase tracking-wide">ИНСТРУКЦИЯ</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                          <span className="text-xs text-gray-600">✓</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+      {/* 📋 Центральная часть - Сегодняшний уход */}
+      {hasCompletedQuiz && plan ? (
+        <div className="container-premium space-y-element">
+          <Card>
+            {/* Заголовок и переключатель */}
+            <div className="flex items-center justify-between mb-element">
+              <div className="flex items-center gap-4">
+                <div>
+                  <h3 className="font-serif text-xl text-text-primary">
+                    Сегодняшний уход
+                  </h3>
                 </div>
+                {/* Прогресс-индикатор */}
+                <CircularProgress 
+                  progress={progress} 
+                  size={60} 
+                  strokeWidth={4}
+                />
               </div>
               
-              {/* Оверлей с призывом к покупке */}
-              <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center rounded-xl">
-                <div className="text-center p-4">
-                  <div className="text-3xl mb-2">🔒</div>
-                  <div className="font-bold text-gray-900 mb-2">Детальная рутина</div>
-                  <div className="text-sm text-gray-600 mb-4">
-                    Пошаговые инструкции и точное время применения
-                  </div>
-                  <div className="flex gap-2 flex-wrap justify-center">
-                    <button
-                      onClick={() => {
-                        setPremium(true);
-                        setHasPremium(true);
-                      }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-semibold hover:bg-indigo-700 transition"
-                    >
-                      Разблокировать за 199₽
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPremium(false);
-                        setHasPremium(false);
-                      }}
-                      className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs hover:bg-gray-300 transition"
-                    >
-                      Тест: сбросить
-                    </button>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-2">
-                    или 7 дней бесплатно
-                  </div>
-                </div>
+              {/* Переключатель Утро/Вечер */}
+              <div className="flex gap-2">
+                <Chip
+                  active={activeTime === 'morning'}
+                  onClick={() => setActiveTime('morning')}
+                  size="md"
+                >
+                  Утро
+                </Chip>
+                <Chip
+                  active={activeTime === 'evening'}
+                  onClick={() => setActiveTime('evening')}
+                  size="md"
+                >
+                  Вечер
+                </Chip>
               </div>
             </div>
-          )}
-          
-          <div className="mt-6 text-center">
+
+            {/* Список задач */}
+            <div className="space-y-3">
+              {skincareTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  icon={task.icon}
+                  title={task.title}
+                  subtitle={task.subtitle}
+                  completed={completedSteps[task.id] || false}
+                  onClick={() => toggleStepCompleted(task.id)}
+                />
+              ))}
+            </div>
+          </Card>
+
+          {/* 🔘 CTA Кнопка */}
+          <div className="text-center">
             <Link to="/plan">
-              <button className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium">
-                ПЕРЕЙТИ К ПОДРОБНОМУ ПЛАНУ
-              </button>
+              <Button size="lg" fullWidth className="text-lg py-4">
+                Открыть подробный план
+              </Button>
             </Link>
           </div>
         </div>
-      )}
-
-      {!hasCompletedQuiz && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
-            ЗАПЛАНИРУЙТЕ СВОЮ РУТИНУ
-          </h2>
-          <p className="text-gray-600 mb-6 leading-relaxed">
-            Пройдите короткую анкету, и мы соберём персональный уход
-          </p>
-          <Link to="/quiz">
-            <button className="w-full bg-black text-white py-4 rounded-2xl font-semibold hover:bg-gray-800 transition-colors">
-              ЗАПОЛНИТЬ АНКЕТУ
-            </button>
-          </Link>
+      ) : (
+        /* Экран для новых пользователей */
+        <div className="container-premium">
+          <Card className="text-center">
+            <div className="py-8">
+              <div className="text-6xl mb-4">✨</div>
+              <h2 className="font-serif text-2xl text-text-primary mb-text">
+                Создай свой план ухода
+              </h2>
+              <p className="text-text-secondary mb-element leading-relaxed max-w-sm mx-auto">
+                Пройди короткую анкету и получи персональные рекомендации
+              </p>
+              <Link to="/quiz">
+                <Button size="lg" fullWidth>
+                  Начать анкету
+                </Button>
+              </Link>
+            </div>
+          </Card>
         </div>
       )}
 
-      <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center">
-            <span className="text-xl">🛒</span>
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-gray-900">КОРЗИНА</h2>
-            <p className="text-sm text-gray-600">Товары из плана, которые вы добавили</p>
-          </div>
+      {/* 🛍 Нижняя навигация */}
+      <div className="container-premium mt-section pb-8">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Корзина */}
           <Link to="/cart">
-            <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold hover:bg-gray-200 transition-colors">
-              ОТКРЫТЬ
-            </button>
+            <Card clickable className="text-center py-6 bg-gradient-to-br from-pearl-card to-button-from">
+              <div className="text-3xl mb-2">🛍️</div>
+              <h4 className="font-sans font-medium text-text-primary">
+                Корзина
+              </h4>
+              <p className="text-sm text-text-secondary mt-1">
+                Товары из плана
+              </p>
+            </Card>
+          </Link>
+          
+          {/* Анкета */}
+          <Link to="/quiz">
+            <Card clickable className="text-center py-6 bg-gradient-to-br from-pearl-card to-accent/10">
+              <div className="text-3xl mb-2">📋</div>
+              <h4 className="font-sans font-medium text-text-primary">
+                Анкета
+              </h4>
+              <p className="text-sm text-text-secondary mt-1">
+                {hasCompletedQuiz ? 'Обновить данные' : 'Заполнить профиль'}
+              </p>
+            </Card>
           </Link>
         </div>
-      </div>
-      
-      {hasCompletedQuiz && (
-        <div className="text-center pt-4">
-          <Link to="/quiz" className="text-sm text-gray-500 hover:text-gray-700 transition-colors font-medium">
-            ПЕРЕПРОЙТИ АНКЕТУ
-          </Link>
-        </div>
-      )}
       </div>
     </div>
   );
