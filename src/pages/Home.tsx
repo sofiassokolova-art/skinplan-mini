@@ -114,41 +114,41 @@ export default function Home() {
       {/* Центральная часть - Сегодняшний уход */}
       {hasCompletedQuiz && plan ? (
         <div className="container-premium space-y-element">
-          <Card>
-            {/* Прогресс и переключатель */}
-            <div className="flex items-center justify-between mb-element">
-              {/* Прогресс-индикатор */}
-              <CircularProgress 
-                progress={progress} 
-                size={60} 
-                strokeWidth={4}
-              />
-              
-              {/* Переключатель Утро/Вечер */}
-              <div className="flex gap-2">
-                <Chip
-                  active={activeTime === 'morning'}
-                  onClick={() => setActiveTime('morning')}
-                  size="md"
-                >
-                  Утро
-                </Chip>
-                <Chip
-                  active={activeTime === 'evening'}
-                  onClick={() => setActiveTime('evening')}
-                  size="md"
-                >
-                  Вечер
-                </Chip>
-              </div>
+          {/* Переключатель Утро/Вечер - отдельный блок */}
+          <Card className="text-center py-4">
+            <div className="flex gap-2 justify-center">
+              <Chip
+                active={activeTime === 'morning'}
+                onClick={() => setActiveTime('morning')}
+                size="md"
+              >
+                Утро
+              </Chip>
+              <Chip
+                active={activeTime === 'evening'}
+                onClick={() => setActiveTime('evening')}
+                size="md"
+              >
+                Вечер
+              </Chip>
             </div>
+          </Card>
 
-            {/* Список задач */}
+          {/* Прогресс-бар - отдельный блок */}
+          <div className="text-center">
+            <CircularProgress 
+              progress={progress} 
+              size={80} 
+              strokeWidth={6}
+            />
+          </div>
+
+          {/* Список задач */}
+          <Card>
             <div className="space-y-3">
               {skincareTasks.map((task) => (
                 <TaskCard
                   key={task.id}
-                  iconType={task.iconType}
                   title={task.title}
                   subtitle={task.subtitle}
                   completed={completedSteps[task.id] || false}
