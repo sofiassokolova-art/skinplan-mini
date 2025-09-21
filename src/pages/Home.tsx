@@ -104,11 +104,11 @@ export default function Home() {
       <div className="pt-8">
         {/* Заголовок */}
         <div className="text-center animate-slideInUp" style={{ marginTop: '32px', animationDelay: '100ms' }}>
-          <h1 className="font-serif" style={{ fontSize: '24px', lineHeight: '1.2', color: '#1C1C1C', fontWeight: '400' }}>
+          <h1 className="font-serif" style={{ fontSize: '24px', lineHeight: '1.2', color: '#000000', fontWeight: '400' }}>
             Привет, {userName || 'Пользователь'}!
           </h1>
           {/* Подзаголовок */}
-          <p className="font-sans" style={{ fontSize: '16px', marginTop: '8px', color: '#6F6F6F', fontWeight: '400' }}>
+          <p className="font-sans" style={{ fontSize: '16px', marginTop: '8px', color: '#6D6D6D', fontWeight: '400' }}>
             Твой уход на сегодня
           </p>
         </div>
@@ -117,35 +117,34 @@ export default function Home() {
       {/* Центральная часть - Сегодняшний уход */}
       {hasCompletedQuiz && plan ? (
         <div className="container-premium">
-          {/* Эндоморфный переключатель + Прогресс */}
+          {/* Единая эндоморфная капсула: переключатель + прогресс */}
           <div className="mt-6 animate-slideInUp" style={{ animationDelay: '200ms' }}>
             <div 
               className="flex items-center justify-between px-4 py-2 transition-all duration-300"
               style={{ 
-                backgroundColor: '#F9F0ED',
-                borderRadius: '24px',
+                background: 'linear-gradient(135deg, #FDFDFD, #F7F1EF)',
+                borderRadius: '22px',
                 height: '44px',
                 boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.05), inset -2px -2px 6px rgba(255,255,255,0.8)'
               }}
             >
               {/* Переключатель Утро/Вечер */}
-              <div className="flex gap-1">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setActiveTime('morning')}
                   className={`
-                    font-sans font-medium transition-all duration-300 px-4 py-1 hover:shadow-sm
+                    font-sans transition-all duration-300 px-3 py-1
                     ${activeTime === 'morning' 
-                      ? 'text-text-primary shadow-inner' 
-                      : 'text-text-inactive hover:text-text-primary'
+                      ? 'font-bold text-black' 
+                      : 'font-normal text-black opacity-60 hover:opacity-80'
                     }
                   `}
                   style={{ 
                     fontSize: '16px',
-                    borderRadius: '20px',
+                    borderRadius: '16px',
                     background: activeTime === 'morning' 
-                      ? 'linear-gradient(135deg, #FBD6CF, #F7E6E2)' 
-                      : 'transparent',
-                    animation: activeTime === 'morning' ? 'liquidMorph 0.3s ease-out' : 'none'
+                      ? '#F2C8C2' 
+                      : 'transparent'
                   }}
                 >
                   Утро
@@ -153,35 +152,34 @@ export default function Home() {
                 <button
                   onClick={() => setActiveTime('evening')}
                   className={`
-                    font-sans font-medium transition-all duration-300 px-4 py-1 hover:shadow-sm
+                    font-sans transition-all duration-300 px-3 py-1
                     ${activeTime === 'evening' 
-                      ? 'text-text-primary shadow-inner' 
-                      : 'text-text-inactive hover:text-text-primary'
+                      ? 'font-bold text-black' 
+                      : 'font-normal text-black opacity-60 hover:opacity-80'
                     }
                   `}
                   style={{ 
                     fontSize: '16px',
-                    borderRadius: '20px',
+                    borderRadius: '16px',
                     background: activeTime === 'evening' 
-                      ? 'linear-gradient(135deg, #FBD6CF, #F7E6E2)' 
-                      : 'transparent',
-                    animation: activeTime === 'evening' ? 'liquidMorph 0.3s ease-out' : 'none'
+                      ? '#F2C8C2' 
+                      : 'transparent'
                   }}
                 >
                   Вечер
                 </button>
               </div>
               
-              {/* Прогресс-бар справа */}
+              {/* Прогресс-бар справа внутри капсулы */}
               <CircularProgress 
                 progress={progress} 
-                size={36} 
-                strokeWidth={3}
+                size={28} 
+                strokeWidth={2}
               />
             </div>
           </div>
 
-          {/* Карточки ухода */}
+          {/* Карточки ухода - перламутровые капсулы */}
           <div className="mt-4 space-y-4">
             {skincareTasks.map((task, index) => (
               <div
@@ -201,53 +199,58 @@ export default function Home() {
                 className={`
                   cursor-pointer transition-all duration-200 hover:shadow-lg flex items-center justify-between px-4
                   animate-staggered-${index + 1}
-                  ${completedSteps[task.id] ? 'bg-gradient-to-r from-purple-50 to-pink-50' : ''}
                 `}
                 style={{ 
                   height: '64px',
                   borderRadius: '16px',
-                  backgroundColor: completedSteps[task.id] ? 'transparent' : '#FCF7F5',
-                  boxShadow: completedSteps[task.id] 
-                    ? '0 4px 12px rgba(0,0,0,0.06), inset 0 0 20px rgba(234, 195, 248, 0.2)' 
-                    : '0 4px 12px rgba(0,0,0,0.06), inset -2px -2px 6px rgba(255,255,255,0.9)'
+                  background: '#FFFFFF',
+                  backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(247,241,239,0.3))',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.06), inset -1px -1px 3px rgba(255,255,255,0.8), inset 1px 1px 3px rgba(0,0,0,0.03)'
                 }}
               >
                 {/* Левая часть: иконка и текст */}
                 <div className="flex items-center gap-4">
-                  {/* Минималистичная иконка */}
+                  {/* Монохромная пастельная иконка */}
                   <div 
                     className="w-6 h-6 rounded-lg flex items-center justify-center"
                     style={{ 
-                      backgroundColor: index === 0 ? '#A8D8EA' : index === 1 ? '#F4D4BA' : index === 2 ? '#F2C94C' : '#9B8AA3',
-                      opacity: 0.8
+                      backgroundColor: index === 0 ? '#E8F4F8' : index === 1 ? '#F9F1E8' : index === 2 ? '#FFF8E1' : '#F3F0F4',
+                      border: `1px solid ${index === 0 ? '#A8D8EA' : index === 1 ? '#F4D4BA' : index === 2 ? '#F2C94C' : '#9B8AA3'}`,
+                      opacity: 0.7
                     }}
                   >
-                    <div className="w-3 h-3 bg-white rounded-sm opacity-90"></div>
+                    <div 
+                      className="w-3 h-3 rounded-sm"
+                      style={{ 
+                        backgroundColor: index === 0 ? '#A8D8EA' : index === 1 ? '#F4D4BA' : index === 2 ? '#F2C94C' : '#9B8AA3',
+                        opacity: 0.6
+                      }}
+                    ></div>
                   </div>
                   
                   {/* Текст */}
                   <div>
-                    <h4 className="font-sans font-semibold" style={{ fontSize: '16px', color: '#1C1C1C' }}>
+                    <h4 className="font-sans font-bold" style={{ fontSize: '16px', color: '#000000' }}>
                       {task.title}
                     </h4>
-                    <p className="font-sans" style={{ fontSize: '14px', color: '#8E8E8E' }}>
+                    <p className="font-sans" style={{ fontSize: '14px', color: '#6D6D6D' }}>
                       {task.subtitle}
                     </p>
                   </div>
                 </div>
 
-                {/* Эндоморфный чекбокс справа */}
+                {/* Эндоморфный чекбокс-капсула справа */}
                 <div 
                   className={`
                     w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300
                   `}
                   style={{
                     background: completedSteps[task.id] 
-                      ? 'linear-gradient(135deg, #EAC3F8, #C7A2F9)' 
-                      : '#F0F0F0',
+                      ? 'linear-gradient(135deg, #D7A6E8, #F2C8C2)' 
+                      : '#F8F8F8',
                     boxShadow: completedSteps[task.id] 
-                      ? 'inset 1px 1px 3px rgba(0,0,0,0.2)' 
-                      : 'inset 1px 1px 3px rgba(0,0,0,0.1)'
+                      ? 'inset 1px 1px 3px rgba(0,0,0,0.15), 0 0 8px rgba(215, 166, 232, 0.3)' 
+                      : 'inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 3px rgba(255,255,255,0.8)'
                   }}
                 >
                   {completedSteps[task.id] && (
@@ -275,18 +278,18 @@ export default function Home() {
             ))}
           </div>
 
-          {/* CTA Кнопка */}
+          {/* CTA Кнопка - длинная эндоморфная капсула */}
           <div className="animate-slideInUp" style={{ marginTop: '24px', animationDelay: '600ms' }}>
             <Link to="/plan">
               <button 
-                className="w-full font-sans font-medium transition-all duration-200 hover:shadow-lg animate-gentle-pulse relative overflow-hidden"
+                className="w-full font-sans font-bold transition-all duration-200 hover:shadow-lg animate-gentle-pulse relative overflow-hidden"
                 style={{ 
                   height: '52px', 
                   fontSize: '16px',
-                  color: '#1C1C1C',
+                  color: '#000000',
                   borderRadius: '26px',
-                  background: 'linear-gradient(135deg, #FBD6CF, #F7E6E2)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                  background: 'linear-gradient(135deg, #F2C8C2, #E9D8E9)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.08)'
                 }}
                 onMouseEnter={(e) => {
                   // Ripple эффект
@@ -295,7 +298,7 @@ export default function Home() {
                   ripple.style.cssText = `
                     position: absolute;
                     border-radius: 50%;
-                    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+                    background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
                     transform: scale(0);
                     animation: ripple 0.6s linear;
                     pointer-events: none;
@@ -354,7 +357,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Нижние карточки */}
+      {/* Нижние кнопки - квадратные эндоморфные капсулы */}
       <div className="container-premium pb-8 animate-slideInUp" style={{ marginTop: '24px', animationDelay: '700ms' }}>
         <div className="grid grid-cols-2" style={{ gap: '16px' }}>
           {/* Корзина */}
@@ -362,10 +365,12 @@ export default function Home() {
             <div 
               className="cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col items-center justify-center hover:scale-105 active:scale-95"
               style={{ 
-                height: '72px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '16px',
-                backgroundColor: '#FAF4F2',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                background: '#FFFFFF',
+                backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(247,241,239,0.3))',
+                boxShadow: 'inset -1px -1px 3px rgba(255,255,255,0.8), inset 1px 1px 3px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.05)'
               }}
             >
               <div className="w-6 h-6 mb-1 animate-cart-shake">
@@ -373,14 +378,15 @@ export default function Home() {
                   <path
                     d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
                     stroke="#E9A2B2"
-                    strokeWidth="2"
+                    strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
+                    opacity="0.7"
                   />
                 </svg>
               </div>
-              <span className="font-sans" style={{ fontSize: '14px', color: '#1C1C1C' }}>
+              <span className="font-sans" style={{ fontSize: '14px', color: '#000000' }}>
                 Корзина
               </span>
             </div>
@@ -391,10 +397,12 @@ export default function Home() {
             <div 
               className="cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col items-center justify-center hover:scale-105 active:scale-95"
               style={{ 
-                height: '72px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '16px',
-                backgroundColor: '#FAF4F2',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                background: '#FFFFFF',
+                backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(247,241,239,0.3))',
+                boxShadow: 'inset -1px -1px 3px rgba(255,255,255,0.8), inset 1px 1px 3px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.05)'
               }}
             >
               <div className="w-6 h-6 mb-1 animate-profile-glow">
@@ -402,14 +410,15 @@ export default function Home() {
                   <path
                     d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
                     stroke="#C295F9"
-                    strokeWidth="2"
+                    strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     fill="none"
+                    opacity="0.7"
                   />
                 </svg>
               </div>
-              <span className="font-sans" style={{ fontSize: '14px', color: '#1C1C1C' }}>
+              <span className="font-sans" style={{ fontSize: '14px', color: '#000000' }}>
                 Анкета
               </span>
             </div>
