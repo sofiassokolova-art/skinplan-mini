@@ -1,21 +1,55 @@
 
 type CardProps = {
-  title: string;
+  title?: string;
   subtitle?: string;
   help?: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
+  clickable?: boolean;
+  active?: boolean;
+  onClick?: () => void;
 };
 
-export default function Card({ title, subtitle, help, children }: CardProps) {
+export default function Card({ 
+  title, 
+  subtitle, 
+  help, 
+  children, 
+  className = "",
+  clickable = false,
+  active = false,
+  onClick
+}: CardProps) {
+  const cardClasses = `
+    card p-6
+    ${active ? 'card-active' : ''}
+    ${clickable ? 'cursor-pointer hover:shadow-glow' : ''}
+    ${className}
+  `.trim();
+
   return (
-    <div className="p-5 rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl shadow-lg">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <h2 className="text-lg font-bold">{title}</h2>
-          {subtitle && <p className="text-sm text-zinc-600">{subtitle}</p>}
+    <div className={cardClasses} onClick={clickable ? onClick : undefined}>
+      {(title || subtitle || help) && (
+        <div className="flex items-start justify-between gap-3 mb-text">
+          <div>
+            {title && (
+              <h3 className="font-serif text-text-primary font-medium">
+                {title}
+              </h3>
+            )}
+            {subtitle && (
+              <p className="text-sm text-text-secondary mt-1">
+                {subtitle}
+              </p>
+            )}
+          </div>
+          {help && (
+            <div className="text-sm text-text-secondary">
+              {help}
+            </div>
+          )}
         </div>
-        {help && <div className="text-sm text-zinc-500">{help}</div>}
-      </div>
+      )}
       <div>{children}</div>
     </div>
   );
