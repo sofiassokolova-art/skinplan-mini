@@ -2,24 +2,9 @@ import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { Button, Card, Chip, CircularProgress, TaskCard } from "../ui";
 
-// Функция проверки премиум доступа (из Plan.tsx)
-function isPremium(): boolean {
-  try {
-    return localStorage.getItem("skiniq.premium") === "true";
-  } catch {
-    return false;
-  }
-}
-
-function setPremium(value: boolean) {
-  try {
-    localStorage.setItem("skiniq.premium", value ? "true" : "false");
-  } catch {}
-}
 
 export default function Home() {
   const [activeTime, setActiveTime] = useState<'morning' | 'evening'>('morning');
-  const [hasPremium, setHasPremium] = useState(isPremium());
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('skiniq.routine_progress');
@@ -56,11 +41,6 @@ export default function Home() {
     }
   }, []);
 
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    const timeGreeting = hour >= 18 ? "Добрый вечер" : "Добрый день";
-    return `${timeGreeting}${userName ? `, ${userName}` : ""}`;
-  }, [userName]);
 
   const hasCompletedQuiz = useMemo(() => {
     try {
