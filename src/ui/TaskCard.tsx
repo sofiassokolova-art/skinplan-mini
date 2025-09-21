@@ -1,5 +1,7 @@
+import TaskIcon from './TaskIcon';
+
 interface TaskCardProps {
-  icon: string;
+  iconType: 'cleanser' | 'serum' | 'cream' | 'spf';
   title: string;
   subtitle?: string;
   completed?: boolean;
@@ -8,7 +10,7 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({
-  icon,
+  iconType,
   title,
   subtitle,
   completed = false,
@@ -27,14 +29,14 @@ export default function TaskCard({
       <div className="flex items-center gap-4">
         {/* Иконка */}
         <div className={`
-          w-12 h-12 rounded-2xl flex items-center justify-center text-xl
+          w-12 h-12 rounded-2xl flex items-center justify-center
           transition-all duration-300
           ${completed 
             ? 'bg-accent2/20 shadow-neumorphism-inset' 
             : 'bg-accent2/10 shadow-neumorphism'
           }
         `}>
-          {icon}
+          <TaskIcon type={iconType} />
         </div>
         
         {/* Контент */}
