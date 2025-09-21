@@ -30,20 +30,22 @@
     z-index: -2;
   }
   
-  /* Лёгкий блеск (radial highlight) */
+  /* Лёгкий блеск (radial highlight) с shimmer */
   body::after {
     content: '';
     position: fixed;
-    top: -30%;
-    left: -30%;
-    width: 160%;
-    height: 160%;
-    background: radial-gradient(ellipse at center,
-      rgba(255, 255, 255, 0.2) 0%,
-      rgba(255, 255, 255, 0.1) 40%,
-      transparent 70%
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent
     );
-    animation: pearlShimmer 25s ease-in-out infinite;
+    background-size: 200% 100%;
+    animation: backgroundShimmer 8s linear infinite;
     z-index: -1;
   }
   
@@ -224,13 +226,186 @@
   }
 }
 
-/* Перламутровое мерцание для кнопок */
-@keyframes shimmer {
+/* Премиальные анимации SkinIQ */
+
+/* 1. Появление экрана */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 2. Радиальный перелив фона */
+@keyframes pearlRadialShimmer {
   0% {
-    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    background-position: 0% 50%;
+    opacity: 0.1;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.2;
   }
   100% {
-    transform: translateX(100%) translateY(100%) rotate(45deg);
+    background-position: 0% 50%;
+    opacity: 0.1;
+  }
+}
+
+/* 3. Жидкое морфинг переключателя */
+@keyframes liquidMorph {
+  0% {
+    transform: scale(1);
+    filter: blur(0px);
+  }
+  50% {
+    transform: scale(1.02);
+    filter: blur(0.5px);
+  }
+  100% {
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
+/* 4. Анимация прорисовки галочки */
+@keyframes strokeDraw {
+  0% {
+    stroke-dasharray: 0 20;
+    opacity: 0;
+  }
+  100% {
+    stroke-dasharray: 20 0;
+    opacity: 1;
+  }
+}
+
+/* 5. Упругое нажатие карточек */
+@keyframes elasticPress {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 6. Мягкий пульс CTA кнопки */
+@keyframes gentlePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+/* 7. Встряхивание корзины */
+@keyframes subtleShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* 8. Мигание анкеты */
+@keyframes profileGlow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% { 
+    filter: drop-shadow(0 0 8px rgba(194, 149, 249, 0.4));
+  }
+}
+
+/* 9. Перламутровый shimmer фона */
+@keyframes backgroundShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Утилитарные классы для анимаций */
+.animate-fadeInUp {
+  animation: fadeInUp 400ms ease-out;
+}
+
+.animate-slideInUp {
+  animation: slideInUp 400ms ease-out;
+}
+
+.animate-staggered-1 {
+  animation: slideInUp 400ms ease-out;
+  animation-delay: 100ms;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.animate-staggered-2 {
+  animation: slideInUp 400ms ease-out;
+  animation-delay: 200ms;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.animate-staggered-3 {
+  animation: slideInUp 400ms ease-out;
+  animation-delay: 300ms;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.animate-staggered-4 {
+  animation: slideInUp 400ms ease-out;
+  animation-delay: 400ms;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.animate-gentle-pulse {
+  animation: gentlePulse 2s ease-in-out infinite;
+  animation-delay: 800ms;
+}
+
+.animate-cart-shake {
+  animation: subtleShake 0.6s ease-in-out;
+  animation-delay: 1s;
+}
+
+.animate-profile-glow {
+  animation: profileGlow 2s ease-in-out infinite;
+  animation-delay: 1.2s;
+}
+
+/* Ripple эффект для кнопок */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
   }
 }
 

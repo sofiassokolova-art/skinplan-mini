@@ -88,11 +88,22 @@ export default function Home() {
   }, [skincareTasks, completedSteps]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen animate-fadeInUp">
+      {/* Логотип в левом верхнем углу */}
+      <div className="absolute top-4 left-4 z-20">
+        <Link to="/" className="flex items-center">
+          <img 
+            src="/skiniq-logo.png" 
+            alt="SkinIQ" 
+            className="h-8 w-auto opacity-80 hover:opacity-100 transition-opacity duration-300"
+          />
+        </Link>
+      </div>
+
       {/* Hero Section */}
       <div className="pt-8">
         {/* Заголовок */}
-        <div className="text-center" style={{ marginTop: '32px' }}>
+        <div className="text-center animate-slideInUp" style={{ marginTop: '32px', animationDelay: '100ms' }}>
           <h1 className="font-serif" style={{ fontSize: '24px', lineHeight: '1.2', color: '#1C1C1C', fontWeight: '400' }}>
             Привет, {userName || 'Пользователь'}!
           </h1>
@@ -107,9 +118,9 @@ export default function Home() {
       {hasCompletedQuiz && plan ? (
         <div className="container-premium">
           {/* Эндоморфный переключатель + Прогресс */}
-          <div className="mt-6">
+          <div className="mt-6 animate-slideInUp" style={{ animationDelay: '200ms' }}>
             <div 
-              className="flex items-center justify-between px-4 py-2"
+              className="flex items-center justify-between px-4 py-2 transition-all duration-300"
               style={{ 
                 backgroundColor: '#F9F0ED',
                 borderRadius: '24px',
@@ -122,9 +133,9 @@ export default function Home() {
                 <button
                   onClick={() => setActiveTime('morning')}
                   className={`
-                    font-sans font-medium transition-all duration-300 px-4 py-1
+                    font-sans font-medium transition-all duration-300 px-4 py-1 hover:shadow-sm
                     ${activeTime === 'morning' 
-                      ? 'text-text-primary' 
+                      ? 'text-text-primary shadow-inner' 
                       : 'text-text-inactive hover:text-text-primary'
                     }
                   `}
@@ -133,7 +144,8 @@ export default function Home() {
                     borderRadius: '20px',
                     background: activeTime === 'morning' 
                       ? 'linear-gradient(135deg, #FBD6CF, #F7E6E2)' 
-                      : 'transparent'
+                      : 'transparent',
+                    animation: activeTime === 'morning' ? 'liquidMorph 0.3s ease-out' : 'none'
                   }}
                 >
                   Утро
@@ -141,9 +153,9 @@ export default function Home() {
                 <button
                   onClick={() => setActiveTime('evening')}
                   className={`
-                    font-sans font-medium transition-all duration-300 px-4 py-1
+                    font-sans font-medium transition-all duration-300 px-4 py-1 hover:shadow-sm
                     ${activeTime === 'evening' 
-                      ? 'text-text-primary' 
+                      ? 'text-text-primary shadow-inner' 
                       : 'text-text-inactive hover:text-text-primary'
                     }
                   `}
@@ -152,7 +164,8 @@ export default function Home() {
                     borderRadius: '20px',
                     background: activeTime === 'evening' 
                       ? 'linear-gradient(135deg, #FBD6CF, #F7E6E2)' 
-                      : 'transparent'
+                      : 'transparent',
+                    animation: activeTime === 'evening' ? 'liquidMorph 0.3s ease-out' : 'none'
                   }}
                 >
                   Вечер
@@ -173,13 +186,30 @@ export default function Home() {
             {skincareTasks.map((task, index) => (
               <div
                 key={task.id}
-                onClick={() => toggleStepCompleted(task.id)}
-                className="cursor-pointer transition-all duration-200 hover:shadow-lg flex items-center justify-between px-4"
+                onClick={() => {
+                  toggleStepCompleted(task.id);
+                  // Добавляем анимацию нажатия
+                  const element = document.getElementById(`task-${task.id}`);
+                  if (element) {
+                    element.style.animation = 'elasticPress 0.3s ease-out';
+                    setTimeout(() => {
+                      element.style.animation = '';
+                    }, 300);
+                  }
+                }}
+                id={`task-${task.id}`}
+                className={`
+                  cursor-pointer transition-all duration-200 hover:shadow-lg flex items-center justify-between px-4
+                  animate-staggered-${index + 1}
+                  ${completedSteps[task.id] ? 'bg-gradient-to-r from-purple-50 to-pink-50' : ''}
+                `}
                 style={{ 
                   height: '64px',
                   borderRadius: '16px',
-                  backgroundColor: '#FCF7F5',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.06), inset -2px -2px 6px rgba(255,255,255,0.9)'
+                  backgroundColor: completedSteps[task.id] ? 'transparent' : '#FCF7F5',
+                  boxShadow: completedSteps[task.id] 
+                    ? '0 4px 12px rgba(0,0,0,0.06), inset 0 0 20px rgba(234, 195, 248, 0.2)' 
+                    : '0 4px 12px rgba(0,0,0,0.06), inset -2px -2px 6px rgba(255,255,255,0.9)'
                 }}
               >
                 {/* Левая часть: иконка и текст */}
@@ -221,8 +251,23 @@ export default function Home() {
                   }}
                 >
                   {completedSteps[task.id] && (
-                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg 
+                      className="w-3 h-3 text-white" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 20 20"
+                      style={{ animation: 'strokeDraw 0.3s ease-out' }}
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M5 13l4 4L19 7"
+                        style={{
+                          strokeDasharray: '20',
+                          strokeDashoffset: '0'
+                        }}
+                      />
                     </svg>
                   )}
                 </div>
@@ -231,10 +276,10 @@ export default function Home() {
           </div>
 
           {/* CTA Кнопка */}
-          <div style={{ marginTop: '24px' }}>
+          <div className="animate-slideInUp" style={{ marginTop: '24px', animationDelay: '600ms' }}>
             <Link to="/plan">
               <button 
-                className="w-full font-sans font-medium transition-all duration-200 hover:shadow-lg"
+                className="w-full font-sans font-medium transition-all duration-200 hover:shadow-lg animate-gentle-pulse relative overflow-hidden"
                 style={{ 
                   height: '52px', 
                   fontSize: '16px',
@@ -242,6 +287,27 @@ export default function Home() {
                   borderRadius: '26px',
                   background: 'linear-gradient(135deg, #FBD6CF, #F7E6E2)',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}
+                onMouseEnter={(e) => {
+                  // Ripple эффект
+                  const button = e.currentTarget;
+                  const ripple = document.createElement('div');
+                  ripple.style.cssText = `
+                    position: absolute;
+                    border-radius: 50%;
+                    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+                    transform: scale(0);
+                    animation: ripple 0.6s linear;
+                    pointer-events: none;
+                    left: 50%;
+                    top: 50%;
+                    width: 100px;
+                    height: 100px;
+                    margin-left: -50px;
+                    margin-top: -50px;
+                  `;
+                  button.appendChild(ripple);
+                  setTimeout(() => ripple.remove(), 600);
                 }}
               >
                 Открыть подробный план
@@ -289,12 +355,12 @@ export default function Home() {
       )}
 
       {/* Нижние карточки */}
-      <div className="container-premium pb-8" style={{ marginTop: '24px' }}>
+      <div className="container-premium pb-8 animate-slideInUp" style={{ marginTop: '24px', animationDelay: '700ms' }}>
         <div className="grid grid-cols-2" style={{ gap: '16px' }}>
           {/* Корзина */}
           <Link to="/cart">
             <div 
-              className="cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col items-center justify-center"
+              className="cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col items-center justify-center hover:scale-105 active:scale-95"
               style={{ 
                 height: '72px',
                 borderRadius: '16px',
@@ -302,7 +368,7 @@ export default function Home() {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
               }}
             >
-              <div className="w-6 h-6 mb-1">
+              <div className="w-6 h-6 mb-1 animate-cart-shake">
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                   <path
                     d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
@@ -323,7 +389,7 @@ export default function Home() {
           {/* Анкета */}
           <Link to="/quiz">
             <div 
-              className="cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col items-center justify-center"
+              className="cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col items-center justify-center hover:scale-105 active:scale-95"
               style={{ 
                 height: '72px',
                 borderRadius: '16px',
@@ -331,7 +397,7 @@ export default function Home() {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
               }}
             >
-              <div className="w-6 h-6 mb-1">
+              <div className="w-6 h-6 mb-1 animate-profile-glow">
                 <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
                   <path
                     d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
