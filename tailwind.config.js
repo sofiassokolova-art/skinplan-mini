@@ -4,37 +4,40 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Премиальная палитра SkinIQ - точные цвета из ТЗ
+        // Обновленная палитра согласно дизайн-гайду
         pearl: {
-          light: "#F9F6F3", // новый светлый перламутровый
-          rose: "#F5E6E8",   // новый розовый перламутровый
-          card: "#F5F1ED",   // молочный белый для карточек
+          bg1: "#FDF7F6", // верх градиента фона
+          bg2: "#F8EDEA", // середина градиента фона  
+          bg3: "#F6E8E5", // низ градиента фона
+          card: "#FCF7F5", // фон карточек
+          switcher: "#F9F0ED", // фон переключателя
+          bottom: "#FAF4F2", // фон нижних карточек
         },
         text: {
-          primary: "#000000",   // чистый черный для заголовков
-          secondary: "#666666", // серый для подзаголовков
+          primary: "#1C1C1C",   // основной текст
+          secondary: "#6F6F6F", // подзаголовки
+          inactive: "#8E8E8E",  // неактивный текст
+          progress: "#4E4E4E",  // текст в прогрессе
         },
-        accent: "#E6CADF", // розово-лиловый акцент
-        accent2: "#D6BCE2", // лиловый для чеков и прогресса
-        lavender: {
-          light: "#E6E6FA", // светло-лавандовый
-          medium: "#D8BFD8", // средний лавандовый
-          dark: "#9370DB", // темно-лавандовый
+        // Градиенты для активных состояний
+        active: {
+          from: "#FBD6CF", // начало активного градиента
+          to: "#F7E6E2",   // конец активного градиента
         },
+        // Прогресс-бар
         progress: {
-          from: "#E4D3FF", // начало градиента прогресса
-          to: "#F8D8E7",   // конец градиента прогресса
+          from: "#E7C0F9", // начало градиента прогресса
+          to: "#C9A3FF",   // конец градиента прогресса
         },
-        button: {
-          from: "#FADADD", // начало градиента кнопки
-          to: "#F6EAEF",   // конец градиента кнопки (обновлен)
+        // Чекбоксы
+        checkbox: {
+          from: "#EAC3F8", // начало градиента чекбокса
+          to: "#C7A2F9",   // конец градиента чекбокса
         },
-        // Цвета для иконок задач
-        task: {
-          cleanser: "#9B8AA3", // лилово-серый для очистки
-          serum: "#A8D8EA",    // светлый голубой для сыворотки
-          cream: "#F4D4BA",    // бежево-розовый для крема
-          spf: "#F2C94C",      // золотистый для SPF
+        // Иконки
+        icons: {
+          quiz: "#C295F9",    // сиреневый для анкеты
+          cart: "#E9A2B2",    // розовый для корзины
         },
         // Совместимость со старыми стилями
         linen: "#F7F3EF",
@@ -64,10 +67,10 @@ export default {
         e2: "0 8px 28px rgba(28, 28, 28, 0.06)",
       },
       backgroundImage: {
-        'pearl-gradient': 'linear-gradient(to bottom, #F9F6F3, #F5E6E8)',
-        'button-gradient': 'linear-gradient(135deg, #FADADD, #F6EAEF)',
-        'progress-gradient': 'linear-gradient(135deg, #E4D3FF, #F8D8E7)',
-        'card-gradient': 'linear-gradient(135deg, #F5F1ED, #F9F6F3)',
+        'pearl-gradient': 'linear-gradient(to bottom, #FDF7F6, #F8EDEA, #F6E8E5)',
+        'active-gradient': 'linear-gradient(135deg, #FBD6CF, #F7E6E2)',
+        'progress-gradient': 'linear-gradient(135deg, #E7C0F9, #C9A3FF)',
+        'checkbox-gradient': 'linear-gradient(135deg, #EAC3F8, #C7A2F9)',
       },
       spacing: {
         // Отступы согласно гайду
