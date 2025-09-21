@@ -115,21 +115,14 @@ export default function Home() {
       {hasCompletedQuiz && plan ? (
         <div className="container-premium space-y-element">
           <Card>
-            {/* Заголовок и переключатель */}
+            {/* Прогресс и переключатель */}
             <div className="flex items-center justify-between mb-element">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h3 className="font-serif text-xl text-text-primary">
-                    Сегодняшний уход
-                  </h3>
-                </div>
-                {/* Прогресс-индикатор */}
-                <CircularProgress 
-                  progress={progress} 
-                  size={60} 
-                  strokeWidth={4}
-                />
-              </div>
+              {/* Прогресс-индикатор */}
+              <CircularProgress 
+                progress={progress} 
+                size={60} 
+                strokeWidth={4}
+              />
               
               {/* Переключатель Утро/Вечер */}
               <div className="flex gap-2">
