@@ -22,10 +22,12 @@ const tokens = {
     IconLavender: "#C29DFF"
   },
   shadows: {
-    Card: "0 4px 12px rgba(0,0,0,0.08)",
+    Card: "0 2px 8px rgba(0,0,0,0.06)",
+    Switch: "0 1px 3px rgba(0,0,0,0.04)",
     Neomorphic: "8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.8)",
-    InnerSoft: "inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8)",
-    ProgressGlow: "0 0 8px rgba(249, 168, 212, 0.3)"
+    InnerSoft: "inset 1px 1px 2px rgba(0,0,0,0.08), inset -1px -1px 2px rgba(255,255,255,0.9)",
+    ButtonShadow: "0 2px 6px rgba(0,0,0,0.08)",
+    ProgressGlow: "0 0 6px rgba(249, 168, 212, 0.2)"
   },
   radii: {
     Switch: 12,
@@ -46,7 +48,8 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
     return () => clearTimeout(timer);
   }, [percentage]);
 
-  const radius = (size - 4) / 2;
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDasharray = circumference;
   const strokeDashoffset = circumference - (animatedPercentage / 100) * circumference;
@@ -64,7 +67,7 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
           cy={size / 2}
           r={radius}
           stroke="#E5E5E5"
-          strokeWidth="4"
+          strokeWidth={strokeWidth}
           fill="none"
         />
         {/* Прогресс круг */}
@@ -73,14 +76,14 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
           cy={size / 2}
           r={radius}
           stroke="url(#progressGradient)"
-          strokeWidth="4"
+          strokeWidth={strokeWidth}
           fill="none"
           strokeLinecap="round"
           strokeDasharray={strokeDasharray}
           strokeDashoffset={strokeDashoffset}
           style={{
             transition: 'stroke-dashoffset 0.5s ease-in-out',
-            filter: 'drop-shadow(0 0 4px rgba(249, 168, 212, 0.3))'
+            filter: 'drop-shadow(0 0 3px rgba(249, 168, 212, 0.2))'
           }}
         />
         <defs>
@@ -133,7 +136,7 @@ export default function Home() {
       console.error('Ошибка сохранения прогресса:', error);
     }
   };
-
+  
   const userName = useMemo(() => {
     try {
       const data = localStorage.getItem("skiniq.answers");
@@ -290,15 +293,15 @@ export default function Home() {
             borderRadius: tokens.radii.Switch,
             height: 44,
             padding: 4,
-            boxShadow: tokens.shadows.Neomorphic,
+            boxShadow: tokens.shadows.Switch,
             marginTop: 24,
             marginBottom: 24,
             display: 'flex',
             alignItems: 'center'
           }}
         >
-          <button
-            onClick={() => setActiveTime('morning')}
+              <button
+                onClick={() => setActiveTime('morning')}
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: '16px',
@@ -306,7 +309,7 @@ export default function Home() {
               color: tokens.colors.TextPrimary,
               background: activeTime === 'morning' 
                 ? tokens.colors.ActiveTab
-                : 'transparent',
+                : tokens.colors.InactiveTab,
               border: 'none',
               borderRadius: 8,
               flex: 1,
@@ -317,9 +320,9 @@ export default function Home() {
             }}
           >
             Утро
-          </button>
-          <button
-            onClick={() => setActiveTime('evening')}
+              </button>
+              <button
+                onClick={() => setActiveTime('evening')}
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: '16px',
@@ -327,7 +330,7 @@ export default function Home() {
               color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
               background: activeTime === 'evening' 
                 ? tokens.colors.ActiveTab
-                : 'transparent',
+                : tokens.colors.InactiveTab,
               border: 'none',
               borderRadius: 8,
               flex: 1,
@@ -338,17 +341,17 @@ export default function Home() {
             }}
           >
             Вечер
-          </button>
-        </div>
+              </button>
+          </div>
 
         {/* Карточки ухода */}
         <div style={{ marginBottom: 24 }}>
           {careSteps.map((step, index) => {
             const stepId = `${activeTime}-${step.id}-${index}`;
-            const isCompleted = completedSteps[stepId] || false;
+                const isCompleted = completedSteps[stepId] || false;
             const isFirstStep = index === 0;
-            
-            return (
+
+                return (
               <div 
                 key={step.id}
                 style={{
@@ -366,8 +369,8 @@ export default function Home() {
                 {/* Левая часть: чекбокс + текст */}
                 <div className="flex items-center gap-4">
                   {/* Чекбокс слева */}
-                  <button
-                    onClick={() => {
+                    <button
+                      onClick={() => {
                       toggleStepCompleted(stepId);
                       // Добавляем scale-up анимацию
                       const element = document.getElementById(`check-${stepId}`);
@@ -383,32 +386,51 @@ export default function Home() {
                       borderRadius: 12,
                       background: isCompleted 
                         ? `linear-gradient(135deg, ${tokens.colors.CheckboxGradient1}, ${tokens.colors.CheckboxGradient2})`
-                        : tokens.colors.CardBase,
+                        : `linear-gradient(135deg, #F5F5F5, #E8E8E8)`,
                       border: 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
-                      boxShadow: tokens.shadows.InnerSoft
+                      boxShadow: isCompleted 
+                        ? '0 2px 4px rgba(238, 207, 255, 0.3), inset 0 1px 2px rgba(255,255,255,0.4)'
+                        : 'inset 0 1px 2px rgba(0,0,0,0.1), inset 0 -1px 2px rgba(255,255,255,0.8)',
+                      position: 'relative',
+                      overflow: 'hidden'
                     }}
                   >
                     {isCompleted && (
-                      <svg 
-                        width="10" 
-                        height="10" 
-                        viewBox="0 0 20 20" 
-                        fill="none"
-                        className="scale-up"
-                      >
-                        <path 
-                          d="M5 13l4 4L19 7" 
-                          stroke="#FFFFFF" 
-                          strokeWidth="2" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round"
+                      <>
+                        {/* Глянцевый перелив */}
+                        <div 
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '50%',
+                            background: 'linear-gradient(180deg, rgba(255,255,255,0.3), transparent)',
+                            borderRadius: '12px 12px 0 0'
+                          }}
                         />
-                      </svg>
+                        <svg 
+                          width="10" 
+                          height="10" 
+                          viewBox="0 0 20 20" 
+                          fill="none"
+                          className="scale-up"
+                          style={{ position: 'relative', zIndex: 1 }}
+                        >
+                          <path 
+                            d="M5 13l4 4L19 7" 
+                            stroke="#FFFFFF" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </>
                     )}
                   </button>
                   
@@ -463,7 +485,7 @@ export default function Home() {
                 height: 48,
                 borderRadius: tokens.radii.Button,
                 background: `linear-gradient(135deg, ${tokens.colors.CtaGradient1}, ${tokens.colors.CtaGradient2})`,
-                boxShadow: tokens.shadows.Card,
+                boxShadow: tokens.shadows.ButtonShadow,
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
@@ -509,7 +531,7 @@ export default function Home() {
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
                   stroke={tokens.colors.IconPink}
-                  strokeWidth="1.5"
+                  strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   fill="none"
@@ -554,7 +576,7 @@ export default function Home() {
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
                   stroke={tokens.colors.IconLavender}
-                  strokeWidth="1.5"
+                  strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   fill="none"
@@ -570,7 +592,7 @@ export default function Home() {
               >
                 Анкета
               </span>
-            </div>
+      </div>
           </Link>
         </div>
       </div>
