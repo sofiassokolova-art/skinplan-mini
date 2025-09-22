@@ -182,12 +182,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Простой белый фон */}
+      {/* Живой перламутровый фон */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: '#FEFEFE'
+            background: 'radial-gradient(circle at 30% 30%, #FFF7F7, #FDF7F6, #FFFFFF)',
+            backgroundSize: '300% 300%',
+            animation: 'gradientMove 20s ease infinite'
           }}
         />
       </div>
@@ -196,15 +198,15 @@ export default function Home() {
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
-        @keyframes comboMove {
-          0% {
-            background-position: 50% 50%, 0% 50%;
+        @keyframes gradientMove {
+          0% { 
+            background-position: 30% 30%; 
           }
-          50% {
-            background-position: 60% 40%, 100% 50%;
+          50% { 
+            background-position: 70% 70%; 
           }
-          100% {
-            background-position: 50% 50%, 0% 50%;
+          100% { 
+            background-position: 30% 30%; 
           }
         }
         
@@ -300,17 +302,18 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Переключатель Утро/Вечер */}
+        {/* Переключатель Утро/Вечер (неоморфный) */}
         <div 
           style={{
-            background: '#FEFEFE',
-            borderRadius: tokens.radii.Switch,
+            background: '#F9F4F2',
+            borderRadius: 12,
             height: 44,
             padding: 4,
             marginTop: 24,
             marginBottom: 24,
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.05), inset -4px -4px 8px #FFFFFF'
           }}
         >
               <button
@@ -321,14 +324,17 @@ export default function Home() {
               fontWeight: 500,
               color: tokens.colors.TextPrimary,
               background: activeTime === 'morning' 
-                ? '#FFD6D6'
+                ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
                 : 'transparent',
               border: 'none',
               borderRadius: 8,
               flex: 1,
               height: 36,
               cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.3s ease',
+              boxShadow: activeTime === 'morning' 
+                ? '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px #FFFFFF'
+                : 'none'
             }}
           >
             Утро
@@ -341,14 +347,17 @@ export default function Home() {
               fontWeight: 500,
               color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
               background: activeTime === 'evening' 
-                ? '#FFD6D6'
+                ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
                 : 'transparent',
-              border: activeTime === 'evening' ? 'none' : '1px solid #E0E0E0',
+              border: 'none',
               borderRadius: 8,
               flex: 1,
               height: 36,
               cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.3s ease',
+              boxShadow: activeTime === 'evening' 
+                ? '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px #FFFFFF'
+                : 'none'
             }}
           >
             Вечер
@@ -366,9 +375,9 @@ export default function Home() {
               <div 
                 key={step.id}
                 style={{
-                  background: '#FEFEFE',
-                  borderRadius: tokens.radii.Card,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  background: '#FFF7F7',
+                  borderRadius: 16,
+                  boxShadow: '6px 6px 12px rgba(0,0,0,0.06), -6px -6px 12px #FFFFFF',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 12 : 0,
@@ -492,16 +501,16 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 48,
-                borderRadius: tokens.radii.Button,
-                background: '#FFD6D6',
-                boxShadow: 'none',
+                borderRadius: 16,
+                background: 'linear-gradient(145deg, #FFD6D6, #FFB6B6)',
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 700,
-                color: '#1A1A1A',
+                color: '#2A2A2A',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.3s ease'
               }}
             >
               Открыть подробный план
@@ -519,27 +528,27 @@ export default function Home() {
               style={{
                 width: 72,
                 height: 72,
-                background: '#FEFEFE',
-                borderRadius: tokens.radii.Icon,
-                border: '1px solid #E0E0E0',
+                background: '#FFF7F7',
+                borderRadius: 16,
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.3s ease'
               }}
             >
               <svg 
-                width="28" 
-                height="28" 
+                width="24" 
+                height="24" 
                 viewBox="0 0 24 24" 
                 fill="none"
-                style={{ marginBottom: 4 }}
+                style={{ marginBottom: 6 }}
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#2A2A2A"
+                  stroke="#C29DFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -551,7 +560,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#2A2A2A'
+                  color: '#6B6B6B'
                 }}
               >
                 Корзина
@@ -564,26 +573,27 @@ export default function Home() {
               style={{
                 width: 72,
                 height: 72,
-                background: '#C29DFF',
-                borderRadius: tokens.radii.Icon,
+                background: '#FFF7F7',
+                borderRadius: 16,
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.3s ease'
               }}
             >
               <svg 
-                width="28" 
-                height="28" 
+                width="24" 
+                height="24" 
                 viewBox="0 0 24 24" 
                 fill="none"
-                style={{ marginBottom: 4 }}
+                style={{ marginBottom: 6 }}
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#FFFFFF"
+                  stroke="#C29DFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -595,12 +605,12 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#FFFFFF'
+                  color: '#6B6B6B'
                 }}
               >
                 Анкета
               </span>
-            </div>
+      </div>
           </Link>
         </div>
       </div>
