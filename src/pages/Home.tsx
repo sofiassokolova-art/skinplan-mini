@@ -1,20 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
 
-// Функция проверки премиум доступа (из Plan.tsx)
-function isPremium(): boolean {
-  try {
-    return localStorage.getItem("skiniq.premium") === "true";
-  } catch {
-    return false;
-  }
-}
-
-function setPremium(value: boolean) {
-  try {
-    localStorage.setItem("skiniq.premium", value ? "true" : "false");
-  } catch {}
-}
 
 // Компонент кругового прогресс-бара
 function CircularProgress({ percentage, size = 28 }: { percentage: number; size?: number }) {
@@ -83,7 +69,6 @@ function CircularProgress({ percentage, size = 28 }: { percentage: number; size?
 
 export default function Home() {
   const [activeTime, setActiveTime] = useState<'morning' | 'evening'>('morning');
-  const [hasPremium, setHasPremium] = useState(isPremium());
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('skiniq.routine_progress');
@@ -108,7 +93,7 @@ export default function Home() {
       console.error('Ошибка сохранения прогресса:', error);
     }
   };
-
+  
   const userName = useMemo(() => {
     try {
       const data = localStorage.getItem("skiniq.answers");
