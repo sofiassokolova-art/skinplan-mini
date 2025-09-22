@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 // Функция проверки премиум доступа (из Plan.tsx)
 function isPremium(): boolean {
@@ -14,6 +14,71 @@ function setPremium(value: boolean) {
   try {
     localStorage.setItem("skiniq.premium", value ? "true" : "false");
   } catch {}
+}
+
+// Компонент кругового прогресс-бара
+function CircularProgress({ percentage, size = 28 }: { percentage: number; size?: number }) {
+  const [animatedPercentage, setAnimatedPercentage] = useState(0);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimatedPercentage(percentage);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [percentage]);
+
+  const radius = (size - 6) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDasharray = circumference;
+  const strokeDashoffset = circumference - (animatedPercentage / 100) * circumference;
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg
+        width={size}
+        height={size}
+        className="transform -rotate-90"
+      >
+        {/* Фоновый круг */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#E5E5E5"
+          strokeWidth="3"
+          fill="none"
+        />
+        {/* Прогресс круг */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="url(#progressGradient)"
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={strokeDasharray}
+          strokeDashoffset={strokeDashoffset}
+          style={{
+            transition: 'stroke-dashoffset 0.3s ease-in-out',
+          }}
+        />
+        <defs>
+          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#F7CEDF" />
+            <stop offset="100%" stopColor="#E2D4F7" />
+          </linearGradient>
+        </defs>
+      </svg>
+      {/* Процент в центре */}
+      <div 
+        className="absolute inset-0 flex items-center justify-center"
+        style={{ fontSize: '12px', fontWeight: 500, color: '#1A1A1A' }}
+      >
+        {Math.round(animatedPercentage)}%
+      </div>
+    </div>
+  );
 }
 
 export default function Home() {
@@ -44,7 +109,6 @@ export default function Home() {
     }
   };
 
-  
   const userName = useMemo(() => {
     try {
       const data = localStorage.getItem("skiniq.answers");
@@ -54,12 +118,6 @@ export default function Home() {
       return undefined;
     }
   }, []);
-
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    const timeGreeting = hour >= 18 ? "Добрый вечер" : "Добрый день";
-    return `${timeGreeting}${userName ? `, ${userName}` : ""}`;
-  }, [userName]);
 
   const hasCompletedQuiz = useMemo(() => {
     try {
@@ -81,257 +139,381 @@ export default function Home() {
     }
   }, []);
 
+  // Вычисляем прогресс для текущего времени дня
+  const currentSteps = activeTime === 'morning' ? (plan?.morning || []) : (plan?.evening || []);
+  const completedCount = currentSteps.filter((step: any, idx: number) => {
+    const stepId = `${activeTime}-${step.step}-${idx}`;
+    return completedSteps[stepId];
+  }).length;
+  const progressPercentage = currentSteps.length > 0 ? (completedCount / currentSteps.length) * 100 : 0;
+
+  // Данные для карточек ухода
+  const careSteps = [
+    { id: 'cleanser', name: 'Очищение', description: 'Очищающее средство', icon: '🧼', color: '#F7CEDF' },
+    { id: 'toner', name: 'Тонизирование', description: 'Тоник', icon: '💧', color: '#E2D4F7' },
+    { id: 'moisturizer', name: 'Увлажнение', description: 'Увлажняющий крем', icon: '🧴', color: '#F7CEDF' },
+    { id: 'spf', name: 'SPF', description: 'Солнцезащитный крем', icon: '☀️', color: '#E2D4F7' },
+  ];
+
   return (
-    <div className="space-y-4 relative">
-      {/* Анимированный жидкий фон */}
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Живой градиентный фон */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-100 via-purple-50 to-pink-50"></div>
-        <div className="liquid-bg absolute inset-0"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#FFF8F5] to-[#FCEEEF]"></div>
+        <div className="animated-gradient absolute inset-0"></div>
+        <div className="pearl-shimmer absolute inset-0"></div>
       </div>
       
+      {/* Кастомные стили */}
       <style dangerouslySetInnerHTML={{__html: `
-        .liquid-bg {
-          background: linear-gradient(-45deg, 
-            rgba(219, 234, 254, 0.4), 
-            rgba(196, 181, 253, 0.3), 
-            rgba(253, 230, 138, 0.2), 
-            rgba(191, 219, 254, 0.4),
-            rgba(233, 213, 255, 0.3)
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+        
+        .animated-gradient {
+          background: linear-gradient(
+            -45deg,
+            #FFF8F5,
+            #FCEEEF,
+            #FFF8F5,
+            #FCEEEF,
+            #FFF8F5
           );
           background-size: 400% 400%;
-          animation: liquidFlow 15s ease-in-out infinite;
+          animation: gradientFlow 25s ease-in-out infinite;
         }
         
-        @keyframes liquidFlow {
+        @keyframes gradientFlow {
           0% {
             background-position: 0% 50%;
-            transform: scale(1) rotate(0deg);
           }
           25% {
             background-position: 100% 50%;
-            transform: scale(1.1) rotate(1deg);
           }
           50% {
             background-position: 100% 100%;
-            transform: scale(1.05) rotate(-0.5deg);
           }
           75% {
             background-position: 0% 100%;
-            transform: scale(1.1) rotate(0.5deg);
           }
           100% {
             background-position: 0% 50%;
-            transform: scale(1) rotate(0deg);
           }
+        }
+        
+        .pearl-shimmer {
+          background-image: 
+            radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(255,255,255,0.06) 0%, transparent 50%),
+            radial-gradient(circle at 40% 60%, rgba(255,255,255,0.05) 0%, transparent 50%);
+          animation: shimmer 30s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+          0%, 100% {
+            transform: translateX(0) translateY(0);
+          }
+          25% {
+            transform: translateX(10px) translateY(-5px);
+          }
+          50% {
+            transform: translateX(-5px) translateY(10px);
+          }
+          75% {
+            transform: translateX(-10px) translateY(-5px);
+          }
+        }
+        
+        .capsule-container {
+          background: rgba(255, 255, 255, 0.85);
+          border-radius: 24px;
+          box-shadow: 
+            inset 0 2px 4px rgba(255,255,255,0.8),
+            inset 0 -2px 6px rgba(0,0,0,0.05);
+        }
+        
+        .time-button {
+          font-family: 'Inter', sans-serif;
+          font-size: 14px;
+          font-weight: 500;
+          padding: 12px 24px;
+          border-radius: 20px;
+          transition: all 0.3s ease;
+        }
+        
+        .time-button.active {
+          background: linear-gradient(135deg, #FADADD 0%, #E7D6F8 100%);
+          color: #1A1A1A;
+          box-shadow: 0 2px 8px rgba(250, 218, 221, 0.3);
+          animation: gradientGlow 2s ease-in-out infinite alternate;
+        }
+        
+        .time-button.inactive {
+          background: transparent;
+          color: #7D7D7D;
+        }
+        
+        @keyframes gradientGlow {
+          0% {
+            box-shadow: 0 2px 8px rgba(250, 218, 221, 0.3);
+          }
+          100% {
+            box-shadow: 0 4px 16px rgba(250, 218, 221, 0.5);
+          }
+        }
+        
+        .care-card {
+          background: rgba(255, 255, 255, 0.9);
+          border-radius: 16px;
+          height: 64px;
+          box-shadow: 
+            0 4px 8px rgba(0,0,0,0.05),
+            inset 0 1px 0 rgba(255,255,255,0.8);
+          transition: all 0.3s ease;
+        }
+        
+        .care-card:hover {
+          transform: translateY(-1px);
+          box-shadow: 
+            0 6px 12px rgba(0,0,0,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+        
+        .checkbox {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          border: 2px solid #E5E5E5;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .checkbox.checked {
+          background: linear-gradient(135deg, #FADADD 0%, #E7D6F8 100%);
+          border: none;
+          transform: scale(1.1);
+        }
+        
+        .main-button {
+          background: linear-gradient(135deg, #FADADD 0%, #E7D6F8 100%);
+          border-radius: 24px;
+          font-family: 'Playfair Display', serif;
+          font-size: 18px;
+          font-weight: 600;
+          color: #1A1A1A;
+          box-shadow: 
+            0 6px 12px rgba(0,0,0,0.08),
+            inset 0 1px 0 rgba(255,255,255,0.8);
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .main-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent
+          );
+          animation: shimmer 8s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+          0% {
+            left: -100%;
+          }
+          50% {
+            left: 100%;
+          }
+          100% {
+            left: 100%;
+          }
+        }
+        
+        .main-button:hover {
+          transform: translateY(-2px);
+          background: linear-gradient(135deg, #FADADD 0%, #E7D6F8 100%);
+          box-shadow: 
+            0 8px 16px rgba(0,0,0,0.12),
+            inset 0 1px 0 rgba(255,255,255,0.8),
+            0 0 20px rgba(250, 218, 221, 0.3);
+        }
+        
+        .main-button:active {
+          transform: scale(0.96);
+          box-shadow: 
+            0 4px 8px rgba(0,0,0,0.1),
+            inset 0 2px 4px rgba(0,0,0,0.1),
+            inset 0 0 10px rgba(0,0,0,0.05);
+        }
+        
+        .bottom-button {
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+          transition: all 0.3s ease;
+        }
+        
+        .bottom-button:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.08);
         }
       `}} />
       
-      <div className="relative z-10">
-      {userName && (
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            {greeting}!
+      <div className="relative z-10 px-4 py-8">
+        {/* Заголовок */}
+        <div className="text-center mb-8" style={{ marginTop: '32px' }}>
+          <h1 
+            className="text-2xl font-bold mb-2"
+            style={{ 
+              fontFamily: 'Playfair Display, serif',
+              fontSize: '24px',
+              color: '#1A1A1A'
+            }}
+          >
+            SKinIQ
           </h1>
-        </div>
-      )}
-
-      {hasCompletedQuiz && plan && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm relative">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">ТВОЙ УХОД СЕГОДНЯ</h2>
-              {hasPremium && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Прогресс: {Object.values(completedSteps).filter(Boolean).length} из {(plan.morning?.length || 0) + (plan.evening?.length || 0)} шагов
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTime('morning')}
-                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
-                  activeTime === 'morning' 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                УТРО
-              </button>
-              <button
-                onClick={() => setActiveTime('evening')}
-                className={`px-3 py-1 text-xs font-semibold rounded-full transition-colors ${
-                  activeTime === 'evening' 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                ВЕЧЕР
-              </button>
-            </div>
-          </div>
-
-
-          {hasPremium ? (
-            <div className="space-y-4">
-              {(activeTime === 'morning' ? plan.morning : plan.evening)?.slice(0, 4).map((step: any, idx: number) => {
-                const getStepStatus = (stepType: string, timeOfDay: string) => {
-                  const statuses = {
-                    'cleanser': timeOfDay === 'morning' ? 'НА ВЛАЖНУЮ КОЖУ' : 'ДВОЙНОЕ ОЧИЩЕНИЕ',
-                    'hydrator': timeOfDay === 'morning' ? 'ПОСЛЕ ОЧИЩЕНИЯ' : 'НА ВЛАЖНУЮ КОЖУ', 
-                    'treatment': timeOfDay === 'morning' ? 'ПЕРЕД УВЛАЖНЕНИЕМ' : 'НА СУХУЮ КОЖУ',
-                    'moisturizer': timeOfDay === 'morning' ? 'ПЕРЕД SPF' : 'ЗАВЕРШАЮЩИЙ ЭТАП',
-                    'spf': 'ЗА 15 МИН ДО ВЫХОДА'
-                  };
-                  return statuses[stepType as keyof typeof statuses] || 'ПО ИНСТРУКЦИИ';
-                };
-
-                const stepId = `${activeTime}-${step.step}-${idx}`;
-                const isCompleted = completedSteps[stepId] || false;
-
-                return (
-                  <div key={`routine-${activeTime}-${idx}`} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                        <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                      </div>
-                      <div>
-                        <div className={`font-medium text-sm transition-colors ${isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
-                          {step.name.split('(')[0].trim()}
-                        </div>
-                        <div className="text-xs text-gray-500 uppercase tracking-wide">
-                          {getStepStatus(step.step, activeTime)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <button
-                        onClick={() => toggleStepCompleted(stepId)}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
-                          isCompleted 
-                            ? 'bg-green-500 text-white shadow-lg transform scale-110' 
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600 hover:scale-105'
-                        }`}
-                        title={isCompleted ? 'Отменить выполнение' : 'Отметить как выполнено'}
-                      >
-                        <span className="text-xs font-bold">✓</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="relative">
-              {/* Заблюренный контент */}
-              <div className="filter blur-sm pointer-events-none">
-                <div className="space-y-4">
-                  {[1, 2, 3, 4].map((idx) => (
-                    <div key={idx} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                          <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm">Средство {idx}</div>
-                          <div className="text-xs text-gray-500 uppercase tracking-wide">ИНСТРУКЦИЯ</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-                          <span className="text-xs text-gray-600">✓</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Оверлей с призывом к покупке */}
-              <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center rounded-xl">
-                <div className="text-center p-4">
-                  <div className="text-3xl mb-2">🔒</div>
-                  <div className="font-bold text-gray-900 mb-2">Детальная рутина</div>
-                  <div className="text-sm text-gray-600 mb-4">
-                    Пошаговые инструкции и точное время применения
-                  </div>
-                  <div className="flex gap-2 flex-wrap justify-center">
-                    <button
-                      onClick={() => {
-                        setPremium(true);
-                        setHasPremium(true);
-                      }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-semibold hover:bg-indigo-700 transition"
-                    >
-                      Разблокировать за 199₽
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPremium(false);
-                        setHasPremium(false);
-                      }}
-                      className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs hover:bg-gray-300 transition"
-                    >
-                      Тест: сбросить
-                    </button>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-2">
-                    или 7 дней бесплатно
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div className="mt-6 text-center">
-            <Link to="/plan">
-              <button className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium">
-                ПЕРЕЙТИ К ПОДРОБНОМУ ПЛАНУ
-              </button>
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {!hasCompletedQuiz && (
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
-            ЗАПЛАНИРУЙТЕ СВОЮ РУТИНУ
-          </h2>
-          <p className="text-gray-600 mb-6 leading-relaxed">
-            Пройдите короткую анкету, и мы соберём персональный уход
+          <p 
+            className="text-base"
+            style={{ 
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '16px',
+              color: '#7D7D7D'
+            }}
+          >
+            {userName ? `Привет, ${userName}!` : 'Привет!'}
           </p>
-          <Link to="/quiz">
-            <button className="w-full bg-black text-white py-4 rounded-2xl font-semibold hover:bg-gray-800 transition-colors">
-              ЗАПОЛНИТЬ АНКЕТУ
-            </button>
-          </Link>
+          <p 
+            className="text-sm mt-2"
+            style={{ 
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '14px',
+              color: '#7D7D7D'
+            }}
+          >
+            Твой уход на сегодня
+          </p>
         </div>
-      )}
 
-      <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center">
-            <span className="text-xl">🛒</span>
+        {/* Переключатель Утро/Вечер + Прогресс */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="capsule-container flex p-1">
+            <button
+              onClick={() => setActiveTime('morning')}
+              className={`time-button ${activeTime === 'morning' ? 'active' : 'inactive'}`}
+            >
+              Утро
+            </button>
+            <button
+              onClick={() => setActiveTime('evening')}
+              className={`time-button ${activeTime === 'evening' ? 'active' : 'inactive'}`}
+            >
+              Вечер
+            </button>
           </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-gray-900">КОРЗИНА</h2>
-            <p className="text-sm text-gray-600">Товары из плана, которые вы добавили</p>
-          </div>
-          <Link to="/cart">
-            <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold hover:bg-gray-200 transition-colors">
-              ОТКРЫТЬ
+          <CircularProgress percentage={progressPercentage} />
+        </div>
+
+        {/* Карточки ухода */}
+        <div className="space-y-4 mb-6">
+          {careSteps.map((step, index) => {
+            const stepId = `${activeTime}-${step.id}-${index}`;
+            const isCompleted = completedSteps[stepId] || false;
+            
+            return (
+              <div key={step.id} className="care-card flex items-center justify-between px-4">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-sm"
+                    style={{ backgroundColor: step.color }}
+                  >
+                    {step.icon}
+                  </div>
+                  <div>
+                    <div 
+                      className="font-medium"
+                      style={{ 
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '16px',
+                        color: '#1A1A1A'
+                      }}
+                    >
+                      {step.name}
+                    </div>
+                    <div 
+                      className="text-sm"
+                      style={{ 
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '14px',
+                        color: '#7D7D7D'
+                      }}
+                    >
+                      {step.description}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => toggleStepCompleted(stepId)}
+                  className={`checkbox ${isCompleted ? 'checked' : ''}`}
+                >
+                  {isCompleted && (
+                    <span className="text-white text-xs font-bold">✓</span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Кнопка "Открыть подробный план" */}
+        <div className="mb-6">
+          <Link to="/plan">
+            <button className="main-button w-full py-4 px-6">
+              Открыть подробный план
             </button>
           </Link>
         </div>
-      </div>
-      
-      {hasCompletedQuiz && (
-        <div className="text-center pt-4">
-          <Link to="/quiz" className="text-sm text-gray-500 hover:text-gray-700 transition-colors font-medium">
-            ПЕРЕПРОЙТИ АНКЕТУ
+
+        {/* Нижние кнопки */}
+        <div className="flex gap-4">
+          <Link to="/cart" className="flex-1">
+            <div className="bottom-button p-4 text-center">
+              <div className="text-2xl mb-2">🛒</div>
+              <div 
+                className="font-medium"
+                style={{ 
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '14px',
+                  color: '#1A1A1A'
+                }}
+              >
+                Корзина
+              </div>
+            </div>
+          </Link>
+          <Link to="/quiz" className="flex-1">
+            <div className="bottom-button p-4 text-center">
+              <div className="text-2xl mb-2">📋</div>
+              <div 
+                className="font-medium"
+                style={{ 
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '14px',
+                  color: '#1A1A1A'
+                }}
+              >
+                Анкета
+              </div>
+            </div>
           </Link>
         </div>
-      )}
       </div>
     </div>
   );
