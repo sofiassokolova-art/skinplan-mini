@@ -22,12 +22,13 @@ const tokens = {
     IconLavender: "#C29DFF"
   },
   shadows: {
-    Card: "0 2px 8px rgba(0,0,0,0.06)",
-    Switch: "0 1px 3px rgba(0,0,0,0.04)",
-    Neomorphic: "8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.8)",
-    InnerSoft: "inset 1px 1px 2px rgba(0,0,0,0.08), inset -1px -1px 2px rgba(255,255,255,0.9)",
-    ButtonShadow: "0 2px 6px rgba(0,0,0,0.08)",
-    ProgressGlow: "0 0 6px rgba(249, 168, 212, 0.2)"
+    NeomorphicOut: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
+    NeomorphicIn: "inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8)",
+    Card: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
+    Switch: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
+    Button: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
+    ProgressInset: "inset 1px 1px 2px rgba(0,0,0,0.1)",
+    CheckboxGlow: "0 0 8px rgba(238, 207, 255, 0.3), 0 2px 4px rgba(0,0,0,0.1)"
   },
   radii: {
     Switch: 12,
@@ -55,26 +56,38 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
   const strokeDashoffset = circumference - (animatedPercentage / 100) * circumference;
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div 
+      className="relative" 
+      style={{ 
+        width: size, 
+        height: size,
+        borderRadius: '50%',
+        background: '#FFF7F7',
+        boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.08), inset -3px -3px 6px #FFFFFF',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
       <svg
-        width={size}
-        height={size}
+        width={size - 8}
+        height={size - 8}
         className="transform -rotate-90"
       >
         {/* Фоновый круг */}
         <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
+          cx={(size - 8) / 2}
+          cy={(size - 8) / 2}
+          r={radius - 4}
           stroke="#E5E5E5"
           strokeWidth={strokeWidth}
           fill="none"
         />
         {/* Прогресс круг */}
         <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
+          cx={(size - 8) / 2}
+          cy={(size - 8) / 2}
+          r={radius - 4}
           stroke="url(#progressGradient)"
           strokeWidth={strokeWidth}
           fill="none"
@@ -82,8 +95,7 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
           strokeDasharray={strokeDasharray}
           strokeDashoffset={strokeDashoffset}
           style={{
-            transition: 'stroke-dashoffset 0.5s ease-in-out',
-            filter: 'drop-shadow(0 0 3px rgba(249, 168, 212, 0.2))'
+            transition: 'stroke-dashoffset 0.5s ease-in-out'
           }}
         />
         <defs>
@@ -188,13 +200,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Фон с анимацией */}
+      {/* Неоморфный фон с комбинированной анимацией */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: `linear-gradient(180deg, ${tokens.colors.BackgroundStart}, ${tokens.colors.BackgroundEnd})`,
-            animation: 'gradientFlow 8s ease-in-out infinite'
+            background: `radial-gradient(circle at center, #FFF7F7, #FDF7F6, #FFFFFF),
+                        linear-gradient(-45deg, #FFF7F7, #FFFFFF, #FDEDED, #FDF7F6)`,
+            backgroundSize: '300% 300%',
+            animation: 'comboMove 18s ease-in-out infinite'
           }}
         />
       </div>
@@ -203,15 +217,15 @@ export default function Home() {
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
-        @keyframes gradientFlow {
+        @keyframes comboMove {
           0% {
-            background-position: 0% 50%;
+            background-position: 50% 50%, 0% 50%;
           }
           50% {
-            background-position: 100% 50%;
+            background-position: 60% 40%, 100% 50%;
           }
           100% {
-            background-position: 0% 50%;
+            background-position: 50% 50%, 0% 50%;
           }
         }
         
@@ -307,14 +321,14 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Переключатель Утро/Вечер (отдельная подложка) */}
+        {/* Переключатель Утро/Вечер (неоморфный) */}
         <div 
           style={{
-            background: tokens.colors.CardBase,
+            background: '#F9F4F2',
             borderRadius: tokens.radii.Switch,
             height: 44,
             padding: 4,
-            boxShadow: tokens.shadows.Switch,
+            boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.08), inset -3px -3px 6px #FFFFFF',
             marginTop: 24,
             marginBottom: 24,
             display: 'flex',
@@ -329,15 +343,17 @@ export default function Home() {
               fontWeight: 500,
               color: tokens.colors.TextPrimary,
               background: activeTime === 'morning' 
-                ? tokens.colors.ActiveTab
-                : '#FFFFFF',
-              border: activeTime === 'morning' ? 'none' : '1px solid #E0E0E0',
+                ? '#FFD6D6'
+                : 'transparent',
+              border: 'none',
               borderRadius: 8,
               flex: 1,
               height: 36,
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTime === 'morning' ? tokens.shadows.InnerSoft : 'none'
+              transition: 'all 0.3s ease',
+              boxShadow: activeTime === 'morning' 
+                ? '3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px #FFFFFF'
+                : 'none'
             }}
           >
             Утро
@@ -350,15 +366,17 @@ export default function Home() {
               fontWeight: 500,
               color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
               background: activeTime === 'evening' 
-                ? tokens.colors.ActiveTab
-                : '#FFFFFF',
-              border: activeTime === 'evening' ? 'none' : '1px solid #E0E0E0',
+                ? '#FFD6D6'
+                : 'transparent',
+              border: 'none',
               borderRadius: 8,
               flex: 1,
               height: 36,
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTime === 'evening' ? tokens.shadows.InnerSoft : 'none'
+              transition: 'all 0.3s ease',
+              boxShadow: activeTime === 'evening' 
+                ? '3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px #FFFFFF'
+                : 'none'
             }}
           >
             Вечер
@@ -378,7 +396,7 @@ export default function Home() {
                 style={{
                   background: tokens.colors.CardBase,
                   borderRadius: tokens.radii.Card,
-                  boxShadow: tokens.shadows.Card,
+                  boxShadow: '6px 6px 12px rgba(0,0,0,0.06), -6px -6px 12px #FFFFFF',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 12 : 0,
@@ -389,7 +407,7 @@ export default function Home() {
               >
                 {/* Левая часть: чекбокс + текст */}
                 <div className="flex items-center gap-4">
-                  {/* Чекбокс слева */}
+                  {/* Чекбокс слева (глянцевый шарик) */}
                     <button
                       onClick={() => {
                       toggleStepCompleted(stepId);
@@ -415,8 +433,8 @@ export default function Home() {
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
                       boxShadow: isCompleted 
-                        ? '0 2px 4px rgba(238, 207, 255, 0.3), inset 0 1px 2px rgba(255,255,255,0.4)'
-                        : 'inset 0 1px 2px rgba(0,0,0,0.1), inset 0 -1px 2px rgba(255,255,255,0.8)',
+                        ? 'inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px #FFFFFF'
+                        : 'inset 1px 1px 2px rgba(0,0,0,0.1), inset -1px -1px 2px rgba(255,255,255,0.8)',
                       position: 'relative',
                       overflow: 'hidden'
                     }}
@@ -431,7 +449,7 @@ export default function Home() {
                             left: 0,
                             right: 0,
                             height: '50%',
-                            background: 'linear-gradient(180deg, rgba(255,255,255,0.3), transparent)',
+                            background: 'linear-gradient(180deg, rgba(255,255,255,0.4), transparent)',
                             borderRadius: '12px 12px 0 0'
                           }}
                         />
@@ -505,15 +523,15 @@ export default function Home() {
                 width: '100%',
                 height: 48,
                 borderRadius: tokens.radii.Button,
-                background: `linear-gradient(135deg, ${tokens.colors.CtaGradient1}, ${tokens.colors.CtaGradient2})`,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                background: `linear-gradient(145deg, ${tokens.colors.CtaGradient1}, ${tokens.colors.CtaGradient2})`,
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 700,
                 color: '#1A1A1A',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.3s ease'
               }}
             >
               Открыть подробный план
@@ -531,15 +549,15 @@ export default function Home() {
               style={{
                 width: 72,
                 height: 72,
-                background: '#FFFFFF',
+                background: '#FFF7F7',
                 borderRadius: tokens.radii.Icon,
-                boxShadow: tokens.shadows.Card,
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.3s ease'
               }}
             >
               <svg 
@@ -551,7 +569,7 @@ export default function Home() {
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke={tokens.colors.IconPink}
+                  stroke="#FF8E8E"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -576,15 +594,15 @@ export default function Home() {
               style={{
                 width: 72,
                 height: 72,
-                background: tokens.colors.IconLavender,
+                background: '#FFF7F7',
                 borderRadius: tokens.radii.Icon,
-                boxShadow: tokens.shadows.Card,
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.3s ease'
               }}
             >
               <svg 
@@ -596,7 +614,7 @@ export default function Home() {
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#FFFFFF"
+                  stroke="#BDAAFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -608,12 +626,12 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#FFFFFF'
+                  color: '#6B6B6B'
                 }}
               >
                 Анкета
               </span>
-      </div>
+            </div>
           </Link>
         </div>
       </div>
