@@ -174,8 +174,8 @@ export default function Home() {
     },
     { 
       id: 'toner', 
-      name: 'Сыворотка', 
-      description: 'Сыворотка', 
+      name: 'Тонизирование', 
+      description: 'Тоник', 
       icon: 'toner' as const
     },
     { 
@@ -184,22 +184,17 @@ export default function Home() {
       description: 'Увлажняющий крем', 
       icon: 'moisturizer' as const
     },
-    { 
-      id: 'spf', 
-      name: 'SPF', 
-      description: 'Солнцезащитный крем', 
-      icon: 'spf' as const
-    },
   ];
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Фон */}
+      {/* Фон с анимацией */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: `linear-gradient(180deg, ${tokens.colors.BackgroundStart}, ${tokens.colors.BackgroundEnd})`
+            background: `linear-gradient(180deg, ${tokens.colors.BackgroundStart}, ${tokens.colors.BackgroundEnd})`,
+            animation: 'gradientFlow 8s ease-in-out infinite'
           }}
         />
       </div>
@@ -207,6 +202,18 @@ export default function Home() {
       {/* Кастомные стили */}
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        @keyframes gradientFlow {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
         
         @keyframes pearlShimmer {
           0% {
@@ -233,7 +240,7 @@ export default function Home() {
           width: 100%;
           height: 100%;
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-          animation: pearlShimmer 4s ease-in-out infinite;
+          animation: pearlShimmer 5s ease-in-out infinite;
         }
         
         .scale-up {
@@ -259,27 +266,41 @@ export default function Home() {
       
       {/* Основной контент */}
       <div className="relative z-10 px-6 py-8">
-        {/* Заголовок */}
-        <div className="text-center" style={{ marginTop: 32 }}>
+        {/* Бренд заголовок */}
+        <div className="text-center" style={{ marginTop: 32, marginBottom: 16 }}>
           <h1 
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '18px',
+              fontWeight: 600,
+              color: tokens.colors.TextPrimary,
+              margin: 0,
+              marginBottom: 16
+            }}
+          >
+            SKinIQ
+          </h1>
+          <h2 
             style={{
               fontFamily: 'Playfair Display, serif',
               fontSize: '24px',
               fontWeight: 700,
-              color: tokens.colors.TextPrimary,
+              color: '#2A2A2A',
               margin: 0,
-              marginBottom: 8
+              marginBottom: 8,
+              lineHeight: '120%'
             }}
           >
-            Привет, {userName || 'Пользователь'}!
-          </h1>
+            Привет, {userName || 'Имя'}!
+          </h2>
           <p 
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: '16px',
               fontWeight: 400,
-              color: tokens.colors.TextSecondary,
-              margin: 0
+              color: '#8C8C8C',
+              margin: 0,
+              lineHeight: '120%'
             }}
           >
             Твой уход на сегодня
@@ -309,8 +330,8 @@ export default function Home() {
               color: tokens.colors.TextPrimary,
               background: activeTime === 'morning' 
                 ? tokens.colors.ActiveTab
-                : tokens.colors.InactiveTab,
-              border: 'none',
+                : '#FFFFFF',
+              border: activeTime === 'morning' ? 'none' : '1px solid #E0E0E0',
               borderRadius: 8,
               flex: 1,
               height: 36,
@@ -330,8 +351,8 @@ export default function Home() {
               color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
               background: activeTime === 'evening' 
                 ? tokens.colors.ActiveTab
-                : tokens.colors.InactiveTab,
-              border: 'none',
+                : '#FFFFFF',
+              border: activeTime === 'evening' ? 'none' : '1px solid #E0E0E0',
               borderRadius: 8,
               flex: 1,
               height: 36,
@@ -441,7 +462,7 @@ export default function Home() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: '16px',
                         fontWeight: 700,
-                        color: tokens.colors.TextPrimary,
+                        color: '#2A2A2A',
                         margin: 0,
                         marginBottom: 2
                       }}
@@ -453,7 +474,7 @@ export default function Home() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: '14px',
                         fontWeight: 400,
-                        color: tokens.colors.TextSecondary,
+                        color: '#8C8C8C',
                         margin: 0
                       }}
                     >
@@ -485,7 +506,7 @@ export default function Home() {
                 height: 48,
                 borderRadius: tokens.radii.Button,
                 background: `linear-gradient(135deg, ${tokens.colors.CtaGradient1}, ${tokens.colors.CtaGradient2})`,
-                boxShadow: tokens.shadows.ButtonShadow,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
@@ -510,7 +531,7 @@ export default function Home() {
               style={{
                 width: 72,
                 height: 72,
-                background: tokens.colors.CardBase,
+                background: '#FFFFFF',
                 borderRadius: tokens.radii.Icon,
                 boxShadow: tokens.shadows.Card,
                 display: 'flex',
@@ -542,7 +563,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: tokens.colors.TextLight
+                  color: '#6B6B6B'
                 }}
               >
                 Корзина
@@ -555,7 +576,7 @@ export default function Home() {
               style={{
                 width: 72,
                 height: 72,
-                background: tokens.colors.CardBase,
+                background: tokens.colors.IconLavender,
                 borderRadius: tokens.radii.Icon,
                 boxShadow: tokens.shadows.Card,
                 display: 'flex',
@@ -575,7 +596,7 @@ export default function Home() {
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke={tokens.colors.IconLavender}
+                  stroke="#FFFFFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -587,7 +608,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: tokens.colors.TextLight
+                  color: '#FFFFFF'
                 }}
               >
                 Анкета
