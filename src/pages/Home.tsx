@@ -4,13 +4,13 @@ import { useMemo, useState, useEffect } from "react";
 // Design Tokens
 const tokens = {
   colors: {
-    BackgroundStart: "#FCEEEE",
-    BackgroundEnd: "#F9F4F2",
+    BackgroundStart: "#FDF7F6",
+    BackgroundEnd: "#FFFFFF",
     CardBase: "#FFF7F7",
-    TextPrimary: "#1A1A1A",
+    TextPrimary: "#2A2A2A",
     TextSecondary: "#8C8C8C",
     TextLight: "#6B6B6B",
-    ActiveTab: "#FDDCDC",
+    ActiveTab: "#FFD6D6",
     InactiveTab: "#F9F4F2",
     ProgressGradient1: "#F9A8D4",
     ProgressGradient2: "#FECACA",
@@ -19,11 +19,7 @@ const tokens = {
     CheckboxGradient1: "#EECFFF",
     CheckboxGradient2: "#C29DFF",
     IconPink: "#FF7D7D",
-    IconLavender: "#C29DFF",
-    IconBlue: "#E3F2FD",
-    IconPurple: "#F3E5F5",
-    IconBeige: "#FFF8E1",
-    IconYellow: "#FFFDE7"
+    IconLavender: "#C29DFF"
   },
   shadows: {
     Card: "0 4px 12px rgba(0,0,0,0.08)",
@@ -110,55 +106,6 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
   );
 }
 
-// Компонент абстрактной иконки
-function AbstractIcon({ type, size = 24 }: { type: string; size?: number }) {
-  const iconConfigs = {
-    cleanser: {
-      bgColor: tokens.colors.IconBlue,
-      symbol: "○",
-      symbolColor: "#2196F3"
-    },
-    toner: {
-      bgColor: tokens.colors.IconPurple,
-      symbol: "●",
-      symbolColor: "#9C27B0"
-    },
-    moisturizer: {
-      bgColor: tokens.colors.IconBeige,
-      symbol: "●",
-      symbolColor: "#FF9800"
-    },
-    spf: {
-      bgColor: tokens.colors.IconYellow,
-      symbol: "☀",
-      symbolColor: "#FFC107"
-    }
-  };
-
-  const config = iconConfigs[type as keyof typeof iconConfigs] || iconConfigs.cleanser;
-
-  return (
-    <div 
-      className="flex items-center justify-center rounded-full"
-      style={{
-        width: size,
-        height: size,
-        background: `linear-gradient(135deg, ${config.bgColor}, rgba(255,255,255,0.8))`,
-        boxShadow: tokens.shadows.InnerSoft
-      }}
-    >
-      <span 
-        style={{
-          fontSize: size * 0.5,
-          color: config.symbolColor,
-          fontWeight: 'bold'
-        }}
-      >
-        {config.symbol}
-      </span>
-    </div>
-  );
-}
 
 export default function Home() {
   const [activeTime, setActiveTime] = useState<'morning' | 'evening'>('morning');
@@ -244,21 +191,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Фон с перламутровой текстурой */}
+      {/* Фон */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: `linear-gradient(135deg, ${tokens.colors.BackgroundStart}, ${tokens.colors.BackgroundEnd})`
-          }}
-        />
-        {/* Перламутровая текстура */}
-        <div 
-          className="absolute inset-0 opacity-30"
-          style={{
-            background: `radial-gradient(circle at 20% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.08) 0%, transparent 50%),
-                        radial-gradient(circle at 40% 60%, rgba(255,255,255,0.06) 0%, transparent 50%)`
+            background: `linear-gradient(180deg, ${tokens.colors.BackgroundStart}, ${tokens.colors.BackgroundEnd})`
           }}
         />
       </div>
@@ -309,6 +247,11 @@ export default function Home() {
             opacity: 1;
           }
         }
+        
+        .pressed {
+          transform: scale(0.98);
+          transition: transform 0.1s ease;
+        }
       `}} />
       
       {/* Основной контент */}
@@ -333,84 +276,77 @@ export default function Home() {
               fontSize: '16px',
               fontWeight: 400,
               color: tokens.colors.TextSecondary,
-              margin: 0,
-              lineHeight: '20px'
+              margin: 0
             }}
           >
             Твой уход на сегодня
           </p>
         </div>
 
-        {/* Переключатель Утро/Вечер */}
+        {/* Переключатель Утро/Вечер (отдельная подложка) */}
         <div 
           style={{
             background: tokens.colors.CardBase,
             borderRadius: tokens.radii.Switch,
-            height: 40,
+            height: 44,
             padding: 4,
             boxShadow: tokens.shadows.Neomorphic,
             marginTop: 24,
             marginBottom: 24,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
+            alignItems: 'center'
           }}
         >
-          {/* Табы */}
-          <div className="flex gap-1">
-            <button
-              onClick={() => setActiveTime('morning')}
-              style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '14px',
-                fontWeight: 600,
-                color: tokens.colors.TextPrimary,
-                background: activeTime === 'morning' 
-                  ? tokens.colors.ActiveTab
-                  : tokens.colors.InactiveTab,
-                border: 'none',
-                borderRadius: 8,
-                width: 120,
-                height: 32,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTime === 'morning' ? tokens.shadows.InnerSoft : 'none'
-              }}
-            >
-              Утро
-            </button>
-            <button
-              onClick={() => setActiveTime('evening')}
-              style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '14px',
-                fontWeight: 600,
-                color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
-                background: activeTime === 'evening' 
-                  ? tokens.colors.ActiveTab
-                  : tokens.colors.InactiveTab,
-                border: 'none',
-                borderRadius: 8,
-                width: 120,
-                height: 32,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTime === 'evening' ? tokens.shadows.InnerSoft : 'none'
-              }}
-            >
-              Вечер
-            </button>
-          </div>
-          
-          {/* Прогресс */}
-          <CircularProgress percentage={Math.round(progressPercentage)} />
+          <button
+            onClick={() => setActiveTime('morning')}
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '16px',
+              fontWeight: 500,
+              color: tokens.colors.TextPrimary,
+              background: activeTime === 'morning' 
+                ? tokens.colors.ActiveTab
+                : 'transparent',
+              border: 'none',
+              borderRadius: 8,
+              flex: 1,
+              height: 36,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: activeTime === 'morning' ? tokens.shadows.InnerSoft : 'none'
+            }}
+          >
+            Утро
+          </button>
+          <button
+            onClick={() => setActiveTime('evening')}
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '16px',
+              fontWeight: 500,
+              color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
+              background: activeTime === 'evening' 
+                ? tokens.colors.ActiveTab
+                : 'transparent',
+              border: 'none',
+              borderRadius: 8,
+              flex: 1,
+              height: 36,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: activeTime === 'evening' ? tokens.shadows.InnerSoft : 'none'
+            }}
+          >
+            Вечер
+          </button>
         </div>
 
         {/* Карточки ухода */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 24 }}>
           {careSteps.map((step, index) => {
             const stepId = `${activeTime}-${step.id}-${index}`;
             const isCompleted = completedSteps[stepId] || false;
+            const isFirstStep = index === 0;
             
             return (
               <div 
@@ -419,7 +355,7 @@ export default function Home() {
                   background: tokens.colors.CardBase,
                   borderRadius: tokens.radii.Card,
                   boxShadow: tokens.shadows.Card,
-                  height: 72,
+                  height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 12 : 0,
                   display: 'flex',
@@ -427,9 +363,56 @@ export default function Home() {
                   justifyContent: 'space-between'
                 }}
               >
-                {/* Левая часть: иконка + текст */}
+                {/* Левая часть: чекбокс + текст */}
                 <div className="flex items-center gap-4">
-                  <AbstractIcon type={step.icon} size={24} />
+                  {/* Чекбокс слева */}
+                  <button
+                    onClick={() => {
+                      toggleStepCompleted(stepId);
+                      // Добавляем scale-up анимацию
+                      const element = document.getElementById(`check-${stepId}`);
+                      if (element) {
+                        element.classList.add('scale-up');
+                        setTimeout(() => element.classList.remove('scale-up'), 200);
+                      }
+                    }}
+                    id={`check-${stepId}`}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      background: isCompleted 
+                        ? `linear-gradient(135deg, ${tokens.colors.CheckboxGradient1}, ${tokens.colors.CheckboxGradient2})`
+                        : tokens.colors.CardBase,
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease-in-out',
+                      boxShadow: tokens.shadows.InnerSoft
+                    }}
+                  >
+                    {isCompleted && (
+                      <svg 
+                        width="10" 
+                        height="10" 
+                        viewBox="0 0 20 20" 
+                        fill="none"
+                        className="scale-up"
+                      >
+                        <path 
+                          d="M5 13l4 4L19 7" 
+                          stroke="#FFFFFF" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                  
+                  {/* Текст */}
                   <div>
                     <h3 
                       style={{
@@ -457,52 +440,12 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Чекбокс */}
-                <button
-                  onClick={() => {
-                    toggleStepCompleted(stepId);
-                    // Добавляем scale-up анимацию
-                    const element = document.getElementById(`check-${stepId}`);
-                    if (element) {
-                      element.classList.add('scale-up');
-                      setTimeout(() => element.classList.remove('scale-up'), 200);
-                    }
-                  }}
-                  id={`check-${stepId}`}
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    background: isCompleted 
-                      ? `linear-gradient(135deg, ${tokens.colors.CheckboxGradient1}, ${tokens.colors.CheckboxGradient2})`
-                      : tokens.colors.CardBase,
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease-in-out',
-                    boxShadow: tokens.shadows.InnerSoft
-                  }}
-                >
-                  {isCompleted && (
-                    <svg 
-                      width="10" 
-                      height="10" 
-                      viewBox="0 0 20 20" 
-                      fill="none"
-                      className="scale-up"
-                    >
-                      <path 
-                        d="M5 13l4 4L19 7" 
-                        stroke="#FFFFFF" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </button>
+                {/* Прогресс-круг только у первого шага */}
+                {isFirstStep && (
+                  <div style={{ marginRight: 16 }}>
+                    <CircularProgress percentage={Math.round(progressPercentage)} />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -525,7 +468,7 @@ export default function Home() {
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 700,
-                color: tokens.colors.TextPrimary,
+                color: '#1A1A1A',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease'
               }}
@@ -576,7 +519,7 @@ export default function Home() {
                 style={{
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
-                  fontWeight: 500,
+                  fontWeight: 400,
                   color: tokens.colors.TextLight
                 }}
               >
@@ -621,7 +564,7 @@ export default function Home() {
                 style={{
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
-                  fontWeight: 500,
+                  fontWeight: 400,
                   color: tokens.colors.TextLight
                 }}
               >
