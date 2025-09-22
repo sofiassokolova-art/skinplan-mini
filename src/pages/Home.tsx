@@ -56,39 +56,27 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
   const strokeDashoffset = circumference - (animatedPercentage / 100) * circumference;
 
   return (
-    <div 
-      className="relative" 
-      style={{ 
-        width: size, 
-        height: size,
-        borderRadius: '50%',
-        background: '#FFF7F7',
-        boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.08), inset -3px -3px 6px #FFFFFF',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
+    <div className="relative" style={{ width: size, height: size }}>
       <svg
-        width={size - 8}
-        height={size - 8}
+        width={size}
+        height={size}
         className="transform -rotate-90"
       >
         {/* Фоновый круг */}
         <circle
-          cx={(size - 8) / 2}
-          cy={(size - 8) / 2}
-          r={radius - 4}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
           stroke="#E5E5E5"
           strokeWidth={strokeWidth}
           fill="none"
         />
         {/* Прогресс круг */}
         <circle
-          cx={(size - 8) / 2}
-          cy={(size - 8) / 2}
-          r={radius - 4}
-          stroke="url(#progressGradient)"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#C29DFF"
           strokeWidth={strokeWidth}
           fill="none"
           strokeLinecap="round"
@@ -98,12 +86,6 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
             transition: 'stroke-dashoffset 0.5s ease-in-out'
           }}
         />
-        <defs>
-          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={tokens.colors.ProgressGradient1} />
-            <stop offset="100%" stopColor={tokens.colors.ProgressGradient2} />
-          </linearGradient>
-        </defs>
       </svg>
       {/* Процент в центре */}
       <div 
@@ -200,15 +182,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Неоморфный фон с комбинированной анимацией */}
+      {/* Простой белый фон */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at center, #FFF7F7, #FDF7F6, #FFFFFF),
-                        linear-gradient(-45deg, #FFF7F7, #FFFFFF, #FDEDED, #FDF7F6)`,
-            backgroundSize: '300% 300%',
-            animation: 'comboMove 18s ease-in-out infinite'
+            background: '#FEFEFE'
           }}
         />
       </div>
@@ -321,14 +300,13 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Переключатель Утро/Вечер (неоморфный) */}
+        {/* Переключатель Утро/Вечер */}
         <div 
           style={{
-            background: '#F9F4F2',
+            background: '#FEFEFE',
             borderRadius: tokens.radii.Switch,
             height: 44,
             padding: 4,
-            boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.08), inset -3px -3px 6px #FFFFFF',
             marginTop: 24,
             marginBottom: 24,
             display: 'flex',
@@ -350,10 +328,7 @@ export default function Home() {
               flex: 1,
               height: 36,
               cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: activeTime === 'morning' 
-                ? '3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px #FFFFFF'
-                : 'none'
+              transition: 'all 0.2s ease'
             }}
           >
             Утро
@@ -368,15 +343,12 @@ export default function Home() {
               background: activeTime === 'evening' 
                 ? '#FFD6D6'
                 : 'transparent',
-              border: 'none',
+              border: activeTime === 'evening' ? 'none' : '1px solid #E0E0E0',
               borderRadius: 8,
               flex: 1,
               height: 36,
               cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: activeTime === 'evening' 
-                ? '3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px #FFFFFF'
-                : 'none'
+              transition: 'all 0.2s ease'
             }}
           >
             Вечер
@@ -394,9 +366,9 @@ export default function Home() {
               <div 
                 key={step.id}
                 style={{
-                  background: tokens.colors.CardBase,
+                  background: '#FEFEFE',
                   borderRadius: tokens.radii.Card,
-                  boxShadow: '6px 6px 12px rgba(0,0,0,0.06), -6px -6px 12px #FFFFFF',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 12 : 0,
@@ -432,9 +404,7 @@ export default function Home() {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
-                      boxShadow: isCompleted 
-                        ? 'inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px #FFFFFF'
-                        : 'inset 1px 1px 2px rgba(0,0,0,0.1), inset -1px -1px 2px rgba(255,255,255,0.8)',
+                      boxShadow: 'none',
                       position: 'relative',
                       overflow: 'hidden'
                     }}
@@ -523,15 +493,15 @@ export default function Home() {
                 width: '100%',
                 height: 48,
                 borderRadius: tokens.radii.Button,
-                background: `linear-gradient(145deg, ${tokens.colors.CtaGradient1}, ${tokens.colors.CtaGradient2})`,
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
+                background: '#FFD6D6',
+                boxShadow: 'none',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 700,
                 color: '#1A1A1A',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.2s ease'
               }}
             >
               Открыть подробный план
@@ -549,15 +519,15 @@ export default function Home() {
               style={{
                 width: 72,
                 height: 72,
-                background: '#FFF7F7',
+                background: '#FEFEFE',
                 borderRadius: tokens.radii.Icon,
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
+                border: '1px solid #E0E0E0',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.2s ease'
               }}
             >
               <svg 
@@ -569,7 +539,7 @@ export default function Home() {
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#FF8E8E"
+                  stroke="#2A2A2A"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -581,7 +551,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#6B6B6B'
+                  color: '#2A2A2A'
                 }}
               >
                 Корзина
@@ -594,15 +564,14 @@ export default function Home() {
               style={{
                 width: 72,
                 height: 72,
-                background: '#FFF7F7',
+                background: '#C29DFF',
                 borderRadius: tokens.radii.Icon,
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.2s ease'
               }}
             >
               <svg 
@@ -614,7 +583,7 @@ export default function Home() {
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#BDAAFF"
+                  stroke="#FFFFFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -626,7 +595,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#6B6B6B'
+                  color: '#FFFFFF'
                 }}
               >
                 Анкета
