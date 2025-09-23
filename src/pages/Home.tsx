@@ -238,7 +238,7 @@ export default function Home() {
           background: linear-gradient(
             90deg,
             transparent,
-            rgba(255,255,255,0.3),
+            rgba(255,255,255,0.4),
             transparent
           );
           animation: shimmer 2.5s infinite;
@@ -282,7 +282,15 @@ export default function Home() {
       `}} />
       
       {/* Основной контент */}
-      <div className="relative z-10 px-6 py-8">
+      <div 
+        className="relative z-10 px-6 py-8"
+        style={{
+          background: '#FDF7F6',
+          borderRadius: 24,
+          boxShadow: 'inset 8px 8px 16px #E3DEDE, inset -8px -8px 16px #FFFFFF',
+          margin: '0 24px'
+        }}
+      >
         {/* Бренд заголовок */}
         <div className="text-center" style={{ marginTop: 32, marginBottom: 16 }}>
           <h1 
@@ -339,13 +347,13 @@ export default function Home() {
             style={{
               flex: 1,
               maxWidth: '70%',
-              background: 'rgba(255, 255, 255, 0.7)',
+              background: '#FDF7F6',
               borderRadius: 24,
               height: 44,
               padding: 4,
               display: 'flex',
               alignItems: 'center',
-              boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8)'
+              boxShadow: '8px 8px 16px #E3DEDE, -8px -8px 16px #FFFFFF'
             }}
           >
               <button
@@ -365,7 +373,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'morning' 
-                  ? '2px 2px 4px rgba(0,0,0,0.1), -2px -2px 4px rgba(255,255,255,0.8)'
+                  ? 'inset 6px 6px 12px #E3DEDE, inset -6px -6px 12px #FFFFFF'
                   : 'none'
               }}
             >
@@ -388,7 +396,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'evening' 
-                  ? '2px 2px 4px rgba(0,0,0,0.1), -2px -2px 4px rgba(255,255,255,0.8)'
+                  ? 'inset 6px 6px 12px #E3DEDE, inset -6px -6px 12px #FFFFFF'
                   : 'none'
               }}
             >
@@ -407,7 +415,8 @@ export default function Home() {
               alignItems: 'center',
               justifyContent: 'center',
               marginLeft: 16,
-              position: 'relative'
+              position: 'relative',
+              boxShadow: 'inset 6px 6px 12px #E3DEDE, inset -6px -6px 12px #FFFFFF'
             }}
           >
             <CircularProgress 
@@ -427,10 +436,9 @@ export default function Home() {
               <div 
                 key={step.id}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  backdropFilter: 'blur(10px)',
+                  background: '#FDF7F6',
                   borderRadius: 16,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
+                  boxShadow: '6px 6px 12px #E3DEDE, -6px -6px 12px #FFFFFF',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 12 : 0,
@@ -554,7 +562,7 @@ export default function Home() {
                 height: 56,
                 border: 'none',
                 borderRadius: 999,
-                background: 'linear-gradient(145deg, #FFD9D4, #FECAC5)',
+                background: '#FDF7F6',
                 color: '#2A2A2A',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
@@ -563,7 +571,7 @@ export default function Home() {
                 transition: 'all 0.3s ease',
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF'
+                boxShadow: '6px 6px 12px #E3DEDE, -6px -6px 12px #FFFFFF'
               }}
             >
               Открыть подробный план
