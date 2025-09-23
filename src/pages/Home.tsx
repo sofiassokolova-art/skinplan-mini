@@ -178,9 +178,9 @@ export default function Home() {
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at 30% 30%, #FFF3F1, #FDEDEA)`,
-            backgroundSize: '300% 300%',
-            animation: 'gradientMove 12s ease-in-out infinite'
+            background: `radial-gradient(circle at top left, #FFF3F1, #FDEDEA)`,
+            backgroundSize: '200% 200%',
+            animation: 'gradientMove 15s linear infinite'
           }}
         />
       </div>
@@ -191,13 +191,13 @@ export default function Home() {
         
         @keyframes gradientMove {
           0% { 
-            background-position: 20% 20%; 
+            background-position: 0% 0%; 
           }
           50% { 
-            background-position: 80% 80%; 
+            background-position: 100% 100%; 
           }
           100% { 
-            background-position: 20% 20%; 
+            background-position: 0% 0%; 
           }
         }
         
@@ -231,14 +231,14 @@ export default function Home() {
           content: "";
           position: absolute;
           top: 0;
-          left: -150%;
-          width: 50%;
+          left: -100%;
+          width: 100%;
           height: 100%;
           border-radius: inherit;
           background: linear-gradient(
-            45deg,
+            90deg,
             transparent,
-            rgba(255,255,255,0.6),
+            rgba(255,255,255,0.3),
             transparent
           );
           animation: shimmer 2.5s infinite;
@@ -339,13 +339,13 @@ export default function Home() {
             style={{
               flex: 1,
               maxWidth: '70%',
-              background: '#F8F0EC',
+              background: 'rgba(255, 255, 255, 0.7)',
               borderRadius: 24,
               height: 44,
               padding: 4,
               display: 'flex',
               alignItems: 'center',
-              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.08), inset -4px -4px 8px #FFFFFF'
+              boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8)'
             }}
           >
               <button
@@ -365,7 +365,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'morning' 
-                  ? '4px 4px 8px rgba(0,0,0,0.08), -4px -4px 8px #FFFFFF'
+                  ? '2px 2px 4px rgba(0,0,0,0.1), -2px -2px 4px rgba(255,255,255,0.8)'
                   : 'none'
               }}
             >
@@ -388,7 +388,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'evening' 
-                  ? '4px 4px 8px rgba(0,0,0,0.08), -4px -4px 8px #FFFFFF'
+                  ? '2px 2px 4px rgba(0,0,0,0.1), -2px -2px 4px rgba(255,255,255,0.8)'
                   : 'none'
               }}
             >
@@ -402,12 +402,12 @@ export default function Home() {
               width: 48,
               height: 48,
               borderRadius: '50%',
-              background: '#FFF7F7',
-              boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.08), inset -3px -3px 6px #FFFFFF',
+              background: `conic-gradient(#C6B9F8 ${Math.round((Object.values(completedSteps).filter(Boolean).length / (careSteps.length * 2)) * 100)}%, #F3F0FF ${Math.round((Object.values(completedSteps).filter(Boolean).length / (careSteps.length * 2)) * 100)}%)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginLeft: 16
+              marginLeft: 16,
+              position: 'relative'
             }}
           >
             <CircularProgress 
@@ -427,9 +427,10 @@ export default function Home() {
               <div 
                 key={step.id}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.7)',
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)',
                   borderRadius: 16,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 12 : 0,
