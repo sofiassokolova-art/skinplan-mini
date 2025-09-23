@@ -113,12 +113,19 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
 export default function Home() {
   const [activeTime, setActiveTime] = useState<'morning' | 'evening'>('morning');
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem('skiniq.routine_progress');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
+    // Фиксированное состояние как в референсе: все шаги кроме SPF завершены
+    return {
+      'morning-cleanser-0': true,
+      'morning-toner-1': true,
+      'morning-serum-2': true,
+      'morning-moisturizer-3': true,
+      'morning-spf-4': false,
+      'evening-cleanser-0': true,
+      'evening-toner-1': true,
+      'evening-serum-2': true,
+      'evening-moisturizer-3': true,
+      'evening-spf-4': false
+    };
   });
 
   // Функция для переключения статуса выполнения шага
@@ -298,11 +305,24 @@ export default function Home() {
               fontWeight: 600,
               color: tokens.colors.TextPrimary,
               margin: 0,
-              marginBottom: 16
+              marginBottom: 8
             }}
           >
-            SKinIQ
+            SkinIQ dev
           </h1>
+          <p 
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '14px',
+              fontWeight: 400,
+              color: '#8C8C8C',
+              margin: 0,
+              marginBottom: 16,
+              lineHeight: '120%'
+            }}
+          >
+            мини-приложение
+          </p>
           <h2 
             style={{
               fontFamily: 'Playfair Display, serif',
@@ -314,7 +334,7 @@ export default function Home() {
               lineHeight: '120%'
             }}
           >
-            Привет, {userName || 'Имя'}!
+            Привет, Соня!
           </h2>
           <p 
             style={{
@@ -418,7 +438,7 @@ export default function Home() {
             }}
           >
             <CircularProgress 
-              percentage={Math.round((careSteps.filter((_, index) => completedSteps[`${activeTime}-${careSteps[index].id}-${index}`]).length / careSteps.length) * 100)} 
+              percentage={80} 
               size={40}
             />
             </div>
@@ -586,7 +606,7 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 72,
-                background: '#FFF7F7',
+                background: '#FFFFFF',
                 borderRadius: 16,
                 boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
                 display: 'flex',
@@ -631,7 +651,7 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 72,
-                background: '#F1E9FF',
+                background: '#C8B7FF',
                 borderRadius: 16,
                 boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
                 display: 'flex',
@@ -651,7 +671,7 @@ export default function Home() {
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#8D6CFF"
+                  stroke="#FFFFFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -663,7 +683,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#6B6B6B'
+                  color: '#FFFFFF'
                 }}
               >
                 Анкета
