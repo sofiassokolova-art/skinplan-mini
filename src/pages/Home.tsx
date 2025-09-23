@@ -4,22 +4,22 @@ import { useMemo, useState, useEffect } from "react";
 // Design Tokens
 const tokens = {
   colors: {
-    BackgroundStart: "#FDF7F6",
-    BackgroundEnd: "#FFFFFF",
-    CardBase: "#FFF7F7",
-    TextPrimary: "#2A2A2A",
-    TextSecondary: "#8C8C8C",
+    BackgroundStart: "#FDFDFD",
+    BackgroundEnd: "#FDF7F5",
+    CardBase: "#FFFFFF",
+    TextPrimary: "#000000",
+    TextSecondary: "#888888",
     TextLight: "#6B6B6B",
-    ActiveTab: "#FFD6D6",
-    InactiveTab: "#F9F4F2",
-    ProgressGradient1: "#F9A8D4",
-    ProgressGradient2: "#FECACA",
-    CtaGradient1: "#FFD6D6",
-    CtaGradient2: "#FFB6B6",
-    CheckboxGradient1: "#EECFFF",
-    CheckboxGradient2: "#C29DFF",
-    IconPink: "#FF7D7D",
-    IconLavender: "#C29DFF"
+    ActiveTab: "#F8E0D9",
+    InactiveTab: "#FDFDFD",
+    ProgressGradient1: "#E0D9F8",
+    ProgressGradient2: "#C8B7FF",
+    CtaGradient1: "#F8E0D9",
+    CtaGradient2: "#F0C4B0",
+    CheckboxGradient1: "#E0D9F8",
+    CheckboxGradient2: "#C8B7FF",
+    IconPink: "#D9C0B5",
+    IconLavender: "#E0D9F8"
   },
   shadows: {
     NeomorphicOut: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
@@ -88,8 +88,8 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#C8B7FF" />
-            <stop offset="100%" stopColor="#D4A5E8" />
+            <stop offset="0%" stopColor={tokens.colors.ProgressGradient1} />
+            <stop offset="100%" stopColor={tokens.colors.ProgressGradient2} />
           </linearGradient>
         </defs>
       </svg>
@@ -99,7 +99,7 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
         style={{ 
           fontSize: '12px', 
           fontWeight: 500, 
-          color: '#6B6B6B',
+          color: tokens.colors.TextPrimary,
           lineHeight: '12px'
         }}
       >
@@ -187,9 +187,8 @@ export default function Home() {
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: `radial-gradient(circle at 30% 30%, #FFF2F2, #FFE6F2, #FFFFFF)`,
-        backgroundSize: '300% 300%',
-        animation: 'gradientMove 12s ease-in-out infinite',
+        background: `linear-gradient(180deg, #FDFDFD 0%, #FDF7F5 100%)`,
+        backgroundSize: '100% 100%',
         boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.05), inset -8px -8px 16px #ffffff'
       }}
     >
@@ -306,9 +305,9 @@ export default function Home() {
           <h2 
             style={{
               fontFamily: 'Playfair Display, serif',
-              fontSize: '24px',
+              fontSize: '28px',
               fontWeight: 700,
-              color: '#2A2A2A',
+              color: tokens.colors.TextPrimary,
               margin: 0,
               marginBottom: 8,
               lineHeight: '120%'
@@ -321,7 +320,7 @@ export default function Home() {
               fontFamily: 'Inter, sans-serif',
               fontSize: '16px',
               fontWeight: 400,
-              color: '#8C8C8C',
+              color: tokens.colors.TextSecondary,
               margin: 0,
               lineHeight: '120%'
             }}
@@ -345,13 +344,13 @@ export default function Home() {
             style={{
               flex: 1,
               maxWidth: '70%',
-              background: '#FDF7F6',
-              borderRadius: 24,
+              background: tokens.colors.InactiveTab,
+              borderRadius: 12,
               height: 44,
               padding: 4,
               display: 'flex',
               alignItems: 'center',
-              boxShadow: 'inset 6px 6px 12px rgba(0,0,0,0.1), inset -6px -6px 12px rgba(255,255,255,0.8)'
+              boxShadow: tokens.shadows.Switch
             }}
           >
               <button
@@ -360,18 +359,18 @@ export default function Home() {
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 500,
-                color: activeTime === 'morning' ? '#2A2A2A' : '#8C8C8C',
+                color: activeTime === 'morning' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
                 background: activeTime === 'morning' 
-                  ? 'linear-gradient(145deg, #FFE2E2, #FFD6D6)'
+                  ? tokens.colors.ActiveTab
                   : 'transparent',
                 border: 'none',
-                borderRadius: 999,
+                borderRadius: 8,
                 flex: 1,
                 height: 36,
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'morning' 
-                  ? 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
+                  ? tokens.shadows.NeomorphicOut
                   : 'none'
               }}
             >
@@ -383,18 +382,18 @@ export default function Home() {
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 500,
-                color: activeTime === 'evening' ? '#2A2A2A' : '#8C8C8C',
+                color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
                 background: activeTime === 'evening' 
-                  ? 'linear-gradient(145deg, #FFE2E2, #FFD6D6)'
+                  ? tokens.colors.ActiveTab
                   : 'transparent',
                 border: 'none',
-                borderRadius: 999,
+                borderRadius: 8,
                 flex: 1,
                 height: 36,
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'evening' 
-                  ? 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
+                  ? tokens.shadows.NeomorphicOut
                   : 'none'
               }}
             >
@@ -408,13 +407,13 @@ export default function Home() {
               width: 48,
               height: 48,
               borderRadius: '50%',
-              background: '#FFF7F7',
+              background: tokens.colors.CardBase,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginLeft: 16,
               position: 'relative',
-              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
+              boxShadow: tokens.shadows.Card
             }}
           >
             <CircularProgress 
@@ -434,9 +433,9 @@ export default function Home() {
               <div 
                 key={step.id}
                 style={{
-                  background: '#FDF7F6',
-                  borderRadius: 16,
-                  boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
+                  background: tokens.colors.CardBase,
+                  borderRadius: tokens.radii.Card,
+                  boxShadow: tokens.shadows.Card,
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 6 : 0,
@@ -464,7 +463,7 @@ export default function Home() {
                       height: 24,
                       borderRadius: 12,
                       background: isCompleted 
-                        ? '#C8B7FF'
+                        ? tokens.colors.CheckboxGradient1
                         : '#E5E5E5',
                       border: 'none',
                       display: 'flex',
@@ -472,7 +471,7 @@ export default function Home() {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
-                      boxShadow: 'none',
+                      boxShadow: isCompleted ? tokens.shadows.CheckboxGlow : 'none',
                       position: 'relative',
                       overflow: 'hidden'
                     }}
@@ -517,8 +516,8 @@ export default function Home() {
                       style={{
                         fontFamily: 'Inter, sans-serif',
                         fontSize: '16px',
-                        fontWeight: 700,
-                        color: '#2A2A2A',
+                        fontWeight: 600,
+                        color: tokens.colors.TextPrimary,
                         margin: 0,
                         marginBottom: 2
                       }}
@@ -530,7 +529,7 @@ export default function Home() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: '14px',
                         fontWeight: 400,
-                        color: '#8C8C8C',
+                        color: tokens.colors.TextSecondary,
                         margin: 0
                       }}
                     >
@@ -559,16 +558,16 @@ export default function Home() {
                 width: '100%',
                 height: 56,
                 border: 'none',
-                borderRadius: 999,
+                borderRadius: tokens.radii.Button,
                 overflow: 'hidden',
-                background: 'linear-gradient(145deg, #FFECE9, #FFD6D6)',
-                color: '#2A2A2A',
+                background: `linear-gradient(145deg, ${tokens.colors.CtaGradient1}, ${tokens.colors.CtaGradient2})`,
+                color: tokens.colors.TextPrimary,
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: '8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.8)'
+                boxShadow: tokens.shadows.Button
               }}
             >
               Открыть подробный план
@@ -586,9 +585,9 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 72,
-                background: '#FFF7F7',
-                borderRadius: 16,
-                boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
+                background: tokens.colors.CardBase,
+                borderRadius: tokens.radii.Card,
+                boxShadow: tokens.shadows.Card,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -606,7 +605,7 @@ export default function Home() {
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#D4A574"
+                  stroke={tokens.colors.IconPink}
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -618,7 +617,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#6B6B6B'
+                  color: tokens.colors.TextLight
                 }}
               >
                 Корзина
@@ -631,9 +630,9 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 72,
-                background: '#F1E9FF',
-                borderRadius: 16,
-                boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
+                background: tokens.colors.IconLavender,
+                borderRadius: tokens.radii.Card,
+                boxShadow: tokens.shadows.Card,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -651,7 +650,7 @@ export default function Home() {
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#8D6CFF"
+                  stroke="#FFFFFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -663,7 +662,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#6B6B6B'
+                  color: tokens.colors.TextPrimary
                 }}
               >
                 Анкета
