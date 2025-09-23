@@ -200,15 +200,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Живой перламутровый фон с дыханием */}
+      {/* Нежно-розовый spa-фон с переливом */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at 30% 30%, #FFF7F7, #FDF7F6, #FFFFFF),
-                        linear-gradient(-45deg, #FFF7F7, #FFFFFF, #FDEDED, #FDF7F6)`,
+            background: `radial-gradient(circle at 30% 30%, #FFEAF6, #F5E7FF, #FFFFFF)`,
             backgroundSize: '300% 300%',
-            animation: 'moveGradient 18s ease infinite'
+            animation: 'gradientMove3 20s ease-in-out infinite'
           }}
         />
       </div>
@@ -217,15 +216,15 @@ export default function Home() {
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
-        @keyframes moveGradient {
+        @keyframes gradientMove3 {
           0% { 
-            background-position: 0% 50%, 0% 50%; 
+            background-position: 20% 20%; 
           }
           50% { 
-            background-position: 100% 50%, 100% 50%; 
+            background-position: 80% 80%; 
           }
           100% { 
-            background-position: 0% 50%, 0% 50%; 
+            background-position: 20% 20%; 
           }
         }
         
