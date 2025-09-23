@@ -184,18 +184,15 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Теплый розово-бежевый фон */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(circle at top left, #FFF8F5, #FDF5F2)`,
-            backgroundSize: '200% 200%',
-            animation: 'gradientMove 10s linear infinite'
-          }}
-        />
-      </div>
+    <div 
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        background: `radial-gradient(circle at 30% 30%, #FFF2F2, #FFE6F2, #FFFFFF)`,
+        backgroundSize: '300% 300%',
+        animation: 'gradientMove 12s ease-in-out infinite',
+        boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.05), inset -8px -8px 16px #ffffff'
+      }}
+    >
       
       {/* Кастомные стили */}
       <style dangerouslySetInnerHTML={{__html: `
@@ -203,13 +200,13 @@ export default function Home() {
         
         @keyframes gradientMove {
           0% { 
-            background-position: 0% 0%; 
+            background-position: 20% 20%; 
           }
           50% { 
-            background-position: 100% 100%; 
+            background-position: 80% 80%; 
           }
           100% { 
-            background-position: 0% 0%; 
+            background-position: 20% 20%; 
           }
         }
         
@@ -234,24 +231,24 @@ export default function Home() {
           }
         }
         
-        .pearl-button {
-          position: relative;
-          overflow: hidden;
-        }
-        
         .shimmer-button::before {
           content: "";
           position: absolute;
-          inset: 0;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
           border-radius: inherit;
           background: linear-gradient(
-            120deg,
-            transparent,
-            rgba(255,255,255,0.6),
-            transparent
+            90deg,
+            transparent 0%,
+            transparent 30%,
+            rgba(255,255,255,0.4) 50%,
+            transparent 70%,
+            transparent 100%
           );
           transform: translateX(-100%);
-          animation: shimmer 2s infinite;
+          animation: shimmer 3s ease-in-out infinite;
         }
         
         @keyframes shimmer {
@@ -291,15 +288,7 @@ export default function Home() {
       `}} />
       
       {/* Основной контент */}
-      <div 
-        className="relative z-10 px-6 py-8"
-        style={{
-          background: '#FDF7F6',
-          borderRadius: 24,
-          boxShadow: 'inset 8px 8px 16px #E3DEDE, inset -8px -8px 16px #FFFFFF',
-          margin: '0 24px'
-        }}
-      >
+      <div className="relative z-10 px-6 py-8">
         {/* Бренд заголовок */}
         <div className="text-center" style={{ marginTop: 32, marginBottom: 16 }}>
           <h1 
@@ -557,7 +546,6 @@ export default function Home() {
 
         {/* CTA Кнопка */}
         <div 
-          className="pearl-button"
           style={{ marginBottom: 20 }}
         >
           <Link to="/plan">
