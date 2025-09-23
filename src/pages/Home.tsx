@@ -201,6 +201,15 @@ export default function Home() {
           }
         }
         
+        @keyframes shine {
+          0% { 
+            background-position: -200% center; 
+          }
+          100% { 
+            background-position: 200% center; 
+          }
+        }
+        
         @keyframes pearlShimmer {
           0% {
             left: -100%;
@@ -368,8 +377,8 @@ export default function Home() {
           {/* Прогресс-круг */}
           <div 
             style={{
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               borderRadius: '50%',
               background: '#FFF7F7',
               boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.08), inset -3px -3px 6px #FFFFFF',
@@ -398,7 +407,7 @@ export default function Home() {
                 style={{
                   background: '#FFF9F9',
                   borderRadius: 16,
-                  boxShadow: '6px 6px 12px rgba(0,0,0,0.06), -6px -6px 12px #FFFFFF',
+                  boxShadow: '6px 6px 12px rgba(0,0,0,0.05), -6px -6px 12px #FFFFFF',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 12 : 0,
@@ -434,7 +443,9 @@ export default function Home() {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
-                      boxShadow: 'none',
+                      boxShadow: isCompleted 
+                        ? '0 0 6px rgba(194,157,255,0.6)'
+                        : 'none',
                       position: 'relative',
                       overflow: 'hidden'
                     }}
@@ -518,7 +529,7 @@ export default function Home() {
                 height: 48,
                 borderRadius: 16,
                 background: 'linear-gradient(145deg, #FFD6D6, #FFB6B6)',
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.1), -6px -6px 12px #FFFFFF',
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
@@ -531,6 +542,20 @@ export default function Home() {
               }}
             >
               Открыть подробный план
+              {/* Перламутровый перелив */}
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shine 4s linear infinite',
+                  pointerEvents: 'none'
+                }}
+              />
             </button>
           </Link>
         </div>
