@@ -351,7 +351,7 @@ export default function Home() {
               padding: 4,
               display: 'flex',
               alignItems: 'center',
-              boxShadow: 'inset 4px 4px 8px #E3DEDE, inset -4px -4px 8px #FFFFFF'
+              boxShadow: 'inset 6px 6px 12px rgba(0,0,0,0.1), inset -6px -6px 12px rgba(255,255,255,0.8)'
             }}
           >
               <button
@@ -371,7 +371,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'morning' 
-                  ? 'inset 6px 6px 12px #E3DEDE, inset -6px -6px 12px #FFFFFF'
+                  ? 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
                   : 'none'
               }}
             >
@@ -394,7 +394,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'evening' 
-                  ? 'inset 6px 6px 12px #E3DEDE, inset -6px -6px 12px #FFFFFF'
+                  ? 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
                   : 'none'
               }}
             >
@@ -414,7 +414,7 @@ export default function Home() {
               justifyContent: 'center',
               marginLeft: 16,
               position: 'relative',
-              boxShadow: 'inset 6px 6px 12px #E3DEDE, inset -6px -6px 12px #FFFFFF'
+              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
             }}
           >
             <CircularProgress 
@@ -436,7 +436,7 @@ export default function Home() {
                 style={{
                   background: '#FDF7F6',
                   borderRadius: 16,
-                  boxShadow: '6px 6px 12px #E3DEDE, -6px -6px 12px #FFFFFF',
+                  boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 6 : 0,
@@ -568,7 +568,7 @@ export default function Home() {
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF'
+                boxShadow: '8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.8)'
               }}
             >
               Открыть подробный план
@@ -588,7 +588,7 @@ export default function Home() {
                 height: 72,
                 background: '#FFF7F7',
                 borderRadius: 16,
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
+                boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -633,7 +633,7 @@ export default function Home() {
                 height: 72,
                 background: '#F1E9FF',
                 borderRadius: 16,
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
+                boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
