@@ -178,10 +178,10 @@ export default function Home() {
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at 30% 30%, #FFF5F2, #FDF3F7, #FFFFFF),
-                        linear-gradient(-45deg, #FFF5F2, #FDF3F7, #FFFFFF)`,
+            background: `radial-gradient(circle at 30% 30%, #FDF2F0, #F8F0EC, #FFFFFF),
+                        linear-gradient(-45deg, #FDF2F0, #F8F0EC, #FFFFFF)`,
             backgroundSize: '300% 300%',
-            animation: 'gradientSoft 28s ease-in-out infinite'
+            animation: 'gradientMove 12s ease-in-out infinite'
           }}
         />
       </div>
@@ -190,7 +190,7 @@ export default function Home() {
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
-        @keyframes gradientSoft {
+        @keyframes gradientMove {
           0% { 
             background-position: 20% 20%; 
           }
@@ -226,6 +226,27 @@ export default function Home() {
         .pearl-button {
           position: relative;
           overflow: hidden;
+        }
+        
+        .shimmer-button::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -150%;
+          width: 50%;
+          height: 100%;
+          background: linear-gradient(
+            120deg,
+            transparent,
+            rgba(255,255,255,0.5),
+            transparent
+          );
+          animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+          0% { left: -150%; }
+          100% { left: 150%; }
         }
         
         .pearl-button::before {
@@ -523,12 +544,12 @@ export default function Home() {
         >
           <Link to="/plan">
             <button 
+              className="shimmer-button"
               style={{
                 width: '100%',
                 height: 48,
                 borderRadius: 24,
                 background: 'linear-gradient(145deg, #FFE2E2, #FFD6D6)',
-                backgroundSize: '200% auto',
                 boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
@@ -538,8 +559,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 position: 'relative',
-                overflow: 'hidden',
-                animation: 'shine 5s linear infinite'
+                overflow: 'hidden'
               }}
             >
               Открыть подробный план
