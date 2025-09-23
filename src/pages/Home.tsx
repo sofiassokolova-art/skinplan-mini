@@ -56,27 +56,39 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
   const strokeDashoffset = circumference - (animatedPercentage / 100) * circumference;
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div 
+      className="relative" 
+      style={{ 
+        width: size, 
+        height: size,
+        borderRadius: '50%',
+        background: '#FFF7F7',
+        boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.05), inset -2px -2px 4px #FFFFFF',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
       <svg
-        width={size}
-        height={size}
+        width={size - 8}
+        height={size - 8}
         className="transform -rotate-90"
       >
         {/* Фоновый круг */}
         <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
+          cx={(size - 8) / 2}
+          cy={(size - 8) / 2}
+          r={radius - 4}
           stroke="#E5E5E5"
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Прогресс круг */}
+        {/* Прогресс круг с градиентом */}
         <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="#C29DFF"
+          cx={(size - 8) / 2}
+          cy={(size - 8) / 2}
+          r={radius - 4}
+          stroke="url(#progressGradient)"
           strokeWidth={strokeWidth}
           fill="none"
           strokeLinecap="round"
@@ -86,6 +98,12 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
             transition: 'stroke-dashoffset 0.5s ease-in-out'
           }}
         />
+        <defs>
+          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#F9A8D4" />
+            <stop offset="100%" stopColor="#FECACA" />
+          </linearGradient>
+        </defs>
       </svg>
       {/* Процент в центре */}
       <div 
@@ -182,14 +200,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Живой перламутровый фон */}
+      {/* Живой перламутровый фон с дыханием */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: 'radial-gradient(circle at 30% 30%, #FFF7F7, #FDF7F6, #FFFFFF)',
+            background: `radial-gradient(circle at 30% 30%, #FFF7F7, #FDF7F6, #FFFFFF),
+                        linear-gradient(-45deg, #FFF7F7, #FFFFFF, #FDEDED, #FDF7F6)`,
             backgroundSize: '300% 300%',
-            animation: 'gradientMove 20s ease infinite'
+            animation: 'moveGradient 18s ease infinite'
           }}
         />
       </div>
@@ -198,15 +217,15 @@ export default function Home() {
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
-        @keyframes gradientMove {
+        @keyframes moveGradient {
           0% { 
-            background-position: 30% 30%; 
+            background-position: 0% 50%, 0% 50%; 
           }
           50% { 
-            background-position: 70% 70%; 
+            background-position: 100% 50%, 100% 50%; 
           }
           100% { 
-            background-position: 30% 30%; 
+            background-position: 0% 50%, 0% 50%; 
           }
         }
         
@@ -302,7 +321,7 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Переключатель Утро/Вечер (неоморфный) */}
+        {/* Переключатель Утро/Вечер (настоящий неоморфизм) */}
         <div 
           style={{
             background: '#F9F4F2',
@@ -503,14 +522,16 @@ export default function Home() {
                 height: 48,
                 borderRadius: 16,
                 background: 'linear-gradient(145deg, #FFD6D6, #FFB6B6)',
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.1), -6px -6px 12px #FFFFFF',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 700,
                 color: '#2A2A2A',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
               }}
             >
               Открыть подробный план
@@ -548,7 +569,7 @@ export default function Home() {
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#C29DFF"
+                  stroke="#FF8E8E"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -593,7 +614,7 @@ export default function Home() {
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#C29DFF"
+                  stroke="#BDAAFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
