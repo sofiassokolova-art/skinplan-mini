@@ -362,7 +362,7 @@ export default function Home() {
               padding: 4,
               display: 'flex',
               alignItems: 'center',
-              boxShadow: 'inset 6px 6px 12px rgba(0,0,0,0.1), inset -6px -6px 12px rgba(255,255,255,0.8)'
+              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.15), inset -4px -4px 8px rgba(255,255,255,0.7)'
             }}
           >
               <button
@@ -425,7 +425,7 @@ export default function Home() {
               justifyContent: 'center',
               marginLeft: 16,
               position: 'relative',
-              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
+              boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.15), inset -3px -3px 6px rgba(255,255,255,0.7)'
             }}
           >
             <CircularProgress 
@@ -447,7 +447,7 @@ export default function Home() {
                 style={{
                   background: '#FDF7F6',
                   borderRadius: 16,
-                  boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
+                  boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 6 : 0,
@@ -579,7 +579,7 @@ export default function Home() {
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: '8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.8)'
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)'
               }}
             >
               Открыть подробный план
@@ -599,7 +599,7 @@ export default function Home() {
                 height: 72,
                 background: '#FFFFFF',
                 borderRadius: 16,
-                boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -644,7 +644,7 @@ export default function Home() {
                 height: 72,
                 background: '#C8B7FF',
                 borderRadius: 16,
-                boxShadow: '8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9)',
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
