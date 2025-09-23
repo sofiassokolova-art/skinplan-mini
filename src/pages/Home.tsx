@@ -56,38 +56,26 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
   const strokeDashoffset = circumference - (animatedPercentage / 100) * circumference;
 
   return (
-    <div 
-      className="relative" 
-      style={{ 
-        width: size, 
-        height: size,
-        borderRadius: '50%',
-        background: '#FFF7F7',
-        boxShadow: 'inset 2px 2px 4px rgba(0,0,0,0.05), inset -2px -2px 4px #FFFFFF',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
+    <div className="relative" style={{ width: size, height: size }}>
       <svg
-        width={size - 8}
-        height={size - 8}
+        width={size}
+        height={size}
         className="transform -rotate-90"
       >
         {/* Фоновый круг */}
         <circle
-          cx={(size - 8) / 2}
-          cy={(size - 8) / 2}
-          r={radius - 4}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
           stroke="#E5E5E5"
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Прогресс круг с градиентом */}
+        {/* Прогресс круг с нежным градиентом */}
         <circle
-          cx={(size - 8) / 2}
-          cy={(size - 8) / 2}
-          r={radius - 4}
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
           stroke="url(#progressGradient)"
           strokeWidth={strokeWidth}
           fill="none"
@@ -111,7 +99,7 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
         style={{ 
           fontSize: '14px', 
           fontWeight: 700, 
-          color: tokens.colors.TextPrimary,
+          color: '#2A2A2A',
           lineHeight: '14px'
         }}
       >
@@ -159,22 +147,7 @@ export default function Home() {
     }
   }, []);
 
-  const plan = useMemo(() => {
-    try {
-      const data = localStorage.getItem("skiniq.plan");
-      return data ? JSON.parse(data) : null;
-    } catch {
-      return null;
-    }
-  }, []);
 
-  // Вычисляем прогресс для текущего времени дня
-  const currentSteps = activeTime === 'morning' ? (plan?.morning || []) : (plan?.evening || []);
-  const completedCount = currentSteps.filter((step: any, idx: number) => {
-    const stepId = `${activeTime}-${step.step}-${idx}`;
-    return completedSteps[stepId];
-  }).length;
-  const progressPercentage = currentSteps.length > 0 ? (completedCount / currentSteps.length) * 100 : 0;
 
   // Данные для карточек ухода
   const careSteps = [
@@ -200,14 +173,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Нежно-розовый spa-фон с переливом */}
+      {/* Мягкий luxury skincare фон */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at 30% 30%, #FFEAF6, #F5E7FF, #FFFFFF)`,
+            background: `radial-gradient(circle at 30% 30%, #FFF3F7, #F7F1FF, #FFFFFF)`,
             backgroundSize: '300% 300%',
-            animation: 'gradientMove3 20s ease-in-out infinite'
+            animation: 'gradientSoft 28s ease-in-out infinite'
           }}
         />
       </div>
@@ -216,7 +189,7 @@ export default function Home() {
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
-        @keyframes gradientMove3 {
+        @keyframes gradientSoft {
           0% { 
             background-position: 20% 20%; 
           }
@@ -320,66 +293,97 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Переключатель Утро/Вечер (настоящий неоморфизм) */}
+        {/* Верхняя строка: переключатель + прогресс */}
         <div 
           style={{
-            background: '#F9F4F2',
-            borderRadius: 12,
-            height: 44,
-            padding: 4,
-            marginTop: 24,
-            marginBottom: 24,
             display: 'flex',
             alignItems: 'center',
-            boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.05), inset -4px -4px 8px #FFFFFF'
+            justifyContent: 'space-between',
+            marginTop: 24,
+            marginBottom: 24
           }}
         >
-              <button
-                onClick={() => setActiveTime('morning')}
+          {/* Переключатель Утро/Вечер */}
+          <div 
             style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '16px',
-              fontWeight: 500,
-              color: tokens.colors.TextPrimary,
-              background: activeTime === 'morning' 
-                ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
-                : 'transparent',
-              border: 'none',
-              borderRadius: 8,
               flex: 1,
-              height: 36,
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: activeTime === 'morning' 
-                ? '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px #FFFFFF'
-                : 'none'
+              maxWidth: '70%',
+              background: '#F9F4F2',
+              borderRadius: 12,
+              height: 44,
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.05), inset -4px -4px 8px #FFFFFF'
             }}
           >
-            Утро
+              <button
+                onClick={() => setActiveTime('morning')}
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '16px',
+                fontWeight: 500,
+                color: tokens.colors.TextPrimary,
+                background: activeTime === 'morning' 
+                  ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
+                  : 'transparent',
+                border: 'none',
+                borderRadius: 8,
+                flex: 1,
+                height: 36,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: activeTime === 'morning' 
+                  ? '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px #FFFFFF'
+                  : 'none'
+              }}
+            >
+              Утро
               </button>
               <button
                 onClick={() => setActiveTime('evening')}
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '16px',
+                fontWeight: 500,
+                color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
+                background: activeTime === 'evening' 
+                  ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
+                  : 'transparent',
+                border: 'none',
+                borderRadius: 8,
+                flex: 1,
+                height: 36,
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: activeTime === 'evening' 
+                  ? '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px #FFFFFF'
+                  : 'none'
+              }}
+            >
+              Вечер
+              </button>
+            </div>
+
+          {/* Прогресс-круг */}
+          <div 
             style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '16px',
-              fontWeight: 500,
-              color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
-              background: activeTime === 'evening' 
-                ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
-                : 'transparent',
-              border: 'none',
-              borderRadius: 8,
-              flex: 1,
-              height: 36,
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: activeTime === 'evening' 
-                ? '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px #FFFFFF'
-                : 'none'
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: '#FFF7F7',
+              boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.08), inset -3px -3px 6px #FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginLeft: 16
             }}
           >
-            Вечер
-              </button>
+            <CircularProgress 
+              percentage={Math.round((Object.values(completedSteps).filter(Boolean).length / (careSteps.length * 2)) * 100)} 
+              size={40}
+            />
+            </div>
           </div>
 
         {/* Карточки ухода */}
@@ -387,13 +391,12 @@ export default function Home() {
           {careSteps.map((step, index) => {
             const stepId = `${activeTime}-${step.id}-${index}`;
                 const isCompleted = completedSteps[stepId] || false;
-            const isFirstStep = index === 0;
 
                 return (
               <div 
                 key={step.id}
                 style={{
-                  background: '#FFF7F7',
+                  background: '#FFF9F9',
                   borderRadius: 16,
                   boxShadow: '6px 6px 12px rgba(0,0,0,0.06), -6px -6px 12px #FFFFFF',
                   height: 64,
@@ -498,12 +501,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Прогресс-круг только у первого шага */}
-                {isFirstStep && (
-                  <div style={{ marginRight: 16 }}>
-                    <CircularProgress percentage={Math.round(progressPercentage)} />
-                  </div>
-                )}
               </div>
             );
           })}
