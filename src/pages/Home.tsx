@@ -88,8 +88,8 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#F9A8D4" />
-            <stop offset="100%" stopColor="#FECACA" />
+            <stop offset="0%" stopColor="#D7C4FF" />
+            <stop offset="100%" stopColor="#B79BFF" />
           </linearGradient>
         </defs>
       </svg>
@@ -173,12 +173,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Мягкий luxury skincare фон */}
+      {/* Теплый розово-бежевый фон */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at 30% 30%, #FFF3F7, #F7F1FF, #FFFFFF)`,
+            background: `radial-gradient(circle at 30% 30%, #FFF5F2, #FDF3F7, #FFFFFF),
+                        linear-gradient(-45deg, #FFF5F2, #FDF3F7, #FFFFFF)`,
             backgroundSize: '300% 300%',
             animation: 'gradientSoft 28s ease-in-out infinite'
           }}
@@ -334,10 +335,10 @@ export default function Home() {
                 fontWeight: 500,
                 color: '#2A2A2A',
                 background: activeTime === 'morning' 
-                  ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
+                  ? '#FFE2E2'
                   : 'transparent',
                 border: 'none',
-                borderRadius: 8,
+                borderRadius: 24,
                 flex: 1,
                 height: 36,
                 cursor: 'pointer',
@@ -357,10 +358,10 @@ export default function Home() {
                 fontWeight: 500,
                 color: activeTime === 'evening' ? '#2A2A2A' : '#8C8C8C',
                 background: activeTime === 'evening' 
-                  ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
+                  ? '#FFE2E2'
                   : 'transparent',
                 border: 'none',
-                borderRadius: 8,
+                borderRadius: 24,
                 flex: 1,
                 height: 36,
                 cursor: 'pointer',
@@ -405,7 +406,7 @@ export default function Home() {
               <div 
                 key={step.id}
                 style={{
-                  background: '#FFF9F9',
+                  background: '#FFF9F7',
                   borderRadius: 16,
                   boxShadow: '6px 6px 12px rgba(0,0,0,0.05), -6px -6px 12px #FFFFFF',
                   height: 64,
@@ -435,17 +436,15 @@ export default function Home() {
                       height: 24,
                       borderRadius: 12,
                       background: isCompleted 
-                        ? 'linear-gradient(135deg, #EEDCFF, #C8B7FF)'
-                        : 'linear-gradient(135deg, #F5F5F5, #E8E8E8)',
+                        ? '#D7C4FF'
+                        : '#F5F5F5',
                       border: 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
-                      boxShadow: isCompleted 
-                        ? '0 0 8px rgba(200,183,255,0.4)'
-                        : 'none',
+                      boxShadow: 'none',
                       position: 'relative',
                       overflow: 'hidden'
                     }}
@@ -527,8 +526,8 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 48,
-                borderRadius: 16,
-                background: 'linear-gradient(145deg, #FFD6D6, #FFB6B6)',
+                borderRadius: 24,
+                background: 'linear-gradient(145deg, #FFE2E2, #FFD6D6)',
                 backgroundSize: '200% auto',
                 boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 border: 'none',
@@ -548,15 +547,15 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Нижние иконки */}
+        {/* Нижние кнопки */}
         <div 
-          className="flex justify-center gap-4"
+          className="flex gap-4"
           style={{ marginTop: 20, marginBottom: 24 }}
         >
-          <Link to="/cart">
+          <Link to="/cart" className="flex-1">
             <div 
               style={{
-                width: 72,
+                width: '100%',
                 height: 72,
                 background: '#FFF7F7',
                 borderRadius: 16,
@@ -578,7 +577,7 @@ export default function Home() {
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#FF9B9B"
+                  stroke="#D4A574"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -595,15 +594,15 @@ export default function Home() {
               >
                 Корзина
               </span>
-            </div>
+          </div>
           </Link>
           
-          <Link to="/quiz">
+          <Link to="/quiz" className="flex-1">
             <div 
               style={{
-                width: 72,
+                width: '100%',
                 height: 72,
-                background: '#FFF7F7',
+                background: '#F1E9FF',
                 borderRadius: 16,
                 boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 display: 'flex',
@@ -623,7 +622,7 @@ export default function Home() {
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#C7B8FF"
+                  stroke="#8D6CFF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
