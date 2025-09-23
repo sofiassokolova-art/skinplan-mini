@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 // Design Tokens
 const tokens = {
@@ -144,15 +144,7 @@ export default function Home() {
     }
   };
   
-  const userName = useMemo(() => {
-    try {
-      const data = localStorage.getItem("skiniq.answers");
-      const parsed = data ? JSON.parse(data) : {};
-      return parsed?.name || undefined;
-    } catch {
-      return undefined;
-    }
-  }, []);
+  // Имя пользователя не используется в референсе
 
 
 
