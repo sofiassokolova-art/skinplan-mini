@@ -88,8 +88,8 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#D7C4FF" />
-            <stop offset="100%" stopColor="#E8B4D1" />
+            <stop offset="0%" stopColor="#C8B7FF" />
+            <stop offset="100%" stopColor="#D4A5E8" />
           </linearGradient>
         </defs>
       </svg>
@@ -190,9 +190,9 @@ export default function Home() {
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at top left, #FFF5F2, #FDF3F7)`,
+            background: `radial-gradient(circle at top left, #FFF8F5, #FDF5F2)`,
             backgroundSize: '200% 200%',
-            animation: 'gradientMove 12s linear infinite'
+            animation: 'gradientMove 10s linear infinite'
           }}
         />
       </div>
@@ -374,9 +374,9 @@ export default function Home() {
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 500,
-                color: '#2A2A2A',
+                color: activeTime === 'morning' ? '#2A2A2A' : '#8C8C8C',
                 background: activeTime === 'morning' 
-                  ? 'linear-gradient(145deg, #FEE9E6, #FFFFFF)'
+                  ? 'linear-gradient(145deg, #FFE2E2, #FFD6D6)'
                   : 'transparent',
                 border: 'none',
                 borderRadius: 999,
@@ -399,7 +399,7 @@ export default function Home() {
                 fontWeight: 500,
                 color: activeTime === 'evening' ? '#2A2A2A' : '#8C8C8C',
                 background: activeTime === 'evening' 
-                  ? 'linear-gradient(145deg, #FEE9E6, #FFFFFF)'
+                  ? 'linear-gradient(145deg, #FFE2E2, #FFD6D6)'
                   : 'transparent',
                 border: 'none',
                 borderRadius: 999,
@@ -432,7 +432,7 @@ export default function Home() {
             }}
           >
             <CircularProgress 
-              percentage={Math.round((Object.values(completedSteps).filter(Boolean).length / careSteps.length) * 100)} 
+              percentage={Math.round((careSteps.filter((_, index) => completedSteps[`${activeTime}-${careSteps[index].id}-${index}`]).length / careSteps.length) * 100)} 
               size={40}
             />
             </div>
@@ -453,7 +453,7 @@ export default function Home() {
                   boxShadow: '6px 6px 12px #E3DEDE, -6px -6px 12px #FFFFFF',
                   height: 64,
                   padding: '16px',
-                  marginBottom: index < careSteps.length - 1 ? 8 : 0,
+                  marginBottom: index < careSteps.length - 1 ? 6 : 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between'
@@ -478,7 +478,7 @@ export default function Home() {
                       height: 24,
                       borderRadius: 12,
                       background: isCompleted 
-                        ? '#C6B9F8'
+                        ? '#C8B7FF'
                         : '#E5E5E5',
                       border: 'none',
                       display: 'flex',
@@ -574,7 +574,7 @@ export default function Home() {
                 height: 56,
                 border: 'none',
                 borderRadius: 999,
-                background: 'linear-gradient(145deg, #FFECE9, #FFD6D6)',
+                background: 'linear-gradient(145deg, #FFE2E2, #FFD6D6)',
                 color: '#4A4A4A',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
@@ -621,7 +621,7 @@ export default function Home() {
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#B8860B"
+                  stroke="#D4A574"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
