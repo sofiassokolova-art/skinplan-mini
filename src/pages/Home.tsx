@@ -234,10 +234,11 @@ export default function Home() {
           left: -150%;
           width: 50%;
           height: 100%;
+          border-radius: inherit;
           background: linear-gradient(
             45deg,
             transparent,
-            rgba(255,255,255,0.25),
+            rgba(255,255,255,0.6),
             transparent
           );
           animation: shimmer 2.5s infinite;
@@ -545,20 +546,23 @@ export default function Home() {
             <button 
               className="shimmer-button"
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 width: '100%',
-                height: 48,
-                borderRadius: 24,
-                background: 'linear-gradient(145deg, #FFD9D4, #FECAC5)',
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
+                height: 56,
                 border: 'none',
+                borderRadius: 999,
+                background: 'linear-gradient(145deg, #FFD9D4, #FECAC5)',
+                color: '#2A2A2A',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 700,
-                color: '#2A2A2A',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF'
               }}
             >
               Открыть подробный план
