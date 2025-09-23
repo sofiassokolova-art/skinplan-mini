@@ -242,23 +242,20 @@ export default function Home() {
         .shimmer-button::before {
           content: "";
           position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
+          inset: 0;
           border-radius: inherit;
           background: linear-gradient(
-            90deg,
+            120deg,
             transparent,
-            rgba(255,255,255,0.4),
+            rgba(255,255,255,0.6),
             transparent
           );
-          animation: shimmer 2.5s infinite;
+          transform: translateX(-100%);
+          animation: shimmer 2s infinite;
         }
         
         @keyframes shimmer {
-          0% { left: -150%; }
-          100% { left: 150%; }
+          100% { transform: translateX(100%); }
         }
         
         .pearl-button::before {
@@ -567,6 +564,7 @@ export default function Home() {
             <button 
               className="shimmer-button"
               style={{
+                position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -574,16 +572,15 @@ export default function Home() {
                 height: 56,
                 border: 'none',
                 borderRadius: 999,
-                background: 'linear-gradient(145deg, #FFE2E2, #FFD6D6)',
-                color: '#4A4A4A',
+                overflow: 'hidden',
+                background: 'linear-gradient(145deg, #FFECE9, #FFD6D6)',
+                color: '#2A2A2A',
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                position: 'relative',
-                overflow: 'hidden',
-                boxShadow: '6px 6px 12px #E3DEDE, -6px -6px 12px #FFFFFF'
+                boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF'
               }}
             >
               Открыть подробный план
