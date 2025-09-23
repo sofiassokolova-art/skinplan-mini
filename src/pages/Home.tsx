@@ -194,9 +194,8 @@ export default function Home() {
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: `radial-gradient(circle at 30% 30%, #FFF2F2, #FFE6F2, #FFFFFF)`,
-        backgroundSize: '300% 300%',
-        animation: 'gradientMove 12s ease-in-out infinite',
+        background: `linear-gradient(135deg, #FDF7F6 0%, #FFF7F7 50%, #FFFFFF 100%)`,
+        backgroundSize: '100% 100%',
         boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.05), inset -8px -8px 16px #ffffff'
       }}
     >
