@@ -203,7 +203,7 @@ export default function Home() {
         
         @keyframes shine {
           0% { 
-            background-position: -200% center; 
+            background-position: 0% center; 
           }
           100% { 
             background-position: 200% center; 
@@ -332,7 +332,7 @@ export default function Home() {
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 500,
-                color: tokens.colors.TextPrimary,
+                color: '#2A2A2A',
                 background: activeTime === 'morning' 
                   ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
                   : 'transparent',
@@ -343,7 +343,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'morning' 
-                  ? '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px #FFFFFF'
+                  ? '4px 4px 8px rgba(0,0,0,0.08), -4px -4px 8px #FFFFFF'
                   : 'none'
               }}
             >
@@ -355,7 +355,7 @@ export default function Home() {
                 fontFamily: 'Inter, sans-serif',
                 fontSize: '16px',
                 fontWeight: 500,
-                color: activeTime === 'evening' ? tokens.colors.TextPrimary : tokens.colors.TextSecondary,
+                color: activeTime === 'evening' ? '#2A2A2A' : '#8C8C8C',
                 background: activeTime === 'evening' 
                   ? 'linear-gradient(145deg, #FFD6D6, #FFB6B6)'
                   : 'transparent',
@@ -366,7 +366,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'evening' 
-                  ? '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px #FFFFFF'
+                  ? '4px 4px 8px rgba(0,0,0,0.08), -4px -4px 8px #FFFFFF'
                   : 'none'
               }}
             >
@@ -435,8 +435,8 @@ export default function Home() {
                       height: 24,
                       borderRadius: 12,
                       background: isCompleted 
-                        ? `linear-gradient(135deg, ${tokens.colors.CheckboxGradient1}, ${tokens.colors.CheckboxGradient2})`
-                        : `linear-gradient(135deg, #F5F5F5, #E8E8E8)`,
+                        ? 'linear-gradient(135deg, #EEDCFF, #C8B7FF)'
+                        : 'linear-gradient(135deg, #F5F5F5, #E8E8E8)',
                       border: 'none',
                       display: 'flex',
                       alignItems: 'center',
@@ -444,7 +444,7 @@ export default function Home() {
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
                       boxShadow: isCompleted 
-                        ? '0 0 6px rgba(194,157,255,0.6)'
+                        ? '0 0 8px rgba(200,183,255,0.4)'
                         : 'none',
                       position: 'relative',
                       overflow: 'hidden'
@@ -529,6 +529,7 @@ export default function Home() {
                 height: 48,
                 borderRadius: 16,
                 background: 'linear-gradient(145deg, #FFD6D6, #FFB6B6)',
+                backgroundSize: '200% auto',
                 boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
@@ -538,24 +539,11 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                animation: 'shine 5s linear infinite'
               }}
             >
               Открыть подробный план
-              {/* Перламутровый перелив */}
-              <div 
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                  backgroundSize: '200% 100%',
-                  animation: 'shine 4s linear infinite',
-                  pointerEvents: 'none'
-                }}
-              />
             </button>
           </Link>
         </div>
@@ -590,7 +578,7 @@ export default function Home() {
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#FF8E8E"
+                  stroke="#FF9B9B"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -635,7 +623,7 @@ export default function Home() {
               >
                 <path
                   d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#BDAAFF"
+                  stroke="#C7B8FF"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
