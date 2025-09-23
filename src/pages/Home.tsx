@@ -88,8 +88,8 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#D7C4FF" />
-            <stop offset="100%" stopColor="#B79BFF" />
+            <stop offset="0%" stopColor="#C6B9F8" />
+            <stop offset="100%" stopColor="#F9A9C2" />
           </linearGradient>
         </defs>
       </svg>
@@ -178,8 +178,7 @@ export default function Home() {
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at 30% 30%, #FDF2F0, #F8F0EC, #FFFFFF),
-                        linear-gradient(-45deg, #FDF2F0, #F8F0EC, #FFFFFF)`,
+            background: `radial-gradient(circle at 30% 30%, #FFF3F1, #FDEDEA)`,
             backgroundSize: '300% 300%',
             animation: 'gradientMove 12s ease-in-out infinite'
           }}
@@ -236,12 +235,12 @@ export default function Home() {
           width: 50%;
           height: 100%;
           background: linear-gradient(
-            120deg,
+            45deg,
             transparent,
-            rgba(255,255,255,0.5),
+            rgba(255,255,255,0.25),
             transparent
           );
-          animation: shimmer 2s infinite;
+          animation: shimmer 2.5s infinite;
         }
         
         @keyframes shimmer {
@@ -339,13 +338,13 @@ export default function Home() {
             style={{
               flex: 1,
               maxWidth: '70%',
-              background: '#F9F4F2',
-              borderRadius: 12,
+              background: '#F8F0EC',
+              borderRadius: 24,
               height: 44,
               padding: 4,
               display: 'flex',
               alignItems: 'center',
-              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.05), inset -4px -4px 8px #FFFFFF'
+              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.08), inset -4px -4px 8px #FFFFFF'
             }}
           >
               <button
@@ -356,7 +355,7 @@ export default function Home() {
                 fontWeight: 500,
                 color: '#2A2A2A',
                 background: activeTime === 'morning' 
-                  ? '#FFE2E2'
+                  ? 'linear-gradient(145deg, #FEE9E6, #FFFFFF)'
                   : 'transparent',
                 border: 'none',
                 borderRadius: 24,
@@ -379,7 +378,7 @@ export default function Home() {
                 fontWeight: 500,
                 color: activeTime === 'evening' ? '#2A2A2A' : '#8C8C8C',
                 background: activeTime === 'evening' 
-                  ? '#FFE2E2'
+                  ? 'linear-gradient(145deg, #FEE9E6, #FFFFFF)'
                   : 'transparent',
                 border: 'none',
                 borderRadius: 24,
@@ -427,9 +426,9 @@ export default function Home() {
               <div 
                 key={step.id}
                 style={{
-                  background: '#FFF9F7',
+                  background: 'rgba(255, 255, 255, 0.7)',
                   borderRadius: 16,
-                  boxShadow: '6px 6px 12px rgba(0,0,0,0.05), -6px -6px 12px #FFFFFF',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 12 : 0,
@@ -457,7 +456,7 @@ export default function Home() {
                       height: 24,
                       borderRadius: 12,
                       background: isCompleted 
-                        ? '#D7C4FF'
+                        ? '#C6B9F8'
                         : '#F5F5F5',
                       border: 'none',
                       display: 'flex',
@@ -549,7 +548,7 @@ export default function Home() {
                 width: '100%',
                 height: 48,
                 borderRadius: 24,
-                background: 'linear-gradient(145deg, #FFE2E2, #FFD6D6)',
+                background: 'linear-gradient(145deg, #FFD9D4, #FECAC5)',
                 boxShadow: '6px 6px 12px rgba(0,0,0,0.08), -6px -6px 12px #FFFFFF',
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
