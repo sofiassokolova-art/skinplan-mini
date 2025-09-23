@@ -22,13 +22,13 @@ const tokens = {
     IconLavender: "#E0D9F8"
   },
   shadows: {
-    NeomorphicOut: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
-    NeomorphicIn: "inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8)",
-    Card: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
-    Switch: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
-    Button: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
-    ProgressInset: "inset 1px 1px 2px rgba(0,0,0,0.1)",
-    CheckboxGlow: "0 0 8px rgba(238, 207, 255, 0.3), 0 2px 4px rgba(0,0,0,0.1)"
+    NeomorphicOut: "8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.9)",
+    NeomorphicIn: "inset 6px 6px 12px rgba(0,0,0,0.1), inset -6px -6px 12px rgba(255,255,255,0.8)",
+    Card: "8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.9)",
+    Switch: "inset 6px 6px 12px rgba(0,0,0,0.1), inset -6px -6px 12px rgba(255,255,255,0.8)",
+    Button: "8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.9)",
+    ProgressInset: "inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)",
+    CheckboxGlow: "0 0 8px rgba(200, 183, 255, 0.3), 0 2px 4px rgba(0,0,0,0.1)"
   },
   radii: {
     Switch: 12,
@@ -370,7 +370,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'morning' 
-                  ? tokens.shadows.NeomorphicOut
+                  ? tokens.shadows.NeomorphicIn
                   : 'none'
               }}
             >
@@ -393,7 +393,7 @@ export default function Home() {
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'evening' 
-                  ? tokens.shadows.NeomorphicOut
+                  ? tokens.shadows.NeomorphicIn
                   : 'none'
               }}
             >
@@ -413,7 +413,7 @@ export default function Home() {
               justifyContent: 'center',
               marginLeft: 16,
               position: 'relative',
-              boxShadow: tokens.shadows.Card
+              boxShadow: tokens.shadows.ProgressInset
             }}
           >
             <CircularProgress 
@@ -471,7 +471,7 @@ export default function Home() {
                       justifyContent: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease-in-out',
-                      boxShadow: isCompleted ? tokens.shadows.CheckboxGlow : 'none',
+                      boxShadow: isCompleted ? tokens.shadows.NeomorphicIn : tokens.shadows.NeomorphicOut,
                       position: 'relative',
                       overflow: 'hidden'
                     }}
@@ -587,7 +587,7 @@ export default function Home() {
                 height: 72,
                 background: tokens.colors.CardBase,
                 borderRadius: tokens.radii.Card,
-                boxShadow: tokens.shadows.Card,
+                boxShadow: tokens.shadows.NeomorphicOut,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -632,7 +632,7 @@ export default function Home() {
                 height: 72,
                 background: tokens.colors.IconLavender,
                 borderRadius: tokens.radii.Card,
-                boxShadow: tokens.shadows.Card,
+                boxShadow: tokens.shadows.NeomorphicOut,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
