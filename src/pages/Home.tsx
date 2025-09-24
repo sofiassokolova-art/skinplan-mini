@@ -4,22 +4,24 @@ import { useState, useEffect } from "react";
 // Design Tokens
 const tokens = {
   colors: {
-    BackgroundStart: "#FDF7F6",
+    BackgroundStart: "#FEFCFB",
     BackgroundEnd: "#FFFFFF",
-    CardBase: "#FFF7F7",
-    TextPrimary: "#2A2A2A",
-    TextSecondary: "#8C8C8C",
-    TextLight: "#6B6B6B",
-    ActiveTab: "#FFD6D6",
-    InactiveTab: "#F9F4F2",
-    ProgressGradient1: "#F9A8D4",
-    ProgressGradient2: "#FECACA",
-    CtaGradient1: "#FFD6D6",
-    CtaGradient2: "#FFB6B6",
-    CheckboxGradient1: "#EECFFF",
-    CheckboxGradient2: "#C29DFF",
-    IconPink: "#FF7D7D",
-    IconLavender: "#C29DFF"
+    CardBase: "#FFF8F8",
+    TextPrimary: "#1A1A1A",
+    TextSecondary: "#6B7280",
+    TextLight: "#9CA3AF",
+    ActiveTab: "#FFE4E1",
+    InactiveTab: "#F8F5F4",
+    ProgressGradient1: "#A855F7",
+    ProgressGradient2: "#EC4899",
+    CtaGradient1: "#FFE4E1",
+    CtaGradient2: "#FECACA",
+    CheckboxGradient1: "#DDD6FE",
+    CheckboxGradient2: "#A855F7",
+    IconPink: "#F472B6",
+    IconLavender: "#A855F7",
+    PremiumGold: "#F59E0B",
+    PremiumAccent: "#7C3AED"
   },
   shadows: {
     NeomorphicOut: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
@@ -87,8 +89,8 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#E6D7FF" />
-            <stop offset="100%" stopColor="#8D6CFF" />
+            <stop offset="0%" stopColor="#A855F7" />
+            <stop offset="100%" stopColor="#EC4899" />
           </linearGradient>
         </defs>
       </svg>
@@ -185,7 +187,7 @@ export default function Home() {
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: `linear-gradient(135deg, #FDF7F6 0%, #FFF7F7 50%, #FFFFFF 100%)`,
+        background: `radial-gradient(ellipse at top, rgba(168, 85, 247, 0.05) 0%, transparent 50%), linear-gradient(135deg, #FEFCFB 0%, #FFF8F8 50%, #FFFFFF 100%)`,
         backgroundSize: '100% 100%',
         boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.05), inset -8px -8px 16px #ffffff'
       }}
@@ -392,6 +394,44 @@ export default function Home() {
           0% { transform: translateX(0); }
           100% { transform: translateX(200%); }
         }
+        
+        .premium-glow {
+          box-shadow: 0 0 20px rgba(168, 85, 247, 0.3), 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
+        }
+        
+        .premium-hover {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .premium-hover:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(168, 85, 247, 0.2), 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
+        }
+        
+        .premium-text {
+          background: linear-gradient(135deg, #A855F7, #EC4899);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        .floating-animation {
+          animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-5px); }
+        }
+        
+        .pulse-glow {
+          animation: pulseGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulseGlow {
+          0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.3), 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8); }
+          50% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.5), 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8); }
+        }
       `}} />
       
       {/* Основной контент */}
@@ -399,11 +439,11 @@ export default function Home() {
         {/* Бренд заголовок */}
         <div className="text-center" style={{ marginTop: 32, marginBottom: 16 }}>
           <h1 
+            className="premium-text"
             style={{
               fontFamily: 'Inter, sans-serif',
               fontSize: '18px',
               fontWeight: 600,
-              color: tokens.colors.TextPrimary,
               margin: 0,
               marginBottom: 8
             }}
@@ -489,17 +529,17 @@ export default function Home() {
 
           {/* Прогресс-круг */}
           <div 
+            className="floating-animation premium-glow"
             style={{
               width: 76,
               height: 76,
               borderRadius: '50%',
-              background: '#FFF7F7',
+              background: '#FFF8F8',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               marginLeft: 16,
-              position: 'relative',
-              boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.15), inset -3px -3px 6px rgba(255,255,255,0.7)'
+              position: 'relative'
             }}
           >
             <CircularProgress 
@@ -518,9 +558,9 @@ export default function Home() {
                 return (
               <div 
                 key={step.id}
-                className="neomorphic-card"
+                className="neomorphic-card premium-hover"
                 style={{
-                  background: '#FDF7F6',
+                  background: '#FFF8F8',
                   borderRadius: 16,
                   boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
                   height: 64,
@@ -552,8 +592,8 @@ export default function Home() {
                       height: 24,
                       borderRadius: 12,
                       background: isCompleted 
-                        ? '#C8B7FF'
-                        : '#E5E5E5',
+                        ? '#A855F7'
+                        : '#E5E7EB',
                       border: 'none',
                       display: 'flex',
                       alignItems: 'center',
@@ -637,7 +677,7 @@ export default function Home() {
           style={{ marginBottom: 20 }}
         >
           <Link to="/plan">
-            <button className="cta-button" style={{ width: '100%' }}>
+            <button className="cta-button pulse-glow premium-hover" style={{ width: '100%' }}>
               <div className="cta-shimmer"></div>
               Открыть подробный план
             </button>
@@ -651,7 +691,7 @@ export default function Home() {
         >
           <Link to="/cart" className="flex-1">
             <div 
-              className="neomorphic-card"
+              className="neomorphic-card premium-hover"
               style={{
                 width: '100%',
                 height: 72,
@@ -697,11 +737,11 @@ export default function Home() {
           
           <Link to="/quiz" className="flex-1">
             <div 
-              className="neomorphic-card"
+              className="neomorphic-card premium-hover premium-glow"
               style={{
                 width: '100%',
                 height: 72,
-                background: '#E6D7FF',
+                background: 'linear-gradient(135deg, #DDD6FE, #A855F7)',
                 borderRadius: 16,
                 boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
                 display: 'flex',
