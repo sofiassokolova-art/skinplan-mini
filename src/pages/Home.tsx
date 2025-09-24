@@ -283,6 +283,34 @@ export default function Home() {
           transform: scale(0.98);
           transition: transform 0.1s ease;
         }
+        
+        .neomorphic-card {
+          position: relative;
+        }
+        
+        .neomorphic-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          border-radius: inherit;
+          background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.05) 100%);
+          pointer-events: none;
+        }
+        
+        .neomorphic-card::after {
+          content: '';
+          position: absolute;
+          top: 1px;
+          left: 1px;
+          right: 1px;
+          bottom: 1px;
+          border-radius: inherit;
+          background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.1) 100%);
+          pointer-events: none;
+        }
       `}} />
       
       {/* Основной контент */}
@@ -444,6 +472,7 @@ export default function Home() {
                 return (
               <div 
                 key={step.id}
+                className="neomorphic-card"
                 style={{
                   background: '#FDF7F6',
                   borderRadius: 16,
@@ -453,7 +482,9 @@ export default function Home() {
                   marginBottom: index < careSteps.length - 1 ? 6 : 0,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
+                  justifyContent: 'space-between',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  position: 'relative'
                 }}
               >
                 {/* Левая часть: чекбокс + текст */}
@@ -561,7 +592,7 @@ export default function Home() {
         >
           <Link to="/plan">
             <button 
-              className="shimmer-button"
+              className="shimmer-button neomorphic-card"
               style={{
                 position: 'relative',
                 display: 'flex',
@@ -594,6 +625,7 @@ export default function Home() {
         >
           <Link to="/cart" className="flex-1">
             <div 
+              className="neomorphic-card"
               style={{
                 width: '100%',
                 height: 72,
@@ -639,6 +671,7 @@ export default function Home() {
           
           <Link to="/quiz" className="flex-1">
             <div 
+              className="neomorphic-card"
               style={{
                 width: '100%',
                 height: 72,
