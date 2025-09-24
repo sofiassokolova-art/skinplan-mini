@@ -51,8 +51,8 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#F6D6C8" />
-            <stop offset="100%" stopColor="#F0C4B0" />
+            <stop offset="0%" stopColor="#C7B7F4" />
+            <stop offset="100%" stopColor="#C7B7F4" />
           </linearGradient>
         </defs>
       </svg>
@@ -319,14 +319,6 @@ export default function Home() {
           box-shadow: 8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.9);
         }
         
-        .floating-animation {
-          animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-2px); }
-        }
         
         .neomorphic-card {
           position: relative;
@@ -530,9 +522,6 @@ export default function Home() {
           100% { transform: translateX(200%); }
         }
         
-        .premium-glow {
-          box-shadow: 0 0 25px rgba(124, 58, 237, 0.4), 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.9);
-        }
         
         .premium-hover {
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -547,14 +536,7 @@ export default function Home() {
           color: #1E1E1E;
         }
         
-        .floating-animation {
-          animation: float 3s ease-in-out infinite;
-        }
         
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-5px); }
-        }
         
         .pulse-glow {
           animation: pulseGlow 2s ease-in-out infinite;
@@ -664,7 +646,6 @@ export default function Home() {
 
           {/* Прогресс-круг */}
           <div 
-            className="floating-animation premium-glow"
             style={{
               width: 76,
               height: 76,
