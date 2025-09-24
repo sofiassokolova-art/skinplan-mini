@@ -149,7 +149,7 @@ export default function Home() {
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse at top, rgba(0, 0, 0, 0.02) 0%, transparent 50%), linear-gradient(135deg, #FAFBFC 0%, #FFFFFF 50%, #F8F9FA 100%)`,
+        background: `radial-gradient(ellipse at top, rgba(250, 218, 221, 0.1) 0%, transparent 50%), linear-gradient(135deg, #FFFFFF 0%, #F8F4F1 50%, #FADADD 100%)`,
         backgroundSize: '100% 100%',
         boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.03), inset -8px -8px 16px rgba(255,255,255,0.9)'
       }}
@@ -173,13 +173,13 @@ export default function Home() {
         
         @keyframes pearlShine {
           0% {
-            background: linear-gradient(135deg, #FAFBFC 0%, #FFFFFF 50%, #F8F9FA 100%);
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8F4F1 50%, #FADADD 100%);
           }
           50% {
-            background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 50%, #F1F3F4 100%);
+            background: linear-gradient(135deg, #F8F4F1 0%, #FFFFFF 50%, #FADADD 100%);
           }
           100% {
-            background: linear-gradient(135deg, #FAFBFC 0%, #FFFFFF 50%, #F8F9FA 100%);
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8F4F1 50%, #FADADD 100%);
           }
         }
         
@@ -357,16 +357,6 @@ export default function Home() {
           box-shadow: inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8);
         }
         
-        .premium-checkbox::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 50%;
-          background: linear-gradient(180deg, rgba(255,255,255,0.3), transparent);
-          border-radius: 12px 12px 0 0;
-        }
         
         .premium-button {
           position: relative;
@@ -416,17 +406,6 @@ export default function Home() {
           box-shadow: 12px 12px 24px rgba(0,0,0,0.1), -12px -12px 24px rgba(255,255,255,0.9);
         }
         
-        .neomorphic-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          border-radius: inherit;
-          background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.05) 100%);
-          pointer-events: none;
-        }
         
         .neomorphic-card::after {
           content: '';
@@ -525,10 +504,7 @@ export default function Home() {
         }
         
         .premium-text {
-          background: linear-gradient(135deg, #7C3AED, #DB2777);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          color: #000000;
         }
         
         .floating-animation {
