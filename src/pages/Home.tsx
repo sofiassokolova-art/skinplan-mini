@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 // Компонент кольцевого прогресса
@@ -72,20 +71,7 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
 }
 
 export default function Home() {
-  const [activeSegment, setActiveSegment] = useState<'morning' | 'evening'>('morning');
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
-
-  const toggleStepCompleted = (stepId: string) => {
-    setCompletedSteps(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(stepId)) {
-        newSet.delete(stepId);
-      } else {
-        newSet.add(stepId);
-      }
-      return newSet;
-    });
-  };
+  const [completedSteps] = useState<Set<string>>(new Set());
 
   const steps = [
     { id: 'cleanser', name: 'Очищение кожи', icon: '🧴' },
