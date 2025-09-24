@@ -6,22 +6,24 @@ const tokens = {
   colors: {
     BackgroundStart: "#FEFCFB",
     BackgroundEnd: "#FFFFFF",
-    CardBase: "#FFF8F8",
-    TextPrimary: "#1A1A1A",
-    TextSecondary: "#6B7280",
-    TextLight: "#9CA3AF",
-    ActiveTab: "#FFE4E1",
-    InactiveTab: "#F8F5F4",
-    ProgressGradient1: "#A855F7",
-    ProgressGradient2: "#EC4899",
-    CtaGradient1: "#FFE4E1",
+    CardBase: "#FFFFFF",
+    TextPrimary: "#0F172A",
+    TextSecondary: "#475569",
+    TextLight: "#64748B",
+    ActiveTab: "#FEF2F2",
+    InactiveTab: "#F1F5F9",
+    ProgressGradient1: "#7C3AED",
+    ProgressGradient2: "#DB2777",
+    CtaGradient1: "#FEF2F2",
     CtaGradient2: "#FECACA",
-    CheckboxGradient1: "#DDD6FE",
-    CheckboxGradient2: "#A855F7",
-    IconPink: "#F472B6",
-    IconLavender: "#A855F7",
+    CheckboxGradient1: "#C4B5FD",
+    CheckboxGradient2: "#7C3AED",
+    IconPink: "#EC4899",
+    IconLavender: "#7C3AED",
     PremiumGold: "#F59E0B",
-    PremiumAccent: "#7C3AED"
+    PremiumAccent: "#5B21B6",
+    DarkAccent: "#1E1B4B",
+    LightAccent: "#F8FAFC"
   },
   shadows: {
     NeomorphicOut: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
@@ -89,8 +91,8 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#A855F7" />
-            <stop offset="100%" stopColor="#EC4899" />
+            <stop offset="0%" stopColor="#7C3AED" />
+            <stop offset="100%" stopColor="#DB2777" />
           </linearGradient>
         </defs>
       </svg>
@@ -187,7 +189,7 @@ export default function Home() {
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse at top, rgba(168, 85, 247, 0.05) 0%, transparent 50%), linear-gradient(135deg, #FEFCFB 0%, #FFF8F8 50%, #FFFFFF 100%)`,
+        background: `radial-gradient(ellipse at top, rgba(124, 58, 237, 0.08) 0%, transparent 50%), linear-gradient(135deg, #FEFCFB 0%, #FFFFFF 50%, #F8FAFC 100%)`,
         backgroundSize: '100% 100%',
         boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.05), inset -8px -8px 16px #ffffff'
       }}
@@ -396,7 +398,7 @@ export default function Home() {
         }
         
         .premium-glow {
-          box-shadow: 0 0 20px rgba(168, 85, 247, 0.3), 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
+          box-shadow: 0 0 25px rgba(124, 58, 237, 0.4), 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.9);
         }
         
         .premium-hover {
@@ -404,12 +406,12 @@ export default function Home() {
         }
         
         .premium-hover:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(168, 85, 247, 0.2), 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
+          transform: translateY(-3px);
+          box-shadow: 0 12px 30px rgba(124, 58, 237, 0.3), 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.9);
         }
         
         .premium-text {
-          background: linear-gradient(135deg, #A855F7, #EC4899);
+          background: linear-gradient(135deg, #7C3AED, #DB2777);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -429,8 +431,8 @@ export default function Home() {
         }
         
         @keyframes pulseGlow {
-          0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.3), 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8); }
-          50% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.5), 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8); }
+          0%, 100% { box-shadow: 0 0 25px rgba(124, 58, 237, 0.4), 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.9); }
+          50% { box-shadow: 0 0 35px rgba(124, 58, 237, 0.6), 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.9); }
         }
       `}} />
       
@@ -468,7 +470,7 @@ export default function Home() {
               fontFamily: 'Playfair Display, serif',
               fontSize: '24px',
               fontWeight: 700,
-              color: '#2A2A2A',
+              color: '#0F172A',
               margin: 0,
               marginBottom: 8,
               lineHeight: '120%'
@@ -481,7 +483,7 @@ export default function Home() {
               fontFamily: 'Inter, sans-serif',
               fontSize: '16px',
               fontWeight: 400,
-              color: '#8C8C8C',
+              color: '#475569',
               margin: 0,
               lineHeight: '120%'
             }}
@@ -560,16 +562,16 @@ export default function Home() {
                 key={step.id}
                 className="neomorphic-card premium-hover"
                 style={{
-                  background: '#FFF8F8',
+                  background: '#FFFFFF',
                   borderRadius: 16,
-                  boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
+                  boxShadow: '4px 4px 8px rgba(0,0,0,0.12), -4px -4px 8px rgba(255,255,255,0.9)',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 6 : 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  border: '1px solid rgba(255,255,255,0.3)',
+                  border: '1px solid rgba(255,255,255,0.4)',
                   position: 'relative'
                 }}
               >
@@ -592,8 +594,8 @@ export default function Home() {
                       height: 24,
                       borderRadius: 12,
                       background: isCompleted 
-                        ? '#A855F7'
-                        : '#E5E7EB',
+                        ? '#7C3AED'
+                        : '#D1D5DB',
                       border: 'none',
                       display: 'flex',
                       alignItems: 'center',
@@ -646,7 +648,7 @@ export default function Home() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: '16px',
                         fontWeight: 700,
-                        color: '#2A2A2A',
+                        color: '#0F172A',
                         margin: 0,
                         marginBottom: 2
                       }}
@@ -658,7 +660,7 @@ export default function Home() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: '14px',
                         fontWeight: 400,
-                        color: '#8C8C8C',
+                        color: '#475569',
                         margin: 0
                       }}
                     >
@@ -715,7 +717,7 @@ export default function Home() {
               >
                 <path
                   d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#D4A574"
+                  stroke="#B45309"
                   strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -727,7 +729,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#6B6B6B'
+                  color: '#475569'
                 }}
               >
                 Корзина
@@ -741,7 +743,7 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 72,
-                background: 'linear-gradient(135deg, #DDD6FE, #A855F7)',
+                background: 'linear-gradient(135deg, #C4B5FD, #7C3AED)',
                 borderRadius: 16,
                 boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
                 display: 'flex',
