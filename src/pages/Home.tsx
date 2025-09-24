@@ -324,21 +324,13 @@ export default function Home() {
           position: relative;
           background: linear-gradient(145deg, #FFFFFF, #F0F0F0);
           border-radius: 16px;
-          box-shadow: 
-            8px 8px 16px rgba(0,0,0,0.15),
-            -8px -8px 16px rgba(255,255,255,0.7),
-            inset 1px 1px 2px rgba(255,255,255,0.8),
-            inset -1px -1px 2px rgba(0,0,0,0.05);
+          box-shadow: none;
           transition: all 0.3s ease;
         }
         
         .neomorphic-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 
-            12px 12px 24px rgba(0,0,0,0.2),
-            -12px -12px 24px rgba(255,255,255,0.8),
-            inset 1px 1px 2px rgba(255,255,255,0.9),
-            inset -1px -1px 2px rgba(0,0,0,0.08);
+          transform: none;
+          box-shadow: none;
         }
         
         .premium-checkbox {
@@ -357,11 +349,7 @@ export default function Home() {
         
         .premium-checkbox.completed {
           background: linear-gradient(145deg, #F6D6C8, #F0C4B0);
-          box-shadow: 
-            4px 4px 8px rgba(0,0,0,0.2),
-            -4px -4px 8px rgba(255,255,255,0.8),
-            inset 1px 1px 2px rgba(255,255,255,0.6),
-            inset -1px -1px 2px rgba(0,0,0,0.1);
+          box-shadow: none;
         }
         
         .premium-checkbox.incomplete {
@@ -523,14 +511,6 @@ export default function Home() {
         }
         
         
-        .premium-hover {
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .premium-hover:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 12px 30px rgba(124, 58, 237, 0.3), 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.9);
-        }
         
         .premium-text {
           color: #1E1E1E;
@@ -551,7 +531,7 @@ export default function Home() {
       {/* Основной контент */}
       <div className="relative z-10 px-6 py-8">
         {/* Бренд заголовок */}
-        <div className="text-center" style={{ marginTop: 32, marginBottom: 16 }}>
+        <div className="text-left" style={{ marginTop: 32, marginBottom: 16 }}>
           <h1 
             className="premium-text"
             style={{
@@ -674,7 +654,7 @@ export default function Home() {
                 return (
               <div 
                 key={step.id}
-                className="neomorphic-card premium-hover"
+                className="neomorphic-card"
                 style={{
                   height: 64,
                   padding: '16px',
