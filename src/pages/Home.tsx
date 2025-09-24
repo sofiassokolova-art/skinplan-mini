@@ -51,8 +51,8 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#C7B7F4" />
-            <stop offset="100%" stopColor="#C7B7F4" />
+            <stop offset="0%" stopColor="#EC4899" />
+            <stop offset="100%" stopColor="#8B5CF6" />
           </linearGradient>
         </defs>
       </svg>
@@ -149,9 +149,11 @@ export default function Home() {
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse at top, rgba(250, 218, 221, 0.1) 0%, transparent 50%), linear-gradient(135deg, #FFFFFF 0%, #F8F4F1 50%, #FADADD 100%)`,
-        backgroundSize: '100% 100%',
-        boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.03), inset -8px -8px 16px rgba(255,255,255,0.9)'
+        background: `radial-gradient(circle at 30% 20%, #F7C2D4, transparent 60%),
+                      radial-gradient(circle at 70% 80%, #C2D7F7, transparent 60%),
+                      linear-gradient(135deg, #FDECF4 0%, #F6F9FF 100%)`,
+        backgroundSize: '200% 200%',
+        animation: 'gradientMove 15s ease-in-out infinite alternate'
       }}
     >
       
@@ -161,13 +163,10 @@ export default function Home() {
         
         @keyframes gradientMove {
           0% { 
-            background-position: 20% 20%; 
-          }
-          50% { 
-            background-position: 80% 80%; 
+            background-position: 0% 0%; 
           }
           100% { 
-            background-position: 20% 20%; 
+            background-position: 100% 100%; 
           }
         }
         
@@ -271,14 +270,11 @@ export default function Home() {
         }
         
         .segment-container {
-          background: linear-gradient(145deg, #F0F0F0, #E8E8E8);
-          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(12px);
+          border-radius: 28px;
           padding: 4px;
-          box-shadow: 
-            inset 4px 4px 8px rgba(0,0,0,0.15),
-            inset -4px -4px 8px rgba(255,255,255,0.7),
-            2px 2px 4px rgba(0,0,0,0.1),
-            -2px -2px 4px rgba(255,255,255,0.8);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         
         .segment-button {
@@ -295,22 +291,18 @@ export default function Home() {
         }
         
         .segment-button.active {
-          background: linear-gradient(145deg, #C7B7F4, #B8A5F0);
-          color: #1E1E1E;
-          box-shadow: 
-            4px 4px 8px rgba(0,0,0,0.2),
-            -4px -4px 8px rgba(255,255,255,0.8),
-            inset 1px 1px 2px rgba(255,255,255,0.6),
-            inset -1px -1px 2px rgba(0,0,0,0.1);
+          background: linear-gradient(135deg, #EC4899, #8B5CF6);
+          color: #FFFFFF;
+          box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
         }
         
         .segment-button.inactive {
           background: transparent;
-          color: #1E1E1E;
+          color: #6B7280;
         }
         
         .segment-button.inactive:hover {
-          background: rgba(199, 183, 244, 0.1);
+          background: rgba(236, 72, 153, 0.1);
           color: #1E1E1E;
         }
         
@@ -322,9 +314,10 @@ export default function Home() {
         
         .neomorphic-card {
           position: relative;
-          background: linear-gradient(145deg, #FFFFFF, #F0F0F0);
-          border-radius: 16px;
-          box-shadow: none;
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(12px);
+          border-radius: 28px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
           transition: all 0.3s ease;
         }
         
@@ -348,13 +341,14 @@ export default function Home() {
         }
         
         .premium-checkbox.completed {
-          background: linear-gradient(145deg, #F6D6C8, #F0C4B0);
-          box-shadow: none;
+          background: linear-gradient(135deg, #EC4899, #8B5CF6);
+          box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
         }
         
         .premium-checkbox.incomplete {
-          background: linear-gradient(145deg, #F0F0F0, #E8E8E8);
-          box-shadow: none;
+          background: rgba(255, 255, 255, 0.5);
+          backdrop-filter: blur(8px);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         
         
@@ -364,31 +358,24 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           width: 100%;
-          height: 56px;
+          height: 64px;
           border: none;
-          border-radius: 999px;
+          border-radius: 28px;
           overflow: hidden;
-          background: linear-gradient(145deg, #FADADD, #F8C6C6);
-          color: #1E1E1E;
+          background: linear-gradient(135deg, #EC4899, #8B5CF6);
+          color: #FFFFFF;
           font-family: 'Inter', sans-serif;
-          font-size: 16px;
-          font-weight: 700;
+          font-size: 18px;
+          font-weight: 600;
           cursor: pointer;
           transition: all 0.3s ease;
-          box-shadow: 
-            8px 8px 16px rgba(0,0,0,0.2),
-            -8px -8px 16px rgba(255,255,255,0.8),
-            inset 1px 1px 2px rgba(255,255,255,0.6),
-            inset -1px -1px 2px rgba(0,0,0,0.1);
+          box-shadow: 0 8px 24px rgba(236, 72, 153, 0.4);
         }
         
         .premium-button:hover {
           transform: translateY(-2px);
-          box-shadow: 
-            12px 12px 24px rgba(0,0,0,0.25),
-            -12px -12px 24px rgba(255,255,255,0.9),
-            inset 1px 1px 2px rgba(255,255,255,0.7),
-            inset -1px -1px 2px rgba(0,0,0,0.15);
+          background: linear-gradient(135deg, #F472B6, #A855F7);
+          box-shadow: 0 12px 32px rgba(236, 72, 153, 0.5);
         }
         
         .premium-button::before {
@@ -403,23 +390,16 @@ export default function Home() {
         }
         
         .premium-card {
-          background: linear-gradient(145deg, #FFFFFF, #F0F0F0);
-          border-radius: 16px;
-          box-shadow: 
-            8px 8px 16px rgba(0,0,0,0.15),
-            -8px -8px 16px rgba(255,255,255,0.7),
-            inset 1px 1px 2px rgba(255,255,255,0.8),
-            inset -1px -1px 2px rgba(0,0,0,0.05);
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(12px);
+          border-radius: 28px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
           transition: all 0.3s ease;
         }
         
         .premium-card:hover {
           transform: translateY(-2px);
-          box-shadow: 
-            12px 12px 24px rgba(0,0,0,0.2),
-            -12px -12px 24px rgba(255,255,255,0.8),
-            inset 1px 1px 2px rgba(255,255,255,0.9),
-            inset -1px -1px 2px rgba(0,0,0,0.08);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
         
         
@@ -529,16 +509,14 @@ export default function Home() {
         {/* Бренд заголовок */}
         <div className="text-left" style={{ marginTop: 32, marginBottom: 16 }}>
           <h1 
-            className="premium-text"
+            className="bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-600"
             style={{
-              fontFamily: 'Playfair Display, serif',
-              fontSize: '20px',
-              fontWeight: 700,
-              color: "#1E1E1E",
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '28px',
+              fontWeight: 600,
               margin: 0,
               marginBottom: 8,
-              letterSpacing: '0.5px',
-              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+              letterSpacing: '0.5px'
             }}
           >
             SKinIQ
@@ -574,7 +552,7 @@ export default function Home() {
               fontFamily: 'Inter, sans-serif',
               fontSize: '16px',
               fontWeight: 400,
-              color: '#475569',
+              color: '#6B7280',
               margin: 0,
               lineHeight: '120%'
             }}
@@ -626,7 +604,9 @@ export default function Home() {
               width: 76,
               height: 76,
               borderRadius: '50%',
-              background: '#FFF8F8',
+              background: 'rgba(255, 255, 255, 0.7)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -795,7 +775,7 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 72,
-                background: 'linear-gradient(135deg, #F6D6C8, #F0C4B0)',
+                background: 'linear-gradient(135deg, #EC4899, #8B5CF6)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -824,7 +804,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#1E1E1E'
+                  color: '#FFFFFF'
                 }}
               >
                 Анкета
