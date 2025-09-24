@@ -271,10 +271,14 @@ export default function Home() {
         }
         
         .segment-container {
-          background: #F8F9FA;
+          background: linear-gradient(145deg, #F0F0F0, #E8E8E8);
           border-radius: 24px;
           padding: 4px;
-          box-shadow: inset 4px 4px 8px rgba(0,0,0,0.08), inset -4px -4px 8px rgba(255,255,255,0.9);
+          box-shadow: 
+            inset 4px 4px 8px rgba(0,0,0,0.15),
+            inset -4px -4px 8px rgba(255,255,255,0.7),
+            2px 2px 4px rgba(0,0,0,0.1),
+            -2px -2px 4px rgba(255,255,255,0.8);
         }
         
         .segment-button {
@@ -293,7 +297,11 @@ export default function Home() {
         .segment-button.active {
           background: linear-gradient(145deg, #C7B7F4, #B8A5F0);
           color: #1E1E1E;
-          box-shadow: 4px 4px 8px rgba(199, 183, 244, 0.3), -2px -2px 4px rgba(255,255,255,0.9);
+          box-shadow: 
+            4px 4px 8px rgba(0,0,0,0.2),
+            -4px -4px 8px rgba(255,255,255,0.8),
+            inset 1px 1px 2px rgba(255,255,255,0.6),
+            inset -1px -1px 2px rgba(0,0,0,0.1);
         }
         
         .segment-button.inactive {
@@ -322,15 +330,23 @@ export default function Home() {
         
         .neomorphic-card {
           position: relative;
-          background: linear-gradient(145deg, #FFFFFF, #F8F9FA);
+          background: linear-gradient(145deg, #FFFFFF, #F0F0F0);
           border-radius: 16px;
-          box-shadow: 8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9);
+          box-shadow: 
+            8px 8px 16px rgba(0,0,0,0.15),
+            -8px -8px 16px rgba(255,255,255,0.7),
+            inset 1px 1px 2px rgba(255,255,255,0.8),
+            inset -1px -1px 2px rgba(0,0,0,0.05);
           transition: all 0.3s ease;
         }
         
         .neomorphic-card:hover {
           transform: translateY(-2px);
-          box-shadow: 12px 12px 24px rgba(0,0,0,0.1), -12px -12px 24px rgba(255,255,255,0.9);
+          box-shadow: 
+            12px 12px 24px rgba(0,0,0,0.2),
+            -12px -12px 24px rgba(255,255,255,0.8),
+            inset 1px 1px 2px rgba(255,255,255,0.9),
+            inset -1px -1px 2px rgba(0,0,0,0.08);
         }
         
         .premium-checkbox {
@@ -349,12 +365,20 @@ export default function Home() {
         
         .premium-checkbox.completed {
           background: linear-gradient(145deg, #F6D6C8, #F0C4B0);
-          box-shadow: 4px 4px 8px rgba(246, 214, 200, 0.3), -2px -2px 4px rgba(255,255,255,0.9);
+          box-shadow: 
+            4px 4px 8px rgba(0,0,0,0.2),
+            -4px -4px 8px rgba(255,255,255,0.8),
+            inset 1px 1px 2px rgba(255,255,255,0.6),
+            inset -1px -1px 2px rgba(0,0,0,0.1);
         }
         
         .premium-checkbox.incomplete {
-          background: linear-gradient(145deg, #E5E7EB, #F3F4F6);
-          box-shadow: inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8);
+          background: linear-gradient(145deg, #F0F0F0, #E8E8E8);
+          box-shadow: 
+            inset 2px 2px 4px rgba(0,0,0,0.15),
+            inset -2px -2px 4px rgba(255,255,255,0.7),
+            1px 1px 2px rgba(0,0,0,0.1),
+            -1px -1px 2px rgba(255,255,255,0.8);
         }
         
         
@@ -375,12 +399,20 @@ export default function Home() {
           font-weight: 700;
           cursor: pointer;
           transition: all 0.3s ease;
-          box-shadow: 8px 8px 16px rgba(248, 198, 198, 0.3), -8px -8px 16px rgba(255,255,255,0.9);
+          box-shadow: 
+            8px 8px 16px rgba(0,0,0,0.2),
+            -8px -8px 16px rgba(255,255,255,0.8),
+            inset 1px 1px 2px rgba(255,255,255,0.6),
+            inset -1px -1px 2px rgba(0,0,0,0.1);
         }
         
         .premium-button:hover {
           transform: translateY(-2px);
-          box-shadow: 12px 12px 24px rgba(248, 198, 198, 0.4), -12px -12px 24px rgba(255,255,255,0.9);
+          box-shadow: 
+            12px 12px 24px rgba(0,0,0,0.25),
+            -12px -12px 24px rgba(255,255,255,0.9),
+            inset 1px 1px 2px rgba(255,255,255,0.7),
+            inset -1px -1px 2px rgba(0,0,0,0.15);
         }
         
         .premium-button::before {
@@ -395,15 +427,23 @@ export default function Home() {
         }
         
         .premium-card {
-          background: linear-gradient(145deg, #FFFFFF, #F8F9FA);
+          background: linear-gradient(145deg, #FFFFFF, #F0F0F0);
           border-radius: 16px;
-          box-shadow: 8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9);
+          box-shadow: 
+            8px 8px 16px rgba(0,0,0,0.15),
+            -8px -8px 16px rgba(255,255,255,0.7),
+            inset 1px 1px 2px rgba(255,255,255,0.8),
+            inset -1px -1px 2px rgba(0,0,0,0.05);
           transition: all 0.3s ease;
         }
         
         .premium-card:hover {
           transform: translateY(-2px);
-          box-shadow: 12px 12px 24px rgba(0,0,0,0.1), -12px -12px 24px rgba(255,255,255,0.9);
+          box-shadow: 
+            12px 12px 24px rgba(0,0,0,0.2),
+            -12px -12px 24px rgba(255,255,255,0.8),
+            inset 1px 1px 2px rgba(255,255,255,0.9),
+            inset -1px -1px 2px rgba(0,0,0,0.08);
         }
         
         
