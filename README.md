@@ -1,69 +1,60 @@
-# React + TypeScript + Vite
+# SkinIQ - Главный экран приложения
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Современное приложение для ухода за кожей с glassmorphism дизайном, градиентами и плавными анимациями.
 
-Currently, two official plugins are available:
+## 🎨 Дизайн
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Приложение создано согласно детальному UI-гайду с использованием:
 
-## Expanding the ESLint configuration
+- **Glassmorphism** эффектов с полупрозрачными элементами
+- **Градиентные фоны** с анимированными переливами
+- **Точная типографика** с размерами из дизайн-системы
+- **Плавные анимации** для всех интерактивных элементов
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🚀 Запуск проекта
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Установите зависимости:
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2. Запустите приложение в режиме разработки:
+```bash
+npm start
 ```
+
+3. Откройте [http://localhost:3000](http://localhost:3000) в браузере
+
+## 🛠 Технологии
+
+- **React 18** - основной фреймворк
+- **TailwindCSS** - стилизация с кастомными цветами и размерами
+- **Framer Motion** - анимации и переходы
+- **Lucide React** - иконки
+
+## 📱 Функциональность
+
+- ✅ Интерактивный прогресс-круг с анимацией заполнения
+- ✅ Переключатель "Утро/Вечер" с плавными переходами
+- ✅ 4 карточки ухода с анимированными чекбоксами
+- ✅ Секция советов и рекомендаций
+- ✅ CTA кнопка с шиммер-эффектом
+- ✅ Анимированный фон с плавающими элементами
+
+## 🎯 Особенности
+
+- **Адаптивный дизайн** для мобильных устройств
+- **Плавные анимации** всех элементов
+- **Glassmorphism** эффекты с backdrop-blur
+- **Точные цвета** из дизайн-системы
+- **Типографика** согласно UI-гайду
+
+## 📐 Цветовая палитра
+
+- Primary Violet: `#6C4BFF`
+- Violet Light: `#A58BFF`
+- Scarlet Accent: `#FF4B5C`
+- Sky Blue: `#8EC5FC`
+- Pink: `#E0AFFF`
+- Text Main: `#1E1E1E`
+- Text Secondary: `#6B6B6B`

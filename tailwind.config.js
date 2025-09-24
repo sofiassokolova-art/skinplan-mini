@@ -1,85 +1,64 @@
 /** @type {import('tailwindcss').Config} */
-export default {
-  content: ["./index.html", "./src/**/*.{ts,tsx}"],
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
-        // Обновленная палитра согласно дизайн-гайду
-        pearl: {
-          bg1: "#FDF7F6", // верх градиента фона
-          bg2: "#F8EDEA", // середина градиента фона  
-          bg3: "#F6E8E5", // низ градиента фона
-          card: "#FCF7F5", // фон карточек
-          switcher: "#F9F0ED", // фон переключателя
-          bottom: "#FAF4F2", // фон нижних карточек
+        primary: {
+          violet: '#6C4BFF',
+          violetLight: '#A58BFF',
+        },
+        accent: {
+          scarlet: '#FF4B5C',
+          skyBlue: '#8EC5FC',
+          pink: '#E0AFFF',
         },
         text: {
-          primary: "#1C1C1C",   // основной текст
-          secondary: "#6F6F6F", // подзаголовки
-          inactive: "#8E8E8E",  // неактивный текст
-          progress: "#4E4E4E",  // текст в прогрессе
+          main: '#1E1E1E',
+          secondary: '#6B6B6B',
         },
-        // Градиенты для активных состояний
-        active: {
-          from: "#FBD6CF", // начало активного градиента
-          to: "#F7E6E2",   // конец активного градиента
-        },
-        // Прогресс-бар
-        progress: {
-          from: "#E7C0F9", // начало градиента прогресса
-          to: "#C9A3FF",   // конец градиента прогресса
-        },
-        // Чекбоксы
-        checkbox: {
-          from: "#EAC3F8", // начало градиента чекбокса
-          to: "#C7A2F9",   // конец градиента чекбокса
-        },
-        // Иконки
-        icons: {
-          quiz: "#C295F9",    // сиреневый для анкеты
-          cart: "#E9A2B2",    // розовый для корзины
-        },
-        // Совместимость со старыми стилями
-        linen: "#F7F3EF",
-        surface: "#F5F1ED",
-        ink: "#1C1C1C",
-        muted: "#7A7A7A",
-        primary: "#E6CADF",
-        primary2: "#FADADD",
+        glass: {
+          white: 'rgba(255, 255, 255, 0.7)',
+          whiteStrong: 'rgba(255, 255, 255, 0.8)',
+          cta: 'rgba(255, 255, 255, 0.2)',
+        }
       },
       fontFamily: {
-        'serif': ['Playfair Display', 'serif'],
-        'sans': ['SF Pro Display', 'Inter', 'Neue Haas Grotesk', 'system-ui', 'sans-serif'],
+        'inter': ['Inter', 'sans-serif'],
+        'manrope': ['Manrope', 'sans-serif'],
       },
-      borderRadius: { 
-        card: "16px", 
-        btn: "20px", // капсулы для кнопок
-        input: "12px"
-      },
-      boxShadow: {
-        // Усиленный эндоморфизм для премиального вида
-        neumorphism: "12px 12px 24px rgba(230, 202, 223, 0.15), -12px -12px 24px rgba(255, 255, 255, 0.9)",
-        "neumorphism-inset": "inset 6px 6px 12px rgba(230, 202, 223, 0.15), inset -6px -6px 12px rgba(255, 255, 255, 0.9)",
-        "neumorphism-subtle": "6px 6px 12px rgba(230, 202, 223, 0.1), -6px -6px 12px rgba(255, 255, 255, 0.8)",
-        glow: "0 0 30px rgba(230, 202, 223, 0.4)",
-        "glow-strong": "0 0 40px rgba(230, 202, 223, 0.6)",
-        e1: "0 4px 16px rgba(28, 28, 28, 0.04)",
-        e2: "0 8px 28px rgba(28, 28, 28, 0.06)",
-      },
-      backgroundImage: {
-        'pearl-gradient': 'linear-gradient(to bottom, #FDFCFB, #F7F1EF)',
-        'switcher-gradient': 'linear-gradient(135deg, #FDFDFD, #F7F1EF)',
-        'active-gradient': 'linear-gradient(135deg, #F2C8C2, #F2C8C2)',
-        'progress-gradient': 'linear-gradient(135deg, #D7A6E8, #F2C8C2)',
-        'checkbox-gradient': 'linear-gradient(135deg, #D7A6E8, #F2C8C2)',
-        'cta-gradient': 'linear-gradient(135deg, #F2C8C2, #E9D8E9)',
+      fontSize: {
+        'greeting': ['30px', { lineHeight: '36px', fontWeight: '700' }],
+        'subtitle': ['17px', { lineHeight: '24px', fontWeight: '400' }],
+        'progress': ['23px', { lineHeight: '28px', fontWeight: '700' }],
+        'step': ['16px', { lineHeight: '20px', fontWeight: '500' }],
+        'small': ['14px', { lineHeight: '20px', fontWeight: '400' }],
+        'cta': ['18px', { lineHeight: '24px', fontWeight: '600' }],
       },
       spacing: {
-        // Отступы согласно гайду
-        'section': '32px', // между секциями
-        'element': '24px',  // между элементами UI
-        'text': '16px',     // между заголовком и описанием
+        '35': '8.75rem', // 140px for toggle width
+        '50': '12.5rem', // 200px for progress circle
       },
+      animation: {
+        'shimmer': 'shimmer 6s linear infinite',
+        'float': 'float 6s ease-in-out infinite',
+        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-10px)' },
+        }
+      },
+      backdropBlur: {
+        xs: '2px',
+      }
     },
   },
   plugins: [],
