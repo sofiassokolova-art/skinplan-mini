@@ -67,9 +67,12 @@ html {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.6),
+    rgba(255, 255, 255, 0.4),
+    rgba(255, 255, 255, 0.8),
+    rgba(255, 255, 255, 0.4),
     transparent
   );
+  animation: shimmer 6s linear infinite;
 }
 
 /* Floating animation for background elements */

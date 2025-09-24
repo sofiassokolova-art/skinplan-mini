@@ -45,11 +45,11 @@ body {
   background: linear-gradient(135deg, 
     #A58BFF 0%, 
     #6C4BFF 25%, 
-    #FF6B9D 50%, 
-    #4ECDC4 75%, 
-    #A58BFF 100%);
+    #FF4B5C 50%, 
+    #8EC5FC 75%, 
+    #E0AFFF 100%);
   background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
+  animation: gradientShift 18s ease infinite;
 }
 
 @keyframes gradientShift {
@@ -61,10 +61,10 @@ body {
 /* Grid pattern overlay */
 .grid-overlay {
   background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
-  animation: gridMove 20s linear infinite;
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  animation: gridMove 25s linear infinite;
 }
 
 @keyframes gridMove {
@@ -108,9 +108,9 @@ body {
 .progress-circle-fill {
   fill: none;
   stroke: url(#progressGradient);
-  stroke-width: 8;
+  stroke-width: 14;
   stroke-linecap: round;
   stroke-dasharray: 251.2;
   stroke-dashoffset: 87.92; /* 65% progress */
-  transition: stroke-dashoffset 1s ease-in-out;
+  transition: stroke-dashoffset 1.2s ease-in-out;
 }

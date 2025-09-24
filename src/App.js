@@ -52,37 +52,51 @@ function App() {
           scale: [1, 1.1, 1]
         }}
         transition={{ 
-          duration: 6,
+          duration: 15,
           repeat: Infinity,
           ease: "easeInOut"
         }}
       />
       <motion.div 
-        className="absolute top-40 right-16 w-16 h-16 bg-pink-300/20 rounded-full blur-lg"
+        className="absolute top-40 right-16 w-16 h-16 bg-accent-pink/20 rounded-full blur-lg"
         animate={{ 
           y: [0, 15, 0],
           x: [0, -15, 0],
           scale: [1, 0.9, 1]
         }}
         transition={{ 
-          duration: 8,
+          duration: 18,
           repeat: Infinity,
           ease: "easeInOut",
           delay: 1
         }}
       />
       <motion.div 
-        className="absolute bottom-32 left-20 w-24 h-24 bg-blue-300/15 rounded-full blur-2xl"
+        className="absolute bottom-32 left-20 w-24 h-24 bg-accent-skyBlue/15 rounded-full blur-2xl"
         animate={{ 
           y: [0, -25, 0],
           x: [0, 20, 0],
           scale: [1, 1.2, 1]
         }}
         transition={{ 
-          duration: 10,
+          duration: 20,
           repeat: Infinity,
           ease: "easeInOut",
           delay: 2
+        }}
+      />
+      <motion.div 
+        className="absolute top-60 left-1/2 w-12 h-12 bg-accent-scarlet/15 rounded-full blur-lg"
+        animate={{ 
+          y: [0, -15, 0],
+          x: [0, 25, 0],
+          scale: [1, 1.3, 1]
+        }}
+        transition={{ 
+          duration: 16,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 3
         }}
       />
 
@@ -90,32 +104,32 @@ function App() {
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header Section */}
         <motion.div 
-          className="pt-16 pb-8 text-center"
+          className="pt-16 pb-6 text-center"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
           <motion.h1 
-            className="text-3xl font-bold text-white mb-2"
+            className="text-3xl font-bold text-white mb-3"
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
             SkinIQ
           </motion.h1>
-          <p className="text-white/90 text-lg mb-1">Привет, Аня! ✨</p>
-          <p className="text-white/70 text-sm">Твой уход на сегодня готов</p>
+          <p className="text-greeting text-white mb-1">Привет, Аня! ✨</p>
+          <p className="text-subtitle text-white/70">Твой уход на сегодня готов</p>
         </motion.div>
 
         {/* Progress Circle Section */}
         <motion.div 
-          className="flex flex-col items-center mb-8"
+          className="flex flex-col items-center mb-6"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           {/* Progress Circle */}
           <div className="relative mb-6">
-            <svg className="w-32 h-32 progress-circle" viewBox="0 0 100 100">
+            <svg className="w-50 h-50 progress-circle" viewBox="0 0 100 100">
               <defs>
                 <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#A58BFF" />
@@ -135,12 +149,12 @@ function App() {
                 r="40"
                 initial={{ strokeDashoffset: 251.2 }}
                 animate={{ strokeDashoffset: 251.2 - (progress * 2.512) }}
-                transition={{ duration: 1.5, ease: "easeInOut" }}
+                transition={{ duration: 1.2, ease: "easeInOut" }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-white">{Math.round(progress)}%</span>
-              <span className="text-xs text-white/70 text-center">
+              <span className="text-progress text-white">{Math.round(progress)}%</span>
+              <span className="text-small text-white/70 text-center">
                 Осталось {remainingSteps} шага<br />
                 / {estimatedTime} мин
               </span>
@@ -148,12 +162,12 @@ function App() {
           </div>
 
           {/* Morning/Evening Toggle */}
-          <div className="glass rounded-full p-1 flex">
+          <div className="glass rounded-full p-1 flex w-35 h-10">
             <button
               onClick={() => setIsMorning(true)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+              className={`flex-1 rounded-full text-sm font-medium transition-all duration-300 ${
                 isMorning 
-                  ? 'bg-white text-gray-900 shadow-sm' 
+                  ? 'bg-white text-text-main shadow-sm' 
                   : 'text-white/70 hover:text-white'
               }`}
             >
@@ -161,9 +175,9 @@ function App() {
             </button>
             <button
               onClick={() => setIsMorning(false)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+              className={`flex-1 rounded-full text-sm font-medium transition-all duration-300 ${
                 !isMorning 
-                  ? 'bg-white text-gray-900 shadow-sm' 
+                  ? 'bg-white text-text-main shadow-sm' 
                   : 'text-white/70 hover:text-white'
               }`}
             >
@@ -174,13 +188,13 @@ function App() {
 
         {/* Care Steps Section */}
         <motion.div 
-          className="mx-4 mb-8"
+          className="mx-4 mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
-          <div className="glass-strong rounded-3xl p-6 backdrop-blur-lg">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+          <div className="glass-strong rounded-3xl p-6 backdrop-blur-lg shadow-lg">
+            <h2 className="text-lg font-semibold text-text-main mb-4 text-center">
               Сегодняшний уход
             </h2>
             <div className="space-y-3">
@@ -191,19 +205,19 @@ function App() {
                 return (
                   <motion.div
                     key={step.id}
-                    className="bg-white rounded-2xl shadow-sm flex justify-between items-center px-4 py-3 cursor-pointer"
+                    className="bg-white rounded-2xl shadow-sm flex justify-between items-center px-4 h-14 cursor-pointer"
                     whileTap={{ scale: 0.98 }}
                     onClick={() => toggleStep(index)}
                   >
                     <div className="flex items-center space-x-3">
-                      <Icon className="w-5 h-5 text-gray-600" />
-                      <span className="text-gray-800 font-medium">{step.name}</span>
+                      <Icon className="w-5 h-5 text-text-secondary" />
+                      <span className="text-step text-text-main">{step.name}</span>
                     </div>
                     <motion.div
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                         isCompleted 
-                          ? 'bg-primary-500 border-primary-500' 
-                          : 'border-primary-500'
+                          ? 'bg-primary-violet border-primary-violet' 
+                          : 'border-primary-violet bg-white'
                       }`}
                       animate={{ scale: isCompleted ? [1, 1.2, 1] : 1 }}
                       transition={{ duration: 0.3 }}
@@ -214,7 +228,7 @@ function App() {
                           animate={{ scale: 1 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <Check className="w-4 h-4 text-white" />
+                          <Check className="w-3 h-3 text-white" />
                         </motion.div>
                       )}
                     </motion.div>
@@ -223,7 +237,7 @@ function App() {
               })}
             </div>
             <motion.button
-              className="w-full mt-4 py-3 border border-primary-500 text-primary-500 rounded-xl font-medium hover:bg-primary-500/10 transition-colors"
+              className="w-full mt-4 py-3 border border-primary-violet text-primary-violet rounded-xl font-medium hover:bg-primary-violet/10 transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -234,33 +248,33 @@ function App() {
 
         {/* Tips Section */}
         <motion.div 
-          className="mx-4 mb-8 space-y-4"
+          className="mx-4 mb-6 space-y-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
         >
           {/* Daily Tip */}
-          <div className="glass-strong rounded-2xl p-4">
-            <p className="text-gray-800 text-sm">
+          <div className="glass-strong rounded-2xl p-4 shadow-sm">
+            <p className="text-small text-text-main">
               Сегодня кожа сухая — добавь больше увлажнения 🌸
             </p>
           </div>
 
           {/* Recommendations */}
           <div className="flex space-x-3">
-            <div className="flex-1 glass-strong rounded-2xl p-4">
+            <div className="flex-1 glass-strong rounded-2xl p-4 shadow-sm">
               <div className="flex items-center space-x-2 mb-2">
-                <Shield className="w-4 h-4 text-primary-500" />
-                <span className="text-sm font-medium text-gray-800">Рекомендация дня</span>
+                <Shield className="w-4 h-4 text-primary-violet" />
+                <span className="text-small font-medium text-text-main">Рекомендация дня</span>
               </div>
-              <p className="text-xs text-gray-600">Используй увлажняющий крем</p>
+              <p className="text-xs text-text-secondary">Используй увлажняющий крем</p>
             </div>
-            <div className="flex-1 glass-strong rounded-2xl p-4">
+            <div className="flex-1 glass-strong rounded-2xl p-4 shadow-sm">
               <div className="flex items-center space-x-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-primary-500" />
-                <span className="text-sm font-medium text-gray-800">История прогресса</span>
+                <TrendingUp className="w-4 h-4 text-primary-violet" />
+                <span className="text-small font-medium text-text-main">История прогресса</span>
               </div>
-              <p className="text-xs text-gray-600">Ты ухаживала за собой 5 дней на этой неделе 💕</p>
+              <p className="text-xs text-text-secondary">Ты ухаживала за собой 5 дней на этой неделе 💕</p>
             </div>
           </div>
         </motion.div>
@@ -273,7 +287,7 @@ function App() {
           transition={{ duration: 0.8, delay: 0.8 }}
         >
           <motion.button
-            className="w-full glass rounded-2xl p-4 flex items-center justify-between relative overflow-hidden"
+            className="w-full glass-cta rounded-3xl h-16 flex items-center justify-between relative overflow-hidden border border-white/30"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -282,7 +296,7 @@ function App() {
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
                 <RotateCcw className="w-4 h-4 text-white" />
               </div>
-              <span className="text-white font-semibold">Начать сканирование</span>
+              <span className="text-cta text-white font-semibold">Начать сканирование</span>
             </div>
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
               <Camera className="w-4 h-4 text-white" />
