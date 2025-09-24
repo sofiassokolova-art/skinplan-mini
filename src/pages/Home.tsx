@@ -51,8 +51,8 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#7C3AED" />
-            <stop offset="100%" stopColor="#DB2777" />
+            <stop offset="0%" stopColor="#000000" />
+            <stop offset="100%" stopColor="#1a1a1a" />
           </linearGradient>
         </defs>
       </svg>
@@ -149,9 +149,9 @@ export default function Home() {
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: `radial-gradient(ellipse at top, rgba(124, 58, 237, 0.08) 0%, transparent 50%), linear-gradient(135deg, #FEFCFB 0%, #FFFFFF 50%, #F8FAFC 100%)`,
+        background: `radial-gradient(ellipse at top, rgba(0, 0, 0, 0.02) 0%, transparent 50%), linear-gradient(135deg, #FAFBFC 0%, #FFFFFF 50%, #F8F9FA 100%)`,
         backgroundSize: '100% 100%',
-        boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.05), inset -8px -8px 16px #ffffff'
+        boxShadow: 'inset 8px 8px 16px rgba(0,0,0,0.03), inset -8px -8px 16px rgba(255,255,255,0.9)'
       }}
     >
       
@@ -168,6 +168,18 @@ export default function Home() {
           }
           100% { 
             background-position: 20% 20%; 
+          }
+        }
+        
+        @keyframes pearlShine {
+          0% {
+            background: linear-gradient(135deg, #FAFBFC 0%, #FFFFFF 50%, #F8F9FA 100%);
+          }
+          50% {
+            background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 50%, #F1F3F4 100%);
+          }
+          100% {
+            background: linear-gradient(135deg, #FAFBFC 0%, #FFFFFF 50%, #F8F9FA 100%);
           }
         }
         
@@ -258,8 +270,150 @@ export default function Home() {
           transition: transform 0.1s ease;
         }
         
+        .segment-container {
+          background: #F8F9FA;
+          border-radius: 24px;
+          padding: 4px;
+          box-shadow: inset 4px 4px 8px rgba(0,0,0,0.08), inset -4px -4px 8px rgba(255,255,255,0.9);
+        }
+        
+        .segment-button {
+          flex: 1;
+          border: none;
+          border-radius: 20px;
+          font-family: 'Inter', sans-serif;
+          font-size: 16px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .segment-button.active {
+          background: linear-gradient(145deg, #000000, #1a1a1a);
+          color: #FFFFFF;
+          box-shadow: 4px 4px 8px rgba(0,0,0,0.2), -2px -2px 4px rgba(255,255,255,0.1);
+        }
+        
+        .segment-button.inactive {
+          background: transparent;
+          color: #6B7280;
+        }
+        
+        .segment-button.inactive:hover {
+          background: rgba(0,0,0,0.05);
+          color: #374151;
+        }
+        
+        .premium-glow {
+          background: linear-gradient(145deg, #FFFFFF, #F8F9FA);
+          box-shadow: 8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.9);
+        }
+        
+        .floating-animation {
+          animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-2px); }
+        }
+        
         .neomorphic-card {
           position: relative;
+          background: linear-gradient(145deg, #FFFFFF, #F8F9FA);
+          border-radius: 16px;
+          box-shadow: 8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9);
+          transition: all 0.3s ease;
+        }
+        
+        .neomorphic-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 12px 12px 24px rgba(0,0,0,0.1), -12px -12px 24px rgba(255,255,255,0.9);
+        }
+        
+        .premium-checkbox {
+          width: 24px;
+          height: 24px;
+          border-radius: 12px;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease-in-out;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .premium-checkbox.completed {
+          background: linear-gradient(145deg, #000000, #1a1a1a);
+          box-shadow: 4px 4px 8px rgba(0,0,0,0.2), -2px -2px 4px rgba(255,255,255,0.1);
+        }
+        
+        .premium-checkbox.incomplete {
+          background: linear-gradient(145deg, #E5E7EB, #F3F4F6);
+          box-shadow: inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8);
+        }
+        
+        .premium-checkbox::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 50%;
+          background: linear-gradient(180deg, rgba(255,255,255,0.3), transparent);
+          border-radius: 12px 12px 0 0;
+        }
+        
+        .premium-button {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 56px;
+          border: none;
+          border-radius: 999px;
+          overflow: hidden;
+          background: linear-gradient(145deg, #000000, #1a1a1a);
+          color: #FFFFFF;
+          font-family: 'Inter', sans-serif;
+          font-size: 16px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 8px 8px 16px rgba(0,0,0,0.2), -8px -8px 16px rgba(255,255,255,0.1);
+        }
+        
+        .premium-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 12px 12px 24px rgba(0,0,0,0.25), -12px -12px 24px rgba(255,255,255,0.1);
+        }
+        
+        .premium-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+          animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        .premium-card {
+          background: linear-gradient(145deg, #FFFFFF, #F8F9FA);
+          border-radius: 16px;
+          box-shadow: 8px 8px 16px rgba(0,0,0,0.08), -8px -8px 16px rgba(255,255,255,0.9);
+          transition: all 0.3s ease;
+        }
+        
+        .premium-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 12px 12px 24px rgba(0,0,0,0.1), -12px -12px 24px rgba(255,255,255,0.9);
         }
         
         .neomorphic-card::before {
@@ -403,15 +557,17 @@ export default function Home() {
           <h1 
             className="premium-text"
             style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '18px',
-              fontWeight: 600,
-              color: "#2A2A2A",
+              fontFamily: 'Playfair Display, serif',
+              fontSize: '20px',
+              fontWeight: 700,
+              color: "#000000",
               margin: 0,
-              marginBottom: 8
+              marginBottom: 8,
+              letterSpacing: '0.5px',
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
             }}
           >
-            SkinIQ dev
+            SKinIQ
           </h1>
           <p 
             style={{
@@ -523,9 +679,6 @@ export default function Home() {
                 key={step.id}
                 className="neomorphic-card premium-hover"
                 style={{
-                  background: '#FFFFFF',
-                  borderRadius: 16,
-                  boxShadow: '4px 4px 8px rgba(0,0,0,0.12), -4px -4px 8px rgba(255,255,255,0.9)',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 6 : 0,
@@ -550,23 +703,7 @@ export default function Home() {
                       }
                     }}
                     id={`check-${stepId}`}
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 12,
-                      background: isCompleted 
-                        ? '#7C3AED'
-                        : '#D1D5DB',
-                      border: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease-in-out',
-                      boxShadow: 'none',
-                      position: 'relative',
-                      overflow: 'hidden'
-                    }}
+                    className={`premium-checkbox ${isCompleted ? 'completed' : 'incomplete'}`}
                   >
                     {isCompleted && (
                       <>
@@ -640,8 +777,7 @@ export default function Home() {
           style={{ marginBottom: 20 }}
         >
           <Link to="/plan">
-            <button className="cta-button pulse-glow premium-hover" style={{ width: '100%' }}>
-              <div className="cta-shimmer"></div>
+            <button className="premium-button">
               Открыть подробный план
             </button>
           </Link>
@@ -654,19 +790,15 @@ export default function Home() {
         >
           <Link to="/cart" className="flex-1">
             <div 
-              className="neomorphic-card premium-hover"
+              className="premium-card"
               style={{
                 width: '100%',
                 height: 72,
-                background: '#FFFFFF',
-                borderRadius: 16,
-                boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
+                cursor: 'pointer'
               }}
             >
               <svg 
@@ -700,19 +832,16 @@ export default function Home() {
           
           <Link to="/quiz" className="flex-1">
             <div 
-              className="neomorphic-card premium-hover premium-glow"
+              className="premium-card"
               style={{
                 width: '100%',
                 height: 72,
-                background: 'linear-gradient(135deg, #C4B5FD, #7C3AED)',
-                borderRadius: 16,
-                boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
+                background: 'linear-gradient(135deg, #000000, #1a1a1a)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
+                cursor: 'pointer'
               }}
             >
               <svg 
