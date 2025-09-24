@@ -352,6 +352,46 @@ export default function Home() {
           color: #6B6B6B;
           box-shadow: inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8);
         }
+        
+        .cta-button {
+          border-radius: 28px;
+          height: 64px;
+          background: linear-gradient(145deg, #FFECE9, #FFD6D6);
+          font-weight: 600;
+          font-size: 20px;
+          position: relative;
+          overflow: hidden;
+          border: none;
+          color: #2A2A2A;
+          font-family: 'Inter', sans-serif;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
+        }
+        
+        .cta-shimmer {
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          overflow: hidden;
+          pointer-events: none;
+        }
+        
+        .cta-shimmer::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.6) 45%, transparent 70%);
+          animation: ctaShimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes ctaShimmer {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(200%); }
+        }
       `}} />
       
       {/* Основной контент */}
@@ -597,28 +637,8 @@ export default function Home() {
           style={{ marginBottom: 20 }}
         >
           <Link to="/plan">
-            <button 
-              className="pearl-shimmer neomorphic-card"
-              style={{
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: 56,
-                border: 'none',
-                borderRadius: 999,
-                overflow: 'hidden',
-                background: 'linear-gradient(145deg, #FFECE9, #FFD6D6)',
-                color: '#2A2A2A',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '16px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)'
-              }}
-            >
+            <button className="cta-button" style={{ width: '100%' }}>
+              <div className="cta-shimmer"></div>
               Открыть подробный план
             </button>
           </Link>
