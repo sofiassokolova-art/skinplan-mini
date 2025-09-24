@@ -1,46 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 
-// Design Tokens
-const tokens = {
-  colors: {
-    BackgroundStart: "#FEFCFB",
-    BackgroundEnd: "#FFFFFF",
-    CardBase: "#FFFFFF",
-    TextPrimary: "#0F172A",
-    TextSecondary: "#475569",
-    TextLight: "#64748B",
-    ActiveTab: "#FEF2F2",
-    InactiveTab: "#F1F5F9",
-    ProgressGradient1: "#7C3AED",
-    ProgressGradient2: "#DB2777",
-    CtaGradient1: "#FEF2F2",
-    CtaGradient2: "#FECACA",
-    CheckboxGradient1: "#C4B5FD",
-    CheckboxGradient2: "#7C3AED",
-    IconPink: "#EC4899",
-    IconLavender: "#7C3AED",
-    PremiumGold: "#F59E0B",
-    PremiumAccent: "#5B21B6",
-    DarkAccent: "#1E1B4B",
-    LightAccent: "#F8FAFC"
-  },
-  shadows: {
-    NeomorphicOut: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
-    NeomorphicIn: "inset 2px 2px 4px rgba(0,0,0,0.1), inset -2px -2px 4px rgba(255,255,255,0.8)",
-    Card: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
-    Switch: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
-    Button: "3px 3px 6px rgba(0,0,0,0.08), -3px -3px 6px rgba(255,255,255,0.9)",
-    ProgressInset: "inset 1px 1px 2px rgba(0,0,0,0.1)",
-    CheckboxGlow: "0 0 8px rgba(238, 207, 255, 0.3), 0 2px 4px rgba(0,0,0,0.1)"
-  },
-  radii: {
-    Switch: 12,
-    Card: 16,
-    Button: 16,
-    Icon: 12
-  }
-};
 
 // Компонент кольцевого прогресса
 function CircularProgress({ percentage, size = 76 }: { percentage: number; size?: number }) {
@@ -446,6 +406,7 @@ export default function Home() {
               fontFamily: 'Inter, sans-serif',
               fontSize: '18px',
               fontWeight: 600,
+              color: "#2A2A2A",
               margin: 0,
               marginBottom: 8
             }}
