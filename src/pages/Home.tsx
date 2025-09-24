@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 
-
 // Компонент кольцевого прогресса
 function CircularProgress({ percentage, size = 76 }: { percentage: number; size?: number }) {
   const [animatedPercentage, setAnimatedPercentage] = useState(0);
@@ -34,7 +33,7 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Прогресс круг с градиентом от светло-лавандового к насыщенному */}
+        {/* Прогресс круг с градиентом */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -56,594 +55,203 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
           </linearGradient>
         </defs>
       </svg>
-      {/* Процент в центре */}
+      {/* Текст в центре */}
       <div 
         className="absolute inset-0 flex items-center justify-center"
-        style={{ 
-          fontSize: '12px', 
-          fontWeight: 500, 
-          color: '#1E1E1E',
-          lineHeight: '12px'
+        style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: '16px',
+          fontWeight: 600,
+          color: '#1E1E1E'
         }}
       >
-        {Math.round(animatedPercentage)}%
+        {animatedPercentage}%
       </div>
     </div>
   );
 }
 
-
 export default function Home() {
-  const [activeTime, setActiveTime] = useState<'morning' | 'evening'>('morning');
-  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>(() => {
-    // Фиксированное состояние как в референсе: все шаги кроме SPF завершены
-    return {
-      'morning-cleanser-0': true,
-      'morning-toner-1': true,
-      'morning-serum-2': true,
-      'morning-moisturizer-3': true,
-      'morning-spf-4': false,
-      'evening-cleanser-0': true,
-      'evening-toner-1': true,
-      'evening-serum-2': true,
-      'evening-moisturizer-3': true,
-      'evening-spf-4': false
-    };
-  });
+  const [activeSegment, setActiveSegment] = useState<'morning' | 'evening'>('morning');
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
 
-  // Функция для переключения статуса выполнения шага
   const toggleStepCompleted = (stepId: string) => {
-    const newCompletedSteps = {
-      ...completedSteps,
-      [stepId]: !completedSteps[stepId]
-    };
-    setCompletedSteps(newCompletedSteps);
-    
-    // Сохраняем в localStorage
-    try {
-      localStorage.setItem('skiniq.routine_progress', JSON.stringify(newCompletedSteps));
-    } catch (error) {
-      console.error('Ошибка сохранения прогресса:', error);
-    }
+    setCompletedSteps(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(stepId)) {
+        newSet.delete(stepId);
+      } else {
+        newSet.add(stepId);
+      }
+      return newSet;
+    });
   };
-  
-  // Имя пользователя не используется в референсе
 
-
-
-  // Данные для карточек ухода
-  const careSteps = [
-    { 
-      id: 'cleanser', 
-      name: 'Очищение', 
-      description: 'Очищающее средство', 
-      icon: 'cleanser' as const
-    },
-    { 
-      id: 'toner', 
-      name: 'Тонизирование', 
-      description: 'Тоник', 
-      icon: 'toner' as const
-    },
-    { 
-      id: 'serum', 
-      name: 'Сыворотка', 
-      description: 'С витамином C', 
-      icon: 'serum' as const
-    },
-    { 
-      id: 'moisturizer', 
-      name: 'Увлажнение', 
-      description: 'Увлажняющий крем', 
-      icon: 'moisturizer' as const
-    },
-    { 
-      id: 'spf', 
-      name: 'SPF', 
-      description: 'Солнцезащитный крем', 
-      icon: 'spf' as const
-    }
+  const steps = [
+    { id: 'cleanser', name: 'Очищение кожи', icon: '🧴' },
+    { id: 'antioxidants', name: 'Антиоксиданты', icon: '✨' },
+    { id: 'moisturizer', name: 'Увлажнение', icon: '💧' },
+    { id: 'eye_cream', name: 'Крем для глаз', icon: '👁️' }
   ];
+
+  const completedCount = completedSteps.size;
 
   return (
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: '#FFFFFF'
+        background: 'linear-gradient(135deg, #FDECF4 0%, #F6F9FF 100%)'
       }}
     >
       
       {/* Кастомные стили */}
       <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        
-        
-        .segment-container {
+        .glass-card {
           background: rgba(255, 255, 255, 0.7);
           backdrop-filter: blur(12px);
           border-radius: 28px;
-          padding: 4px;
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          transition: all 0.3s ease;
         }
         
-        .segment-button {
-          flex: 1;
-          border: none;
+        .glass-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        
+        .step-icon {
+          width: 40px;
+          height: 40px;
           border-radius: 20px;
-          font-family: 'Inter', sans-serif;
-          font-size: 16px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
-        }
-        
-        .segment-button.active {
-          background: linear-gradient(135deg, #EC4899, #8B5CF6);
-          color: #FFFFFF;
-          box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-        }
-        
-        .segment-button.inactive {
-          background: transparent;
-          color: #6B7280;
-        }
-        
-        .segment-button.inactive:hover {
-          background: rgba(236, 72, 153, 0.1);
-          color: #1E1E1E;
-        }
-        
-        
-        
-        .neomorphic-card {
-          position: relative;
-          background: rgba(255, 255, 255, 0.7);
-          backdrop-filter: blur(12px);
-          border-radius: 28px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          transition: all 0.3s ease;
-        }
-        
-        .neomorphic-card:hover {
-          transform: none;
-          box-shadow: none;
-        }
-        
-        .premium-checkbox {
-          width: 24px;
-          height: 24px;
-          border-radius: 12px;
-          border: none;
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(8px);
           display: flex;
           align-items: center;
           justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s ease-in-out;
-          position: relative;
-          overflow: hidden;
-        }
-        
-        .premium-checkbox.completed {
-          background: linear-gradient(135deg, #EC4899, #8B5CF6);
-          box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-        }
-        
-        .premium-checkbox.incomplete {
-          background: rgba(255, 255, 255, 0.5);
-          backdrop-filter: blur(8px);
+          font-size: 18px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         
-        
-        .premium-button {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          height: 64px;
-          border: none;
-          border-radius: 28px;
-          overflow: hidden;
+        .gradient-text {
           background: linear-gradient(135deg, #EC4899, #8B5CF6);
-          color: #FFFFFF;
-          font-family: 'Inter', sans-serif;
-          font-size: 18px;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        .cta-button {
+          background: linear-gradient(135deg, #EC4899, #8B5CF6);
+          border-radius: 28px;
+          height: 64px;
           font-weight: 600;
+          font-size: 18px;
+          color: #FFFFFF;
+          border: none;
           cursor: pointer;
           transition: all 0.3s ease;
           box-shadow: 0 8px 24px rgba(236, 72, 153, 0.4);
         }
         
-        .premium-button:hover {
+        .cta-button:hover {
           transform: translateY(-2px);
           background: linear-gradient(135deg, #F472B6, #A855F7);
           box-shadow: 0 12px 32px rgba(236, 72, 153, 0.5);
         }
         
-        
-        .premium-card {
-          background: rgba(255, 255, 255, 0.7);
+        .profile-badge {
+          background: rgba(255, 255, 255, 0.8);
           backdrop-filter: blur(12px);
-          border-radius: 28px;
+          border-radius: 20px;
+          padding: 8px 16px;
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          transition: all 0.3s ease;
         }
-        
-        .premium-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-        }
-        
-        
-        .neomorphic-card::after {
-          content: '';
-          position: absolute;
-          top: 1px;
-          left: 1px;
-          right: 1px;
-          bottom: 1px;
-          border-radius: inherit;
-          background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.08) 100%);
-          pointer-events: none;
-        }
-        
-        .segment-container {
-          background: #FDF7F6;
-          border-radius: 28px;
-          padding: 4px;
-          box-shadow: 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
-        }
-        
-        .segment-button {
-          flex: 1;
-          border-radius: 24px;
-          border: none;
-          font-family: 'Inter', sans-serif;
-          font-size: 16px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 200ms ease;
-          position: relative;
-        }
-        
-        .segment-button.active {
-          background: linear-gradient(145deg, #FFE2E2, #FFD6D6);
-          color: #2A2A2A;
-          box-shadow: 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
-        }
-        
-        .segment-button.inactive {
-          background: transparent;
-          color: #6B6B6B;
-          box-shadow: inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8);
-        }
-        
-        .cta-button {
-          border-radius: 28px;
-          height: 64px;
-          background: linear-gradient(145deg, #FFECE9, #FFD6D6);
-          font-weight: 600;
-          font-size: 20px;
-          position: relative;
-          overflow: hidden;
-          border: none;
-          color: #2A2A2A;
-          font-family: 'Inter', sans-serif;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
-        }
-        
-        
-        
-        
       `}} />
       
       {/* Основной контент */}
       <div className="relative z-10 px-6 py-8">
-        {/* Бренд заголовок */}
-        <div className="text-left" style={{ marginTop: 32, marginBottom: 16 }}>
-          <h1 
-            className="bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-600"
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '28px',
-              fontWeight: 600,
-              margin: 0,
-              marginBottom: 8,
-              letterSpacing: '0.5px'
-            }}
-          >
-            SKinIQ
-          </h1>
-          <p 
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '14px',
-              fontWeight: 400,
-              color: '#1E1E1E',
-              margin: 0,
-              marginBottom: 16,
-              lineHeight: '120%'
-            }}
-          >
-            мини-приложение
-          </p>
-          <h2 
-            style={{
-              fontFamily: 'Playfair Display, serif',
-              fontSize: '24px',
-              fontWeight: 700,
-              color: '#0F172A',
-              margin: 0,
-              marginBottom: 8,
-              lineHeight: '120%'
-            }}
-          >
-            Привет, Соня!
-          </h2>
-          <p 
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '16px',
-              fontWeight: 400,
-              color: '#6B7280',
-              margin: 0,
-              lineHeight: '120%'
-            }}
-          >
-            Твой уход на сегодня
-          </p>
+        
+        {/* Верхняя панель */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-semibold">
+              Е
+            </div>
+            <div className="profile-badge">
+              <div className="text-sm font-semibold text-gray-800">78%</div>
+              <div className="text-xs text-gray-600">Здоровье кожи</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center">
+              🔔
+            </div>
+            <div className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center">
+              ⚏
+            </div>
+          </div>
         </div>
 
-        {/* Верхняя строка: переключатель + прогресс */}
-        <div 
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 24,
-            marginBottom: 24
-          }}
-        >
-          {/* Переключатель Утро/Вечер */}
-          <div 
-            className="segment-container"
-            style={{
-              flex: 1,
-              maxWidth: '70%',
-              height: 44,
-              display: 'flex',
-              alignItems: 'center'
-            }}
-          >
-            <button
-              onClick={() => setActiveTime('morning')}
-              className={`segment-button ${activeTime === 'morning' ? 'active' : 'inactive'}`}
-              style={{ height: 36 }}
-            >
-              Утро
-            </button>
-            <button
-              onClick={() => setActiveTime('evening')}
-              className={`segment-button ${activeTime === 'evening' ? 'active' : 'inactive'}`}
-              style={{ height: 36 }}
-            >
-              Вечер
+        {/* Приветствие */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-medium text-gray-700 mb-2">Привет, Елена</h1>
+          <h2 className="text-3xl font-bold gradient-text mb-4">
+            Твой план ухода готов.
+          </h2>
+          <div className="w-12 h-12 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center mx-auto">
+            <span className="text-2xl">+</span>
+          </div>
+        </div>
+
+        {/* Основная карточка */}
+        <div className="glass-card p-6 mb-8 relative">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="text-sm text-gray-500 mb-1">24 дек</div>
+              <h3 className="text-xl font-bold text-gray-800">Сегодняшний уход</h3>
+            </div>
+            <button className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-sm font-medium text-gray-700">
+              Читать план >
             </button>
           </div>
 
-          {/* Прогресс-круг */}
-          <div 
-            style={{
-              width: 76,
-              height: 76,
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.7)',
-              backdropFilter: 'blur(12px)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginLeft: 16,
-              position: 'relative'
-            }}
-          >
-            <CircularProgress 
-              percentage={80} 
-              size={76}
-            />
+          {/* Продукт */}
+          <div className="relative mb-6">
+            <div className="w-16 h-24 bg-gradient-to-b from-green-200 to-green-300 rounded-lg mx-auto relative z-10 flex items-center justify-center">
+              <span className="text-green-600 font-bold text-sm">act</span>
             </div>
           </div>
 
-        {/* Карточки ухода */}
-        <div style={{ marginBottom: 24 }}>
-          {careSteps.map((step, index) => {
-            const stepId = `${activeTime}-${step.id}-${index}`;
-                const isCompleted = completedSteps[stepId] || false;
-
-                return (
-              <div 
-                key={step.id}
-                className="neomorphic-card"
-                style={{
-                  height: 64,
-                  padding: '16px',
-                  marginBottom: index < careSteps.length - 1 ? 6 : 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  border: '1px solid rgba(255,255,255,0.4)',
-                  position: 'relative'
-                }}
-              >
-                {/* Левая часть: чекбокс + текст */}
-                <div className="flex items-center gap-4">
-                  {/* Чекбокс слева (глянцевый шарик) */}
-                    <button
-                      onClick={() => {
-                      toggleStepCompleted(stepId);
-                    }}
-                    id={`check-${stepId}`}
-                    className={`premium-checkbox ${isCompleted ? 'completed' : 'incomplete'}`}
-                  >
-                    {isCompleted && (
-                      <svg 
-                        width="10" 
-                        height="10" 
-                        viewBox="0 0 20 20" 
-                        fill="none"
-                        style={{ position: 'relative', zIndex: 1 }}
-                      >
-                        <path 
-                          d="M5 13l4 4L19 7" 
-                          stroke="#FFFFFF" 
-                          strokeWidth="2" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                  
-                  {/* Текст */}
-                  <div>
-                    <h3 
-                      style={{
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '16px',
-                        fontWeight: 700,
-                        color: '#1E1E1E',
-                        margin: 0,
-                        marginBottom: 2
-                      }}
-                    >
-                      {step.name}
-                    </h3>
-                    <p 
-                      style={{
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '14px',
-                        fontWeight: 400,
-                        color: '#1E1E1E',
-                        margin: 0
-                      }}
-                    >
-                      {step.description}
-                    </p>
+          {/* Нижняя часть карточки */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Левая часть - Шаги */}
+            <div>
+              <div className="text-sm font-semibold text-gray-800 mb-3">{completedCount}/4 Шага</div>
+              <div className="grid grid-cols-2 gap-2">
+                {steps.map((step) => (
+                  <div key={step.id} className="step-icon">
+                    {step.icon}
                   </div>
-                </div>
-
+                ))}
               </div>
-            );
-          })}
-        </div>
+            </div>
 
-        {/* CTA Кнопка */}
-        <div 
-          style={{ marginBottom: 20 }}
-        >
-          <Link to="/plan">
-            <button className="premium-button">
-              Открыть подробный план
-            </button>
-          </Link>
-        </div>
-
-        {/* Нижние кнопки */}
-        <div 
-          className="flex gap-4"
-          style={{ marginTop: 20, marginBottom: 24 }}
-        >
-          <Link to="/cart" className="flex-1">
-            <div 
-              className="premium-card"
-              style={{
-                width: '100%',
-                height: 72,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <svg 
-                width="24" 
-                height="24" 
-                viewBox="0 0 24 24" 
-                fill="none"
-                style={{ marginBottom: 6 }}
-              >
-                <path
-                  d="M3 3H5L5.4 5M7 13H17L21 5H5.4M7 13L5.4 5M7 13L4.7 15.3C4.3 15.7 4.6 16.5 5.1 16.5H17M17 13V16.5M9 19.5C9.8 19.5 10.5 20.2 10.5 21S9.8 22.5 9 22.5 7.5 21.8 7.5 21 8.2 19.5 9 19.5ZM20 19.5C20.8 19.5 21.5 20.2 21.5 21S20.8 22.5 20 22.5 18.5 21.8 18.5 21 19.2 19.5 20 19.5Z"
-                  stroke="#B45309"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-              </svg>
-              <span 
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '12px',
-                  fontWeight: 400,
-                  color: '#1E1E1E'
-                }}
-              >
-                Корзина
-              </span>
+            {/* Правая часть - Прогресс */}
+            <div>
+              <div className="text-sm font-semibold text-gray-800 mb-3">Здоровье кожи</div>
+              <CircularProgress percentage={78} size={76} />
+            </div>
           </div>
-          </Link>
-          
-          <Link to="/quiz" className="flex-1">
-            <div 
-              className="premium-card"
-              style={{
-                width: '100%',
-                height: 72,
-                background: 'linear-gradient(135deg, #EC4899, #8B5CF6)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <svg 
-                width="24" 
-                height="24" 
-                viewBox="0 0 24 24" 
-                fill="none"
-                style={{ marginBottom: 6 }}
-              >
-                <path
-                  d="M20 21V19C20 17.9 19.1 17 18 17H6C4.9 17 4 17.9 4 19V21M16 7C16 9.2 14.2 11 12 11S8 9.2 8 7 9.8 3 12 3 16 4.8 16 7Z"
-                  stroke="#FFFFFF"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-              </svg>
-              <span 
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '12px',
-                  fontWeight: 400,
-                  color: '#FFFFFF'
-                }}
-              >
-                Анкета
-              </span>
-      </div>
-          </Link>
         </div>
+
+        {/* CTA кнопка */}
+        <button className="cta-button w-full flex items-center justify-center gap-3">
+          <span>📷</span>
+          <span>Начать сканирование</span>
+          <span>→</span>
+        </button>
       </div>
     </div>
   );
