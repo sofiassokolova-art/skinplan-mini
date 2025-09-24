@@ -322,6 +322,37 @@ export default function Home() {
           background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.08) 100%);
           pointer-events: none;
         }
+        
+        .segment-container {
+          background: #FDF7F6;
+          border-radius: 28px;
+          padding: 4px;
+          box-shadow: 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
+        }
+        
+        .segment-button {
+          flex: 1;
+          border-radius: 24px;
+          border: none;
+          font-family: 'Inter', sans-serif;
+          font-size: 16px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 200ms ease;
+          position: relative;
+        }
+        
+        .segment-button.active {
+          background: linear-gradient(145deg, #FFE2E2, #FFD6D6);
+          color: #2A2A2A;
+          box-shadow: 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
+        }
+        
+        .segment-button.inactive {
+          background: transparent;
+          color: #6B6B6B;
+          box-shadow: inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8);
+        }
       `}} />
       
       {/* Основной контент */}
@@ -392,66 +423,30 @@ export default function Home() {
         >
           {/* Переключатель Утро/Вечер */}
           <div 
-            className="neomorphic-card"
+            className="segment-container"
             style={{
               flex: 1,
               maxWidth: '70%',
-              background: '#FDF7F6',
-              borderRadius: 24,
               height: 44,
-              padding: 4,
               display: 'flex',
-              alignItems: 'center',
-              boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.15), inset -4px -4px 8px rgba(255,255,255,0.7)'
+              alignItems: 'center'
             }}
           >
-              <button
-                onClick={() => setActiveTime('morning')}
-              style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '16px',
-                fontWeight: 500,
-                color: activeTime === 'morning' ? '#2A2A2A' : '#8C8C8C',
-                background: activeTime === 'morning' 
-                  ? 'linear-gradient(145deg, #FFE2E2, #FFD6D6)'
-                  : 'transparent',
-                border: 'none',
-                borderRadius: 999,
-                flex: 1,
-                height: 36,
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: activeTime === 'morning' 
-                  ? 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
-                  : 'none'
-              }}
+            <button
+              onClick={() => setActiveTime('morning')}
+              className={`segment-button ${activeTime === 'morning' ? 'active' : 'inactive'}`}
+              style={{ height: 36 }}
             >
               Утро
-              </button>
-              <button
-                onClick={() => setActiveTime('evening')}
-              style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '16px',
-                fontWeight: 500,
-                color: activeTime === 'evening' ? '#2A2A2A' : '#8C8C8C',
-                background: activeTime === 'evening' 
-                  ? 'linear-gradient(145deg, #FFE2E2, #FFD6D6)'
-                  : 'transparent',
-                border: 'none',
-                borderRadius: 999,
-                flex: 1,
-                height: 36,
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: activeTime === 'evening' 
-                  ? 'inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.8)'
-                  : 'none'
-              }}
+            </button>
+            <button
+              onClick={() => setActiveTime('evening')}
+              className={`segment-button ${activeTime === 'evening' ? 'active' : 'inactive'}`}
+              style={{ height: 36 }}
             >
               Вечер
-              </button>
-            </div>
+            </button>
+          </div>
 
           {/* Прогресс-круг */}
           <div 
