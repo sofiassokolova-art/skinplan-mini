@@ -149,11 +149,7 @@ export default function Home() {
     <div 
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: `radial-gradient(circle at 30% 20%, #F7C2D4, transparent 60%),
-                      radial-gradient(circle at 70% 80%, #C2D7F7, transparent 60%),
-                      linear-gradient(135deg, #FDECF4 0%, #F6F9FF 100%)`,
-        backgroundSize: '200% 200%',
-        animation: 'gradientMove 15s ease-in-out infinite alternate'
+        background: '#FFFFFF'
       }}
     >
       
@@ -161,113 +157,7 @@ export default function Home() {
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
         
-        @keyframes gradientMove {
-          0% { 
-            background-position: 0% 0%; 
-          }
-          100% { 
-            background-position: 100% 100%; 
-          }
-        }
         
-        @keyframes pearlShine {
-          0% {
-            background: linear-gradient(135deg, #FFFFFF 0%, #F8F4F1 50%, #FADADD 100%);
-          }
-          50% {
-            background: linear-gradient(135deg, #F8F4F1 0%, #FFFFFF 50%, #FADADD 100%);
-          }
-          100% {
-            background: linear-gradient(135deg, #FFFFFF 0%, #F8F4F1 50%, #FADADD 100%);
-          }
-        }
-        
-        @keyframes shine {
-          0% { 
-            background-position: 0% center; 
-          }
-          100% { 
-            background-position: 200% center; 
-          }
-        }
-        
-        @keyframes pearlShimmer {
-          0% {
-            left: -100%;
-          }
-          50% {
-            left: 100%;
-          }
-          100% {
-            left: 100%;
-          }
-        }
-        
-        .shimmer-button::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          border-radius: inherit;
-          background: linear-gradient(
-            90deg,
-            transparent 0%,
-            transparent 30%,
-            rgba(255,255,255,0.4) 50%,
-            transparent 70%,
-            transparent 100%
-          );
-          transform: translateX(-100%);
-          animation: shimmer 3s ease-in-out infinite;
-        }
-        
-        .pearl-shimmer::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-          animation: pearlShimmer 4s ease-in-out infinite;
-        }
-        
-        @keyframes shimmer {
-          100% { transform: translateX(100%); }
-        }
-        
-        .pearl-button::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-          animation: pearlShimmer 3s ease-in-out infinite;
-        }
-        
-        .scale-up {
-          animation: scaleUp 0.2s ease-in-out;
-        }
-        
-        @keyframes scaleUp {
-          0% {
-            transform: scale(0.8);
-            opacity: 0;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        
-        .pressed {
-          transform: scale(0.98);
-          transition: transform 0.1s ease;
-        }
         
         .segment-container {
           background: rgba(255, 255, 255, 0.7);
@@ -306,10 +196,6 @@ export default function Home() {
           color: #1E1E1E;
         }
         
-        .premium-glow {
-          background: linear-gradient(145deg, #FFFFFF, #F8F9FA);
-          box-shadow: 8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.9);
-        }
         
         
         .neomorphic-card {
@@ -378,16 +264,6 @@ export default function Home() {
           box-shadow: 0 12px 32px rgba(236, 72, 153, 0.5);
         }
         
-        .premium-button::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-          animation: shimmer 3s ease-in-out infinite;
-        }
         
         .premium-card {
           background: rgba(255, 255, 255, 0.7);
@@ -462,46 +338,9 @@ export default function Home() {
           box-shadow: 4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8);
         }
         
-        .cta-shimmer {
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          overflow: hidden;
-          pointer-events: none;
-        }
-        
-        .cta-shimmer::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.6) 45%, transparent 70%);
-          animation: ctaShimmer 3s ease-in-out infinite;
-        }
-        
-        @keyframes ctaShimmer {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(200%); }
-        }
         
         
         
-        .premium-text {
-          color: #1E1E1E;
-        }
-        
-        
-        
-        .pulse-glow {
-          animation: pulseGlow 2s ease-in-out infinite;
-        }
-        
-        @keyframes pulseGlow {
-          0%, 100% { box-shadow: 0 0 25px rgba(124, 58, 237, 0.4), 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.9); }
-          50% { box-shadow: 0 0 35px rgba(124, 58, 237, 0.6), 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.9); }
-        }
       `}} />
       
       {/* Основной контент */}
@@ -648,12 +487,6 @@ export default function Home() {
                     <button
                       onClick={() => {
                       toggleStepCompleted(stepId);
-                      // Добавляем scale-up анимацию
-                      const element = document.getElementById(`check-${stepId}`);
-                      if (element) {
-                        element.classList.add('scale-up');
-                        setTimeout(() => element.classList.remove('scale-up'), 200);
-                      }
                     }}
                     id={`check-${stepId}`}
                     className={`premium-checkbox ${isCompleted ? 'completed' : 'incomplete'}`}
@@ -664,7 +497,6 @@ export default function Home() {
                         height="10" 
                         viewBox="0 0 20 20" 
                         fill="none"
-                        className="scale-up"
                         style={{ position: 'relative', zIndex: 1 }}
                       >
                         <path 
