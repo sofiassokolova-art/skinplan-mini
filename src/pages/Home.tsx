@@ -51,8 +51,8 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#000000" />
-            <stop offset="100%" stopColor="#1a1a1a" />
+            <stop offset="0%" stopColor="#F6D6C8" />
+            <stop offset="100%" stopColor="#F0C4B0" />
           </linearGradient>
         </defs>
       </svg>
@@ -62,7 +62,7 @@ function CircularProgress({ percentage, size = 76 }: { percentage: number; size?
         style={{ 
           fontSize: '12px', 
           fontWeight: 500, 
-          color: '#6B6B6B',
+          color: '#1E1E1E',
           lineHeight: '12px'
         }}
       >
@@ -291,19 +291,19 @@ export default function Home() {
         }
         
         .segment-button.active {
-          background: linear-gradient(145deg, #000000, #1a1a1a);
-          color: #FFFFFF;
-          box-shadow: 4px 4px 8px rgba(0,0,0,0.2), -2px -2px 4px rgba(255,255,255,0.1);
+          background: linear-gradient(145deg, #C7B7F4, #B8A5F0);
+          color: #1E1E1E;
+          box-shadow: 4px 4px 8px rgba(199, 183, 244, 0.3), -2px -2px 4px rgba(255,255,255,0.9);
         }
         
         .segment-button.inactive {
           background: transparent;
-          color: #6B7280;
+          color: #1E1E1E;
         }
         
         .segment-button.inactive:hover {
-          background: rgba(0,0,0,0.05);
-          color: #374151;
+          background: rgba(199, 183, 244, 0.1);
+          color: #1E1E1E;
         }
         
         .premium-glow {
@@ -348,8 +348,8 @@ export default function Home() {
         }
         
         .premium-checkbox.completed {
-          background: linear-gradient(145deg, #000000, #1a1a1a);
-          box-shadow: 4px 4px 8px rgba(0,0,0,0.2), -2px -2px 4px rgba(255,255,255,0.1);
+          background: linear-gradient(145deg, #F6D6C8, #F0C4B0);
+          box-shadow: 4px 4px 8px rgba(246, 214, 200, 0.3), -2px -2px 4px rgba(255,255,255,0.9);
         }
         
         .premium-checkbox.incomplete {
@@ -368,19 +368,19 @@ export default function Home() {
           border: none;
           border-radius: 999px;
           overflow: hidden;
-          background: linear-gradient(145deg, #000000, #1a1a1a);
-          color: #FFFFFF;
+          background: linear-gradient(145deg, #FADADD, #F8C6C6);
+          color: #1E1E1E;
           font-family: 'Inter', sans-serif;
           font-size: 16px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.3s ease;
-          box-shadow: 8px 8px 16px rgba(0,0,0,0.2), -8px -8px 16px rgba(255,255,255,0.1);
+          box-shadow: 8px 8px 16px rgba(248, 198, 198, 0.3), -8px -8px 16px rgba(255,255,255,0.9);
         }
         
         .premium-button:hover {
           transform: translateY(-2px);
-          box-shadow: 12px 12px 24px rgba(0,0,0,0.25), -12px -12px 24px rgba(255,255,255,0.1);
+          box-shadow: 12px 12px 24px rgba(248, 198, 198, 0.4), -12px -12px 24px rgba(255,255,255,0.9);
         }
         
         .premium-button::before {
@@ -504,7 +504,7 @@ export default function Home() {
         }
         
         .premium-text {
-          color: #000000;
+          color: #1E1E1E;
         }
         
         .floating-animation {
@@ -536,7 +536,7 @@ export default function Home() {
               fontFamily: 'Playfair Display, serif',
               fontSize: '20px',
               fontWeight: 700,
-              color: "#000000",
+              color: "#1E1E1E",
               margin: 0,
               marginBottom: 8,
               letterSpacing: '0.5px',
@@ -550,7 +550,7 @@ export default function Home() {
               fontFamily: 'Inter, sans-serif',
               fontSize: '14px',
               fontWeight: 400,
-              color: '#8C8C8C',
+              color: '#1E1E1E',
               margin: 0,
               marginBottom: 16,
               lineHeight: '120%'
@@ -722,7 +722,7 @@ export default function Home() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: '16px',
                         fontWeight: 700,
-                        color: '#0F172A',
+                        color: '#1E1E1E',
                         margin: 0,
                         marginBottom: 2
                       }}
@@ -734,7 +734,7 @@ export default function Home() {
                         fontFamily: 'Inter, sans-serif',
                         fontSize: '14px',
                         fontWeight: 400,
-                        color: '#475569',
+                        color: '#1E1E1E',
                         margin: 0
                       }}
                     >
@@ -798,7 +798,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#475569'
+                  color: '#1E1E1E'
                 }}
               >
                 Корзина
@@ -812,7 +812,7 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 72,
-                background: 'linear-gradient(135deg, #000000, #1a1a1a)',
+                background: 'linear-gradient(135deg, #F6D6C8, #F0C4B0)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -841,7 +841,7 @@ export default function Home() {
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   fontWeight: 400,
-                  color: '#FFFFFF'
+                  color: '#1E1E1E'
                 }}
               >
                 Анкета
