@@ -2,409 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  html, body, #root { 
-    height: 100%; 
-    font-family: 'Inter', 'Neue Haas Grotesk', system-ui, sans-serif;
-  }
-  
-  body { 
-    @apply text-text-primary antialiased bg-pearl-gradient;
-    position: relative;
-    min-height: 100vh;
-  }
-  
-  /* Премиальный перламутровый фон согласно фикс-гайду */
-  body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, 
-      #FDFCFB 0%,
-      #F7F1EF 100%
-    );
-    z-index: -2;
-  }
-  
-  /* Лёгкий блеск (radial highlight) с shimmer */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.1) 50%,
-      transparent
-    );
-    background-size: 200% 100%;
-    animation: backgroundShimmer 8s linear infinite;
-    z-index: -1;
-  }
-  
-  /* Типографика */
-  h1, h2, h3 {
-    font-family: 'Playfair Display', serif;
-    @apply text-text-primary;
-    font-weight: 500;
-  }
-  
-  h1 {
-    @apply text-3xl md:text-4xl;
-    line-height: 1.2;
-  }
-  
-  h2 {
-    @apply text-2xl md:text-3xl;
-    line-height: 1.3;
-  }
-  
-  h3 {
-    @apply text-xl md:text-2xl;
-    line-height: 1.4;
-  }
-  
-  p, span, div {
-    @apply text-text-secondary;
-    line-height: 1.6;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-@layer components {
-  /* Премиальные карточки с эндоморфизмом */
-  .card {
-    @apply rounded-card bg-pearl-card backdrop-blur-sm shadow-neumorphism;
-    border: 1px solid rgba(230, 202, 223, 0.2);
-    transition: all 0.3s ease;
-  }
-  
-  .card:hover {
-    @apply shadow-glow;
-    transform: translateY(-2px);
-  }
-  
-  .card-active {
-    @apply shadow-neumorphism-inset;
-    border: 2px solid #E6CADF;
-    background: linear-gradient(135deg, #F5F1ED, #FADADD);
-  }
-  
-  /* Премиальные кнопки-капсулы */
-  .btn {
-    @apply inline-flex items-center justify-center rounded-btn px-6 py-3 font-sans font-semibold;
-    transition: all 0.3s ease;
-  }
-  
-  .btn-primary {
-    @apply btn text-text-primary shadow-neumorphism;
-    background: linear-gradient(135deg, #FBD6CF, #F7E6E2);
-    border: 1px solid rgba(230, 202, 223, 0.3);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .btn-primary::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transform: rotate(45deg);
-    transition: all 0.6s ease;
-    opacity: 0;
-  }
-  
-  .btn-primary:hover::before {
-    opacity: 1;
-    animation: shimmer 1.5s ease-in-out infinite;
-  }
-  
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 40px rgba(230, 202, 223, 0.6), 12px 12px 24px rgba(230, 202, 223, 0.15), -12px -12px 24px rgba(255, 255, 255, 0.9);
-  }
-  
-  .btn-primary:active {
-    @apply shadow-neumorphism-inset;
-    transform: translateY(0);
-  }
-  
-  /* Премиальные чипы для выбора */
-  .chip {
-    @apply rounded-btn px-4 py-2 text-sm font-sans font-medium;
-    @apply bg-pearl-card text-text-secondary shadow-neumorphism;
-    border: 1px solid rgba(230, 202, 223, 0.2);
-    transition: all 0.3s ease;
-  }
-  
-  .chip:hover {
-    @apply text-text-primary;
-    transform: translateY(-1px);
-  }
-  
-  .chip-active {
-    background: linear-gradient(135deg, #FBD6CF, #F7E6E2);
-    color: #1C1C1C;
-    box-shadow: inset 2px 2px 6px rgba(0,0,0,0.1), inset -2px -2px 6px rgba(255,255,255,0.8);
-    border: 2px solid #E6CADF;
-  }
-  
-  /* Поля ввода */
-  .input {
-    @apply rounded-input px-4 py-3 bg-pearl-card;
-    @apply text-text-primary placeholder-text-secondary;
-    @apply shadow-neumorphism-inset;
-    border: 1px solid rgba(230, 202, 223, 0.2);
-    transition: all 0.3s ease;
-  }
-  
-  .input:focus {
-    @apply outline-none;
-    border-color: #E6CADF;
-    box-shadow: 0 0 0 3px rgba(230, 202, 223, 0.1);
-  }
-  
-  /* Контейнер с максимальной шириной 85% */
-  .container-premium {
-    @apply mx-auto px-4;
-    max-width: 85%;
-  }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/* Премиальная анимация перламутрового блеска */
-@keyframes pearlShimmer {
-  0% {
-    transform: rotate(0deg) scale(1);
-    opacity: 0.1;
-  }
-  25% {
-    transform: rotate(90deg) scale(1.05);
-    opacity: 0.15;
-  }
-  50% {
-    transform: rotate(180deg) scale(0.98);
-    opacity: 0.08;
-  }
-  75% {
-    transform: rotate(270deg) scale(1.02);
-    opacity: 0.12;
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
-    opacity: 0.1;
-  }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
 }
 
-/* Мягкое появление элементов */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Glassmorphism utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-/* Элегантное пульсирование для активных элементов */
-@keyframes gentlePulse {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(230, 202, 223, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(230, 202, 223, 0.5);
-  }
+.glass-strong {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-/* Премиальные анимации SkinIQ */
-
-/* 1. Появление экрана */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Gradient backgrounds */
+.gradient-bg {
+  background: linear-gradient(135deg, 
+    #A58BFF 0%, 
+    #6C4BFF 25%, 
+    #FF6B9D 50%, 
+    #4ECDC4 75%, 
+    #A58BFF 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
 }
 
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-/* 2. Радиальный перелив фона */
-@keyframes pearlRadialShimmer {
-  0% {
-    background-position: 0% 50%;
-    opacity: 0.1;
-  }
-  50% {
-    background-position: 100% 50%;
-    opacity: 0.2;
-  }
-  100% {
-    background-position: 0% 50%;
-    opacity: 0.1;
-  }
+/* Grid pattern overlay */
+.grid-overlay {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  animation: gridMove 20s linear infinite;
 }
 
-/* 3. Жидкое морфинг переключателя */
-@keyframes liquidMorph {
-  0% {
-    transform: scale(1);
-    filter: blur(0px);
-  }
-  50% {
-    transform: scale(1.02);
-    filter: blur(0.5px);
-  }
-  100% {
-    transform: scale(1);
-    filter: blur(0px);
-  }
+@keyframes gridMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(20px, 20px); }
 }
 
-/* 4. Анимация прорисовки галочки */
-@keyframes strokeDraw {
-  0% {
-    stroke-dasharray: 0 20;
-    opacity: 0;
-  }
-  100% {
-    stroke-dasharray: 20 0;
-    opacity: 1;
-  }
+/* Shimmer effect */
+.shimmer {
+  position: relative;
+  overflow: hidden;
 }
 
-/* 5. Упругое нажатие карточек */
-@keyframes elasticPress {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.97);
-  }
-  100% {
-    transform: scale(1);
-  }
+.shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: shimmer 2s infinite;
 }
 
-/* 6. Мягкий пульс CTA кнопки */
-@keyframes gentlePulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.02);
-  }
+/* Progress circle */
+.progress-circle {
+  transform: rotate(-90deg);
 }
 
-/* 7. Встряхивание корзины */
-@keyframes subtleShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-2px); }
-  75% { transform: translateX(2px); }
+.progress-circle-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 8;
 }
 
-/* 8. Мигание анкеты */
-@keyframes profileGlow {
-  0%, 100% { 
-    filter: drop-shadow(0 0 0 transparent);
-  }
-  50% { 
-    filter: drop-shadow(0 0 8px rgba(194, 149, 249, 0.4));
-  }
+.progress-circle-fill {
+  fill: none;
+  stroke: url(#progressGradient);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 251.2;
+  stroke-dashoffset: 87.92; /* 65% progress */
+  transition: stroke-dashoffset 1s ease-in-out;
 }
-
-/* 9. Перламутровый shimmer фона */
-@keyframes backgroundShimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* Утилитарные классы для анимаций */
-.animate-fadeInUp {
-  animation: fadeInUp 400ms ease-out;
-}
-
-.animate-slideInUp {
-  animation: slideInUp 400ms ease-out;
-}
-
-.animate-staggered-1 {
-  animation: slideInUp 400ms ease-out;
-  animation-delay: 100ms;
-  opacity: 0;
-  animation-fill-mode: forwards;
-}
-
-.animate-staggered-2 {
-  animation: slideInUp 400ms ease-out;
-  animation-delay: 200ms;
-  opacity: 0;
-  animation-fill-mode: forwards;
-}
-
-.animate-staggered-3 {
-  animation: slideInUp 400ms ease-out;
-  animation-delay: 300ms;
-  opacity: 0;
-  animation-fill-mode: forwards;
-}
-
-.animate-staggered-4 {
-  animation: slideInUp 400ms ease-out;
-  animation-delay: 400ms;
-  opacity: 0;
-  animation-fill-mode: forwards;
-}
-
-.animate-gentle-pulse {
-  animation: gentlePulse 2s ease-in-out infinite;
-  animation-delay: 800ms;
-}
-
-.animate-cart-shake {
-  animation: subtleShake 0.6s ease-in-out;
-  animation-delay: 1s;
-}
-
-.animate-profile-glow {
-  animation: profileGlow 2s ease-in-out infinite;
-  animation-delay: 1.2s;
-}
-
-/* Ripple эффект для кнопок */
-@keyframes ripple {
-  0% {
-    transform: scale(0);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(4);
-    opacity: 0;
-  }
-}
-
