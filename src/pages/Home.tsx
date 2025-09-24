@@ -39,7 +39,7 @@ const tokens = {
 };
 
 // Компонент кольцевого прогресса
-function CircularProgress({ percentage, size = 36 }: { percentage: number; size?: number }) {
+function CircularProgress({ percentage, size = 76 }: { percentage: number; size?: number }) {
   const [animatedPercentage, setAnimatedPercentage] = useState(0);
   
   useEffect(() => {
@@ -49,11 +49,10 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
     return () => clearTimeout(timer);
   }, [percentage]);
 
-  const strokeWidth = 3;
-  const radius = (size - strokeWidth) / 2;
+  const strokeWidth = 6;
+  const radius = 32;
   const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (animatedPercentage / 100) * circumference;
+  const strokeDashoffset = circumference * (1 - animatedPercentage / 100);
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -71,7 +70,7 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Прогресс круг с нежным градиентом */}
+        {/* Прогресс круг с градиентом от светло-лавандового к насыщенному */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -80,7 +79,7 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
           strokeWidth={strokeWidth}
           fill="none"
           strokeLinecap="round"
-          strokeDasharray={strokeDasharray}
+          strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           style={{
             transition: 'stroke-dashoffset 0.5s ease-in-out'
@@ -88,8 +87,8 @@ function CircularProgress({ percentage, size = 36 }: { percentage: number; size?
         />
         <defs>
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#C8B7FF" />
-            <stop offset="100%" stopColor="#D4A5E8" />
+            <stop offset="0%" stopColor="#E6D7FF" />
+            <stop offset="100%" stopColor="#8D6CFF" />
           </linearGradient>
         </defs>
       </svg>
@@ -451,8 +450,8 @@ export default function Home() {
           {/* Прогресс-круг */}
           <div 
             style={{
-              width: 48,
-              height: 48,
+              width: 76,
+              height: 76,
               borderRadius: '50%',
               background: '#FFF7F7',
               display: 'flex',
@@ -465,7 +464,7 @@ export default function Home() {
           >
             <CircularProgress 
               percentage={80} 
-              size={40}
+              size={76}
             />
             </div>
           </div>
