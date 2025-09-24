@@ -354,11 +354,7 @@ export default function Home() {
         
         .premium-checkbox.incomplete {
           background: linear-gradient(145deg, #F0F0F0, #E8E8E8);
-          box-shadow: 
-            inset 2px 2px 4px rgba(0,0,0,0.15),
-            inset -2px -2px 4px rgba(255,255,255,0.7),
-            1px 1px 2px rgba(0,0,0,0.1),
-            -1px -1px 2px rgba(255,255,255,0.8);
+          box-shadow: none;
         }
         
         
@@ -683,36 +679,22 @@ export default function Home() {
                     className={`premium-checkbox ${isCompleted ? 'completed' : 'incomplete'}`}
                   >
                     {isCompleted && (
-                      <>
-                        {/* Глянцевый перелив */}
-                        <div 
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            height: '50%',
-                            background: 'linear-gradient(180deg, rgba(255,255,255,0.4), transparent)',
-                            borderRadius: '12px 12px 0 0'
-                          }}
+                      <svg 
+                        width="10" 
+                        height="10" 
+                        viewBox="0 0 20 20" 
+                        fill="none"
+                        className="scale-up"
+                        style={{ position: 'relative', zIndex: 1 }}
+                      >
+                        <path 
+                          d="M5 13l4 4L19 7" 
+                          stroke="#FFFFFF" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
                         />
-                        <svg 
-                          width="10" 
-                          height="10" 
-                          viewBox="0 0 20 20" 
-                          fill="none"
-                          className="scale-up"
-                          style={{ position: 'relative', zIndex: 1 }}
-                        >
-                          <path 
-                            d="M5 13l4 4L19 7" 
-                            stroke="#FFFFFF" 
-                            strokeWidth="2" 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </>
+                      </svg>
                     )}
                   </button>
                   
