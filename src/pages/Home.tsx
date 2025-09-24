@@ -256,8 +256,8 @@ export default function Home() {
           left: -100%;
           width: 100%;
           height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-          animation: pearlShimmer 3s ease-in-out infinite;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+          animation: pearlShimmer 4s ease-in-out infinite;
         }
         
         @keyframes shimmer {
@@ -488,14 +488,14 @@ export default function Home() {
                 style={{
                   background: '#FDF7F6',
                   borderRadius: 16,
-                  boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)',
+                  boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
                   height: 64,
                   padding: '16px',
                   marginBottom: index < careSteps.length - 1 ? 6 : 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.3)',
                   position: 'relative'
                 }}
               >
@@ -622,7 +622,7 @@ export default function Home() {
                 fontWeight: 700,
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)'
+                boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)'
               }}
             >
               Открыть подробный план
@@ -643,7 +643,7 @@ export default function Home() {
                 height: 72,
                 background: '#FFFFFF',
                 borderRadius: 16,
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)',
+                boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -689,7 +689,7 @@ export default function Home() {
                 height: 72,
                 background: '#E6D7FF',
                 borderRadius: 16,
-                boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)',
+                boxShadow: '4px 4px 8px rgba(0,0,0,0.1), -4px -4px 8px rgba(255,255,255,0.8)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
