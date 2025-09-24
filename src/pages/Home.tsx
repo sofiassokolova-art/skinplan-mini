@@ -213,7 +213,7 @@ export default function Home() {
               <h3 className="text-xl font-bold text-gray-800">Сегодняшний уход</h3>
             </div>
             <button className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-sm font-medium text-gray-700">
-              Читать план >
+              Читать план {'>'}
             </button>
           </div>
 
