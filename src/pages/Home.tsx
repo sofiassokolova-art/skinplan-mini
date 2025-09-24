@@ -260,8 +260,8 @@ export default function Home() {
           left: -100%;
           width: 100%;
           height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-          animation: pearlShimmer 5s ease-in-out infinite;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+          animation: pearlShimmer 3s ease-in-out infinite;
         }
         
         .scale-up {
@@ -296,7 +296,7 @@ export default function Home() {
           right: 0;
           bottom: 0;
           border-radius: inherit;
-          background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.05) 100%);
+          background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.05) 100%);
           pointer-events: none;
         }
         
@@ -308,7 +308,7 @@ export default function Home() {
           right: 1px;
           bottom: 1px;
           border-radius: inherit;
-          background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.1) 100%);
+          background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.08) 100%);
           pointer-events: none;
         }
       `}} />
@@ -592,7 +592,7 @@ export default function Home() {
         >
           <Link to="/plan">
             <button 
-              className="shimmer-button neomorphic-card"
+              className="pearl-button neomorphic-card"
               style={{
                 position: 'relative',
                 display: 'flex',
