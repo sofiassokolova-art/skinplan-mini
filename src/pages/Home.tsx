@@ -249,6 +249,17 @@ export default function Home() {
           animation: shimmer 3s ease-in-out infinite;
         }
         
+        .pearl-shimmer::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+          animation: pearlShimmer 3s ease-in-out infinite;
+        }
+        
         @keyframes shimmer {
           100% { transform: translateX(100%); }
         }
@@ -381,6 +392,7 @@ export default function Home() {
         >
           {/* Переключатель Утро/Вечер */}
           <div 
+            className="neomorphic-card"
             style={{
               flex: 1,
               maxWidth: '70%',
@@ -592,7 +604,7 @@ export default function Home() {
         >
           <Link to="/plan">
             <button 
-              className="pearl-button neomorphic-card"
+              className="pearl-shimmer neomorphic-card"
               style={{
                 position: 'relative',
                 display: 'flex',
@@ -675,7 +687,7 @@ export default function Home() {
               style={{
                 width: '100%',
                 height: 72,
-                background: '#C8B7FF',
+                background: '#E6D7FF',
                 borderRadius: 16,
                 boxShadow: '6px 6px 12px rgba(0,0,0,0.15), -6px -6px 12px rgba(255,255,255,0.7)',
                 display: 'flex',
