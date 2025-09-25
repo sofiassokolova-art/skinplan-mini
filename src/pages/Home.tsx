@@ -4,15 +4,32 @@ import { useState, useEffect } from "react";
 function Background() {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0" style={{background:'linear-gradient(135deg,#F4D1FF 0%, #FFD6E6 45%, #CFE8FF 100%)'}}/>
-      {/* blobs */}
-      <div className="absolute w-96 h-96 left-6 top-6 rounded-full bg-[#E7C0FF] opacity-40 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" />
-      <div className="absolute w-72 h-72 right-6 top-24 rounded-full bg-[#CDEBFF] opacity-30 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" style={{animationDelay:'2s'}}/>
-      <div className="absolute w-80 h-80 left-20 bottom-10 rounded-full bg-white opacity-10 blur-2xl" />
-      {/* medical grid - svg overlay */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-10" preserveAspectRatio="none">
-        <defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0 L0 0 0 40" stroke="white" strokeOpacity="0.06" strokeWidth="1"/></pattern></defs>
-        <rect width="100%" height="100%" fill="url(#grid)"/>
+      {/* Мягкий перламутровый градиент: фиолет → розовый → голубой → белый */}
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(135deg, #E9C6FF 0%, #FFC0E0 35%, #B8E6FF 70%, #F8FAFF 100%)'
+      }}/>
+      
+      {/* Blur-пятна в правильных цветах */}
+      {/* Фиолетовое пятно */}
+      <div className="absolute w-96 h-96 left-6 top-6 rounded-full bg-[#E9C6FF] opacity-25 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" />
+      
+      {/* Розовое пятно */}
+      <div className="absolute w-80 h-80 right-8 top-20 rounded-full bg-[#FFC0E0] opacity-20 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" style={{animationDelay:'3s'}}/>
+      
+      {/* Белое пятно */}
+      <div className="absolute w-72 h-72 left-20 bottom-16 rounded-full bg-white opacity-15 blur-2xl animate-[blobDrift_20s_ease-in-out_infinite]" style={{animationDelay:'6s'}}/>
+      
+      {/* Голубое пятно */}
+      <div className="absolute w-88 h-88 right-12 bottom-8 rounded-full bg-[#B8E6FF] opacity-18 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" style={{animationDelay:'9s'}}/>
+      
+      {/* Тонкая белая сетка для medical эффекта */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-8" preserveAspectRatio="none">
+        <defs>
+          <pattern id="medical-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+            <path d="M32 0 L0 0 0 32" stroke="white" strokeOpacity="0.08" strokeWidth="0.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#medical-grid)"/>
       </svg>
     </div>
   );
@@ -35,19 +52,61 @@ function ProgressRing({size=200, stroke=14, value=65}) {
   const offset = c - dash;
   
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
-      <defs>
-        <linearGradient id="g1" x1="0%" x2="100%">
-          <stop offset="0%" stopColor="#A58BFF"/>
-          <stop offset="100%" stopColor="#6C4BFF"/>
-        </linearGradient>
-      </defs>
-      <circle cx={size/2} cy={size/2} r={r} stroke="rgba(255,255,255,0.3)" strokeWidth={stroke} fill="transparent"/>
-      <circle cx={size/2} cy={size/2} r={r} stroke="url(#g1)" strokeWidth={stroke} strokeLinecap="round"
-        strokeDasharray={`${c} ${c}`} strokeDashoffset={offset}
-        className="glow"
-        style={{transition: 'stroke-dashoffset 1.2s ease-in-out'}} />
-    </svg>
+    <div className="relative">
+      {/* Стеклянный фон круга */}
+      <div 
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: 'rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.2)'
+        }}
+      />
+      
+      {/* SVG прогресс-круг */}
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 relative z-10">
+        <defs>
+          {/* Фиолетовый градиент для glow */}
+          <linearGradient id="violet-glow" x1="0%" x2="100%">
+            <stop offset="0%" stopColor="#A58BFF"/>
+            <stop offset="100%" stopColor="#6C4BFF"/>
+          </linearGradient>
+          
+          {/* Фильтр для glow эффекта */}
+          <filter id="glow-filter" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+            <feMerge> 
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        
+        {/* Фоновый круг (стеклянный) */}
+        <circle 
+          cx={size/2} 
+          cy={size/2} 
+          r={r} 
+          stroke="rgba(255,255,255,0.25)" 
+          strokeWidth={stroke} 
+          fill="transparent"
+        />
+        
+        {/* Активный прогресс-круг с glow */}
+        <circle 
+          cx={size/2} 
+          cy={size/2} 
+          r={r} 
+          stroke="url(#violet-glow)" 
+          strokeWidth={stroke} 
+          strokeLinecap="round"
+          strokeDasharray={`${c} ${c}`} 
+          strokeDashoffset={offset}
+          filter="url(#glow-filter)"
+          style={{transition: 'stroke-dashoffset 1.2s ease-in-out'}} 
+        />
+      </svg>
+    </div>
   );
 }
 
@@ -110,18 +169,55 @@ function StepCard({title, subtitle, checked, onToggle}: {
   onToggle: () => void;
 }) {
   return (
-    <div className="bg-white rounded-[16px] shadow-[0_4px_16px_rgba(0,0,0,0.06)] px-4 min-h-[72px] flex items-center justify-between">
-      <div>
-        <div className="text-[16px] font-medium text-[#1E1E1E]" style={{ fontFamily: 'Inter, sans-serif' }}>{title}</div>
-        {subtitle && <div className="text-[14px] text-[#6B6B6B] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>{subtitle}</div>}
+    <div 
+      className="bg-white rounded-[16px] px-4 py-4 flex items-center justify-between transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+      style={{
+        boxShadow: '0 4px 16px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)',
+        border: '1px solid rgba(255,255,255,0.8)'
+      }}
+    >
+      {/* Левая часть: заголовок + подзаголовок */}
+      <div className="flex-1 pr-4">
+        <div 
+          className="text-[16px] font-medium text-[#1E1E1E] leading-tight" 
+          style={{ fontFamily: 'Inter, sans-serif' }}
+        >
+          {title}
+        </div>
+        {subtitle && (
+          <div 
+            className="text-[14px] text-[#6B6B6B] mt-1 leading-relaxed" 
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            {subtitle}
+          </div>
+        )}
       </div>
-      <button onClick={onToggle} aria-pressed={checked} className="w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-95">
+      
+      {/* Правая часть: чекбокс */}
+      <button 
+        onClick={onToggle} 
+        aria-pressed={checked} 
+        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 hover:bg-gray-50"
+      >
         {checked ? (
-          <div className="w-5 h-5 rounded-full bg-[#6C4BFF] flex items-center justify-center">
-            <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.2 8L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <div 
+            className="w-6 h-6 rounded-full bg-[#6C4BFF] flex items-center justify-center shadow-sm"
+            style={{
+              boxShadow: '0 2px 8px rgba(108,75,255,0.25)'
+            }}
+          >
+            <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+              <path d="M1 5L4.2 8L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
         ) : (
-          <div className="w-5 h-5 rounded-full bg-white border-2 border-[#6C4BFF]" />
+          <div 
+            className="w-6 h-6 rounded-full bg-white border-2 border-[#6C4BFF] transition-all duration-300 hover:border-[#A58BFF]"
+            style={{
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+            }}
+          />
         )}
       </button>
     </div>
