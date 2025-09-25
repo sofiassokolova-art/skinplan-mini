@@ -47,7 +47,7 @@ function ProgressCircle({ percentage }: { percentage: number }) {
           }}
         />
         <defs>
-          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#A58BFF" />
             <stop offset="100%" stopColor="#6C4BFF" />
           </linearGradient>
@@ -55,10 +55,10 @@ function ProgressCircle({ percentage }: { percentage: number }) {
       </svg>
       {/* Текст в центре */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-2xl font-semibold" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
+        <div className="text-2xl font-semibold" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif', fontSize: '24px' }}>
           {animatedPercentage}%
         </div>
-        <div className="text-sm text-center mt-1" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
+        <div className="text-sm text-center mt-1" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
           Осталось 2 шага<br/>3 минуты
         </div>
       </div>
@@ -72,9 +72,9 @@ function TimeSwitcher({ activeSegment, setActiveSegment }: {
   setActiveSegment: (segment: 'morning' | 'evening') => void 
 }) {
   return (
-    <div className="relative bg-white/40 rounded-full p-1" style={{ width: 140, height: 40 }}>
+    <div className="relative bg-white/40 rounded-full p-1" style={{ width: 140, height: 40, borderRadius: '20px' }}>
       <div 
-        className="absolute top-1 left-1 bg-white rounded-full transition-transform duration-200 ease-out"
+        className="absolute top-1 left-1 bg-white rounded-full transition-transform duration-200 ease-out shadow-sm"
         style={{ 
           width: 66, 
           height: 32,
@@ -86,7 +86,7 @@ function TimeSwitcher({ activeSegment, setActiveSegment }: {
           onClick={() => setActiveSegment('morning')}
           className="flex-1 text-sm font-medium transition-colors duration-200"
           style={{ 
-            color: activeSegment === 'morning' ? '#1E1E1E' : '#6B6B6B',
+            color: activeSegment === 'morning' ? '#1E1E1E' : 'rgba(255,255,255,0.4)',
             fontFamily: 'Inter, sans-serif'
           }}
         >
@@ -96,7 +96,7 @@ function TimeSwitcher({ activeSegment, setActiveSegment }: {
           onClick={() => setActiveSegment('evening')}
           className="flex-1 text-sm font-medium transition-colors duration-200"
           style={{ 
-            color: activeSegment === 'evening' ? '#1E1E1E' : '#6B6B6B',
+            color: activeSegment === 'evening' ? '#1E1E1E' : 'rgba(255,255,255,0.4)',
             fontFamily: 'Inter, sans-serif'
           }}
         >
@@ -112,16 +112,22 @@ function CareCheckbox({ checked, onChange }: { checked: boolean, onChange: () =>
   return (
     <button
       onClick={onChange}
-      className="w-5 h-5 rounded-full border-2 transition-all duration-200 flex items-center justify-center"
+      className="rounded-full border-2 transition-all duration-200 flex items-center justify-center"
       style={{
+        width: '20px',
+        height: '20px',
         backgroundColor: checked ? '#6C4BFF' : '#FFFFFF',
         borderColor: '#6C4BFF'
       }}
     >
       {checked && (
         <svg 
-          className="w-3 h-3 text-white transition-transform duration-200"
-          style={{ transform: 'scale(0.8)' }}
+          className="text-white transition-transform duration-200"
+          style={{ 
+            width: '12px',
+            height: '12px',
+            transform: 'scale(0.8)' 
+          }}
           fill="currentColor" 
           viewBox="0 0 20 20"
         >
@@ -163,11 +169,11 @@ export default function Home() {
       <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400">
         {/* Белые и алые пятна для глубины */}
         <div className="absolute top-10 left-10 w-32 h-32 bg-white/25 rounded-full blur-2xl animate-float-1"></div>
-        <div className="absolute top-32 right-16 w-24 h-24 bg-red-400/40 rounded-full blur-xl animate-float-2"></div>
+        <div className="absolute top-32 right-16 w-24 h-24 bg-red-500/40 rounded-full blur-xl animate-float-2"></div>
         <div className="absolute bottom-32 left-20 w-40 h-40 bg-blue-300/30 rounded-full blur-3xl animate-float-3"></div>
         <div className="absolute bottom-20 right-32 w-28 h-28 bg-pink-300/35 rounded-full blur-2xl animate-float-4"></div>
         <div className="absolute top-1/2 left-1/3 w-20 h-20 bg-white/30 rounded-full blur-xl animate-float-5"></div>
-        <div className="absolute top-1/4 right-1/4 w-36 h-36 bg-red-300/25 rounded-full blur-3xl animate-float-6"></div>
+        <div className="absolute top-1/4 right-1/4 w-36 h-36 bg-red-400/25 rounded-full blur-3xl animate-float-6"></div>
         
         {/* Медицинская экспертиза - сетка/структура */}
         <div className="absolute inset-0 opacity-25">
@@ -352,7 +358,7 @@ export default function Home() {
           width: 20px;
           height: 20px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.9);
+          background: #FFFFFF;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -363,7 +369,7 @@ export default function Home() {
           width: 24px;
           height: 24px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.9);
+          background: #FFFFFF;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -384,7 +390,7 @@ export default function Home() {
         {/* Приветствие */}
         <div className="text-center mb-8 animate-fade-slide-up">
           <h1 className="mb-2" style={{ 
-            fontSize: '30px', 
+            fontSize: '32px', 
             fontWeight: 700, 
             color: '#1E1E1E', 
             fontFamily: 'Playfair Display, serif' 
@@ -392,6 +398,7 @@ export default function Home() {
             Привет, Елена! ✨
           </h1>
           <p className="text-base mt-2" style={{ 
+            fontSize: '16px',
             color: '#6B6B6B', 
             fontFamily: 'Inter, sans-serif' 
           }}>
@@ -412,6 +419,8 @@ export default function Home() {
         {/* Сегодняшний уход */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold mb-4" style={{ 
+            fontSize: '20px',
+            fontWeight: 600,
             color: '#1E1E1E', 
             fontFamily: 'Inter, sans-serif' 
           }}>
@@ -423,12 +432,16 @@ export default function Home() {
               <div key={step.id} className="care-step-card flex items-center justify-between px-4">
                 <div className="flex flex-col">
                   <span className="text-base font-medium" style={{ 
+                    fontSize: '16px',
+                    fontWeight: 500,
                     color: '#1E1E1E', 
                     fontFamily: 'Inter, sans-serif' 
                   }}>
                     {step.name}
                   </span>
                   <span className="text-xs" style={{ 
+                    fontSize: '14px',
+                    fontWeight: 400,
                     color: '#6B6B6B', 
                     fontFamily: 'Inter, sans-serif' 
                   }}>
@@ -448,6 +461,8 @@ export default function Home() {
             borderColor: '#6C4BFF',
             borderWidth: '1px',
             color: '#6C4BFF',
+            fontSize: '16px',
+            fontWeight: 500,
             fontFamily: 'Inter, sans-serif'
           }}>
             Перейти к плану
@@ -457,12 +472,16 @@ export default function Home() {
         {/* Совет дня */}
         <div className="advice-card p-6 mb-4">
           <h3 className="text-lg font-semibold mb-2" style={{ 
+            fontSize: '16px',
+            fontWeight: 700,
             color: '#1E1E1E', 
             fontFamily: 'Playfair Display, serif' 
           }}>
             Экспертное мнение ✨
           </h3>
           <p className="text-sm leading-relaxed" style={{ 
+            fontSize: '14px',
+            fontWeight: 400,
             color: '#6B6B6B', 
             fontFamily: 'Inter, sans-serif' 
           }}>
@@ -501,7 +520,12 @@ export default function Home() {
         {/* CTA кнопка */}
         <button className="cta-button w-full flex items-center justify-center gap-4">
           <div className="icon-circle">↻</div>
-          <span className="text-lg font-semibold text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <span className="text-lg font-semibold text-white" style={{ 
+            fontSize: '18px',
+            fontWeight: 600,
+            color: '#FFFFFF',
+            fontFamily: 'Inter, sans-serif' 
+          }}>
             Начать сканирование
           </span>
           <div className="icon-circle-large">📷</div>
