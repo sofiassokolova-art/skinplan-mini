@@ -110,10 +110,10 @@ function StepCard({title, subtitle, checked, onToggle}: {
   onToggle: () => void;
 }) {
   return (
-    <div className="bg-white rounded-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.06)] px-4 py-3 flex items-center justify-between">
+    <div className="bg-white rounded-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.06)] px-4 h-14 flex items-center justify-between">
       <div>
-        <div className="text-[16px] font-medium text-[#1E1E1E]">{title}</div>
-        {subtitle && <div className="text-[14px] text-[#6B6B6B] mt-1">{subtitle}</div>}
+        <div className="text-[16px] font-medium text-[#1E1E1E]" style={{ fontFamily: 'Inter, sans-serif' }}>{title}</div>
+        {subtitle && <div className="text-[14px] text-[#6B6B6B] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>{subtitle}</div>}
       </div>
       <button onClick={onToggle} aria-pressed={checked} className="w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-95">
         {checked ? (
@@ -131,7 +131,7 @@ function StepCard({title, subtitle, checked, onToggle}: {
 // Компонент CTA с shimmer и 3D иконками
 function CTA({onClick}: {onClick: () => void}) {
   return (
-    <button onClick={onClick} className="relative w-full h-16 rounded-3xl overflow-hidden flex items-center justify-between px-6 bg-[rgba(255,255,255,0.2)] backdrop-blur-lg border border-[rgba(255,255,255,0.3)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(108,75,255,0.25)] hover:scale-[1.02] active:scale-95">
+    <button onClick={onClick} className="relative w-full h-16 rounded-[32px] overflow-hidden flex items-center justify-between px-6 bg-[rgba(255,255,255,0.2)] backdrop-blur-lg border border-[rgba(255,255,255,0.3)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(108,75,255,0.25)] hover:scale-[1.02] active:scale-95">
       {/* left refresh icon */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center">
@@ -437,7 +437,7 @@ export default function Home() {
             Сегодняшний уход
           </h2>
           
-          <div className="space-y-4">
+          <div className="space-y-3">
             {steps.map((step) => (
               <StepCard
                 key={step.id}
@@ -482,24 +482,32 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Рекомендации */}
+        {/* Нижний ряд карточек */}
         <div className="grid grid-cols-2 gap-4 mb-8">
-          {/* Рекомендация дня - карточка с 3D иконкой продукта */}
-          <div className="bg-white rounded-2xl p-4 shadow-[0_4px_16px_rgba(0,0,0,0.06)] flex items-center">
-            <div className="text-center w-full">
-              <div className="w-6 h-6 mx-auto mb-2 bg-gradient-to-br from-[#6C4BFF] to-[#A58BFF] rounded-full flex items-center justify-center">
+          {/* Перепройти анкету - кнопка с 3D иконкой формы-анкеты */}
+          <button className="bg-white rounded-[16px] h-20 shadow-[0_4px_12px_rgba(0,0,0,0.06)] flex items-center transition-all duration-300 hover:border-2 hover:border-[#6C4BFF] hover:shadow-[0_8px_24px_rgba(108,75,255,0.15)] group">
+            <div className="text-center w-full px-4">
+              <div className="w-6 h-6 mx-auto mb-2 bg-gradient-to-br from-[#6C4BFF] to-[#A58BFF] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="white"/>
+                  {/* 3D форма-анкета */}
+                  <rect x="3" y="4" width="18" height="16" rx="2" fill="white" stroke="#6C4BFF" strokeWidth="1.5"/>
+                  <path d="M9 8H15M9 12H15M9 16H12" stroke="#6C4BFF" strokeWidth="1.5" strokeLinecap="round"/>
+                  <circle cx="7" cy="8" r="1" fill="#6C4BFF"/>
+                  <circle cx="7" cy="12" r="1" fill="#6C4BFF"/>
+                  <circle cx="7" cy="16" r="1" fill="#6C4BFF"/>
+                  {/* Карандаш */}
+                  <path d="M17 3L21 7L15 13L11 9L17 3Z" fill="#A58BFF"/>
+                  <path d="M11 9L15 13" stroke="#6C4BFF" strokeWidth="1"/>
                 </svg>
               </div>
-              <div className="text-xs font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
-                Рекомендация дня
+              <div className="text-sm font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                Перепройти анкету
               </div>
             </div>
-          </div>
+          </button>
           
           {/* История прогресса - текст с 3D календарной иконкой */}
-          <div className="bg-white rounded-2xl p-4 shadow-[0_4px_16px_rgba(0,0,0,0.06)] flex items-center">
+          <div className="bg-white rounded-[16px] h-20 shadow-[0_4px_12px_rgba(0,0,0,0.06)] flex items-center px-4">
             <div className="flex items-center w-full">
               <div className="w-6 h-6 mr-3 bg-gradient-to-br from-[#6C4BFF] to-[#A58BFF] rounded-full flex items-center justify-center">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -507,10 +515,10 @@ export default function Home() {
                 </svg>
               </div>
               <div className="flex flex-col">
-                <div className="text-sm font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
-                  5 дней подряд
+                <div className="text-sm font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                  5 дней
                 </div>
-                <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
+                <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
                   История прогресса
                 </div>
               </div>
