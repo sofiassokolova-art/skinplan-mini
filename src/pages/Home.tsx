@@ -4,56 +4,46 @@ import { useState, useEffect } from "react";
 function Background() {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Премиальный градиент Vogue meets Apple Health */}
+      {/* Светлый премиальный градиент Vogue meets Apple Health */}
       <div className="absolute inset-0" style={{
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #533483 75%, #e94560 100%)'
+        background: 'linear-gradient(135deg, #fafbfc 0%, #f8fafc 25%, #f1f5f9 50%, #e2e8f0 75%, #cbd5e1 100%)'
       }}/>
       
-      {/* Анимированные световые эффекты */}
+      {/* Мягкие световые эффекты */}
       <div className="absolute inset-0">
         {/* Главный световой поток */}
-        <div className="absolute w-[600px] h-[600px] -top-32 -left-32 rounded-full opacity-20 animate-pulse" style={{
-          background: 'radial-gradient(circle, rgba(233,69,96,0.4) 0%, rgba(83,52,131,0.2) 50%, transparent 70%)',
-          animation: 'pulse 4s ease-in-out infinite'
+        <div className="absolute w-[800px] h-[800px] -top-40 -left-40 rounded-full opacity-30" style={{
+          background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, rgba(236,72,153,0.05) 50%, transparent 70%)',
+          animation: 'pulse 6s ease-in-out infinite'
         }}/>
         
         {/* Вторичный свет */}
-        <div className="absolute w-[400px] h-[400px] -bottom-24 -right-24 rounded-full opacity-15" style={{
-          background: 'radial-gradient(circle, rgba(15,52,96,0.3) 0%, rgba(22,33,62,0.2) 50%, transparent 70%)',
-          animation: 'pulse 6s ease-in-out infinite reverse'
+        <div className="absolute w-[600px] h-[600px] -bottom-32 -right-32 rounded-full opacity-25" style={{
+          background: 'radial-gradient(circle, rgba(236,72,153,0.06) 0%, rgba(139,92,246,0.04) 50%, transparent 70%)',
+          animation: 'pulse 8s ease-in-out infinite reverse'
         }}/>
         
         {/* Акцентный свет */}
-        <div className="absolute w-[300px] h-[300px] top-1/4 right-1/4 rounded-full opacity-25" style={{
-          background: 'radial-gradient(circle, rgba(83,52,131,0.5) 0%, rgba(233,69,96,0.2) 50%, transparent 70%)',
-          animation: 'pulse 8s ease-in-out infinite'
+        <div className="absolute w-[400px] h-[400px] top-1/3 right-1/3 rounded-full opacity-20" style={{
+          background: 'radial-gradient(circle, rgba(139,92,246,0.05) 0%, rgba(236,72,153,0.03) 50%, transparent 70%)',
+          animation: 'pulse 10s ease-in-out infinite'
         }}/>
       </div>
       
-      {/* Премиальная сетка - без точек, только линии */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-3" preserveAspectRatio="none">
-        <defs>
-          <pattern id="premium-grid" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M60 0 L0 0 0 60" stroke="rgba(233,69,96,0.1)" strokeWidth="0.3"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#premium-grid)"/>
-      </svg>
-      
-      {/* Элегантные световые акценты вместо точек */}
+      {/* Тонкие световые акценты */}
       <div className="absolute inset-0">
-        {[...Array(8)].map((_, i) => (
+        {[...Array(6)].map((_, i) => (
           <div
             key={i}
-            className="absolute rounded-full opacity-20"
+            className="absolute rounded-full opacity-10"
             style={{
               width: `${2 + Math.random() * 3}px`,
               height: `${2 + Math.random() * 3}px`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              background: `radial-gradient(circle, rgba(233,69,96,0.6) 0%, transparent 70%)`,
-              animation: `twinkle ${4 + Math.random() * 3}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 3}s`
+              background: `radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%)`,
+              animation: `twinkle ${6 + Math.random() * 4}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * 5}s`
             }}
           />
         ))}
@@ -577,12 +567,12 @@ export default function Home() {
             fontSize: '36px', 
             fontWeight: 700, 
             lineHeight: '110%',
-            background: 'linear-gradient(135deg, #ffffff 0%, #e94560 50%, #533483 100%)',
+            background: 'linear-gradient(135deg, #1e293b 0%, #8b5cf6 50%, #ec4899 100%)',
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             fontFamily: 'Playfair Display, serif',
-            textShadow: '0 4px 20px rgba(233,69,96,0.3)'
+            textShadow: '0 2px 10px rgba(139,92,246,0.2)'
           }}>
             Привет, Елена!
           </h1>
@@ -590,7 +580,7 @@ export default function Home() {
           {/* Премиальный подзаголовок */}
           <p className="text-base mt-2" style={{ 
             fontSize: '18px',
-            color: 'rgba(255,255,255,0.8)', 
+            color: 'rgba(30,41,59,0.7)', 
             fontFamily: 'Inter, sans-serif',
             fontWeight: 300,
             letterSpacing: '0.5px'
@@ -600,7 +590,7 @@ export default function Home() {
           
           {/* Декоративная линия */}
           <div className="mx-auto mt-4 w-16 h-px" style={{
-            background: 'linear-gradient(90deg, transparent 0%, #e94560 50%, transparent 100%)'
+            background: 'linear-gradient(90deg, transparent 0%, #8b5cf6 50%, transparent 100%)'
           }}/>
         </div>
 
@@ -662,7 +652,7 @@ export default function Home() {
 
         {/* Совет дня */}
         <div className="premium-card p-6 mb-6">
-          <h3 className="mb-3 text-premium-white" style={{ 
+          <h3 className="mb-3 text-premium-dark" style={{ 
             fontSize: '18px',
             fontWeight: 700,
             fontFamily: 'Playfair Display, serif' 
@@ -683,20 +673,20 @@ export default function Home() {
           {/* Перепройти анкету - кнопка с 3D иконкой формы-анкеты */}
           <button className="premium-card h-20 flex items-center group hover:scale-[1.02]">
             <div className="text-center w-full px-4">
-              <div className="w-6 h-6 mx-auto mb-2 bg-gradient-to-br from-[#e94560] to-[#533483] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+              <div className="w-6 h-6 mx-auto mb-2 bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   {/* 3D форма-анкета */}
-                  <rect x="3" y="4" width="18" height="16" rx="2" fill="white" stroke="#e94560" strokeWidth="1.5"/>
-                  <path d="M9 8H15M9 12H15M9 16H12" stroke="#e94560" strokeWidth="1.5" strokeLinecap="round"/>
-                  <circle cx="7" cy="8" r="1" fill="#e94560"/>
-                  <circle cx="7" cy="12" r="1" fill="#e94560"/>
-                  <circle cx="7" cy="16" r="1" fill="#e94560"/>
+                  <rect x="3" y="4" width="18" height="16" rx="2" fill="white" stroke="#8b5cf6" strokeWidth="1.5"/>
+                  <path d="M9 8H15M9 12H15M9 16H12" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round"/>
+                  <circle cx="7" cy="8" r="1" fill="#8b5cf6"/>
+                  <circle cx="7" cy="12" r="1" fill="#8b5cf6"/>
+                  <circle cx="7" cy="16" r="1" fill="#8b5cf6"/>
                   {/* Карандаш */}
-                  <path d="M17 3L21 7L15 13L11 9L17 3Z" fill="#533483"/>
-                  <path d="M11 9L15 13" stroke="#e94560" strokeWidth="1"/>
+                  <path d="M17 3L21 7L15 13L11 9L17 3Z" fill="#ec4899"/>
+                  <path d="M11 9L15 13" stroke="#8b5cf6" strokeWidth="1"/>
                 </svg>
               </div>
-              <div className="text-sm font-medium text-premium-white" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+              <div className="text-sm font-medium text-premium-dark" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
                 Перепройти анкету
               </div>
             </div>
@@ -705,13 +695,13 @@ export default function Home() {
           {/* История прогресса - текст с 3D календарной иконкой */}
           <div className="premium-card h-20 flex items-center px-4">
             <div className="flex items-center w-full">
-              <div className="w-6 h-6 mr-3 bg-gradient-to-br from-[#e94560] to-[#533483] rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 mr-3 bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] rounded-full flex items-center justify-center">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   <path d="M19 3H18V1H16V3H8V1H6V3H5C3.89 3 3.01 3.9 3.01 5L3 19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V8H19V19Z" fill="white"/>
                 </svg>
               </div>
               <div className="flex flex-col">
-                <div className="text-sm font-medium text-premium-white" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                <div className="text-sm font-medium text-premium-dark" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
                   5 дней
                 </div>
                 <div className="text-xs text-premium-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
