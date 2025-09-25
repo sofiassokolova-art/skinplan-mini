@@ -661,19 +661,17 @@ export default function Home() {
         </div>
 
         {/* Совет дня */}
-        <div className="bg-white rounded-[16px] p-4 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
-          <h3 className="mb-2" style={{ 
-            fontSize: '16px',
+        <div className="premium-card p-6 mb-6">
+          <h3 className="mb-3 text-premium-white" style={{ 
+            fontSize: '18px',
             fontWeight: 700,
-            color: '#1E1E1E', 
             fontFamily: 'Playfair Display, serif' 
           }}>
             Совет дня
           </h3>
-          <p className="leading-relaxed" style={{ 
+          <p className="leading-relaxed text-premium-muted" style={{ 
             fontSize: '14px',
             fontWeight: 400,
-            color: '#1E1E1E', 
             fontFamily: 'Inter, sans-serif' 
           }}>
             Кожа слегка обезвожена. Рекомендуем усилить увлажнение гиалуроновой кислотой и пептидами для восстановления гидробаланса.
@@ -683,40 +681,40 @@ export default function Home() {
         {/* Нижний ряд карточек */}
         <div className="grid grid-cols-2 gap-2 mb-8">
           {/* Перепройти анкету - кнопка с 3D иконкой формы-анкеты */}
-          <button className="bg-white rounded-[16px] h-20 shadow-[0_4px_12px_rgba(0,0,0,0.06)] flex items-center transition-all duration-300 hover:border-2 hover:border-[#6C4BFF] hover:shadow-[0_8px_24px_rgba(108,75,255,0.15)] group">
+          <button className="premium-card h-20 flex items-center group hover:scale-[1.02]">
             <div className="text-center w-full px-4">
-              <div className="w-6 h-6 mx-auto mb-2 bg-gradient-to-br from-[#6C4BFF] to-[#A58BFF] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+              <div className="w-6 h-6 mx-auto mb-2 bg-gradient-to-br from-[#e94560] to-[#533483] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   {/* 3D форма-анкета */}
-                  <rect x="3" y="4" width="18" height="16" rx="2" fill="white" stroke="#6C4BFF" strokeWidth="1.5"/>
-                  <path d="M9 8H15M9 12H15M9 16H12" stroke="#6C4BFF" strokeWidth="1.5" strokeLinecap="round"/>
-                  <circle cx="7" cy="8" r="1" fill="#6C4BFF"/>
-                  <circle cx="7" cy="12" r="1" fill="#6C4BFF"/>
-                  <circle cx="7" cy="16" r="1" fill="#6C4BFF"/>
+                  <rect x="3" y="4" width="18" height="16" rx="2" fill="white" stroke="#e94560" strokeWidth="1.5"/>
+                  <path d="M9 8H15M9 12H15M9 16H12" stroke="#e94560" strokeWidth="1.5" strokeLinecap="round"/>
+                  <circle cx="7" cy="8" r="1" fill="#e94560"/>
+                  <circle cx="7" cy="12" r="1" fill="#e94560"/>
+                  <circle cx="7" cy="16" r="1" fill="#e94560"/>
                   {/* Карандаш */}
-                  <path d="M17 3L21 7L15 13L11 9L17 3Z" fill="#A58BFF"/>
-                  <path d="M11 9L15 13" stroke="#6C4BFF" strokeWidth="1"/>
+                  <path d="M17 3L21 7L15 13L11 9L17 3Z" fill="#533483"/>
+                  <path d="M11 9L15 13" stroke="#e94560" strokeWidth="1"/>
                 </svg>
               </div>
-              <div className="text-sm font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+              <div className="text-sm font-medium text-premium-white" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
                 Перепройти анкету
               </div>
             </div>
           </button>
           
           {/* История прогресса - текст с 3D календарной иконкой */}
-          <div className="bg-white rounded-[16px] h-20 shadow-[0_4px_12px_rgba(0,0,0,0.06)] flex items-center px-4">
+          <div className="premium-card h-20 flex items-center px-4">
             <div className="flex items-center w-full">
-              <div className="w-6 h-6 mr-3 bg-gradient-to-br from-[#6C4BFF] to-[#A58BFF] rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 mr-3 bg-gradient-to-br from-[#e94560] to-[#533483] rounded-full flex items-center justify-center">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                   <path d="M19 3H18V1H16V3H8V1H6V3H5C3.89 3 3.01 3.9 3.01 5L3 19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V8H19V19Z" fill="white"/>
                 </svg>
               </div>
               <div className="flex flex-col">
-                <div className="text-sm font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                <div className="text-sm font-medium text-premium-white" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
                   5 дней
                 </div>
-                <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+                <div className="text-xs text-premium-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
                   История прогресса
                 </div>
               </div>
