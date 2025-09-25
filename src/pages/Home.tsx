@@ -1,72 +1,57 @@
 import { useState, useEffect } from "react";
 
-// Компонент прогресс-круга
-function ProgressCircle({ percentage }: { percentage: number }) {
-  const [animatedPercentage, setAnimatedPercentage] = useState(0);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimatedPercentage(percentage);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [percentage]);
-
-  const size = 200;
-  const strokeWidth = 14;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - animatedPercentage / 100);
-
+// Компонент фона
+function Background() {
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90">
-        {/* Фоновый круг */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="rgba(255,255,255,0.3)"
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        {/* Прогресс круг с градиентом и glow */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="url(#progressGradient)"
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          className="progress-ring"
-          style={{
-            transition: 'stroke-dashoffset 1.2s ease-in-out',
-            filter: 'drop-shadow(0 0 12px rgba(165, 139, 255, 0.6))'
-          }}
-        />
-        <defs>
-          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#A58BFF" />
-            <stop offset="100%" stopColor="#6C4BFF" />
-          </linearGradient>
-        </defs>
+    <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0" style={{background:'linear-gradient(135deg,#F4D1FF 0%, #FFD6E6 45%, #CFE8FF 100%)'}}/>
+      {/* blobs */}
+      <div className="absolute w-96 h-96 left-6 top-6 rounded-full bg-[#E7C0FF] opacity-40 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" />
+      <div className="absolute w-72 h-72 right-6 top-24 rounded-full bg-[#CDEBFF] opacity-30 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" style={{animationDelay:'2s'}}/>
+      <div className="absolute w-80 h-80 left-20 bottom-10 rounded-full bg-white opacity-10 blur-2xl" />
+      {/* medical grid - svg overlay */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-10" preserveAspectRatio="none">
+        <defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0 L0 0 0 40" stroke="white" strokeOpacity="0.06" strokeWidth="1"/></pattern></defs>
+        <rect width="100%" height="100%" fill="url(#grid)"/>
       </svg>
-      {/* Текст в центре */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-2xl font-semibold" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif', fontSize: '24px' }}>
-          {animatedPercentage}%
-        </div>
-        <div className="text-sm text-center mt-1" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
-          Осталось 2 шага<br/>3 минуты
-        </div>
-      </div>
     </div>
   );
 }
 
-// Компонент свитчера Утро/Вечер
+// Компонент прогресс-круга
+function ProgressRing({size=200, stroke=14, value=65}) {
+  const [animatedValue, setAnimatedValue] = useState(0);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimatedValue(value);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  const r = (size - stroke)/2;
+  const c = 2*Math.PI*r;
+  const dash = c*(animatedValue/100);
+  const offset = c - dash;
+  
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+      <defs>
+        <linearGradient id="g1" x1="0%" x2="100%">
+          <stop offset="0%" stopColor="#A58BFF"/>
+          <stop offset="100%" stopColor="#6C4BFF"/>
+        </linearGradient>
+      </defs>
+      <circle cx={size/2} cy={size/2} r={r} stroke="rgba(255,255,255,0.3)" strokeWidth={stroke} fill="transparent"/>
+      <circle cx={size/2} cy={size/2} r={r} stroke="url(#g1)" strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={`${c} ${c}`} strokeDashoffset={offset}
+        className="glow"
+        style={{transition: 'stroke-dashoffset 1.2s ease-in-out'}} />
+    </svg>
+  );
+}
+
+// Компонент свитчера Утро/Вечер с 3D иконками
 function TimeSwitcher({ activeSegment, setActiveSegment }: { 
   activeSegment: 'morning' | 'evening', 
   setActiveSegment: (segment: 'morning' | 'evening') => void 
@@ -84,22 +69,32 @@ function TimeSwitcher({ activeSegment, setActiveSegment }: {
       <div className="relative flex">
         <button
           onClick={() => setActiveSegment('morning')}
-          className="flex-1 text-sm font-medium transition-colors duration-200"
+          className="flex-1 text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1"
           style={{ 
             color: activeSegment === 'morning' ? '#1E1E1E' : 'rgba(255,255,255,0.4)',
             fontFamily: 'Inter, sans-serif'
           }}
         >
+          {/* 3D Sun icon */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="5" fill="#C8A951" stroke="#D64550" strokeWidth="1"/>
+            <path d="M12 1V3M12 21V23M4.22 4.22L5.64 5.64M18.36 18.36L19.78 19.78M1 12H3M21 12H23M4.22 19.78L5.64 18.36M18.36 5.64L19.78 4.22" stroke="#C8A951" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
           Утро
         </button>
         <button
           onClick={() => setActiveSegment('evening')}
-          className="flex-1 text-sm font-medium transition-colors duration-200"
+          className="flex-1 text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-1"
           style={{ 
             color: activeSegment === 'evening' ? '#1E1E1E' : 'rgba(255,255,255,0.4)',
             fontFamily: 'Inter, sans-serif'
           }}
         >
+          {/* 3D Moon icon */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#6C4BFF" stroke="#A58BFF" strokeWidth="1"/>
+            <circle cx="18" cy="6" r="1" fill="#C8A951" opacity="0.8"/>
+          </svg>
           Вечер
         </button>
       </div>
@@ -107,35 +102,73 @@ function TimeSwitcher({ activeSegment, setActiveSegment }: {
   );
 }
 
-// Компонент чекбокса
-function CareCheckbox({ checked, onChange }: { checked: boolean, onChange: () => void }) {
+// Компонент карточки шага
+function StepCard({title, subtitle, checked, onToggle}: {
+  title: string;
+  subtitle: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <button
-      onClick={onChange}
-      className="rounded-full border-2 transition-all duration-200 flex items-center justify-center"
-      style={{
-        width: '20px',
-        height: '20px',
-        backgroundColor: checked ? '#6C4BFF' : '#FFFFFF',
-        borderColor: '#6C4BFF'
-      }}
-    >
-      {checked && (
-        <svg 
-          className="text-white transition-transform duration-200"
-          style={{ 
-            width: '12px',
-            height: '12px',
-            transform: 'scale(0.8)' 
-          }}
-          fill="currentColor" 
-          viewBox="0 0 20 20"
-        >
-          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+    <div className="bg-white rounded-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.06)] px-4 py-3 flex items-center justify-between">
+      <div>
+        <div className="text-[16px] font-medium text-[#1E1E1E]">{title}</div>
+        {subtitle && <div className="text-[14px] text-[#6B6B6B] mt-1">{subtitle}</div>}
+      </div>
+      <button onClick={onToggle} aria-pressed={checked} className="w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-95">
+        {checked ? (
+          <div className="w-8 h-8 rounded-full bg-[#6C4BFF] flex items-center justify-center">
+            <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.2 8L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-white border-2 border-[#6C4BFF]" />
+        )}
+      </button>
+    </div>
+  )
+}
+
+// Компонент CTA с shimmer и 3D иконками
+function CTA({onClick}: {onClick: () => void}) {
+  return (
+    <button onClick={onClick} className="relative w-full h-16 rounded-3xl overflow-hidden flex items-center justify-between px-6 bg-[rgba(255,255,255,0.2)] backdrop-blur-lg border border-[rgba(255,255,255,0.3)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(108,75,255,0.25)] hover:scale-[1.02] active:scale-95">
+      {/* left refresh icon */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M1 4V10H7" stroke="#6C4BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M23 20V14H17" stroke="#6C4BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M20.49 9C19.9828 7.56612 19.1209 6.2854 17.9845 5.27542C16.848 4.26545 15.4745 3.55976 13.9917 3.22426C12.5089 2.88876 10.9652 2.93434 9.50481 3.35677C8.04439 3.77921 6.71475 4.56473 5.64 5.64L1 10" stroke="#6C4BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3.51 15C4.01725 16.4339 4.87913 17.7146 6.01547 18.7246C7.15182 19.7345 8.52522 20.4402 10.008 20.7757C11.4908 21.1112 13.0345 21.0657 14.4949 20.6432C15.9553 20.2208 17.285 19.4353 18.36 18.36L23 14" stroke="#6C4BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <div className="text-white font-semibold text-lg" style={{ fontFamily: 'Inter, sans-serif' }}>Начать сканирование</div>
+      </div>
+      {/* right 3D camera icon */}
+      <div className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center relative">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          {/* Camera body */}
+          <rect x="4" y="7" width="16" height="10" rx="2" fill="#FFFFFF" stroke="#6C4BFF" strokeWidth="1.5"/>
+          {/* Camera lens */}
+          <circle cx="12" cy="12" r="3" fill="#6C4BFF"/>
+          <circle cx="12" cy="12" r="2" fill="#A58BFF"/>
+          {/* Camera flash */}
+          <circle cx="16" cy="9" r="1" fill="#C8A951"/>
+          {/* Camera viewfinder */}
+          <rect x="10" y="5" width="4" height="2" rx="1" fill="#6C4BFF"/>
         </svg>
-      )}
+        {/* Shimmer effect on camera lens */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 animate-pulse" style={{animation:'shimmer 3s ease-in-out infinite'}}></div>
+        </div>
+      </div>
+
+      {/* shimmer layer */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -left-[120%] top-0 bottom-0 w-32 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-30" style={{animation:'shimmer 8s linear infinite'}} />
+      </div>
     </button>
-  );
+  )
 }
 
 export default function Home() {
@@ -164,42 +197,8 @@ export default function Home() {
   const allStepsCompleted = completedSteps.size === steps.length;
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-white">
-      {/* Фон с градиентом и медицинской сеткой */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400">
-        {/* Белые и алые пятна для глубины */}
-        <div className="absolute top-10 left-10 w-32 h-32 bg-white/25 rounded-full blur-2xl animate-float-1"></div>
-        <div className="absolute top-32 right-16 w-24 h-24 bg-red-500/40 rounded-full blur-xl animate-float-2"></div>
-        <div className="absolute bottom-32 left-20 w-40 h-40 bg-blue-300/30 rounded-full blur-3xl animate-float-3"></div>
-        <div className="absolute bottom-20 right-32 w-28 h-28 bg-pink-300/35 rounded-full blur-2xl animate-float-4"></div>
-        <div className="absolute top-1/2 left-1/3 w-20 h-20 bg-white/30 rounded-full blur-xl animate-float-5"></div>
-        <div className="absolute top-1/4 right-1/4 w-36 h-36 bg-red-400/25 rounded-full blur-3xl animate-float-6"></div>
-        
-        {/* Медицинская экспертиза - сетка/структура */}
-        <div className="absolute inset-0 opacity-25">
-          <svg className="w-full h-full">
-            <defs>
-              <pattern id="medical-grid" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-                {/* Горизонтальные линии */}
-                <path d="M0,20 L60,20" stroke="white" strokeWidth="0.4" opacity="0.6"/>
-                <path d="M0,40 L60,40" stroke="white" strokeWidth="0.3" opacity="0.4"/>
-                <path d="M0,10 L60,10" stroke="white" strokeWidth="0.5" opacity="0.7"/>
-                {/* Вертикальные линии */}
-                <path d="M20,0 L20,60" stroke="white" strokeWidth="0.3" opacity="0.4"/>
-                <path d="M40,0 L40,60" stroke="white" strokeWidth="0.3" opacity="0.4"/>
-                {/* Диагональные структуры */}
-                <path d="M0,0 L60,60" stroke="white" strokeWidth="0.2" opacity="0.3"/>
-                <path d="M60,0 L0,60" stroke="white" strokeWidth="0.2" opacity="0.3"/>
-                {/* Медицинские точки */}
-                <circle cx="30" cy="30" r="1" fill="white" opacity="0.5"/>
-                <circle cx="15" cy="15" r="0.8" fill="white" opacity="0.4"/>
-                <circle cx="45" cy="45" r="0.8" fill="white" opacity="0.4"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#medical-grid)" className="animate-medical-grid"/>
-          </svg>
-        </div>
-      </div>
+    <div className="min-h-screen relative overflow-hidden">
+      <Background />
 
       {/* Кастомные стили */}
       <style dangerouslySetInnerHTML={{__html: `
@@ -390,12 +389,13 @@ export default function Home() {
         {/* Приветствие */}
         <div className="text-center mb-8 animate-fade-slide-up">
           <h1 className="mb-2" style={{ 
-            fontSize: '32px', 
+            fontSize: '30px', 
             fontWeight: 700, 
+            lineHeight: '120%',
             color: '#1E1E1E', 
             fontFamily: 'Playfair Display, serif' 
           }}>
-            Привет, Елена! ✨
+            Привет, Елена!
           </h1>
           <p className="text-base mt-2" style={{ 
             fontSize: '16px',
@@ -409,7 +409,17 @@ export default function Home() {
         {/* Центральный блок - Прогресс и свитчер */}
         <div className="flex flex-col items-center mb-8">
           <div className={allStepsCompleted ? 'animate-completion-celebration' : 'animate-glow-pulse'}>
-            <ProgressCircle percentage={65} />
+            <div className="relative">
+              <ProgressRing value={65} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="text-2xl font-semibold" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif', fontSize: '24px' }}>
+                  65%
+                </div>
+                <div className="text-sm text-center mt-1" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                  Осталось 2 шага<br/>3 минуты
+                </div>
+              </div>
+            </div>
           </div>
           <div className="mt-6">
             <TimeSwitcher activeSegment={activeSegment} setActiveSegment={setActiveSegment} />
@@ -418,7 +428,7 @@ export default function Home() {
 
         {/* Сегодняшний уход */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-4" style={{ 
+          <h2 className="text-lg font-semibold mb-6" style={{ 
             fontSize: '20px',
             fontWeight: 600,
             color: '#1E1E1E', 
@@ -427,32 +437,15 @@ export default function Home() {
             Сегодняшний уход
           </h2>
           
-          <div className="space-y-3">
+          <div className="space-y-4">
             {steps.map((step) => (
-              <div key={step.id} className="care-step-card flex items-center justify-between px-4">
-                <div className="flex flex-col">
-                  <span className="text-base font-medium" style={{ 
-                    fontSize: '16px',
-                    fontWeight: 500,
-                    color: '#1E1E1E', 
-                    fontFamily: 'Inter, sans-serif' 
-                  }}>
-                    {step.name}
-                  </span>
-                  <span className="text-xs" style={{ 
-                    fontSize: '14px',
-                    fontWeight: 400,
-                    color: '#6B6B6B', 
-                    fontFamily: 'Inter, sans-serif' 
-                  }}>
-                    {step.subtitle}
-                  </span>
-                </div>
-                <CareCheckbox 
-                  checked={completedSteps.has(step.id)} 
-                  onChange={() => toggleStepCompleted(step.id)} 
-                />
-              </div>
+              <StepCard
+                key={step.id}
+                title={step.name}
+                subtitle={step.subtitle}
+                checked={completedSteps.has(step.id)}
+                onToggle={() => toggleStepCompleted(step.id)}
+              />
             ))}
           </div>
           
@@ -470,16 +463,16 @@ export default function Home() {
         </div>
 
         {/* Совет дня */}
-        <div className="advice-card p-6 mb-4">
-          <h3 className="text-lg font-semibold mb-2" style={{ 
+        <div className="bg-white rounded-2xl p-4 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+          <h3 className="mb-2" style={{ 
             fontSize: '16px',
             fontWeight: 700,
             color: '#1E1E1E', 
             fontFamily: 'Playfair Display, serif' 
           }}>
-            Экспертное мнение ✨
+            Экспертное мнение
           </h3>
-          <p className="text-sm leading-relaxed" style={{ 
+          <p className="leading-relaxed" style={{ 
             fontSize: '14px',
             fontWeight: 400,
             color: '#6B6B6B', 
@@ -490,27 +483,35 @@ export default function Home() {
         </div>
 
         {/* Рекомендации */}
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          {/* Рекомендация дня - карточка с иконкой продукта */}
-          <div className="recommendation-card p-4 flex items-center">
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          {/* Рекомендация дня - карточка с 3D иконкой продукта */}
+          <div className="bg-white rounded-2xl p-4 shadow-[0_4px_16px_rgba(0,0,0,0.06)] flex items-center">
             <div className="text-center w-full">
-              <div className="text-3xl mb-2">🧴</div>
+              <div className="w-6 h-6 mx-auto mb-2 bg-gradient-to-br from-[#6C4BFF] to-[#A58BFF] rounded-full flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="white"/>
+                </svg>
+              </div>
               <div className="text-xs font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
                 Рекомендация дня
               </div>
             </div>
           </div>
           
-          {/* История прогресса - текст с календарной иконкой */}
-          <div className="recommendation-card p-4 flex items-center">
+          {/* История прогресса - текст с 3D календарной иконкой */}
+          <div className="bg-white rounded-2xl p-4 shadow-[0_4px_16px_rgba(0,0,0,0.06)] flex items-center">
             <div className="flex items-center w-full">
-              <div className="text-2xl mr-3">📅</div>
+              <div className="w-6 h-6 mr-3 bg-gradient-to-br from-[#6C4BFF] to-[#A58BFF] rounded-full flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M19 3H18V1H16V3H8V1H6V3H5C3.89 3 3.01 3.9 3.01 5L3 19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V8H19V19Z" fill="white"/>
+                </svg>
+              </div>
               <div className="flex flex-col">
                 <div className="text-sm font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
                   5 дней подряд
                 </div>
                 <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
-                  История прогресса 💕
+                  История прогресса
                 </div>
               </div>
             </div>
@@ -518,18 +519,7 @@ export default function Home() {
         </div>
 
         {/* CTA кнопка */}
-        <button className="cta-button w-full flex items-center justify-center gap-4">
-          <div className="icon-circle">↻</div>
-          <span className="text-lg font-semibold text-white" style={{ 
-            fontSize: '18px',
-            fontWeight: 600,
-            color: '#FFFFFF',
-            fontFamily: 'Inter, sans-serif' 
-          }}>
-            Начать сканирование
-          </span>
-          <div className="icon-circle-large">📷</div>
-        </button>
+        <CTA onClick={() => console.log('Start scanning')} />
 
         {/* Поздравление при завершении всех шагов */}
         {allStepsCompleted && (

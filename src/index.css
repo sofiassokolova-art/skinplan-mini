@@ -1,6 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --violet: #6C4BFF;
+  --violet-light: #A58BFF;
+  --scarlet: #FF4B5C;
+  --bg-grad: linear-gradient(180deg, #E9C6FF 0%, #FFC0E0 50%, #B8E6FF 100%);
+  --glass: rgba(255,255,255,0.18);
+  --card-bg: rgba(255,255,255,0.96);
+  --muted: #6B6B6B;
+  --text: #1E1E1E;
+}
 
 @layer base {
   html, body, #root { 
@@ -9,9 +23,10 @@
   }
   
   body { 
-    @apply text-text-primary antialiased bg-pearl-gradient;
+    @apply text-text-primary antialiased;
     position: relative;
     min-height: 100vh;
+    background: var(--bg-grad);
   }
   
   /* Премиальный перламутровый фон согласно фикс-гайду */
@@ -406,5 +421,28 @@
     transform: scale(4);
     opacity: 0;
   }
+}
+
+/* Новые анимации для UI Kit */
+/* Shimmer */
+@keyframes shimmer {
+  0% { transform: translateX(-120%); opacity: .6; }
+  50% { opacity: 1; }
+  100% { transform: translateX(120%); opacity: .6; }
+}
+
+/* Blob drift */
+@keyframes blobDrift {
+  0% { transform: translateY(0px) }
+  50% { transform: translateY(8px) }
+  100% { transform: translateY(0px) }
+}
+
+/* Glow helper */
+.glow { filter: drop-shadow(0 8px 20px rgba(108,75,255,0.18)); }
+
+/* Prefers reduced motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  .no-motion * { animation: none !important; transition: none !important; }
 }
 
