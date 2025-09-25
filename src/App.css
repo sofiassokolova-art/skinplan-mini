@@ -62,17 +62,17 @@ html {
   animation: progressFill 2s ease-in-out;
 }
 
-/* Enhanced shimmer effect */
+/* Enhanced shimmer effect for CTA */
 .shimmer::before {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.4),
-    rgba(255, 255, 255, 0.8),
-    rgba(255, 255, 255, 0.4),
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.6),
+    rgba(255, 255, 255, 0.2),
     transparent
   );
-  animation: shimmer 6s linear infinite;
+  animation: shimmer 7s linear infinite;
 }
 
 /* Floating animation for background elements */

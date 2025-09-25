@@ -26,15 +26,14 @@ module.exports = {
         }
       },
       fontFamily: {
+        'playfair': ['Playfair Display', 'serif'],
         'inter': ['Inter', 'sans-serif'],
-        'manrope': ['Manrope', 'sans-serif'],
       },
       fontSize: {
-        'greeting': ['30px', { lineHeight: '36px', fontWeight: '700' }],
-        'subtitle': ['17px', { lineHeight: '24px', fontWeight: '400' }],
-        'progress': ['23px', { lineHeight: '28px', fontWeight: '700' }],
-        'step': ['16px', { lineHeight: '20px', fontWeight: '500' }],
-        'small': ['14px', { lineHeight: '20px', fontWeight: '400' }],
+        'hero': ['30px', { lineHeight: '36px', fontWeight: '700' }],
+        'section': ['21px', { lineHeight: '28px', fontWeight: '600' }],
+        'body-main': ['16px', { lineHeight: '24px', fontWeight: '500' }],
+        'body-secondary': ['14px', { lineHeight: '20px', fontWeight: '400' }],
         'cta': ['18px', { lineHeight: '24px', fontWeight: '600' }],
       },
       spacing: {
