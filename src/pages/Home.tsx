@@ -4,33 +4,58 @@ import { useState, useEffect } from "react";
 function Background() {
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Мягкий перламутровый градиент: фиолет → розовый → голубой → белый */}
+      {/* Премиальный градиент Vogue meets Apple Health */}
       <div className="absolute inset-0" style={{
-        background: 'linear-gradient(135deg, #E9C6FF 0%, #FFC0E0 35%, #B8E6FF 70%, #F8FAFF 100%)'
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #533483 75%, #e94560 100%)'
       }}/>
       
-      {/* Blur-пятна в правильных цветах */}
-      {/* Фиолетовое пятно */}
-      <div className="absolute w-96 h-96 left-6 top-6 rounded-full bg-[#E9C6FF] opacity-25 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" />
+      {/* Анимированные световые эффекты */}
+      <div className="absolute inset-0">
+        {/* Главный световой поток */}
+        <div className="absolute w-[600px] h-[600px] -top-32 -left-32 rounded-full opacity-20 animate-pulse" style={{
+          background: 'radial-gradient(circle, rgba(233,69,96,0.4) 0%, rgba(83,52,131,0.2) 50%, transparent 70%)',
+          animation: 'pulse 4s ease-in-out infinite'
+        }}/>
+        
+        {/* Вторичный свет */}
+        <div className="absolute w-[400px] h-[400px] -bottom-24 -right-24 rounded-full opacity-15" style={{
+          background: 'radial-gradient(circle, rgba(15,52,96,0.3) 0%, rgba(22,33,62,0.2) 50%, transparent 70%)',
+          animation: 'pulse 6s ease-in-out infinite reverse'
+        }}/>
+        
+        {/* Акцентный свет */}
+        <div className="absolute w-[300px] h-[300px] top-1/4 right-1/4 rounded-full opacity-25" style={{
+          background: 'radial-gradient(circle, rgba(83,52,131,0.5) 0%, rgba(233,69,96,0.2) 50%, transparent 70%)',
+          animation: 'pulse 8s ease-in-out infinite'
+        }}/>
+      </div>
       
-      {/* Розовое пятно */}
-      <div className="absolute w-80 h-80 right-8 top-20 rounded-full bg-[#FFC0E0] opacity-20 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" style={{animationDelay:'3s'}}/>
-      
-      {/* Белое пятно */}
-      <div className="absolute w-72 h-72 left-20 bottom-16 rounded-full bg-white opacity-15 blur-2xl animate-[blobDrift_20s_ease-in-out_infinite]" style={{animationDelay:'6s'}}/>
-      
-      {/* Голубое пятно */}
-      <div className="absolute w-88 h-88 right-12 bottom-8 rounded-full bg-[#B8E6FF] opacity-18 blur-3xl animate-[blobDrift_20s_ease-in-out_infinite]" style={{animationDelay:'9s'}}/>
-      
-      {/* Тонкая белая сетка для medical эффекта */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-8" preserveAspectRatio="none">
+      {/* Премиальная сетка - тонкая и элегантная */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-5" preserveAspectRatio="none">
         <defs>
-          <pattern id="medical-grid" width="32" height="32" patternUnits="userSpaceOnUse">
-            <path d="M32 0 L0 0 0 32" stroke="white" strokeOpacity="0.08" strokeWidth="0.5"/>
+          <pattern id="premium-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M40 0 L0 0 0 40" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"/>
+            <circle cx="20" cy="20" r="0.5" fill="rgba(255,255,255,0.05)"/>
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#medical-grid)"/>
+        <rect width="100%" height="100%" fill="url(#premium-grid)"/>
       </svg>
+      
+      {/* Плавающие частицы света */}
+      <div className="absolute inset-0">
+        {[...Array(12)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-white rounded-full opacity-30"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animation: `twinkle ${3 + Math.random() * 4}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * 2}s`
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -53,57 +78,77 @@ function ProgressRing({size=200, stroke=14, value=65}) {
   
   return (
     <div className="relative">
-      {/* Стеклянный фон круга */}
+      {/* Премиальный стеклянный фон */}
       <div 
         className="absolute inset-0 rounded-full"
         style={{
-          background: 'rgba(255,255,255,0.15)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255,255,255,0.2)'
+          background: 'rgba(255,255,255,0.08)',
+          backdropFilter: 'blur(40px)',
+          border: '2px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
+        }}
+      />
+      
+      {/* Внутренний светящийся круг */}
+      <div 
+        className="absolute inset-2 rounded-full"
+        style={{
+          background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+          filter: 'blur(20px)'
         }}
       />
       
       {/* SVG прогресс-круг */}
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 relative z-10">
         <defs>
-          {/* Фиолетовый градиент для glow */}
-          <linearGradient id="violet-glow" x1="0%" x2="100%">
-            <stop offset="0%" stopColor="#A58BFF"/>
-            <stop offset="100%" stopColor="#6C4BFF"/>
+          {/* Премиальный градиент */}
+          <linearGradient id="premium-glow" x1="0%" x2="100%">
+            <stop offset="0%" stopColor="#e94560"/>
+            <stop offset="50%" stopColor="#533483"/>
+            <stop offset="100%" stopColor="#0f3460"/>
           </linearGradient>
           
-          {/* Фильтр для glow эффекта */}
-          <filter id="glow-filter" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+          {/* Усиленный фильтр для glow */}
+          <filter id="premium-glow-filter" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+            <feGaussianBlur stdDeviation="4" result="coloredBlur2"/>
             <feMerge> 
               <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="coloredBlur2"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
+          
+          {/* Радиальный градиент для фона */}
+          <radialGradient id="bg-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.15)"/>
+            <stop offset="100%" stopColor="rgba(255,255,255,0.05)"/>
+          </radialGradient>
         </defs>
         
-        {/* Фоновый круг (стеклянный) */}
+        {/* Фоновый круг с премиальным эффектом */}
         <circle 
           cx={size/2} 
           cy={size/2} 
           r={r} 
-          stroke="rgba(255,255,255,0.25)" 
+          stroke="url(#bg-glow)" 
           strokeWidth={stroke} 
           fill="transparent"
+          opacity="0.6"
         />
         
-        {/* Активный прогресс-круг с glow */}
+        {/* Активный прогресс-круг с премиальным glow */}
         <circle 
           cx={size/2} 
           cy={size/2} 
           r={r} 
-          stroke="url(#violet-glow)" 
+          stroke="url(#premium-glow)" 
           strokeWidth={stroke} 
           strokeLinecap="round"
           strokeDasharray={`${c} ${c}`} 
           strokeDashoffset={offset}
-          filter="url(#glow-filter)"
-          style={{transition: 'stroke-dashoffset 1.2s ease-in-out'}} 
+          filter="url(#premium-glow-filter)"
+          style={{transition: 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)'}} 
         />
       </svg>
     </div>
@@ -170,54 +215,57 @@ function StepCard({title, subtitle, checked, onToggle}: {
 }) {
   return (
     <div 
-      className="bg-white rounded-[16px] px-4 py-4 flex items-center justify-between transition-all duration-300 hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+      className="rounded-[20px] px-6 py-5 flex items-center justify-between transition-all duration-500 hover:scale-[1.02] group"
       style={{
-        boxShadow: '0 4px 16px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)',
-        border: '1px solid rgba(255,255,255,0.8)'
+        background: 'rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(30px)',
+        border: '1px solid rgba(255,255,255,0.15)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)'
       }}
     >
       {/* Левая часть: заголовок + подзаголовок */}
-      <div className="flex-1 pr-4">
+      <div className="flex-1 pr-6">
         <div 
-          className="text-[16px] font-medium text-[#1E1E1E] leading-tight" 
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          className="text-[18px] font-semibold leading-tight mb-1" 
+          style={{ 
+            fontFamily: 'Inter, sans-serif',
+            color: 'rgba(255,255,255,0.95)',
+            letterSpacing: '-0.02em'
+          }}
         >
           {title}
         </div>
         {subtitle && (
           <div 
-            className="text-[14px] text-[#6B6B6B] mt-1 leading-relaxed" 
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="text-[14px] mt-1 leading-relaxed" 
+            style={{ 
+              fontFamily: 'Inter, sans-serif',
+              color: 'rgba(255,255,255,0.6)',
+              fontWeight: 400
+            }}
           >
             {subtitle}
           </div>
         )}
       </div>
       
-      {/* Правая часть: чекбокс */}
+      {/* Правая часть: премиальный чекбокс */}
       <button 
         onClick={onToggle} 
         aria-pressed={checked} 
-        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 hover:bg-gray-50"
+        className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95"
+        style={{
+          background: checked ? 'linear-gradient(135deg, #e94560 0%, #533483 100%)' : 'rgba(255,255,255,0.1)',
+          border: checked ? 'none' : '2px solid rgba(255,255,255,0.2)',
+          boxShadow: checked ? '0 4px 20px rgba(233,69,96,0.4)' : '0 2px 10px rgba(0,0,0,0.1)'
+        }}
       >
         {checked ? (
-          <div 
-            className="w-6 h-6 rounded-full bg-[#6C4BFF] flex items-center justify-center shadow-sm"
-            style={{
-              boxShadow: '0 2px 8px rgba(108,75,255,0.25)'
-            }}
-          >
-            <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
-              <path d="M1 5L4.2 8L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+            <path d="M1 6L5.5 10L15 1" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         ) : (
-          <div 
-            className="w-6 h-6 rounded-full bg-white border-2 border-[#6C4BFF] transition-all duration-300 hover:border-[#A58BFF]"
-            style={{
-              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
-            }}
-          />
+          <div className="w-4 h-4 rounded-full border-2 border-white opacity-40" />
         )}
       </button>
     </div>
@@ -227,41 +275,79 @@ function StepCard({title, subtitle, checked, onToggle}: {
 // Компонент CTA с shimmer и 3D иконками
 function CTA({onClick}: {onClick: () => void}) {
   return (
-    <button onClick={onClick} className="relative w-full h-16 rounded-[32px] overflow-hidden flex items-center justify-between px-6 bg-[rgba(255,255,255,0.2)] backdrop-blur-lg border border-[rgba(255,255,255,0.3)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(108,75,255,0.25)] hover:scale-[1.02] active:scale-95">
-      {/* left refresh icon */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center">
+    <button 
+      onClick={onClick} 
+      className="relative w-full h-20 rounded-[40px] overflow-hidden flex items-center justify-between px-8 transition-all duration-500 hover:scale-[1.02] active:scale-95 group"
+      style={{
+        background: 'linear-gradient(135deg, rgba(233,69,96,0.2) 0%, rgba(83,52,131,0.2) 100%)',
+        backdropFilter: 'blur(40px)',
+        border: '2px solid rgba(255,255,255,0.2)',
+        boxShadow: '0 12px 40px rgba(233,69,96,0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
+      }}
+    >
+      {/* left premium icon */}
+      <div className="flex items-center gap-4">
+        <div 
+          className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{
+            background: 'linear-gradient(135deg, #e94560 0%, #533483 100%)',
+            boxShadow: '0 4px 20px rgba(233,69,96,0.4)'
+          }}
+        >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M1 4V10H7" stroke="#6C4BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M23 20V14H17" stroke="#6C4BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M20.49 9C19.9828 7.56612 19.1209 6.2854 17.9845 5.27542C16.848 4.26545 15.4745 3.55976 13.9917 3.22426C12.5089 2.88876 10.9652 2.93434 9.50481 3.35677C8.04439 3.77921 6.71475 4.56473 5.64 5.64L1 10" stroke="#6C4BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M3.51 15C4.01725 16.4339 4.87913 17.7146 6.01547 18.7246C7.15182 19.7345 8.52522 20.4402 10.008 20.7757C11.4908 21.1112 13.0345 21.0657 14.4949 20.6432C15.9553 20.2208 17.285 19.4353 18.36 18.36L23 14" stroke="#6C4BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M1 4V10H7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M23 20V14H17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M20.49 9C19.9828 7.56612 19.1209 6.2854 17.9845 5.27542C16.848 4.26545 15.4745 3.55976 13.9917 3.22426C12.5089 2.88876 10.9652 2.93434 9.50481 3.35677C8.04439 3.77921 6.71475 4.56473 5.64 5.64L1 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3.51 15C4.01725 16.4339 4.87913 17.7146 6.01547 18.7246C7.15182 19.7345 8.52522 20.4402 10.008 20.7757C11.4908 21.1112 13.0345 21.0657 14.4949 20.6432C15.9553 20.2208 17.285 19.4353 18.36 18.36L23 14" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <div className="text-white font-semibold text-lg" style={{ fontFamily: 'Inter, sans-serif' }}>Начать сканирование</div>
+        <div 
+          className="text-white font-bold text-xl" 
+          style={{ 
+            fontFamily: 'Inter, sans-serif',
+            letterSpacing: '-0.02em',
+            textShadow: '0 2px 10px rgba(0,0,0,0.3)'
+          }}
+        >
+          Начать сканирование
+        </div>
       </div>
-      {/* right 3D camera icon */}
-      <div className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center relative">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          {/* Camera body */}
-          <rect x="4" y="7" width="16" height="10" rx="2" fill="#FFFFFF" stroke="#6C4BFF" strokeWidth="1.5"/>
-          {/* Camera lens */}
-          <circle cx="12" cy="12" r="3" fill="#6C4BFF"/>
-          <circle cx="12" cy="12" r="2" fill="#A58BFF"/>
-          {/* Camera flash */}
-          <circle cx="16" cy="9" r="1" fill="#C8A951"/>
-          {/* Camera viewfinder */}
-          <rect x="10" y="5" width="4" height="2" rx="1" fill="#6C4BFF"/>
+      
+      {/* right premium camera icon */}
+      <div 
+        className="w-14 h-14 rounded-full flex items-center justify-center relative"
+        style={{
+          background: 'linear-gradient(135deg, #e94560 0%, #533483 100%)',
+          boxShadow: '0 4px 20px rgba(233,69,96,0.4)'
+        }}
+      >
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          {/* Premium camera body */}
+          <rect x="3" y="6" width="18" height="12" rx="3" fill="white" stroke="#e94560" strokeWidth="1.5"/>
+          {/* Premium camera lens */}
+          <circle cx="12" cy="12" r="4" fill="#e94560"/>
+          <circle cx="12" cy="12" r="2.5" fill="#533483"/>
+          {/* Premium camera flash */}
+          <circle cx="17" cy="8" r="1.5" fill="#ffd700"/>
+          {/* Premium camera viewfinder */}
+          <rect x="9" y="4" width="6" height="2" rx="1" fill="#e94560"/>
         </svg>
-        {/* Shimmer effect on camera lens */}
+        
+        {/* Enhanced shimmer effect */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 animate-pulse" style={{animation:'shimmer 3s ease-in-out infinite'}}></div>
+          <div 
+            className="w-8 h-8 rounded-full bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0" 
+            style={{animation:'shimmer 3s ease-in-out infinite'}}
+          />
         </div>
       </div>
 
-      {/* shimmer layer */}
+      {/* Enhanced shimmer layer */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -left-[120%] top-0 bottom-0 w-32 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-30" style={{animation:'shimmer 8s linear infinite'}} />
+        <div 
+          className="absolute -left-[120%] top-0 bottom-0 w-40 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-20" 
+          style={{animation:'shimmer 6s linear infinite'}} 
+        />
       </div>
     </button>
   )
@@ -484,22 +570,36 @@ export default function Home() {
 
         {/* Приветствие */}
         <div className="text-center mb-8 animate-fade-slide-up">
-          <h1 className="mb-2" style={{ 
-            fontSize: '30px', 
+          {/* Премиальный заголовок с градиентом */}
+          <h1 className="mb-4" style={{ 
+            fontSize: '36px', 
             fontWeight: 700, 
-            lineHeight: '120%',
-            color: '#1E1E1E', 
-            fontFamily: 'Playfair Display, serif' 
+            lineHeight: '110%',
+            background: 'linear-gradient(135deg, #ffffff 0%, #e94560 50%, #533483 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontFamily: 'Playfair Display, serif',
+            textShadow: '0 4px 20px rgba(233,69,96,0.3)'
           }}>
             Привет, Елена!
           </h1>
+          
+          {/* Премиальный подзаголовок */}
           <p className="text-base mt-2" style={{ 
-            fontSize: '16px',
-            color: '#6B6B6B', 
-            fontFamily: 'Inter, sans-serif' 
+            fontSize: '18px',
+            color: 'rgba(255,255,255,0.8)', 
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 300,
+            letterSpacing: '0.5px'
           }}>
-            Твой уход на сегодня готов
+            Твой персональный уход готов
           </p>
+          
+          {/* Декоративная линия */}
+          <div className="mx-auto mt-4 w-16 h-px" style={{
+            background: 'linear-gradient(90deg, transparent 0%, #e94560 50%, transparent 100%)'
+          }}/>
         </div>
 
         {/* Центральный блок - Прогресс и свитчер */}
