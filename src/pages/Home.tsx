@@ -30,28 +30,30 @@ function Background() {
         }}/>
       </div>
       
-      {/* Премиальная сетка - тонкая и элегантная */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-5" preserveAspectRatio="none">
+      {/* Премиальная сетка - без точек, только линии */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-3" preserveAspectRatio="none">
         <defs>
-          <pattern id="premium-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M40 0 L0 0 0 40" stroke="rgba(255,255,255,0.1)" strokeWidth="0.5"/>
-            <circle cx="20" cy="20" r="0.5" fill="rgba(255,255,255,0.05)"/>
+          <pattern id="premium-grid" width="60" height="60" patternUnits="userSpaceOnUse">
+            <path d="M60 0 L0 0 0 60" stroke="rgba(233,69,96,0.1)" strokeWidth="0.3"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#premium-grid)"/>
       </svg>
       
-      {/* Плавающие частицы света */}
+      {/* Элегантные световые акценты вместо точек */}
       <div className="absolute inset-0">
-        {[...Array(12)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 bg-white rounded-full opacity-30"
+            className="absolute rounded-full opacity-20"
             style={{
+              width: `${2 + Math.random() * 3}px`,
+              height: `${2 + Math.random() * 3}px`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              animation: `twinkle ${3 + Math.random() * 4}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 2}s`
+              background: `radial-gradient(circle, rgba(233,69,96,0.6) 0%, transparent 70%)`,
+              animation: `twinkle ${4 + Math.random() * 3}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * 3}s`
             }}
           />
         ))}
