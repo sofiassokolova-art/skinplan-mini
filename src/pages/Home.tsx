@@ -143,8 +143,6 @@ export default function Home() {
     { id: 'eye_cream', name: 'Крем для глаз' }
   ];
 
-  const completedCount = completedSteps.size;
-
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Анимированный фон */}
