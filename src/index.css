@@ -26,42 +26,10 @@
     @apply text-text-primary antialiased;
     position: relative;
     min-height: 100vh;
-    background: var(--bg-grad);
+    background: #1a1a2e;
   }
   
-  /* Премиальный перламутровый фон согласно фикс-гайду */
-  body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, 
-      #FDFCFB 0%,
-      #F7F1EF 100%
-    );
-    z-index: -2;
-  }
-  
-  /* Лёгкий блеск (radial highlight) с shimmer */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.1) 50%,
-      transparent
-    );
-    background-size: 200% 100%;
-    animation: backgroundShimmer 8s linear infinite;
-    z-index: -1;
-  }
+  /* Премиальный фон теперь в компоненте Background */
   
   /* Типографика */
   h1, h2, h3 {
