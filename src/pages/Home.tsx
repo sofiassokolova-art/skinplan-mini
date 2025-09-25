@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
-// Компонент кольцевого прогресса
-function CircularProgress({ percentage, size = 200 }: { percentage: number; size?: number }) {
+// Компонент прогресс-круга
+function ProgressCircle({ percentage }: { percentage: number }) {
   const [animatedPercentage, setAnimatedPercentage] = useState(0);
   
   useEffect(() => {
@@ -11,6 +11,7 @@ function CircularProgress({ percentage, size = 200 }: { percentage: number; size
     return () => clearTimeout(timer);
   }, [percentage]);
 
+  const size = 200;
   const strokeWidth = 14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -18,11 +19,7 @@ function CircularProgress({ percentage, size = 200 }: { percentage: number; size
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg
-        width={size}
-        height={size}
-        className="transform -rotate-90"
-      >
+      <svg width={size} height={size} className="transform -rotate-90">
         {/* Фоновый круг */}
         <circle
           cx={size / 2}
@@ -58,8 +55,10 @@ function CircularProgress({ percentage, size = 200 }: { percentage: number; size
       </svg>
       {/* Текст в центре */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-2xl font-bold text-white mb-1">{animatedPercentage}%</div>
-        <div className="text-sm text-white/70 text-center">
+        <div className="text-2xl font-bold" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
+          {animatedPercentage}%
+        </div>
+        <div className="text-sm text-center" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
           Осталось 2 шага<br/>3 минуты
         </div>
       </div>
@@ -68,25 +67,38 @@ function CircularProgress({ percentage, size = 200 }: { percentage: number; size
 }
 
 // Компонент свитчера Утро/Вечер
-function TimeSwitcher({ activeSegment, setActiveSegment }: { activeSegment: 'morning' | 'evening', setActiveSegment: (segment: 'morning' | 'evening') => void }) {
+function TimeSwitcher({ activeSegment, setActiveSegment }: { 
+  activeSegment: 'morning' | 'evening', 
+  setActiveSegment: (segment: 'morning' | 'evening') => void 
+}) {
   return (
-    <div className="relative bg-white/40 rounded-full p-1 w-36 h-10">
+    <div className="relative bg-white/40 rounded-full p-1" style={{ width: 140, height: 40 }}>
       <div 
-        className="absolute top-1 left-1 w-16 h-8 bg-white rounded-full transition-transform duration-200 ease-out"
-        style={{ transform: activeSegment === 'evening' ? 'translateX(68px)' : 'translateX(0)' }}
+        className="absolute top-1 left-1 bg-white rounded-full transition-transform duration-200 ease-out"
+        style={{ 
+          width: 66, 
+          height: 32,
+          transform: activeSegment === 'evening' ? 'translateX(70px)' : 'translateX(0)'
+        }}
       />
       <div className="relative flex">
         <button
           onClick={() => setActiveSegment('morning')}
           className="flex-1 text-sm font-medium transition-colors duration-200"
-          style={{ color: activeSegment === 'morning' ? '#1E1E1E' : '#6B6B6B' }}
+          style={{ 
+            color: activeSegment === 'morning' ? '#1E1E1E' : '#6B6B6B',
+            fontFamily: 'Inter, sans-serif'
+          }}
         >
           Утро
         </button>
         <button
           onClick={() => setActiveSegment('evening')}
           className="flex-1 text-sm font-medium transition-colors duration-200"
-          style={{ color: activeSegment === 'evening' ? '#1E1E1E' : '#6B6B6B' }}
+          style={{ 
+            color: activeSegment === 'evening' ? '#1E1E1E' : '#6B6B6B',
+            fontFamily: 'Inter, sans-serif'
+          }}
         >
           Вечер
         </button>
@@ -102,7 +114,7 @@ function CareCheckbox({ checked, onChange }: { checked: boolean, onChange: () =>
       onClick={onChange}
       className="w-5 h-5 rounded-full border-2 transition-all duration-200 flex items-center justify-center"
       style={{
-        backgroundColor: checked ? '#6C4BFF' : 'transparent',
+        backgroundColor: checked ? '#6C4BFF' : '#FFFFFF',
         borderColor: '#6C4BFF'
       }}
     >
@@ -294,22 +306,32 @@ export default function Home() {
         
         {/* Логотип */}
         <div className="flex justify-center mb-8">
-          <div className="text-2xl font-bold text-white">SkinIQ</div>
+          <div className="text-2xl font-bold" style={{ color: '#1E1E1E', fontFamily: 'Playfair Display, serif' }}>
+            SkinIQ
+          </div>
         </div>
 
         {/* Приветствие */}
         <div className="text-center mb-8 animate-sparkle">
-          <h1 className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h1 className="mb-2" style={{ 
+            fontSize: '32px', 
+            fontWeight: 700, 
+            color: '#1E1E1E', 
+            fontFamily: 'Playfair Display, serif' 
+          }}>
             Привет, Елена! ✨
           </h1>
-          <p className="text-base text-white/80" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-base" style={{ 
+            color: '#6B6B6B', 
+            fontFamily: 'Inter, sans-serif' 
+          }}>
             Твой уход на сегодня готов
           </p>
         </div>
 
         {/* Центральный блок - Прогресс и свитчер */}
         <div className="flex flex-col items-center mb-8">
-          <CircularProgress percentage={65} />
+          <ProgressCircle percentage={65} />
           <div className="mt-6">
             <TimeSwitcher activeSegment={activeSegment} setActiveSegment={setActiveSegment} />
           </div>
@@ -317,14 +339,20 @@ export default function Home() {
 
         {/* Сегодняшний уход */}
         <div className="glass-card p-6 mb-6">
-          <h2 className="text-lg font-semibold text-white mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h2 className="text-lg font-semibold mb-4" style={{ 
+            color: '#1E1E1E', 
+            fontFamily: 'Inter, sans-serif' 
+          }}>
             Сегодняшний уход
           </h2>
           
           <div className="space-y-3">
             {steps.map((step) => (
               <div key={step.id} className="care-card flex items-center justify-between px-4">
-                <span className="text-base font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
+                <span className="text-base font-medium" style={{ 
+                  color: '#1E1E1E', 
+                  fontFamily: 'Inter, sans-serif' 
+                }}>
                   {step.name}
                 </span>
                 <CareCheckbox 
@@ -335,14 +363,22 @@ export default function Home() {
             ))}
           </div>
           
-          <button className="w-full mt-4 py-3 px-4 border border-purple-400 rounded-2xl text-purple-400 font-medium transition-all duration-200 hover:bg-purple-400/10">
+          <button className="w-full mt-4 py-3 px-4 border border-purple-400 rounded-2xl font-medium transition-all duration-200 hover:bg-purple-400/10" style={{
+            background: 'rgba(255,255,255,0.2)',
+            borderColor: '#6C4BFF',
+            color: '#6C4BFF',
+            fontFamily: 'Inter, sans-serif'
+          }}>
             Перейти к плану
           </button>
         </div>
 
         {/* Совет дня */}
         <div className="bg-white rounded-2xl p-4 mb-4">
-          <p className="text-sm" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-sm" style={{ 
+            color: '#1E1E1E', 
+            fontFamily: 'Inter, sans-serif' 
+          }}>
             Кожа слегка обезвожена. Рекомендуем усилить увлажнение ✨
           </p>
         </div>
@@ -352,13 +388,19 @@ export default function Home() {
           <div className="bg-white rounded-2xl p-4 h-20 flex items-center">
             <div className="text-center w-full">
               <div className="text-2xl mb-1">🧴</div>
-              <div className="text-xs text-gray-600">Рекомендация дня</div>
+              <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
+                Рекомендация дня
+              </div>
             </div>
           </div>
           <div className="bg-white rounded-2xl p-4 h-20 flex items-center">
             <div className="text-center w-full">
-              <div className="text-sm font-medium mb-1">5 дней</div>
-              <div className="text-xs text-gray-600">История прогресса 💕</div>
+              <div className="text-sm font-medium mb-1" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
+                5 дней
+              </div>
+              <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
+                История прогресса 💕
+              </div>
             </div>
           </div>
         </div>
