@@ -441,6 +441,22 @@
 /* Glow helper */
 .glow { filter: drop-shadow(0 8px 20px rgba(108,75,255,0.18)); }
 
+/* Premium animations */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes premium-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.05); }
+}
+
+@keyframes premium-glow {
+  0%, 100% { box-shadow: 0 8px 32px rgba(233,69,96,0.3); }
+  50% { box-shadow: 0 12px 48px rgba(233,69,96,0.5); }
+}
+
 /* Prefers reduced motion fallback */
 @media (prefers-reduced-motion: reduce) {
   .no-motion * { animation: none !important; transition: none !important; }
