@@ -149,10 +149,10 @@ export default function Home() {
   };
 
   const steps = [
-    { id: 'cleanser', name: 'Очищение кожи' },
-    { id: 'antioxidants', name: 'Антиоксиданты' },
-    { id: 'moisturizer', name: 'Увлажнение' },
-    { id: 'eye_cream', name: 'Крем для глаз' }
+    { id: 'cleanser', name: 'Очищение кожи', subtitle: 'Очищающее средство' },
+    { id: 'antioxidants', name: 'Антиоксиданты', subtitle: 'Витамин C сыворотка' },
+    { id: 'moisturizer', name: 'Увлажнение', subtitle: 'Гиалуроновая кислота' },
+    { id: 'eye_cream', name: 'Крем для глаз', subtitle: 'Пептидный комплекс' }
   ];
 
   const allStepsCompleted = completedSteps.size === steps.length;
@@ -161,24 +161,36 @@ export default function Home() {
     <div className="min-h-screen relative overflow-hidden bg-white">
       {/* Фон с градиентом и медицинской сеткой */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400">
-        {/* Мягкие пятна */}
-        <div className="absolute top-10 left-10 w-32 h-32 bg-white/20 rounded-full blur-xl animate-float-1"></div>
-        <div className="absolute top-32 right-16 w-24 h-24 bg-red-300/30 rounded-full blur-lg animate-float-2"></div>
-        <div className="absolute bottom-32 left-20 w-40 h-40 bg-blue-300/25 rounded-full blur-2xl animate-float-3"></div>
-        <div className="absolute bottom-20 right-32 w-28 h-28 bg-pink-300/30 rounded-full blur-xl animate-float-4"></div>
+        {/* Белые и алые пятна для глубины */}
+        <div className="absolute top-10 left-10 w-32 h-32 bg-white/25 rounded-full blur-2xl animate-float-1"></div>
+        <div className="absolute top-32 right-16 w-24 h-24 bg-red-400/40 rounded-full blur-xl animate-float-2"></div>
+        <div className="absolute bottom-32 left-20 w-40 h-40 bg-blue-300/30 rounded-full blur-3xl animate-float-3"></div>
+        <div className="absolute bottom-20 right-32 w-28 h-28 bg-pink-300/35 rounded-full blur-2xl animate-float-4"></div>
+        <div className="absolute top-1/2 left-1/3 w-20 h-20 bg-white/30 rounded-full blur-xl animate-float-5"></div>
+        <div className="absolute top-1/4 right-1/4 w-36 h-36 bg-red-300/25 rounded-full blur-3xl animate-float-6"></div>
         
-        {/* Медицинская сетка - структура кожи */}
-        <div className="absolute inset-0 opacity-20">
+        {/* Медицинская экспертиза - сетка/структура */}
+        <div className="absolute inset-0 opacity-25">
           <svg className="w-full h-full">
             <defs>
-              <pattern id="skin-pattern" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
-                <path d="M0,40 Q20,20 40,40 T80,40" stroke="white" strokeWidth="0.5" fill="none" opacity="0.4"/>
-                <path d="M0,60 Q30,45 60,60 T120,60" stroke="white" strokeWidth="0.3" fill="none" opacity="0.3"/>
-                <path d="M0,20 Q25,35 50,20 T100,20" stroke="white" strokeWidth="0.4" fill="none" opacity="0.35"/>
-                <path d="M0,80 Q35,65 70,80 T140,80" stroke="white" strokeWidth="0.3" fill="none" opacity="0.25"/>
+              <pattern id="medical-grid" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+                {/* Горизонтальные линии */}
+                <path d="M0,20 L60,20" stroke="white" strokeWidth="0.4" opacity="0.6"/>
+                <path d="M0,40 L60,40" stroke="white" strokeWidth="0.3" opacity="0.4"/>
+                <path d="M0,10 L60,10" stroke="white" strokeWidth="0.5" opacity="0.7"/>
+                {/* Вертикальные линии */}
+                <path d="M20,0 L20,60" stroke="white" strokeWidth="0.3" opacity="0.4"/>
+                <path d="M40,0 L40,60" stroke="white" strokeWidth="0.3" opacity="0.4"/>
+                {/* Диагональные структуры */}
+                <path d="M0,0 L60,60" stroke="white" strokeWidth="0.2" opacity="0.3"/>
+                <path d="M60,0 L0,60" stroke="white" strokeWidth="0.2" opacity="0.3"/>
+                {/* Медицинские точки */}
+                <circle cx="30" cy="30" r="1" fill="white" opacity="0.5"/>
+                <circle cx="15" cy="15" r="0.8" fill="white" opacity="0.4"/>
+                <circle cx="45" cy="45" r="0.8" fill="white" opacity="0.4"/>
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#skin-pattern)" className="animate-skin-grid"/>
+            <rect width="100%" height="100%" fill="url(#medical-grid)" className="animate-medical-grid"/>
           </svg>
         </div>
       </div>
@@ -215,9 +227,21 @@ export default function Home() {
           60% { transform: translate(12px, 6px) rotate(3deg); }
         }
         
-        @keyframes skin-grid {
+        @keyframes float-5 {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          40% { transform: translate(-6px, -8px) rotate(2deg); }
+          80% { transform: translate(10px, 4px) rotate(-2deg); }
+        }
+        
+        @keyframes float-6 {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          25% { transform: translate(8px, -12px) rotate(3deg); }
+          75% { transform: translate(-10px, 8px) rotate(-3deg); }
+        }
+        
+        @keyframes medical-grid {
           0% { transform: translateX(0) translateY(0); }
-          100% { transform: translateX(2px) translateY(3px); }
+          100% { transform: translateX(1px) translateY(2px); }
         }
         
         @keyframes shimmer {
@@ -245,7 +269,9 @@ export default function Home() {
         .animate-float-2 { animation: float-2 18s ease-in-out infinite; }
         .animate-float-3 { animation: float-3 22s ease-in-out infinite; }
         .animate-float-4 { animation: float-4 16s ease-in-out infinite; }
-        .animate-skin-grid { animation: skin-grid 25s linear infinite; }
+        .animate-float-5 { animation: float-5 14s ease-in-out infinite; }
+        .animate-float-6 { animation: float-6 26s ease-in-out infinite; }
+        .animate-medical-grid { animation: medical-grid 30s linear infinite; }
         .animate-shimmer { animation: shimmer 8s linear infinite; }
         .animate-fade-slide-up { animation: fade-slide-up 0.3s ease-out; }
         .animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
@@ -298,6 +324,7 @@ export default function Home() {
           height: 64px;
           position: relative;
           overflow: hidden;
+          transition: all 0.3s ease;
         }
         
         .cta-button::before {
@@ -309,6 +336,12 @@ export default function Home() {
           height: 100%;
           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
           animation: shimmer 8s linear infinite;
+        }
+        
+        .cta-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 32px rgba(165, 139, 255, 0.3);
+          filter: drop-shadow(0 0 20px rgba(165, 139, 255, 0.4));
         }
         
         .cta-button:active {
@@ -388,12 +421,20 @@ export default function Home() {
           <div className="space-y-3">
             {steps.map((step) => (
               <div key={step.id} className="care-step-card flex items-center justify-between px-4">
-                <span className="text-base font-medium" style={{ 
-                  color: '#1E1E1E', 
-                  fontFamily: 'Inter, sans-serif' 
-                }}>
-                  {step.name}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-base font-medium" style={{ 
+                    color: '#1E1E1E', 
+                    fontFamily: 'Inter, sans-serif' 
+                  }}>
+                    {step.name}
+                  </span>
+                  <span className="text-xs" style={{ 
+                    color: '#6B6B6B', 
+                    fontFamily: 'Inter, sans-serif' 
+                  }}>
+                    {step.subtitle}
+                  </span>
+                </div>
                 <CareCheckbox 
                   checked={completedSteps.has(step.id)} 
                   onChange={() => toggleStepCompleted(step.id)} 
@@ -414,32 +455,44 @@ export default function Home() {
         </div>
 
         {/* Совет дня */}
-        <div className="advice-card p-4 mb-4">
-          <p className="text-sm" style={{ 
+        <div className="advice-card p-6 mb-4">
+          <h3 className="text-lg font-semibold mb-2" style={{ 
             color: '#1E1E1E', 
+            fontFamily: 'Playfair Display, serif' 
+          }}>
+            Экспертное мнение ✨
+          </h3>
+          <p className="text-sm leading-relaxed" style={{ 
+            color: '#6B6B6B', 
             fontFamily: 'Inter, sans-serif' 
           }}>
-            Кожа слегка обезвожена. Рекомендуем усилить увлажнение ✨
+            Кожа слегка обезвожена. Рекомендуем усилить увлажнение гиалуроновой кислотой и пептидами для восстановления гидробаланса.
           </p>
         </div>
 
         {/* Рекомендации */}
         <div className="grid grid-cols-2 gap-3 mb-8">
+          {/* Рекомендация дня - карточка с иконкой продукта */}
           <div className="recommendation-card p-4 flex items-center">
             <div className="text-center w-full">
-              <div className="text-2xl mb-1">🧴</div>
-              <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
+              <div className="text-3xl mb-2">🧴</div>
+              <div className="text-xs font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
                 Рекомендация дня
               </div>
             </div>
           </div>
+          
+          {/* История прогресса - текст с календарной иконкой */}
           <div className="recommendation-card p-4 flex items-center">
-            <div className="text-center w-full">
-              <div className="text-sm font-medium mb-1" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
-                5 дней
-              </div>
-              <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
-                История прогресса 💕
+            <div className="flex items-center w-full">
+              <div className="text-2xl mr-3">📅</div>
+              <div className="flex flex-col">
+                <div className="text-sm font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif' }}>
+                  5 дней подряд
+                </div>
+                <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif' }}>
+                  История прогресса 💕
+                </div>
               </div>
             </div>
           </div>
