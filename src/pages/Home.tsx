@@ -110,18 +110,18 @@ function StepCard({title, subtitle, checked, onToggle}: {
   onToggle: () => void;
 }) {
   return (
-    <div className="bg-white rounded-[16px] shadow-[0_4px_12px_rgba(0,0,0,0.06)] px-4 h-14 flex items-center justify-between">
+    <div className="bg-white rounded-[16px] shadow-[0_4px_16px_rgba(0,0,0,0.06)] px-4 min-h-[72px] flex items-center justify-between">
       <div>
         <div className="text-[16px] font-medium text-[#1E1E1E]" style={{ fontFamily: 'Inter, sans-serif' }}>{title}</div>
         {subtitle && <div className="text-[14px] text-[#6B6B6B] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>{subtitle}</div>}
       </div>
       <button onClick={onToggle} aria-pressed={checked} className="w-9 h-9 rounded-full flex items-center justify-center transition-transform active:scale-95">
         {checked ? (
-          <div className="w-8 h-8 rounded-full bg-[#6C4BFF] flex items-center justify-center">
+          <div className="w-5 h-5 rounded-full bg-[#6C4BFF] flex items-center justify-center">
             <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.2 8L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
         ) : (
-          <div className="w-8 h-8 rounded-full bg-white border-2 border-[#6C4BFF]" />
+          <div className="w-5 h-5 rounded-full bg-white border-2 border-[#6C4BFF]" />
         )}
       </button>
     </div>
@@ -463,19 +463,19 @@ export default function Home() {
         </div>
 
         {/* Совет дня */}
-        <div className="bg-white rounded-2xl p-4 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+        <div className="bg-white rounded-[16px] p-4 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
           <h3 className="mb-2" style={{ 
             fontSize: '16px',
             fontWeight: 700,
             color: '#1E1E1E', 
             fontFamily: 'Playfair Display, serif' 
           }}>
-            Экспертное мнение
+            Совет дня
           </h3>
           <p className="leading-relaxed" style={{ 
             fontSize: '14px',
             fontWeight: 400,
-            color: '#6B6B6B', 
+            color: '#1E1E1E', 
             fontFamily: 'Inter, sans-serif' 
           }}>
             Кожа слегка обезвожена. Рекомендуем усилить увлажнение гиалуроновой кислотой и пептидами для восстановления гидробаланса.
@@ -483,7 +483,7 @@ export default function Home() {
         </div>
 
         {/* Нижний ряд карточек */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-2 mb-8">
           {/* Перепройти анкету - кнопка с 3D иконкой формы-анкеты */}
           <button className="bg-white rounded-[16px] h-20 shadow-[0_4px_12px_rgba(0,0,0,0.06)] flex items-center transition-all duration-300 hover:border-2 hover:border-[#6C4BFF] hover:shadow-[0_8px_24px_rgba(108,75,255,0.15)] group">
             <div className="text-center w-full px-4">
@@ -518,7 +518,7 @@ export default function Home() {
                 <div className="text-sm font-medium" style={{ color: '#1E1E1E', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
                   5 дней
                 </div>
-                <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+                <div className="text-xs" style={{ color: '#6B6B6B', fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
                   История прогресса
                 </div>
               </div>
