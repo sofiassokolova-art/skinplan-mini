@@ -502,7 +502,11 @@ export default function MobileSkinIQHome() {
         className={`sticky top-0 z-20 ${glass} ${radiusPanel} h-14 mx-4 mt-4 flex items-center justify-center px-4`}
         style={{ color: theme.text }}
       >
-        <div className="text-[16px] font-semibold tracking-tight">SkinIQ</div>
+        <img 
+          src="/skiniq-logo.png" 
+          alt="SkinIQ" 
+          className="h-8 w-auto object-contain"
+        />
           </div>
 
       {/* Greeting */}
