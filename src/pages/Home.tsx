@@ -496,18 +496,21 @@ export default function MobileSkinIQHome() {
 
       {/* Header */}
       <div
-        className={`sticky top-0 z-20 ${glass} ${radiusPanel} h-14 mx-4 mt-4 flex items-center justify-between px-4`}
+        className={`sticky top-0 z-20 ${glass} ${radiusPanel} h-14 mx-4 mt-4 flex items-center justify-center px-4`}
         style={{ color: theme.text }}
       >
         <div className="text-[16px] font-semibold tracking-tight">SkinIQ</div>
-        <div className="w-8 h-8 rounded-full bg-neutral-900/80" />
+      </div>
+
+      {/* Greeting */}
+      <div className="mx-4 mt-4 mb-2">
+        <div className="text-[16px] font-medium text-neutral-800">
+          {greeting}, {userName}!
+        </div>
       </div>
 
       {/* Main Panel */}
-      <section className={`${glass} ${radiusPanel} relative z-20 mx-4 mt-4 p-4`}>
-        <div className="mb-2 text-[14px] text-neutral-800">
-          {greeting}, {userName}!
-        </div>
+      <section className={`${glass} ${radiusPanel} relative z-20 mx-4 p-4`}>
         <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
         <p className="text-[12px] text-neutral-600 mt-0.5">
           {progress === 0
@@ -534,15 +537,27 @@ export default function MobileSkinIQHome() {
         </div>
 
         {/* Routine list */}
-        <div className="mt-3 space-y-2 max-h-[288px] overflow-y-auto pr-1">
-          {items.map((it, idx) => (
-            <RoutineCard
-              key={it.id}
-              item={it}
-              onToggle={toggleAt(idx)}
-              onOpen={openHowTo(idx)}
-            />
-          ))}
+        <div className="relative mt-3">
+          {/* Scroll indicator for routine cards */}
+          <div className="absolute top-0 right-0 z-10 flex flex-col items-center gap-1 opacity-60">
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            <svg className="w-3 h-3 text-neutral-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+          </div>
+          
+          <div className="space-y-2 max-h-[288px] overflow-y-auto pr-6 scrollbar-hide">
+            {items.map((it, idx) => (
+              <RoutineCard
+                key={it.id}
+                item={it}
+                onToggle={toggleAt(idx)}
+                onOpen={openHowTo(idx)}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Progress + CTA */}
@@ -567,11 +582,12 @@ export default function MobileSkinIQHome() {
                 progress === 100
                   ? "linear-gradient(90deg,#FFC6D9,#E9C987)"
                   : "#171717",
+              color: "white",
             }}
           >
-            <span className="relative inline-block">
+            <span className="relative inline-block text-white">
               {progress === 0
-                ? "Начать рутину"
+                ? "Перейти к подробному плану"
                 : progress === 100
                 ? "Посмотреть итоги"
                 : "Открыть подробный план"}
@@ -585,31 +601,52 @@ export default function MobileSkinIQHome() {
 
       {/* Widgets carousel */}
       <section className="mt-4 pb-8">
-        <div className="flex gap-3 overflow-x-auto pl-4 pr-4 snap-x snap-mandatory">
-          <WidgetCard title="Гидрация">
-            <MiniRing value={72} />
-            <div>
-              <div className="text-[12px] text-neutral-600">Статус</div>
-              <div className="text-[15px] font-semibold">Оптимально</div>
-            </div>
-          </WidgetCard>
-          <WidgetCard title="UV-индекс">
-            <div className="text-4xl font-semibold">3</div>
-            <div className="text-[12px] text-neutral-600">Сегодня: SPF 30</div>
-          </WidgetCard>
-          <WidgetCard title="Серия дней">
-            <div className="text-4xl font-semibold">4</div>
-            <div className="text-[12px] text-neutral-600">Подряд</div>
-          </WidgetCard>
-          <WidgetCard title="Ингредиенты недели">
-            <div className="flex gap-2 flex-wrap">
-              {["Niacinamide 5%", "AHA off", "Ceramides"].map((b) => (
-                <span key={b} className={`${glass} ${radiusCard} px-3 py-1 text-[11px]`}>
-                  {b}
-                </span>
-              ))}
-            </div>
-          </WidgetCard>
+        <div className="relative">
+          {/* Horizontal scroll indicators */}
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60">
+            <svg className="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
+          
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60">
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            <svg className="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+          
+          <div className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide">
+            <WidgetCard title="Гидрация">
+              <MiniRing value={72} />
+              <div>
+                <div className="text-[12px] text-neutral-600">Статус</div>
+                <div className="text-[15px] font-semibold">Оптимально</div>
+              </div>
+            </WidgetCard>
+            <WidgetCard title="UV-индекс">
+              <div className="text-4xl font-semibold">3</div>
+              <div className="text-[12px] text-neutral-600">Сегодня: SPF 30</div>
+            </WidgetCard>
+            <WidgetCard title="Серия дней">
+              <div className="text-4xl font-semibold">4</div>
+              <div className="text-[12px] text-neutral-600">Подряд</div>
+            </WidgetCard>
+            <WidgetCard title="Ингредиенты недели">
+              <div className="flex gap-2 flex-wrap">
+                {["Niacinamide 5%", "AHA off", "Ceramides"].map((b) => (
+                  <span key={b} className={`${glass} ${radiusCard} px-3 py-1 text-[11px]`}>
+                    {b}
+                  </span>
+                ))}
+              </div>
+            </WidgetCard>
+          </div>
         </div>
       </section>
 
