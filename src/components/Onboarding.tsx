@@ -6,7 +6,7 @@ interface OnboardingStep {
   title: string;
   description: string;
   icon: string;
-  image?: string; // SVG или эмодзи для визуализации
+  image?: string;
   action?: {
     label: string;
     path: string;
@@ -19,7 +19,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: 'Добро пожаловать в SkinIQ! 👋',
     description: 'Персональный ИИ-помощник по уходу за кожей. Пройдите анкету → загрузите фото → получите план ухода.',
     icon: '✨',
-    image: 'skin-model' // Используем специальное изображение
+    image: 'skin-model'
   },
   {
     id: 'process',
@@ -45,6 +45,11 @@ interface OnboardingProps {
   onComplete: () => void;
   onSkip: () => void;
 }
+
+// Glassmorphism стили
+const glass = "bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)]";
+const radiusPanel = "rounded-3xl";
+const radiusCard = "rounded-2xl";
 
 export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -94,149 +99,197 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`bg-white rounded-3xl max-w-md w-full mx-auto shadow-2xl transform transition-all duration-300 ${
-        isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
-      }`}>
-        {/* Прогресс */}
-        <div className="px-6 pt-6">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-sm text-gray-500">
-              {currentStep + 1} из {ONBOARDING_STEPS.length}
-            </span>
-            <button 
-              onClick={handleSkip}
-              className="text-sm text-gray-500 hover:text-gray-700 transition"
-            >
-              Пропустить
-            </button>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
-            <div 
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${((currentStep + 1) / ONBOARDING_STEPS.length) * 100}%` }}
-            />
-          </div>
-        </div>
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      {/* Background with floating spheres */}
+      <div 
+        className="absolute inset-0 -z-10"
+        style={{
+          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+        }}
+      />
+      
+      {/* Floating spheres */}
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div 
+          className="absolute w-64 h-64 top-10 left-10 rounded-full opacity-30"
+          style={{
+            background: "radial-gradient(circle at 30% 30%, rgba(255,198,217,0.9) 0%, rgba(255,198,217,0.4) 45%, rgba(255,255,255,0.0) 70%)",
+            animation: "floatY 15s ease-in-out infinite"
+          }}
+        />
+        <div 
+          className="absolute w-80 h-80 top-32 right-16 rounded-full opacity-25"
+          style={{
+            background: "radial-gradient(circle at 60% 40%, rgba(233,201,135,0.85) 0%, rgba(233,201,135,0.35) 50%, rgba(255,255,255,0.0) 72%)",
+            animation: "floatY 18s ease-in-out infinite reverse"
+          }}
+        />
+        <div 
+          className="absolute w-72 h-72 bottom-20 left-1/3 rounded-full opacity-20"
+          style={{
+            background: "radial-gradient(circle at 30% 30%, rgba(255,198,217,0.9) 0%, rgba(255,198,217,0.4) 45%, rgba(255,255,255,0.0) 70%)",
+            animation: "floatY 12s ease-in-out infinite"
+          }}
+        />
+      </div>
 
-        {/* Контент */}
-        <div className="px-6 pb-6">
-          {/* Иконка и изображение */}
-          <div className="text-center mb-6">
-            {step.image === 'skin-model' ? (
-              <div className="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden relative shadow-2xl border-4 border-white">
-                <img 
-                  src="/photo_2025-09-04 12.37.36.jpeg"
-                  alt="Красивая кожа"
-                  className="w-full h-full object-cover"
-                  style={{
-                    filter: 'brightness(1.05) contrast(1.02) saturate(1.1)'
-                  }}
-                  onError={(e) => {
-                    // Fallback на CSS градиент если изображение не загрузится
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.style.background = `
-                        radial-gradient(ellipse at 40% 20%, rgba(255, 235, 210, 1) 0%, rgba(255, 220, 190, 0.9) 30%, transparent 65%),
-                        radial-gradient(ellipse at 65% 30%, rgba(250, 215, 180, 0.95) 0%, rgba(245, 200, 165, 0.85) 35%, transparent 60%),
-                        linear-gradient(140deg, #FFEEE6 0%, #FFE4D6 12%, #FFDCC7 25%, #F5C99B 40%, #E8B887 55%, #D4A574 70%, #C19660 85%, #B08A55 100%)
-                      `;
-                    }
-                  }}
-                />
-                {/* Мягкий оверлей */}
-                <div className="absolute inset-0 bg-gradient-to-br from-rose-100/10 to-amber-100/10 mix-blend-soft-light"></div>
-              </div>
-            ) : step.image === 'process-flow' ? (
-              <div className="w-32 h-20 mx-auto mb-4 rounded-2xl overflow-hidden relative shadow-lg border-2 border-white bg-gradient-to-r from-blue-50 to-purple-50">
-                <div className="flex items-center justify-center h-full gap-1">
-                  <div className="flex items-center gap-1">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">📋</div>
-                    <div className="text-gray-400">→</div>
-                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">📸</div>
-                    <div className="text-gray-400">→</div>
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-bold">📅</div>
-                  </div>
-                </div>
-              </div>
-            ) : step.image === 'premium-features' ? (
-              <div className="w-32 h-20 mx-auto mb-4 rounded-2xl overflow-hidden relative shadow-lg border-2 border-white bg-gradient-to-r from-amber-50 to-green-50">
-                <div className="flex items-center justify-center h-full gap-2">
-                  <div className="text-2xl">🆓</div>
-                  <div className="text-gray-400">+</div>
-                  <div className="text-2xl">💰</div>
-                  <div className="text-gray-400">=</div>
-                  <div className="text-2xl">💎</div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center items-center gap-4 mb-4">
-                <div className="text-4xl">{step.icon}</div>
-                {step.image && step.image !== 'skin-model' && (
-                  <div className="text-4xl opacity-70">{step.image}</div>
-                )}
-              </div>
-            )}
-            <h2 className="text-2xl font-bold mb-3 text-gray-900">
-              {step.title}
-            </h2>
-            <div className="text-gray-600 leading-relaxed">
-              {step.description.split('\n').map((line, idx) => (
-                <p key={idx} className={idx > 0 ? 'mt-2' : ''}>
-                  {line}
-                </p>
-              ))}
+      {/* Main content */}
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className={`${glass} ${radiusPanel} max-w-md w-full mx-auto shadow-2xl transform transition-all duration-300 ${
+          isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+        }`}>
+          {/* Header with progress */}
+          <div className="p-6 pb-4">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-sm text-neutral-600 font-medium">
+                {currentStep + 1} из {ONBOARDING_STEPS.length}
+              </span>
+              <button 
+                onClick={handleSkip}
+                className="text-sm text-neutral-600 hover:text-neutral-800 transition-colors font-medium"
+              >
+                Пропустить
+              </button>
+            </div>
+            
+            {/* Progress bar */}
+            <div className={`${glass} ${radiusCard} h-2 mb-6`}>
+              <div 
+                className="h-2 rounded-full transition-all duration-500"
+                style={{ 
+                  width: `${((currentStep + 1) / ONBOARDING_STEPS.length) * 100}%`,
+                  background: "linear-gradient(90deg, #FFC6D9, #E9C987)"
+                }}
+              />
             </div>
           </div>
 
-          {/* Кнопки */}
-          <div className="flex gap-3">
-            {currentStep > 0 && (
-              <button
-                onClick={prevStep}
-                className="flex-1 px-4 py-3 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
-              >
-                Назад
-              </button>
-            )}
-            
-            {step.action ? (
-              <button
-                onClick={handleAction}
-                className="flex-1 px-4 py-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:opacity-90 transition"
-              >
-                {step.action.label}
-              </button>
-            ) : (
-              <button
-                onClick={nextStep}
-                className="flex-1 px-4 py-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:opacity-90 transition"
-              >
-                {isLastStep ? 'Начать' : 'Далее'}
-              </button>
-            )}
-          </div>
+          {/* Content */}
+          <div className="px-6 pb-6">
+            {/* Icon and image */}
+            <div className="text-center mb-6">
+              {step.image === 'skin-model' ? (
+                <div className="w-32 h-32 mx-auto mb-4 rounded-full overflow-hidden relative shadow-2xl border-4 border-white/60">
+                  <img 
+                    src="/photo_2025-09-04 12.37.36.jpeg"
+                    alt="Красивая кожа"
+                    className="w-full h-full object-cover"
+                    style={{
+                      filter: 'brightness(1.05) contrast(1.02) saturate(1.1)'
+                    }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.style.background = `
+                          radial-gradient(ellipse at 40% 20%, rgba(255, 235, 210, 1) 0%, rgba(255, 220, 190, 0.9) 30%, transparent 65%),
+                          radial-gradient(ellipse at 65% 30%, rgba(250, 215, 180, 0.95) 0%, rgba(245, 200, 165, 0.85) 35%, transparent 60%),
+                          linear-gradient(140deg, #FFEEE6 0%, #FFE4D6 12%, #FFDCC7 25%, #F5C99B 40%, #E8B887 55%, #D4A574 70%, #C19660 85%, #B08A55 100%)
+                        `;
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-br from-rose-100/10 to-amber-100/10 mix-blend-soft-light"></div>
+                </div>
+              ) : step.image === 'process-flow' ? (
+                <div className={`w-32 h-20 mx-auto mb-4 ${radiusCard} overflow-hidden relative shadow-lg border-2 border-white/60 bg-white/40 backdrop-blur-sm`}>
+                  <div className="flex items-center justify-center h-full gap-1">
+                    <div className="flex items-center gap-1">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg">📋</div>
+                      <div className="text-neutral-500">→</div>
+                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg">📸</div>
+                      <div className="text-neutral-500">→</div>
+                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg">📅</div>
+                    </div>
+                  </div>
+                </div>
+              ) : step.image === 'premium-features' ? (
+                <div className={`w-32 h-20 mx-auto mb-4 ${radiusCard} overflow-hidden relative shadow-lg border-2 border-white/60 bg-white/40 backdrop-blur-sm`}>
+                  <div className="flex items-center justify-center h-full gap-2">
+                    <div className="text-2xl">🆓</div>
+                    <div className="text-neutral-500">+</div>
+                    <div className="text-2xl">💰</div>
+                    <div className="text-neutral-500">=</div>
+                    <div className="text-2xl">💎</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-center items-center gap-4 mb-4">
+                  <div className="text-4xl">{step.icon}</div>
+                  {step.image && step.image !== 'skin-model' && (
+                    <div className="text-4xl opacity-70">{step.image}</div>
+                  )}
+                </div>
+              )}
+              
+              <h2 className="text-2xl font-bold mb-3 text-neutral-900">
+                {step.title}
+              </h2>
+              <div className="text-neutral-700 leading-relaxed text-[15px]">
+                {step.description.split('\n').map((line, idx) => (
+                  <p key={idx} className={idx > 0 ? 'mt-2' : ''}>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </div>
 
-          {/* Индикаторы */}
-          <div className="flex justify-center gap-2 mt-6">
-            {ONBOARDING_STEPS.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentStep(idx)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  idx === currentStep 
-                    ? 'bg-indigo-500 w-6' 
-                    : idx < currentStep 
-                      ? 'bg-indigo-300' 
-                      : 'bg-gray-300'
-                }`}
-              />
-            ))}
+            {/* Buttons */}
+            <div className="flex gap-3">
+              {currentStep > 0 && (
+                <button
+                  onClick={prevStep}
+                  className={`flex-1 h-12 ${radiusCard} ${glass} text-neutral-700 font-semibold text-[15px] transition-all duration-200 hover:bg-white/30`}
+                >
+                  Назад
+                </button>
+              )}
+              
+              {step.action ? (
+                <button
+                  onClick={handleAction}
+                  className="flex-1 h-12 bg-neutral-900 text-white font-semibold text-[15px] transition-all duration-200 hover:bg-neutral-800 rounded-2xl shadow-lg"
+                >
+                  {step.action.label}
+                </button>
+              ) : (
+                <button
+                  onClick={nextStep}
+                  className="flex-1 h-12 bg-neutral-900 text-white font-semibold text-[15px] transition-all duration-200 hover:bg-neutral-800 rounded-2xl shadow-lg"
+                >
+                  {isLastStep ? 'Начать' : 'Далее'}
+                </button>
+              )}
+            </div>
+
+            {/* Page indicators */}
+            <div className="flex justify-center gap-2 mt-6">
+              {ONBOARDING_STEPS.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentStep(idx)}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    idx === currentStep 
+                      ? 'bg-neutral-900 w-6' 
+                      : idx < currentStep 
+                        ? 'bg-neutral-600 w-4' 
+                        : 'bg-white/60 w-2'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes floatY { 
+          0% { transform: translateY(0px); } 
+          50% { transform: translateY(-20px); } 
+          100% { transform: translateY(0px); } 
+        }
+      `}</style>
     </div>
   );
 }
