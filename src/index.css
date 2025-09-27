@@ -1,6 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* Premium light color palette */
+  --premium-bg: #fafbfc;
+  --premium-light: #f8fafc;
+  --premium-muted: #f1f5f9;
+  --premium-border-light: #e2e8f0;
+  --premium-accent: #cbd5e1;
+  --premium-purple: #8b5cf6;
+  --premium-pink: #ec4899;
+  --premium-dark: #1e293b;
+  --premium-glass: rgba(255,255,255,0.8);
+  --premium-border: rgba(226,232,240,0.6);
+  --premium-shadow: rgba(0,0,0,0.04);
+}
 
 @layer base {
   html, body, #root { 
@@ -9,402 +27,159 @@
   }
   
   body { 
-    @apply text-text-primary antialiased bg-pearl-gradient;
+    background: var(--premium-bg);
+    color: var(--premium-dark);
     position: relative;
     min-height: 100vh;
+    margin: 0;
+    padding: 0;
   }
   
-  /* Премиальный перламутровый фон согласно фикс-гайду */
-  body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, 
-      #FDFCFB 0%,
-      #F7F1EF 100%
-    );
-    z-index: -2;
-  }
-  
-  /* Лёгкий блеск (radial highlight) с shimmer */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.1) 50%,
-      transparent
-    );
-    background-size: 200% 100%;
-    animation: backgroundShimmer 8s linear infinite;
-    z-index: -1;
-  }
-  
-  /* Типографика */
+  /* Premium typography */
   h1, h2, h3 {
     font-family: 'Playfair Display', serif;
-    @apply text-text-primary;
-    font-weight: 500;
+    color: var(--premium-dark);
+    margin: 0;
   }
   
   h1 {
-    @apply text-3xl md:text-4xl;
-    line-height: 1.2;
+    font-size: 2.25rem;
+    line-height: 1.1;
+    font-weight: 700;
   }
   
   h2 {
-    @apply text-2xl md:text-3xl;
-    line-height: 1.3;
+    font-size: 1.875rem;
+    line-height: 1.2;
+    font-weight: 600;
   }
   
   h3 {
-    @apply text-xl md:text-2xl;
-    line-height: 1.4;
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-weight: 600;
   }
   
   p, span, div {
-    @apply text-text-secondary;
+    color: var(--premium-dark);
     line-height: 1.6;
+    margin: 0;
   }
 }
 
 @layer components {
-  /* Премиальные карточки с эндоморфизмом */
-  .card {
-    @apply rounded-card bg-pearl-card backdrop-blur-sm shadow-neumorphism;
-    border: 1px solid rgba(230, 202, 223, 0.2);
+  /* Premium glassmorphism cards */
+  .premium-card {
+    background: var(--premium-glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--premium-border);
+    border-radius: 20px;
+    box-shadow: 0 4px 20px var(--premium-shadow), inset 0 1px 0 rgba(255,255,255,0.8);
     transition: all 0.3s ease;
   }
   
-  .card:hover {
-    @apply shadow-glow;
+  .premium-card:hover {
     transform: translateY(-2px);
+    box-shadow: 0 8px 30px var(--premium-shadow), inset 0 1px 0 rgba(255,255,255,0.9);
   }
   
-  .card-active {
-    @apply shadow-neumorphism-inset;
-    border: 2px solid #E6CADF;
-    background: linear-gradient(135deg, #F5F1ED, #FADADD);
-  }
-  
-  /* Премиальные кнопки-капсулы */
-  .btn {
-    @apply inline-flex items-center justify-center rounded-btn px-6 py-3 font-sans font-semibold;
+  /* Premium buttons */
+  .premium-btn {
+    background: linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(236,72,153,0.1) 100%);
+    backdrop-filter: blur(20px);
+    border: 2px solid var(--premium-border);
+    border-radius: 40px;
+    color: var(--premium-dark);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
     transition: all 0.3s ease;
-  }
-  
-  .btn-primary {
-    @apply btn text-text-primary shadow-neumorphism;
-    background: linear-gradient(135deg, #FBD6CF, #F7E6E2);
-    border: 1px solid rgba(230, 202, 223, 0.3);
     position: relative;
     overflow: hidden;
   }
   
-  .btn-primary::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transform: rotate(45deg);
-    transition: all 0.6s ease;
-    opacity: 0;
-  }
-  
-  .btn-primary:hover::before {
-    opacity: 1;
-    animation: shimmer 1.5s ease-in-out infinite;
-  }
-  
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 40px rgba(230, 202, 223, 0.6), 12px 12px 24px rgba(230, 202, 223, 0.15), -12px -12px 24px rgba(255, 255, 255, 0.9);
-  }
-  
-  .btn-primary:active {
-    @apply shadow-neumorphism-inset;
-    transform: translateY(0);
-  }
-  
-  /* Премиальные чипы для выбора */
-  .chip {
-    @apply rounded-btn px-4 py-2 text-sm font-sans font-medium;
-    @apply bg-pearl-card text-text-secondary shadow-neumorphism;
-    border: 1px solid rgba(230, 202, 223, 0.2);
-    transition: all 0.3s ease;
-  }
-  
-  .chip:hover {
-    @apply text-text-primary;
-    transform: translateY(-1px);
-  }
-  
-  .chip-active {
-    background: linear-gradient(135deg, #FBD6CF, #F7E6E2);
-    color: #1C1C1C;
-    box-shadow: inset 2px 2px 6px rgba(0,0,0,0.1), inset -2px -2px 6px rgba(255,255,255,0.8);
-    border: 2px solid #E6CADF;
-  }
-  
-  /* Поля ввода */
-  .input {
-    @apply rounded-input px-4 py-3 bg-pearl-card;
-    @apply text-text-primary placeholder-text-secondary;
-    @apply shadow-neumorphism-inset;
-    border: 1px solid rgba(230, 202, 223, 0.2);
-    transition: all 0.3s ease;
-  }
-  
-  .input:focus {
-    @apply outline-none;
-    border-color: #E6CADF;
-    box-shadow: 0 0 0 3px rgba(230, 202, 223, 0.1);
-  }
-  
-  /* Контейнер с максимальной шириной 85% */
-  .container-premium {
-    @apply mx-auto px-4;
-    max-width: 85%;
-  }
-}
-
-/* Премиальная анимация перламутрового блеска */
-@keyframes pearlShimmer {
-  0% {
-    transform: rotate(0deg) scale(1);
-    opacity: 0.1;
-  }
-  25% {
-    transform: rotate(90deg) scale(1.05);
-    opacity: 0.15;
-  }
-  50% {
-    transform: rotate(180deg) scale(0.98);
-    opacity: 0.08;
-  }
-  75% {
-    transform: rotate(270deg) scale(1.02);
-    opacity: 0.12;
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
-    opacity: 0.1;
-  }
-}
-
-/* Мягкое появление элементов */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Элегантное пульсирование для активных элементов */
-@keyframes gentlePulse {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(230, 202, 223, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(230, 202, 223, 0.5);
-  }
-}
-
-/* Премиальные анимации SkinIQ */
-
-/* 1. Появление экрана */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 2. Радиальный перелив фона */
-@keyframes pearlRadialShimmer {
-  0% {
-    background-position: 0% 50%;
-    opacity: 0.1;
-  }
-  50% {
-    background-position: 100% 50%;
-    opacity: 0.2;
-  }
-  100% {
-    background-position: 0% 50%;
-    opacity: 0.1;
-  }
-}
-
-/* 3. Жидкое морфинг переключателя */
-@keyframes liquidMorph {
-  0% {
-    transform: scale(1);
-    filter: blur(0px);
-  }
-  50% {
+  .premium-btn:hover {
     transform: scale(1.02);
-    filter: blur(0.5px);
+    box-shadow: 0 8px 30px rgba(139,92,246,0.2);
   }
-  100% {
-    transform: scale(1);
-    filter: blur(0px);
-  }
-}
-
-/* 4. Анимация прорисовки галочки */
-@keyframes strokeDraw {
-  0% {
-    stroke-dasharray: 0 20;
-    opacity: 0;
-  }
-  100% {
-    stroke-dasharray: 20 0;
-    opacity: 1;
+  
+  .premium-btn:active {
+    transform: scale(0.98);
   }
 }
 
-/* 5. Упругое нажатие карточек */
-@keyframes elasticPress {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.97);
-  }
-  100% {
-    transform: scale(1);
-  }
+/* Premium animations */
+@keyframes shimmer {
+  0% { transform: translateX(-120%); opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { transform: translateX(120%); opacity: 0.6; }
 }
 
-/* 6. Мягкий пульс CTA кнопки */
-@keyframes gentlePulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.02);
-  }
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
 }
 
-/* 7. Встряхивание корзины */
-@keyframes subtleShake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-2px); }
-  75% { transform: translateX(2px); }
+@keyframes premium-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.05); }
 }
 
-/* 8. Мигание анкеты */
-@keyframes profileGlow {
-  0%, 100% { 
-    filter: drop-shadow(0 0 0 transparent);
-  }
-  50% { 
-    filter: drop-shadow(0 0 8px rgba(194, 149, 249, 0.4));
-  }
+@keyframes premium-glow {
+  0%, 100% { box-shadow: 0 8px 32px rgba(233,69,96,0.3); }
+  50% { box-shadow: 0 12px 48px rgba(233,69,96,0.5); }
 }
 
-/* 9. Перламутровый shimmer фона */
-@keyframes backgroundShimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+@keyframes fade-slide-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Утилитарные классы для анимаций */
-.animate-fadeInUp {
-  animation: fadeInUp 400ms ease-out;
+@keyframes glow-pulse {
+  0%, 100% { filter: drop-shadow(0 8px 20px rgba(233,69,96,0.3)); }
+  50% { filter: drop-shadow(0 12px 30px rgba(233,69,96,0.5)); }
 }
 
-.animate-slideInUp {
-  animation: slideInUp 400ms ease-out;
+@keyframes completion-celebration {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
-.animate-staggered-1 {
-  animation: slideInUp 400ms ease-out;
-  animation-delay: 100ms;
-  opacity: 0;
-  animation-fill-mode: forwards;
+/* Animation classes */
+.animate-fade-slide-up {
+  animation: fade-slide-up 0.6s ease-out;
 }
 
-.animate-staggered-2 {
-  animation: slideInUp 400ms ease-out;
-  animation-delay: 200ms;
-  opacity: 0;
-  animation-fill-mode: forwards;
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
 }
 
-.animate-staggered-3 {
-  animation: slideInUp 400ms ease-out;
-  animation-delay: 300ms;
-  opacity: 0;
-  animation-fill-mode: forwards;
+.animate-completion-celebration {
+  animation: completion-celebration 0.5s ease-in-out;
 }
 
-.animate-staggered-4 {
-  animation: slideInUp 400ms ease-out;
-  animation-delay: 400ms;
-  opacity: 0;
-  animation-fill-mode: forwards;
-}
-
-.animate-gentle-pulse {
-  animation: gentlePulse 2s ease-in-out infinite;
-  animation-delay: 800ms;
-}
-
-.animate-cart-shake {
-  animation: subtleShake 0.6s ease-in-out;
-  animation-delay: 1s;
-}
-
-.animate-profile-glow {
-  animation: profileGlow 2s ease-in-out infinite;
-  animation-delay: 1.2s;
-}
-
-/* Ripple эффект для кнопок */
-@keyframes ripple {
-  0% {
-    transform: scale(0);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(4);
-    opacity: 0;
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
+/* Utility classes */
+.text-premium-dark {
+  color: var(--premium-dark);
+}
+
+.text-premium-muted {
+  color: rgba(30,41,59,0.6);
+}
+
+.bg-premium-glass {
+  background: var(--premium-glass);
+}
+
+.border-premium {
+  border: 1px solid var(--premium-border);
+}
