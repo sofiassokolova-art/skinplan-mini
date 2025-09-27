@@ -76,13 +76,14 @@ function useTelegramTheme(): TelegramTheme {
       accent: p.button_color || t.accent,
       accentText: p.button_text_color || t.accentText,
     }));
-    tg.MainButton?.setParams?.({
-      text: "Открыть подробный план",
-      color: p.button_color || "#171717",
-      text_color: p.button_text_color || "#ffffff",
-    });
-    tg.MainButton?.show?.();
-    return () => tg.MainButton?.hide?.();
+    // Убираем кнопку Telegram бота
+    // tg.MainButton?.setParams?.({
+    //   text: "Открыть подробный план",
+    //   color: p.button_color || "#171717",
+    //   text_color: p.button_text_color || "#ffffff",
+    // });
+    // tg.MainButton?.show?.();
+    // return () => tg.MainButton?.hide?.();
   }, []);
   return theme;
 }
@@ -247,20 +248,20 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
   const offset = c - (value / 100) * c;
   return (
     <svg width={size} height={size} className="block">
-      <defs>
+        <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#FFC6D9" />
           <stop offset="100%" stopColor="#E9C987" />
-        </linearGradient>
-      </defs>
+          </linearGradient>
+        </defs>
       <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.35)" strokeWidth={stroke} fill="none" />
-      <circle
+        <circle 
         cx={size / 2}
         cy={size / 2}
-        r={r}
+          r={r} 
         stroke="url(#grad)"
         strokeLinecap="round"
-        strokeWidth={stroke}
+          strokeWidth={stroke} 
         fill="none"
         style={{ strokeDasharray: c, strokeDashoffset: offset, transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)" }}
       />
@@ -272,7 +273,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
           </div>
         </div>
       </foreignObject>
-    </svg>
+      </svg>
   );
 }
 
@@ -289,8 +290,8 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
         <div className="text-[15px] font-semibold text-neutral-900 truncate">{item.title}</div>
         <div className="text-[12px] text-neutral-600 truncate">{item.subtitle}</div>
-      </button>
-      <button
+        </button>
+        <button
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-pressed={item.done}
         className="ml-auto w-9 h-9 flex items-center justify-center"
@@ -302,7 +303,7 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </span>
-      </button>
+        </button>
     </div>
   );
 }
@@ -396,7 +397,7 @@ function FloatingSpheres({ count = 7, debug = false }) {
           <div
             key={i}
             className="absolute will-change-transform"
-            style={{
+      style={{
               width: size,
               height: size,
               top,
@@ -420,7 +421,7 @@ function FloatingSpheres({ count = 7, debug = false }) {
           }}
         />
       )}
-    </div>
+      </div>
   );
 }
 
@@ -461,7 +462,7 @@ export default function MobileSkinIQHome() {
       const copy = [...morning];
       copy[idx] = { ...copy[idx], done: !copy[idx].done };
       setMorning(copy);
-    } else {
+      } else {
       const copy = [...evening];
       copy[idx] = { ...copy[idx], done: !copy[idx].done };
       setEvening(copy);
@@ -483,8 +484,10 @@ export default function MobileSkinIQHome() {
 
   return (
     <div className="w-full min-h-screen relative">
-      {/* Background layers: CSS gradient with floating spheres */}
-      <div className="absolute inset-0 -z-10" style={bg} />
+      {/* Background layers: Image with floating spheres */}
+      <div className="absolute inset-0 -z-10">
+        <img src="/backgrounds/home/spheres-day-light.jpg" alt="background" className="w-full h-full object-cover" />
+      </div>
       <FloatingSpheres />
       
       <style>{`
@@ -500,7 +503,7 @@ export default function MobileSkinIQHome() {
         style={{ color: theme.text }}
       >
         <div className="text-[16px] font-semibold tracking-tight">SkinIQ</div>
-      </div>
+          </div>
 
       {/* Greeting */}
       <div className="mx-4 mt-4 mb-2">
@@ -558,8 +561,8 @@ export default function MobileSkinIQHome() {
               />
             ))}
           </div>
-        </div>
-
+          </div>
+          
         {/* Progress + CTA */}
         <div className="mt-4 flex flex-col items-center relative">
           <div
@@ -600,7 +603,7 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-8">
+      <section className="mt-4 pb-12">
         <div className="relative">
           {/* Horizontal scroll indicators */}
           <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60">
@@ -610,16 +613,16 @@ export default function MobileSkinIQHome() {
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-          </div>
-          
+        </div>
+
           <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60">
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
             <svg className="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
+                </svg>
+              </div>
           
           <div className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide">
             <WidgetCard title="Гидрация">
@@ -652,13 +655,13 @@ export default function MobileSkinIQHome() {
 
       {/* Bottom Sheet */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} item={sheetItem} />
-    </div>
+            </div>
   );
 }
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 ${glass} ${radiusCard} p-4 flex items-center justify-between`}>
+    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 ${glass} ${radiusCard} p-4 flex items-center justify-between mb-2`}>
       <div className="flex flex-col gap-1">
         <div className="text-[13px] text-neutral-600">{title}</div>
         <div className="text-neutral-900">{children}</div>
@@ -686,7 +689,7 @@ function MiniRing({ value }: { value: number }) {
       <foreignObject x="0" y="0" width={56} height={56}>
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-[11px] text-neutral-900 font-medium">{value}%</span>
-        </div>
+    </div>
       </foreignObject>
     </svg>
   );
