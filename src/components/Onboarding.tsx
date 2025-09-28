@@ -104,7 +104,10 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       <div 
         className="absolute inset-0 -z-10"
         style={{
-          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+          backgroundImage: "url('/bg/spheres-day-light.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat"
         }}
       />
       
