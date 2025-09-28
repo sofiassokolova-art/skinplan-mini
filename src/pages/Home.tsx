@@ -627,13 +627,16 @@ export default function MobileSkinIQHome() {
           
           <div className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide">
             <WidgetCard title="Совет дня">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <img src="/icons/icon_dermatologist.svg" alt="Дерматолог" className="w-6 h-6" />
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center">
+                  <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-6 h-6" />
                 </div>
-                <div>
-                  <div className="text-[12px] text-neutral-600">Дерматолог</div>
-                  <div className="text-[15px] font-semibold">Усильте увлажнение</div>
+                <div className="flex-1">
+                  <div className="text-[12px] text-neutral-600 mb-1">Ежедневный совет</div>
+                  <div className="text-[15px] font-semibold mb-1">Усильте увлажнение</div>
+                  <div className="text-[11px] text-neutral-500 leading-tight">
+                    В холодное время года кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем с керамидами вечером.
+                  </div>
                 </div>
               </div>
             </WidgetCard>
