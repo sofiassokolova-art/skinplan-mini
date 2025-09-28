@@ -513,7 +513,7 @@ export default function MobileSkinIQHome() {
       `}</style>
 
       {/* Header */}
-      <div className="sticky top-0 z-20 mx-4 mt-4 flex items-start justify-start">
+      <div className="sticky top-0 z-20 mx-4 pt-4 flex items-start justify-start bg-transparent">
         <img 
           src="/skiniq-logo.png" 
           alt="SkinIQ" 
