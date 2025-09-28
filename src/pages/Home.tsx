@@ -428,7 +428,7 @@ export default function MobileSkinIQHome() {
         <img 
           src="/skiniq-logo.png" 
           alt="SkinIQ" 
-          className="h-12 w-auto object-contain"
+          className="h-24 w-auto object-contain"
         />
       </div>
 
@@ -440,7 +440,7 @@ export default function MobileSkinIQHome() {
       </div>
 
       {/* Main Panel */}
-      <section className={`bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_8px_24px_rgba(0,0,0,0.05)] ${radiusPanel} relative z-20 mx-4 p-4`}>
+      <section className={`bg-white/5 backdrop-blur-sm border border-white/10 ${radiusPanel} relative z-20 mx-4 p-4`}>
         <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
         <p className="text-[12px] text-neutral-600 mt-0.5">
           {progress === 0
@@ -553,11 +553,11 @@ export default function MobileSkinIQHome() {
             onScroll={handleScroll}
           >
             <WidgetCard title="">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center flex-shrink-0">
                   <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-6 h-6" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 text-left">
                   <div className="text-[12px] text-neutral-600 mb-1">Ежедневный совет</div>
                   <div className="text-[15px] font-semibold mb-1">Усильте увлажнение</div>
                   <div className="text-[11px] text-neutral-500 leading-tight">
