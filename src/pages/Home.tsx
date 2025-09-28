@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // === SkinIQ Mobile Home — FULL PREVIEW (syntax fixed) ===
 // Fix: removed stray closing parenthesis in FloatingSpheres that caused a SyntaxError.
@@ -473,14 +473,14 @@ export default function MobileSkinIQHome() {
     setSheetOpen(true);
   };
 
-  // Background (layered below)
-  const bg = useMemo(
-    () => ({
-      background:
-        "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)",
-    }),
-    []
-  );
+  // Background now uses image instead of CSS gradient
+  // const bg = useMemo(
+  //   () => ({
+  //     background:
+  //       "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)",
+  //   }),
+  //   []
+  // );
 
   return (
     <div className="w-full min-h-screen relative">
