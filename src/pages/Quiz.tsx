@@ -1023,21 +1023,33 @@ export default function Quiz() {
   };
 
   return (
-    <div className="space-y-4">
-      {currentStepIndex > 0 && (
-        <button
-          type="button"
-          onClick={goBack}
-          className="text-sm text-neutral-600 flex items-center gap-1 mb-2"
-          aria-label="Назад"
-        >
-          ← Назад
-        </button>
-      )}
+    <div className="min-h-screen relative">
+      {/* Background layers: Image with floating spheres */}
+      <div 
+        className="absolute inset-0 -z-10"
+        style={{
+          backgroundImage: "url('/bg/spheres-day-light.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat"
+        }}
+      />
+      <div className="max-w-2xl mx-auto px-4 py-6 relative z-10">
+        <div className="space-y-4">
+          {currentStepIndex > 0 && (
+            <button
+              type="button"
+              onClick={goBack}
+              className="text-sm text-neutral-600 flex items-center gap-1 mb-2"
+              aria-label="Назад"
+            >
+              ← Назад
+            </button>
+          )}
 
-      <ProgressBar currentStepIndex={currentStepIndex} />
+          <ProgressBar currentStepIndex={currentStepIndex} />
 
-      <ModernCard variant="gradient" className="p-6">
+          <ModernCard variant="gradient" className="p-6">
         {currentStep.kind === "question" ? (
           <>
             <h1 className="text-xl md:text-2xl font-semibold mb-2">
@@ -1077,7 +1089,9 @@ export default function Quiz() {
             </ModernButton>
           </>
         )}
-      </ModernCard>
+          </ModernCard>
+        </div>
+      </div>
     </div>
   );
 }
