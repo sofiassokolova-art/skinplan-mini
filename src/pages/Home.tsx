@@ -484,10 +484,13 @@ export default function MobileSkinIQHome() {
 
   return (
     <div className="w-full min-h-screen relative">
-      {/* Background layers: Image with floating spheres */}
-      <div className="absolute inset-0 -z-10">
-        <img src="/backgrounds/home/spheres-day-light.jpg" alt="background" className="w-full h-full object-cover" />
-      </div>
+      {/* Background layers: CSS gradient with floating spheres */}
+      <div 
+        className="absolute inset-0 -z-10"
+        style={{
+          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+        }}
+      />
       <FloatingSpheres />
       
       <style>{`
@@ -607,28 +610,32 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-12">
-        <div className="relative">
-          {/* Horizontal scroll indicators */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60">
-            <svg className="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-        </div>
-
+      <section className="mt-4 pb-20">
+        <div className="relative" id="widgets-container">
+          {/* Horizontal scroll indicators - only right arrow */}
           <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60">
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
             <svg className="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
+            </svg>
+          </div>
           
           <div className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide">
+            <WidgetCard title="Совет дня">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-[12px] text-neutral-600">Дерматолог</div>
+                  <div className="text-[15px] font-semibold">Усильте увлажнение</div>
+                </div>
+              </div>
+            </WidgetCard>
             <WidgetCard title="Гидрация">
               <MiniRing value={72} />
               <div>
@@ -639,19 +646,6 @@ export default function MobileSkinIQHome() {
             <WidgetCard title="UV-индекс">
               <div className="text-4xl font-semibold">3</div>
               <div className="text-[12px] text-neutral-600">Сегодня: SPF 30</div>
-            </WidgetCard>
-            <WidgetCard title="Серия дней">
-              <div className="text-4xl font-semibold">4</div>
-              <div className="text-[12px] text-neutral-600">Подряд</div>
-            </WidgetCard>
-            <WidgetCard title="Ингредиенты недели">
-              <div className="flex gap-2 flex-wrap">
-                {["Niacinamide 5%", "AHA off", "Ceramides"].map((b) => (
-                  <span key={b} className={`${glass} ${radiusCard} px-3 py-1 text-[11px]`}>
-                    {b}
-                  </span>
-                ))}
-              </div>
             </WidgetCard>
           </div>
         </div>
