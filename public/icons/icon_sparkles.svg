@@ -1,22 +1,4 @@
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Большая звезда в центре -->
+  <!-- Одна большая звезда в центре -->
   <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="white" opacity="0.9"/>
-  
-  <!-- Маленькие блестки вокруг -->
-  <circle cx="6" cy="6" r="1.5" fill="white" opacity="0.8"/>
-  <circle cx="18" cy="6" r="1" fill="white" opacity="0.7"/>
-  <circle cx="6" cy="18" r="1" fill="white" opacity="0.7"/>
-  <circle cx="18" cy="18" r="1.5" fill="white" opacity="0.8"/>
-  
-  <!-- Дополнительные маленькие звездочки -->
-  <path d="M8 3L8.5 5L10.5 5.5L8.5 6L8 8L7.5 6L5.5 5.5L7.5 5L8 3Z" fill="white" opacity="0.6"/>
-  <path d="M16 3L16.5 5L18.5 5.5L16.5 6L16 8L15.5 6L13.5 5.5L15.5 5L16 3Z" fill="white" opacity="0.6"/>
-  <path d="M8 16L8.5 18L10.5 18.5L8.5 19L8 21L7.5 19L5.5 18.5L7.5 18L8 16Z" fill="white" opacity="0.6"/>
-  <path d="M16 16L16.5 18L18.5 18.5L16.5 19L16 21L15.5 19L13.5 18.5L15.5 18L16 16Z" fill="white" opacity="0.6"/>
-  
-  <!-- Блестки по углам -->
-  <circle cx="3" cy="3" r="0.8" fill="white" opacity="0.5"/>
-  <circle cx="21" cy="3" r="0.8" fill="white" opacity="0.5"/>
-  <circle cx="3" cy="21" r="0.8" fill="white" opacity="0.5"/>
-  <circle cx="21" cy="21" r="0.8" fill="white" opacity="0.5"/>
 </svg>

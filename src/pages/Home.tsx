@@ -433,6 +433,7 @@ export default function MobileSkinIQHome() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [showScrollArrows, setShowScrollArrows] = useState(true);
 
   // Greeting state
   const [userName, setUserName] = useState(USER_FALLBACK);
@@ -473,6 +474,15 @@ export default function MobileSkinIQHome() {
     setSheetOpen(true);
   };
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    if (target.scrollLeft > 10) {
+      setShowScrollArrows(false);
+    } else {
+      setShowScrollArrows(true);
+    }
+  };
+
   // Background now uses image instead of CSS gradient
   // const bg = useMemo(
   //   () => ({
@@ -504,16 +514,13 @@ export default function MobileSkinIQHome() {
       `}</style>
 
       {/* Header */}
-      <div
-        className={`sticky top-0 z-20 ${glass} ${radiusPanel} h-14 mx-4 mt-4 flex items-center justify-center px-4`}
-        style={{ color: theme.text }}
-      >
+      <div className="sticky top-0 z-20 mx-4 mt-4 flex items-start justify-start">
         <img 
           src="/skiniq-logo.png" 
           alt="SkinIQ" 
-          className="h-8 w-auto object-contain"
+          className="h-12 w-auto object-contain"
         />
-          </div>
+      </div>
 
       {/* Greeting */}
       <div className="mx-4 mt-4 mb-2">
@@ -523,7 +530,7 @@ export default function MobileSkinIQHome() {
       </div>
 
       {/* Main Panel */}
-      <section className={`${glass} ${radiusPanel} relative z-20 mx-4 p-4`}>
+      <section className={`bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_8px_24px_rgba(0,0,0,0.05)] ${radiusPanel} relative z-20 mx-4 p-4`}>
         <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
         <p className="text-[12px] text-neutral-600 mt-0.5">
           {progress === 0
@@ -589,6 +596,7 @@ export default function MobileSkinIQHome() {
             Выполнено {completed} из {items.length}
           </div>
           <button
+            onClick={() => navigate("/plan")}
             className={`relative btn-shimmer ${radiusCard} mt-3 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center`}
             style={{
               background:
@@ -606,8 +614,11 @@ export default function MobileSkinIQHome() {
                 : "Открыть подробный план"}
             </span>
           </button>
-          <button className="mt-2 text-[14px] text-neutral-800 underline/20">
-            Пересдать анкету
+          <button 
+            onClick={() => navigate("/quiz")}
+            className="mt-2 text-[14px] text-neutral-800 underline/20 hover:text-neutral-600 transition-colors"
+          >
+            Перепройти анкету
           </button>
         </div>
       </section>
@@ -616,17 +627,22 @@ export default function MobileSkinIQHome() {
       <section className="mt-4 pb-20">
         <div className="relative" id="widgets-container">
           {/* Horizontal scroll indicators - only right arrow */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60">
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-            <svg className="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
+          {showScrollArrows && (
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60 transition-opacity duration-300">
+              <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
+              <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              <svg className="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          )}
           
-          <div className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide">
-            <WidgetCard title="Совет дня">
+          <div 
+            className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide"
+            onScroll={handleScroll}
+          >
+            <WidgetCard title="">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center">
                   <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-6 h-6" />
