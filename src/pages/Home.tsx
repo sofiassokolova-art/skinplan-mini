@@ -504,7 +504,6 @@ export default function MobileSkinIQHome() {
           backgroundRepeat: "no-repeat"
         }}
       />
-      <FloatingSpheres />
       
       <style>{`
         @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }

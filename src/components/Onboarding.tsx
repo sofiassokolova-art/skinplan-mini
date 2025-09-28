@@ -110,31 +110,6 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           backgroundRepeat: "no-repeat"
         }}
       />
-      
-      {/* Floating spheres */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div 
-          className="absolute w-64 h-64 top-10 left-10 rounded-full opacity-30"
-          style={{
-            background: "radial-gradient(circle at 30% 30%, rgba(255,198,217,0.9) 0%, rgba(255,198,217,0.4) 45%, rgba(255,255,255,0.0) 70%)",
-            animation: "floatY 15s ease-in-out infinite"
-          }}
-        />
-        <div 
-          className="absolute w-80 h-80 top-32 right-16 rounded-full opacity-25"
-          style={{
-            background: "radial-gradient(circle at 60% 40%, rgba(233,201,135,0.85) 0%, rgba(233,201,135,0.35) 50%, rgba(255,255,255,0.0) 72%)",
-            animation: "floatY 18s ease-in-out infinite reverse"
-          }}
-        />
-        <div 
-          className="absolute w-72 h-72 bottom-20 left-1/3 rounded-full opacity-20"
-          style={{
-            background: "radial-gradient(circle at 30% 30%, rgba(255,198,217,0.9) 0%, rgba(255,198,217,0.4) 45%, rgba(255,255,255,0.0) 70%)",
-            animation: "floatY 12s ease-in-out infinite"
-          }}
-        />
-      </div>
 
       {/* Main content */}
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -286,13 +261,6 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         </div>
       </div>
 
-      <style>{`
-        @keyframes floatY { 
-          0% { transform: translateY(0px); } 
-          50% { transform: translateY(-20px); } 
-          100% { transform: translateY(0px); } 
-        }
-      `}</style>
     </div>
   );
 }
