@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // === SkinIQ Mobile Home — FULL PREVIEW (syntax fixed) ===
 // Fix: removed stray closing parenthesis in FloatingSpheres that caused a SyntaxError.
@@ -18,13 +19,6 @@ interface RoutineItem {
   done: boolean;
 }
 
-interface TelegramTheme {
-  bg: string;
-  text: string;
-  accent: string;
-  accentText: string;
-  secondary: string;
-}
 
 // ---------- Helpers ----------
 const USER_FALLBACK = "друг";
@@ -54,39 +48,6 @@ function getGreeting(date = new Date()): string {
   }
 })();
 
-// ----- Telegram theme helper -----
-function useTelegramTheme(): TelegramTheme {
-  const [theme, setTheme] = useState<TelegramTheme>({
-    bg: "#ffffff",
-    text: "#171717",
-    accent: "#171717",
-    accentText: "#ffffff",
-    secondary: "#4A4A4A",
-  });
-  useEffect(() => {
-    const tg = (window as any)?.Telegram?.WebApp;
-    if (!tg) return;
-    tg.expand?.();
-    const p = tg.themeParams || {};
-    setTheme((t) => ({
-      ...t,
-      bg: p.bg_color || t.bg,
-      text: p.text_color || t.text,
-      secondary: p.hint_color || t.secondary,
-      accent: p.button_color || t.accent,
-      accentText: p.button_text_color || t.accentText,
-    }));
-    // Убираем кнопку Telegram бота
-    // tg.MainButton?.setParams?.({
-    //   text: "Открыть подробный план",
-    //   color: p.button_color || "#171717",
-    //   text_color: p.button_text_color || "#ffffff",
-    // });
-    // tg.MainButton?.show?.();
-    // return () => tg.MainButton?.hide?.();
-  }, []);
-  return theme;
-}
 
 // ----- Tokens -----
 const glass = "bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)]";
@@ -374,59 +335,9 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
   );
 }
 
-function FloatingSpheres({ count = 7, debug = false }) {
-  // Stronger, more visible spheres for mobile (higher opacity + bigger size)
-  const arr = Array.from({ length: count });
-  return (
-    <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
-      <style>{`
-        @keyframes floatY { 0% { transform: translateY(6%);} 50% { transform: translateY(-6%);} 100% { transform: translateY(6%);} }
-      `}</style>
-      {arr.map((_, i) => {
-        const size = 220 + ((i % 3) * 80); // 220..380
-        const top = ["8%", "26%", "48%", "66%", "18%", "38%", "74%"][(i % 7)];
-        const left = ["6%", "68%", "24%", "62%", "42%", "82%", "14% "][(i % 7)];
-        const delay = `${i * 0.6}s`;
-        const duration = `${10 + ((i % 5) * 2)}s`;
-        const opacity = i % 2 === 0 ? 0.45 : 0.32;
-        const bg =
-          i % 2
-            ? "radial-gradient(circle at 30% 30%, rgba(255,198,217,0.9) 0%, rgba(255,198,217,0.4) 45%, rgba(255,255,255,0.0) 70%)"
-            : "radial-gradient(circle at 60% 40%, rgba(233,201,135,0.85) 0%, rgba(233,201,135,0.35) 50%, rgba(255,255,255,0.0) 72%)";
-        return (
-          <div
-            key={i}
-            className="absolute will-change-transform"
-      style={{
-              width: size,
-              height: size,
-              top,
-              left,
-              opacity,
-              animation: `floatY ${duration} ease-in-out ${delay} infinite`,
-              background: bg,
-              borderRadius: "9999px",
-            }}
-          />
-        );
-      })}
-
-      {debug && (
-        <div
-          className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-[360px] h-[360px] rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(255,198,217,0.95) 0%, rgba(255,198,217,0.5) 50%, rgba(255,255,255,0) 75%)",
-            opacity: 0.5,
-          }}
-        />
-      )}
-      </div>
-  );
-}
 
 export default function MobileSkinIQHome() {
-  const theme = useTelegramTheme();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("AM");
   const [morning, setMorning] = useState(morningDefault);
   const [evening, setEvening] = useState(eveningDefault);
