@@ -223,7 +223,6 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
           </feMerge>
         </filter>
         </defs>
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.35)" strokeWidth={stroke} fill="none" />
         <circle 
         cx={size / 2}
         cy={size / 2}
@@ -507,14 +506,14 @@ export default function MobileSkinIQHome() {
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
               
               <div className="flex items-center gap-3 w-full relative z-10">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg border border-white/20">
+                <div className="w-10 h-10 rounded-2xl bg-neutral-900 flex items-center justify-center flex-shrink-0 shadow-lg border border-white/20">
                   <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 text-left">
                   <div className="text-[10px] text-blue-600/80 mb-1 font-medium tracking-wide uppercase">Ежедневный совет</div>
                   <div className="text-[14px] font-bold mb-1 text-neutral-900 leading-tight">Усильте увлажнение</div>
                   <div className="text-[11px] text-neutral-700/80 leading-relaxed">
-                    В холодное время года кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем с керамидами вечером.
+                    В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
                   </div>
                 </div>
               </div>
@@ -573,7 +572,6 @@ function MiniRing({ value }: { value: number }) {
           </feMerge>
         </filter>
       </defs>
-      <circle cx={28} cy={28} r={r} stroke="rgba(255,255,255,0.4)" strokeWidth={stroke} fill="none" />
       <circle cx={28} cy={28} r={r} stroke="url(#mini)" strokeWidth={stroke} strokeLinecap="round" fill="none" filter="url(#miniGlow)" style={{ strokeDasharray: c, strokeDashoffset: offset }} />
       <foreignObject x="0" y="0" width={56} height={56}>
         <div className="w-full h-full flex items-center justify-center">
