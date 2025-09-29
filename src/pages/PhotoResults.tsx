@@ -122,15 +122,24 @@ export default function PhotoResults() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
-      <div className="mb-4">
-        <button 
-          onClick={() => navigate(-1)}
-          className="text-sm text-zinc-600 hover:text-zinc-800"
-        >
-          ← Назад
-        </button>
-      </div>
+    <div className="w-full min-h-screen relative">
+      {/* Background layers: CSS gradient */}
+      <div 
+        className="absolute inset-0 -z-10"
+        style={{
+          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+        }}
+      />
+      
+      <div className="relative z-20 max-w-3xl mx-auto px-4 py-6">
+        <div className="mb-4">
+          <button 
+            onClick={() => navigate(-1)}
+            className="text-sm text-zinc-600 hover:text-zinc-800"
+          >
+            ← Назад
+          </button>
+        </div>
 
       <Card className="p-6">
         <h1 className="text-2xl font-bold mb-4 text-center">🎯 Результаты анализа</h1>
@@ -254,6 +263,7 @@ export default function PhotoResults() {
           </Button>
         </div>
       </Card>
+      </div>
     </div>
   );
 }

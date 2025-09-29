@@ -439,8 +439,17 @@ export default function Photo() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Скан по фото</h1>
+    <div className="w-full min-h-screen relative">
+      {/* Background layers: CSS gradient */}
+      <div 
+        className="absolute inset-0 -z-10"
+        style={{
+          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+        }}
+      />
+      
+      <div className="relative z-20 max-w-3xl mx-auto p-4">
+        <h1 className="text-2xl font-semibold mb-4">Скан по фото</h1>
 
       <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm p-4">
         <div className="flex items-start justify-between gap-3">
@@ -1019,6 +1028,7 @@ export default function Photo() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -54,14 +54,14 @@ const glass = "bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px
 const radiusPanel = "rounded-3xl";
 const radiusCard = "rounded-2xl";
 
-// ----- Icons (using SVG files we created) -----
+// ----- Icons (using PNG files) -----
 const ICONS = {
-  cleanser: "/icons/icon_cleanser.svg",
-  toner: "/icons/icon_toner.svg",
-  serum: "/icons/icon_serum.svg",
-  cream: "/icons/icon_cream.svg",
-  spf: "/icons/icon_spf.svg",
-  acid: "/icons/icon_serum.svg",
+  cleanser: "/icons/cleanser1.PNG",
+  toner: "/icons/toner1.PNG",
+  serum: "/icons/serum1.PNG",
+  cream: "/icons/cream1.PNG",
+  spf: "/icons/spf1.PNG",
+  acid: "/icons/acid1.PNG",
 };
 
 // ----- Routine data -----
@@ -405,14 +405,11 @@ export default function MobileSkinIQHome() {
 
   return (
     <div className="w-full min-h-screen relative">
-      {/* Background layers: Image with floating spheres */}
+      {/* Background layers: PNG image with floating spheres */}
       <div 
-        className="absolute inset-0 -z-10"
+        className="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: "url('/bg/spheres-day-light.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat"
+          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
         }}
       />
       
