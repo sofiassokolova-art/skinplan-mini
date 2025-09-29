@@ -526,15 +526,18 @@ export default function MobileSkinIQHome() {
             className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide"
             onScroll={handleScroll}
           >
-            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-gradient-to-br from-blue-50/80 to-purple-50/80 backdrop-blur-xl border border-blue-200/60 shadow-[0_8px_24px_rgba(59,130,246,0.15)] rounded-2xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3 w-full">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg">
-                  <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-6 h-6 text-white" />
+            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center justify-between relative overflow-hidden">
+              {/* Subtle gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
+              
+              <div className="flex items-center gap-3 w-full relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg border border-white/20">
+                  <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="text-[12px] text-blue-600 mb-1 font-medium">Ежедневный совет</div>
-                  <div className="text-[15px] font-semibold mb-1 text-gray-900">Усильте увлажнение</div>
-                  <div className="text-[11px] text-gray-600 leading-tight">
+                  <div className="text-[11px] text-blue-600/80 mb-1 font-medium tracking-wide uppercase">Ежедневный совет</div>
+                  <div className="text-[16px] font-bold mb-2 text-neutral-900 leading-tight">Усильте увлажнение</div>
+                  <div className="text-[12px] text-neutral-700/80 leading-relaxed">
                     В холодное время года кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем с керамидами вечером.
                   </div>
                 </div>
