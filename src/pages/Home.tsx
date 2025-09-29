@@ -58,8 +58,8 @@ const radiusCard = "rounded-2xl";
 const ICONS = {
   cleanser: "/icons/cleanser1.PNG",
   toner: "/icons/toner1.PNG",
-  serum: "/icons/serum1.PNG",
-  cream: "/icons/cream1.PNG",
+  serum: "/icons/serum.PNG",
+  cream: "/icons/cream.PNG",
   spf: "/icons/spf1.PNG",
   acid: "/icons/acid1.PNG",
 };
