@@ -211,8 +211,9 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
     <svg width={size} height={size} className="block">
         <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FFC6D9" />
-          <stop offset="100%" stopColor="#E9C987" />
+          <stop offset="0%" stopColor="#FFD700" />
+          <stop offset="50%" stopColor="#FFA500" />
+          <stop offset="100%" stopColor="#C0C0C0" />
           </linearGradient>
         </defs>
       <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.35)" strokeWidth={stroke} fill="none" />
@@ -241,9 +242,9 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
 function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: () => void; onOpen: () => void }) {
   return (
     <div className={`${glass} ${radiusCard} h-[72px] px-3 py-2 flex items-center gap-3 select-none`}>
-      <div className="w-10 h-10 rounded-2xl bg-white/60 flex items-center justify-center overflow-hidden">
+      <div className="w-10 h-10 rounded-2xl bg-transparent flex items-center justify-center overflow-hidden">
         {item.icon ? (
-          <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
+          <img src={item.icon} alt="" className="w-6 h-6 object-contain mix-blend-multiply" />
         ) : (
           <div className="w-6 h-6 rounded-xl bg-neutral-900/80" />
         )}
@@ -269,26 +270,6 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
   );
 }
 
-function Confetti({ show }: { show: boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!show || !ref.current) return;
-    const root = ref.current;
-    const N = 24;
-    root.innerHTML = "";
-    for (let i = 0; i < N; i++) {
-      const s = document.createElement("span");
-      s.className = "absolute w-1 h-2 rounded-sm";
-      s.style.left = Math.random() * 100 + "%";
-      s.style.top = "0%";
-      s.style.background = i % 2 ? "#FFC6D9" : "#E9C987";
-      s.style.transform = `translateY(-20px) rotate(${Math.random() * 360}deg)`;
-      s.style.animation = `confetti-fall ${800 + Math.random() * 600}ms ease-out ${Math.random() * 200}ms forwards`;
-      root.appendChild(s);
-    }
-  }, [show]);
-  return <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden ref={ref} />;
-}
 
 function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => void; item: RoutineItem | null }) {
   if (!open || !item) return null;
@@ -298,7 +279,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
       <div className={`absolute left-0 right-0 bottom-0 ${glass} ${radiusPanel} p-4 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)]`}>
         <div className="mx-auto h-1 w-10 rounded-full bg-white/60 mb-3" />
         <div className="flex items-center gap-3">
-          <img src={item.icon} alt="" className="w-10 h-10 object-contain" />
+          <img src={item.icon} alt="" className="w-10 h-10 object-contain mix-blend-multiply" />
           <div>
             <div className="text-[16px] font-semibold text-neutral-900">{item.title}</div>
             <div className="text-[12px] text-neutral-600">{item.subtitle}</div>
@@ -416,7 +397,6 @@ export default function MobileSkinIQHome() {
       <style>{`
         @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
         .btn-shimmer > span::before{ content:''; position:absolute; top:0; left:0; height:100%; width:60%; opacity:.25; filter: blur(10px); background: linear-gradient(90deg, transparent, white, transparent); animation: shimmer 2.4s infinite; }
-        @keyframes confetti-fall { to { transform: translateY(110vh) rotate(540deg); opacity: 0; } }
         @keyframes sheetUp { from { transform: translateY(12px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
       `}</style>
 
@@ -425,7 +405,7 @@ export default function MobileSkinIQHome() {
         <img 
           src="/skiniq-logo.png" 
           alt="SkinIQ" 
-          className="h-24 w-auto object-contain"
+          className="h-32 w-auto object-contain"
         />
       </div>
 
@@ -437,7 +417,7 @@ export default function MobileSkinIQHome() {
       </div>
 
       {/* Main Panel */}
-      <section className={`bg-white/5 backdrop-blur-sm border border-white/10 ${radiusPanel} relative z-20 mx-4 p-4`}>
+      <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4`}>
         <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
         <p className="text-[12px] text-neutral-600 mt-0.5">
           {progress === 0
@@ -497,7 +477,6 @@ export default function MobileSkinIQHome() {
             }`}
           >
             <ProgressRing value={progress} />
-            {celebrate && <Confetti show />}
           </div>
           <div className="text-[13px] text-neutral-600 mt-1">
             Выполнено {completed} из {items.length}
@@ -549,20 +528,20 @@ export default function MobileSkinIQHome() {
             className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide"
             onScroll={handleScroll}
           >
-            <WidgetCard title="">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center flex-shrink-0">
-                  <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-6 h-6" />
+            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-gradient-to-br from-blue-50/80 to-purple-50/80 backdrop-blur-xl border border-blue-200/60 shadow-[0_8px_24px_rgba(59,130,246,0.15)] rounded-2xl p-4 flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3 w-full">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="text-[12px] text-neutral-600 mb-1">Ежедневный совет</div>
-                  <div className="text-[15px] font-semibold mb-1">Усильте увлажнение</div>
-                  <div className="text-[11px] text-neutral-500 leading-tight">
+                  <div className="text-[12px] text-blue-600 mb-1 font-medium">Ежедневный совет</div>
+                  <div className="text-[15px] font-semibold mb-1 text-gray-900">Усильте увлажнение</div>
+                  <div className="text-[11px] text-gray-600 leading-tight">
                     В холодное время года кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем с керамидами вечером.
                   </div>
                 </div>
               </div>
-            </WidgetCard>
+            </article>
             <WidgetCard title="Гидрация">
               <MiniRing value={72} />
               <div>
@@ -605,8 +584,9 @@ function MiniRing({ value }: { value: number }) {
     <svg width={56} height={56} className="mr-3">
       <defs>
         <linearGradient id="mini" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FFC6D9" />
-          <stop offset="100%" stopColor="#E9C987" />
+          <stop offset="0%" stopColor="#FFD700" />
+          <stop offset="50%" stopColor="#FFA500" />
+          <stop offset="100%" stopColor="#C0C0C0" />
         </linearGradient>
       </defs>
       <circle cx={28} cy={28} r={r} stroke="rgba(255,255,255,0.4)" strokeWidth={stroke} fill="none" />
