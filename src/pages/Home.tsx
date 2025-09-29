@@ -211,10 +211,17 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
     <svg width={size} height={size} className="block">
         <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FFD700" />
-          <stop offset="50%" stopColor="#FFA500" />
-          <stop offset="100%" stopColor="#C0C0C0" />
+          <stop offset="0%" stopColor="#87CEEB" />
+          <stop offset="50%" stopColor="#ADD8E6" />
+          <stop offset="100%" stopColor="#B0E0E6" />
           </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
         </defs>
       <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.35)" strokeWidth={stroke} fill="none" />
         <circle 
@@ -225,6 +232,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
         strokeLinecap="round"
           strokeWidth={stroke} 
         fill="none"
+        filter="url(#glow)"
         style={{ strokeDasharray: c, strokeDashoffset: offset, transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)" }}
       />
       <foreignObject x="0" y="0" width={size} height={size}>
@@ -242,9 +250,9 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
 function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: () => void; onOpen: () => void }) {
   return (
     <div className={`${glass} ${radiusCard} h-[72px] px-3 py-2 flex items-center gap-3 select-none`}>
-      <div className="w-10 h-10 rounded-2xl bg-transparent flex items-center justify-center overflow-hidden">
+      <div className="w-10 h-10 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden shadow-sm">
         {item.icon ? (
-          <img src={item.icon} alt="" className="w-6 h-6 object-contain mix-blend-multiply" />
+          <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
         ) : (
           <div className="w-6 h-6 rounded-xl bg-neutral-900/80" />
         )}
@@ -387,8 +395,6 @@ export default function MobileSkinIQHome() {
       />
       
       <style>{`
-        @keyframes shimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
-        .btn-shimmer > span::before{ content:''; position:absolute; top:0; left:0; height:100%; width:60%; opacity:.25; filter: blur(10px); background: linear-gradient(90deg, transparent, white, transparent); animation: shimmer 2.4s infinite; }
         @keyframes sheetUp { from { transform: translateY(12px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
       `}</style>
 
@@ -475,7 +481,7 @@ export default function MobileSkinIQHome() {
           </div>
           <button
             onClick={() => navigate("/plan")}
-            className={`relative btn-shimmer ${radiusCard} mt-3 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center`}
+            className={`relative ${radiusCard} mt-3 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center`}
             style={{
               background:
                 progress === 100
@@ -576,13 +582,20 @@ function MiniRing({ value }: { value: number }) {
     <svg width={56} height={56} className="mr-3">
       <defs>
         <linearGradient id="mini" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FFD700" />
-          <stop offset="50%" stopColor="#FFA500" />
-          <stop offset="100%" stopColor="#C0C0C0" />
+          <stop offset="0%" stopColor="#87CEEB" />
+          <stop offset="50%" stopColor="#ADD8E6" />
+          <stop offset="100%" stopColor="#B0E0E6" />
         </linearGradient>
+        <filter id="miniGlow">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
       <circle cx={28} cy={28} r={r} stroke="rgba(255,255,255,0.4)" strokeWidth={stroke} fill="none" />
-      <circle cx={28} cy={28} r={r} stroke="url(#mini)" strokeWidth={stroke} strokeLinecap="round" fill="none" style={{ strokeDasharray: c, strokeDashoffset: offset }} />
+      <circle cx={28} cy={28} r={r} stroke="url(#mini)" strokeWidth={stroke} strokeLinecap="round" fill="none" filter="url(#miniGlow)" style={{ strokeDasharray: c, strokeDashoffset: offset }} />
       <foreignObject x="0" y="0" width={56} height={56}>
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-[11px] text-neutral-900 font-medium">{value}%</span>
