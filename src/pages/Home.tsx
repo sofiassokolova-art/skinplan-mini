@@ -223,9 +223,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
           </feMerge>
         </filter>
         <filter id="pulseGlow" x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="12" result="coloredBlur">
-            <animate attributeName="stdDeviation" values="8;20;8" dur="2s" repeatCount="indefinite"/>
-          </feGaussianBlur>
+          <feGaussianBlur stdDeviation="12" result="coloredBlur"/>
           <feMerge> 
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
@@ -251,7 +249,12 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
           strokeWidth={stroke} 
         fill="none"
         filter={value === 100 ? "url(#pulseGlow)" : "url(#glow)"}
-        style={{ strokeDasharray: c, strokeDashoffset: offset, transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)" }}
+        style={{ 
+          strokeDasharray: c, 
+          strokeDashoffset: offset, 
+          transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)",
+          animation: value === 100 ? "pulseGlow 2s ease-in-out infinite" : "none"
+        }}
       />
       <foreignObject x="0" y="0" width={size} height={size}>
         <div className="w-full h-full flex items-center justify-center">
@@ -405,6 +408,10 @@ export default function MobileSkinIQHome() {
       
       <style>{`
         @keyframes sheetUp { from { transform: translateY(12px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes pulseGlow { 
+          0%, 100% { filter: url(#glow); } 
+          50% { filter: url(#pulseGlow); } 
+        }
       `}</style>
 
       {/* Header */}
@@ -543,7 +550,7 @@ export default function MobileSkinIQHome() {
                   <div className="text-[12px] text-neutral-600">Статус</div>
                   <div className="text-[15px] font-semibold">Оптимально</div>
                 </div>
-                <MiniRing value={72} />
+                <SquareProgress value={72} />
               </div>
             </WidgetCard>
             <WidgetCard title="UV-индекс">
@@ -591,9 +598,7 @@ function MiniRing({ value }: { value: number }) {
           </feMerge>
         </filter>
         <filter id="miniPulseGlow" x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="8" result="coloredBlur">
-            <animate attributeName="stdDeviation" values="6;15;6" dur="2s" repeatCount="indefinite"/>
-          </feGaussianBlur>
+          <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
           <feMerge> 
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
@@ -603,12 +608,79 @@ function MiniRing({ value }: { value: number }) {
       {/* Background circle - gray */}
       <circle cx={28} cy={28} r={r} stroke="#E5E7EB" strokeWidth={stroke} fill="none" />
       {/* Progress circle */}
-      <circle cx={28} cy={28} r={r} stroke="url(#mini)" strokeWidth={stroke} strokeLinecap="round" fill="none" filter={value === 100 ? "url(#miniPulseGlow)" : "url(#miniGlow)"} style={{ strokeDasharray: c, strokeDashoffset: offset }} />
+      <circle cx={28} cy={28} r={r} stroke="url(#mini)" strokeWidth={stroke} strokeLinecap="round" fill="none" filter={value === 100 ? "url(#miniPulseGlow)" : "url(#miniGlow)"} style={{ 
+        strokeDasharray: c, 
+        strokeDashoffset: offset,
+        animation: value === 100 ? "pulseGlow 2s ease-in-out infinite" : "none"
+      }} />
       <foreignObject x="0" y="0" width={56} height={56}>
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-[11px] text-neutral-900 font-medium">{value}%</span>
     </div>
       </foreignObject>
     </svg>
+  );
+}
+
+function SquareProgress({ value }: { value: number }) {
+  const size = 48;
+  const stroke = 4;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (value / 100) * c;
+  
+  return (
+    <div className="relative">
+      <svg width={size} height={size} className="drop-shadow-lg">
+        <defs>
+          <linearGradient id="squareGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#D8BFD8" />
+            <stop offset="50%" stopColor="#E6E6FA" />
+            <stop offset="100%" stopColor="#F0E6FF" />
+          </linearGradient>
+          <filter id="squareGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+            <feMerge> 
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        {/* Background - rounded square */}
+        <rect 
+          x={stroke/2} 
+          y={stroke/2} 
+          width={size - stroke} 
+          height={size - stroke} 
+          rx="8" 
+          ry="8"
+          stroke="#E5E7EB" 
+          strokeWidth={stroke} 
+          fill="none"
+        />
+        {/* Progress - rounded square */}
+        <rect 
+          x={stroke/2} 
+          y={stroke/2} 
+          width={size - stroke} 
+          height={size - stroke} 
+          rx="8" 
+          ry="8"
+          stroke="url(#squareGrad)" 
+          strokeWidth={stroke} 
+          fill="none"
+          filter="url(#squareGlow)"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          style={{ 
+            transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)",
+            strokeLinecap: "round"
+          }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-[10px] text-neutral-900 font-medium">{value}%</span>
+      </div>
+    </div>
   );
 }
