@@ -211,12 +211,13 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
     <svg width={size} height={size} className="block">
         <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#87CEEB" />
-          <stop offset="50%" stopColor="#ADD8E6" />
-          <stop offset="100%" stopColor="#B0E0E6" />
+          <stop offset="0%" stopColor="#FFD700" />
+          <stop offset="30%" stopColor="#FFA500" />
+          <stop offset="70%" stopColor="#FF69B4" />
+          <stop offset="100%" stopColor="#DDA0DD" />
           </linearGradient>
         <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
           <feMerge> 
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
@@ -332,7 +333,6 @@ export default function MobileSkinIQHome() {
   const [evening, setEvening] = useState(eveningDefault);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
-  const [showScrollArrows, setShowScrollArrows] = useState(true);
 
   // Greeting state
   const [userName, setUserName] = useState(USER_FALLBACK);
@@ -366,14 +366,6 @@ export default function MobileSkinIQHome() {
     setSheetOpen(true);
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLDivElement;
-    if (target.scrollLeft > 10) {
-      setShowScrollArrows(false);
-    } else {
-      setShowScrollArrows(true);
-    }
-  };
 
   // Background now uses image instead of CSS gradient
   // const bg = useMemo(
@@ -483,10 +475,7 @@ export default function MobileSkinIQHome() {
             onClick={() => navigate("/plan")}
             className={`relative ${radiusCard} mt-3 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center`}
             style={{
-              background:
-                progress === 100
-                  ? "linear-gradient(90deg,#FFC6D9,#E9C987)"
-                  : "#171717",
+              background: "#171717",
               color: "white",
             }}
           >
@@ -494,7 +483,7 @@ export default function MobileSkinIQHome() {
               {progress === 0
                 ? "Перейти к подробному плану"
                 : progress === 100
-                ? "Посмотреть итоги"
+                ? "Открыть подробный план"
                 : "Открыть подробный план"}
             </span>
           </button>
@@ -510,21 +499,9 @@ export default function MobileSkinIQHome() {
       {/* Widgets carousel */}
       <section className="mt-4 pb-4">
         <div className="relative" id="widgets-container">
-          {/* Horizontal scroll indicators - only right arrow */}
-          {showScrollArrows && (
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1 opacity-60 transition-opacity duration-300">
-              <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
-              <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-              <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-              <svg className="w-3 h-3 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          )}
           
           <div 
             className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide"
-            onScroll={handleScroll}
           >
             <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center justify-between relative overflow-hidden">
               {/* Subtle gradient overlay */}
@@ -585,12 +562,13 @@ function MiniRing({ value }: { value: number }) {
     <svg width={56} height={56} className="mr-3">
       <defs>
         <linearGradient id="mini" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#87CEEB" />
-          <stop offset="50%" stopColor="#ADD8E6" />
-          <stop offset="100%" stopColor="#B0E0E6" />
+          <stop offset="0%" stopColor="#FFD700" />
+          <stop offset="30%" stopColor="#FFA500" />
+          <stop offset="70%" stopColor="#FF69B4" />
+          <stop offset="100%" stopColor="#DDA0DD" />
         </linearGradient>
         <filter id="miniGlow">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
           <feMerge> 
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
