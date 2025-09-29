@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
-import ModernCard from "../ui/ModernCard";
 import ModernButton from "../ui/ModernButton";
 
 

@@ -134,7 +134,6 @@ export default function Insights() {
           </div>
         </div>
       )}
-        </section>
       </div>
     </div>
   );
