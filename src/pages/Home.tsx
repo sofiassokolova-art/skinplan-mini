@@ -253,7 +253,8 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
           strokeDasharray: c, 
           strokeDashoffset: offset, 
           transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)",
-          animation: value === 100 ? "pulseGlow 2s ease-in-out infinite" : "none"
+          animation: value === 100 ? "pulseGlow 2s ease-in-out infinite" : "none",
+          transformOrigin: "center"
         }}
       />
       <foreignObject x="0" y="0" width={size} height={size}>
@@ -409,8 +410,16 @@ export default function MobileSkinIQHome() {
       <style>{`
         @keyframes sheetUp { from { transform: translateY(12px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
         @keyframes pulseGlow { 
-          0%, 100% { filter: url(#glow); } 
-          50% { filter: url(#pulseGlow); } 
+          0%, 100% { 
+            filter: url(#glow);
+            transform: scale(1);
+            opacity: 1;
+          } 
+          50% { 
+            filter: url(#pulseGlow);
+            transform: scale(1.05);
+            opacity: 0.8;
+          } 
         }
       `}</style>
 
@@ -483,13 +492,7 @@ export default function MobileSkinIQHome() {
           
         {/* Progress + CTA */}
         <div className="mt-4 flex flex-col items-center relative">
-          <div
-            className={`relative ${
-              progress === 100
-                ? "shadow-[0_0_0_12px_rgba(233,201,135,0.15)] rounded-full"
-                : ""
-            }`}
-          >
+          <div className="relative">
             <ProgressRing value={progress} />
           </div>
           <div className="text-[13px] text-neutral-600 mt-1">
@@ -578,62 +581,16 @@ function WidgetCard({ title, children }: { title: string; children: React.ReactN
 
 
 function SquareProgress({ value }: { value: number }) {
-  const size = 48;
-  const stroke = 4;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const offset = c - (value / 100) * c;
   
   return (
     <div className="relative">
-      <svg width={size} height={size} className="drop-shadow-lg">
-        <defs>
-          <linearGradient id="squareGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#D8BFD8" />
-            <stop offset="50%" stopColor="#E6E6FA" />
-            <stop offset="100%" stopColor="#F0E6FF" />
-          </linearGradient>
-          <filter id="squareGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-            <feMerge> 
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-        {/* Background - rounded square */}
-        <rect 
-          x={stroke/2} 
-          y={stroke/2} 
-          width={size - stroke} 
-          height={size - stroke} 
-          rx="8" 
-          ry="8"
-          stroke="#E5E7EB" 
-          strokeWidth={stroke} 
-          fill="none"
+      <div className="w-20 h-3 bg-gray-200 rounded-full overflow-hidden drop-shadow-lg">
+        <div 
+          className="h-full bg-gradient-to-r from-[#D8BFD8] via-[#E6E6FA] to-[#F0E6FF] rounded-full transition-all duration-600 ease-out"
+          style={{ width: `${value}%` }}
         />
-        {/* Progress - rounded square */}
-        <rect 
-          x={stroke/2} 
-          y={stroke/2} 
-          width={size - stroke} 
-          height={size - stroke} 
-          rx="8" 
-          ry="8"
-          stroke="url(#squareGrad)" 
-          strokeWidth={stroke} 
-          fill="none"
-          filter="url(#squareGlow)"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          style={{ 
-            transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)",
-            strokeLinecap: "round"
-          }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
+      </div>
+      <div className="absolute -bottom-5 left-0 right-0 text-center">
         <span className="text-[10px] text-neutral-900 font-medium">{value}%</span>
       </div>
     </div>
