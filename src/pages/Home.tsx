@@ -222,7 +222,26 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
+        <filter id="pulseGlow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="12" result="coloredBlur">
+            <animate attributeName="stdDeviation" values="8;20;8" dur="2s" repeatCount="indefinite"/>
+          </feGaussianBlur>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
         </defs>
+        {/* Background circle - gray */}
+        <circle 
+          cx={size / 2}
+          cy={size / 2}
+          r={r} 
+          stroke="#E5E7EB"
+          strokeWidth={stroke} 
+          fill="none"
+        />
+        {/* Progress circle */}
         <circle 
         cx={size / 2}
         cy={size / 2}
@@ -231,7 +250,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
         strokeLinecap="round"
           strokeWidth={stroke} 
         fill="none"
-        filter="url(#glow)"
+        filter={value === 100 ? "url(#pulseGlow)" : "url(#glow)"}
         style={{ strokeDasharray: c, strokeDashoffset: offset, transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)" }}
       />
       <foreignObject x="0" y="0" width={size} height={size}>
@@ -510,7 +529,7 @@ export default function MobileSkinIQHome() {
                   <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="text-[10px] text-blue-600/80 mb-1 font-medium tracking-wide uppercase">Ежедневный совет</div>
+                  <div className="text-[10px] text-neutral-500 mb-1 font-medium tracking-wide uppercase">Ежедневный совет</div>
                   <div className="text-[14px] font-bold mb-1 text-neutral-900 leading-tight">Усильте увлажнение</div>
                   <div className="text-[11px] text-neutral-700/80 leading-relaxed">
                     В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
@@ -519,10 +538,12 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <MiniRing value={72} />
-              <div>
-                <div className="text-[12px] text-neutral-600">Статус</div>
-                <div className="text-[15px] font-semibold">Оптимально</div>
+              <div className="flex items-center justify-between w-full">
+                <div>
+                  <div className="text-[12px] text-neutral-600">Статус</div>
+                  <div className="text-[15px] font-semibold">Оптимально</div>
+                </div>
+                <MiniRing value={72} />
               </div>
             </WidgetCard>
             <WidgetCard title="UV-индекс">
@@ -541,11 +562,9 @@ export default function MobileSkinIQHome() {
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 ${glass} ${radiusCard} p-4 flex items-center justify-between`}>
-      <div className="flex flex-col gap-1">
-        <div className="text-[13px] text-neutral-600">{title}</div>
-        <div className="text-neutral-900">{children}</div>
-      </div>
+    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 ${glass} ${radiusCard} p-4 flex flex-col`}>
+      <div className="text-[13px] text-neutral-600 mb-3">{title}</div>
+      <div className="text-neutral-900 flex-1">{children}</div>
     </article>
   );
 }
@@ -557,7 +576,7 @@ function MiniRing({ value }: { value: number }) {
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
   return (
-    <svg width={56} height={56} className="mr-3">
+    <svg width={56} height={56} className="mr-3 drop-shadow-lg">
       <defs>
         <linearGradient id="mini" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#D8BFD8" />
@@ -571,8 +590,20 @@ function MiniRing({ value }: { value: number }) {
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
+        <filter id="miniPulseGlow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="8" result="coloredBlur">
+            <animate attributeName="stdDeviation" values="6;15;6" dur="2s" repeatCount="indefinite"/>
+          </feGaussianBlur>
+          <feMerge> 
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
-      <circle cx={28} cy={28} r={r} stroke="url(#mini)" strokeWidth={stroke} strokeLinecap="round" fill="none" filter="url(#miniGlow)" style={{ strokeDasharray: c, strokeDashoffset: offset }} />
+      {/* Background circle - gray */}
+      <circle cx={28} cy={28} r={r} stroke="#E5E7EB" strokeWidth={stroke} fill="none" />
+      {/* Progress circle */}
+      <circle cx={28} cy={28} r={r} stroke="url(#mini)" strokeWidth={stroke} strokeLinecap="round" fill="none" filter={value === 100 ? "url(#miniPulseGlow)" : "url(#miniGlow)"} style={{ strokeDasharray: c, strokeDashoffset: offset }} />
       <foreignObject x="0" y="0" width={56} height={56}>
         <div className="w-full h-full flex items-center justify-center">
           <span className="text-[11px] text-neutral-900 font-medium">{value}%</span>
