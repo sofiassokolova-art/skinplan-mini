@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 // === SkinIQ Mobile Home — FULL PREVIEW (syntax fixed) ===
@@ -324,7 +324,6 @@ export default function MobileSkinIQHome() {
   const [evening, setEvening] = useState(eveningDefault);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
-  const [celebrate, setCelebrate] = useState(false);
   const [showScrollArrows, setShowScrollArrows] = useState(true);
 
   // Greeting state
@@ -342,13 +341,6 @@ export default function MobileSkinIQHome() {
   const completed = items.filter((i) => i.done).length;
   const progress = items.length ? (completed / items.length) * 100 : 0;
 
-  useEffect(() => {
-    if (progress === 100) {
-      setCelebrate(true);
-      const t = setTimeout(() => setCelebrate(false), 1400);
-      return () => clearTimeout(t);
-    }
-  }, [progress]);
 
   const toggleAt = (idx: number) => () => {
     if (tab === "AM") {
@@ -510,7 +502,7 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-20">
+      <section className="mt-4 pb-4">
         <div className="relative" id="widgets-container">
           {/* Horizontal scroll indicators - only right arrow */}
           {showScrollArrows && (
@@ -528,7 +520,7 @@ export default function MobileSkinIQHome() {
             className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide"
             onScroll={handleScroll}
           >
-            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-gradient-to-br from-blue-50/80 to-purple-50/80 backdrop-blur-xl border border-blue-200/60 shadow-[0_8px_24px_rgba(59,130,246,0.15)] rounded-2xl p-4 flex items-center justify-between mb-2">
+            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-gradient-to-br from-blue-50/80 to-purple-50/80 backdrop-blur-xl border border-blue-200/60 shadow-[0_8px_24px_rgba(59,130,246,0.15)] rounded-2xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3 w-full">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg">
                   <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-6 h-6 text-white" />
@@ -565,7 +557,7 @@ export default function MobileSkinIQHome() {
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 ${glass} ${radiusCard} p-4 flex items-center justify-between mb-2`}>
+    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 ${glass} ${radiusCard} p-4 flex items-center justify-between`}>
       <div className="flex flex-col gap-1">
         <div className="text-[13px] text-neutral-600">{title}</div>
         <div className="text-neutral-900">{children}</div>
