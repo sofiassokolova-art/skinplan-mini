@@ -659,8 +659,17 @@ export default function Plan() {
   );
 
   return (
-    <div className="space-y-4 print:px-0">
-      <Header />
+    <div className="w-full min-h-screen relative">
+      {/* Background layers: CSS gradient */}
+      <div 
+        className="absolute inset-0 -z-10"
+        style={{
+          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+        }}
+      />
+      
+      <div className="relative z-20 space-y-4 p-4 print:px-0">
+        <Header />
       
       <PhotoSection />
       
@@ -732,6 +741,7 @@ export default function Plan() {
             </BlurredContent>
           </Card>
         )}
+        </div>
       </div>
       
       <style>{`

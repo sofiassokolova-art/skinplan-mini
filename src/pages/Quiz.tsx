@@ -1023,33 +1023,30 @@ export default function Quiz() {
   };
 
   return (
-    <div className="min-h-screen relative">
-      {/* Background layers: Image with floating spheres */}
+    <div className="w-full min-h-screen relative">
+      {/* Background layers: CSS gradient with floating spheres */}
       <div 
         className="absolute inset-0 -z-10"
         style={{
-          backgroundImage: "url('/bg/spheres-day-light.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat"
+          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
         }}
       />
-      <div className="max-w-2xl mx-auto px-4 py-6 relative z-10">
-        <div className="space-y-4">
-          {currentStepIndex > 0 && (
-            <button
-              type="button"
-              onClick={goBack}
-              className="text-sm text-neutral-600 flex items-center gap-1 mb-2"
-              aria-label="Назад"
-            >
-              ← Назад
-            </button>
-          )}
+      
+      <div className="relative z-20 space-y-4 p-4">
+        {currentStepIndex > 0 && (
+          <button
+            type="button"
+            onClick={goBack}
+            className="text-sm text-neutral-600 flex items-center gap-1 mb-2"
+            aria-label="Назад"
+          >
+            ← Назад
+          </button>
+        )}
 
-          <ProgressBar currentStepIndex={currentStepIndex} />
+        <ProgressBar currentStepIndex={currentStepIndex} />
 
-          <ModernCard variant="gradient" className="p-6">
+        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6">
         {currentStep.kind === "question" ? (
           <>
             <h1 className="text-xl md:text-2xl font-semibold mb-2">
@@ -1089,7 +1086,6 @@ export default function Quiz() {
             </ModernButton>
           </>
         )}
-          </ModernCard>
         </div>
       </div>
     </div>

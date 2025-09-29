@@ -43,8 +43,17 @@ export default function Cart() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <section className="bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
+    <div className="w-full min-h-screen relative">
+      {/* Background layers: CSS gradient */}
+      <div 
+        className="absolute inset-0 -z-10"
+        style={{
+          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+        }}
+      />
+      
+      <div className="relative z-20 max-w-3xl mx-auto space-y-6 p-4">
+        <section className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6">
         <h2 className="text-xl font-bold mb-3">Корзина продуктов</h2>
 
         {items.length===0 ? (
@@ -90,8 +99,8 @@ export default function Cart() {
         </div>
       </section>
 
-      <section className="bg-white/70 border border-white/60 rounded-3xl p-6 backdrop-blur-xl">
-        <h3 className="text-lg font-bold mb-2">Общий комментарий</h3>
+        <section className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6">
+          <h3 className="text-lg font-bold mb-2">Общий комментарий</h3>
         <textarea
           value={note}
           onChange={e=>setNote(e.target.value)}
@@ -102,7 +111,8 @@ export default function Cart() {
         <div className="mt-3 text-sm text-zinc-500">
           Комментарий сохранится и будет приложен к сообщению/заявке.
         </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
