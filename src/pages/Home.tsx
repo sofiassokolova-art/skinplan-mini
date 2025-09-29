@@ -576,51 +576,6 @@ function WidgetCard({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-function MiniRing({ value }: { value: number }) {
-  const size = 56,
-    stroke = 5;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const offset = c - (value / 100) * c;
-  return (
-    <svg width={56} height={56} className="mr-3 drop-shadow-lg">
-      <defs>
-        <linearGradient id="mini" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#D8BFD8" />
-          <stop offset="50%" stopColor="#E6E6FA" />
-          <stop offset="100%" stopColor="#F0E6FF" />
-        </linearGradient>
-        <filter id="miniGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
-          <feMerge> 
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-        <filter id="miniPulseGlow" x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
-          <feMerge> 
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
-      {/* Background circle - gray */}
-      <circle cx={28} cy={28} r={r} stroke="#E5E7EB" strokeWidth={stroke} fill="none" />
-      {/* Progress circle */}
-      <circle cx={28} cy={28} r={r} stroke="url(#mini)" strokeWidth={stroke} strokeLinecap="round" fill="none" filter={value === 100 ? "url(#miniPulseGlow)" : "url(#miniGlow)"} style={{ 
-        strokeDasharray: c, 
-        strokeDashoffset: offset,
-        animation: value === 100 ? "pulseGlow 2s ease-in-out infinite" : "none"
-      }} />
-      <foreignObject x="0" y="0" width={56} height={56}>
-        <div className="w-full h-full flex items-center justify-center">
-          <span className="text-[11px] text-neutral-900 font-medium">{value}%</span>
-    </div>
-      </foreignObject>
-    </svg>
-  );
-}
 
 function SquareProgress({ value }: { value: number }) {
   const size = 48;
