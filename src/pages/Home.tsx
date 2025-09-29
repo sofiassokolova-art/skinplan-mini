@@ -203,7 +203,7 @@ const eveningDefault = [
 ];
 
 // ----- Visual components -----
-function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
+function ProgressRing({ value = 0, size = 200, stroke = 8 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
@@ -354,6 +354,7 @@ export default function MobileSkinIQHome() {
   const [evening, setEvening] = useState(eveningDefault);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
 
   // Greeting state
   const [userName, setUserName] = useState(USER_FALLBACK);
@@ -364,6 +365,13 @@ export default function MobileSkinIQHome() {
     const name =
       tg?.initDataUnsafe?.user?.first_name || tg?.initDataUnsafe?.user?.username || USER_FALLBACK;
     setUserName(name);
+  }, []);
+
+  // Load background image
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setBackgroundLoaded(true);
+    img.src = "/bg/IMG_8368 (2).PNG";
   }, []);
 
   const items = tab === "AM" ? morning : evening;
@@ -401,11 +409,20 @@ export default function MobileSkinIQHome() {
     <div className="w-full min-h-screen relative">
       {/* Background layers: PNG image with floating spheres */}
       <div 
-        className="absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+        className={`absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
+          backgroundLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
         style={{
           backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
         }}
       />
+      
+      {/* Shimmer loading effect */}
+      {!backgroundLoaded && (
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+        </div>
+      )}
       
       <style>{`
         @keyframes sheetUp { from { transform: translateY(12px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
@@ -420,6 +437,13 @@ export default function MobileSkinIQHome() {
             transform: scale(1.05);
             opacity: 0.8;
           } 
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+          animation: shimmer 2s ease-in-out infinite;
         }
       `}</style>
 
@@ -581,17 +605,60 @@ function WidgetCard({ title, children }: { title: string; children: React.ReactN
 
 
 function SquareProgress({ value }: { value: number }) {
-  
+  const size = 48;
+  const strokeWidth = 6;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDasharray = circumference;
+  const strokeDashoffset = circumference - (value / 100) * circumference;
+
   return (
     <div className="relative">
-      <div className="w-20 h-3 bg-gray-200 rounded-full overflow-hidden drop-shadow-lg">
-        <div 
-          className="h-full bg-gradient-to-r from-[#D8BFD8] via-[#E6E6FA] to-[#F0E6FF] rounded-full transition-all duration-600 ease-out"
-          style={{ width: `${value}%` }}
-        />
-      </div>
-      <div className="absolute -bottom-5 left-0 right-0 text-center">
-        <span className="text-[10px] text-neutral-900 font-medium">{value}%</span>
+      <div className="relative w-12 h-12">
+        <svg
+          width={size}
+          height={size}
+          className="transform -rotate-90"
+        >
+          {/* Background circle */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="rgba(156, 163, 175, 0.3)"
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeLinecap="square"
+          />
+          {/* Progress circle */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="url(#squareGradient)"
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeLinecap="square"
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset={strokeDashoffset}
+            className="transition-all duration-600 ease-out drop-shadow-lg"
+            style={{
+              filter: "drop-shadow(0 4px 8px rgba(216, 191, 216, 0.3))"
+            }}
+          />
+          {/* Gradient definition */}
+          <defs>
+            <linearGradient id="squareGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#D8BFD8" />
+              <stop offset="50%" stopColor="#E6E6FA" />
+              <stop offset="100%" stopColor="#F0E6FF" />
+            </linearGradient>
+          </defs>
+        </svg>
+        {/* Center percentage */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[10px] text-neutral-900 font-bold">{value}%</span>
+        </div>
       </div>
     </div>
   );
