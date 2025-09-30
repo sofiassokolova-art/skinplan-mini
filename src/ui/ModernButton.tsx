@@ -49,7 +49,7 @@ export default function ModernButton({
     >
       {/* Блеск при hover */}
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out"></div>
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10" style={variant === 'primary' ? { color: 'white' } : undefined}>{children}</span>
     </button>
   );
 }
