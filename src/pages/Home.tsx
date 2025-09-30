@@ -558,19 +558,35 @@ export default function MobileSkinIQHome() {
           >
             <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between animate-card-appear">
               {/* Decorative wave visual */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-                <svg className="absolute -right-8 -bottom-8 w-40 h-40" viewBox="0 0 200 200" fill="none">
-                  <path d="M40,100 Q60,80 80,100 T120,100 T160,100" stroke="white" strokeWidth="2" fill="none" opacity="0.3"/>
-                  <path d="M40,120 Q60,100 80,120 T120,120 T160,120" stroke="white" strokeWidth="2" fill="none" opacity="0.4"/>
-                  <circle cx="140" cy="60" r="30" fill="white" opacity="0.1"/>
-                  <circle cx="160" cy="80" r="20" fill="white" opacity="0.15"/>
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <svg className="absolute -right-4 top-0 w-full h-full" viewBox="0 0 280 140" fill="none" preserveAspectRatio="xMaxYMid slice">
+                  <defs>
+                    <linearGradient id="waveGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
+                      <stop offset="50%" stopColor="rgba(255,255,255,0.12)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.04)" />
+                    </linearGradient>
+                    <linearGradient id="waveGradient2" x1="100%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="rgba(255,255,255,0.05)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Flowing waves */}
+                  <path d="M280,20 Q240,10 200,25 T120,35 T40,45 L40,140 L280,140 Z" 
+                        fill="url(#waveGradient1)" opacity="0.6"/>
+                  <path d="M280,50 Q230,35 180,55 T80,75 L80,140 L280,140 Z" 
+                        fill="url(#waveGradient2)" opacity="0.4"/>
+                  <path d="M280,80 Q220,65 160,85 T40,105 L40,140 L280,140 Z" 
+                        fill="rgba(255,255,255,0.06)" opacity="0.5"/>
+                  
+                  {/* Soft glow circles */}
+                  <circle cx="230" cy="30" r="40" fill="rgba(255,255,255,0.03)" />
+                  <circle cx="200" cy="60" r="30" fill="rgba(255,255,255,0.04)" />
                 </svg>
               </div>
               
-              <div className="flex items-center gap-3 w-full relative z-10">
-                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 border border-white/20">
-                  <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-5 h-5 brightness-0 invert" />
-                </div>
+              <div className="flex items-start gap-3 w-full relative z-10">
                 <div className="flex-1 text-left">
                   <div className="text-[10px] text-white/60 mb-1 font-medium tracking-wide uppercase">Ежедневный совет</div>
                   <div className="text-[14px] font-bold mb-1 text-white leading-tight">Усильте увлажнение</div>
