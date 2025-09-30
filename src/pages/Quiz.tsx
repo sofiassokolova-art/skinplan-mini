@@ -1599,18 +1599,19 @@ export default function Quiz() {
         .shimmer-text::after {
           content: '';
           position: absolute;
-          top: 0;
+          top: -50%;
           left: -100%;
           width: 100%;
-          height: 100%;
+          height: 200%;
           background: linear-gradient(
-            90deg,
+            120deg,
             transparent,
-            rgba(255, 255, 255, 0.15),
+            rgba(255, 255, 255, 0.2),
             transparent
           );
           animation: shimmer 4s ease-in-out infinite;
           pointer-events: none;
+          transform: skewX(-20deg);
         }
       `}</style>
       
