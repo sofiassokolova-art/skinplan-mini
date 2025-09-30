@@ -48,6 +48,25 @@ function getGreeting(date = new Date()): string {
   }
 })();
 
+// Helper for SPF recommendation based on UV index
+function getSPFRecommendation(uv: number | null): string {
+  if (uv === null) return "SPF 30";
+  if (uv <= 2) return "SPF 15-30";
+  if (uv <= 5) return "SPF 30";
+  if (uv <= 7) return "SPF 30-50";
+  if (uv <= 10) return "SPF 50";
+  return "SPF 50+";
+}
+
+function getUVLevel(uv: number | null): string {
+  if (uv === null) return "Умеренный";
+  if (uv <= 2) return "Низкий";
+  if (uv <= 5) return "Умеренный";
+  if (uv <= 7) return "Высокий";
+  if (uv <= 10) return "Очень высокий";
+  return "Экстремальный";
+}
+
 
 // ----- Tokens -----
 const glass = "bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)]";
@@ -208,7 +227,7 @@ function ProgressRing({ value = 0, size = 180, stroke = 7 }) {
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
   return (
-    <svg width={size} height={size} className="block">
+    <svg width={size} height={size} className="block" style={{overflow: 'visible'}}>
         <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#D8BFD8" />
@@ -374,6 +393,44 @@ export default function MobileSkinIQHome() {
     img.src = "/bg/IMG_8368 (2).PNG";
   }, []);
 
+  // UV Index state
+  const [uvIndex, setUvIndex] = useState<number | null>(null);
+  const [uvLoading, setUvLoading] = useState(true);
+
+  // Fetch UV Index based on user location
+  useEffect(() => {
+    const fetchUVIndex = async () => {
+      try {
+        // Get user location
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+
+        const { latitude, longitude } = position.coords;
+
+        // Fetch UV index from Open-Meteo API
+        const response = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=uv_index_max&timezone=auto&forecast_days=1`
+        );
+        
+        const data = await response.json();
+        const uvValue = data.daily?.uv_index_max?.[0];
+        
+        if (uvValue !== undefined) {
+          setUvIndex(Math.round(uvValue));
+        }
+      } catch (error) {
+        console.error('Error fetching UV index:', error);
+        // Fallback to default value
+        setUvIndex(3);
+      } finally {
+        setUvLoading(false);
+      }
+    };
+
+    fetchUVIndex();
+  }, []);
+
   const items = tab === "AM" ? morning : evening;
   const completed = items.filter((i) => i.done).length;
   const progress = items.length ? (completed / items.length) * 100 : 0;
@@ -406,10 +463,10 @@ export default function MobileSkinIQHome() {
   // );
 
   return (
-    <div className="w-full min-h-screen relative">
+    <div className="w-full min-h-screen relative overflow-x-hidden">
       {/* Background layers: PNG image with floating spheres */}
       <div 
-        className={`absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
+        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
           backgroundLoaded ? 'opacity-100' : 'opacity-0'
         }`}
         style={{
@@ -419,7 +476,7 @@ export default function MobileSkinIQHome() {
       
       {/* Premium shimmer loading effect */}
       {!backgroundLoaded && (
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 shimmer-wrapper">
+        <div className="fixed inset-0 -z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 shimmer-wrapper">
         </div>
       )}
       
@@ -440,7 +497,7 @@ export default function MobileSkinIQHome() {
       `}</style>
 
       {/* Header */}
-      <div className="sticky top-0 z-20 mx-4 pt-4 flex items-start justify-start bg-transparent">
+      <div className="absolute top-4 left-4 z-20">
         <img 
           src="/skiniq-logo.png" 
           alt="SkinIQ" 
@@ -449,32 +506,21 @@ export default function MobileSkinIQHome() {
       </div>
 
       {/* Greeting Widget */}
-      <div className="mx-4 mt-4 mb-2">
+      <div className="mx-4 mt-32 mb-2">
         <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center gap-4">
           {/* Icon circle with sun/moon */}
           <div className="w-14 h-14 rounded-full bg-neutral-900 flex items-center justify-center flex-shrink-0 shadow-lg">
             {(() => {
               const hour = new Date().getHours();
-              if (hour >= 5 && hour < 12) {
-                // Morning - sun
+              if (hour >= 5 && hour < 18) {
+                // Morning & Day - sun icon
                 return (
-                  <svg className="w-7 h-7 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="5"/>
-                    <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/>
-                  </svg>
-                );
-              } else if (hour >= 12 && hour < 18) {
-                // Day - bright sun
-                return (
-                  <svg className="w-7 h-7 text-orange-400" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="6"/>
-                    <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/>
-                  </svg>
+                  <img src="/icons/icon_morning.PNG" alt="Day" className="w-10 h-10 object-contain" />
                 );
               } else {
                 // Evening - moon
                 return (
-                  <svg className="w-7 h-7 text-blue-300" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-10 h-10 text-blue-300" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                   </svg>
                 );
@@ -510,7 +556,7 @@ export default function MobileSkinIQHome() {
               onClick={() => setTab(t)}
               className={`relative ${radiusCard} text-[14px] font-medium transition-all duration-200 overflow-hidden` +
                 (tab === t
-                  ? " bg-white/50 text-neutral-900 shadow-inner border border-white/60 shimmer-wrapper"
+                  ? " bg-white/50 text-neutral-900 shadow-inner border border-white/60"
                   : " text-neutral-700 hover:text-neutral-900")}
             >
               {t === "AM" ? "Утро" : "Вечер"}
@@ -543,16 +589,16 @@ export default function MobileSkinIQHome() {
           </div>
           
         {/* Progress + CTA */}
-        <div className="mt-4 flex flex-col items-center relative overflow-visible">
-          <div className="relative py-20 px-16 overflow-visible">
+        <div className="mt-3 flex flex-col items-center relative">
+          <div className="w-full flex justify-center py-8 px-12" style={{overflow: 'visible'}}>
             <ProgressRing value={progress} />
           </div>
-          <div className="text-[13px] text-neutral-600 mt-1 tabular-nums">
+          <div className="text-[13px] text-neutral-600 -mt-2 tabular-nums">
             Выполнено {completed} из {items.length}
           </div>
           <button
             onClick={() => navigate("/plan")}
-            className="glossy-black-card mt-3 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center relative group hover:shadow-2xl transition-all duration-300"
+            className="glossy-black-card mt-2 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center relative group hover:shadow-2xl transition-all duration-300"
           >
             {/* Decorative spheres */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
@@ -570,7 +616,7 @@ export default function MobileSkinIQHome() {
           </button>
           <button 
             onClick={() => navigate("/quiz")}
-            className="mt-2 text-[14px] text-neutral-800 underline/20 hover:text-neutral-600 transition-colors"
+            className="mt-1.5 text-[14px] text-neutral-800 underline/20 hover:text-neutral-600 transition-colors"
           >
             Перепройти анкету
           </button>
@@ -578,12 +624,12 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-12">
+      <section className="mt-4 pb-12 ml-4">
         <div className="relative" id="widgets-container">
           
           <div 
-            className="flex gap-3 overflow-x-auto pl-4 pr-8 snap-x snap-mandatory scrollbar-hide"
-            style={{touchAction: 'pan-x'}}
+            className="flex gap-3 overflow-x-auto overflow-y-hidden pr-8 snap-x snap-mandatory scrollbar-hide"
+            style={{touchAction: 'pan-x', overscrollBehavior: 'contain'}}
           >
             <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between">
               {/* Decorative wave visual */}
@@ -622,20 +668,32 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-center justify-between w-full flex-1">
-                <div>
+              <div className="flex items-center justify-between h-full">
+                <div className="flex flex-col">
                   <div className="text-[12px] text-neutral-600">Уровень</div>
                   <div className="text-[15px] font-semibold">Оптимально</div>
                 </div>
-                <div className="flex items-center">
-                  <WaterDropProgress value={72} />
+                <div className="relative flex items-center justify-center">
+                  <img src="/icons/hydration.PNG" alt="Hydration" className="w-20 h-20 object-contain" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[15px] font-bold text-neutral-900 tabular-nums">72%</span>
+                  </div>
                 </div>
               </div>
             </WidgetCard>
             <WidgetCard title="UV-индекс">
-              <div className="flex items-center justify-center flex-col h-full">
-                <div className="text-4xl font-semibold tabular-nums">3</div>
-                <div className="text-[12px] text-neutral-600 mt-2">Сегодня: SPF 30</div>
+              <div className="flex items-center justify-between h-full">
+                {uvLoading ? (
+                  <div className="text-sm text-neutral-500">Загрузка...</div>
+                ) : (
+                  <>
+                    <div className="flex flex-col">
+                      <div className="text-[10px] text-neutral-500 mb-1">{getUVLevel(uvIndex)}</div>
+                      <div className="text-[12px] text-neutral-600">Сегодня: {getSPFRecommendation(uvIndex)}</div>
+                    </div>
+                    <div className="text-5xl font-semibold tabular-nums">{uvIndex ?? "—"}</div>
+                  </>
+                )}
               </div>
             </WidgetCard>
           </div>
@@ -650,74 +708,9 @@ export default function MobileSkinIQHome() {
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl p-4 flex flex-col shadow-[0_8px_24px_rgba(0,0,0,0.06)]`}>
+    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl p-4 flex flex-col shadow-[0_4px_12px_rgba(0,0,0,0.06)]`}>
       <div className="text-[13px] text-neutral-600 mb-3">{title}</div>
       <div className="text-neutral-900 flex-1">{children}</div>
     </article>
-  );
-}
-
-function WaterDropProgress({ value }: { value: number }) {
-  const size = 70;
-  const strokeWidth = 7;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (value / 100) * circumference;
-
-  return (
-    <div className="relative flex items-center justify-center">
-      <svg width={size} height={size} className="transform -rotate-90">
-        <defs>
-          {/* Water gradient */}
-          <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#60A5FA" />
-            <stop offset="50%" stopColor="#3B82F6" />
-            <stop offset="100%" stopColor="#2563EB" />
-          </linearGradient>
-          {/* Water droplet pattern */}
-          <pattern id="waterPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-            <circle cx="5" cy="5" r="2" fill="white" opacity="0.3"/>
-            <circle cx="15" cy="15" r="1.5" fill="white" opacity="0.2"/>
-          </pattern>
-        </defs>
-        
-        {/* Background circle */}
-        <circle 
-          cx={size / 2}
-          cy={size / 2}
-          r={radius} 
-          stroke="#E5E7EB"
-          strokeWidth={strokeWidth} 
-          fill="none"
-          strokeLinecap="round"
-        />
-        
-        {/* Water stream progress */}
-        <circle 
-          cx={size / 2}
-          cy={size / 2}
-          r={radius} 
-          stroke="url(#waterGradient)"
-          strokeWidth={strokeWidth} 
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          className="animate-stroke-draw"
-          style={{
-            filter: "drop-shadow(0 4px 8px rgba(59, 130, 246, 0.3))",
-            transition: "stroke-dashoffset 250ms ease-out"
-          }}
-        />
-        
-        {/* Water droplets decoration */}
-        <circle cx={size / 2} cy={size / 2} r={radius - strokeWidth} fill="url(#waterPattern)" opacity="0.1"/>
-      </svg>
-      
-      {/* Center percentage */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[16px] text-neutral-900 font-bold tabular-nums">{value}%</span>
-      </div>
-    </div>
   );
 }

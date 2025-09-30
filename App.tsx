@@ -482,5 +482,3 @@ export default function App() {
     </div>
   );
 }
-cd ~/skinplan-mini
-nano src/App.tsx

@@ -318,10 +318,15 @@ export default function Plan() {
   const schedule = useMemo(() => build28DaySchedule(analysis), [analysis]);
   const [hasPremium, setHasPremium] = useState(isPremium());
   const [itemsAddedToCart, setItemsAddedToCart] = useState(false);
+  const [isPageLoaded, setIsPageLoaded] = useState(false);
   
   const hasPhotoData = useMemo(() => {
     return !!(answers.photo_data_url || (answers.photo_scans && answers.photo_scans.length > 0));
   }, [answers]);
+
+  useEffect(() => {
+    setIsPageLoaded(true);
+  }, []);
   
 
   
@@ -660,15 +665,19 @@ export default function Plan() {
 
   return (
     <div className="w-full min-h-screen relative">
-      {/* Background layers: CSS gradient */}
+      {/* Background layers: PNG image */}
       <div 
-        className="absolute inset-0 -z-10"
+        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
+          isPageLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
         style={{
-          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
         }}
       />
       
-      <div className="relative z-20 space-y-4 p-4 print:px-0">
+      <div className={`relative z-20 space-y-4 p-4 pt-24 print:px-0 transition-all duration-500 ${
+        isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+      }`}>
         <Header />
       
       <PhotoSection />
