@@ -672,12 +672,10 @@ export default function MobileSkinIQHome() {
                 <div className="flex flex-col">
                   <div className="text-[12px] text-neutral-600">Уровень</div>
                   <div className="text-[15px] font-semibold">Оптимально</div>
+                  <div className="text-[13px] font-bold text-neutral-900 tabular-nums mt-1">72%</div>
                 </div>
-                <div className="relative flex items-center justify-center">
-                  <img src="/icons/hydration.PNG" alt="Hydration" className="w-20 h-20 object-contain" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[15px] font-bold text-neutral-900 tabular-nums">72%</span>
-                  </div>
+                <div className="flex items-center justify-center">
+                  <img src="/icons/hydration.PNG" alt="Hydration" className="w-12 h-12 object-contain" />
                 </div>
               </div>
             </WidgetCard>
@@ -691,7 +689,10 @@ export default function MobileSkinIQHome() {
                       <div className="text-[10px] text-neutral-500 mb-1">{getUVLevel(uvIndex)}</div>
                       <div className="text-[12px] text-neutral-600">Сегодня: {getSPFRecommendation(uvIndex)}</div>
                     </div>
-                    <div className="text-5xl font-semibold tabular-nums">{uvIndex ?? "—"}</div>
+                    <div className="flex flex-col items-center">
+                      <img src="/icons/spf1.PNG" alt="SPF" className="w-10 h-10 object-contain mb-1" />
+                      <div className="text-2xl font-semibold tabular-nums">{uvIndex ?? "—"}</div>
+                    </div>
                   </>
                 )}
               </div>

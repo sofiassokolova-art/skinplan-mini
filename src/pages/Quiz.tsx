@@ -730,10 +730,7 @@ const screens: Screen[] = [
         </p>
       </div>
     ),
-    buttons: [
-      { text: "Нет", value: "no" },
-      { text: "Да", value: "yes" }
-    ]
+    ctaText: "Продолжить"
   },
   
   {
@@ -748,10 +745,7 @@ const screens: Screen[] = [
         </p>
       </div>
     ),
-    buttons: [
-      { text: "Нет", value: "no" },
-      { text: "Да", value: "yes" }
-    ]
+    ctaText: "Продолжить"
   },
   
   {
@@ -766,10 +760,7 @@ const screens: Screen[] = [
         </p>
       </div>
     ),
-    buttons: [
-      { text: "Нет", value: "no" },
-      { text: "Да", value: "yes" }
-    ]
+    ctaText: "Продолжить"
   },
   
   // 38. INFO - Персональный анализ
@@ -864,10 +855,7 @@ const screens: Screen[] = [
     title: "Хотите улучшить состояние кожи?",
     visual: "yes_no",
     renderBody: () => null,
-    buttons: [
-      { text: "❌ Нет", value: "no" },
-      { text: "✅ Да", value: "yes" }
-    ]
+    ctaText: "Продолжить"
   },
   
   {
@@ -876,10 +864,7 @@ const screens: Screen[] = [
     title: "Хотите наладить свой уход за кожей?",
     visual: "yes_no",
     renderBody: () => null,
-    buttons: [
-      { text: "❌ Нет", value: "no" },
-      { text: "✅ Да", value: "yes" }
-    ]
+    ctaText: "Продолжить"
   },
   
   // 45. QUESTION - Фото (финальный шаг)
