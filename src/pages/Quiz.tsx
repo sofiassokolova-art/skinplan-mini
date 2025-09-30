@@ -1507,18 +1507,33 @@ export default function Quiz() {
 
   return (
     <div className="w-full min-h-screen relative">
-      {/* Background image */}
+      {/* Animated beige gradient background */}
       <div 
-        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
+        className={`fixed inset-0 -z-10 transition-opacity duration-500 ${
           isPageLoaded ? 'opacity-100' : 'opacity-0'
         }`}
         style={{
-          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
+          background: `
+            radial-gradient(circle at 20% 80%, rgba(245, 228, 215, 0.8) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(235, 210, 190, 0.6) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(225, 195, 170, 0.4) 0%, transparent 50%),
+            linear-gradient(135deg, #f5e6d3 0%, #e8d5c4 25%, #ddd0c0 50%, #e8d5c4 75%, #f5e6d3 100%)
+          `,
+          animation: 'gradientShift 8s ease-in-out infinite'
         }}
       />
       
+      {/* Floating particles animation */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-amber-200/30 rounded-full animate-float-1"></div>
+        <div className="absolute top-3/4 right-1/4 w-3 h-3 bg-orange-200/20 rounded-full animate-float-2"></div>
+        <div className="absolute top-1/2 left-3/4 w-1 h-1 bg-yellow-200/40 rounded-full animate-float-3"></div>
+        <div className="absolute bottom-1/4 left-1/2 w-2 h-2 bg-amber-300/25 rounded-full animate-float-4"></div>
+        <div className="absolute top-1/6 right-1/3 w-1 h-1 bg-orange-300/35 rounded-full animate-float-5"></div>
+      </div>
+      
       <div 
-        className={`relative z-20 space-y-4 p-4 pt-16 transition-all duration-500 ${
+        className={`relative z-20 space-y-4 p-4 pt-6 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
@@ -1597,6 +1612,65 @@ export default function Quiz() {
         ) : null}
         </div>
       </div>
+      
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes gradientShift {
+          0%, 100% {
+            background: 
+              radial-gradient(circle at 20% 80%, rgba(245, 228, 215, 0.8) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(235, 210, 190, 0.6) 0%, transparent 50%),
+              radial-gradient(circle at 40% 40%, rgba(225, 195, 170, 0.4) 0%, transparent 50%),
+              linear-gradient(135deg, #f5e6d3 0%, #e8d5c4 25%, #ddd0c0 50%, #e8d5c4 75%, #f5e6d3 100%);
+          }
+          50% {
+            background: 
+              radial-gradient(circle at 80% 20%, rgba(245, 228, 215, 0.8) 0%, transparent 50%),
+              radial-gradient(circle at 20% 80%, rgba(235, 210, 190, 0.6) 0%, transparent 50%),
+              radial-gradient(circle at 60% 60%, rgba(225, 195, 170, 0.4) 0%, transparent 50%),
+              linear-gradient(135deg, #e8d5c4 0%, #ddd0c0 25%, #f5e6d3 50%, #ddd0c0 75%, #e8d5c4 100%);
+          }
+        }
+        
+        @keyframes float-1 {
+          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.3; }
+          25% { transform: translateY(-10px) translateX(5px); opacity: 0.6; }
+          50% { transform: translateY(-5px) translateX(-3px); opacity: 0.4; }
+          75% { transform: translateY(-15px) translateX(8px); opacity: 0.5; }
+        }
+        
+        @keyframes float-2 {
+          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.2; }
+          33% { transform: translateY(-8px) translateX(-4px); opacity: 0.4; }
+          66% { transform: translateY(-12px) translateX(6px); opacity: 0.3; }
+        }
+        
+        @keyframes float-3 {
+          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.4; }
+          40% { transform: translateY(-6px) translateX(3px); opacity: 0.6; }
+          80% { transform: translateY(-9px) translateX(-2px); opacity: 0.3; }
+        }
+        
+        @keyframes float-4 {
+          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.25; }
+          30% { transform: translateY(-7px) translateX(-5px); opacity: 0.5; }
+          60% { transform: translateY(-11px) translateX(4px); opacity: 0.3; }
+          90% { transform: translateY(-4px) translateX(-1px); opacity: 0.4; }
+        }
+        
+        @keyframes float-5 {
+          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.35; }
+          20% { transform: translateY(-5px) translateX(2px); opacity: 0.5; }
+          50% { transform: translateY(-10px) translateX(-3px); opacity: 0.3; }
+          80% { transform: translateY(-6px) translateX(4px); opacity: 0.4; }
+        }
+        
+        .animate-float-1 { animation: float-1 6s ease-in-out infinite; }
+        .animate-float-2 { animation: float-2 8s ease-in-out infinite; }
+        .animate-float-3 { animation: float-3 7s ease-in-out infinite; }
+        .animate-float-4 { animation: float-4 9s ease-in-out infinite; }
+        .animate-float-5 { animation: float-5 5s ease-in-out infinite; }
+      `}</style>
     </div>
   );
 }
