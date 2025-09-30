@@ -668,12 +668,9 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-center gap-4 h-full">
+              <div className="flex items-start gap-4 h-full pt-2">
                 <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
                   <img src="/icons/hydration.PNG" alt="Hydration" className="w-full h-full object-contain" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[16px] font-bold text-neutral-900 tabular-nums" style={{textShadow: '0 1px 2px rgba(255,255,255,0.8)'}}>72%</span>
-                  </div>
                 </div>
                 <div className="flex flex-col justify-center flex-1">
                   <div className="text-[12px] text-neutral-600 mb-1">Уровень</div>
