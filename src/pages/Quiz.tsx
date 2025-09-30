@@ -502,7 +502,15 @@ const screens: Screen[] = [
     id: "goal_intro",
     title: "Расскажите нам о вашей цели",
     subtitle: "Каждое большое изменение начинается с чёткой цели",
-    renderBody: () => null,
+    renderBody: () => (
+      <div className="flex justify-center mt-6 mb-4">
+        <img 
+          src="/IMG_8377.WEBP" 
+          alt="Цель ухода за кожей" 
+          className="w-full max-w-md rounded-2xl shadow-lg object-cover"
+        />
+      </div>
+    ),
     ctaText: "Продолжить"
   },
   
@@ -1299,10 +1307,10 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
             key={option}
             type="button"
             onClick={() => onChange(option)}
-            className={`px-6 py-4 rounded-2xl border-2 transition-all duration-200 text-left font-medium shadow-lg ${
+            className={`px-6 py-4 rounded-2xl border transition-all duration-200 text-left font-medium ${
               isSelected 
-                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white border-blue-500 shadow-blue-500/25 scale-105" 
-                : "bg-white/80 text-gray-700 border-gray-200/50 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1"
+                ? "bg-neutral-800/40 backdrop-blur-xl text-white border-neutral-700/50 shadow-lg" 
+                : "bg-white/40 backdrop-blur-xl text-gray-700 border-white/50 hover:border-white/70 shadow-md hover:-translate-y-0.5"
             }`}
           >
             {option}
@@ -1333,8 +1341,10 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
               }
               onChange(Array.from(newSelected));
             }}
-            className={`px-3 py-2 rounded-full border text-sm transition ${
-              isSelected ? "bg-black text-white border-black" : "border-neutral-300 hover:border-black"
+            className={`px-4 py-2 rounded-full text-sm transition relative overflow-hidden ${
+              isSelected 
+                ? "bg-black text-white border border-white/20 shimmer-wrapper" 
+                : "bg-black/80 text-white border border-white/10 hover:bg-black shimmer-wrapper"
             }`}
           >
             {option}
@@ -1349,10 +1359,16 @@ export default function Quiz() {
   const navigate = useNavigate();
   const [answers, setAnswers] = useState<Answers>(loadAnswers);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [isPageLoaded, setIsPageLoaded] = useState(false);
 
   useEffect(() => {
     saveAnswers(answers);
   }, [answers]);
+
+  useEffect(() => {
+    // Smooth page load animation
+    setIsPageLoaded(true);
+  }, []);
 
   const currentStep = allSteps[currentStepIndex];
   
@@ -1508,16 +1524,19 @@ export default function Quiz() {
     <div className="w-full min-h-screen relative">
       {/* Background image */}
       <div 
-        className="absolute inset-0 -z-10"
+        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
+          isPageLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
         style={{
-          backgroundImage: "url('/bg/quiz_background.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat"
+          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
         }}
       />
       
-      <div className="relative z-20 space-y-4 p-4">
+      <div 
+        className={`relative z-20 space-y-4 p-4 pt-16 transition-all duration-500 ${
+          isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`}
+      >
         {currentStepIndex > 0 && (
           <button
             type="button"

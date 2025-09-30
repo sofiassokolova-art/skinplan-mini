@@ -44,11 +44,11 @@ export default function Cart() {
 
   return (
     <div className="w-full min-h-screen relative">
-      {/* Background layers: CSS gradient */}
+      {/* Background layers: PNG image */}
       <div 
-        className="absolute inset-0 -z-10"
+        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
         style={{
-          background: "radial-gradient(120% 140% at 70% 0%, #ffe7ef 0%, #f3e6cf 35%, #efeef2 65%, #e7e7ea 100%)"
+          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
         }}
       />
       
