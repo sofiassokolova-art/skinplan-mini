@@ -1342,11 +1342,7 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
         return (
           <label
             key={option}
-            className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 ${
-              isSelected 
-                ? "bg-neutral-700 text-white border border-neutral-600/50 shadow-lg" 
-                : "bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-md"
-            }`}
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-md"
           >
             <input
               type="checkbox"
