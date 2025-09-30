@@ -1325,30 +1325,34 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   const selected = new Set(value || []);
   
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="space-y-2">
       {options.map(option => {
         const isSelected = selected.has(option);
         return (
-          <button
+          <label
             key={option}
-            type="button"
-            onClick={() => {
-              const newSelected = new Set(selected);
-              if (isSelected) {
-                newSelected.delete(option);
-              } else {
-                newSelected.add(option);
-              }
-              onChange(Array.from(newSelected));
-            }}
-            className={`px-4 py-2 rounded-full text-sm transition-all duration-200 ${
+            className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 ${
               isSelected 
                 ? "bg-neutral-700 text-white border border-neutral-600/50 shadow-lg" 
                 : "bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-md"
             }`}
           >
-            {option}
-          </button>
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {
+                const newSelected = new Set(selected);
+                if (isSelected) {
+                  newSelected.delete(option);
+                } else {
+                  newSelected.add(option);
+                }
+                onChange(Array.from(newSelected));
+              }}
+              className="w-5 h-5 rounded border-2 border-neutral-300 checked:bg-neutral-900 checked:border-neutral-900 focus:ring-2 focus:ring-neutral-500 transition-all"
+            />
+            <span className="flex-1 text-sm font-medium">{option}</span>
+          </label>
         );
       })}
     </div>
@@ -1360,6 +1364,7 @@ export default function Quiz() {
   const [answers, setAnswers] = useState<Answers>(loadAnswers);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     saveAnswers(answers);
@@ -1443,7 +1448,11 @@ export default function Quiz() {
       
       setCurrentStepIndex(nextIndex);
     } else {
-      navigate("/plan");
+      // Показываем экран загрузки на 5 секунд перед планом
+      setIsAnalyzing(true);
+      setTimeout(() => {
+        navigate("/plan");
+      }, 5000);
     }
   };
 
@@ -1566,6 +1575,7 @@ export default function Quiz() {
         .shimmer-text {
           position: relative;
           overflow: hidden;
+          color: white !important;
         }
         
         .shimmer-text::after {
@@ -1578,15 +1588,16 @@ export default function Quiz() {
           background: linear-gradient(
             90deg,
             transparent,
-            rgba(255, 255, 255, 0.4),
+            rgba(255, 255, 255, 0.15),
             transparent
           );
-          animation: shimmer 3s linear infinite;
+          animation: shimmer 4s ease-in-out infinite;
+          pointer-events: none;
         }
       `}</style>
       
       <div 
-        className={`relative z-20 space-y-4 p-4 pt-2 transition-all duration-500 ${
+        className={`relative z-20 space-y-4 p-4 pt-1 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
@@ -1665,6 +1676,32 @@ export default function Quiz() {
         ) : null}
         </div>
       </div>
+      
+      {/* Экран загрузки */}
+      {isAnalyzing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{
+          background: 'linear-gradient(135deg, #f5e6d3 0%, #f5e6d3 30%, #ffffff 50%, #e0f2ff 70%, #bae6fd 85%, #f5e6d3 100%)',
+          animation: 'gradient 10s ease-in-out infinite',
+          backgroundSize: '400% 400%'
+        }}>
+          <div className="text-center px-6">
+            <div className="mb-6">
+              <div className="relative w-32 h-32 mx-auto">
+                {/* Rotating circles */}
+                <div className="absolute inset-0 rounded-full border-4 border-neutral-200 opacity-20"></div>
+                <div className="absolute inset-0 rounded-full border-4 border-t-neutral-900 animate-spin"></div>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-neutral-900 mb-3">✨ Анализируем ваши ответы</h2>
+            <p className="text-neutral-600 text-lg">Создаём персональный план ухода...</p>
+            <div className="mt-6 flex justify-center gap-1">
+              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
