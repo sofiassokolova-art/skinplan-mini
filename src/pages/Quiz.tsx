@@ -47,7 +47,7 @@ interface Answers {
   // Медицинские препараты
   prescription_creams?: string[];
   oral_medications?: string[];
-  
+
   // Сезонные изменения
   seasonal_changes?: string;
   
@@ -99,7 +99,11 @@ type InsightScreen = {
   kind: "insight";
   id: string;
   title: string;
+  subtitle?: string;
+  visual?: "comparison" | "trust" | "testimonials" | "product_showcase" | "motivation" | "yes_no";
   renderBody: (answers: Answers) => React.ReactNode;
+  ctaText?: string;
+  buttons?: { text: string; value: string }[];
 };
 
 type InfoScreen = {
@@ -195,7 +199,7 @@ const screens: Screen[] = [
   // 5. QUESTION - Пол
   {
     kind: "question",
-    id: "gender",
+    id: "gender", 
     title: "Пол",
     type: "single",
     options: ["Женский", "Мужской"],
@@ -220,7 +224,7 @@ const screens: Screen[] = [
     type: "multi",
     options: [
       "Акне",
-      "Розацеа",
+      "Розацеа", 
       "Себорейный дерматит",
       "Атопический дерматит / сухая кожа",
       "Пигментация (мелазма)",
@@ -878,7 +882,7 @@ const screens: Screen[] = [
     description: "Сделайте селфи, и наш ИИ проанализирует состояние вашей кожи, подберёт персонализированный уход и продукты",
     type: "photo",
     required: false
-  }
+}
 ];
 
 // Используем напрямую массив screens
@@ -1341,32 +1345,6 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   );
 }
 
-function SwitchInput({ checked, onChange, labelYes = "Да", labelNo = "Нет" }: { checked?: boolean; onChange: (v: boolean) => void; labelYes?: string; labelNo?: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className={`text-sm ${checked ? "opacity-60" : "font-semibold"}`}>
-        {labelNo}
-      </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`w-12 h-7 rounded-full relative transition ${
-          checked ? "bg-black" : "bg-neutral-300"
-        }`}
-      >
-        <span className={`absolute top-1 left-1 h-5 w-5 rounded-full bg-white transition ${
-          checked ? "translate-x-5" : "translate-x-0"
-        }`} />
-      </button>
-      <span className={`text-sm ${checked ? "font-semibold" : "opacity-60"}`}>
-        {labelYes}
-      </span>
-    </div>
-  );
-}
-
 export default function Quiz() {
   const navigate = useNavigate();
   const [answers, setAnswers] = useState<Answers>(loadAnswers);
@@ -1472,8 +1450,8 @@ export default function Quiz() {
       const mainValue = answers[step.id as keyof Answers];
       const showConditional = step.conditionalQuestion?.showIf(answers);
       
-      return (
-        <>
+        return (
+          <>
           <SingleChoice
             options={step.options}
             value={mainValue as string}
@@ -1490,7 +1468,7 @@ export default function Quiz() {
           {showConditional && step.conditionalQuestion && (
             <div className="mt-6 p-4 bg-blue-50 rounded-xl">
               <h3 className="text-md font-semibold mb-3">{step.conditionalQuestion.question.title}</h3>
-              <SingleChoice
+          <SingleChoice
                 options={step.conditionalQuestion.question.options}
                 value={answers[step.conditionalQuestion.question.id as keyof Answers] as string}
                 onChange={v => setAnswers({ ...answers, [step.conditionalQuestion.question.id]: v })}
@@ -1591,7 +1569,7 @@ export default function Quiz() {
             {/* Кнопки для yes/no экранов */}
             {currentStep.buttons ? (
               <div className="flex gap-3 mt-6">
-                {currentStep.buttons.map((btn, i) => (
+                {currentStep.buttons.map((btn: { text: string; value: string }, i: number) => (
                   <ModernButton
                     key={i}
                     onClick={goNext}
@@ -1603,14 +1581,14 @@ export default function Quiz() {
                 ))}
               </div>
             ) : (
-              <ModernButton
-                onClick={goNext}
-                fullWidth
-                size="lg"
-              >
+            <ModernButton
+              onClick={goNext}
+              fullWidth
+              size="lg"
+            >
                 {currentStep.ctaText || "Продолжить"}
-              </ModernButton>
-            )}
+            </ModernButton>
+        )}
           </>
         ) : null}
         </div>
