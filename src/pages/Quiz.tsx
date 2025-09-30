@@ -1605,9 +1605,11 @@ export default function Quiz() {
           height: 200%;
           background: linear-gradient(
             120deg,
-            transparent,
-            rgba(255, 255, 255, 0.2),
-            transparent
+            transparent 0%,
+            transparent 30%,
+            rgba(255, 255, 255, 0.15) 50%,
+            transparent 70%,
+            transparent 100%
           );
           animation: shimmer 4s ease-in-out infinite;
           pointer-events: none;
