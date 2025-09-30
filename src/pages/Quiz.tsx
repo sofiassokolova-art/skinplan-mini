@@ -128,11 +128,11 @@ const screens: Screen[] = [
     subtitle: "Твой персональный гид по уходу за кожей",
     renderBody: () => (
       <div className="space-y-6">
-        <div className="relative overflow-hidden rounded-3xl shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl shadow-2xl aspect-square">
           <img 
             src="/IMG_8377.WEBP" 
             alt="Уход за кожей" 
-            className="w-full h-auto object-cover"
+            className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
         </div>
