@@ -448,10 +448,46 @@ export default function MobileSkinIQHome() {
         />
       </div>
 
-      {/* Greeting */}
+      {/* Greeting Widget */}
       <div className="mx-4 mt-4 mb-2">
-        <div className="text-[20px] font-medium text-neutral-800 leading-tight">
-          {greeting},<br/>{userName}!
+        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center gap-4">
+          {/* Icon circle with sun/moon */}
+          <div className="w-14 h-14 rounded-full bg-neutral-900 flex items-center justify-center flex-shrink-0 shadow-lg">
+            {(() => {
+              const hour = new Date().getHours();
+              if (hour >= 5 && hour < 12) {
+                // Morning - sun
+                return (
+                  <svg className="w-7 h-7 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5"/>
+                    <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/>
+                  </svg>
+                );
+              } else if (hour >= 12 && hour < 18) {
+                // Day - bright sun
+                return (
+                  <svg className="w-7 h-7 text-orange-400" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="6"/>
+                    <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/>
+                  </svg>
+                );
+              } else {
+                // Evening - moon
+                return (
+                  <svg className="w-7 h-7 text-blue-300" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                );
+              }
+            })()}
+          </div>
+          
+          {/* Greeting text */}
+          <div className="flex-1">
+            <div className="text-[20px] font-semibold text-neutral-800 leading-tight">
+              {greeting},<br/>{userName}!
+            </div>
+          </div>
         </div>
       </div>
 
