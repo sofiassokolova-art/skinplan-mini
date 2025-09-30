@@ -106,17 +106,6 @@
     position: relative;
     overflow: hidden;
   }
-  
-  .glossy-black-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-    pointer-events: none;
-  }
 
   /* Premium shimmer effect */
   .shimmer-wrapper {

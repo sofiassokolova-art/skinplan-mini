@@ -260,7 +260,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
       <foreignObject x="0" y="0" width={size} height={size}>
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center">
-            <div className="text-2xl font-semibold text-neutral-900 tabular-nums">{Math.round(value)}%</div>
+            <div className="text-2xl font-bold text-neutral-900" style={{fontVariantNumeric: 'tabular-nums'}}>{Math.round(value)}%</div>
             <div className="text-xs text-neutral-600">выполнено</div>
           </div>
         </div>
@@ -289,7 +289,7 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
         className="ml-auto w-9 h-9 flex items-center justify-center"
       >
         <span
-          className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-120 ${item.done ? 'border-transparent bg-neutral-900 text-white scale-100' : 'border-white/60 bg-white/40 text-transparent scale-95'}`}
+          className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-120 ${item.done ? 'border-transparent bg-neutral-900 text-white scale-100' : 'border-neutral-300 bg-neutral-200 text-neutral-400 scale-95'}`}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -450,8 +450,8 @@ export default function MobileSkinIQHome() {
 
       {/* Greeting */}
       <div className="mx-4 mt-4 mb-2">
-        <div className="text-[16px] font-medium text-neutral-800">
-          {greeting}, {userName}!
+        <div className="text-[20px] font-medium text-neutral-800 leading-tight">
+          {greeting},<br/>{userName}!
         </div>
       </div>
 
@@ -494,7 +494,7 @@ export default function MobileSkinIQHome() {
             </svg>
           </div>
           
-          <div className="space-y-2 max-h-[288px] overflow-y-auto pr-6 scrollbar-hide" style={{overflowX: 'visible'}}>
+          <div className="space-y-3 max-h-[288px] overflow-y-auto pr-6 scrollbar-hide" style={{overflowX: 'visible'}}>
             {items.map((it, idx) => (
               <RoutineCard
                 key={it.id}
@@ -508,7 +508,7 @@ export default function MobileSkinIQHome() {
           
         {/* Progress + CTA */}
         <div className="mt-4 flex flex-col items-center relative overflow-visible">
-          <div className="relative p-8 overflow-visible">
+          <div className="relative p-12 overflow-visible">
             <ProgressRing value={progress} />
           </div>
           <div className="text-[13px] text-neutral-600 mt-1 tabular-nums">
@@ -572,10 +572,6 @@ export default function MobileSkinIQHome() {
                         fill="url(#waveGradient2)" opacity="0.4"/>
                   <path d="M280,80 Q220,65 160,85 T40,105 L40,140 L280,140 Z" 
                         fill="rgba(255,255,255,0.06)" opacity="0.5"/>
-                  
-                  {/* Soft glow circles */}
-                  <circle cx="230" cy="30" r="40" fill="rgba(255,255,255,0.03)" />
-                  <circle cx="200" cy="60" r="30" fill="rgba(255,255,255,0.04)" />
                 </svg>
               </div>
               
@@ -590,8 +586,14 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-center justify-end w-full pr-2">
-                <WaterDropProgress value={72} />
+              <div className="flex items-center justify-between w-full h-full">
+                <div>
+                  <div className="text-[12px] text-neutral-600">Уровень</div>
+                  <div className="text-[15px] font-semibold">Оптимально</div>
+                </div>
+                <div className="flex items-center">
+                  <WaterDropProgress value={72} />
+                </div>
               </div>
             </WidgetCard>
             <WidgetCard title="UV-индекс">
@@ -612,7 +614,7 @@ export default function MobileSkinIQHome() {
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 neomorph-card p-4 flex flex-col`}>
+    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl p-4 flex flex-col shadow-[0_8px_24px_rgba(0,0,0,0.06)]`}>
       <div className="text-[13px] text-neutral-600 mb-3">{title}</div>
       <div className="text-neutral-900 flex-1">{children}</div>
     </article>
