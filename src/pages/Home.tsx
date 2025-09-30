@@ -203,7 +203,7 @@ const eveningDefault = [
 ];
 
 // ----- Visual components -----
-function ProgressRing({ value = 0, size = 200, stroke = 8 }) {
+function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
@@ -515,8 +515,8 @@ export default function MobileSkinIQHome() {
           </div>
           
         {/* Progress + CTA */}
-        <div className="mt-4 flex flex-col items-center relative">
-          <div className="relative">
+        <div className="mt-4 flex flex-col items-center relative overflow-visible">
+          <div className="relative p-8 overflow-visible">
             <ProgressRing value={progress} />
           </div>
           <div className="text-[13px] text-neutral-600 mt-1">
@@ -605,8 +605,8 @@ function WidgetCard({ title, children }: { title: string; children: React.ReactN
 
 
 function SquareProgress({ value }: { value: number }) {
-  const size = 48;
-  const strokeWidth = 6;
+  const size = 64;
+  const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDasharray = circumference;
@@ -614,7 +614,7 @@ function SquareProgress({ value }: { value: number }) {
 
   return (
     <div className="relative">
-      <div className="relative w-12 h-12">
+      <div className="relative w-16 h-16 p-2">
         <svg
           width={size}
           height={size}
@@ -625,7 +625,7 @@ function SquareProgress({ value }: { value: number }) {
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="rgba(156, 163, 175, 0.3)"
+            stroke="rgba(156, 163, 175, 0.2)"
             strokeWidth={strokeWidth}
             fill="none"
             strokeLinecap="square"
@@ -641,9 +641,9 @@ function SquareProgress({ value }: { value: number }) {
             strokeLinecap="square"
             strokeDasharray={strokeDasharray}
             strokeDashoffset={strokeDashoffset}
-            className="transition-all duration-600 ease-out drop-shadow-lg"
+            className="transition-all duration-600 ease-out"
             style={{
-              filter: "drop-shadow(0 4px 8px rgba(216, 191, 216, 0.3))"
+              filter: "drop-shadow(0 6px 12px rgba(216, 191, 216, 0.4)) drop-shadow(0 2px 4px rgba(216, 191, 216, 0.2))"
             }}
           />
           {/* Gradient definition */}
@@ -657,7 +657,7 @@ function SquareProgress({ value }: { value: number }) {
         </svg>
         {/* Center percentage */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[10px] text-neutral-900 font-bold">{value}%</span>
+          <span className="text-[12px] text-neutral-900 font-bold">{value}%</span>
         </div>
       </div>
     </div>
