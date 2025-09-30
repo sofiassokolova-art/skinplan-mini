@@ -260,7 +260,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
       <foreignObject x="0" y="0" width={size} height={size}>
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center">
-            <div className="text-2xl font-semibold text-neutral-900">{Math.round(value)}%</div>
+            <div className="text-2xl font-semibold text-neutral-900 tabular-nums">{Math.round(value)}%</div>
             <div className="text-xs text-neutral-600">выполнено</div>
           </div>
         </div>
@@ -271,7 +271,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
 
 function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: () => void; onOpen: () => void }) {
   return (
-    <div className={`${glass} ${radiusCard} h-[72px] px-3 py-2 flex items-center gap-3 select-none`}>
+    <div className={`neomorph-card h-[72px] px-3 py-2 flex items-center gap-3 select-none animate-card-appear`}>
       <div className="w-10 h-10 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden shadow-sm">
         {item.icon ? (
           <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
@@ -289,7 +289,7 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
         className="ml-auto w-9 h-9 flex items-center justify-center"
       >
         <span
-          className={`w-6 h-6 rounded-xl border transition-all duration-200 flex items-center justify-center ${item.done ? 'border-transparent bg-neutral-900 text-white' : 'border-white/60 bg-white/40 text-transparent'}`}
+          className={`w-6 h-6 rounded-xl border transition-all duration-200 flex items-center justify-center ${item.done ? 'border-transparent bg-neutral-900 text-white animate-badge-fill' : 'border-white/60 bg-white/40 text-transparent'}`}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -519,18 +519,20 @@ export default function MobileSkinIQHome() {
           <div className="relative p-8 overflow-visible">
             <ProgressRing value={progress} />
           </div>
-          <div className="text-[13px] text-neutral-600 mt-1">
+          <div className="text-[13px] text-neutral-600 mt-1 tabular-nums">
             Выполнено {completed} из {items.length}
           </div>
           <button
             onClick={() => navigate("/plan")}
-            className={`relative ${radiusCard} mt-3 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center`}
-            style={{
-              background: "#171717",
-              color: "white",
-            }}
+            className="glossy-black-card mt-3 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center relative group hover:shadow-2xl transition-all duration-300"
           >
-            <span className="relative inline-block text-white">
+            {/* Decorative spheres */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 blur-sm"></div>
+              <div className="absolute right-12 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 blur-sm"></div>
+            </div>
+            
+            <span className="relative inline-block text-white z-10">
               {progress === 0
                 ? "Перейти к подробному плану"
                 : progress === 100
@@ -554,35 +556,40 @@ export default function MobileSkinIQHome() {
           <div 
             className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide"
           >
-            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center justify-between relative overflow-hidden">
-              {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
+            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between animate-card-appear">
+              {/* Decorative wave visual */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                <svg className="absolute -right-8 -bottom-8 w-40 h-40" viewBox="0 0 200 200" fill="none">
+                  <path d="M40,100 Q60,80 80,100 T120,100 T160,100" stroke="white" strokeWidth="2" fill="none" opacity="0.3"/>
+                  <path d="M40,120 Q60,100 80,120 T120,120 T160,120" stroke="white" strokeWidth="2" fill="none" opacity="0.4"/>
+                  <circle cx="140" cy="60" r="30" fill="white" opacity="0.1"/>
+                  <circle cx="160" cy="80" r="20" fill="white" opacity="0.15"/>
+                </svg>
+              </div>
               
               <div className="flex items-center gap-3 w-full relative z-10">
-                <div className="w-10 h-10 rounded-2xl bg-neutral-900 flex items-center justify-center flex-shrink-0 shadow-lg border border-white/20">
-                  <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0 border border-white/20">
+                  <img src="/icons/icon_sparkles.svg" alt="Совет" className="w-5 h-5 brightness-0 invert" />
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="text-[10px] text-neutral-500 mb-1 font-medium tracking-wide uppercase">Ежедневный совет</div>
-                  <div className="text-[14px] font-bold mb-1 text-neutral-900 leading-tight">Усильте увлажнение</div>
-                  <div className="text-[11px] text-neutral-700/80 leading-relaxed">
+                  <div className="text-[10px] text-white/60 mb-1 font-medium tracking-wide uppercase">Ежедневный совет</div>
+                  <div className="text-[14px] font-bold mb-1 text-white leading-tight">Усильте увлажнение</div>
+                  <div className="text-[11px] text-white/80 leading-relaxed">
                     В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
                   </div>
                 </div>
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-center justify-between w-full">
-                <div>
-                  <div className="text-[12px] text-neutral-600">Статус</div>
-                  <div className="text-[15px] font-semibold">Оптимально</div>
-                </div>
-                <SquareProgress value={72} />
+              <div className="flex items-center justify-center w-full">
+                <WaterDropProgress value={72} />
               </div>
             </WidgetCard>
             <WidgetCard title="UV-индекс">
-              <div className="text-4xl font-semibold">3</div>
-              <div className="text-[12px] text-neutral-600">Сегодня: SPF 30</div>
+              <div className="flex items-center justify-center flex-col h-full">
+                <div className="text-4xl font-semibold tabular-nums">3</div>
+                <div className="text-[12px] text-neutral-600 mt-2">Сегодня: SPF 30</div>
+              </div>
             </WidgetCard>
           </div>
         </div>
@@ -596,69 +603,73 @@ export default function MobileSkinIQHome() {
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 ${glass} ${radiusCard} p-4 flex flex-col`}>
+    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 neomorph-card p-4 flex flex-col animate-card-appear`}>
       <div className="text-[13px] text-neutral-600 mb-3">{title}</div>
       <div className="text-neutral-900 flex-1">{children}</div>
     </article>
   );
 }
 
-
-function SquareProgress({ value }: { value: number }) {
-  const size = 64;
+function WaterDropProgress({ value }: { value: number }) {
+  const size = 90;
   const strokeWidth = 8;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const strokeDasharray = circumference;
   const strokeDashoffset = circumference - (value / 100) * circumference;
 
   return (
-    <div className="relative">
-      <div className="relative w-16 h-16 p-2">
-        <svg
-          width={size}
-          height={size}
-          className="transform -rotate-90"
-        >
-          {/* Background circle */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="rgba(156, 163, 175, 0.2)"
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeLinecap="square"
-          />
-          {/* Progress circle */}
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="url(#squareGradient)"
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeLinecap="square"
-            strokeDasharray={strokeDasharray}
-            strokeDashoffset={strokeDashoffset}
-            className="transition-all duration-600 ease-out"
-            style={{
-              filter: "drop-shadow(0 6px 12px rgba(216, 191, 216, 0.4)) drop-shadow(0 2px 4px rgba(216, 191, 216, 0.2))"
-            }}
-          />
-          {/* Gradient definition */}
-          <defs>
-            <linearGradient id="squareGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#D8BFD8" />
-              <stop offset="50%" stopColor="#E6E6FA" />
-              <stop offset="100%" stopColor="#F0E6FF" />
-            </linearGradient>
-          </defs>
-        </svg>
-        {/* Center percentage */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[12px] text-neutral-900 font-bold">{value}%</span>
-        </div>
+    <div className="relative flex items-center justify-center">
+      <svg width={size} height={size} className="transform -rotate-90">
+        <defs>
+          {/* Water gradient */}
+          <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#60A5FA" />
+            <stop offset="50%" stopColor="#3B82F6" />
+            <stop offset="100%" stopColor="#2563EB" />
+          </linearGradient>
+          {/* Water droplet pattern */}
+          <pattern id="waterPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+            <circle cx="5" cy="5" r="2" fill="white" opacity="0.3"/>
+            <circle cx="15" cy="15" r="1.5" fill="white" opacity="0.2"/>
+          </pattern>
+        </defs>
+        
+        {/* Background circle */}
+        <circle 
+          cx={size / 2}
+          cy={size / 2}
+          r={radius} 
+          stroke="#E5E7EB"
+          strokeWidth={strokeWidth} 
+          fill="none"
+          strokeLinecap="round"
+        />
+        
+        {/* Water stream progress */}
+        <circle 
+          cx={size / 2}
+          cy={size / 2}
+          r={radius} 
+          stroke="url(#waterGradient)"
+          strokeWidth={strokeWidth} 
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          className="animate-stroke-draw"
+          style={{
+            filter: "drop-shadow(0 4px 8px rgba(59, 130, 246, 0.3))",
+            transition: "stroke-dashoffset 250ms ease-out"
+          }}
+        />
+        
+        {/* Water droplets decoration */}
+        <circle cx={size / 2} cy={size / 2} r={radius - strokeWidth} fill="url(#waterPattern)" opacity="0.1"/>
+      </svg>
+      
+      {/* Center percentage */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-[18px] text-neutral-900 font-bold tabular-nums">{value}%</span>
       </div>
     </div>
   );

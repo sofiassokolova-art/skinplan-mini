@@ -80,6 +80,15 @@ export default {
         'element': '24px',  // между элементами UI
         'text': '16px',     // между заголовком и описанием
       },
+      fontSize: {
+        // Типографическая система
+        'h1': ['24px', { lineHeight: '28px', fontWeight: '600' }],
+        'h2': ['18px', { lineHeight: '24px', fontWeight: '600' }],
+        'body': ['15px', { lineHeight: '22px', fontWeight: '400' }],
+      },
+      fontFeatureSettings: {
+        'numeric': '"tnum"',
+      },
     },
   },
   plugins: [],
