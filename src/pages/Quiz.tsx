@@ -1522,15 +1522,38 @@ export default function Quiz() {
 
   return (
     <div className="w-full min-h-screen relative">
-      {/* Background image */}
+      {/* Animated premium beige gradient background */}
       <div 
-        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
+        className={`fixed inset-0 -z-10 transition-opacity duration-500 ${
           isPageLoaded ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{
-          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
-        }}
-      />
+      >
+        <div 
+          className="absolute inset-0 animate-gradient"
+          style={{
+            background: 'linear-gradient(-45deg, #f5e6d3, #fdf5e6, #f0e5d8, #fff8dc, #f5deb3)',
+            backgroundSize: '400% 400%',
+          }}
+        />
+      </div>
+      
+      <style>{`
+        @keyframes gradient {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+        
+        .animate-gradient {
+          animation: gradient 15s ease infinite;
+        }
+      `}</style>
       
       <div 
         className={`relative z-20 space-y-4 p-4 pt-6 transition-all duration-500 ${
