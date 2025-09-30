@@ -1531,7 +1531,7 @@ export default function Quiz() {
         <div 
           className="absolute inset-0 animate-gradient"
           style={{
-            background: 'linear-gradient(135deg, #f5e6d3 0%, #ffffff 25%, #e0f2ff 50%, #bae6fd 75%, #f5e6d3 100%)',
+            background: 'linear-gradient(135deg, #f5e6d3 0%, #f5e6d3 30%, #ffffff 50%, #e0f2ff 70%, #bae6fd 85%, #f5e6d3 100%)',
             backgroundSize: '400% 400%',
           }}
         />
