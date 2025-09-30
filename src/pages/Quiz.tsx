@@ -1320,7 +1320,7 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
             onClick={() => onChange(option)}
             className={`px-6 py-4 rounded-2xl border transition-all duration-200 text-left font-medium ${
               isSelected 
-                ? "bg-neutral-800/40 backdrop-blur-xl text-white border-neutral-700/50 shadow-lg" 
+                ? "bg-neutral-900 text-white border-neutral-900 shadow-lg" 
                 : "bg-white/40 backdrop-blur-xl text-gray-700 border-white/50 hover:border-white/70 shadow-md hover:-translate-y-0.5"
             }`}
           >
@@ -1509,7 +1509,9 @@ export default function Quiz() {
           />
           
           {showConditional && step.conditionalQuestion && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl">
+            <div className="mt-6 p-4 rounded-xl backdrop-blur-xl border border-white/50 shadow-md" style={{
+              background: 'linear-gradient(135deg, rgba(216, 191, 216, 0.3), rgba(230, 230, 250, 0.3), rgba(240, 230, 255, 0.3))'
+            }}>
               <h3 className="text-md font-semibold mb-3">{step.conditionalQuestion.question.title}</h3>
           <SingleChoice
                 options={step.conditionalQuestion.question.options}
