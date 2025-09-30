@@ -668,7 +668,7 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-start gap-4 h-full">
+              <div className="flex items-start gap-4 h-full -mt-2">
                 <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
                   <img src="/icons/hydration.PNG" alt="Hydration" className="w-full h-full object-contain" />
                 </div>
