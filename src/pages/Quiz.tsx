@@ -124,31 +124,42 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "welcome",
-    title: "Как это работает?",
+    title: "SkinIQ",
+    subtitle: "Твой персональный гид по уходу за кожей",
     renderBody: () => (
-      <div className="space-y-4 text-left">
-        <div className="flex gap-3 items-start">
-          <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold flex-shrink-0">1</div>
-          <div>Ответьте на несколько вопросов</div>
+      <div className="space-y-6">
+        <div className="relative overflow-hidden rounded-3xl shadow-2xl">
+          <img 
+            src="/IMG_8377.WEBP" 
+            alt="Уход за кожей" 
+            className="w-full h-auto object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
         </div>
-        <div className="flex gap-3 items-start">
-          <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold flex-shrink-0">2</div>
-          <div>Загрузите фото</div>
-        </div>
-        <div className="flex gap-3 items-start">
-          <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold flex-shrink-0">3</div>
-          <div>Получите персональную подборку ухода</div>
-        </div>
-        <div className="flex gap-3 items-start">
-          <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold flex-shrink-0">4</div>
-          <div>Посмотрите как будет выглядеть кожа уже через 12 недель применения средств</div>
-        </div>
-        <div className="mt-6 text-center">
-          <p className="text-lg font-semibold">Подбери уход для своей кожи со SkinIQ</p>
+        <div className="bg-white/30 backdrop-blur-2xl border border-white/50 rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
+          <div className="space-y-3 text-center">
+            <div className="text-sm text-neutral-700 leading-relaxed">
+              Персональные рекомендации на основе вашего типа кожи и потребностей
+            </div>
+            <div className="flex justify-center gap-4 text-xs text-neutral-600">
+              <div className="flex items-center gap-1">
+                <span className="text-lg">✨</span>
+                <span>ИИ-анализ</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-lg">🎯</span>
+                <span>Точный подбор</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-lg">💎</span>
+                <span>Премиум уход</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     ),
-    ctaText: "Продолжить"
+    ctaText: "Начать подбор"
   },
   
   // 2. Вопрос о ретиноле - QUESTION с условным подвопросом
