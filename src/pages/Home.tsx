@@ -271,7 +271,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
 
 function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: () => void; onOpen: () => void }) {
   return (
-    <div className={`neomorph-card h-[72px] px-3 py-2 flex items-center gap-3 select-none`}>
+    <div className={`bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl h-[72px] px-3 py-2 flex items-center gap-3 select-none shadow-[0_4px_12px_rgba(0,0,0,0.04)]`}>
       <div className="w-10 h-10 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden shadow-sm">
         {item.icon ? (
           <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
@@ -508,7 +508,7 @@ export default function MobileSkinIQHome() {
           
         {/* Progress + CTA */}
         <div className="mt-4 flex flex-col items-center relative overflow-visible">
-          <div className="relative p-12 overflow-visible">
+          <div className="relative p-16 overflow-visible">
             <ProgressRing value={progress} />
           </div>
           <div className="text-[13px] text-neutral-600 mt-1 tabular-nums">
@@ -542,11 +542,11 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-4 overflow-visible">
+      <section className="mt-4 pb-12 overflow-visible">
         <div className="relative overflow-visible" id="widgets-container">
           
           <div 
-            className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide"
+            className="flex gap-3 overflow-x-auto pl-4 pr-8 snap-x snap-mandatory scrollbar-hide"
             style={{overflowY: 'visible', touchAction: 'pan-x'}}
           >
             <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between">
@@ -586,7 +586,7 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-center justify-between w-full h-full">
+              <div className="flex items-center justify-between w-full flex-1">
                 <div>
                   <div className="text-[12px] text-neutral-600">Уровень</div>
                   <div className="text-[15px] font-semibold">Оптимально</div>
