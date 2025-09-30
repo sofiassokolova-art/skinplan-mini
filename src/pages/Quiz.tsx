@@ -137,21 +137,21 @@ const screens: Screen[] = [
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
         </div>
         <div className="bg-white/30 backdrop-blur-2xl border border-white/50 rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
-          <div className="space-y-3 text-center">
+          <div className="space-y-4 text-center">
             <div className="text-sm text-neutral-700 leading-relaxed">
               Персональные рекомендации на основе вашего типа кожи и потребностей
             </div>
-            <div className="flex justify-center gap-4 text-xs text-neutral-600">
-              <div className="flex items-center gap-1">
-                <span className="text-lg">✨</span>
+            <div className="space-y-3 text-sm text-neutral-700">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">✨</span>
                 <span>ИИ-анализ</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-lg">🎯</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🎯</span>
                 <span>Точный подбор</span>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="text-lg">💎</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💎</span>
                 <span>Премиум уход</span>
               </div>
             </div>
