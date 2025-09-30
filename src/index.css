@@ -118,6 +118,25 @@
     pointer-events: none;
   }
 
+  /* Premium shimmer effect */
+  .shimmer-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+  
+  .shimmer-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    animation: shimmer 1.2s ease infinite;
+    pointer-events: none;
+  }
+
   /* Premium glassmorphism cards */
   .premium-card {
     background: var(--premium-glass);
@@ -159,9 +178,8 @@
 
 /* Premium animations */
 @keyframes shimmer {
-  0% { transform: translateX(-120%); opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { transform: translateX(120%); opacity: 0.6; }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 @keyframes twinkle {

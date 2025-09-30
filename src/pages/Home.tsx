@@ -271,7 +271,7 @@ function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
 
 function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: () => void; onOpen: () => void }) {
   return (
-    <div className={`neomorph-card h-[72px] px-3 py-2 flex items-center gap-3 select-none animate-card-appear`}>
+    <div className={`neomorph-card h-[72px] px-3 py-2 flex items-center gap-3 select-none`}>
       <div className="w-10 h-10 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden shadow-sm">
         {item.icon ? (
           <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
@@ -289,7 +289,7 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
         className="ml-auto w-9 h-9 flex items-center justify-center"
       >
         <span
-          className={`w-6 h-6 rounded-xl border transition-all duration-200 flex items-center justify-center ${item.done ? 'border-transparent bg-neutral-900 text-white animate-badge-fill' : 'border-white/60 bg-white/40 text-transparent'}`}
+          className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-120 ${item.done ? 'border-transparent bg-neutral-900 text-white scale-100' : 'border-white/60 bg-white/40 text-transparent scale-95'}`}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -417,10 +417,9 @@ export default function MobileSkinIQHome() {
         }}
       />
       
-      {/* Shimmer loading effect */}
+      {/* Premium shimmer loading effect */}
       {!backgroundLoaded && (
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 shimmer-wrapper">
         </div>
       )}
       
@@ -437,13 +436,6 @@ export default function MobileSkinIQHome() {
             transform: scale(1.05);
             opacity: 0.8;
           } 
-        }
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        .animate-shimmer {
-          animation: shimmer 2s ease-in-out infinite;
         }
       `}</style>
 
@@ -464,7 +456,7 @@ export default function MobileSkinIQHome() {
       </div>
 
       {/* Main Panel */}
-      <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4`}>
+      <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4 overflow-visible`}>
         <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
         <p className="text-[12px] text-neutral-600 mt-0.5">
           {progress === 0
@@ -480,9 +472,9 @@ export default function MobileSkinIQHome() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`relative ${radiusCard} text-[14px] font-medium transition-all duration-200` +
+              className={`relative ${radiusCard} text-[14px] font-medium transition-all duration-200 overflow-hidden` +
                 (tab === t
-                  ? " bg-white/50 text-neutral-900 shadow-inner border border-white/60"
+                  ? " bg-white/50 text-neutral-900 shadow-inner border border-white/60 shimmer-wrapper"
                   : " text-neutral-700 hover:text-neutral-900")}
             >
               {t === "AM" ? "Утро" : "Вечер"}
@@ -491,7 +483,7 @@ export default function MobileSkinIQHome() {
         </div>
 
         {/* Routine list */}
-        <div className="relative mt-3">
+        <div className="relative mt-3 overflow-visible">
           {/* Scroll indicator for routine cards */}
           <div className="absolute top-0 right-0 z-10 flex flex-col items-center gap-1 opacity-60">
             <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
@@ -502,7 +494,7 @@ export default function MobileSkinIQHome() {
             </svg>
           </div>
           
-          <div className="space-y-2 max-h-[288px] overflow-y-auto pr-6 scrollbar-hide">
+          <div className="space-y-2 max-h-[288px] overflow-y-auto pr-6 scrollbar-hide" style={{overflowX: 'visible'}}>
             {items.map((it, idx) => (
               <RoutineCard
                 key={it.id}
@@ -550,13 +542,14 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-4">
-        <div className="relative" id="widgets-container">
+      <section className="mt-4 pb-4 overflow-visible">
+        <div className="relative overflow-visible" id="widgets-container">
           
           <div 
             className="flex gap-3 overflow-x-auto pl-8 pr-8 snap-x snap-mandatory scrollbar-hide"
+            style={{overflowY: 'visible', touchAction: 'pan-x'}}
           >
-            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between animate-card-appear">
+            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between">
               {/* Decorative wave visual */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <svg className="absolute -right-4 top-0 w-full h-full" viewBox="0 0 280 140" fill="none" preserveAspectRatio="xMaxYMid slice">
@@ -597,7 +590,7 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-center justify-center w-full">
+              <div className="flex items-center justify-end w-full pr-2">
                 <WaterDropProgress value={72} />
               </div>
             </WidgetCard>
@@ -619,7 +612,7 @@ export default function MobileSkinIQHome() {
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 neomorph-card p-4 flex flex-col animate-card-appear`}>
+    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 neomorph-card p-4 flex flex-col`}>
       <div className="text-[13px] text-neutral-600 mb-3">{title}</div>
       <div className="text-neutral-900 flex-1">{children}</div>
     </article>
@@ -627,8 +620,8 @@ function WidgetCard({ title, children }: { title: string; children: React.ReactN
 }
 
 function WaterDropProgress({ value }: { value: number }) {
-  const size = 90;
-  const strokeWidth = 8;
+  const size = 70;
+  const strokeWidth = 7;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const strokeDashoffset = circumference - (value / 100) * circumference;
@@ -685,7 +678,7 @@ function WaterDropProgress({ value }: { value: number }) {
       
       {/* Center percentage */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[18px] text-neutral-900 font-bold tabular-nums">{value}%</span>
+        <span className="text-[16px] text-neutral-900 font-bold tabular-nums">{value}%</span>
       </div>
     </div>
   );
