@@ -203,7 +203,7 @@ const eveningDefault = [
 ];
 
 // ----- Visual components -----
-function ProgressRing({ value = 0, size = 156, stroke = 6 }) {
+function ProgressRing({ value = 0, size = 180, stroke = 7 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
@@ -544,7 +544,7 @@ export default function MobileSkinIQHome() {
           
         {/* Progress + CTA */}
         <div className="mt-4 flex flex-col items-center relative overflow-visible">
-          <div className="relative p-16 overflow-visible">
+          <div className="relative py-20 px-16 overflow-visible">
             <ProgressRing value={progress} />
           </div>
           <div className="text-[13px] text-neutral-600 mt-1 tabular-nums">
@@ -578,12 +578,12 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-12 overflow-visible">
-        <div className="relative overflow-visible" id="widgets-container">
+      <section className="mt-4 pb-12">
+        <div className="relative" id="widgets-container">
           
           <div 
             className="flex gap-3 overflow-x-auto pl-4 pr-8 snap-x snap-mandatory scrollbar-hide"
-            style={{overflowY: 'visible', touchAction: 'pan-x'}}
+            style={{touchAction: 'pan-x'}}
           >
             <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between">
               {/* Decorative wave visual */}
