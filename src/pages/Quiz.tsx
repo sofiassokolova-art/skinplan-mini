@@ -1522,7 +1522,7 @@ export default function Quiz() {
 
   return (
     <div className="w-full min-h-screen relative">
-      {/* Animated premium beige gradient background */}
+      {/* Animated water ripple gradient background */}
       <div 
         className={`fixed inset-0 -z-10 transition-opacity duration-500 ${
           isPageLoaded ? 'opacity-100' : 'opacity-0'
@@ -1531,7 +1531,7 @@ export default function Quiz() {
         <div 
           className="absolute inset-0 animate-gradient"
           style={{
-            background: 'linear-gradient(-45deg, #f5e6d3, #fdf5e6, #f0e5d8, #fff8dc, #f5deb3)',
+            background: 'linear-gradient(135deg, #f5e6d3 0%, #ffffff 25%, #e0f2ff 50%, #bae6fd 75%, #f5e6d3 100%)',
             backgroundSize: '400% 400%',
           }}
         />
@@ -1551,7 +1551,30 @@ export default function Quiz() {
         }
         
         .animate-gradient {
-          animation: gradient 15s ease infinite;
+          animation: gradient 20s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+          0% {
+            background-position: -100% 0;
+          }
+          100% {
+            background-position: 100% 0;
+          }
+        }
+        
+        .shimmer-text {
+          background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.8) 0%,
+            rgba(255, 255, 255, 1) 50%,
+            rgba(255, 255, 255, 0.8) 100%
+          );
+          background-size: 200% auto;
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: shimmer 3s linear infinite;
         }
       `}</style>
       
