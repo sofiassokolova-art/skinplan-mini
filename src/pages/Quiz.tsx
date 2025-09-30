@@ -1344,10 +1344,10 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
             key={option}
             className="flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-md"
           >
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => {
+            <div 
+              className="flex-shrink-0"
+              onClick={(e) => {
+                e.preventDefault();
                 const newSelected = new Set(selected);
                 if (isSelected) {
                   newSelected.delete(option);
@@ -1356,8 +1356,19 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
                 }
                 onChange(Array.from(newSelected));
               }}
-              className="w-5 h-5 rounded border-2 border-neutral-300 checked:bg-neutral-900 checked:border-neutral-900 focus:ring-2 focus:ring-neutral-500 transition-all"
-            />
+            >
+              <span
+                className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-200 ${
+                  isSelected 
+                    ? 'border-transparent bg-neutral-900 text-white scale-100' 
+                    : 'border-neutral-300 bg-neutral-200 text-neutral-400 scale-95'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </span>
+            </div>
             <span className="flex-1 text-sm font-medium">{option}</span>
           </label>
         );
