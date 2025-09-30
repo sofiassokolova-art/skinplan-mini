@@ -668,30 +668,30 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-center justify-between h-full">
-                <div className="flex flex-col justify-center">
-                  <div className="text-[12px] text-neutral-600 mb-1">Уровень</div>
-                  <div className="text-[15px] font-semibold text-neutral-900">Оптимально</div>
-                </div>
+              <div className="flex items-center gap-4 h-full">
                 <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
                   <img src="/icons/hydration.PNG" alt="Hydration" className="w-full h-full object-contain" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-[16px] font-bold text-neutral-900 tabular-nums" style={{textShadow: '0 1px 2px rgba(255,255,255,0.8)'}}>72%</span>
                   </div>
                 </div>
+                <div className="flex flex-col justify-center flex-1">
+                  <div className="text-[12px] text-neutral-600 mb-1">Уровень</div>
+                  <div className="text-[15px] font-semibold text-neutral-900">Оптимально</div>
+                </div>
               </div>
             </WidgetCard>
             <WidgetCard title="UV-индекс">
-              <div className="flex items-center justify-between h-full">
+              <div className="flex items-center gap-4 h-full">
                 {uvLoading ? (
                   <div className="text-sm text-neutral-500">Загрузка...</div>
                 ) : (
                   <>
+                    <div className="text-[56px] font-bold tabular-nums text-neutral-900 leading-none flex-shrink-0">{uvIndex ?? "—"}</div>
                     <div className="flex flex-col justify-center flex-1">
                       <div className="text-[11px] text-neutral-500 mb-1 font-medium">{getUVLevel(uvIndex)}</div>
                       <div className="text-[13px] text-neutral-600 leading-tight">Сегодня: {getSPFRecommendation(uvIndex)}</div>
                     </div>
-                    <div className="text-[56px] font-bold tabular-nums text-neutral-900 leading-none ml-2">{uvIndex ?? "—"}</div>
                   </>
                 )}
               </div>
