@@ -1341,10 +1341,10 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
               }
               onChange(Array.from(newSelected));
             }}
-            className={`px-4 py-2 rounded-full text-sm transition relative overflow-hidden ${
+            className={`px-4 py-2 rounded-full text-sm transition-all duration-200 ${
               isSelected 
-                ? "bg-black text-white border border-white/20 shimmer-wrapper" 
-                : "bg-black/80 text-white border border-white/10 hover:bg-black shimmer-wrapper"
+                ? "bg-neutral-700 text-white border border-neutral-600/50 shadow-lg" 
+                : "bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-md"
             }`}
           >
             {option}
@@ -1533,7 +1533,7 @@ export default function Quiz() {
       />
       
       <div 
-        className={`relative z-20 space-y-4 p-4 pt-16 transition-all duration-500 ${
+        className={`relative z-20 space-y-4 p-4 pt-6 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
