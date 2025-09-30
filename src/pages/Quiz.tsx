@@ -1551,29 +1551,36 @@ export default function Quiz() {
         }
         
         .animate-gradient {
-          animation: gradient 20s ease-in-out infinite;
+          animation: gradient 10s ease-in-out infinite;
         }
         
         @keyframes shimmer {
           0% {
-            background-position: -100% 0;
+            left: -100%;
           }
           100% {
-            background-position: 100% 0;
+            left: 100%;
           }
         }
         
         .shimmer-text {
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .shimmer-text::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
           background: linear-gradient(
             90deg,
-            rgba(255, 255, 255, 0.8) 0%,
-            rgba(255, 255, 255, 1) 50%,
-            rgba(255, 255, 255, 0.8) 100%
+            transparent,
+            rgba(255, 255, 255, 0.4),
+            transparent
           );
-          background-size: 200% auto;
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
           animation: shimmer 3s linear infinite;
         }
       `}</style>
