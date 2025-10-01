@@ -509,7 +509,10 @@ export default function MobileSkinIQHome() {
       <div className="mx-4 mt-32 mb-2">
         <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center gap-4">
           {/* Icon circle with sun/moon */}
-          <div className="w-14 h-14 rounded-full bg-neutral-900 flex items-center justify-center flex-shrink-0 shadow-lg">
+          <div 
+            className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg"
+            style={{ background: 'radial-gradient(circle, #d4d4d4 0%, #171717 100%)' }}
+          >
             {(() => {
               const hour = new Date().getHours();
               if (hour >= 5 && hour < 18) {
