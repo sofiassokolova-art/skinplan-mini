@@ -1500,7 +1500,6 @@ export default function Quiz() {
           <SingleChoice
             options={step.options}
             value={mainValue as string}
-            darkWhenSelected={true}
             onChange={v => {
               const newAnswers = { ...answers, [step.id]: v === "Да" ? "yes" : "no" };
               // Очистка условного ответа если выбран "Нет"
