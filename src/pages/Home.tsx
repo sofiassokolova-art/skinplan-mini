@@ -518,14 +518,12 @@ export default function MobileSkinIQHome() {
               if (hour >= 5 && hour < 18) {
                 // Morning & Day - sun icon
                 return (
-                  <img src="/icons/icon_morning.PNG" alt="Day" className="w-10 h-10 object-contain" />
+                  <img src="/icons/IMG_8458.png" alt="Day" className="w-10 h-10 object-contain" />
                 );
               } else {
-                // Evening - moon
+                // Evening - moon icon
                 return (
-                  <svg className="w-10 h-10 text-blue-300" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                  </svg>
+                  <img src="/icons/IMG_8428.png" alt="Night" className="w-10 h-10 object-contain" />
                 );
               }
             })()}
