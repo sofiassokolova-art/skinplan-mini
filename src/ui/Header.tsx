@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 export default function Header() {
   return (
     <header className="px-4 py-2 relative z-20">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-center">
         <Link 
           to="/" 
           aria-label="На главную" 
