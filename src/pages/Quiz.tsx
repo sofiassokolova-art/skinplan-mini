@@ -1494,12 +1494,14 @@ export default function Quiz() {
     if (step.type === "conditional") {
       const mainValue = answers[step.id as keyof Answers];
       const showConditional = step.conditionalQuestion?.showIf(answers);
+      // Конвертируем yes/no обратно в Да/Нет для отображения
+      const displayValue = mainValue === "yes" ? "Да" : mainValue === "no" ? "Нет" : undefined;
       
         return (
           <>
           <SingleChoice
             options={step.options}
-            value={mainValue as string}
+            value={displayValue}
             onChange={v => {
               const newAnswers = { ...answers, [step.id]: v === "Да" ? "yes" : "no" };
               // Очистка условного ответа если выбран "Нет"
@@ -1622,7 +1624,7 @@ export default function Quiz() {
       `}</style>
       
       <div 
-        className={`relative z-20 space-y-4 p-4 pt-0 transition-all duration-500 ${
+        className={`relative z-20 space-y-4 p-4 -mt-4 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
