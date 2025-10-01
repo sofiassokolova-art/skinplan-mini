@@ -511,7 +511,7 @@ export default function MobileSkinIQHome() {
           {/* Icon circle with sun/moon */}
           <div 
             className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg"
-            style={{ background: 'radial-gradient(circle, #171717 0%, #ffffff 100%)' }}
+            style={{ background: 'radial-gradient(circle, #ffffff 0%, #171717 100%)' }}
           >
             {(() => {
               const hour = new Date().getHours();
