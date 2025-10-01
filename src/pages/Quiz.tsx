@@ -1533,7 +1533,7 @@ export default function Quiz() {
       </div>
       
       <div 
-        className={`relative z-20 space-y-4 p-4 pt-6 transition-all duration-500 ${
+        className={`relative z-20 space-y-4 p-4 pt-2 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
