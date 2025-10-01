@@ -1308,7 +1308,7 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
   );
 }
 
-function SingleChoice({ options, value, onChange }: { options: string[]; value?: string; onChange: (v: string) => void }) {
+function SingleChoice({ options, value, onChange, darkWhenSelected = false }: { options: string[]; value?: string; onChange: (v: string) => void; darkWhenSelected?: boolean }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {options.map(option => {
@@ -1320,7 +1320,9 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
             onClick={() => onChange(option)}
             className={`px-6 py-4 rounded-2xl border transition-all duration-200 text-left font-medium ${
               isSelected 
-                ? "bg-neutral-900 text-white border-neutral-900 shadow-lg" 
+                ? (darkWhenSelected 
+                    ? "bg-neutral-900 text-white border-neutral-900 shadow-lg" 
+                    : "bg-neutral-500/40 backdrop-blur-xl text-neutral-900 border-neutral-500/50 shadow-lg")
                 : "bg-white/40 backdrop-blur-xl text-gray-700 border-white/50 hover:border-white/70 shadow-md hover:-translate-y-0.5"
             }`}
           >
@@ -1498,6 +1500,7 @@ export default function Quiz() {
           <SingleChoice
             options={step.options}
             value={mainValue as string}
+            darkWhenSelected={true}
             onChange={v => {
               const newAnswers = { ...answers, [step.id]: v === "Да" ? "yes" : "no" };
               // Очистка условного ответа если выбран "Нет"
