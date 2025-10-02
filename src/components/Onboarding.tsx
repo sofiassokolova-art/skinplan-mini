@@ -218,7 +218,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
               {currentStep > 0 && (
                 <button
                   onClick={prevStep}
-                  className={`flex-1 h-12 ${radiusCard} ${glass} text-neutral-700 font-semibold text-[15px] transition-all duration-200 hover:bg-white/30`}
+                  className={`flex-1 h-12 ${radiusCard} ${glass} text-neutral-700 font-bold text-[15px] transition-all duration-200 hover:bg-white/30`}
                 >
                   Назад
                 </button>
