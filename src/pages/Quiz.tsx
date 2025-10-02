@@ -127,24 +127,27 @@ const screens: Screen[] = [
     title: "",
     subtitle: "",
     renderBody: () => (
-      <div className="space-y-6">
-        {/* Неоморфная карточка с фото */}
+      <div className="space-y-8">
+        {/* Неоморфная карточка с фото - увеличенная */}
         <div 
-          className="relative overflow-hidden rounded-3xl aspect-[3/2]"
+          className="relative overflow-hidden rounded-[2rem] aspect-[3/2] w-full"
           style={{
-            boxShadow: '12px 12px 24px rgba(163, 177, 198, 0.3), -12px -12px 24px rgba(255, 255, 255, 0.7)',
-            background: 'linear-gradient(145deg, #f0f0f3, #cacaca)'
+            boxShadow: '20px 20px 40px rgba(163, 177, 198, 0.4), -20px -20px 40px rgba(255, 255, 255, 0.8)',
+            background: 'linear-gradient(145deg, #f0f0f3, #d9d9dc)',
+            padding: '8px'
           }}
         >
-          <img 
-            src="/IMG_8468.jpeg" 
-            alt="Уход за кожей" 
-            className="w-full h-full object-cover"
-          />
+          <div className="w-full h-full rounded-[1.75rem] overflow-hidden">
+            <img 
+              src="/IMG_8468.jpeg" 
+              alt="Уход за кожей" 
+              className="w-full h-full object-cover"
+            />
+          </div>
         </div>
         
         {/* Текст под фото */}
-        <h2 className="text-2xl font-bold text-neutral-900 text-center leading-tight">
+        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 text-center leading-tight">
           Подбери уход для своей кожи со SkinIQ
         </h2>
       </div>
