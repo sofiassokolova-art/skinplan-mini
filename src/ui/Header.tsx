@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export default function Header() {
   return (
-    <header className="px-4 py-4 relative z-20">
+    <header className="px-4 py-2 relative z-20">
       <div className="flex items-center justify-between">
         <Link 
           to="/" 
