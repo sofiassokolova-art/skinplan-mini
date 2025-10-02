@@ -227,14 +227,14 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
               {step.action ? (
                 <button
                   onClick={handleAction}
-                  className="flex-1 h-12 bg-neutral-900 text-white font-semibold text-[15px] transition-all duration-200 hover:bg-neutral-800 rounded-2xl shadow-lg"
+                  className="flex-1 h-12 bg-neutral-900 text-white font-bold text-[15px] transition-all duration-200 hover:bg-neutral-800 rounded-2xl shadow-lg"
                 >
                   {step.action.label}
                 </button>
               ) : (
                 <button
                   onClick={nextStep}
-                  className="flex-1 h-12 bg-neutral-900 text-white font-semibold text-[15px] transition-all duration-200 hover:bg-neutral-800 rounded-2xl shadow-lg"
+                  className="flex-1 h-12 bg-neutral-900 text-white font-bold text-[15px] transition-all duration-200 hover:bg-neutral-800 rounded-2xl shadow-lg"
                 >
                   {isLastStep ? 'Начать' : 'Далее'}
                 </button>
