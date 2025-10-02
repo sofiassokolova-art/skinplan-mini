@@ -130,7 +130,7 @@ const screens: Screen[] = [
       <div className="space-y-6">
         {/* Неоморфная карточка с фото */}
         <div 
-          className="relative overflow-hidden rounded-3xl aspect-square"
+          className="relative overflow-hidden rounded-3xl aspect-[3/2]"
           style={{
             boxShadow: '12px 12px 24px rgba(163, 177, 198, 0.3), -12px -12px 24px rgba(255, 255, 255, 0.7)',
             background: 'linear-gradient(145deg, #f0f0f3, #cacaca)'
