@@ -130,13 +130,13 @@ const screens: Screen[] = [
       <div className="space-y-8">
         {/* Неоморфная карточка с фото - увеличенная */}
         <div 
-          className="relative rounded-[2rem] w-full p-5"
+          className="relative rounded-[2rem] w-full p-2"
           style={{
             boxShadow: '20px 20px 40px rgba(163, 177, 198, 0.4), -20px -20px 40px rgba(255, 255, 255, 0.8)',
             background: 'linear-gradient(145deg, #f0f0f3, #d9d9dc)'
           }}
         >
-          <div className="w-full aspect-[3/2] rounded-[1.5rem] overflow-hidden">
+          <div className="w-full aspect-[3/2] rounded-[1.75rem] overflow-hidden">
             <img 
               src="/IMG_8468.jpeg" 
               alt="Уход за кожей" 
