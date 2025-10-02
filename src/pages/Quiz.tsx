@@ -127,10 +127,10 @@ const screens: Screen[] = [
     title: "",
     subtitle: "",
     renderBody: () => (
-      <div className="space-y-8">
+      <div className="space-y-8 -mx-4">
         {/* Неоморфная карточка с фото - увеличенная */}
         <div 
-          className="relative rounded-[2rem] w-full p-2"
+          className="relative rounded-[2rem] w-full p-2 mx-4 scale-110"
           style={{
             boxShadow: '20px 20px 40px rgba(163, 177, 198, 0.4), -20px -20px 40px rgba(255, 255, 255, 0.8)',
             background: 'linear-gradient(145deg, #f0f0f3, #d9d9dc)'
@@ -146,7 +146,7 @@ const screens: Screen[] = [
         </div>
         
         {/* Текст под фото */}
-        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 text-center leading-tight">
+        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 text-center leading-tight px-4">
           Подбери уход для своей кожи со SkinIQ
         </h2>
       </div>
