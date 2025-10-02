@@ -124,42 +124,32 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "welcome",
-    title: "SkinIQ",
-    subtitle: "Твой персональный гид по уходу за кожей",
+    title: "",
+    subtitle: "",
     renderBody: () => (
       <div className="space-y-6">
-        <div className="relative overflow-hidden rounded-3xl shadow-2xl aspect-square">
+        {/* Неоморфная карточка с фото */}
+        <div 
+          className="relative overflow-hidden rounded-3xl aspect-square"
+          style={{
+            boxShadow: '12px 12px 24px rgba(163, 177, 198, 0.3), -12px -12px 24px rgba(255, 255, 255, 0.7)',
+            background: 'linear-gradient(145deg, #f0f0f3, #cacaca)'
+          }}
+        >
           <img 
-            src="/IMG_8377.WEBP" 
+            src="/IMG_8468.jpeg" 
             alt="Уход за кожей" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
         </div>
-        <div className="bg-white/30 backdrop-blur-2xl border border-white/50 rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.1)]">
-          <div className="space-y-4 text-center">
-            <div className="text-sm text-neutral-700 leading-relaxed">
-              Персональные рекомендации на основе вашего типа кожи и потребностей
-            </div>
-            <div className="space-y-3 text-sm text-neutral-700">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">✨</span>
-                <span>ИИ-анализ</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🎯</span>
-                <span>Точный подбор</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl">💎</span>
-                <span>Премиум уход</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        
+        {/* Текст под фото */}
+        <h2 className="text-2xl font-bold text-neutral-900 text-center leading-tight">
+          Подбери уход для своей кожи со SkinIQ
+        </h2>
       </div>
     ),
-    ctaText: "Начать подбор"
+    ctaText: "Пройти диагностику"
   },
   
   // 2. Вопрос о ретиноле - QUESTION с условным подвопросом
