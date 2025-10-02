@@ -1617,7 +1617,7 @@ export default function Quiz() {
       `}</style>
       
       <div 
-        className={`relative z-20 space-y-2 px-4 pt-2 pb-4 transition-all duration-500 ${
+        className={`relative z-20 space-y-2 px-4 pt-0 pb-4 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
