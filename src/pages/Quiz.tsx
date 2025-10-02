@@ -1300,7 +1300,7 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
 
 function SingleChoice({ options, value, onChange, darkWhenSelected = false }: { options: string[]; value?: string; onChange: (v: string) => void; darkWhenSelected?: boolean }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {options.map(option => {
         const isSelected = value === option;
         return (
@@ -1308,7 +1308,7 @@ function SingleChoice({ options, value, onChange, darkWhenSelected = false }: { 
             key={option}
             type="button"
             onClick={() => onChange(option)}
-            className={`px-6 py-4 rounded-2xl border transition-all duration-200 text-left font-medium ${
+            className={`px-7 py-5 rounded-2xl border transition-all duration-200 text-left font-medium text-base ${
               isSelected 
                 ? (darkWhenSelected 
                     ? "bg-neutral-900 text-white border-neutral-900 shadow-lg" 
@@ -1328,13 +1328,13 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   const selected = new Set(value || []);
   
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {options.map(option => {
         const isSelected = selected.has(option);
         return (
           <label
             key={option}
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-md"
+            className="flex items-center gap-4 px-5 py-4 rounded-2xl cursor-pointer transition-all duration-200 bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-md"
           >
             <div 
               className="flex-shrink-0"
@@ -1350,18 +1350,18 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
               }}
             >
               <span
-                className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-200 ${
+                className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all duration-200 ${
                   isSelected 
                     ? 'border-transparent bg-neutral-900 text-white scale-100' 
                     : 'border-neutral-300 bg-neutral-200 text-neutral-400 scale-95'
                 }`}
               >
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </span>
             </div>
-            <span className="flex-1 text-sm font-medium">{option}</span>
+            <span className="flex-1 text-base font-medium">{option}</span>
           </label>
         );
       })}
@@ -1631,19 +1631,19 @@ export default function Quiz() {
 
         <ProgressBar currentStepIndex={currentStepIndex} />
 
-        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6">
+        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-8">
         {currentStep.kind === "question" ? (
           <>
-            <h1 className="text-xl md:text-2xl font-semibold mb-2">
+            <h1 className="text-2xl md:text-3xl font-semibold mb-4">
               {currentStep.title}
             </h1>
             {currentStep.description && (
-              <p className="opacity-70 mb-4">{currentStep.description}</p>
+              <p className="opacity-70 mb-6 text-base">{currentStep.description}</p>
             )}
-            <div className="mb-6">
+            <div className="mb-8">
               {renderQuestionInput(currentStep)}
             </div>
-            <div className="mt-6">
+            <div className="mt-8">
               <ModernButton
                 onClick={goNext}
                 disabled={!isStepValid}
@@ -1656,13 +1656,13 @@ export default function Quiz() {
           </>
         ) : currentStep.kind === "info" || currentStep.kind === "insight" ? (
           <>
-            <h2 className="text-xl md:text-2xl font-semibold mb-2">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-4">
               {currentStep.title}
             </h2>
             {currentStep.subtitle && (
-              <p className="text-sm text-neutral-600 mb-4">{currentStep.subtitle}</p>
+              <p className="text-base text-neutral-600 mb-6">{currentStep.subtitle}</p>
             )}
-            <div className="mb-6">
+            <div className="mb-8">
               {currentStep.renderBody(answers)}
             </div>
             
