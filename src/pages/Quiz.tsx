@@ -209,7 +209,7 @@ const screens: Screen[] = [
     kind: "info",
     id: "welcome",
     title: "",
-    subtitle: "Подбери уход для своей кожи",
+    subtitle: "",
     renderBody: () => (
       <div className="space-y-6">
         <div className="text-center space-y-4">

@@ -584,12 +584,7 @@ export default function Home() {
               style={{touchAction: 'pan-x', overscrollBehavior: 'contain'}}
             >
               <WidgetCard title="Гидрация">
-                <div className="flex items-center justify-between h-full">
-                  <div className="flex flex-col">
-                    <div className="text-[12px] text-neutral-600">Уровень</div>
-                    <div className="text-[15px] font-semibold">Оптимально</div>
-                    <div className="text-[13px] font-bold text-neutral-900 tabular-nums mt-1">72%</div>
-                  </div>
+                <div className="flex items-center justify-center h-full">
                   <div className="flex items-center justify-center">
                     <div 
                       style={{
@@ -609,12 +604,9 @@ export default function Home() {
                 </div>
               </WidgetCard>
               <WidgetCard title="UV-индекс">
-                <div className="flex items-center justify-between h-full">
-                  <div className="flex flex-col">
+                <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center justify-center">
                     <div className="text-[10px] text-neutral-500 mb-1">Умеренный</div>
-                    <div className="text-[12px] text-neutral-600">Сегодня: SPF</div>
-                  </div>
-                  <div className="flex flex-col items-center justify-center h-full">
                     <div 
                       style={{
                         fontSize: '36px',
@@ -623,7 +615,7 @@ export default function Home() {
                         lineHeight: '1'
                       }}
                     >
-                      30
+                      3
                     </div>
                   </div>
                 </div>
