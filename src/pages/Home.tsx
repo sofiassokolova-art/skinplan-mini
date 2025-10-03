@@ -69,7 +69,6 @@ function getUVLevel(uv: number | null): string {
 
 
 // ----- Tokens -----
-const glass = "bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)]";
 const radiusPanel = "rounded-3xl";
 const radiusCard = "rounded-2xl";
 
@@ -635,37 +634,18 @@ export default function MobileSkinIQHome() {
             className="flex gap-3 overflow-x-auto overflow-y-hidden pr-8 snap-x snap-mandatory scrollbar-hide"
             style={{touchAction: 'pan-x', overscrollBehavior: 'contain'}}
           >
-            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between">
-              {/* Decorative wave visual */}
+            <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-5 flex items-center justify-between">
+              {/* Decorative gradient overlay */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <svg className="absolute -right-4 top-0 w-full h-full" viewBox="0 0 280 140" fill="none" preserveAspectRatio="xMaxYMid slice">
-                  <defs>
-                    <linearGradient id="waveGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
-                      <stop offset="50%" stopColor="rgba(255,255,255,0.12)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.04)" />
-                    </linearGradient>
-                    <linearGradient id="waveGradient2" x1="100%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.05)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Flowing waves */}
-                  <path d="M280,20 Q240,10 200,25 T120,35 T40,45 L40,140 L280,140 Z" 
-                        fill="url(#waveGradient1)" opacity="0.6"/>
-                  <path d="M280,50 Q230,35 180,55 T80,75 L80,140 L280,140 Z" 
-                        fill="url(#waveGradient2)" opacity="0.4"/>
-                  <path d="M280,80 Q220,65 160,85 T40,105 L40,140 L280,140 Z" 
-                        fill="rgba(255,255,255,0.06)" opacity="0.5"/>
-                </svg>
+                <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-purple-400/20 blur-2xl"></div>
+                <div className="absolute -left-4 -bottom-4 w-24 h-24 rounded-full bg-purple-500/15 blur-xl"></div>
               </div>
               
               <div className="flex items-start gap-3 w-full relative z-10">
                 <div className="flex-1 text-left">
-                  <div className="text-[10px] text-white/60 mb-1 font-medium tracking-wide uppercase">Ежедневный совет</div>
-                  <div className="text-[14px] font-bold mb-1 text-white leading-tight">Усильте увлажнение</div>
-                  <div className="text-[11px] text-white/80 leading-relaxed">
+                  <div className="text-[10px] text-white/70 mb-1.5 font-medium tracking-wider uppercase" style={{fontFamily: "'Inter', sans-serif"}}>Ежедневный совет</div>
+                  <div className="text-[15px] font-semibold mb-1.5 text-white leading-tight" style={{fontFamily: "'Inter', sans-serif"}}>Усильте увлажнение</div>
+                  <div className="text-[12px] text-white/85 leading-relaxed" style={{fontFamily: "'Inter', sans-serif"}}>
                     В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
                   </div>
                 </div>
@@ -677,21 +657,21 @@ export default function MobileSkinIQHome() {
                   <img src="/icons/hydration.PNG" alt="Hydration" className="w-full h-full object-contain" />
                 </div>
                 <div className="flex flex-col justify-center flex-1">
-                  <div className="text-[12px] text-neutral-600 mb-1">Уровень</div>
-                  <div className="text-[15px] font-semibold text-neutral-900">Оптимально</div>
+                  <div className="text-[12px] text-gray-500 mb-1" style={{fontFamily: "'Inter', sans-serif"}}>Уровень</div>
+                  <div className="text-[16px] font-semibold text-gray-800" style={{fontFamily: "'Inter', sans-serif"}}>Оптимально</div>
                 </div>
               </div>
             </WidgetCard>
             <WidgetCard title="UV-индекс">
               <div className="flex items-center gap-4 h-full">
                 {uvLoading ? (
-                  <div className="text-sm text-neutral-500">Загрузка...</div>
+                  <div className="text-sm text-gray-500" style={{fontFamily: "'Inter', sans-serif"}}>Загрузка...</div>
                 ) : (
                   <>
-                    <div className="text-[56px] font-bold tabular-nums text-neutral-900 leading-none flex-shrink-0">{uvIndex ?? "—"}</div>
+                    <div className="text-[56px] font-bold tabular-nums text-gray-800 leading-none flex-shrink-0" style={{fontFamily: "'Inter', sans-serif"}}>{uvIndex ?? "—"}</div>
                     <div className="flex flex-col justify-center flex-1">
-                      <div className="text-[11px] text-neutral-500 mb-1 font-medium">{getUVLevel(uvIndex)}</div>
-                      <div className="text-[13px] text-neutral-600 leading-tight">Сегодня: {getSPFRecommendation(uvIndex)}</div>
+                      <div className="text-[11px] text-gray-500 mb-1 font-medium" style={{fontFamily: "'Inter', sans-serif"}}>{getUVLevel(uvIndex)}</div>
+                      <div className="text-[13px] text-gray-600 leading-tight" style={{fontFamily: "'Inter', sans-serif"}}>Сегодня: {getSPFRecommendation(uvIndex)}</div>
                     </div>
                   </>
                 )}
