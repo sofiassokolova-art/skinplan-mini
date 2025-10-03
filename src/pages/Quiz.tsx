@@ -1277,8 +1277,13 @@ export default function Quiz() {
       />
       
 
+      {/* Логотип в левом верхнем углу */}
+      <div className="absolute top-4 left-4 z-30">
+        <h1 className="text-xl font-bold text-neutral-900">SkinIQ</h1>
+      </div>
+
       <div 
-        className={`relative z-20 space-y-4 px-2 pb-4 transition-all duration-500 ${
+        className={`relative z-20 space-y-2 px-2 pb-4 pt-16 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
