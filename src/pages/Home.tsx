@@ -21,33 +21,6 @@ interface RoutineItem {
 
 
 // ---------- Helpers ----------
-const USER_FALLBACK = "друг";
-function getGreetingByHour(h: number): string {
-  if (h >= 5 && h < 12) return "Доброе утро";
-  if (h >= 12 && h < 18) return "Добрый день";
-  return "Добрый вечер";
-}
-function getGreeting(date = new Date()): string {
-  return getGreetingByHour(date.getHours());
-}
-
-// Tiny sanity tests (log only)
-(function testGreeting() {
-  try {
-    console.assert(getGreetingByHour(5) === "Доброе утро", "5h should be morning");
-    console.assert(getGreetingByHour(6) === "Доброе утро", "6h should be morning");
-    console.assert(getGreetingByHour(11) === "Доброе утро", "11h should be morning");
-    console.assert(getGreetingByHour(12) === "Добрый день", "12h should be day boundary");
-    console.assert(getGreetingByHour(13) === "Добрый день", "13h should be day");
-    console.assert(getGreetingByHour(17) === "Добрый день", "17h should be day");
-    console.assert(getGreetingByHour(18) === "Добрый вечер", "18h should be evening boundary");
-    console.assert(getGreetingByHour(21) === "Добрый вечер", "21h should be evening");
-    console.assert(typeof getGreeting() === "string", "getGreeting returns string");
-  } catch (e) {
-    console.warn("Greeting tests: ", e);
-  }
-})();
-
 // Helper for SPF recommendation based on UV index
 function getSPFRecommendation(uv: number | null): string {
   if (uv === null) return "SPF 30";
@@ -375,16 +348,6 @@ export default function MobileSkinIQHome() {
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
   const [backgroundLoaded, setBackgroundLoaded] = useState(false);
 
-  // Greeting state
-  const [userName, setUserName] = useState(USER_FALLBACK);
-  const [greeting, setGreeting] = useState(getGreeting());
-  useEffect(() => {
-    setGreeting(getGreeting());
-    const tg = (window as any)?.Telegram?.WebApp;
-    const name =
-      tg?.initDataUnsafe?.user?.first_name || tg?.initDataUnsafe?.user?.username || USER_FALLBACK;
-    setUserName(name);
-  }, []);
 
   // Load background image
   useEffect(() => {
@@ -505,35 +468,6 @@ export default function MobileSkinIQHome() {
         />
       </div>
 
-      {/* Greeting Widget */}
-      <div className="mx-4 mt-32 mb-2">
-        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center gap-4">
-          {/* Icon circle with sun/moon */}
-          <div className="w-14 h-14 rounded-full bg-neutral-900 flex items-center justify-center flex-shrink-0 shadow-lg">
-            {(() => {
-              const hour = new Date().getHours();
-              if (hour >= 5 && hour < 18) {
-                // Morning & Day - sun icon
-                return (
-                  <img src="/icons/IMG_8458.png" alt="Day" className="w-10 h-10 object-contain" />
-                );
-              } else {
-                // Evening - moon icon
-                return (
-                  <img src="/icons/IMG_8428.png" alt="Night" className="w-10 h-10 object-contain" />
-                );
-              }
-            })()}
-          </div>
-          
-          {/* Greeting text */}
-          <div className="flex-1">
-            <div className="text-[20px] font-semibold text-neutral-800 leading-tight">
-              {greeting},<br/>{userName}!
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Panel */}
       <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4 overflow-visible`}>
