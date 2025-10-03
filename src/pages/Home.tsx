@@ -48,16 +48,6 @@ function getGreeting(date = new Date()): string {
   }
 })();
 
-// Helper for SPF recommendation based on UV index
-function getSPFRecommendation(uv: number | null): string {
-  if (uv === null) return "SPF 30";
-  if (uv <= 2) return "SPF 15-30";
-  if (uv <= 5) return "SPF 30";
-  if (uv <= 7) return "SPF 30-50";
-  if (uv <= 10) return "SPF 50";
-  return "SPF 50+";
-}
-
 function getUVLevel(uv: number | null): string {
   if (uv === null) return "Умеренный";
   if (uv <= 2) return "Низкий";
