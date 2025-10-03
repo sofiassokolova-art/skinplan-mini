@@ -1276,10 +1276,6 @@ export default function Quiz() {
         }}
       />
       
-      {/* Логотип */}
-      <div className="text-center mb-4 mt-4">
-        <h1 className="text-xl font-bold text-neutral-900">SkinIQ</h1>
-      </div>
 
       <div 
         className={`relative z-20 space-y-4 px-2 pb-4 transition-all duration-500 ${
