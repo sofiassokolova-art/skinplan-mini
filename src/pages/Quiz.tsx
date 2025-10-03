@@ -208,7 +208,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "welcome",
-    title: "Skin-plan mini",
+    title: "",
     subtitle: "Подбери уход для своей кожи",
     renderBody: () => (
       <div className="space-y-6">
