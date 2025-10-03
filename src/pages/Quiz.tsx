@@ -1277,16 +1277,6 @@ export default function Quiz() {
         }}
       />
       
-      {/* Логотип в левом верхнем углу */}
-      <div className="absolute top-3 left-2 z-30">
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2 shadow-sm">
-          <img 
-            src="/skiniq-logo.png" 
-            alt="SkinIQ" 
-            className="h-8 w-auto object-contain"
-          />
-        </div>
-      </div>
 
       <div 
         className={`relative z-20 space-y-4 px-2 pb-4 transition-all duration-500 ${
