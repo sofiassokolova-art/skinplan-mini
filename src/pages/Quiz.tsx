@@ -188,8 +188,7 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
 
   return (
     <div className="mb-4">
-      <div className="flex items-center justify-between text-sm mb-1">
-        <span>Шаг {completedQuestions} из {totalRequiredQuestions}</span>
+      <div className="flex items-center justify-end text-sm mb-1">
         <span>{percentage}%</span>
       </div>
       <div className="h-2 w-full bg-neutral-200 rounded">
