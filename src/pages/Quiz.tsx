@@ -104,7 +104,7 @@ type Screen = QuestionScreen | InfoScreen;
 // Компоненты для вопросов
 function SingleChoice({ options, value, onChange }: { options: string[]; value?: string; onChange: (v: string) => void }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 max-w-none">
       {options.map(option => {
         const isSelected = value === option;
         const lines = option.split('\n');
@@ -135,7 +135,7 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   const selected = new Set(value || []);
   
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-w-none">
       {options.map(option => {
         const isSelected = selected.has(option);
         return (
@@ -1277,8 +1277,17 @@ export default function Quiz() {
         }}
       />
       
+      {/* Логотип в левом верхнем углу */}
+      <div className="absolute top-4 left-4 z-30">
+        <img 
+          src="/skiniq-logo.png" 
+          alt="SkinIQ" 
+          className="h-16 w-auto object-contain"
+        />
+      </div>
+
       <div 
-        className={`relative z-20 space-y-4 px-4 pb-4 transition-all duration-500 ${
+        className={`relative z-20 space-y-4 px-2 pb-4 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
@@ -1294,7 +1303,7 @@ export default function Quiz() {
 
         <ProgressBar currentStepIndex={currentStepIndex} />
 
-        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6">
+        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 w-full">
           {currentStep.kind === "question" ? (
             <div>
               <h1 className="text-xl md:text-2xl font-semibold mb-2">
