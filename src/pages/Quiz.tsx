@@ -218,7 +218,7 @@ const screens: Screen[] = [
             <div className="flex items-center gap-3">
               <span className="text-2xl">1️⃣</span>
               <span>Ответьте на несколько вопросов</span>
-            </div>
+        </div>
             <div className="flex items-center gap-3">
               <span className="text-2xl">2️⃣</span>
               <span>Загрузите фото</span>
@@ -226,14 +226,14 @@ const screens: Screen[] = [
             <div className="flex items-center gap-3">
               <span className="text-2xl">3️⃣</span>
               <span>Получите персональную подборку ухода</span>
-            </div>
+              </div>
             <div className="flex items-center gap-3">
               <span className="text-2xl">4️⃣</span>
               <span>Посмотрите как будет выглядеть кожа уже через 12 недель применения средств</span>
+              </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
     ),
     ctaText: "Продолжить"
   },
@@ -277,15 +277,15 @@ const screens: Screen[] = [
     id: "skin_goals",
     title: "Какие ваши основные цели для кожи?",
     type: "multi",
-    options: [
+        options: [
       "Морщины и мелкие линии",
       "Акне и высыпания",
       "Сократить видимость пор",
       "Уменьшить отёчность",
       "Выровнять пигментацию",
       "Улучшить текстуру кожи"
-    ],
-    required: true
+        ],
+        required: true
   },
 
   // 5. Отзывы
@@ -325,7 +325,7 @@ const screens: Screen[] = [
     renderBody: () => null,
     ctaText: "Продолжить"
   },
-
+  
   // 7. Вопрос о возрасте
   {
     kind: "question",
@@ -335,7 +335,7 @@ const screens: Screen[] = [
     options: ["До 18 лет", "18–24", "25–34", "35–44", "45+"],
     required: true
   },
-
+  
   // 8. Вопрос о поле
   {
     kind: "question",
@@ -345,7 +345,7 @@ const screens: Screen[] = [
     options: ["Женский", "Мужской"],
     required: true
   },
-
+  
   // 9. Узнаем особенности кожи
   {
     kind: "info",
@@ -355,7 +355,7 @@ const screens: Screen[] = [
     renderBody: () => null,
     ctaText: "Продолжить"
   },
-
+  
   // 10. Вопрос о типе кожи
   {
     kind: "question",
@@ -468,7 +468,7 @@ const screens: Screen[] = [
     ],
     required: false
   },
-
+  
   // 16. Беременность (только для женщин)
   {
     kind: "question",
@@ -482,7 +482,7 @@ const screens: Screen[] = [
     ],
     required: true
   },
-
+  
   // 17. Аллергии
   {
     kind: "question",
@@ -498,7 +498,7 @@ const screens: Screen[] = [
     ],
     required: false
   },
-
+  
   // 18. Исключить ингредиенты
   {
     kind: "question",
@@ -523,7 +523,7 @@ const screens: Screen[] = [
     ],
     required: false
   },
-
+  
   // 19. Забота о здоровье
   {
     kind: "info",
@@ -538,7 +538,7 @@ const screens: Screen[] = [
     ),
     ctaText: "Продолжить"
   },
-
+  
   // 20. Текущий уход
   {
     kind: "info",
@@ -548,7 +548,7 @@ const screens: Screen[] = [
     renderBody: () => null,
     ctaText: "Продолжить"
   },
-
+  
   // 21. Опыт с ретинолом
   {
     kind: "question",
@@ -559,7 +559,7 @@ const screens: Screen[] = [
     options: ["Да", "Нет"],
     required: true
   },
-
+  
   // 22. Реакция на ретинол
   {
     kind: "question",
@@ -573,7 +573,7 @@ const screens: Screen[] = [
     ],
     required: true
   },
-
+  
   // 23. Рецептурные кремы
   {
     kind: "question",
@@ -651,7 +651,7 @@ const screens: Screen[] = [
     renderBody: () => null,
     ctaText: "Продолжить"
   },
-
+  
   // 27. Вопросы о привычках
   {
     kind: "question",
@@ -665,7 +665,7 @@ const screens: Screen[] = [
     ],
     required: true
   },
-
+  
   // 28. SPF
   {
     kind: "question",
@@ -679,7 +679,7 @@ const screens: Screen[] = [
     ],
     required: true
   },
-
+  
   // 29. Время на солнце
   {
     kind: "question",
@@ -694,7 +694,7 @@ const screens: Screen[] = [
     ],
     required: true
   },
-
+  
   // 30. Привычки
   {
     kind: "question",
@@ -740,7 +740,7 @@ const screens: Screen[] = [
     ),
     ctaText: "Продолжить"
   },
-
+  
   // 32. Предпочтения в уходе
   {
     kind: "info",
@@ -750,7 +750,7 @@ const screens: Screen[] = [
     renderBody: () => null,
     ctaText: "Продолжить"
   },
-
+  
   // 33. Тип ухода
   {
     kind: "question",
@@ -819,7 +819,7 @@ const screens: Screen[] = [
     ),
     ctaText: "Продолжить"
   },
-
+  
   // 37. Мотивация
   {
     kind: "info",
@@ -845,7 +845,7 @@ const screens: Screen[] = [
     ),
     ctaText: "Продолжить"
   },
-
+  
   {
     kind: "info",
     id: "recognize_yourself_2",
@@ -860,7 +860,7 @@ const screens: Screen[] = [
     ),
     ctaText: "Продолжить"
   },
-
+  
   {
     kind: "info",
     id: "recognize_yourself_3",
@@ -875,7 +875,7 @@ const screens: Screen[] = [
     ),
     ctaText: "Продолжить"
   },
-
+  
   // 41. Создан для вас
   {
     kind: "info",
@@ -893,7 +893,7 @@ const screens: Screen[] = [
     ),
     ctaText: "Продолжить"
   },
-
+  
   // 42. Визуализация изменений
   {
     kind: "info",
@@ -911,7 +911,7 @@ const screens: Screen[] = [
     ),
     ctaText: "Продолжить"
   },
-
+  
   // 43-44. Хотите улучшить/наладить
   {
     kind: "info",
@@ -921,7 +921,7 @@ const screens: Screen[] = [
     renderBody: () => null,
     ctaText: "Продолжить"
   },
-
+  
   {
     kind: "info",
     id: "want_establish_routine",
@@ -930,7 +930,7 @@ const screens: Screen[] = [
     renderBody: () => null,
     ctaText: "Продолжить"
   },
-
+  
   // 45. Финальный экран с фото
   {
     kind: "question",
@@ -939,7 +939,7 @@ const screens: Screen[] = [
     description: "Сделайте селфи, и наш ИИ проанализирует состояние вашей кожи, подберёт персонализированный уход и продукты",
     type: "photo",
     required: false
-  }
+}
 ];
 
 function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: Answers) => void }) {
@@ -1229,7 +1229,7 @@ export default function Quiz() {
     
     return !!answer;
   }, [currentStep, answers]);
-  
+
   const goNext = () => {
     if (currentStepIndex < screens.length - 1) {
       let nextIndex = currentStepIndex + 1;
@@ -1269,9 +1269,9 @@ export default function Quiz() {
         className={`fixed inset-0 -z-10 transition-opacity duration-500 ${
           isPageLoaded ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{
-          background: 'linear-gradient(135deg, #f5e6d3 0%, #f5e6d3 30%, #ffffff 50%, #e0f2ff 70%, #bae6fd 85%, #f5e6d3 100%)',
-          backgroundSize: '400% 400%',
+          style={{
+            background: 'linear-gradient(135deg, #f5e6d3 0%, #f5e6d3 30%, #ffffff 50%, #e0f2ff 70%, #bae6fd 85%, #f5e6d3 100%)',
+            backgroundSize: '400% 400%',
           animation: 'gradient 10s ease-in-out infinite'
         }}
       />
@@ -1279,9 +1279,13 @@ export default function Quiz() {
 
       {/* Логотип в левом верхнем углу */}
       <div className="absolute top-4 left-4 z-30">
-        <h1 className="text-xl font-bold text-neutral-900">SkinIQ</h1>
+        <img 
+          src="/skiniq-logo.png" 
+          alt="SkinIQ" 
+          className="h-16 w-auto drop-shadow-sm"
+        />
       </div>
-
+      
       <div 
         className={`relative z-20 space-y-2 px-2 pb-4 pt-16 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
@@ -1300,15 +1304,15 @@ export default function Quiz() {
         <ProgressBar currentStepIndex={currentStepIndex} />
 
         <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 w-full">
-          {currentStep.kind === "question" ? (
+        {currentStep.kind === "question" ? (
             <div>
-              <h1 className="text-xl md:text-2xl font-semibold mb-2">
-                {currentStep.title}
-              </h1>
-              {currentStep.description && (
-                <p className="opacity-70 mb-4">{currentStep.description}</p>
-              )}
-              <div className="mb-6">
+            <h1 className="text-xl md:text-2xl font-semibold mb-2">
+              {currentStep.title}
+            </h1>
+            {currentStep.description && (
+              <p className="opacity-70 mb-4">{currentStep.description}</p>
+            )}
+            <div className="mb-6">
                 {currentStep.type === "single" && (
                   <SingleChoice
                     options={currentStep.options || []}
@@ -1326,10 +1330,10 @@ export default function Quiz() {
                 {currentStep.type === "photo" && (
                   <PhotoStep answers={answers} setAnswers={setAnswers} />
                 )}
-              </div>
-              <ModernButton 
-                onClick={goNext} 
-                fullWidth 
+            </div>
+              <ModernButton
+                onClick={goNext}
+                fullWidth
                 size="lg"
                 disabled={!isStepValid}
               >
@@ -1338,20 +1342,20 @@ export default function Quiz() {
             </div>
           ) : (
             <div>
-              <h2 className="text-xl md:text-2xl font-semibold mb-2">
-                {currentStep.title}
-              </h2>
-              {currentStep.subtitle && (
-                <p className="text-sm text-neutral-600 mb-4">{currentStep.subtitle}</p>
-              )}
-              <div className="mb-6">
-                {currentStep.renderBody(answers)}
-              </div>
+            <h2 className="text-xl md:text-2xl font-semibold mb-2">
+              {currentStep.title}
+            </h2>
+            {currentStep.subtitle && (
+              <p className="text-sm text-neutral-600 mb-4">{currentStep.subtitle}</p>
+            )}
+            <div className="mb-6">
+              {currentStep.renderBody(answers)}
+            </div>
               <ModernButton onClick={goNext} fullWidth size="lg">
                 {currentStep.ctaText || "Продолжить"}
-              </ModernButton>
+            </ModernButton>
             </div>
-          )}
+        )}
         </div>
       </div>
       
