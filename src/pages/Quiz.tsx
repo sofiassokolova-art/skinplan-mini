@@ -1278,16 +1278,16 @@ export default function Quiz() {
       
 
       {/* Логотип в левом верхнем углу */}
-      <div className="absolute top-4 left-4 z-30">
+      <div className="absolute top-4 left-2 z-30">
         <img 
           src="/skiniq-logo.png" 
           alt="SkinIQ" 
-          className="h-16 w-auto drop-shadow-sm"
+          className="h-12 w-auto drop-shadow-sm"
         />
       </div>
-      
+
       <div 
-        className={`relative z-20 space-y-2 px-2 pb-4 pt-16 transition-all duration-500 ${
+        className={`relative z-20 space-y-2 px-2 pb-4 pt-8 transition-all duration-500 ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
