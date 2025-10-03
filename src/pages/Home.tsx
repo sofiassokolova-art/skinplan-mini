@@ -48,6 +48,16 @@ function getGreeting(date = new Date()): string {
   }
 })();
 
+// Helper for SPF recommendation based on UV index
+function getSPFRecommendation(uv: number | null): string {
+  if (uv === null) return "SPF 30";
+  if (uv <= 2) return "SPF 15-30";
+  if (uv <= 5) return "SPF 30";
+  if (uv <= 7) return "SPF 30-50";
+  if (uv <= 10) return "SPF 50";
+  return "SPF 50+";
+}
+
 function getUVLevel(uv: number | null): string {
   if (uv === null) return "Умеренный";
   if (uv <= 2) return "Низкий";
@@ -542,12 +552,11 @@ export default function MobileSkinIQHome() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`relative ${radiusCard} text-[14px] font-medium transition-all duration-200 overflow-hidden flex items-center justify-center gap-1.5` +
+              className={`relative ${radiusCard} text-[14px] font-medium transition-all duration-200 overflow-hidden` +
                 (tab === t
                   ? " bg-white/50 text-neutral-900 shadow-inner border border-white/60"
                   : " text-neutral-700 hover:text-neutral-900")}
             >
-              <img src={t === "AM" ? "/icons/IMG_8458.png" : "/icons/IMG_8428.png"} alt="" style={{ width: '20px', height: '20px' }} />
               {t === "AM" ? "Утро" : "Вечер"}
             </button>
           ))}
@@ -657,21 +666,28 @@ export default function MobileSkinIQHome() {
               </div>
             </article>
             <WidgetCard title="Гидрация">
-              <div className="flex items-center justify-center h-full">
-                <div className="relative w-20 h-20 flex items-center justify-center">
+              <div className="flex items-start gap-4 h-full -mt-2">
+                <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
                   <img src="/icons/hydration.PNG" alt="Hydration" className="w-full h-full object-contain" />
+                </div>
+                <div className="flex flex-col justify-center flex-1">
+                  <div className="text-[12px] text-neutral-600 mb-1">Уровень</div>
+                  <div className="text-[15px] font-semibold text-neutral-900">Оптимально</div>
                 </div>
               </div>
             </WidgetCard>
             <WidgetCard title="UV-индекс">
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center gap-4 h-full">
                 {uvLoading ? (
                   <div className="text-sm text-neutral-500">Загрузка...</div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="text-[11px] text-neutral-500 mb-1 font-medium">{getUVLevel(uvIndex)}</div>
-                    <div className="text-[56px] font-bold tabular-nums text-neutral-900 leading-none">{uvIndex ?? "—"}</div>
-                  </div>
+                  <>
+                    <div className="text-[56px] font-bold tabular-nums text-neutral-900 leading-none flex-shrink-0">{uvIndex ?? "—"}</div>
+                    <div className="flex flex-col justify-center flex-1">
+                      <div className="text-[11px] text-neutral-500 mb-1 font-medium">{getUVLevel(uvIndex)}</div>
+                      <div className="text-[13px] text-neutral-600 leading-tight">Сегодня: {getSPFRecommendation(uvIndex)}</div>
+                    </div>
+                  </>
                 )}
               </div>
             </WidgetCard>
