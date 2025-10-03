@@ -144,11 +144,6 @@ const screens: Screen[] = [
             />
           </div>
         </div>
-        
-        {/* Текст под фото */}
-        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 text-center leading-tight px-4">
-          Подбери уход для своей кожи со SkinIQ
-        </h2>
       </div>
     ),
     ctaText: "Пройти диагностику"
