@@ -394,9 +394,14 @@ export default function Home() {
                 transition: 'all 0.3s ease',
                 boxShadow: activeTime === 'evening' 
                   ? tokens.shadows.NeomorphicIn
-                  : 'none'
+                  : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
               }}
             >
+              <img src="/icons/IMG_8428.png" alt="" style={{ width: '20px', height: '20px' }} />
               Вечер
               </button>
             </div>
