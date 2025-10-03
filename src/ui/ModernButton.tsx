@@ -31,7 +31,7 @@ export default function ModernButton({
   };
   
   const variants = {
-    primary: "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:scale-105 active:scale-95",
+    primary: "bg-neutral-900 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:scale-105 active:scale-95 shimmer-text",
     secondary: "bg-white/80 text-gray-700 border border-gray-200/50 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 hover:bg-white hover:-translate-y-0.5",
     ghost: "bg-transparent text-gray-600 hover:bg-white/50 hover:text-gray-800",
     pill: "bg-gradient-to-r from-yellow-400 to-orange-400 text-black shadow-lg shadow-yellow-500/25 hover:shadow-xl hover:shadow-yellow-500/30 hover:scale-105 active:scale-95"
@@ -49,7 +49,7 @@ export default function ModernButton({
     >
       {/* Блеск при hover */}
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out"></div>
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10" style={variant === 'primary' ? { color: 'white' } : undefined}>{children}</span>
     </button>
   );
 }
