@@ -1,6 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -38,37 +38,38 @@
     padding: 0;
   }
   
-  /* Elegant typography with serif for headers */
+  /* Elegant serif typography for headers - matching reference */
   h1, h2, h3 {
-    font-family: 'Crimson Pro', 'Playfair Display', Georgia, serif;
+    font-family: 'DM Serif Display', 'Cormorant', Georgia, serif;
     color: var(--premium-dark);
     margin: 0;
     font-weight: 400;
+    letter-spacing: -0.01em;
   }
   
   h1 {
-    font-size: 24px;
-    line-height: 28px;
-    font-weight: 600;
+    font-size: 32px;
+    line-height: 38px;
+    font-weight: 400;
   }
   
   h2 {
-    font-size: 18px;
-    line-height: 24px;
-    font-weight: 600;
+    font-size: 24px;
+    line-height: 30px;
+    font-weight: 400;
   }
   
   h3 {
-    font-size: 18px;
-    line-height: 24px;
-    font-weight: 600;
+    font-size: 20px;
+    line-height: 26px;
+    font-weight: 400;
   }
   
   p, span, div, body {
     font-size: 15px;
     line-height: 22px;
     font-weight: 400;
-    color: var(--premium-dark);
+    color: var(--text-muted);
     margin: 0;
   }
   

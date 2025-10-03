@@ -230,9 +230,9 @@ function ProgressRing({ value = 0, size = 180, stroke = 7 }) {
     <svg width={size} height={size} className="block" style={{overflow: 'visible'}}>
         <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#D8BFD8" />
-          <stop offset="50%" stopColor="#E6E6FA" />
-          <stop offset="100%" stopColor="#F0E6FF" />
+          <stop offset="0%" stopColor="#c4b5fd" />
+          <stop offset="50%" stopColor="#a78bfa" />
+          <stop offset="100%" stopColor="#8b5cf6" />
           </linearGradient>
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
@@ -290,17 +290,17 @@ function ProgressRing({ value = 0, size = 180, stroke = 7 }) {
 
 function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: () => void; onOpen: () => void }) {
   return (
-    <div className={`bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl h-[72px] px-3 py-2 flex items-center gap-3 select-none shadow-[0_4px_12px_rgba(0,0,0,0.04)]`}>
-      <div className="w-10 h-10 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden shadow-sm">
+    <div className={`bg-white/50 backdrop-blur-xl border border-purple-200/40 rounded-3xl h-[72px] px-4 py-2 flex items-center gap-3 select-none shadow-[0_4px_16px_rgba(139,92,246,0.08)]`}>
+      <div className="w-11 h-11 rounded-2xl bg-white/90 flex items-center justify-center overflow-hidden shadow-sm border border-purple-100/30">
         {item.icon ? (
-          <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
+          <img src={item.icon} alt="" className="w-7 h-7 object-contain" />
         ) : (
-          <div className="w-6 h-6 rounded-xl bg-neutral-900/80" />
+          <div className="w-7 h-7 rounded-xl bg-purple-500/20" />
         )}
       </div>
       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
-        <div className="text-[15px] font-semibold text-neutral-900 truncate">{item.title}</div>
-        <div className="text-[12px] text-neutral-600 truncate">{item.subtitle}</div>
+        <div className="text-[15px] font-medium text-gray-800 truncate" style={{fontFamily: "'Inter', sans-serif"}}>{item.title}</div>
+        <div className="text-[12px] text-gray-500 truncate" style={{fontFamily: "'Inter', sans-serif"}}>{item.subtitle}</div>
         </button>
         <button
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
@@ -308,7 +308,7 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
         className="ml-auto w-9 h-9 flex items-center justify-center"
       >
         <span
-          className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-120 ${item.done ? 'border-transparent bg-neutral-900 text-white scale-100' : 'border-neutral-300 bg-neutral-200 text-neutral-400 scale-95'}`}
+          className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-120 ${item.done ? 'border-transparent bg-gradient-to-br from-purple-500 to-purple-600 text-white scale-100 shadow-lg shadow-purple-500/30' : 'border-purple-200 bg-white/80 text-purple-300 scale-95'}`}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -324,39 +324,41 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
   if (!open || !item) return null;
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className={`absolute left-0 right-0 bottom-0 ${glass} ${radiusPanel} p-4 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)]`}>
-        <div className="mx-auto h-1 w-10 rounded-full bg-white/60 mb-3" />
+      <div className="absolute inset-0 bg-purple-900/20 backdrop-blur-sm" onClick={onClose} />
+      <div className={`absolute left-0 right-0 bottom-0 bg-white/70 backdrop-blur-2xl border-t border-purple-200/40 ${radiusPanel} rounded-b-none p-5 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] shadow-[0_-8px_32px_rgba(139,92,246,0.15)]`}>
+        <div className="mx-auto h-1 w-12 rounded-full bg-purple-300/50 mb-4" />
         <div className="flex items-center gap-3">
-          <img src={item.icon} alt="" className="w-10 h-10 object-contain mix-blend-multiply" />
+          <div className="w-12 h-12 rounded-2xl bg-white/90 flex items-center justify-center border border-purple-100/40 shadow-sm">
+            <img src={item.icon} alt="" className="w-8 h-8 object-contain" />
+          </div>
           <div>
-            <div className="text-[16px] font-semibold text-neutral-900">{item.title}</div>
-            <div className="text-[12px] text-neutral-600">{item.subtitle}</div>
+            <div className="text-[16px] font-medium text-gray-800" style={{fontFamily: "'Inter', sans-serif"}}>{item.title}</div>
+            <div className="text-[13px] text-gray-500" style={{fontFamily: "'Inter', sans-serif"}}>{item.subtitle}</div>
           </div>
         </div>
-        <div className="mt-3">
-          <div className="text-[13px] font-semibold text-neutral-900 mb-1">Как выполнить</div>
-          <ol className="list-decimal list-inside text-[14px] text-neutral-800 space-y-1">
+        <div className="mt-4">
+          <div className="text-[14px] font-medium text-gray-800 mb-2" style={{fontFamily: "'Inter', sans-serif"}}>Как выполнить</div>
+          <ol className="list-decimal list-inside text-[14px] text-gray-700 space-y-1.5" style={{fontFamily: "'Inter', sans-serif"}}>
             {item.howto?.steps?.map((s: string, i: number) => (
               <li key={i}>{s}</li>
             ))}
           </ol>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className={`${glass} ${radiusCard} p-3`}>
-              <div className="text-[12px] text-neutral-600">Объём</div>
-              <div className="text-[14px] font-medium">{item.howto?.volume}</div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className={`bg-white/60 backdrop-blur-xl border border-purple-200/30 ${radiusCard} p-3`}>
+              <div className="text-[12px] text-gray-500 mb-1" style={{fontFamily: "'Inter', sans-serif"}}>Объём</div>
+              <div className="text-[14px] font-medium text-gray-800" style={{fontFamily: "'Inter', sans-serif"}}>{item.howto?.volume}</div>
             </div>
-            <div className={`${glass} ${radiusCard} p-3`}>
-              <div className="text-[12px] text-neutral-600">Совет</div>
-              <div className="text-[14px] font-medium">{item.howto?.tip}</div>
+            <div className={`bg-white/60 backdrop-blur-xl border border-purple-200/30 ${radiusCard} p-3`}>
+              <div className="text-[12px] text-gray-500 mb-1" style={{fontFamily: "'Inter', sans-serif"}}>Совет</div>
+              <div className="text-[14px] font-medium text-gray-800" style={{fontFamily: "'Inter', sans-serif"}}>{item.howto?.tip}</div>
             </div>
           </div>
         </div>
-        <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} ${glass} text-[15px] font-semibold`}>
+        <div className="mt-5 flex gap-3">
+          <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} bg-white/80 backdrop-blur-xl border border-purple-200/40 text-gray-700 text-[15px] font-medium hover:bg-white transition-all`} style={{fontFamily: "'Inter', sans-serif"}}>
             Закрыть
           </button>
-          <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} bg-neutral-900 text-white text-[15px] font-semibold`}>
+          <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} bg-gradient-to-br from-purple-500 to-purple-600 text-white text-[15px] font-medium shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all`} style={{fontFamily: "'Inter', sans-serif"}}>
             Понятно
           </button>
         </div>
@@ -373,7 +375,6 @@ export default function MobileSkinIQHome() {
   const [evening, setEvening] = useState(eveningDefault);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
-  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
 
   // Greeting state
   const [userName, setUserName] = useState(USER_FALLBACK);
@@ -384,13 +385,6 @@ export default function MobileSkinIQHome() {
     const name =
       tg?.initDataUnsafe?.user?.first_name || tg?.initDataUnsafe?.user?.username || USER_FALLBACK;
     setUserName(name);
-  }, []);
-
-  // Load background image
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => setBackgroundLoaded(true);
-    img.src = "/bg/IMG_8368 (2).PNG";
   }, []);
 
   // UV Index state
@@ -464,21 +458,25 @@ export default function MobileSkinIQHome() {
 
   return (
     <div className="w-full min-h-screen relative overflow-x-hidden">
-      {/* Background layers: PNG image with floating spheres */}
+      {/* Soft lavender gradient background */}
+      <div className="fixed inset-0 -z-20 bg-gradient-to-br from-[#f5f3ff] via-[#faf5ff] to-[#f0f0f5]" />
+      
+      {/* Large gradient sphere in top right */}
       <div 
-        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
-          backgroundLoaded ? 'opacity-100' : 'opacity-0'
-        }`}
+        className="fixed -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-60 blur-3xl -z-10"
         style={{
-          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
+          background: 'radial-gradient(circle at 30% 30%, rgba(233, 213, 255, 0.9) 0%, rgba(196, 181, 253, 0.7) 30%, rgba(167, 139, 250, 0.5) 60%, rgba(139, 92, 246, 0.3) 100%)',
+          boxShadow: '0 40px 120px rgba(139, 92, 246, 0.3)',
         }}
       />
       
-      {/* Premium shimmer loading effect */}
-      {!backgroundLoaded && (
-        <div className="fixed inset-0 -z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 shimmer-wrapper">
-        </div>
-      )}
+      {/* Smaller accent sphere */}
+      <div 
+        className="fixed top-1/2 left-10 w-64 h-64 rounded-full opacity-40 blur-2xl -z-10"
+        style={{
+          background: 'radial-gradient(circle at 40% 40%, rgba(233, 213, 255, 0.8) 0%, rgba(196, 181, 253, 0.5) 50%, rgba(167, 139, 250, 0.3) 100%)',
+        }}
+      />
       
       <style>{`
         @keyframes sheetUp { from { transform: translateY(12px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
@@ -507,38 +505,44 @@ export default function MobileSkinIQHome() {
 
       {/* Greeting Widget */}
       <div className="mx-4 mt-32 mb-2">
-        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center gap-4">
+        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 flex items-start gap-4">
           {/* Icon circle with sun/moon */}
-          <div className="w-14 h-14 rounded-full bg-neutral-900 flex items-center justify-center flex-shrink-0 shadow-lg">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400/40 to-purple-600/40 flex items-center justify-center flex-shrink-0 shadow-lg backdrop-blur-sm border border-purple-300/30">
             {(() => {
               const hour = new Date().getHours();
               if (hour >= 5 && hour < 18) {
                 // Morning & Day - sun icon
                 return (
-                  <img src="/icons/IMG_8458.png" alt="Day" className="w-10 h-10 object-contain" />
+                  <img src="/icons/IMG_8458.png" alt="Day" className="w-8 h-8 object-contain" />
                 );
               } else {
                 // Evening - moon icon
                 return (
-                  <img src="/icons/IMG_8428.png" alt="Night" className="w-10 h-10 object-contain" />
+                  <img src="/icons/IMG_8428.png" alt="Night" className="w-8 h-8 object-contain" />
                 );
               }
             })()}
           </div>
           
-          {/* Greeting text */}
-          <div className="flex-1">
-            <div className="text-[20px] font-semibold text-neutral-800 leading-tight">
-              {greeting},<br/>{userName}!
-            </div>
+          {/* Greeting text with serif font */}
+          <div className="flex-1 pt-1">
+            <h1 className="text-[24px] leading-[30px] text-gray-400/90" style={{fontFamily: "'DM Serif Display', serif", fontWeight: 400, letterSpacing: '-0.01em'}}>
+              {greeting} {userName}
+            </h1>
+            <h2 className="text-[30px] leading-[36px] text-gray-800 mt-0.5" style={{fontFamily: "'DM Serif Display', serif", fontWeight: 400, letterSpacing: '-0.01em'}}>
+              How can i help<br/>you today
+            </h2>
+            <p className="text-[13px] leading-[18px] text-gray-500/80 mt-2" style={{fontFamily: "'Inter', sans-serif", fontWeight: 400}}>
+              is simply dummy text of the printing and typesetting industry. Lorem Ipsum
+            </p>
           </div>
         </div>
       </div>
 
       {/* Main Panel */}
-      <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4 overflow-visible`}>
-        <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
-        <p className="text-[12px] text-neutral-600 mt-0.5">
+      <section className={`bg-white/50 backdrop-blur-xl border border-purple-200/30 shadow-[0_8px_32px_rgba(139,92,246,0.12)] ${radiusPanel} relative z-20 mx-4 p-5 overflow-visible`}>
+        <h3 className="text-[18px] font-medium text-gray-800" style={{fontFamily: "'Inter', sans-serif"}}>Уход сегодня</h3>
+        <p className="text-[13px] text-gray-500 mt-1" style={{fontFamily: "'Inter', sans-serif"}}>
           {progress === 0
             ? "Начните с первого шага"
             : progress === 100
@@ -547,15 +551,16 @@ export default function MobileSkinIQHome() {
         </p>
 
         {/* Tabs AM/PM */}
-        <div className={`mt-3 ${radiusCard} p-1 ${glass} grid grid-cols-2 h-12`}>
+        <div className={`mt-4 ${radiusCard} p-1.5 bg-white/40 backdrop-blur-xl border border-purple-200/30 grid grid-cols-2 h-11`}>
           {["AM", "PM"].map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`relative ${radiusCard} text-[14px] font-medium transition-all duration-200 overflow-hidden` +
                 (tab === t
-                  ? " bg-white/50 text-neutral-900 shadow-inner border border-white/60"
-                  : " text-neutral-700 hover:text-neutral-900")}
+                  ? " bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30"
+                  : " text-gray-600 hover:text-gray-800")}
+              style={{fontFamily: "'Inter', sans-serif"}}
             >
               {t === "AM" ? "Утро" : "Вечер"}
             </button>
@@ -596,12 +601,13 @@ export default function MobileSkinIQHome() {
           </div>
           <button
             onClick={() => navigate("/plan")}
-            className="glossy-black-card mt-2 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center relative group hover:shadow-2xl transition-all duration-300"
+            className="glossy-black-card mt-2 w-full h-12 text-white text-[15px] font-medium flex items-center justify-center relative group hover:shadow-2xl transition-all duration-300"
+            style={{fontFamily: "'Inter', sans-serif"}}
           >
-            {/* Decorative spheres */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/20 blur-sm"></div>
-              <div className="absolute right-12 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 blur-sm"></div>
+            {/* Decorative gradient overlay */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-purple-400/40 blur-xl"></div>
+              <div className="absolute right-16 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-purple-300/30 blur-lg"></div>
             </div>
             
             <span className="relative inline-block text-white z-10">
@@ -703,9 +709,9 @@ export default function MobileSkinIQHome() {
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl p-4 flex flex-col shadow-[0_4px_12px_rgba(0,0,0,0.06)]`}>
-      <div className="text-[13px] text-neutral-600 mb-3">{title}</div>
-      <div className="text-neutral-900 flex-1">{children}</div>
+    <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/50 backdrop-blur-xl border border-purple-200/30 rounded-3xl p-4 flex flex-col shadow-[0_4px_16px_rgba(139,92,246,0.1)]`}>
+      <div className="text-[13px] text-gray-500 mb-3" style={{fontFamily: "'Inter', sans-serif", fontWeight: 500}}>{title}</div>
+      <div className="text-gray-800 flex-1">{children}</div>
     </article>
   );
 }
