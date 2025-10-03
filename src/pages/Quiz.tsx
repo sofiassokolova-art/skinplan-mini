@@ -1278,7 +1278,7 @@ export default function Quiz() {
       />
       
       {/* Логотип в левом верхнем углу */}
-      <div className="absolute top-3 left-3 z-30">
+      <div className="absolute top-3 left-2 z-30">
         <div className="bg-white/90 backdrop-blur-sm rounded-xl p-2 shadow-sm">
           <img 
             src="/skiniq-logo.png" 
