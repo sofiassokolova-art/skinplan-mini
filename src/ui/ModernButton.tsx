@@ -22,7 +22,7 @@ export default function ModernButton({
   fullWidth = false,
   ...props
 }: ModernButtonProps) {
-  const baseStyles = "inline-flex items-center justify-center font-bold rounded-full transition-all duration-200 ease-out focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden";
+  const baseStyles = "inline-flex items-center justify-center font-medium rounded-full transition-all duration-200 ease-out focus:outline-none focus:ring-4 focus:ring-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden";
   
   const sizes = {
     sm: "px-4 py-2 text-sm",
@@ -31,10 +31,10 @@ export default function ModernButton({
   };
   
   const variants = {
-    primary: "bg-neutral-900 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:scale-105 active:scale-95 shimmer-text",
-    secondary: "bg-white/80 text-gray-700 border border-gray-200/50 shadow-lg shadow-black/5 hover:shadow-xl hover:shadow-black/10 hover:bg-white hover:-translate-y-0.5",
-    ghost: "bg-transparent text-gray-600 hover:bg-white/50 hover:text-gray-800",
-    pill: "bg-gradient-to-r from-yellow-400 to-orange-400 text-black shadow-lg shadow-yellow-500/25 hover:shadow-xl hover:shadow-yellow-500/30 hover:scale-105 active:scale-95"
+    primary: "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 hover:scale-105 active:scale-95",
+    secondary: "bg-white/70 text-gray-700 border border-purple-200/40 shadow-lg shadow-purple-500/10 hover:shadow-xl hover:shadow-purple-500/15 hover:bg-white/90 hover:-translate-y-0.5 backdrop-blur-xl",
+    ghost: "bg-transparent text-gray-600 hover:bg-purple-100/30 hover:text-gray-800",
+    pill: "bg-gradient-to-r from-purple-400 to-pink-400 text-white shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/35 hover:scale-105 active:scale-95"
   };
   
   const widthClass = fullWidth ? "w-full" : "";

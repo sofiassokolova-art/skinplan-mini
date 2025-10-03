@@ -65,11 +65,11 @@ function addToCart(item: any) {
 }
 
 const Button = ({ children, onClick, variant = "primary", size = "md", disabled, ...props }: any) => {
-  const baseClass = "inline-flex items-center justify-center rounded-xl transition focus:outline-none disabled:opacity-50 disabled:pointer-events-none";
-  const sizeClass = size === "sm" ? "px-3 py-1.5 text-sm" : "px-4 py-2";
-  const variantClass = variant === "primary" ? "border border-black hover:bg-black hover:text-white" :
-                      variant === "secondary" ? "border border-neutral-300 hover:border-black" :
-                      "border border-transparent hover:bg-neutral-100";
+  const baseClass = "inline-flex items-center justify-center rounded-2xl transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:pointer-events-none font-medium";
+  const sizeClass = size === "sm" ? "px-3 py-1.5 text-sm" : "px-5 py-2.5";
+  const variantClass = variant === "primary" ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40" :
+                      variant === "secondary" ? "border border-purple-200/50 bg-white/70 backdrop-blur-xl hover:bg-white/90 hover:border-purple-300/60 shadow-sm" :
+                      "border border-transparent hover:bg-purple-100/30";
   
   return (
     <button 
@@ -84,15 +84,15 @@ const Button = ({ children, onClick, variant = "primary", size = "md", disabled,
 };
 
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-2xl border border-neutral-200 bg-white shadow-sm ${className}`}>
+  <div className={`rounded-3xl border border-purple-200/30 bg-white/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(139,92,246,0.12)] ${className}`}>
     {children}
   </div>
 );
 
 const ProgressBar = ({ value }: { value: number }) => (
-  <div className="w-full h-2 rounded bg-neutral-200/60">
+  <div className="w-full h-2 rounded-full bg-purple-100/50">
     <div 
-      className="h-2 rounded bg-gradient-to-r from-indigo-500 to-fuchsia-500 transition-[width]"
+      className="h-2 rounded-full bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600 transition-[width] duration-500 shadow-sm"
       style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
     />
   </div>
