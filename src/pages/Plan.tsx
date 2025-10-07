@@ -426,11 +426,11 @@ export default function Plan() {
       </div>
       
       {hasPremium ? (
-        <div className="grid gap-3">
+        <div className="flex flex-col gap-3 max-h-none overflow-visible">
           {items.map(item => (
             <div 
               key={`${item.timeOfDay}-${item.step}-${item.name}`}
-              className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3"
+              className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3 bg-white/50 backdrop-blur-sm"
             >
               <div>
                 <div className="text-base font-medium">{item.name}</div>
@@ -444,11 +444,11 @@ export default function Plan() {
         </div>
       ) : (
         <BlurredContent>
-          <div className="grid gap-3">
+          <div className="flex flex-col gap-3 max-h-none overflow-visible">
             {items.map(item => (
               <div 
                 key={`${item.timeOfDay}-${item.step}-${item.name}`}
-                className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3"
+                className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3 bg-white/50 backdrop-blur-sm"
               >
                 <div>
                   <div className="text-base font-medium">{item.name}</div>
@@ -697,15 +697,25 @@ export default function Plan() {
 
       <div className="space-y-4">
         <MetricsSection />
-        <ProductSection title="Утро" items={plan.morning} />
-        <ProductSection title="Вечер" items={plan.evening} />
+        <ProductSection title="Уход сегодня" items={[...plan.morning, ...plan.evening]} />
         
-        <Card className="p-4 md:p-5">
-          <div className="flex items-center justify-between">
-            <div className="text-sm opacity-70">
-              Быстро добавить все средства в корзину
-            </div>
-            {hasPremium ? (
+        {/* Кнопка перепройти к подробному плану */}
+        <Card className="p-4 text-center">
+          <h3 className="text-lg font-semibold mb-2">Получить подробный план</h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            Разблокируйте детальное расписание на 28 дней и персональные рекомендации
+          </p>
+          <Button onClick={unlockPremium} size="lg">
+            Перепройти к подробному плану
+          </Button>
+        </Card>
+        
+        {hasPremium && (
+          <Card className="p-4 md:p-5">
+            <div className="flex items-center justify-between">
+              <div className="text-sm opacity-70">
+                Быстро добавить все средства в корзину
+              </div>
               <div className="flex gap-2">
                 {itemsAddedToCart ? (
                   <>
@@ -720,13 +730,9 @@ export default function Plan() {
                   <Button onClick={addAllToCart}>Добавить все</Button>
                 )}
               </div>
-            ) : (
-              <BlurredContent showOverlay={false}>
-                <Button>Добавить все</Button>
-              </BlurredContent>
-            )}
-          </div>
-        </Card>
+            </div>
+          </Card>
+        )}
         
         {hasPremium ? (
           <ScheduleSection />
