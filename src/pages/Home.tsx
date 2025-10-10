@@ -537,8 +537,21 @@ export default function MobileSkinIQHome() {
 
       {/* Main Panel */}
       <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4 overflow-visible`}>
-        <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
-        <p className="text-[12px] text-neutral-600 mt-0.5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
+          <div className="flex items-center gap-3">
+            <div className="text-sm font-medium text-neutral-700">
+              {completed} из {items.length}
+            </div>
+            <div className="w-20 h-1 bg-neutral-200/60 rounded-full shadow-inner">
+              <div 
+                className="h-1 bg-gradient-to-r from-neutral-700 to-neutral-900 rounded-full transition-all duration-300" 
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+        <p className="text-[12px] text-neutral-600">
           {progress === 0
             ? "Начните с первого шага"
             : progress === 100
@@ -563,18 +576,8 @@ export default function MobileSkinIQHome() {
         </div>
 
         {/* Routine list */}
-        <div className="relative mt-3 overflow-visible">
-          {/* Scroll indicator for routine cards */}
-          <div className="absolute top-0 right-0 z-10 flex flex-col items-center gap-1 opacity-60">
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce"></div>
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-            <div className="w-1 h-1 bg-neutral-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-            <svg className="w-3 h-3 text-neutral-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-            </svg>
-          </div>
-          
-          <div className="space-y-3 max-h-[288px] overflow-y-auto pr-6 scrollbar-hide" style={{overflowX: 'visible'}}>
+        <div className="mt-3">
+          <div className="space-y-3">
             {items.map((it, idx) => (
               <RoutineCard
                 key={it.id}
@@ -584,19 +587,13 @@ export default function MobileSkinIQHome() {
               />
             ))}
           </div>
-          </div>
+        </div>
           
-        {/* Progress + CTA */}
-        <div className="mt-3 flex flex-col items-center relative">
-          <div className="w-full flex justify-center py-8 px-12" style={{overflow: 'visible'}}>
-            <ProgressRing value={progress} />
-          </div>
-          <div className="text-[13px] text-neutral-600 -mt-2 tabular-nums">
-            Выполнено {completed} из {items.length}
-          </div>
+        {/* CTA */}
+        <div className="mt-4">
           <button
             onClick={() => navigate("/plan")}
-            className="glossy-black-card mt-2 w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center relative group hover:shadow-2xl transition-all duration-300"
+            className="glossy-black-card w-full h-12 text-white text-[15px] font-semibold flex items-center justify-center relative group hover:shadow-2xl transition-all duration-300"
           >
             {/* Decorative spheres */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
@@ -605,16 +602,12 @@ export default function MobileSkinIQHome() {
             </div>
             
             <span className="relative inline-block text-white z-10">
-              {progress === 0
-                ? "Перейти к подробному плану"
-                : progress === 100
-                ? "Открыть подробный план"
-                : "Открыть подробный план"}
+              Перепройти к подробному плану
             </span>
           </button>
           <button 
             onClick={() => navigate("/quiz")}
-            className="mt-1.5 text-[14px] text-neutral-800 underline/20 hover:text-neutral-600 transition-colors"
+            className="mt-2 text-[14px] text-neutral-800 underline/20 hover:text-neutral-600 transition-colors w-full"
           >
             Перепройти анкету
           </button>
