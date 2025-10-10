@@ -1245,7 +1245,7 @@ export default function Quiz() {
           isPageLoaded ? 'opacity-100' : 'opacity-0'
         }`}
           style={{
-            background: 'linear-gradient(135deg, #f5e6d3 0%, #f5e6d3 30%, #ffffff 50%, #e0f2ff 70%, #bae6fd 85%, #f5e6d3 100%)',
+            background: 'linear-gradient(135deg, #f5e6d3 0%, #ffffff 50%, #cebcf9a9 100%)',
             backgroundSize: '400% 400%',
           animation: 'gradient 10s ease-in-out infinite'
         }}
@@ -1367,7 +1367,7 @@ export default function Quiz() {
       {/* Экран загрузки */}
       {isAnalyzing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{
-          background: 'linear-gradient(135deg, #f5e6d3 0%, #f5e6d3 30%, #ffffff 50%, #e0f2ff 70%, #bae6fd 85%, #f5e6d3 100%)',
+          background: 'linear-gradient(135deg, #f5e6d3 0%, #ffffff 50%, #cebcf9a9 100%)',
           animation: 'gradient 10s ease-in-out infinite',
           backgroundSize: '400% 400%'
         }}>
