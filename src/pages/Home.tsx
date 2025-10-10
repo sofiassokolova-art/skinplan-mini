@@ -222,7 +222,8 @@ const eveningDefault = [
 ];
 
 // ----- Visual components -----
-function ProgressRing({ value = 0, size = 60, stroke = 3 }) {
+function ProgressRing({ completed = 0, total = 5, size = 60, stroke = 3 }) {
+  const value = total > 0 ? (completed / total) * 100 : 0;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
@@ -271,7 +272,7 @@ function ProgressRing({ value = 0, size = 60, stroke = 3 }) {
       <foreignObject x="0" y="0" width={size} height={size}>
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center">
-            <div className="text-xs font-bold text-neutral-900" style={{fontVariantNumeric: 'tabular-nums'}}>{Math.round(value)}%</div>
+            <div className="text-xs font-bold text-neutral-900" style={{fontVariantNumeric: 'tabular-nums'}}>{completed} из {total}</div>
           </div>
         </div>
       </foreignObject>
@@ -530,12 +531,7 @@ export default function MobileSkinIQHome() {
       <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4 overflow-visible`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-medium text-neutral-700">
-              {completed} из {items.length}
-            </div>
-            <ProgressRing value={progress} size={40} stroke={2} />
-          </div>
+          <ProgressRing completed={completed} total={items.length} size={40} stroke={2} />
         </div>
         <p className="text-[12px] text-neutral-600">
           {progress === 0
@@ -588,7 +584,7 @@ export default function MobileSkinIQHome() {
             </div>
             
             <span className="relative inline-block text-white z-10">
-              Перепройти к подробному плану
+              Перейти к подробному плану
             </span>
           </button>
           <button 
