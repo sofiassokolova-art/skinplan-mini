@@ -222,7 +222,7 @@ const eveningDefault = [
 ];
 
 // ----- Visual components -----
-function ProgressRing({ value = 0, size = 180, stroke = 7 }) {
+function ProgressRing({ value = 0, size = 60, stroke = 3 }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
@@ -235,14 +235,7 @@ function ProgressRing({ value = 0, size = 180, stroke = 7 }) {
           <stop offset="100%" stopColor="#F0E6FF" />
           </linearGradient>
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
-          <feMerge> 
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-        <filter id="pulseGlow" x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="12" result="coloredBlur"/>
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
           <feMerge> 
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
@@ -267,20 +260,18 @@ function ProgressRing({ value = 0, size = 180, stroke = 7 }) {
         strokeLinecap="round"
           strokeWidth={stroke} 
         fill="none"
-        filter={value === 100 ? "url(#pulseGlow)" : "url(#glow)"}
+        filter="url(#glow)"
         style={{ 
           strokeDasharray: c, 
           strokeDashoffset: offset, 
           transition: "stroke-dashoffset 600ms cubic-bezier(0.22,1,0.36,1)",
-          animation: value === 100 ? "pulseGlow 2s ease-in-out infinite" : "none",
           transformOrigin: "center"
         }}
       />
       <foreignObject x="0" y="0" width={size} height={size}>
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center">
-            <div className="text-2xl font-bold text-neutral-900" style={{fontVariantNumeric: 'tabular-nums'}}>{Math.round(value)}%</div>
-            <div className="text-xs text-neutral-600">выполнено</div>
+            <div className="text-xs font-bold text-neutral-900" style={{fontVariantNumeric: 'tabular-nums'}}>{Math.round(value)}%</div>
           </div>
         </div>
       </foreignObject>
@@ -539,16 +530,11 @@ export default function MobileSkinIQHome() {
       <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4 overflow-visible`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-[18px] font-semibold text-neutral-900">Уход сегодня</h3>
-          <div className="flex items-center gap-3">
-            <div className="text-sm font-medium text-neutral-700">
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-medium text-neutral-700">
               {completed} из {items.length}
             </div>
-            <div className="w-20 h-1 bg-neutral-200/60 rounded-full shadow-inner">
-              <div 
-                className="h-1 bg-gradient-to-r from-neutral-700 to-neutral-900 rounded-full transition-all duration-300" 
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            <ProgressRing value={progress} size={40} stroke={2} />
           </div>
         </div>
         <p className="text-[12px] text-neutral-600">
