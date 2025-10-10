@@ -282,11 +282,11 @@ function ProgressRing({ value = 0, size = 60, stroke = 3 }) {
 function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: () => void; onOpen: () => void }) {
   return (
     <div className={`bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl h-[72px] px-3 py-2 flex items-center gap-3 select-none shadow-[0_4px_12px_rgba(0,0,0,0.04)]`}>
-      <div className="w-10 h-10 rounded-2xl bg-white/80 flex items-center justify-center overflow-hidden shadow-sm">
+      <div className="w-10 h-10 flex items-center justify-center">
         {item.icon ? (
-          <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
+          <img src={item.icon} alt="" className="w-8 h-8 object-contain" />
         ) : (
-          <div className="w-6 h-6 rounded-xl bg-neutral-900/80" />
+          <div className="w-8 h-8 rounded-xl bg-neutral-900/80" />
         )}
       </div>
       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
