@@ -1293,7 +1293,7 @@ export default function Quiz() {
           </button>
         )}
 
-        <ProgressBar currentStepIndex={currentStepIndex} />
+        {currentStep.kind === "question" && <ProgressBar currentStepIndex={currentStepIndex} />}
 
         <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 w-full">
         {currentStep.kind === "question" ? (
