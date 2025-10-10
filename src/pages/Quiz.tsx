@@ -176,6 +176,32 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   );
 }
 
+function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
+  const completedQuestions = useMemo(() => {
+    const questionSteps = screens.slice(0, currentStepIndex + 1).filter(step => step.kind === "question");
+    // Исключаем опциональный фото-шаг из подсчёта
+    return questionSteps.filter(step => step.id !== "photo").length;
+  }, [currentStepIndex]);
+  
+  const totalRequiredQuestions = screens.filter(step => step.kind === "question" && step.id !== "photo").length;
+  const percentage = Math.min(100, Math.round((completedQuestions / totalRequiredQuestions) * 100));
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between text-sm mb-1">
+        <span>Шаг {completedQuestions} из {totalRequiredQuestions}</span>
+        <span>{percentage}%</span>
+      </div>
+      <div className="h-2 w-full bg-neutral-200 rounded">
+        <div 
+          className="h-2 bg-black rounded" 
+          style={{ width: `${percentage}%` }}
+          aria-label="Прогресс анкеты"
+        />
+      </div>
+    </div>
+  );
+}
 
 // Определение всех экранов анкеты
 const screens: Screen[] = [
@@ -1276,36 +1302,14 @@ export default function Quiz() {
           </button>
         )}
 
+        <ProgressBar currentStepIndex={currentStepIndex} />
 
         <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 w-full">
         {currentStep.kind === "question" ? (
             <div>
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl md:text-2xl font-semibold">
+              <h1 className="text-xl md:text-2xl font-semibold mb-2">
                 {currentStep.title}
               </h1>
-              <div className="flex items-center gap-3">
-                <div className="text-sm font-medium text-neutral-700">
-                  {(() => {
-                    const completedQuestions = screens.slice(0, currentStepIndex + 1).filter(step => step.kind === "question" && step.id !== "photo").length;
-                    const totalRequiredQuestions = screens.filter(step => step.kind === "question" && step.id !== "photo").length;
-                    return `${completedQuestions} из ${totalRequiredQuestions}`;
-                  })()}
-                </div>
-                <div className="w-20 h-1 bg-neutral-200/60 rounded-full shadow-inner">
-                  <div 
-                    className="h-1 bg-gradient-to-r from-neutral-700 to-neutral-900 rounded-full transition-all duration-300" 
-                    style={{ 
-                      width: `${(() => {
-                        const completedQuestions = screens.slice(0, currentStepIndex + 1).filter(step => step.kind === "question" && step.id !== "photo").length;
-                        const totalRequiredQuestions = screens.filter(step => step.kind === "question" && step.id !== "photo").length;
-                        return Math.min(100, Math.round((completedQuestions / totalRequiredQuestions) * 100));
-                      })()}%` 
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
             {currentStep.description && (
               <p className="opacity-70 mb-4">{currentStep.description}</p>
             )}
