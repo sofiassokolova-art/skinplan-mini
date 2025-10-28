@@ -272,7 +272,7 @@ function ProgressRing({ completed = 0, total = 5, size = 60, stroke = 3 }) {
       <foreignObject x="0" y="0" width={size} height={size}>
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center">
-            <div className="text-xs font-bold text-neutral-900" style={{fontVariantNumeric: 'tabular-nums'}}>{completed} из {total}</div>
+            <div className="text-xs font-normal text-neutral-700" style={{fontVariantNumeric: 'tabular-nums'}}>{completed} из {total}</div>
           </div>
         </div>
       </foreignObject>
@@ -285,7 +285,9 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
     <div className={`bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl h-[72px] px-3 py-2 flex items-center gap-3 select-none shadow-[0_4px_12px_rgba(0,0,0,0.04)]`}>
       <div className="w-10 h-10 flex items-center justify-center">
         {item.icon ? (
-          <img src={item.icon} alt="" className="w-8 h-8 object-contain" />
+          <div className="w-8 h-8 rounded-xl bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
+            <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
+          </div>
         ) : (
           <div className="w-8 h-8 rounded-xl bg-neutral-900/80" />
         )}
@@ -670,30 +672,6 @@ export default function MobileSkinIQHome() {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="mt-6 pb-12 mx-4">
-        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6">
-          <h3 className="text-[18px] font-semibold text-neutral-900 mb-4">Часто задаваемые вопросы</h3>
-          <div className="space-y-4">
-            <FAQItem 
-              question="Как часто нужно обновлять план ухода?"
-              answer="Рекомендуем пересматривать план каждые 3-4 месяца или при изменении состояния кожи."
-            />
-            <FAQItem 
-              question="Можно ли использовать средства из разных брендов?"
-              answer="Да, главное — соблюдать последовательность и не смешивать несовместимые активы."
-            />
-            <FAQItem 
-              question="Что делать, если появилось раздражение?"
-              answer="Прекратите использование активных средств на 3-5 дней, используйте только успокаивающие продукты."
-            />
-            <FAQItem 
-              question="Как долго ждать результатов?"
-              answer="Первые улучшения видны через 2-4 недели, значительные изменения — через 8-12 недель."
-            />
-          </div>
-        </div>
-      </section>
 
       {/* Bottom Sheet */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} item={sheetItem} />
@@ -701,30 +679,6 @@ export default function MobileSkinIQHome() {
   );
 }
 
-function FAQItem({ question, answer }: { question: string; answer: string }) {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  return (
-    <div className="border-b border-white/30 pb-3 last:border-b-0 last:pb-0">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left flex items-center justify-between py-2"
-      >
-        <span className="text-[14px] font-medium text-neutral-900 pr-4">{question}</span>
-        <div className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </div>
-      </button>
-      {isOpen && (
-        <div className="mt-2 text-[13px] text-neutral-700 leading-relaxed">
-          {answer}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (

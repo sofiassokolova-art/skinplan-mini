@@ -115,8 +115,8 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
             onClick={() => onChange(option)}
             className={`w-full p-4 rounded-2xl border transition-all duration-200 text-left ${
               isSelected 
-                ? "bg-neutral-500/40 backdrop-blur-xl text-neutral-900 border-neutral-500/50 shadow-lg"
-                : "bg-white/40 backdrop-blur-xl text-gray-700 border-white/50 hover:border-white/70 shadow-md hover:-translate-y-0.5"
+                ? "bg-white/50 backdrop-blur-xl text-neutral-900 border-white/60 shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+                : "bg-white/40 backdrop-blur-xl text-gray-700 border-white/50 hover:border-white/70 shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5"
             }`}
           >
             {lines.map((line, idx) => (
@@ -141,7 +141,7 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
         return (
           <label
             key={option}
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-md"
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5"
           >
             <div 
               className="flex-shrink-0"
@@ -188,13 +188,13 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
 
   return (
     <div className="mb-4">
-      <div className="flex items-center justify-between text-sm mb-1">
+      <div className="flex items-center justify-between text-sm mb-1 text-neutral-700">
         <span>Шаг {completedQuestions} из {totalRequiredQuestions}</span>
         <span>{percentage}%</span>
       </div>
-      <div className="h-2 w-full bg-neutral-200 rounded">
+      <div className="h-2 w-full bg-white/30 backdrop-blur-xl rounded-full border border-white/40">
         <div 
-          className="h-2 bg-black rounded" 
+          className="h-2 bg-gradient-to-r from-neutral-900 to-neutral-700 rounded-full transition-all duration-500" 
           style={{ width: `${percentage}%` }}
           aria-label="Прогресс анкеты"
         />
@@ -305,9 +305,9 @@ const screens: Screen[] = [
             { name: "Ирина, Новосибирск", text: "У меня была проблема с покраснением и чувствительностью, через месяц стало намного лучше, кожа спокойнее!" },
             { name: "Екатерина, Москва", text: "Всегда мучалась с расширенными порами и жирным блеском. Теперь макияж хорошо держится, жирный блеск появляется только к концу дня" }
           ].map((review, i) => (
-            <div key={i} className="min-w-[280px] p-4 bg-white/50 rounded-2xl">
+            <div key={i} className="min-w-[280px] p-4 bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
               <div className="text-yellow-500 mb-2">⭐️⭐️⭐️⭐️⭐️</div>
-              <p className="text-sm mb-2">«{review.text}»</p>
+              <p className="text-sm mb-2 text-neutral-800">«{review.text}»</p>
               <p className="text-xs text-neutral-600">— {review.name}</p>
             </div>
           ))}
@@ -838,8 +838,8 @@ const screens: Screen[] = [
     title: "Вы узнаёте себя в этом?",
     visual: "yes_no",
     renderBody: () => (
-      <div className="text-center p-4 bg-green-50 rounded-xl">
-        <p className="text-sm italic">
+      <div className="text-center p-4 bg-white/40 backdrop-blur-xl border border-white/50 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+        <p className="text-sm italic text-neutral-800">
           «Я хочу заботиться о своей коже, но не знаю, какие средства выбрать»
         </p>
       </div>
@@ -853,8 +853,8 @@ const screens: Screen[] = [
     title: "Вы узнаёте себя в этом?",
     visual: "yes_no",
     renderBody: () => (
-      <div className="text-center p-4 bg-green-50 rounded-xl">
-        <p className="text-sm italic">
+      <div className="text-center p-4 bg-white/40 backdrop-blur-xl border border-white/50 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+        <p className="text-sm italic text-neutral-800">
           «Я часто бросаю уход, когда он становится слишком сложным или занимает много времени»
         </p>
       </div>
@@ -868,8 +868,8 @@ const screens: Screen[] = [
     title: "Вы узнаёте себя в этом?",
     visual: "yes_no",
     renderBody: () => (
-      <div className="text-center p-4 bg-green-50 rounded-xl">
-        <p className="text-sm italic">
+      <div className="text-center p-4 bg-white/40 backdrop-blur-xl border border-white/50 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+        <p className="text-sm italic text-neutral-800">
           «Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»
         </p>
       </div>
@@ -1048,7 +1048,7 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
         </p>
       </div>
       
-      <label className="block w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-center cursor-pointer hover:border-gray-400 transition">
+      <label className="block w-full p-4 border-2 border-dashed border-white/50 rounded-xl text-center cursor-pointer hover:border-white/70 transition-all duration-200 bg-white/20 backdrop-blur-xl hover:bg-white/30 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
@@ -1059,16 +1059,16 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
           }}
         />
         <div className="text-2xl mb-2">📷</div>
-        <div className="text-sm font-medium text-gray-600">
+        <div className="text-sm font-medium text-neutral-700">
           {isAnalyzing ? "Анализируем..." : "Нажмите для загрузки фото"}
         </div>
-        <div className="text-xs text-gray-500 mt-1">
+        <div className="text-xs text-neutral-500 mt-1">
           JPEG, PNG, WebP до 5 МБ
         </div>
       </label>
 
       {error && (
-        <div role="alert" className="mt-3 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
+        <div role="alert" className="mt-3 text-sm text-rose-700 bg-white/40 backdrop-blur-xl border border-rose-200 rounded-xl p-3 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
           {error}
         </div>
       )}
@@ -1138,10 +1138,10 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
           
           {answers.photo_analysis && !isAnalyzing && (
             <div className="mt-4 space-y-3">
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="bg-white/40 backdrop-blur-xl border border-green-200 rounded-xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
                 <div className="text-center mb-3">
                   <h3 className="text-lg font-bold text-green-700">✅ Анализ завершён!</h3>
-                  <div className="text-sm text-zinc-600">Результаты ИИ-анализа кожи</div>
+                  <div className="text-sm text-neutral-600">Результаты ИИ-анализа кожи</div>
                 </div>
                 
                 <div className="space-y-2 text-sm">
@@ -1153,13 +1153,13 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
               
               {/* Детали выбранной проблемной области */}
               {selectedProblem && (
-                <div className="mt-3 p-3 rounded-xl border-l-4 border-blue-500 bg-blue-50">
+                <div className="mt-3 p-3 rounded-xl border-l-4 border-blue-500 bg-white/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
                   <div className="text-sm font-medium mb-1">
                     🎯 {selectedProblem.type} ({selectedProblem.severity === 'high' ? 'высокая' : selectedProblem.severity === 'medium' ? 'средняя' : 'низкая'} степень)
                   </div>
-                  <div className="text-xs text-zinc-600 mb-2">{selectedProblem.description}</div>
+                  <div className="text-xs text-neutral-600 mb-2">{selectedProblem.description}</div>
                   
-                  <div className="text-xs text-zinc-700">
+                  <div className="text-xs text-neutral-700">
                     <strong>Что делать:</strong>
                     {selectedProblem.type === 'акне' && " BHA 2-3 раза в неделю, точечные средства"}
                     {selectedProblem.type === 'жирность' && " Лёгкие гели, матирующие средства, ниацинамид"}
@@ -1188,7 +1188,7 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
           )}
           
           <button 
-            className="mt-3 text-sm text-zinc-600 underline" 
+            className="mt-3 text-sm text-neutral-600 underline hover:text-neutral-800 transition-colors" 
             onClick={() => setAnswers({...answers, photo_data_url: null, photo_analysis: null})}
           >
             Очистить фото
@@ -1205,6 +1205,7 @@ export default function Quiz() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
 
   useEffect(() => {
     saveAnswers(answers);
@@ -1212,6 +1213,13 @@ export default function Quiz() {
 
   useEffect(() => {
     setIsPageLoaded(true);
+  }, []);
+
+  // Load background image
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setBackgroundLoaded(true);
+    img.src = "/bg/IMG_8368 (2).PNG";
   }, []);
 
   const currentStep = screens[currentStepIndex];
@@ -1264,19 +1272,31 @@ export default function Quiz() {
   };
 
   return (
-    <div className="w-full min-h-screen relative">
-      {/* Background */}
+    <div className="w-full min-h-screen relative overflow-x-hidden">
+      {/* Background layers: PNG image with floating spheres */}
       <div 
-        className={`fixed inset-0 -z-10 transition-opacity duration-500 ${
-          isPageLoaded ? 'opacity-100' : 'opacity-0'
+        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
+          backgroundLoaded ? 'opacity-100' : 'opacity-0'
         }`}
-          style={{
-            background: 'linear-gradient(135deg, #f0e6d2 0%, #ffffff 40%, #e6d3f5 80%, #d4c4ed 100%)',
-            backgroundSize: '400% 400%',
-          animation: 'gradient 10s ease-in-out infinite'
+        style={{
+          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
         }}
       />
       
+      {/* Premium shimmer loading effect */}
+      {!backgroundLoaded && (
+        <div className="fixed inset-0 -z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 shimmer-wrapper">
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="absolute top-4 left-4 z-20">
+        <img 
+          src="/skiniq-logo.png" 
+          alt="SkinIQ" 
+          className="h-32 w-auto object-contain"
+        />
+      </div>
 
       <div 
         className={`relative z-20 space-y-2 px-2 pb-4 pt-8 transition-all duration-500 ${
@@ -1287,7 +1307,7 @@ export default function Quiz() {
           <button
             type="button"
             onClick={goBack}
-            className="text-sm text-neutral-600 flex items-center gap-1 mb-2"
+            className="text-sm text-neutral-700 flex items-center gap-1 mb-2 hover:text-neutral-900 transition-colors bg-white/20 backdrop-blur-xl px-3 py-2 rounded-xl border border-white/40 shadow-[0_4px_12px_rgba(0,0,0,0.04)]"
           >
             ← Назад
           </button>
@@ -1351,35 +1371,36 @@ export default function Quiz() {
         </div>
       </div>
       
-      <style>{`
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
-      
       {/* Экран загрузки */}
       {isAnalyzing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{
-          background: 'linear-gradient(135deg, #f0e6d2 0%, #ffffff 40%, #e6d3f5 80%, #d4c4ed 100%)',
-          animation: 'gradient 10s ease-in-out infinite',
-          backgroundSize: '400% 400%'
-        }}>
-          <div className="text-center px-6">
-            <div className="mb-6">
-              <div className="relative w-32 h-32 mx-auto">
-                {/* Rotating circles */}
-                <div className="absolute inset-0 rounded-full border-4 border-neutral-200 opacity-20"></div>
-                <div className="absolute inset-0 rounded-full border-4 border-t-neutral-900 animate-spin"></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Background with same image as main page */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{
+              backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
+            }}
+          />
+          
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-white/20 backdrop-blur-xl" />
+          
+          <div className="relative z-10 text-center px-6">
+            <div className="bg-white/40 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-8">
+              <div className="mb-6">
+                <div className="relative w-32 h-32 mx-auto">
+                  {/* Rotating circles */}
+                  <div className="absolute inset-0 rounded-full border-4 border-white/30 opacity-20"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-t-neutral-900 animate-spin"></div>
+                </div>
               </div>
-            </div>
-            <h2 className="text-2xl font-bold text-neutral-900 mb-3">✨ Анализируем ваши ответы</h2>
-            <p className="text-neutral-600 text-lg">Создаём персональный план ухода...</p>
-            <div className="mt-6 flex justify-center gap-1">
-              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
-              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+              <h2 className="text-2xl font-bold text-neutral-900 mb-3">✨ Анализируем ваши ответы</h2>
+              <p className="text-neutral-700 text-lg">Создаём персональный план ухода...</p>
+              <div className="mt-6 flex justify-center gap-1">
+                <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+              </div>
             </div>
           </div>
         </div>
