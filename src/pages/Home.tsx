@@ -272,7 +272,7 @@ function ProgressRing({ completed = 0, total = 5, size = 60, stroke = 3 }) {
       <foreignObject x="0" y="0" width={size} height={size}>
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center">
-            <div className="text-xs font-normal text-neutral-700" style={{fontVariantNumeric: 'tabular-nums'}}>{completed} из {total}</div>
+            <div className="text-[10px] font-normal text-neutral-700" style={{fontVariantNumeric: 'tabular-nums'}}>{completed} из {total}</div>
           </div>
         </div>
       </foreignObject>
