@@ -209,8 +209,8 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "welcome",
-    title: "",
-    subtitle: "Подбери уход для своей кожи",
+    title: "Подбери уход для своей кожи",
+    subtitle: "",
     renderBody: () => (
       <div className="space-y-6">
         <div className="text-center space-y-4">
@@ -1315,10 +1315,10 @@ export default function Quiz() {
 
         {currentStep.kind === "question" && <ProgressBar currentStepIndex={currentStepIndex} />}
 
-        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 w-full">
+        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 w-full transform transition-all duration-300 hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] hover:scale-[1.01]">
         {currentStep.kind === "question" ? (
             <div>
-              <h1 className="text-xl md:text-2xl font-semibold mb-2">
+              <h1 className="text-xl md:text-2xl font-semibold mb-2 animate-fade-in">
                 {currentStep.title}
               </h1>
             {currentStep.description && (
@@ -1405,6 +1405,16 @@ export default function Quiz() {
           </div>
         </div>
       )}
+      
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

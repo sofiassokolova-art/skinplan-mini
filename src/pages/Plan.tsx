@@ -65,11 +65,11 @@ function addToCart(item: any) {
 }
 
 const Button = ({ children, onClick, variant = "primary", size = "md", disabled, ...props }: any) => {
-  const baseClass = "inline-flex items-center justify-center rounded-xl transition focus:outline-none disabled:opacity-50 disabled:pointer-events-none";
-  const sizeClass = size === "sm" ? "px-3 py-1.5 text-sm" : "px-4 py-2";
-  const variantClass = variant === "primary" ? "border border-black hover:bg-black hover:text-white" :
-                      variant === "secondary" ? "border border-neutral-300 hover:border-black" :
-                      "border border-transparent hover:bg-neutral-100";
+  const baseClass = "inline-flex items-center justify-center rounded-2xl transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:pointer-events-none font-semibold";
+  const sizeClass = size === "sm" ? "px-3 py-1.5 text-sm" : size === "lg" ? "px-6 py-3 text-base" : "px-4 py-2 text-sm";
+  const variantClass = variant === "primary" ? "bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl" :
+                      variant === "secondary" ? "bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-[0_4px_12px_rgba(0,0,0,0.04)]" :
+                      "bg-white/20 backdrop-blur-xl text-neutral-700 border border-white/40 hover:bg-white/30 shadow-[0_4px_12px_rgba(0,0,0,0.04)]";
   
   return (
     <button 
@@ -84,15 +84,15 @@ const Button = ({ children, onClick, variant = "primary", size = "md", disabled,
 };
 
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-2xl border border-neutral-200 bg-white shadow-sm ${className}`}>
+  <div className={`rounded-3xl border border-white/40 bg-white/20 backdrop-blur-xl shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${className}`}>
     {children}
   </div>
 );
 
 const ProgressBar = ({ value }: { value: number }) => (
-  <div className="w-full h-2 rounded bg-neutral-200/60">
+  <div className="w-full h-2 rounded-full bg-white/30 backdrop-blur-xl border border-white/40">
     <div 
-      className="h-2 rounded bg-gradient-to-r from-indigo-500 to-fuchsia-500 transition-[width]"
+      className="h-2 rounded-full bg-gradient-to-r from-neutral-900 to-neutral-700 transition-[width] duration-500"
       style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
     />
   </div>
@@ -430,7 +430,7 @@ export default function Plan() {
           {items.map(item => (
             <div 
               key={`${item.timeOfDay}-${item.step}-${item.name}`}
-              className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3 bg-white/50 backdrop-blur-sm"
+              className="flex items-start justify-between gap-3 rounded-2xl border border-white/50 p-3 bg-white/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:bg-white/60 transition-all duration-200"
             >
               <div>
                 <div className="text-base font-medium">{item.name}</div>
@@ -446,10 +446,10 @@ export default function Plan() {
         <BlurredContent>
           <div className="flex flex-col gap-3 max-h-none overflow-visible">
             {items.map(item => (
-              <div 
-                key={`${item.timeOfDay}-${item.step}-${item.name}`}
-                className="flex items-start justify-between gap-3 rounded-xl border border-neutral-200 p-3 bg-white/50 backdrop-blur-sm"
-              >
+            <div 
+              key={`${item.timeOfDay}-${item.step}-${item.name}`}
+              className="flex items-start justify-between gap-3 rounded-2xl border border-white/50 p-3 bg-white/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]"
+            >
                 <div>
                   <div className="text-base font-medium">{item.name}</div>
                   <div className="text-xs opacity-60">{item.step}</div>
@@ -556,9 +556,9 @@ export default function Plan() {
       {hasPremium ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-1">Тип кожи</div>
-              <div className="text-lg font-semibold">{analysis.skinType}</div>
+            <div className="rounded-2xl border border-white/50 p-3 bg-white/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+              <div className="text-xs text-neutral-600 mb-1">Тип кожи</div>
+              <div className="text-lg font-semibold text-neutral-900">{analysis.skinType}</div>
             </div>
             <div className="rounded-xl border border-neutral-200 p-3">
               <div className="text-xs text-neutral-500 mb-2">Чувствительность</div>
@@ -664,10 +664,10 @@ export default function Plan() {
   );
 
   return (
-    <div className="w-full min-h-screen relative">
-      {/* Background layers: PNG image */}
+    <div className="w-full min-h-screen relative overflow-x-hidden">
+      {/* Background layers: PNG image with floating spheres */}
       <div 
-        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
+        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
           isPageLoaded ? 'opacity-100' : 'opacity-0'
         }`}
         style={{
@@ -675,7 +675,22 @@ export default function Plan() {
         }}
       />
       
-      <div className={`relative z-20 space-y-4 p-4 pt-24 print:px-0 transition-all duration-500 ${
+      {/* Premium shimmer loading effect */}
+      {!isPageLoaded && (
+        <div className="fixed inset-0 -z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 shimmer-wrapper">
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="absolute top-4 left-4 z-20">
+        <img 
+          src="/skiniq-logo.png" 
+          alt="SkinIQ" 
+          className="h-32 w-auto object-contain"
+        />
+      </div>
+      
+      <div className={`relative z-20 space-y-4 p-4 pt-32 print:px-0 transition-all duration-500 ${
         isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
       }`}>
         <Header />
