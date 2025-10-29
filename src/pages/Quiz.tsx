@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
-import ModernButton from "../ui/ModernButton";
 
 const STORAGE_KEY = "skiniq.answers";
 
@@ -168,9 +167,8 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   
   return (
     <div className="space-y-3 max-w-none">
-      {options.map((option, index) => {
+      {options.map((option) => {
         const isSelected = selected.has(option);
-        const icons = ["✓", "✓", "✓", "✓", "✓", "✓", "✓", "✓", "✓", "✓"];
         
         return (
           <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
