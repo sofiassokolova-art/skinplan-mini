@@ -102,29 +102,61 @@ type InfoScreen = {
 type Screen = QuestionScreen | InfoScreen;
 
 // Компоненты для вопросов
+function QuestionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 function SingleChoice({ options, value, onChange }: { options: string[]; value?: string; onChange: (v: string) => void }) {
   return (
     <div className="space-y-3 max-w-none">
-      {options.map(option => {
+      {options.map((option, index) => {
         const isSelected = value === option;
         const lines = option.split('\n');
+        const icons = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
+        
         return (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onChange(option)}
-            className={`w-full p-4 rounded-2xl border transition-all duration-200 text-left ${
-              isSelected 
-                ? "bg-white/50 backdrop-blur-xl text-neutral-900 border-white/60 shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
-                : "bg-white/40 backdrop-blur-xl text-gray-700 border-white/50 hover:border-white/70 shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5"
-            }`}
-          >
-            {lines.map((line, idx) => (
-              <div key={idx} className={`font-medium ${idx === 1 ? 'text-sm opacity-70 mt-1' : ''}`}>
-                {line}
+          <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
+            isSelected 
+              ? "bg-white/60 border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.12)] scale-[1.02]"
+              : "hover:bg-white/50 hover:scale-[1.01]"
+          }`}>
+            <button
+              type="button"
+              onClick={() => onChange(option)}
+              className="w-full flex items-center gap-4 text-left"
+            >
+              {/* Иконка с номером */}
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/60 flex items-center justify-center text-sm font-semibold">
+                {icons[index] || `${index + 1}`}
               </div>
-            ))}
-          </button>
+              
+              {/* Текст опции */}
+              <div className="flex-1">
+                {lines.map((line, idx) => (
+                  <div key={idx} className={`font-medium text-neutral-800 ${idx === 1 ? 'text-sm opacity-70 mt-1' : 'text-base'}`}>
+                    {line}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Индикатор выбора */}
+              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                isSelected 
+                  ? 'border-neutral-900 bg-neutral-900' 
+                  : 'border-neutral-300'
+              }`}>
+                {isSelected && (
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+            </button>
+          </QuestionCard>
         );
       })}
     </div>
@@ -135,41 +167,46 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   const selected = new Set(value || []);
   
   return (
-    <div className="space-y-2 max-w-none">
-      {options.map(option => {
+    <div className="space-y-3 max-w-none">
+      {options.map((option, index) => {
         const isSelected = selected.has(option);
+        const icons = ["✓", "✓", "✓", "✓", "✓", "✓", "✓", "✓", "✓", "✓"];
+        
         return (
-          <label
-            key={option}
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:-translate-y-0.5"
-          >
-            <div 
-              className="flex-shrink-0"
-              onClick={(e) => {
-                e.preventDefault();
-                const newSelected = new Set(selected);
-                if (isSelected) {
-                  newSelected.delete(option);
-                } else {
-                  newSelected.add(option);
-                }
-                onChange(Array.from(newSelected));
-              }}
-            >
-              <span
-                className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-200 ${
-                  isSelected 
-                    ? 'border-transparent bg-neutral-900 text-white scale-100' 
-                    : 'border-neutral-300 bg-neutral-200 text-neutral-400 scale-95'
-                }`}
+          <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
+            isSelected 
+              ? "bg-white/60 border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.12)] scale-[1.02]"
+              : "hover:bg-white/50 hover:scale-[1.01]"
+          }`}>
+            <label className="flex items-center gap-4 cursor-pointer">
+              <div 
+                className="flex-shrink-0"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const newSelected = new Set(selected);
+                  if (isSelected) {
+                    newSelected.delete(option);
+                  } else {
+                    newSelected.add(option);
+                  }
+                  onChange(Array.from(newSelected));
+                }}
               >
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </span>
-            </div>
-            <span className="flex-1 text-sm font-medium">{option}</span>
-          </label>
+                <div className={`w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-all duration-200 ${
+                  isSelected 
+                    ? 'border-neutral-900 bg-neutral-900 text-white scale-100' 
+                    : 'border-neutral-300 bg-white/60 scale-95'
+                }`}>
+                  {isSelected && (
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <span className="flex-1 text-base font-medium text-neutral-800">{option}</span>
+            </label>
+          </QuestionCard>
         );
       })}
     </div>
@@ -1318,11 +1355,11 @@ export default function Quiz() {
         <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 w-full transform transition-all duration-300 hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] hover:scale-[1.01]">
         {currentStep.kind === "question" ? (
             <div>
-              <h1 className="text-xl md:text-2xl font-semibold mb-2 animate-fade-in">
+              <h1 className="text-2xl md:text-3xl font-bold mb-4 text-center animate-fade-in">
                 {currentStep.title}
               </h1>
             {currentStep.description && (
-              <p className="opacity-70 mb-4">{currentStep.description}</p>
+              <p className="text-lg text-neutral-600 mb-6 text-center">{currentStep.description}</p>
             )}
             <div className="mb-6">
                 {currentStep.type === "single" && (
@@ -1343,14 +1380,17 @@ export default function Quiz() {
                   <PhotoStep answers={answers} setAnswers={setAnswers} />
                 )}
             </div>
-              <ModernButton
+              <button
                 onClick={goNext}
-                fullWidth
-                size="lg"
                 disabled={!isStepValid}
+                className={`w-full h-14 rounded-2xl font-bold text-lg transition-all duration-200 ${
+                  isStepValid
+                    ? "bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                    : "bg-neutral-300 text-neutral-500 cursor-not-allowed"
+                }`}
               >
-                {currentStepIndex >= screens.length - 1 ? "Завершить" : "Далее"}
-              </ModernButton>
+                {currentStepIndex >= screens.length - 1 ? "✨ Завершить" : "Продолжить →"}
+              </button>
             </div>
           ) : (
             <div>
@@ -1363,9 +1403,12 @@ export default function Quiz() {
             <div className="mb-6">
               {currentStep.renderBody(answers)}
             </div>
-              <ModernButton onClick={goNext} fullWidth size="lg">
-                {currentStep.ctaText || "Продолжить"}
-            </ModernButton>
+              <button
+                onClick={goNext}
+                className="w-full h-14 rounded-2xl font-bold text-lg bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+              >
+                {currentStep.ctaText || "Продолжить →"}
+              </button>
             </div>
         )}
         </div>
