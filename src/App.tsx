@@ -12,8 +12,8 @@ import ErrorBoundary from "./ErrorBoundary";
 function App() {
   const location = useLocation();
   
-  // Показываем Header только на страницах, где он нужен (не на главной)
-  const showHeader = location.pathname !== '/';
+  // Показываем Header только на страницах, где он нужен (не на главной и не в анкете)
+  const showHeader = location.pathname !== '/' && location.pathname !== '/quiz';
 
   return (
     <ErrorBoundary>

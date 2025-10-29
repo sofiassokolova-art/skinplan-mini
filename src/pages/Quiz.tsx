@@ -103,7 +103,7 @@ type Screen = QuestionScreen | InfoScreen;
 // Компоненты для вопросов
 function QuestionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] ${className}`}>
+    <div className={`bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] min-h-[72px] flex items-center ${className}`}>
       {children}
     </div>
   );
@@ -115,43 +115,40 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
       {options.map((option, index) => {
         const isSelected = value === option;
         const lines = option.split('\n');
-        const icons = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"];
         
         return (
           <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
             isSelected 
-              ? "bg-white/60 border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.12)] scale-[1.02]"
-              : "hover:bg-white/50 hover:scale-[1.01]"
+              ? "bg-white/60 border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+              : "hover:bg-white/50"
           }`}>
             <button
               type="button"
               onClick={() => onChange(option)}
-              className="w-full flex items-center gap-4 text-left"
+              className="w-full flex items-start gap-4 text-left"
             >
-              {/* Иконка с номером */}
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/60 flex items-center justify-center text-sm font-semibold">
-                {icons[index] || `${index + 1}`}
+              {/* Синий кружок с номером */}
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-sm font-bold text-white">
+                {index + 1}
               </div>
               
               {/* Текст опции */}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 {lines.map((line, idx) => (
-                  <div key={idx} className={`font-medium text-neutral-800 ${idx === 1 ? 'text-sm opacity-70 mt-1' : 'text-base'}`}>
+                  <div key={idx} className={`font-medium text-neutral-800 ${idx === 0 ? 'text-base font-semibold mb-1' : 'text-sm opacity-70 mt-1'}`}>
                     {line}
                   </div>
                 ))}
               </div>
               
-              {/* Индикатор выбора */}
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+              {/* Радио-кнопка справа */}
+              <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                 isSelected 
                   ? 'border-neutral-900 bg-neutral-900' 
-                  : 'border-neutral-300'
+                  : 'border-neutral-300 bg-transparent'
               }`}>
                 {isSelected && (
-                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
+                  <div className="w-3 h-3 rounded-full bg-white"></div>
                 )}
               </div>
             </button>
