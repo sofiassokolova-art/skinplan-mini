@@ -243,7 +243,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "personal_analysis",
-    title: "⭐ SkinIQ — ваш персональный анализ кожи",
+    title: "⭐ Персональный анализ кожи",
     renderBody: () => (
       <div className="space-y-4">
         <div className="text-sm font-medium">Ваш полный анализ включает:</div>
@@ -414,7 +414,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "simple_care",
-    title: "SkinIQ делает уход за кожей простым и понятным",
+    title: "Уход за кожей простым и понятным",
     visual: "comparison",
     renderBody: () => (
       <div className="grid grid-cols-2 gap-4 mt-4">
@@ -529,7 +529,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "health_trust",
-    title: "💙 SkinIQ заботится о вашем здоровье",
+    title: "💙 Забота о вашем здоровье",
     subtitle: "Все рекомендации по уходу одобрены врачами-дерматологами и абсолютно безопасны",
     visual: "trust",
     renderBody: () => (
@@ -611,7 +611,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "ai_showcase",
-    title: "SkinIQ использует ИИ для подбора ухода, который действительно работает",
+    title: "ИИ для подбора ухода, который действительно работает",
     visual: "product_showcase",
     renderBody: () => (
       <div className="mt-4 space-y-4">
@@ -719,7 +719,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "ai_comparison",
-    title: "Больше никакой путаницы — AI SkinIQ подберёт уход быстро и точно ✨",
+    title: "Больше никакой путаницы — AI подберёт уход быстро и точно ✨",
     visual: "comparison",
     renderBody: () => (
       <div className="grid grid-cols-2 gap-4 mt-4">
@@ -881,7 +881,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "created_for_you",
-    title: "SkinIQ создан для людей, как вы!",
+    title: "Создан для людей, как вы!",
     renderBody: () => (
       <div className="space-y-3 mt-4">
         <div>✨ 97% пользователей отмечают, что SkinIQ помогает лучше заботиться о коже</div>

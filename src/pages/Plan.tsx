@@ -303,7 +303,7 @@ export default function Plan() {
   const hasCompletedQuiz = useMemo(() => {
     return answers ? 
       Object.keys(answers).length > 0 && 
-      (answers.skin_goals || answers.age || answers.gender || answers.skin_type) : false;
+      (answers.skinType || answers.concerns || answers.primaryGoal) : false;
   }, [answers]);
 
   useEffect(() => {
