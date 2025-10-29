@@ -18,9 +18,9 @@ function ErrorToast({ message, onClose }: { message: string; onClose: () => void
 
   return (
     <div className="fixed top-4 left-4 right-4 z-50 animate-slide-down">
-      <div className="bg-red-500/90 backdrop-blur-xl border border-red-400/50 rounded-2xl p-4 shadow-lg">
+      <div className="bg-gradient-to-r from-rose-500/95 to-pink-500/95 backdrop-blur-xl border border-rose-300/60 rounded-2xl p-4 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded-full bg-red-400 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-rose-400 flex items-center justify-center">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth="2">
               <circle cx="12" cy="12" r="10"/>
               <line x1="15" y1="9" x2="9" y2="15"/>
@@ -30,7 +30,7 @@ function ErrorToast({ message, onClose }: { message: string; onClose: () => void
           <span className="text-white font-medium text-sm flex-1">{message}</span>
           <button
             onClick={onClose}
-            className="w-6 h-6 rounded-full bg-red-400/50 flex items-center justify-center hover:bg-red-400/70 transition-colors"
+            className="w-6 h-6 rounded-full bg-rose-400/50 flex items-center justify-center hover:bg-rose-400/70 transition-colors"
           >
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -43,29 +43,6 @@ function ErrorToast({ message, onClose }: { message: string; onClose: () => void
   );
 }
 
-// Skeleton loader component
-function QuestionSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <div className="h-8 bg-white/20 rounded-2xl w-3/4 mx-auto"></div>
-      <div className="h-4 bg-white/10 rounded-xl w-1/2 mx-auto"></div>
-      <div className="space-y-3 mt-8">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl p-4 h-20">
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-white/30 rounded-full"></div>
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-white/20 rounded w-3/4"></div>
-                <div className="h-3 bg-white/10 rounded w-1/2"></div>
-              </div>
-              <div className="w-6 h-6 bg-white/20 rounded-full"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // Swipe navigation utility
 const useSwipeNavigation = (onNext: () => void, onPrev: () => void) => {
@@ -204,7 +181,7 @@ type Screen = QuestionScreen | InfoScreen;
 // Компоненты для вопросов
 function QuestionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)] min-h-[72px] flex items-center ${className}`}>
+    <div className={`bg-pink-50/40 backdrop-blur-xl border border-pink-200/50 rounded-2xl p-4 shadow-[0_4px_12px_rgba(233,30,99,0.08)] min-h-[72px] flex items-center ${className}`}>
       {children}
     </div>
   );
@@ -234,22 +211,22 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
         return (
           <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
             isSelected 
-              ? "bg-white/60 border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-              : "hover:bg-white/50"
+              ? "bg-pink-100/60 border-pink-300/70 shadow-[0_8px_24px_rgba(233,30,99,0.15)]"
+              : "hover:bg-pink-50/50"
           }`}>
             <button
               type="button"
               onClick={() => handleClick(option)}
               onKeyDown={(e) => handleKeyDown(e, option)}
-              className="w-full flex items-start gap-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-2xl"
+              className="w-full flex items-start gap-4 text-left focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 rounded-2xl"
               role="radio"
               aria-checked={isSelected}
               aria-describedby={`${optionId}-description`}
               id={optionId}
               tabIndex={isSelected ? 0 : -1}
             >
-              {/* Синий кружок с номером */}
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-sm font-bold text-white">
+              {/* Розовый кружок с номером */}
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-sm font-bold text-white">
                 {index + 1}
               </div>
               
@@ -289,7 +266,7 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   
   const toggleOption = (option: string) => {
     const newSelected = new Set(selected);
-    if (isSelected) {
+    if (selected.has(option)) {
       newSelected.delete(option);
     } else {
       newSelected.add(option);
@@ -319,22 +296,22 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
         return (
           <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
             isSelected 
-              ? "bg-white/60 border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.12)] scale-[1.02]"
-              : "hover:bg-white/50 hover:scale-[1.01]"
+              ? "bg-pink-100/60 border-pink-300/70 shadow-[0_8px_24px_rgba(233,30,99,0.15)] scale-[1.02]"
+              : "hover:bg-pink-50/50 hover:scale-[1.01]"
           }`}>
             <button
               type="button"
               onClick={() => handleClick(option)}
               onKeyDown={(e) => handleKeyDown(e, option)}
-              className="w-full flex items-center gap-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-2xl"
+              className="w-full flex items-center gap-4 text-left focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 rounded-2xl"
               role="checkbox"
               aria-checked={isSelected}
               id={optionId}
             >
               <div className={`w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-all duration-200 ${
                 isSelected 
-                  ? 'border-neutral-900 bg-neutral-900 text-white scale-100' 
-                  : 'border-neutral-300 bg-white/60 scale-95'
+                  ? 'border-pink-500 bg-pink-500 text-white scale-100' 
+                  : 'border-pink-300 bg-pink-50/60 scale-95'
               }`}>
                 {isSelected && (
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -363,18 +340,18 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between text-sm mb-3 text-neutral-700">
+      <div className="flex items-center justify-between text-sm mb-3 text-pink-800">
         <span className="font-medium flex items-center gap-2">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+          <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
           Шаг {completedQuestions} из {totalRequiredQuestions}
         </span>
-        <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded-full">
+        <span className="text-xs font-mono bg-pink-100/30 px-2 py-1 rounded-full text-pink-700">
           {percentage}%
         </span>
       </div>
-      <div className="relative w-full bg-white/20 rounded-full h-3 overflow-hidden shadow-inner backdrop-blur-xl border border-white/40">
+      <div className="relative w-full bg-pink-100/20 rounded-full h-3 overflow-hidden shadow-inner backdrop-blur-xl border border-pink-200/40">
         <div 
-          className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+          className="h-full bg-gradient-to-r from-pink-500 via-rose-400 to-fuchsia-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
           style={{ width: `${percentage}%` }}
           aria-label="Прогресс анкеты"
         >
@@ -387,7 +364,7 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
             <div
               key={i}
               className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                i < completedQuestions ? 'bg-white/80 shadow-sm' : 'bg-white/30'
+                i < completedQuestions ? 'bg-pink-200/90 shadow-sm' : 'bg-pink-100/40'
               }`}
             />
           ))}
@@ -448,8 +425,8 @@ const screens: Screen[] = [
           <div>💚 Здоровье кожи — покраснения, воспаления, раздражения</div>
         </div>
         <div className="mt-4 space-y-1 text-xs">
-          <div>✅ 92% пользователей отмечают улучшение состояния кожи за 1 месяц</div>
-          <div>✅ SkinIQ в 3 раза эффективнее обычных рутин</div>
+          <div>✅ 89% пользователей отмечают улучшение состояния кожи за 1 месяц</div>
+          <div>✅ Наш подход в 3 раза эффективнее обычных рутин</div>
         </div>
       </div>
     ),
@@ -460,8 +437,8 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "goals_intro",
-    title: "Расскажите нам о вашей цели",
-    subtitle: "Каждое большое изменение начинается с чёткой цели",
+    title: "Какую цель вы ставите перед собой?",
+    subtitle: "Помогите нам понять, к чему вы стремитесь в уходе за кожей",
     renderBody: () => null,
     ctaText: "Продолжить"
   },
@@ -470,7 +447,7 @@ const screens: Screen[] = [
   {
     kind: "question",
     id: "skin_goals",
-    title: "Какие ваши основные цели для кожи?",
+    title: "Выберите ваши главные цели",
     type: "multi",
         options: [
       "Морщины и мелкие линии",
@@ -525,7 +502,7 @@ const screens: Screen[] = [
   {
     kind: "question",
     id: "age",
-    title: "Возраст",
+    title: "Сколько вам лет?",
     type: "single",
     options: ["До 18 лет", "18–24", "25–34", "35–44", "45+"],
     required: true
@@ -535,7 +512,7 @@ const screens: Screen[] = [
   {
     kind: "question",
     id: "gender", 
-    title: "Пол",
+    title: "Ваш пол",
     type: "single",
     options: ["Женский", "Мужской"],
     required: true
@@ -545,8 +522,8 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "skin_features_intro",
-    title: "Узнаем особенности вашей кожи",
-    subtitle: "Мы поймем какой у вас тип кожи и как о нем заботиться лучше всего",
+    title: "Расскажите о вашей коже",
+    subtitle: "Это поможет нам подобрать идеальный уход именно для вас",
     renderBody: () => null,
     ctaText: "Продолжить"
   },
@@ -555,7 +532,7 @@ const screens: Screen[] = [
   {
     kind: "question",
     id: "skin_type",
-    title: "Выберите ваш тип кожи",
+    title: "Какой у вас тип кожи?",
     type: "single",
     options: [
       "Тип 1 — Сухая\nКожа ощущается стянутой и сухой по всей поверхности, часто вызывает дискомфорт, особенно после умывания",
@@ -571,7 +548,7 @@ const screens: Screen[] = [
   {
     kind: "question",
     id: "skin_concerns",
-    title: "Что вас больше всего беспокоит в коже сейчас?",
+    title: "Какие проблемы кожи вас беспокоят?",
     description: "Можно выбрать несколько",
     type: "multi",
     options: [
@@ -621,7 +598,7 @@ const screens: Screen[] = [
           </div>
         </div>
         <div>
-          <div className="font-semibold mb-2">С SkinIQ</div>
+          <div className="font-semibold mb-2">С нашим подходом</div>
           <div className="text-sm space-y-1">
             <div>✅ Персональные рекомендации для вашего типа кожи</div>
             <div>✅ Сканируйте и отслеживайте прогресс легко</div>
@@ -925,7 +902,7 @@ const screens: Screen[] = [
           </div>
         </div>
         <div className="text-left">
-          <div className="font-semibold mb-2">SkinIQ с AI</div>
+          <div className="font-semibold mb-2">Наш AI-анализ</div>
           <div className="text-sm space-y-1">
             <div>✅ Фотоанализ и точный подбор средств</div>
             <div>✅ Рекомендации за пару секунд</div>
@@ -1078,7 +1055,7 @@ const screens: Screen[] = [
     title: "Создан для людей, как вы!",
     renderBody: () => (
       <div className="space-y-3 mt-4">
-        <div>✨ 97% пользователей отмечают, что SkinIQ помогает лучше заботиться о коже</div>
+        <div>✨ 97% пользователей отмечают, что наш подход помогает лучше заботиться о коже</div>
         <div>🌿 92% заметили улучшения внешнего вида кожи</div>
         <div>⚡️ 85% увидели первые результаты уже в первый месяц</div>
         <p className="text-xs text-neutral-500 mt-4">
@@ -1409,7 +1386,7 @@ export default function Quiz() {
       return;
     }
     
-    if (currentStepIndex < steps.length - 1) {
+    if (currentStepIndex < screens.length - 1) {
       setError(null);
       setCurrentStepIndex(currentStepIndex + 1);
     }
@@ -1532,7 +1509,7 @@ export default function Quiz() {
           <button
             type="button"
             onClick={goBack}
-            className="text-sm text-neutral-700 flex items-center gap-1 mb-2 hover:text-neutral-900 transition-colors bg-white/20 backdrop-blur-xl px-3 py-2 rounded-xl border border-white/40 shadow-[0_4px_12px_rgba(0,0,0,0.04)]"
+            className="text-sm text-pink-700 flex items-center gap-1 mb-2 hover:text-pink-900 transition-colors bg-pink-50/30 backdrop-blur-xl px-3 py-2 rounded-xl border border-pink-200/40 shadow-[0_4px_12px_rgba(233,30,99,0.08)]"
           >
             ← Назад
           </button>
@@ -1573,8 +1550,8 @@ export default function Quiz() {
                 disabled={!isStepValid}
                 className={`w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 touch-manipulation ${
                   isStepValid
-                    ? "bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
-                    : "bg-neutral-300 text-neutral-500 cursor-not-allowed"
+                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
+                    : "bg-pink-200 text-pink-400 cursor-not-allowed"
                 }`}
               >
                 {currentStepIndex >= screens.length - 1 ? "✨ Завершить" : "Продолжить →"}
@@ -1593,7 +1570,7 @@ export default function Quiz() {
             </div>
               <button
                 onClick={goNext}
-                className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
+                className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
               >
                 {currentStep.ctaText || "Продолжить →"}
               </button>

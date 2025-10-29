@@ -67,9 +67,9 @@ function addToCart(item: any) {
 const Button = ({ children, onClick, variant = "primary", size = "md", disabled, ...props }: any) => {
   const baseClass = "inline-flex items-center justify-center rounded-2xl transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:pointer-events-none font-semibold";
   const sizeClass = size === "sm" ? "px-3 py-1.5 text-sm" : size === "lg" ? "px-6 py-3 text-base" : "px-4 py-2 text-sm";
-  const variantClass = variant === "primary" ? "bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl" :
-                      variant === "secondary" ? "bg-white/40 backdrop-blur-xl text-neutral-800 border border-white/50 hover:bg-white/60 shadow-[0_4px_12px_rgba(0,0,0,0.04)]" :
-                      "bg-white/20 backdrop-blur-xl text-neutral-700 border border-white/40 hover:bg-white/30 shadow-[0_4px_12px_rgba(0,0,0,0.04)]";
+  const variantClass = variant === "primary" ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-lg hover:shadow-xl" :
+                      variant === "secondary" ? "bg-pink-50/40 backdrop-blur-xl text-pink-800 border border-pink-200/50 hover:bg-pink-50/60 shadow-[0_4px_12px_rgba(233,30,99,0.08)]" :
+                      "bg-pink-50/20 backdrop-blur-xl text-pink-700 border border-pink-200/40 hover:bg-pink-50/30 shadow-[0_4px_12px_rgba(233,30,99,0.08)]";
   
   return (
     <button 
@@ -429,7 +429,7 @@ export default function Plan() {
           {items.map(item => (
             <div 
               key={`${item.timeOfDay}-${item.step}-${item.name}`}
-              className="flex items-start justify-between gap-3 rounded-2xl border border-white/50 p-3 bg-white/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)] hover:bg-white/60 transition-all duration-200"
+              className="flex items-start justify-between gap-3 rounded-2xl border border-pink-200/50 p-3 bg-pink-50/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(233,30,99,0.08)] hover:bg-pink-50/60 transition-all duration-200"
             >
               <div>
                 <div className="text-base font-medium">{item.name}</div>
@@ -447,7 +447,7 @@ export default function Plan() {
             {items.map(item => (
             <div 
               key={`${item.timeOfDay}-${item.step}-${item.name}`}
-              className="flex items-start justify-between gap-3 rounded-2xl border border-white/50 p-3 bg-white/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]"
+              className="flex items-start justify-between gap-3 rounded-2xl border border-pink-200/50 p-3 bg-pink-50/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(233,30,99,0.08)]"
             >
                 <div>
                   <div className="text-base font-medium">{item.name}</div>
@@ -549,18 +549,18 @@ export default function Plan() {
     <Card className="p-4 md:p-5">
       <div className="flex items-start justify-between mb-4">
         <h3 className="text-xl font-semibold">Skin-характеристики</h3>
-        <div className="text-sm text-neutral-500">Базируется на ваших ответах</div>
+        <div className="text-sm text-pink-600">Базируется на ваших ответах</div>
       </div>
       
       {hasPremium ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-            <div className="rounded-2xl border border-white/50 p-3 bg-white/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+            <div className="rounded-2xl border border-pink-200/50 p-3 bg-pink-50/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(233,30,99,0.08)]">
               <div className="text-xs text-neutral-600 mb-1">Тип кожи</div>
-              <div className="text-lg font-semibold text-neutral-900">{analysis.skinType}</div>
+              <div className="text-lg font-semibold text-pink-900">{analysis.skinType}</div>
             </div>
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-2">Чувствительность</div>
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-2">Чувствительность</div>
               <div className="flex items-center gap-3">
                 <div className="w-full">
                   <ProgressBar value={analysis.sensitivity ? 70 : 30} />
@@ -570,8 +570,8 @@ export default function Plan() {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-2">Жирность</div>
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-2">Жирность</div>
               <div className="flex items-center gap-3">
                 <div className="w-full">
                   <ProgressBar value={
@@ -587,13 +587,13 @@ export default function Plan() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-1">Основная цель</div>
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-1">Основная цель</div>
               <div className="font-medium">{analysis.primaryGoal}</div>
             </div>
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-1">Ключевые активы</div>
-              <div className="text-sm text-neutral-700">
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-1">Ключевые активы</div>
+              <div className="text-sm text-pink-700">
                 {analysis.recommendedActives.slice(0, 3).join(", ")}
               </div>
             </div>
@@ -602,12 +602,12 @@ export default function Plan() {
       ) : (
         <BlurredContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-1">Тип кожи</div>
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-1">Тип кожи</div>
               <div className="text-lg font-semibold">комбинированная</div>
             </div>
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-2">Чувствительность</div>
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-2">Чувствительность</div>
               <div className="flex items-center gap-3">
                 <div className="w-full">
                   <ProgressBar value={50} />
@@ -615,8 +615,8 @@ export default function Plan() {
                 <div className="text-sm font-medium w-8 text-right">5</div>
               </div>
             </div>
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-2">Жирность</div>
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-2">Жирность</div>
               <div className="flex items-center gap-3">
                 <div className="w-full">
                   <ProgressBar value={60} />
@@ -627,13 +627,13 @@ export default function Plan() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-1">Основная цель</div>
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-1">Основная цель</div>
               <div className="font-medium">улучшить состояние</div>
             </div>
-            <div className="rounded-xl border border-neutral-200 p-3">
-              <div className="text-xs text-neutral-500 mb-1">Ключевые активы</div>
-              <div className="text-sm text-neutral-700">
+            <div className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
+              <div className="text-xs text-pink-600 mb-1">Ключевые активы</div>
+              <div className="text-sm text-pink-700">
                 BHA, Ниацинамид, SPF
               </div>
             </div>
@@ -648,7 +648,7 @@ export default function Plan() {
       <h3 className="text-xl font-semibold mb-3">Расписание 28 дней</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {schedule.map(day => (
-          <div key={day.day} className="rounded-xl border border-neutral-200 p-3">
+          <div key={day.day} className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
             <div className="text-sm font-semibold mb-1">День {day.day}</div>
             <div className="text-sm">
               <span className="opacity-60">Утро:</span> {day.morningNotes.join("; ")}
@@ -756,7 +756,7 @@ export default function Plan() {
             <BlurredContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {schedule.slice(0, 6).map(day => (
-                  <div key={day.day} className="rounded-xl border border-neutral-200 p-3">
+                  <div key={day.day} className="rounded-xl border border-pink-200/50 bg-pink-50/20 backdrop-blur-xl p-3">
                     <div className="text-sm font-semibold mb-1">День {day.day}</div>
                     <div className="text-sm">
                       <span className="opacity-60">Утро:</span> {day.morningNotes.join("; ")}
