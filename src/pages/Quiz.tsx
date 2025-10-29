@@ -2,6 +2,107 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
 
+// Haptic feedback utility
+const vibrate = (pattern: number | number[] = 10) => {
+  if ('vibrate' in navigator) {
+    navigator.vibrate(pattern);
+  }
+};
+
+// Error toast component
+function ErrorToast({ message, onClose }: { message: string; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-4 left-4 right-4 z-50 animate-slide-down">
+      <div className="bg-red-500/90 backdrop-blur-xl border border-red-400/50 rounded-2xl p-4 shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 rounded-full bg-red-400 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <span className="text-white font-medium text-sm flex-1">{message}</span>
+          <button
+            onClick={onClose}
+            className="w-6 h-6 rounded-full bg-red-400/50 flex items-center justify-center hover:bg-red-400/70 transition-colors"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Skeleton loader component
+function QuestionSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="h-8 bg-white/20 rounded-2xl w-3/4 mx-auto"></div>
+      <div className="h-4 bg-white/10 rounded-xl w-1/2 mx-auto"></div>
+      <div className="space-y-3 mt-8">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white/20 backdrop-blur-xl border border-white/30 rounded-2xl p-4 h-20">
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 bg-white/30 rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-white/20 rounded w-3/4"></div>
+                <div className="h-3 bg-white/10 rounded w-1/2"></div>
+              </div>
+              <div className="w-6 h-6 bg-white/20 rounded-full"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Swipe navigation utility
+const useSwipeNavigation = (onNext: () => void, onPrev: () => void) => {
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      vibrate([10, 5, 10]);
+      onNext();
+    }
+    if (isRightSwipe) {
+      vibrate([10, 5, 10]);
+      onPrev();
+    }
+  };
+
+  return { onTouchStart, onTouchMove, onTouchEnd };
+};
+
 const STORAGE_KEY = "skiniq.answers";
 
 interface Answers {
@@ -110,11 +211,25 @@ function QuestionCard({ children, className = "" }: { children: React.ReactNode;
 }
 
 function SingleChoice({ options, value, onChange }: { options: string[]; value?: string; onChange: (v: string) => void }) {
+  const handleKeyDown = (e: React.KeyboardEvent, option: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      vibrate();
+      onChange(option);
+    }
+  };
+
+  const handleClick = (option: string) => {
+    vibrate();
+    onChange(option);
+  };
+
   return (
-    <div className="space-y-3 max-w-none">
+    <div className="space-y-3 max-w-none" role="radiogroup" aria-label="Выберите один вариант">
       {options.map((option, index) => {
         const isSelected = value === option;
         const lines = option.split('\n');
+        const optionId = `option-${index}`;
         
         return (
           <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
@@ -124,8 +239,14 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
           }`}>
             <button
               type="button"
-              onClick={() => onChange(option)}
-              className="w-full flex items-start gap-4 text-left"
+              onClick={() => handleClick(option)}
+              onKeyDown={(e) => handleKeyDown(e, option)}
+              className="w-full flex items-start gap-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-2xl"
+              role="radio"
+              aria-checked={isSelected}
+              aria-describedby={`${optionId}-description`}
+              id={optionId}
+              tabIndex={isSelected ? 0 : -1}
             >
               {/* Синий кружок с номером */}
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-sm font-bold text-white">
@@ -135,7 +256,11 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
               {/* Текст опции */}
               <div className="flex-1 min-w-0">
                 {lines.map((line, idx) => (
-                  <div key={idx} className={`font-medium text-neutral-800 ${idx === 0 ? 'text-base font-semibold mb-1' : 'text-sm opacity-70 mt-1'}`}>
+                  <div 
+                    key={idx} 
+                    id={idx === 1 ? `${optionId}-description` : undefined}
+                    className={`font-medium text-neutral-800 ${idx === 0 ? 'text-base font-semibold mb-1' : 'text-sm opacity-70 mt-1'}`}
+                  >
                     {line}
                   </div>
                 ))}
@@ -162,10 +287,34 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
 function MultiChoice({ options, value, onChange }: { options: string[]; value?: string[]; onChange: (v: string[]) => void }) {
   const selected = new Set(value || []);
   
+  const toggleOption = (option: string) => {
+    const newSelected = new Set(selected);
+    if (isSelected) {
+      newSelected.delete(option);
+    } else {
+      newSelected.add(option);
+    }
+    onChange(Array.from(newSelected));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, option: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      vibrate();
+      toggleOption(option);
+    }
+  };
+
+  const handleClick = (option: string) => {
+    vibrate();
+    toggleOption(option);
+  };
+  
   return (
-    <div className="space-y-3 max-w-none">
-      {options.map((option) => {
+    <div className="space-y-3 max-w-none" role="group" aria-label="Выберите несколько вариантов">
+      {options.map((option, index) => {
         const isSelected = selected.has(option);
+        const optionId = `multi-option-${index}`;
         
         return (
           <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
@@ -173,34 +322,28 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
               ? "bg-white/60 border-white/70 shadow-[0_8px_24px_rgba(0,0,0,0.12)] scale-[1.02]"
               : "hover:bg-white/50 hover:scale-[1.01]"
           }`}>
-            <label className="flex items-center gap-4 cursor-pointer">
-              <div 
-                className="flex-shrink-0"
-                onClick={(e) => {
-                  e.preventDefault();
-                  const newSelected = new Set(selected);
-                  if (isSelected) {
-                    newSelected.delete(option);
-                  } else {
-                    newSelected.add(option);
-                  }
-                  onChange(Array.from(newSelected));
-                }}
-              >
-                <div className={`w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-all duration-200 ${
-                  isSelected 
-                    ? 'border-neutral-900 bg-neutral-900 text-white scale-100' 
-                    : 'border-neutral-300 bg-white/60 scale-95'
-                }`}>
-                  {isSelected && (
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </div>
+            <button
+              type="button"
+              onClick={() => handleClick(option)}
+              onKeyDown={(e) => handleKeyDown(e, option)}
+              className="w-full flex items-center gap-4 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-2xl"
+              role="checkbox"
+              aria-checked={isSelected}
+              id={optionId}
+            >
+              <div className={`w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-all duration-200 ${
+                isSelected 
+                  ? 'border-neutral-900 bg-neutral-900 text-white scale-100' 
+                  : 'border-neutral-300 bg-white/60 scale-95'
+              }`}>
+                {isSelected && (
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
               </div>
               <span className="flex-1 text-base font-medium text-neutral-800">{option}</span>
-            </label>
+            </button>
           </QuestionCard>
         );
       })}
@@ -219,17 +362,36 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
   const percentage = Math.min(100, Math.round((completedQuestions / totalRequiredQuestions) * 100));
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between text-sm mb-1 text-neutral-700">
-        <span>Шаг {completedQuestions} из {totalRequiredQuestions}</span>
-        <span>{percentage}%</span>
+    <div className="mb-6">
+      <div className="flex items-center justify-between text-sm mb-3 text-neutral-700">
+        <span className="font-medium flex items-center gap-2">
+          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+          Шаг {completedQuestions} из {totalRequiredQuestions}
+        </span>
+        <span className="text-xs font-mono bg-white/20 px-2 py-1 rounded-full">
+          {percentage}%
+        </span>
       </div>
-      <div className="h-2 w-full bg-white/30 backdrop-blur-xl rounded-full border border-white/40">
+      <div className="relative w-full bg-white/20 rounded-full h-3 overflow-hidden shadow-inner backdrop-blur-xl border border-white/40">
         <div 
-          className="h-2 bg-gradient-to-r from-neutral-900 to-neutral-700 rounded-full transition-all duration-500" 
+          className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
           style={{ width: `${percentage}%` }}
           aria-label="Прогресс анкеты"
-        />
+        >
+          {/* Shimmer effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+        </div>
+        {/* Progress dots */}
+        <div className="absolute inset-0 flex items-center justify-between px-1">
+          {Array.from({ length: totalRequiredQuestions }, (_, i) => (
+            <div
+              key={i}
+              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                i < completedQuestions ? 'bg-white/80 shadow-sm' : 'bg-white/30'
+              }`}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1238,6 +1400,28 @@ export default function Quiz() {
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [backgroundLoaded, setBackgroundLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleNext = () => {
+    if (!isStepValid) {
+      setError("Пожалуйста, выберите ответ перед продолжением");
+      vibrate([50, 25, 50]);
+      return;
+    }
+    
+    if (currentStepIndex < steps.length - 1) {
+      setError(null);
+      setCurrentStepIndex(currentStepIndex + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(currentStepIndex - 1);
+    }
+  };
+
+  const swipeHandlers = useSwipeNavigation(handleNext, handlePrev);
 
   useEffect(() => {
     saveAnswers(answers);
@@ -1304,7 +1488,16 @@ export default function Quiz() {
   };
 
   return (
-    <div className="w-full min-h-screen relative overflow-x-hidden">
+    <div 
+      className="w-full min-h-screen relative overflow-x-hidden safe-area-inset"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
+      {...swipeHandlers}
+    >
       {/* Background layers: PNG image with floating spheres */}
       <div 
         className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
@@ -1331,7 +1524,7 @@ export default function Quiz() {
       </div>
 
       <div 
-        className={`relative z-20 space-y-2 px-2 pb-4 pt-32 transition-all duration-500 ${
+        className={`relative z-20 space-y-2 px-2 pb-4 pt-32 transition-all duration-500 max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl sm:px-6 min-h-screen flex flex-col ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
@@ -1378,9 +1571,9 @@ export default function Quiz() {
               <button
                 onClick={goNext}
                 disabled={!isStepValid}
-                className={`w-full h-14 rounded-2xl font-bold text-lg transition-all duration-200 ${
+                className={`w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 touch-manipulation ${
                   isStepValid
-                    ? "bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                    ? "bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
                     : "bg-neutral-300 text-neutral-500 cursor-not-allowed"
                 }`}
               >
@@ -1400,7 +1593,7 @@ export default function Quiz() {
             </div>
               <button
                 onClick={goNext}
-                className="w-full h-14 rounded-2xl font-bold text-lg bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+                className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-neutral-900 text-white hover:bg-neutral-800 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
               >
                 {currentStep.ctaText || "Продолжить →"}
               </button>
@@ -1444,13 +1637,35 @@ export default function Quiz() {
         </div>
       )}
       
+      {/* Error Toast */}
+      {error && (
+        <ErrorToast 
+          message={error} 
+          onClose={() => setError(null)} 
+        />
+      )}
+      
       <style>{`
         @keyframes fade-in {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes slide-down {
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
         .animate-fade-in {
           animation: fade-in 0.5s ease-out;
+        }
+        .animate-slide-down {
+          animation: slide-down 0.3s ease-out;
+        }
+        .animate-shimmer {
+          animation: shimmer 2s infinite;
         }
       `}</style>
     </div>
