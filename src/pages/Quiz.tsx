@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import Tag from "../ui/Tag";
 import { useNavigate } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
 
@@ -201,6 +202,35 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
     onChange(option);
   };
 
+  const useChips = useMemo(() => {
+    return options.length <= 8 && options.every(o => !o.includes('\n') && o.length <= 28);
+  }, [options]);
+
+  if (useChips) {
+    return (
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Выберите один вариант">
+        {options.map((option, index) => {
+          const isSelected = value === option;
+          const optionId = `option-${index}`;
+          return (
+            <Tag
+              key={option}
+              id={optionId}
+              role="radio"
+              aria-checked={isSelected}
+              tabIndex={isSelected ? 0 : 0}
+              active={isSelected}
+              onClick={() => handleClick(option)}
+              onKeyDown={(e) => handleKeyDown(e, option)}
+            >
+              {option}
+            </Tag>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 max-w-none" role="radiogroup" aria-label="Выберите один вариант">
       {options.map((option, index) => {
@@ -287,6 +317,35 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
     toggleOption(option);
   };
   
+  const useChips = useMemo(() => {
+    return options.length <= 12 && options.every(o => !o.includes('\n') && o.length <= 32);
+  }, [options]);
+
+  if (useChips) {
+    return (
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Выберите несколько вариантов">
+        {options.map((option, index) => {
+          const isSelected = selected.has(option);
+          const optionId = `multi-option-${index}`;
+          return (
+            <Tag
+              key={option}
+              id={optionId}
+              role="checkbox"
+              aria-checked={isSelected}
+              tabIndex={0}
+              active={isSelected}
+              onClick={() => handleClick(option)}
+              onKeyDown={(e) => handleKeyDown(e, option)}
+            >
+              {option}
+            </Tag>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 max-w-none" role="group" aria-label="Выберите несколько вариантов">
       {options.map((option, index) => {
@@ -349,25 +408,27 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
           {percentage}%
         </span>
       </div>
-      <div className="relative w-full bg-pink-100/20 rounded-full h-3 overflow-hidden shadow-inner backdrop-blur-xl border border-pink-200/40">
-        <div 
-          className="h-full bg-gradient-to-r from-pink-500 via-rose-400 to-fuchsia-500 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+      <div
+        className="relative w-full rounded-full h-3.5 sm:h-4 overflow-hidden backdrop-blur-xl border border-white/50 bg-white/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percentage}
+        aria-label="Прогресс анкеты"
+      >
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-fuchsia-500 transition-[width] duration-700 ease-out relative"
           style={{ width: `${percentage}%` }}
-          aria-label="Прогресс анкеты"
         >
-          {/* Shimmer effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+          <div className="absolute inset-0 opacity-30 blur-sm bg-gradient-to-r from-pink-300 to-rose-300" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer" />
         </div>
-        {/* Progress dots */}
-        <div className="absolute inset-0 flex items-center justify-between px-1">
-          {Array.from({ length: totalRequiredQuestions }, (_, i) => (
-            <div
-              key={i}
-              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                i < completedQuestions ? 'bg-pink-200/90 shadow-sm' : 'bg-pink-100/40'
-              }`}
-            />
-          ))}
+        {/* Indicator bead */}
+        <div
+          className="absolute -top-2 size-5 sm:size-6 rounded-full bg-white border border-pink-200 shadow-md flex items-center justify-center transition-transform"
+          style={{ left: `calc(${percentage}% - 12px)` }}
+        >
+          <div className="size-2.5 rounded-full bg-pink-500" />
         </div>
       </div>
     </div>
