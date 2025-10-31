@@ -572,7 +572,17 @@ const screens: Screen[] = [
     id: "goals_intro",
     title: "Какую цель вы ставите перед собой?",
     subtitle: "Помогите нам понять, к чему вы стремитесь в уходе за кожей",
-    renderBody: () => null,
+    renderBody: () => (
+      <div className="space-y-4">
+        <div className="rounded-[28px] overflow-hidden border border-white/50 bg-white/20 backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+          <img
+            src="/quiz_goal.png"
+            alt="Цели ухода"
+            className="w-full h-48 object-cover"
+          />
+        </div>
+      </div>
+    ),
     ctaText: "Продолжить"
   },
 
@@ -609,7 +619,7 @@ const screens: Screen[] = [
             { name: "Ирина, Новосибирск", text: "У меня была проблема с покраснением и чувствительностью, через месяц стало намного лучше, кожа спокойнее!", image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&q=80" },
             { name: "Екатерина, Москва", text: "Всегда мучалась с расширенными порами и жирным блеском. Теперь макияж хорошо держится, жирный блеск появляется только к концу дня", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&q=80" }
           ].map((review, i) => (
-            <div key={i} className="min-w-[320px] p-5 bg-gradient-to-br from-white/95 via-white/80 to-[#f4f0ff] backdrop-blur-xl border border-white/60 rounded-3xl shadow-[0_16px_32px_rgba(15,23,42,0.12)]">
+            <div key={i} className="min-w-[320px] p-5 bg-gradient-to-br from-white/95 via-white/80 to-[#f4f0ff] backdrop-blur-xl border border-white/60 rounded-3xl shadow-[0_10px_24px_rgba(15,23,42,0.12)]">
               <div className="flex items-center gap-3 mb-3">
                 <img src={review.image} alt={review.name} className="w-12 h-12 rounded-full object-cover" />
                 <div className="flex-1">
@@ -1698,8 +1708,8 @@ export default function Quiz() {
           aria-label="Назад"
           className="absolute z-50 flex items-center justify-center text-gray-700 hover:text-gray-900 transition"
           style={{
-            left: `calc(env(safe-area-inset-left, 0px) + 34px)`,
-            top: `calc(env(safe-area-inset-top, 0px) + 50px)`
+            left: `calc(env(safe-area-inset-left, 0px) + 24px)`,
+            top: `calc(env(safe-area-inset-top, 0px) + 44px)`
           }}
         >
           <svg viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-6">
@@ -1708,7 +1718,7 @@ export default function Quiz() {
           </svg>
         </button>
       )}
-      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 30px)` }}>
+      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 4px)` }}>
         <Link to="/" className="block cursor-pointer hover:opacity-80 transition-opacity">
           <img 
             src="/skiniq-logo.png" 
@@ -1767,12 +1777,12 @@ export default function Quiz() {
                 className={`group relative w-full h-14 rounded-2xl font-bold text-base transition-all duration-500 touch-manipulation overflow-hidden ${
                   isStepValid
                     ? "bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-[0_10px_30px_rgba(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] hover:scale-[1.02] active:scale-[0.98]"
-                    : "bg-gradient-to-r from-gray-400 to-gray-500 text-white/90 opacity-80 cursor-not-allowed"
+                    : "bg-gradient-to-r from-gray-400 to-gray-500 text-white cursor-not-allowed"
                 }`}
               >
                 {/* Glassmorphism shine effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                <span className={`relative z-10 flex items-center justify-center gap-2 font-semibold ${isStepValid ? 'text-white' : 'text-white/90'}`}>
+                <span className="relative z-10 flex items-center justify-center gap-2 font-semibold text-white">
                   {currentStepIndex >= screens.length - 1 ? "✨ Завершить" : "Продолжить →"}
                 </span>
               </button>
