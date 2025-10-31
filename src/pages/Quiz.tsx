@@ -602,8 +602,8 @@ const screens: Screen[] = [
     subtitle: "Персональный уход, который решает именно вашу задачу",
     visual: "testimonials",
     renderBody: () => (
-      <div className="space-y-4 mt-4 overflow-x-auto px-4 sm:px-8">
-        <div className="flex gap-4 pb-6">
+      <div className="space-y-4 mt-4 overflow-x-auto px-6 sm:px-8 py-2">
+        <div className="flex gap-4 pb-6 pr-4">
           {[
             { name: "Ольга, Санкт-Петербург", text: "С помощью подобранного ухода я убрала акне и следы постакне за 3 месяца. Удобно, что можно просто загрузить фото!", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&q=80" },
             { name: "Дарья, Казань", text: "Моя кожа стала более упругой и увлажнённой. Приложение помогло подобрать уход, который реально работает!", image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&q=80" },
