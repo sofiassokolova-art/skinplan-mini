@@ -574,9 +574,9 @@ const screens: Screen[] = [
     subtitle: "Помогите нам понять, к чему вы стремитесь в уходе за кожей",
     renderBody: () => (
       <div className="space-y-4">
-        <div className="rounded-[28px] overflow-hidden border border-white/50 bg-white/20 backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+        <div className="rounded-[28px] overflow-hidden border border-white/50 bg-white/20 backdrop-blur-xl shadow-[0_18px_40px_rgаба(15,23,42,0.12)]">
           <img
-            src="/quiz_goal.png"
+            src="/icons/quiz_goal.png"
             alt="Цели ухода"
             className="w-full h-48 object-cover"
           />
@@ -1718,7 +1718,7 @@ export default function Quiz() {
           </svg>
         </button>
       )}
-      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 4px)` }}>
+      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 20px)` }}>
         <Link to="/" className="block cursor-pointer hover:opacity-80 transition-opacity">
           <img 
             src="/skiniq-logo.png" 
@@ -1802,7 +1802,7 @@ export default function Quiz() {
                 onClick={goNext}
                 className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800 shadow-[0_10px_30px_rgба(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgба(0,0,0,0.3)] transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
               >
-                <span className="font-semibold">
+                <span className="font-semibold text-white">
                   {currentStep.ctaText || "Продолжить →"}
                 </span>
               </button>
