@@ -530,7 +530,6 @@ const screens: Screen[] = [
     title: "Персональный анализ кожи",
     renderBody: () => (
       <div className="space-y-4">
-        <div className="text-sm font-medium text-gray-800">Ваш полный анализ включает:</div>
         <div className="rounded-3xl border border-white/40 bg-white/25 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.12)] p-5 space-y-4">
           {[
             { icon: "search", text: "Детальный разбор — морщины, линии и текстура в 3D" },
@@ -1699,8 +1698,8 @@ export default function Quiz() {
           aria-label="Назад"
           className="absolute z-50 flex items-center justify-center text-gray-700 hover:text-gray-900 transition"
           style={{
-            left: `calc(env(safe-area-inset-left, 0px) + 28px)`,
-            top: `calc(env(safe-area-inset-top, 0px) + 44px)`
+            left: `calc(env(safe-area-inset-left, 0px) + 34px)`,
+            top: `calc(env(safe-area-inset-top, 0px) + 50px)`
           }}
         >
           <svg viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-6">
@@ -1709,7 +1708,7 @@ export default function Quiz() {
           </svg>
         </button>
       )}
-      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 6px)` }}>
+      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 30px)` }}>
         <Link to="/" className="block cursor-pointer hover:opacity-80 transition-opacity">
           <img 
             src="/skiniq-logo.png" 
