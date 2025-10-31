@@ -457,8 +457,8 @@ export default function MobileSkinIQHome() {
 
   return (
     <div
-      className="w-full min-h-screen relative overflow-x-hidden pb-12 sm:pb-16"
-      style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 40px)` }}
+      className="w-full min-h-screen relative overflow-x-hidden pb-16 sm:pb-20"
+      style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 72px)` }}
     >
       {/* Background layers: PNG image with floating spheres */}
       <div className="fixed inset-0 -z-10 home-gradient-animation" />
@@ -600,7 +600,7 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-8 px-4">
+      <section className="mt-4 pb-12 px-4">
         <div className="relative overflow-visible" id="widgets-container">
           
           <div 

@@ -1773,7 +1773,7 @@ export default function Quiz() {
               >
                 {/* Glassmorphism shine effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                <span className={`relative z-10 flex items-center justify-center gap-2 ${isStepValid ? 'text-white' : 'text-white/90'}`}>
+                <span className={`relative z-10 flex items-center justify-center gap-2 font-semibold ${isStepValid ? 'text-white' : 'text-white/90'}`}>
                   {currentStepIndex >= screens.length - 1 ? "✨ Завершить" : "Продолжить →"}
                 </span>
               </button>
@@ -1791,9 +1791,11 @@ export default function Quiz() {
             </div>
               <button
                 onClick={goNext}
-                className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
+                className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800 shadow-[0_10px_30px_rgба(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgба(0,0,0,0.3)] transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
               >
-                {currentStep.ctaText || "Продолжить →"}
+                <span className="font-semibold">
+                  {currentStep.ctaText || "Продолжить →"}
+                </span>
               </button>
             </div>
         )}
