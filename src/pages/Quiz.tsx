@@ -1700,7 +1700,7 @@ export default function Quiz() {
           className="absolute z-50 flex items-center justify-center text-gray-700 hover:text-gray-900 transition"
           style={{
             left: `calc(env(safe-area-inset-left, 0px) + 12px)`,
-            top: `calc(env(safe-area-inset-top, 0px) + 34px)`
+            top: `calc(env(safe-area-inset-top, 0px) + 32px)`
           }}
         >
           <svg viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-6">
@@ -1709,12 +1709,12 @@ export default function Quiz() {
           </svg>
         </button>
       )}
-      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 16px)` }}>
+      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) + 12px)` }}>
         <Link to="/" className="block cursor-pointer hover:opacity-80 transition-opacity">
           <img 
             src="/skiniq-logo.png" 
             alt="SkinIQ" 
-            className="h-40 w-auto object-contain"
+            className="h-36 w-auto object-contain"
           />
         </Link>
       </div>
