@@ -456,7 +456,10 @@ export default function MobileSkinIQHome() {
   // );
 
   return (
-    <div className="w-full min-h-screen relative overflow-x-hidden">
+    <div
+      className="w-full min-h-screen relative overflow-x-hidden pb-24 sm:pb-28"
+      style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 96px)` }}
+    >
       {/* Background layers: PNG image with floating spheres */}
       <div className="fixed inset-0 -z-10 home-gradient-animation" />
       

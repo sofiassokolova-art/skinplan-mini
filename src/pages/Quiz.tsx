@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import Tag from "../ui/Tag";
 import { useNavigate, Link } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
 
@@ -301,35 +300,6 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
     onChange(option);
   };
 
-  const useChips = useMemo(() => {
-    return options.length <= 8 && options.every(o => !o.includes('\n') && o.length <= 28);
-  }, [options]);
-
-  if (useChips) {
-    return (
-      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Выберите один вариант">
-        {options.map((option, index) => {
-          const isSelected = value === option;
-          const optionId = `option-${index}`;
-          return (
-            <Tag
-              key={option}
-              id={optionId}
-              role="radio"
-              aria-checked={isSelected}
-              tabIndex={isSelected ? 0 : 0}
-              active={isSelected}
-              onClick={() => handleClick(option)}
-              onKeyDown={(e) => handleKeyDown(e, option)}
-            >
-              {option}
-            </Tag>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-2 max-w-none" role="radiogroup" aria-label="Выберите один вариант">
       {options.map((option, index) => {
@@ -407,35 +377,6 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
     toggleOption(option);
   };
   
-  const useChips = useMemo(() => {
-    return options.length <= 12 && options.every(o => !o.includes('\n') && o.length <= 32);
-  }, [options]);
-
-  if (useChips) {
-    return (
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Выберите несколько вариантов">
-        {options.map((option, index) => {
-          const isSelected = selected.has(option);
-          const optionId = `multi-option-${index}`;
-          return (
-            <Tag
-              key={option}
-              id={optionId}
-              role="checkbox"
-              aria-checked={isSelected}
-              tabIndex={0}
-              active={isSelected}
-              onClick={() => handleClick(option)}
-              onKeyDown={(e) => handleKeyDown(e, option)}
-            >
-              {option}
-            </Tag>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-2 max-w-none" role="group" aria-label="Выберите несколько вариантов">
       {options.map((option, index) => {
@@ -566,9 +507,9 @@ const screens: Screen[] = [
           ].map((step, index) => (
             <div
               key={index}
-              className="flex items-center gap-4 rounded-3xl bg-white/25 backdrop-blur-2xl border border-white/40 px-4 py-3 shadow-[0_12px_30px_rgба(0,0,0,0.1)]"
+              className="flex items-center gap-4 rounded-3xl bg-white/25 backdrop-blur-2xl border border-white/40 px-4 py-3 shadow-[0_12px_30px_rgaba(0,0,0,0.1)]"
             >
-              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_10px_28px_rgба(0,0,0,0.12)]">
+              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_10px_28px_rgaba(0,0,0,0.12)] flex-shrink-0">
                 <Icon name={step.icon} className="w-5 h-5 text-gray-800" />
               </div>
               <span className="text-sm sm:text-base text-gray-800 font-medium text-left">
@@ -598,7 +539,7 @@ const screens: Screen[] = [
             { icon: "heart", text: "Здоровье кожи — покраснения, воспаления, раздражения" },
           ].map((feature, index) => (
             <div key={index} className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
+              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_8px_18px_rgaba(0,0,0,0.08)] flex-shrink-0">
                 <Icon name={feature.icon} className="w-5 h-5 text-gray-700" />
               </div>
               <span className="text-sm text-gray-800 font-medium leading-relaxed text-left">
@@ -1759,7 +1700,7 @@ export default function Quiz() {
           className="absolute z-50 flex items-center justify-center text-gray-700 hover:text-gray-900 transition"
           style={{
             left: `calc(env(safe-area-inset-left, 0px) + 12px)`,
-            top: `calc(env(safe-area-inset-top, 0px) + 20px)`
+            top: `calc(env(safe-area-inset-top, 0px) + 34px)`
           }}
         >
           <svg viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-6">
@@ -1768,12 +1709,12 @@ export default function Quiz() {
           </svg>
         </button>
       )}
-      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 4px)` }}>
+      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 16px)` }}>
         <Link to="/" className="block cursor-pointer hover:opacity-80 transition-opacity">
           <img 
             src="/skiniq-logo.png" 
             alt="SkinIQ" 
-            className="h-36 w-auto object-contain"
+            className="h-40 w-auto object-contain"
           />
         </Link>
       </div>
