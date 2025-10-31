@@ -457,8 +457,8 @@ export default function MobileSkinIQHome() {
 
   return (
     <div
-      className="w-full min-h-screen relative overflow-x-hidden pb-24 sm:pb-28"
-      style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 96px)` }}
+      className="w-full min-h-screen relative overflow-x-hidden pb-12 sm:pb-16"
+      style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 40px)` }}
     >
       {/* Background layers: PNG image with floating spheres */}
       <div className="fixed inset-0 -z-10 home-gradient-animation" />
@@ -600,11 +600,11 @@ export default function MobileSkinIQHome() {
       </section>
 
       {/* Widgets carousel */}
-      <section className="mt-4 pb-12 ml-4">
-        <div className="relative" id="widgets-container">
+      <section className="mt-4 pb-8 px-4">
+        <div className="relative overflow-visible" id="widgets-container">
           
           <div 
-            className="flex gap-3 overflow-x-auto overflow-y-hidden pr-8 snap-x snap-mandatory scrollbar-hide"
+            className="flex gap-3 overflow-x-auto pr-8 py-1 snap-x snap-mandatory scrollbar-hide"
             style={{touchAction: 'pan-x', overscrollBehavior: 'contain'}}
           >
             <article className="snap-start shrink-0 w-[280px] h-[140px] mx-0 glossy-black-card p-4 flex items-center justify-between">

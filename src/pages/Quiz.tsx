@@ -610,7 +610,7 @@ const screens: Screen[] = [
             { name: "Ирина, Новосибирск", text: "У меня была проблема с покраснением и чувствительностью, через месяц стало намного лучше, кожа спокойнее!", image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&q=80" },
             { name: "Екатерина, Москва", text: "Всегда мучалась с расширенными порами и жирным блеском. Теперь макияж хорошо держится, жирный блеск появляется только к концу дня", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&q=80" }
           ].map((review, i) => (
-            <div key={i} className="min-w-[320px] p-5 bg-gradient-to-br from-white/95 via-white/80 to-[#f4f0ff] backdrop-blur-xl border border-white/60 rounded-3xl shadow-[0_18px_40px_rgba(124,58,237,0.12)]">
+            <div key={i} className="min-w-[320px] p-5 bg-gradient-to-br from-white/95 via-white/80 to-[#f4f0ff] backdrop-blur-xl border border-white/60 rounded-3xl shadow-[0_16px_32px_rgba(15,23,42,0.12)]">
               <div className="flex items-center gap-3 mb-3">
                 <img src={review.image} alt={review.name} className="w-12 h-12 rounded-full object-cover" />
                 <div className="flex-1">
@@ -1699,8 +1699,8 @@ export default function Quiz() {
           aria-label="Назад"
           className="absolute z-50 flex items-center justify-center text-gray-700 hover:text-gray-900 transition"
           style={{
-            left: `calc(env(safe-area-inset-left, 0px) + 12px)`,
-            top: `calc(env(safe-area-inset-top, 0px) + 32px)`
+            left: `calc(env(safe-area-inset-left, 0px) + 28px)`,
+            top: `calc(env(safe-area-inset-top, 0px) + 44px)`
           }}
         >
           <svg viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-6">
