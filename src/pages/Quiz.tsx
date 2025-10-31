@@ -566,9 +566,9 @@ const screens: Screen[] = [
           ].map((step, index) => (
             <div
               key={index}
-              className="flex items-center gap-4 rounded-3xl bg-white/25 backdrop-blur-2xl border border-white/40 px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.1)]"
+              className="flex items-center gap-4 rounded-3xl bg-white/25 backdrop-blur-2xl border border-white/40 px-4 py-3 shadow-[0_12px_30px_rgба(0,0,0,0.1)]"
             >
-              <div className="w-12 h-12 rounded-2xl bg-white/60 backdrop-blur-xl flex items-center justify-center shadow-[0_10px_28px_rgba(0,0,0,0.12)]">
+              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_10px_28px_rgба(0,0,0,0.12)]">
                 <Icon name={step.icon} className="w-5 h-5 text-gray-800" />
               </div>
               <span className="text-sm sm:text-base text-gray-800 font-medium text-left">
@@ -1759,21 +1759,21 @@ export default function Quiz() {
           className="absolute z-50 flex items-center justify-center text-gray-700 hover:text-gray-900 transition"
           style={{
             left: `calc(env(safe-area-inset-left, 0px) + 12px)`,
-            top: `calc(env(safe-area-inset-top, 0px) + 26px)`
+            top: `calc(env(safe-area-inset-top, 0px) + 20px)`
           }}
         >
-          <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-6">
-            <path d="M24 12H6" />
-            <path d="M11 5l-6 7 6 7" />
+          <svg viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-9 h-6">
+            <path d="M26 12H6" />
+            <path d="M12 5l-6 7 6 7" />
           </svg>
         </button>
       )}
-      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) + 2px)` }}>
+      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) - 4px)` }}>
         <Link to="/" className="block cursor-pointer hover:opacity-80 transition-opacity">
           <img 
             src="/skiniq-logo.png" 
             alt="SkinIQ" 
-            className="h-32 w-auto object-contain"
+            className="h-36 w-auto object-contain"
           />
         </Link>
       </div>
