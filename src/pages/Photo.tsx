@@ -168,7 +168,7 @@ export default function Photo() {
       wrinkles: { low: 'bg-gray-400', medium: 'bg-gray-500', high: 'bg-gray-600' },
       pores: { low: 'bg-blue-300', medium: 'bg-blue-400', high: 'bg-blue-500' },
       dark_circles: { low: 'bg-purple-300', medium: 'bg-purple-400', high: 'bg-purple-500' },
-      redness: { low: 'bg-pink-300', medium: 'bg-pink-400', high: 'bg-pink-500' },
+      redness: { low: 'bg-purple-300', medium: 'bg-purple-400', high: 'bg-purple-500' },
     };
     return colors[type][severity];
   };

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import Tag from "../ui/Tag";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
 
 // Haptic feedback utility
@@ -8,6 +8,136 @@ const vibrate = (pattern: number | number[] = 10) => {
   if ('vibrate' in navigator) {
     navigator.vibrate(pattern);
   }
+};
+
+// Custom icon component
+const Icon = ({ name, className = "w-5 h-5" }: { name: string; className?: string }) => {
+  const icons: Record<string, React.JSX.Element> = {
+    'star': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+      </svg>
+    ),
+    'check': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <polyline points="20,6 9,17 4,12" />
+      </svg>
+    ),
+    'x': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    ),
+    'search': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+    ),
+    'droplet': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+      </svg>
+    ),
+    'microscope': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M6 18h8" />
+        <path d="M3 22h18" />
+        <path d="M14 22a7 7 0 1 0 0-14h-3" />
+        <circle cx="9" cy="9" r="2" />
+      </svg>
+    ),
+    'heart': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />
+      </svg>
+    ),
+    'sparkles': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+        <path d="M20 3v4" />
+        <path d="M22 5h-4" />
+        <path d="M4 17v2" />
+        <path d="M5 18H3" />
+      </svg>
+    ),
+    'camera': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+        <circle cx="12" cy="13" r="3" />
+      </svg>
+    ),
+    'target': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="12" cy="12" r="6" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    ),
+    'leaf': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M11 20A7 7 0 0 0 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 7 0 5.5-4.78 10-10 10Z" />
+        <path d="M2 21c0-3 1.85-5.36 5.08-6" />
+      </svg>
+    ),
+    'zap': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <polygon points="13,2 3,14 12,14 11,22 21,10 12,10" />
+      </svg>
+    ),
+    'sun': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2" />
+        <path d="M12 20v2" />
+        <path d="m4.93 4.93 1.41 1.41" />
+        <path d="m17.66 17.66 1.41 1.41" />
+        <path d="M2 12h2" />
+        <path d="M20 12h2" />
+        <path d="m6.34 17.66-1.41 1.41" />
+        <path d="m19.07 4.93-1.41 1.41" />
+      </svg>
+    ),
+    'moon': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+    ),
+    'number-1': (
+      <div className={`${className} rounded-full bg-gray-500 text-white flex items-center justify-center font-bold text-sm`}>
+        1
+      </div>
+    ),
+    'number-2': (
+      <div className={`${className} rounded-full bg-gray-500 text-white flex items-center justify-center font-bold text-sm`}>
+        2
+      </div>
+    ),
+    'number-3': (
+      <div className={`${className} rounded-full bg-gray-500 text-white flex items-center justify-center font-bold text-sm`}>
+        3
+      </div>
+    ),
+    'number-4': (
+      <div className={`${className} rounded-full bg-gray-500 text-white flex items-center justify-center font-bold text-sm`}>
+        4
+      </div>
+    ),
+    'stars': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+        <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+      </svg>
+    ),
+    'calendar': (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+      </svg>
+    )
+  };
+
+  return icons[name] || <div className={className} />;
 };
 
 // Error toast component
@@ -19,9 +149,9 @@ function ErrorToast({ message, onClose }: { message: string; onClose: () => void
 
   return (
     <div className="fixed top-4 left-4 right-4 z-50 animate-slide-down">
-      <div className="bg-gradient-to-r from-rose-500/95 to-pink-500/95 backdrop-blur-xl border border-rose-300/60 rounded-2xl p-4 shadow-lg">
+      <div className="bg-gradient-to-r from-gray-500/95 to-gray-500/95 backdrop-blur-xl border border-gray-300/60 rounded-2xl p-4 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded-full bg-rose-400 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth="2">
               <circle cx="12" cy="12" r="10"/>
               <line x1="15" y1="9" x2="9" y2="15"/>
@@ -31,7 +161,7 @@ function ErrorToast({ message, onClose }: { message: string; onClose: () => void
           <span className="text-white font-medium text-sm flex-1">{message}</span>
           <button
             onClick={onClose}
-            className="w-6 h-6 rounded-full bg-rose-400/50 flex items-center justify-center hover:bg-rose-400/70 transition-colors"
+            className="w-6 h-6 rounded-full bg-gray-400/50 flex items-center justify-center hover:bg-gray-400/70 transition-colors"
           >
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -45,41 +175,6 @@ function ErrorToast({ message, onClose }: { message: string; onClose: () => void
 }
 
 
-// Swipe navigation utility
-const useSwipeNavigation = (onNext: () => void, onPrev: () => void) => {
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  const minSwipeDistance = 50;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe) {
-      vibrate([10, 5, 10]);
-      onNext();
-    }
-    if (isRightSwipe) {
-      vibrate([10, 5, 10]);
-      onPrev();
-    }
-  };
-
-  return { onTouchStart, onTouchMove, onTouchEnd };
-};
 
 const STORAGE_KEY = "skiniq.answers";
 
@@ -155,7 +250,7 @@ function saveAnswers(answers: Answers) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
 }
 
-// Типы экранов
+// Типы экранов анкеты
 type QuestionScreen = {
   kind: "question";
   id: string;
@@ -182,8 +277,12 @@ type Screen = QuestionScreen | InfoScreen;
 // Компоненты для вопросов
 function QuestionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-pink-50/40 backdrop-blur-xl border border-pink-200/50 rounded-2xl p-4 shadow-[0_4px_12px_rgba(233,30,99,0.08)] min-h-[72px] flex items-center ${className}`}>
-      {children}
+    <div className={`relative bg-white/30 backdrop-blur-2xl rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.1)] min-h-[80px] flex items-center transition-all duration-500 hover:shadow-[0_12px_48px_rgba(0,0,0,0.15)] hover:scale-[1.02] overflow-hidden ${className}`}>
+      {/* Glassmorphism gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-white/10 to-transparent rounded-2xl"></div>
+      <div className="relative z-10 w-full">
+        {children}
+      </div>
     </div>
   );
 }
@@ -232,58 +331,49 @@ function SingleChoice({ options, value, onChange }: { options: string[]; value?:
   }
 
   return (
-    <div className="space-y-3 max-w-none" role="radiogroup" aria-label="Выберите один вариант">
+    <div className="space-y-2 max-w-none" role="radiogroup" aria-label="Выберите один вариант">
       {options.map((option, index) => {
         const isSelected = value === option;
         const lines = option.split('\n');
         const optionId = `option-${index}`;
         
         return (
-          <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
-            isSelected 
-              ? "bg-pink-100/60 border-pink-300/70 shadow-[0_8px_24px_rgba(233,30,99,0.15)]"
-              : "hover:bg-pink-50/50"
-          }`}>
-            <button
-              type="button"
+          <QuestionCard key={option} className="cursor-pointer transition-all duration-500 hover:bg-white/25 hover:scale-[1.01]">
+          <button
+            type="button"
               onClick={() => handleClick(option)}
               onKeyDown={(e) => handleKeyDown(e, option)}
-              className="w-full flex items-start gap-4 text-left focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 rounded-2xl"
+              className="w-full flex items-start gap-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d8c7ff] focus-visible:ring-offset-0 rounded-2xl transition-colors duration-200"
               role="radio"
               aria-checked={isSelected}
               aria-describedby={`${optionId}-description`}
               id={optionId}
               tabIndex={isSelected ? 0 : -1}
             >
-              {/* Розовый кружок с номером */}
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-sm font-bold text-white">
-                {index + 1}
-              </div>
-              
               {/* Текст опции */}
               <div className="flex-1 min-w-0">
-                {lines.map((line, idx) => (
+            {lines.map((line, idx) => (
                   <div 
                     key={idx} 
                     id={idx === 1 ? `${optionId}-description` : undefined}
-                    className={`font-medium text-neutral-800 ${idx === 0 ? 'text-base font-semibold mb-1' : 'text-sm opacity-70 mt-1'}`}
+                    className={`font-normal text-gray-800 ${idx === 0 ? 'text-base mb-1 leading-tight' : 'text-sm text-gray-600 mt-1 leading-relaxed'}`}
                   >
-                    {line}
-                  </div>
-                ))}
+                {line}
+              </div>
+            ))}
               </div>
               
-              {/* Радио-кнопка справа */}
-              <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+              {/* Glassmorphism radio button */}
+              <div className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
                 isSelected 
-                  ? 'border-neutral-900 bg-neutral-900' 
-                  : 'border-neutral-300 bg-transparent'
+                  ? 'border-gray-400 bg-gray-500 shadow-[0_4px_16px_rgba(0,0,0,0.1)]' 
+                  : 'border-gray-300 bg-gray-100'
               }`}>
                 {isSelected && (
-                  <div className="w-3 h-3 rounded-full bg-white"></div>
+                  <div className="w-3 h-3 rounded-full bg-white shadow-sm"></div>
                 )}
               </div>
-            </button>
+          </button>
           </QuestionCard>
         );
       })}
@@ -295,13 +385,13 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   const selected = new Set(value || []);
   
   const toggleOption = (option: string) => {
-    const newSelected = new Set(selected);
+                const newSelected = new Set(selected);
     if (selected.has(option)) {
-      newSelected.delete(option);
-    } else {
-      newSelected.add(option);
-    }
-    onChange(Array.from(newSelected));
+                  newSelected.delete(option);
+                } else {
+                  newSelected.add(option);
+                }
+                onChange(Array.from(newSelected));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, option: string) => {
@@ -347,38 +437,34 @@ function MultiChoice({ options, value, onChange }: { options: string[]; value?: 
   }
 
   return (
-    <div className="space-y-3 max-w-none" role="group" aria-label="Выберите несколько вариантов">
+    <div className="space-y-2 max-w-none" role="group" aria-label="Выберите несколько вариантов">
       {options.map((option, index) => {
         const isSelected = selected.has(option);
         const optionId = `multi-option-${index}`;
         
         return (
-          <QuestionCard key={option} className={`cursor-pointer transition-all duration-200 ${
-            isSelected 
-              ? "bg-pink-100/60 border-pink-300/70 shadow-[0_8px_24px_rgba(233,30,99,0.15)] scale-[1.02]"
-              : "hover:bg-pink-50/50 hover:scale-[1.01]"
-          }`}>
+          <QuestionCard key={option} className="cursor-pointer transition-all duration-500 hover:bg-white/25 hover:scale-[1.01]">
             <button
               type="button"
               onClick={() => handleClick(option)}
               onKeyDown={(e) => handleKeyDown(e, option)}
-              className="w-full flex items-center gap-4 text-left focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 rounded-2xl"
+              className="w-full flex items-center gap-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#d8c7ff] focus-visible:ring-offset-0 rounded-2xl transition-colors duration-200"
               role="checkbox"
               aria-checked={isSelected}
               id={optionId}
             >
-              <div className={`w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-all duration-200 ${
-                isSelected 
-                  ? 'border-pink-500 bg-pink-500 text-white scale-100' 
-                  : 'border-pink-300 bg-pink-50/60 scale-95'
+              <div className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-120 ${
+                  isSelected 
+                  ? 'border-transparent bg-gray-500 text-white scale-100' 
+                  : 'border-gray-300 bg-gray-100 text-gray-400 scale-95'
               }`}>
                 {isSelected && (
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
                 )}
-              </div>
-              <span className="flex-1 text-base font-medium text-neutral-800">{option}</span>
+            </div>
+              <span className="flex-1 text-base font-normal text-gray-800 leading-relaxed">{option}</span>
             </button>
           </QuestionCard>
         );
@@ -396,40 +482,30 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
   
   const totalRequiredQuestions = screens.filter(step => step.kind === "question" && step.id !== "photo").length;
   const percentage = Math.min(100, Math.round((completedQuestions / totalRequiredQuestions) * 100));
+  const progressWidth = percentage === 0 ? 0 : Math.max(8, percentage);
 
   return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between text-sm mb-3 text-pink-800">
-        <span className="font-medium flex items-center gap-2">
-          <div className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></div>
-          Шаг {completedQuestions} из {totalRequiredQuestions}
-        </span>
-        <span className="text-xs font-mono bg-pink-100/30 px-2 py-1 rounded-full text-pink-700">
-          {percentage}%
-        </span>
+    <div className="mb-8">
+      {/* Progress bar */}
+      <div className="relative w-full h-7 sm:h-8">
+        <div className="absolute inset-0 rounded-full bg-white/12 border border-white/35 backdrop-blur-[18px] shadow-[0_20px_50px_rgba(0,0,0,0.12)] overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-white/8 to-transparent opacity-70 pointer-events-none"></div>
       </div>
-      <div
-        className="relative w-full rounded-full h-3.5 sm:h-4 overflow-hidden backdrop-blur-xl border border-white/50 bg-white/40 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percentage}
-        aria-label="Прогресс анкеты"
-      >
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-fuchsia-500 transition-[width] duration-700 ease-out relative"
-          style={{ width: `${percentage}%` }}
-        >
-          <div className="absolute inset-0 opacity-30 blur-sm bg-gradient-to-r from-pink-300 to-rose-300" />
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer" />
+        <div className="absolute inset-[3px] rounded-full overflow-hidden">
+          <div 
+            className="h-full rounded-full transition-[width] duration-700 ease-out relative"
+            style={{ 
+              width: `${progressWidth}%`,
+              background: 'linear-gradient(120deg, rgba(213,188,255,0.95) 0%, rgba(227,210,255,0.9) 45%, rgba(242,226,255,0.85) 100%)',
+              boxShadow: progressWidth > 0 ? '0 0 35px rgba(213, 188, 255, 0.55)' : undefined
+            }}
+          aria-label="Прогресс анкеты"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/8 to-transparent opacity-30 blur-[1.5px] animate-shimmer" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-[#EDE6FF]/45 blur-[36px] rounded-full pointer-events-none" />
+          </div>
         </div>
-        {/* Indicator bead */}
-        <div
-          className="absolute -top-2 size-5 sm:size-6 rounded-full bg-white border border-pink-200 shadow-md flex items-center justify-center transition-transform"
-          style={{ left: `calc(${percentage}% - 12px)` }}
-        >
-          <div className="size-2.5 rounded-full bg-pink-500" />
-        </div>
+        <div className="absolute inset-0 rounded-full border border-white/20 pointer-events-none" />
       </div>
     </div>
   );
@@ -441,30 +517,65 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "welcome",
-    title: "Подбери уход для своей кожи",
+    title: "",
     subtitle: "",
     renderBody: () => (
-      <div className="space-y-6">
-        <div className="text-center space-y-4">
-          <h2 className="text-lg font-semibold">Как это работает?</h2>
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">1️⃣</span>
-              <span>Ответьте на несколько вопросов</span>
+      <div className="flex flex-col items-center text-center gap-8">
+        <div className="relative w-full h-48 sm:h-56 rounded-[30px] border border-white/60 bg-white/25 backdrop-blur-2xl shadow-[0_20px_50px_rgба(0,0,0,0.1)] overflow-hidden">
+          <img
+            src="/quiz_welocme_image.png"
+            alt="SkinIQ — подбор ухода"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/10" />
         </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">2️⃣</span>
-              <span>Загрузите фото</span>
+        <div className="space-y-4 px-2">
+          <h1 className="text-[22px] sm:text-[24px] font-normal leading-tight text-gray-900">
+            Подбери эффективный уход для своей кожи со <span className="font-semibold text-[22px] sm:text-[24px]">SkinIQ</span>
+          </h1>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">3️⃣</span>
-              <span>Получите персональную подборку ухода</span>
               </div>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">4️⃣</span>
-              <span>Посмотрите как будет выглядеть кожа уже через 12 недель применения средств</span>
+    ),
+    ctaText: "Продолжить"
+  },
+  {
+    kind: "info",
+    id: "how_it_works",
+    title: "Как это работает",
+    subtitle: "Всего четыре шага до персонального плана",
+    renderBody: () => (
+      <div className="space-y-6">
+        <div className="grid gap-3">
+          {[
+            {
+              icon: "search",
+              text: "Ответьте на несколько вопросов",
+            },
+            {
+              icon: "camera",
+              text: "Загрузите фото",
+            },
+            {
+              icon: "sparkles",
+              text: "Получите персональную подборку ухода",
+            },
+            {
+              icon: "calendar",
+              text: "Увидьте, как будет меняться кожа 12 недель",
+            },
+          ].map((step, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-4 rounded-3xl bg-white/25 backdrop-blur-2xl border border-white/40 px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.1)]"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-white/60 backdrop-blur-xl flex items-center justify-center shadow-[0_10px_28px_rgba(0,0,0,0.12)]">
+                <Icon name={step.icon} className="w-5 h-5 text-gray-800" />
               </div>
+              <span className="text-sm sm:text-base text-gray-800 font-medium text-left">
+                {step.text}
+              </span>
               </div>
+          ))}
             </div>
           </div>
     ),
@@ -475,19 +586,40 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "personal_analysis",
-    title: "⭐ Персональный анализ кожи",
+    title: "Персональный анализ кожи",
     renderBody: () => (
       <div className="space-y-4">
-        <div className="text-sm font-medium">Ваш полный анализ включает:</div>
-        <div className="space-y-2 text-sm">
-          <div>🔍 Детальный разбор — морщины, линии и текстура в 3D</div>
-          <div>💧 Уровень увлажнённости — персональная оценка баланса влаги</div>
-          <div>🔬 Поры — точное выявление и измерение</div>
-          <div>💚 Здоровье кожи — покраснения, воспаления, раздражения</div>
+        <div className="text-sm font-medium text-gray-800">Ваш полный анализ включает:</div>
+        <div className="rounded-3xl border border-white/40 bg-white/25 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.12)] p-5 space-y-4">
+          {[
+            { icon: "search", text: "Детальный разбор — морщины, линии и текстура в 3D" },
+            { icon: "droplet", text: "Уровень увлажнённости — персональная оценка баланса влаги" },
+            { icon: "microscope", text: "Поры — точное выявление и измерение" },
+            { icon: "heart", text: "Здоровье кожи — покраснения, воспаления, раздражения" },
+          ].map((feature, index) => (
+            <div key={index} className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
+                <Icon name={feature.icon} className="w-5 h-5 text-gray-700" />
+              </div>
+              <span className="text-sm text-gray-800 font-medium leading-relaxed text-left">
+                {feature.text}
+              </span>
+            </div>
+          ))}
         </div>
-        <div className="mt-4 space-y-1 text-xs">
-          <div>✅ 89% пользователей отмечают улучшение состояния кожи за 1 месяц</div>
-          <div>✅ Наш подход в 3 раза эффективнее обычных рутин</div>
+        <div className="mt-4 space-y-1.5 text-xs text-left">
+          <div className="flex items-center gap-2 text-gray-700">
+            <div className="w-4 h-4 flex items-center justify-center text-[#7C3AED]">
+              <Icon name="check" className="w-4 h-4" />
+            </div>
+            <span>89% пользователей отмечают улучшение состояния кожи за 1 месяц</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-700">
+            <div className="w-4 h-4 flex items-center justify-center text-[#7C3AED]">
+              <Icon name="check" className="w-4 h-4" />
+            </div>
+            <span>Наш подход в 3 раза эффективнее обычных рутин</span>
+          </div>
         </div>
       </div>
     ),
@@ -525,22 +657,31 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "testimonials",
-    title: "✨ Тысячи людей уже добились здоровой и красивой кожи с нами",
+    title: "Тысячи людей уже добились здоровой и красивой кожи с нами",
     subtitle: "Персональный уход, который решает именно вашу задачу",
     visual: "testimonials",
     renderBody: () => (
       <div className="space-y-4 mt-4 overflow-x-auto">
-        <div className="flex gap-4 pb-4">
+        <div className="flex gap-4 pb-4 px-2">
           {[
-            { name: "Ольга, Санкт-Петербург", text: "С помощью подобранного ухода я убрала акне и следы постакне за 3 месяца. Удобно, что можно просто загрузить фото!" },
-            { name: "Дарья, Казань", text: "Моя кожа стала более упругой и увлажнённой. Приложение помогло подобрать уход, который реально работает!" },
-            { name: "Ирина, Новосибирск", text: "У меня была проблема с покраснением и чувствительностью, через месяц стало намного лучше, кожа спокойнее!" },
-            { name: "Екатерина, Москва", text: "Всегда мучалась с расширенными порами и жирным блеском. Теперь макияж хорошо держится, жирный блеск появляется только к концу дня" }
+            { name: "Ольга, Санкт-Петербург", text: "С помощью подобранного ухода я убрала акне и следы постакне за 3 месяца. Удобно, что можно просто загрузить фото!", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&q=80" },
+            { name: "Дарья, Казань", text: "Моя кожа стала более упругой и увлажнённой. Приложение помогло подобрать уход, который реально работает!", image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop&q=80" },
+            { name: "Ирина, Новосибирск", text: "У меня была проблема с покраснением и чувствительностью, через месяц стало намного лучше, кожа спокойнее!", image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop&q=80" },
+            { name: "Екатерина, Москва", text: "Всегда мучалась с расширенными порами и жирным блеском. Теперь макияж хорошо держится, жирный блеск появляется только к концу дня", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&q=80" }
           ].map((review, i) => (
-            <div key={i} className="min-w-[280px] p-4 bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
-              <div className="text-yellow-500 mb-2">⭐️⭐️⭐️⭐️⭐️</div>
-              <p className="text-sm mb-2 text-neutral-800">«{review.text}»</p>
-              <p className="text-xs text-neutral-600">— {review.name}</p>
+            <div key={i} className="min-w-[320px] p-5 bg-gradient-to-br from-white/95 via-white/80 to-[#f4f0ff] backdrop-blur-xl border border-white/60 rounded-3xl shadow-[0_18px_40px_rgba(124,58,237,0.12)]">
+              <div className="flex items-center gap-3 mb-3">
+                <img src={review.image} alt={review.name} className="w-12 h-12 rounded-full object-cover" />
+                <div className="flex-1">
+                  <div className="flex gap-1 mb-1">
+                    {[1,2,3,4,5].map((n) => (
+                      <Icon key={n} name="star" className="w-3 h-3 text-yellow-400 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-xs font-medium text-gray-800">{review.name}</p>
+                </div>
+              </div>
+              <p className="text-sm mb-2 text-gray-900">«{review.text}»</p>
             </div>
           ))}
         </div>
@@ -652,18 +793,36 @@ const screens: Screen[] = [
       <div className="grid grid-cols-2 gap-4 mt-4">
         <div>
           <div className="font-semibold mb-2">Традиционный уход</div>
-          <div className="text-sm space-y-1">
-            <div>❌ Часы поиска советов в интернете</div>
-            <div>❌ Тратить деньги на неподходящие средства</div>
-            <div>❌ Результата приходится ждать месяцами</div>
+          <div className="text-sm space-y-2">
+            <div className="flex items-center gap-2">
+              <Icon name="x" className="w-4 h-4 text-gray-500" />
+              <span>Часы поиска советов в интернете</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Icon name="x" className="w-4 h-4 text-gray-500" />
+              <span>Тратить деньги на неподходящие средства</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Icon name="x" className="w-4 h-4 text-gray-500" />
+              <span>Результата приходится ждать месяцами</span>
+            </div>
           </div>
         </div>
         <div>
           <div className="font-semibold mb-2">С нашим подходом</div>
-          <div className="text-sm space-y-1">
-            <div>✅ Персональные рекомендации для вашего типа кожи</div>
-            <div>✅ Сканируйте и отслеживайте прогресс легко</div>
-            <div>✅ Видимые результаты уже через несколько недель</div>
+          <div className="text-sm space-y-2">
+            <div className="flex items-center gap-2">
+              <Icon name="check" className="w-4 h-4 text-gray-500" />
+              <span>Персональные рекомендации для вашего типа кожи</span>
+          </div>
+            <div className="flex items-center gap-2">
+              <Icon name="check" className="w-4 h-4 text-gray-500" />
+              <span>Сканируйте и отслеживайте прогресс легко</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Icon name="check" className="w-4 h-4 text-gray-500" />
+              <span>Видимые результаты уже через несколько недель</span>
+            </div>
           </div>
         </div>
       </div>
@@ -849,19 +1008,25 @@ const screens: Screen[] = [
       <div className="mt-4 space-y-4">
         <div className="grid grid-cols-3 gap-3">
           <div className="text-center">
-            <div className="text-4xl mb-3 mt-2">💧</div>
-            <div className="text-xs font-medium">Увлажняющий крем</div>
-            <div className="text-xs text-neutral-600">Поддерживает барьер кожи</div>
+            <div className="w-16 h-16 mx-auto mb-3 mt-2 rounded-2xl border-2 border-dashed border-gray-300/50 bg-gray-50/20 flex items-center justify-center">
+              <div className="text-2xl">💧</div>
+            </div>
+            <div className="text-xs font-medium text-white">Увлажняющий крем</div>
+            <div className="text-xs text-gray-600">Поддерживает барьер кожи</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl mb-2">✨</div>
-            <div className="text-xs font-medium">Сыворотка с витамином C</div>
-            <div className="text-xs text-neutral-600">Осветляет и выравнивает тон</div>
+            <div className="w-16 h-16 mx-auto mb-3 mt-2 rounded-2xl border-2 border-dashed border-gray-300/50 bg-gray-50/20 flex items-center justify-center">
+              <div className="text-2xl">✨</div>
+            </div>
+            <div className="text-xs font-medium text-white">Сыворотка с витамином C</div>
+            <div className="text-xs text-gray-600">Осветляет и выравнивает тон</div>
           </div>
           <div className="text-center flex flex-col justify-center h-full">
-            <div className="text-2xl font-bold text-neutral-900 mb-2 mt-2">50</div>
-            <div className="text-xs font-medium">Солнцезащитный крем SPF</div>
-            <div className="text-xs text-neutral-600">Защищает от фотостарения</div>
+            <div className="w-16 h-16 mx-auto mb-3 mt-2 rounded-2xl border-2 border-dashed border-gray-300/50 bg-gray-50/20 flex items-center justify-center">
+              <div className="text-lg font-bold text-white">50</div>
+            </div>
+            <div className="text-xs font-medium text-white">Солнцезащитный крем SPF</div>
+            <div className="text-xs text-gray-600">Защищает от фотостарения</div>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs text-center">
@@ -935,14 +1100,14 @@ const screens: Screen[] = [
     title: "Ваши привычки (можно выбрать несколько)",
     type: "multi",
     options: [
-      "Курю 🚬",
-      "Употребляю алкоголь 🍷",
-      "Часто не высыпаюсь 😴",
-      "Испытываю стресс ⚡",
-      "Ем много сладкого 🍩",
-      "Ем много фастфуда 🍔",
-      "Часто бываю на солнце без SPF ☀️",
-      "Нет, у меня нет таких привычек ✅"
+      "Курю",
+      "Употребляю алкоголь",
+      "Часто не высыпаюсь",
+      "Испытываю стресс",
+      "Ем много сладкого",
+      "Ем много фастфуда",
+      "Часто бываю на солнце без SPF",
+      "Нет, у меня нет таких привычек"
     ],
     required: false
   },
@@ -951,22 +1116,44 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "ai_comparison",
-    title: "Больше никакой путаницы — AI подберёт уход быстро и точно ✨",
+    title: "Больше никакой путаницы — AI подберёт уход быстро и точно",
     visual: "comparison",
     renderBody: () => (
-      <div className="grid grid-cols-2 gap-4 mt-4">
+      <div className="space-y-4 mt-4">
+        <div className="rounded-2xl overflow-hidden bg-white/10 backdrop-blur-xl border border-white/40 p-2">
+          <div className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300/50 bg-gray-50/20 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-4xl mb-2">📱</div>
+              <div className="text-sm text-purple-200">Фото девушки с приложением</div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
         <div className="text-left">
-          <div className="font-semibold mb-2">Традиционный подбор ухода</div>
-          <div className="text-sm space-y-1">
-            <div>❌ Долгие поиски советов в интернете</div>
-            <div>❌ Сложно понять, что подойдёт именно вам</div>
+          <div className="font-semibold mb-2 text-white">Традиционный подбор ухода</div>
+            <div className="text-sm space-y-2">
+              <div className="flex items-center gap-2">
+                <Icon name="x" className="w-4 h-4 text-red-400" />
+                <span className="text-gray-600">Долгие поиски советов в интернете</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon name="x" className="w-4 h-4 text-red-400" />
+                <span className="text-gray-600">Сложно понять, что подойдёт именно вам</span>
+              </div>
           </div>
         </div>
         <div className="text-left">
-          <div className="font-semibold mb-2">Наш AI-анализ</div>
-          <div className="text-sm space-y-1">
-            <div>✅ Фотоанализ и точный подбор средств</div>
-            <div>✅ Рекомендации за пару секунд</div>
+            <div className="font-semibold mb-2 text-white">Наш AI-анализ</div>
+            <div className="text-sm space-y-2">
+              <div className="flex items-center gap-2">
+                <Icon name="check" className="w-4 h-4 text-green-400" />
+                <span className="text-gray-600">Фотоанализ и точный подбор средств</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon name="check" className="w-4 h-4 text-green-400" />
+                <span className="text-gray-600">Рекомендации за пару секунд</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -978,7 +1165,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "preferences_intro",
-    title: "✨ Расскажите о ваших предпочтениях в уходе",
+    title: "Расскажите о ваших предпочтениях в уходе",
     subtitle: "Это поможет учесть ваши ожидания — какие текстуры, форматы и ощущения от ухода вам ближе",
     renderBody: () => null,
     ctaText: "Продолжить"
@@ -1034,18 +1221,43 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "no_mistakes",
-    title: "Не нужно бояться ошибок — уход должен быть комфортным! ✨",
+    title: "Не нужно бояться ошибок — уход должен быть комфортным!",
     renderBody: () => (
-      <div className="space-y-3 mt-4">
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>❌ Слишком много средств сразу</div>
-          <div>✅ Последовательный уход шаг за шагом</div>
-          <div>❌ Ожидать моментальный результат</div>
-          <div>✅ Смотреть на долгосрочные изменения</div>
-          <div>❌ Копировать чужой уход</div>
-          <div>✅ Подбор под особенности вашей кожи</div>
+      <div className="space-y-4 mt-4">
+        <div className="rounded-2xl overflow-hidden bg-gray-50/40 backdrop-blur-xl border border-gray-200/50">
+          <img 
+            src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=250&fit=crop&q=80" 
+            alt="Девушка с красивой кожей" 
+            className="w-full h-40 object-cover"
+          />
         </div>
-        <p className="text-xs text-neutral-600 text-center mt-4">
+        <div className="grid grid-cols-2 gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Icon name="x" className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <span>Слишком много средств сразу</span>
+        </div>
+          <div className="flex items-center gap-2">
+            <Icon name="check" className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <span>Последовательный уход шаг за шагом</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Icon name="x" className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <span>Ожидать моментальный результат</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Icon name="check" className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <span>Смотреть на долгосрочные изменения</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Icon name="x" className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <span>Копировать чужой уход</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Icon name="check" className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <span>Подбор под особенности вашей кожи</span>
+          </div>
+        </div>
+        <p className="text-xs text-gray-600 text-center mt-4">
           Мы поможем выстроить уход, который работает именно для вас — без перегрузки кожи и лишнего стресса.
         </p>
       </div>
@@ -1057,7 +1269,7 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "motivation_focus",
-    title: "🎯 Давайте сосредоточимся на вашей мотивации",
+    title: "Давайте сосредоточимся на вашей мотивации",
     subtitle: "Исследования показывают: когда вы держите цель перед глазами, это помогает сохранить мотивацию и добиться долгосрочных результатов",
     renderBody: () => null,
     ctaText: "Продолжить"
@@ -1115,11 +1327,29 @@ const screens: Screen[] = [
     id: "created_for_you",
     title: "Создан для людей, как вы!",
     renderBody: () => (
-      <div className="space-y-3 mt-4">
-        <div>✨ 97% пользователей отмечают, что наш подход помогает лучше заботиться о коже</div>
-        <div>🌿 92% заметили улучшения внешнего вида кожи</div>
-        <div>⚡️ 85% увидели первые результаты уже в первый месяц</div>
-        <p className="text-xs text-neutral-500 mt-4">
+      <div className="space-y-4 mt-4">
+        <div className="rounded-2xl overflow-hidden bg-gray-50/40 backdrop-blur-xl border border-gray-200/50">
+          <img 
+            src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&h=300&fit=crop&q=80" 
+            alt="Девушка с красивой кожей" 
+            className="w-full h-48 object-cover"
+          />
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Icon name="sparkles" className="w-5 h-5 text-gray-500" />
+            <span>97% пользователей отмечают, что наш подход помогает лучше заботиться о коже</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Icon name="leaf" className="w-5 h-5 text-gray-500" />
+            <span>92% заметили улучшения внешнего вида кожи</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Icon name="zap" className="w-5 h-5 text-gray-500" />
+            <span>85% увидели первые результаты уже в первый месяц</span>
+          </div>
+        </div>
+        <p className="text-xs text-gray-600 mt-4 text-center">
           Основано на опросах и отзывах реальных пользователей
         </p>
       </div>
@@ -1168,7 +1398,7 @@ const screens: Screen[] = [
   {
     kind: "question",
     id: "photo",
-    title: "📸 Фото-анализ кожи",
+    title: "Фото-анализ кожи",
     description: "Сделайте селфи, и наш ИИ проанализирует состояние вашей кожи, подберёт персонализированный уход и продукты",
     type: "photo",
     required: false
@@ -1274,7 +1504,10 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <h3 className="text-lg font-bold mb-2">📸 Фото-скан (опционально)</h3>
+        <h3 className="text-lg font-bold mb-2 flex items-center justify-center gap-2">
+          <Icon name="camera" className="w-6 h-6 text-gray-500" />
+          Фото-скан (опционально)
+        </h3>
         <p className="text-sm text-neutral-600 mb-4">
           Можно добавить фото без макияжа при дневном свете — я учту это при планировании. Можно пропустить.
         </p>
@@ -1300,7 +1533,7 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
       </label>
 
       {error && (
-        <div role="alert" className="mt-3 text-sm text-rose-700 bg-white/40 backdrop-blur-xl border border-rose-200 rounded-xl p-3 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+        <div role="alert" className="mt-3 text-sm text-gray-700 bg-white/40 backdrop-blur-xl border border-gray-200 rounded-xl p-3 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
           {error}
         </div>
       )}
@@ -1320,7 +1553,7 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
                 'акне': 'border-red-600 bg-red-600/50',
                 'жирность': 'border-yellow-600 bg-yellow-600/50', 
                 'поры': 'border-orange-600 bg-orange-600/50',
-                'покраснение': 'border-pink-600 bg-pink-600/50',
+                'покраснение': 'border-gray-600 bg-gray-600/50',
                 'сухость': 'border-blue-600 bg-blue-600/50'
               };
               
@@ -1363,8 +1596,9 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
           </div>
           
           {isAnalyzing && (
-            <div className="mt-2 text-sm text-blue-600">
-              🔍 Анализируем кожу с помощью ИИ...
+            <div className="mt-2 text-sm text-gray-600 flex items-center gap-2 justify-center">
+              <Icon name="search" className="w-4 h-4" />
+              Анализируем кожу с помощью ИИ...
             </div>
           )}
           
@@ -1372,7 +1606,10 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
             <div className="mt-4 space-y-3">
               <div className="bg-white/40 backdrop-blur-xl border border-green-200 rounded-xl p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
                 <div className="text-center mb-3">
-                  <h3 className="text-lg font-bold text-green-700">✅ Анализ завершён!</h3>
+                  <h3 className="text-lg font-bold text-green-700 flex items-center justify-center gap-2">
+                    <Icon name="check" className="w-5 h-5" />
+                    Анализ завершён!
+                  </h3>
                   <div className="text-sm text-neutral-600">Результаты ИИ-анализа кожи</div>
                 </div>
                 
@@ -1386,8 +1623,9 @@ function PhotoStep({ answers, setAnswers }: { answers: Answers; setAnswers: (a: 
               {/* Детали выбранной проблемной области */}
               {selectedProblem && (
                 <div className="mt-3 p-3 rounded-xl border-l-4 border-blue-500 bg-white/40 backdrop-blur-xl shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
-                  <div className="text-sm font-medium mb-1">
-                    🎯 {selectedProblem.type} ({selectedProblem.severity === 'high' ? 'высокая' : selectedProblem.severity === 'medium' ? 'средняя' : 'низкая'} степень)
+                  <div className="text-sm font-medium mb-1 flex items-center gap-2">
+                    <Icon name="target" className="w-4 h-4 text-gray-500" />
+                    {selectedProblem.type} ({selectedProblem.severity === 'high' ? 'высокая' : selectedProblem.severity === 'medium' ? 'средняя' : 'низкая'} степень)
                   </div>
                   <div className="text-xs text-neutral-600 mb-2">{selectedProblem.description}</div>
                   
@@ -1437,29 +1675,9 @@ export default function Quiz() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleNext = () => {
-    if (!isStepValid) {
-      setError("Пожалуйста, выберите ответ перед продолжением");
-      vibrate([50, 25, 50]);
-      return;
-    }
-    
-    if (currentStepIndex < screens.length - 1) {
-      setError(null);
-      setCurrentStepIndex(currentStepIndex + 1);
-    }
-  };
 
-  const handlePrev = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(currentStepIndex - 1);
-    }
-  };
-
-  const swipeHandlers = useSwipeNavigation(handleNext, handlePrev);
 
   useEffect(() => {
     saveAnswers(answers);
@@ -1469,12 +1687,6 @@ export default function Quiz() {
     setIsPageLoaded(true);
   }, []);
 
-  // Load background image
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => setBackgroundLoaded(true);
-    img.src = "/bg/IMG_8368 (2).PNG";
-  }, []);
 
   const currentStep = screens[currentStepIndex];
   
@@ -1526,66 +1738,69 @@ export default function Quiz() {
   };
 
   return (
-    <div 
+      <div 
       className="w-full min-h-screen relative overflow-x-hidden safe-area-inset"
-      style={{
+          style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',
       }}
-      {...swipeHandlers}
     >
-      {/* Background layers: PNG image with floating spheres */}
-      <div 
-        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
-          backgroundLoaded ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{
-          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
-        }}
-      />
-      
-      {/* Premium shimmer loading effect */}
-      {!backgroundLoaded && (
-        <div className="fixed inset-0 -z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 shimmer-wrapper">
-        </div>
-      )}
+      {/* Background in style of main page */}
+      <div className="fixed inset-0 -z-10 quiz-gradient-animation" />
 
       {/* Header */}
-      <div className="absolute top-4 left-4 z-20">
-        <img 
-          src="/skiniq-logo.png" 
-          alt="SkinIQ" 
-          className="h-32 w-auto object-contain"
-        />
+      {currentStepIndex > 0 && (
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="Назад"
+          className="absolute z-50 flex items-center justify-center text-gray-700 hover:text-gray-900 transition"
+          style={{
+            left: `calc(env(safe-area-inset-left, 0px) + 12px)`,
+            top: `calc(env(safe-area-inset-top, 0px) + 26px)`
+          }}
+        >
+          <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-6">
+            <path d="M24 12H6" />
+            <path d="M11 5l-6 7 6 7" />
+          </svg>
+        </button>
+      )}
+      <div className="absolute left-1/2 transform -translate-x-1/2 z-40" style={{ top: `calc(env(safe-area-inset-top, 0px) + 2px)` }}>
+        <Link to="/" className="block cursor-pointer hover:opacity-80 transition-opacity">
+          <img 
+            src="/skiniq-logo.png" 
+            alt="SkinIQ" 
+            className="h-32 w-auto object-contain"
+          />
+        </Link>
       </div>
 
       <div 
-        className={`relative z-20 space-y-2 px-2 pb-4 pt-32 transition-all duration-500 max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl sm:px-6 min-h-screen flex flex-col ${
+        className={`relative z-20 px-2 pb-4 pt-24 transition-all duration-500 max-w-sm mx-auto sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl sm:px-6 h-screen flex flex-col ${
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
-        {currentStepIndex > 0 && (
-          <button
-            type="button"
-            onClick={goBack}
-            className="text-sm text-pink-700 flex items-center gap-1 mb-2 hover:text-pink-900 transition-colors bg-pink-50/30 backdrop-blur-xl px-3 py-2 rounded-xl border border-pink-200/40 shadow-[0_4px_12px_rgba(233,30,99,0.08)]"
-          >
-            ← Назад
-          </button>
-        )}
-
         {currentStep.kind === "question" && <ProgressBar currentStepIndex={currentStepIndex} />}
 
-        <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6 w-full transform transition-all duration-300 hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] hover:scale-[1.01]">
+        <div className="relative w-full max-w-2xl mx-auto">
+          {/* Main glassmorphism container */}
+          <div className="bg-white/15 backdrop-blur-3xl border border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.1)] rounded-[2rem] p-8 transform transition-all duration-700 hover:shadow-[0_25px_80px_rgba(0,0,0,0.15)] hover:scale-[1.01] relative overflow-hidden">
+            {/* Glassmorphism layers */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/25 via-white/10 to-transparent rounded-[2rem]"></div>
+            <div className="absolute inset-0 bg-gradient-to-tl from-gray-500/5 via-transparent to-gray-500/5 rounded-[2rem]"></div>
+            
+            {/* Content */}
+            <div className="relative z-10">
         {currentStep.kind === "question" ? (
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-4 text-center animate-fade-in">
+            <h1 className="text-[18px] font-semibold text-gray-900 mb-4 text-center leading-tight">
                 {currentStep.title}
               </h1>
             {currentStep.description && (
-              <p className="text-lg text-neutral-600 mb-6 text-center">{currentStep.description}</p>
+              <p className="text-[14px] text-gray-600 mb-6 text-center leading-relaxed">{currentStep.description}</p>
             )}
             <div className="mb-6">
                 {currentStep.type === "single" && (
@@ -1609,18 +1824,22 @@ export default function Quiz() {
               <button
                 onClick={goNext}
                 disabled={!isStepValid}
-                className={`w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg transition-all duration-200 touch-manipulation ${
+                className={`group relative w-full h-14 rounded-2xl font-bold text-base transition-all duration-500 touch-manipulation overflow-hidden ${
                   isStepValid
-                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
-                    : "bg-pink-200 text-pink-400 cursor-not-allowed"
+                    ? "bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-[0_10px_30px_rgba(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] hover:scale-[1.02] active:scale-[0.98]"
+                    : "bg-gradient-to-r from-gray-400 to-gray-500 text-white/90 opacity-80 cursor-not-allowed"
                 }`}
               >
-                {currentStepIndex >= screens.length - 1 ? "✨ Завершить" : "Продолжить →"}
+                {/* Glassmorphism shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                <span className={`relative z-10 flex items-center justify-center gap-2 ${isStepValid ? 'text-white' : 'text-white/90'}`}>
+                  {currentStepIndex >= screens.length - 1 ? "✨ Завершить" : "Продолжить →"}
+                </span>
               </button>
             </div>
           ) : (
             <div>
-            <h2 className="text-xl md:text-2xl font-semibold mb-2">
+            <h2 className="text-[18px] font-semibold text-gray-900 mb-2">
               {currentStep.title}
             </h2>
             {currentStep.subtitle && (
@@ -1631,12 +1850,14 @@ export default function Quiz() {
             </div>
               <button
                 onClick={goNext}
-                className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
+                className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800 shadow-[0_10px_30px_rgba(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
               >
                 {currentStep.ctaText || "Продолжить →"}
               </button>
             </div>
         )}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -1656,19 +1877,19 @@ export default function Quiz() {
           
           <div className="relative z-10 text-center px-6">
             <div className="bg-white/40 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-8">
-              <div className="mb-6">
-                <div className="relative w-32 h-32 mx-auto">
-                  {/* Rotating circles */}
+            <div className="mb-6">
+              <div className="relative w-32 h-32 mx-auto">
+                {/* Rotating circles */}
                   <div className="absolute inset-0 rounded-full border-4 border-white/30 opacity-20"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-t-neutral-900 animate-spin"></div>
-                </div>
+                <div className="absolute inset-0 rounded-full border-4 border-t-neutral-900 animate-spin"></div>
               </div>
-              <h2 className="text-2xl font-bold text-neutral-900 mb-3">✨ Анализируем ваши ответы</h2>
+            </div>
+            <h2 className="text-[18px] font-semibold text-gray-900 mb-3">✨ Анализируем ваши ответы</h2>
               <p className="text-neutral-700 text-lg">Создаём персональный план ухода...</p>
-              <div className="mt-6 flex justify-center gap-1">
-                <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
-                <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+            <div className="mt-6 flex justify-center gap-1">
+              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
               </div>
             </div>
           </div>
@@ -1703,7 +1924,19 @@ export default function Quiz() {
           animation: slide-down 0.3s ease-out;
         }
         .animate-shimmer {
-          animation: shimmer 2s infinite;
+          animation: shimmer 3.8s ease-in-out infinite;
+        }
+        .quiz-gradient-animation {
+          background: linear-gradient(130deg, #d9dbe6 0%, #e9ebf2 40%, #ffffff 70%, #e2e5ed 100%);
+          background-size: 300% 300%;
+          animation: quizGradientMotion 18s ease-in-out infinite;
+        }
+        @keyframes quizGradientMotion {
+          0% { background-position: 0% 0%; }
+          25% { background-position: 50% 50%; }
+          50% { background-position: 100% 100%; }
+          75% { background-position: 50% 50%; }
+          100% { background-position: 0% 0%; }
         }
       `}</style>
     </div>

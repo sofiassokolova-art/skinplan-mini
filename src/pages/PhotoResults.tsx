@@ -158,7 +158,7 @@ export default function PhotoResults() {
               'акне': 'border-red-500 bg-red-500/30',
               'жирность': 'border-yellow-500 bg-yellow-500/30', 
               'поры': 'border-orange-500 bg-orange-500/30',
-              'покраснение': 'border-pink-500 bg-pink-500/30',
+              'покраснение': 'border-purple-500 bg-purple-500/30',
               'сухость': 'border-blue-500 bg-blue-500/30'
             };
             

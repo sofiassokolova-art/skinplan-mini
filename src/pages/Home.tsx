@@ -231,10 +231,10 @@ function ProgressRing({ completed = 0, total = 5, size = 60, stroke = 3 }) {
     <svg width={size} height={size} className="block" style={{overflow: 'visible'}}>
         <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#D8BFD8" />
-          <stop offset="50%" stopColor="#E6E6FA" />
-          <stop offset="100%" stopColor="#F0E6FF" />
-          </linearGradient>
+          <stop offset="0%" stopColor="#B794F6" />
+          <stop offset="45%" stopColor="#9F7AEA" />
+          <stop offset="100%" stopColor="#7C3AED" />
+        </linearGradient>
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
           <feMerge> 
@@ -272,7 +272,7 @@ function ProgressRing({ completed = 0, total = 5, size = 60, stroke = 3 }) {
       <foreignObject x="0" y="0" width={size} height={size}>
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-center">
-            <div className="text-[10px] font-normal text-pink-700" style={{fontVariantNumeric: 'tabular-nums'}}>{completed} из {total}</div>
+            <div className="text-[10px] font-normal text-gray-700" style={{fontVariantNumeric: 'tabular-nums'}}>{completed} из {total}</div>
           </div>
         </div>
       </foreignObject>
@@ -289,12 +289,12 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
             <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
           </div>
         ) : (
-          <div className="w-8 h-8 rounded-xl bg-pink-500/80" />
+          <div className="w-8 h-8 rounded-xl bg-gray-500/80" />
         )}
       </div>
       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
-        <div className="text-[15px] font-semibold text-pink-900 truncate">{item.title}</div>
-        <div className="text-[12px] text-pink-600 truncate">{item.subtitle}</div>
+        <div className="text-[15px] font-semibold text-gray-900 truncate">{item.title}</div>
+        <div className="text-[12px] text-gray-600 truncate">{item.subtitle}</div>
         </button>
         <button
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
@@ -302,7 +302,7 @@ function RoutineCard({ item, onToggle, onOpen }: { item: RoutineItem; onToggle: 
         className="ml-auto w-9 h-9 flex items-center justify-center"
       >
         <span
-          className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-120 ${item.done ? 'border-transparent bg-pink-500 text-white scale-100' : 'border-pink-300 bg-pink-100 text-pink-400 scale-95'}`}
+          className={`w-6 h-6 rounded-xl border flex items-center justify-center transition-all duration-120 ${item.done ? 'border-transparent bg-gray-500 text-white scale-100' : 'border-gray-300 bg-gray-100 text-gray-400 scale-95'}`}
         >
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -322,14 +322,20 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
       <div className={`absolute left-0 right-0 bottom-0 ${glass} ${radiusPanel} p-4 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)]`}>
         <div className="mx-auto h-1 w-10 rounded-full bg-white/60 mb-3" />
         <div className="flex items-center gap-3">
-          <img src={item.icon} alt="" className="w-10 h-10 object-contain mix-blend-multiply" />
+          {item.icon ? (
+            <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-[0_6px_18px_rgba(0,0,0,0.08)]">
+              <img src={item.icon} alt="" className="w-6 h-6 object-contain" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-2xl bg-white shadow-[0_6px_18px_rgba(0,0,0,0.06)]" />
+          )}
           <div>
-            <div className="text-[16px] font-semibold text-pink-900">{item.title}</div>
-            <div className="text-[12px] text-pink-600">{item.subtitle}</div>
+            <div className="text-[16px] font-semibold text-gray-900">{item.title}</div>
+            <div className="text-[12px] text-gray-600">{item.subtitle}</div>
           </div>
         </div>
         <div className="mt-3">
-          <div className="text-[13px] font-semibold text-pink-900 mb-1">Как выполнить</div>
+          <div className="text-[13px] font-semibold text-gray-900 mb-1">Как выполнить</div>
           <ol className="list-decimal list-inside text-[14px] text-neutral-800 space-y-1">
             {item.howto?.steps?.map((s: string, i: number) => (
               <li key={i}>{s}</li>
@@ -337,11 +343,11 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           </ol>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div className={`${glass} ${radiusCard} p-3`}>
-              <div className="text-[12px] text-pink-600">Объём</div>
+              <div className="text-[12px] text-gray-600">Объём</div>
               <div className="text-[14px] font-medium">{item.howto?.volume}</div>
             </div>
             <div className={`${glass} ${radiusCard} p-3`}>
-              <div className="text-[12px] text-pink-600">Совет</div>
+              <div className="text-[12px] text-gray-600">Совет</div>
               <div className="text-[14px] font-medium">{item.howto?.tip}</div>
             </div>
           </div>
@@ -350,7 +356,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} ${glass} text-[15px] font-semibold`}>
             Закрыть
           </button>
-          <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[15px] font-semibold`}>
+          <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} bg-gradient-to-r from-gray-600 to-gray-700 text-white text-[15px] font-semibold`}>
             Понятно
           </button>
         </div>
@@ -367,7 +373,6 @@ export default function MobileSkinIQHome() {
   const [evening, setEvening] = useState(eveningDefault);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
-  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
 
   // Greeting state
   const [userName, setUserName] = useState(USER_FALLBACK);
@@ -380,12 +385,6 @@ export default function MobileSkinIQHome() {
     setUserName(name);
   }, []);
 
-  // Load background image
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => setBackgroundLoaded(true);
-    img.src = "/bg/IMG_8368 (2).PNG";
-  }, []);
 
   // UV Index state
   const [uvIndex, setUvIndex] = useState<number | null>(null);
@@ -459,23 +458,22 @@ export default function MobileSkinIQHome() {
   return (
     <div className="w-full min-h-screen relative overflow-x-hidden">
       {/* Background layers: PNG image with floating spheres */}
-      <div 
-        className={`fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
-          backgroundLoaded ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{
-          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
-        }}
-      />
-      
-      {/* Premium shimmer loading effect */}
-      {!backgroundLoaded && (
-        <div className="fixed inset-0 -z-10 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 shimmer-wrapper">
-        </div>
-      )}
+      <div className="fixed inset-0 -z-10 home-gradient-animation" />
       
       <style>{`
         @keyframes sheetUp { from { transform: translateY(12px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
+        .home-gradient-animation {
+          background: linear-gradient(130deg, #d9dbe6 0%, #e9ebf2 40%, #ffffff 70%, #e2e5ed 100%);
+          background-size: 300% 300%;
+          animation: gradientMotion 18s ease-in-out infinite;
+        }
+        @keyframes gradientMotion {
+          0% { background-position: 0% 0%; }
+          25% { background-position: 50% 50%; }
+          50% { background-position: 100% 100%; }
+          75% { background-position: 50% 50%; }
+          100% { background-position: 0% 0%; }
+        }
         @keyframes pulseGlow { 
           0%, 100% { 
             filter: url(#glow);
@@ -503,7 +501,7 @@ export default function MobileSkinIQHome() {
       <div className="mx-4 mt-32 mb-2">
         <div className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-4 flex items-center gap-4">
           {/* Icon circle with sun/moon */}
-          <div className="w-14 h-14 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-r from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0 shadow-lg">
             {(() => {
               const hour = new Date().getHours();
               if (hour >= 5 && hour < 18) {
@@ -532,10 +530,10 @@ export default function MobileSkinIQHome() {
       {/* Main Panel */}
       <section className={`bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] ${radiusPanel} relative z-20 mx-4 p-4 overflow-visible`}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[18px] font-semibold text-pink-900">Уход сегодня</h3>
+          <h3 className="text-[18px] font-semibold text-gray-900">Уход сегодня</h3>
           <ProgressRing completed={completed} total={items.length} size={40} stroke={2} />
         </div>
-        <p className="text-[12px] text-pink-600">
+        <p className="text-[12px] text-gray-600">
           {progress === 0
             ? "Начните с первого шага"
             : progress === 100
@@ -551,8 +549,8 @@ export default function MobileSkinIQHome() {
               onClick={() => setTab(t)}
               className={`relative ${radiusCard} text-[14px] font-medium transition-all duration-200 overflow-hidden` +
                 (tab === t
-                  ? " bg-white/50 text-pink-900 shadow-inner border border-white/60"
-                  : " text-neutral-700 hover:text-pink-900")}
+                  ? " bg-white/50 text-gray-900 shadow-inner border border-white/60"
+                  : " text-neutral-700 hover:text-gray-900")}
             >
               {t === "AM" ? "Утро" : "Вечер"}
             </button>
@@ -591,7 +589,7 @@ export default function MobileSkinIQHome() {
           </button>
           <button 
             onClick={() => navigate("/quiz")}
-            className="mt-2 text-[14px] text-neutral-800 underline/20 hover:text-pink-600 transition-colors w-full"
+            className="mt-2 text-[14px] text-neutral-800 underline/20 hover:text-gray-600 transition-colors w-full"
           >
             Перепройти анкету
           </button>
@@ -648,8 +646,8 @@ export default function MobileSkinIQHome() {
                   <img src="/icons/hydration.PNG" alt="Hydration" className="w-full h-full object-contain" />
                 </div>
                 <div className="flex flex-col justify-center flex-1">
-                  <div className="text-[12px] text-pink-600 mb-1">Уровень</div>
-                  <div className="text-[15px] font-semibold text-pink-900">Оптимально</div>
+                  <div className="text-[12px] text-gray-600 mb-1">Уровень</div>
+                  <div className="text-[15px] font-semibold text-gray-900">Оптимально</div>
                 </div>
               </div>
             </WidgetCard>
@@ -659,10 +657,10 @@ export default function MobileSkinIQHome() {
                   <div className="text-sm text-neutral-500">Загрузка...</div>
                 ) : (
                   <>
-                    <div className="text-[56px] font-bold tabular-nums text-pink-900 leading-none flex-shrink-0">{uvIndex ?? "—"}</div>
+                    <div className="text-[56px] font-bold tabular-nums text-gray-900 leading-none flex-shrink-0">{uvIndex ?? "—"}</div>
                     <div className="flex flex-col justify-center flex-1">
                       <div className="text-[11px] text-neutral-500 mb-1 font-medium">{getUVLevel(uvIndex)}</div>
-                      <div className="text-[13px] text-pink-600 leading-tight">Сегодня: {getSPFRecommendation(uvIndex)}</div>
+                      <div className="text-[13px] text-gray-600 leading-tight">Сегодня: {getSPFRecommendation(uvIndex)}</div>
                     </div>
                   </>
                 )}
@@ -683,8 +681,8 @@ export default function MobileSkinIQHome() {
 function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <article className={`snap-start shrink-0 w-[280px] h-[140px] mx-0 bg-white/40 backdrop-blur-xl border border-white/50 rounded-3xl p-4 flex flex-col shadow-[0_4px_12px_rgba(0,0,0,0.06)]`}>
-      <div className="text-[13px] text-pink-600 mb-3">{title}</div>
-      <div className="text-pink-900 flex-1">{children}</div>
+      <div className="text-[13px] text-gray-600 mb-3">{title}</div>
+      <div className="text-gray-900 flex-1">{children}</div>
     </article>
   );
 }

@@ -168,7 +168,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                       }
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-br from-rose-100/10 to-amber-100/10 mix-blend-soft-light"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-100/10 to-amber-100/10 mix-blend-soft-light"></div>
                 </div>
               ) : step.image === 'process-flow' ? (
                 <div className={`w-32 h-20 mx-auto mb-4 ${radiusCard} overflow-hidden relative shadow-lg border-2 border-white/60 bg-white/40 backdrop-blur-sm`}>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { tg, sendToTG } from "../lib/tg";
 
 type CartItem = { id:string; name:string; qty:number; feedback?:string };
@@ -43,45 +44,53 @@ export default function Cart() {
   };
 
   return (
-    <div className="w-full min-h-screen relative">
-      {/* Background layers: PNG image */}
+    <div className="w-full min-h-screen relative overflow-x-hidden">
+      {/* Background gradient */}
       <div 
-        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: "url('/bg/IMG_8368 (2).PNG')"
-        }}
+        className="fixed inset-0 -z-10 bg-gradient-to-br from-gray-100 via-slate-100 to-gray-200"
       />
       
-      <div className="relative z-20 max-w-3xl mx-auto space-y-6 p-4">
+      {/* Header */}
+      <div className="absolute top-4 left-4 z-20">
+        <Link to="/" className="block cursor-pointer hover:opacity-80 transition-opacity">
+          <img 
+            src="/skiniq-logo.png" 
+            alt="SkinIQ" 
+            className="h-32 w-auto object-contain"
+          />
+        </Link>
+      </div>
+      
+      <div className="relative z-20 max-w-7xl mx-auto space-y-6 px-2 sm:px-4 pt-32">
         <section className="bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)] rounded-3xl p-6">
-        <h2 className="text-xl font-bold mb-3">Корзина продуктов</h2>
+        <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Корзина продуктов</h2>
 
         {items.length===0 ? (
-          <div className="text-zinc-600">
-            Корзина пуста. Перейди в <a href="/plan" className="underline">План</a> и добавь всё в корзину.
+          <div className="text-[14px] text-gray-600">
+            Корзина пуста. Перейди в <a href="/plan" className="underline text-gray-800 hover:text-gray-600">План</a> и добавь всё в корзину.
           </div>
         ) : (
           <div className="space-y-4">
             {items.map((it, i)=>(
-              <div key={it.id} className="border rounded-2xl p-4 bg-white/60">
+              <div key={it.id} className="border border-white/40 rounded-2xl p-4 bg-white/30 backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                   <input
                     value={it.name}
                     onChange={e=>update(i,{name:e.target.value})}
-                    className="flex-1 rounded-xl border px-3 py-2"
+                    className="flex-1 rounded-xl border border-gray-200/50 px-3 py-2 bg-white/50 backdrop-blur-sm text-[14px] focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
                   />
                   <div className="flex items-center gap-2">
-                    <button onClick={()=>update(i,{qty: Math.max(1, it.qty-1)})} className="px-3 py-2 rounded-full border">−</button>
-                    <span className="min-w-6 text-center">{it.qty}</span>
-                    <button onClick={()=>update(i,{qty: it.qty+1})} className="px-3 py-2 rounded-full border">+</button>
+                    <button onClick={()=>update(i,{qty: Math.max(1, it.qty-1)})} className="w-8 h-8 rounded-full border border-gray-200/50 bg-white/50 backdrop-blur-sm flex items-center justify-center text-[14px] font-semibold hover:bg-white/70 transition-colors">−</button>
+                    <span className="min-w-6 text-center text-[14px] font-semibold text-gray-800">{it.qty}</span>
+                    <button onClick={()=>update(i,{qty: it.qty+1})} className="w-8 h-8 rounded-full border border-gray-200/50 bg-white/50 backdrop-blur-sm flex items-center justify-center text-[14px] font-semibold hover:bg-white/70 transition-colors">+</button>
                   </div>
-                  <button onClick={()=>remove(i)} className="px-3 py-2 rounded-full border text-red-600">Удалить</button>
+                  <button onClick={()=>remove(i)} className="px-4 py-2 rounded-xl border border-red-200/50 bg-red-50/50 backdrop-blur-sm text-red-600 text-[14px] font-medium hover:bg-red-100/50 transition-colors">Удалить</button>
                 </div>
                 <textarea
                   value={it.feedback || ""}
                   onChange={e=>update(i,{feedback:e.target.value})}
                   placeholder="Фидбек по продукту (например: липкий, сильная отдушка, хочу альтернативу без отдушек)"
-                  className="mt-3 w-full rounded-xl border px-3 py-2 text-sm"
+                  className="mt-3 w-full rounded-xl border border-gray-200/50 px-3 py-2 text-[12px] bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
                   rows={2}
                 />
               </div>
@@ -90,10 +99,10 @@ export default function Cart() {
         )}
 
         <div className="mt-4 flex flex-wrap gap-3">
-          <button onClick={addCustom} className="px-5 py-3 rounded-full border">Добавить позицию</button>
-          <button onClick={()=>save(items)} className="px-5 py-3 rounded-full border">Сохранить</button>
-          <button onClick={clear} className="px-5 py-3 rounded-full border">Очистить</button>
-          <button onClick={handleSend} className="px-5 py-3 rounded-full bg-black text-white">
+          <button onClick={addCustom} className="px-4 py-2 rounded-xl border border-gray-200/50 bg-white/50 backdrop-blur-sm text-[14px] font-medium hover:bg-white/70 transition-colors">Добавить позицию</button>
+          <button onClick={()=>save(items)} className="px-4 py-2 rounded-xl border border-gray-200/50 bg-white/50 backdrop-blur-sm text-[14px] font-medium hover:bg-white/70 transition-colors">Сохранить</button>
+          <button onClick={clear} className="px-4 py-2 rounded-xl border border-red-200/50 bg-red-50/50 backdrop-blur-sm text-red-600 text-[14px] font-medium hover:bg-red-100/50 transition-colors">Очистить</button>
+          <button onClick={handleSend} className="px-4 py-2 rounded-xl bg-gradient-to-r from-gray-600 to-gray-700 text-white text-[14px] font-semibold hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
             {tg ? "Отправить в Telegram" : "Скопировать для Telegram"}
           </button>
         </div>
