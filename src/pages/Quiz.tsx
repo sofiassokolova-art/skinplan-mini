@@ -454,116 +454,313 @@ function ProgressBar({ currentStepIndex }: { currentStepIndex: number }) {
 
 // Определение всех экранов анкеты
 const screens: Screen[] = [
-  // 1. Экран приветствия
+  // 1. Экран приветствия - Expert Style 2025
   {
     kind: "info",
     id: "welcome",
     title: "",
     subtitle: "",
     renderBody: () => (
-      <div className="flex flex-col items-center text-center gap-8">
-        <div className="relative w-full h-48 sm:h-56 rounded-[30px] border border-white/60 bg-white/25 backdrop-blur-2xl shadow-[0_20px_50px_rgба(0,0,0,0.1)] overflow-hidden">
-          <img
-            src="/quiz_welocme_image.png"
-            alt="SkinIQ — подбор ухода"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/10" />
-        </div>
-        <div className="space-y-4 px-2">
-          <h1 className="text-[22px] sm:text-[24px] font-normal leading-tight text-gray-900">
-            Подбери эффективный уход для своей кожи со <span className="font-semibold text-[22px] sm:text-[24px]">SkinIQ</span>
-          </h1>
-            </div>
-              </div>
-    ),
-    ctaText: "Продолжить"
-  },
-  {
-    kind: "info",
-    id: "how_it_works",
-    title: "Как это работает",
-    subtitle: "Всего четыре шага до персонального плана",
-    renderBody: () => (
-      <div className="space-y-6">
-        <div className="grid gap-3">
-          {[
-            {
-              icon: "search",
-              text: "Ответьте на несколько вопросов",
-            },
-            {
-              icon: "camera",
-              text: "Загрузите фото",
-            },
-            {
-              icon: "sparkles",
-              text: "Получите персональную подборку ухода",
-            },
-            {
-              icon: "calendar",
-              text: "Увидьте, как будет меняться кожа 12 недель",
-            },
-          ].map((step, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-4 rounded-3xl bg-white/25 backdrop-blur-2xl border border-white/40 px-4 py-3 shadow-[0_12px_30px_rgaba(0,0,0,0.1)]"
+      <div className="flex flex-col items-center w-full max-w-md mx-auto px-4">
+        {/* Large glass card */}
+        <div 
+          className="w-full rounded-3xl p-6 sm:p-8 animate-onboarding-fade-in backdrop-blur-[20px] border shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+          style={{ 
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            animationDelay: '0ms'
+          }}
+        >
+          <div className="flex flex-col items-center text-center gap-6">
+            {/* Portrait image with dark edges */}
+            <div 
+              className="relative w-[240px] h-[240px] sm:w-[280px] sm:h-[280px] rounded-2xl overflow-hidden"
+              style={{
+                boxShadow: 'inset 0 0 40px rgba(0, 0, 0, 0.1)'
+              }}
             >
-              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_10px_28px_rgaba(0,0,0,0.12)] flex-shrink-0">
-                <Icon name={step.icon} className="w-5 h-5 text-gray-800" />
-              </div>
-              <span className="text-sm sm:text-base text-gray-800 font-medium text-left">
-                {step.text}
-              </span>
-              </div>
-          ))}
+              <img
+                src="/quiz_welocme_image.png"
+                alt="SkinIQ — подбор ухода"
+                className="w-full h-full object-cover"
+              />
             </div>
-          </div>
-    ),
-    ctaText: "Продолжить"
-  },
 
-  // 2. Персональный анализ кожи
-  {
-    kind: "info",
-    id: "personal_analysis",
-    title: "Персональный анализ кожи",
-    renderBody: () => (
-      <div className="space-y-4">
-        <div className="rounded-3xl border border-white/40 bg-white/25 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.12)] p-5 space-y-4">
-          {[
-            { icon: "search", text: "Детальный разбор — морщины, линии и текстура в 3D" },
-            { icon: "droplet", text: "Уровень увлажнённости — персональная оценка баланса влаги" },
-            { icon: "microscope", text: "Поры — точное выявление и измерение" },
-            { icon: "heart", text: "Здоровье кожи — покраснения, воспаления, раздражения" },
-          ].map((feature, index) => (
-            <div key={index} className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-[0_8px_18px_rgaba(0,0,0,0.08)] flex-shrink-0">
-                <Icon name={feature.icon} className="w-5 h-5 text-gray-700" />
-              </div>
-              <span className="text-sm text-gray-800 font-medium leading-relaxed text-left">
-                {feature.text}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 space-y-1.5 text-xs text-left">
-          <div className="flex items-center gap-2 text-gray-700">
-            <div className="w-4 h-4 flex items-center justify-center text-[#7C3AED]">
-              <Icon name="check" className="w-4 h-4" />
-            </div>
-            <span>89% пользователей отмечают улучшение состояния кожи за 1 месяц</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-700">
-            <div className="w-4 h-4 flex items-center justify-center text-[#7C3AED]">
-              <Icon name="check" className="w-4 h-4" />
-            </div>
-            <span>Наш подход в 3 раза эффективнее обычных рутин</span>
+            {/* Title - 30sp bold #0A5F59 */}
+            <h1 
+              className="text-[26px] sm:text-[30px] font-bold leading-tight animate-onboarding-fade-in"
+              style={{ color: '#0A5F59', animationDelay: '150ms' }}
+            >
+              Персональный план ухода уровня косметолога-дерматолога
+            </h1>
+
+            {/* Subtitle - 17sp */}
+            <p 
+              className="text-[16px] sm:text-[17px] leading-relaxed animate-onboarding-fade-in"
+              style={{ color: '#475467', animationDelay: '300ms' }}
+            >
+              Точная диагностика и рекомендации экспертов за 2–3 минуты
+            </p>
+
+            {/* Social proof - 16sp */}
+            <p 
+              className="text-[15px] sm:text-[16px] animate-onboarding-fade-in"
+              style={{ color: '#64748B', animationDelay: '450ms' }}
+            >
+              47 832 клиенток уже решили свои проблемы с кожей
+            </p>
           </div>
         </div>
       </div>
     ),
-    ctaText: "Продолжить"
+    ctaText: "Пройти диагностику кожи →"
+  },
+  {
+    kind: "info",
+    id: "how_it_works",
+    title: "Четыре шага до вашего персонального плана",
+    subtitle: "Займёт не более 3 минут. Проверка косметологом",
+    renderBody: () => (
+      <div className="space-y-4">
+        {/* Social proof */}
+        <p 
+          className="text-[15px] text-center mb-6"
+          style={{ color: '#64748B' }}
+        >
+          47 832 клиенток уже получили результат
+        </p>
+
+        {/* Four glass cards */}
+        <div className="space-y-3">
+          {[
+            {
+              number: "1",
+              text: "Ответьте на 8 вопросов о состоянии кожи",
+              isCompleted: false,
+            },
+            {
+              number: "2",
+              text: "При необходимости загрузите фото (анализ ИИ + косметолог)",
+              isCompleted: false,
+            },
+            {
+              number: "3",
+              text: "Получите персональный план на 12 недель",
+              isCompleted: false,
+            },
+            {
+              number: null,
+              text: "Отслеживайте изменения каждые 2 недели",
+              isCompleted: true,
+            },
+          ].map((step, index) => (
+            <div
+              key={index}
+              className={`flex items-start gap-4 rounded-2xl px-4 py-4 animate-onboarding-fade-in backdrop-blur-[16px] border shadow-[0_8px_32px_rgba(0,0,0,0.12)] ${
+                step.isCompleted ? '' : ''
+              }`}
+              style={{ 
+                animationDelay: `${(index + 1) * 150}ms`,
+                backgroundColor: step.isCompleted ? 'rgba(230, 247, 244, 0.6)' : 'rgba(255, 255, 255, 0.5)',
+                borderColor: 'rgba(255, 255, 255, 0.3)',
+              }}
+            >
+              {/* Circle with number or checkmark - 56dp */}
+              <div 
+                className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+                style={step.isCompleted ? { backgroundColor: '#0A5F59' } : { backgroundColor: '#0A5F59', border: 'none' }}
+              >
+                {step.isCompleted ? (
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  <span 
+                    className="text-lg font-semibold"
+                    style={{ color: 'white' }}
+                  >
+                    {step.number}
+                  </span>
+                )}
+              </div>
+              <span 
+                className="text-[17px] sm:text-[18px] leading-relaxed text-left flex-1 pt-2"
+                style={{ color: '#1F2A44' }}
+              >
+                {step.text}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+    ctaText: "Пройти диагностику кожи →"
+  },
+
+  // 2. Персональный анализ кожи - Expert glassmorphism
+  {
+    kind: "info",
+    id: "personal_analysis",
+    title: "",
+    subtitle: "",
+    renderBody: () => (
+      <div className="space-y-6 w-full max-w-md mx-auto">
+        {/* Main glass card - 85% width */}
+        <div 
+          className="w-[85%] mx-auto backdrop-blur-[20px] border rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.12)] animate-onboarding-fade-in"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.55)',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            animationDelay: '0ms'
+          }}
+        >
+          {/* Title */}
+          <h2 
+            className="text-[26px] sm:text-[28px] font-bold mb-2 text-center"
+            style={{ color: '#0A5F59' }}
+          >
+            Что именно мы проанализируем
+          </h2>
+          
+          {/* Subtitle */}
+          <p 
+            className="text-[16px] sm:text-[17px] text-center mb-6"
+            style={{ color: '#475467' }}
+          >
+            Искусственный интеллект + проверка косметологом
+          </p>
+
+          {/* 4 analysis points */}
+          <div className="space-y-0">
+            {[
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                ),
+                text: "Детальный 3D-анализ морщин, линий и текстуры"
+              },
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7">
+                    <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                  </svg>
+                ),
+                text: "Уровень увлажнённости и баланс влаги"
+              },
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
+                  </svg>
+                ),
+                text: "Поры — точное выявление и измерение"
+              },
+              {
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />
+                  </svg>
+                ),
+                text: "Здоровье кожи: покраснения, воспаления, раздражения"
+              },
+            ].map((feature, index) => (
+              <div key={index}>
+                <div 
+                  className="flex items-start gap-4 py-4 animate-onboarding-fade-in"
+                  style={{ animationDelay: `${(index + 1) * 100}ms` }}
+                >
+                  {/* Icon - 28dp, color #0A5F59 */}
+                  <div 
+                    className="w-7 h-7 flex items-center justify-center flex-shrink-0"
+                    style={{ color: '#0A5F59' }}
+                  >
+                    {feature.icon}
+                  </div>
+                  
+                  {/* Text - 17sp, bold first line */}
+                  <span 
+                    className="text-[16px] sm:text-[17px] leading-relaxed text-left flex-1 pt-0.5"
+                    style={{ color: '#1F2A44', fontWeight: 600 }}
+                  >
+                    {feature.text}
+                  </span>
+                </div>
+                
+                {/* Divider - except last */}
+                {index < 3 && (
+                  <div 
+                    className="h-px"
+                    style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Social proof block - more dense glass */}
+        <div 
+          className="w-[85%] mx-auto backdrop-blur-[20px] border rounded-2xl p-5 space-y-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] animate-onboarding-fade-in"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            animationDelay: '500ms'
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <svg 
+              viewBox="0 0 24 24" 
+              width="20" 
+              height="20" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="3" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              className="flex-shrink-0 mt-0.5"
+              style={{ color: '#0A5F59' }}
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span 
+              className="text-[16px] sm:text-[17px] leading-relaxed text-left"
+              style={{ color: '#1F2A44' }}
+            >
+              89% клиенток отмечают улучшение уже через 4 недели
+            </span>
+          </div>
+          <div className="flex items-start gap-3">
+            <svg 
+              viewBox="0 0 24 24" 
+              width="20" 
+              height="20" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="3" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              className="flex-shrink-0 mt-0.5"
+              style={{ color: '#0A5F59' }}
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span 
+              className="text-[16px] sm:text-[17px] leading-relaxed text-left"
+              style={{ color: '#1F2A44' }}
+            >
+              Наш подход в 3 раза эффективнее обычных рутин
+            </span>
+          </div>
+        </div>
+      </div>
+    ),
+    ctaText: "Загрузить фото и получить анализ →"
   },
 
   // 3. Цели для кожи
@@ -1697,8 +1894,13 @@ export default function Quiz() {
         paddingRight: 'env(safe-area-inset-right)',
       }}
     >
-      {/* Background in style of main page */}
-      <div className="fixed inset-0 -z-10 quiz-gradient-animation" />
+      {/* Background - light gradient */}
+      <div 
+        className="fixed inset-0 -z-10"
+        style={{
+          background: 'linear-gradient(180deg, #F8FFFD 0%, #F0FDFA 100%)'
+        }}
+      />
 
       {/* Header */}
       {currentStepIndex > 0 && (
@@ -1737,10 +1939,13 @@ export default function Quiz() {
 
         <div className="relative w-full max-w-2xl mx-auto">
           {/* Main glassmorphism container */}
-          <div className="bg-white/15 backdrop-blur-3xl border border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.1)] rounded-[2rem] p-8 transform transition-all duration-700 hover:shadow-[0_25px_80px_rgba(0,0,0,0.15)] hover:scale-[1.01] relative overflow-hidden">
-            {/* Glassmorphism layers */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/25 via-white/10 to-transparent rounded-[2rem]"></div>
-            <div className="absolute inset-0 bg-gradient-to-tl from-gray-500/5 via-transparent to-gray-500/5 rounded-[2rem]"></div>
+          <div 
+            className="backdrop-blur-[20px] border rounded-[2rem] p-8 transform transition-all duration-700 relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.5)',
+              borderColor: 'rgba(255, 255, 255, 0.3)'
+            }}
+          >
             
             {/* Content */}
             <div className="relative z-10">
@@ -1789,27 +1994,84 @@ export default function Quiz() {
             </div>
           ) : (
             <div>
-            <h2 className="text-[18px] font-semibold text-gray-900 mb-2">
-              {currentStep.title}
-            </h2>
-            {currentStep.subtitle && (
-              <p className="text-sm text-neutral-600 mb-4">{currentStep.subtitle}</p>
+            {/* Don't show title/subtitle for welcome and personal_analysis screens as they're in renderBody */}
+            {currentStep.id !== "welcome" && currentStep.id !== "personal_analysis" && (
+              <>
+                {currentStep.title && (
+                  <h2 
+                    className="text-[26px] sm:text-[30px] font-bold mb-3"
+                    style={{ color: '#0A5F59' }}
+                  >
+                    {currentStep.title}
+                  </h2>
+                )}
+                {currentStep.subtitle && (
+                  <p 
+                    className="text-[15px] sm:text-[16px] mb-6"
+                    style={{ color: '#475467' }}
+                  >
+                    {currentStep.subtitle}
+                  </p>
+                )}
+              </>
             )}
-            <div className="mb-6">
+            <div className={currentStep.id === "welcome" ? "mb-6" : "mb-6"}>
               {currentStep.renderBody(answers)}
             </div>
-              <button
-                onClick={goNext}
-                className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800 shadow-[0_10px_30px_rgба(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgба(0,0,0,0.3)] transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
-              >
-                <span className="font-semibold text-white">
-                  {currentStep.ctaText || "Продолжить →"}
-                </span>
-              </button>
+              {/* Special styling for welcome, how_it_works, and personal_analysis screens */}
+              {(currentStep.id === "welcome" || currentStep.id === "how_it_works" || currentStep.id === "personal_analysis") ? (
+                <div 
+                  className="space-y-3 animate-onboarding-fade-in" 
+                  style={{ 
+                    animationDelay: currentStep.id === "welcome" ? '600ms' : 
+                                   currentStep.id === "how_it_works" ? '750ms' : 
+                                   '900ms'
+                  }}
+                >
+                  <button
+                    onClick={goNext}
+                    className="w-full h-[56px] rounded-2xl font-semibold text-[16px] sm:text-[17px] text-white hover:opacity-90 active:scale-[0.98] transition-all duration-200 touch-manipulation"
+                    style={{ 
+                      backgroundColor: '#0A5F59',
+                      borderRadius: '16px'
+                    }}
+                  >
+                    {currentStep.ctaText || "Пройти диагностику кожи →"}
+                  </button>
+                  <p 
+                    className="text-[13px] sm:text-[14px] text-center"
+                    style={{ color: '#64748B' }}
+                  >
+                    {currentStep.id === "welcome" 
+                      ? "Бесплатно · Данные конфиденциальны"
+                      : currentStep.id === "how_it_works"
+                      ? "Бесплатно · Данные конфиденциальны · Проверка косметологом"
+                      : "Фото обрабатывается только ИИ и косметологом · Удаляется через 24 ч"
+                    }
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={goNext}
+                  className="w-full h-12 sm:h-14 rounded-2xl font-bold text-base sm:text-lg bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800 shadow-[0_10px_30px_rgба(0,0,0,0.2)] hover:shadow-[0_15px_40px_rgба(0,0,0,0.3)] transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 touch-manipulation"
+                >
+                  <span className="font-semibold text-white">
+                    {currentStep.ctaText || "Продолжить →"}
+                  </span>
+                </button>
+              )}
             </div>
         )}
             </div>
           </div>
+        </div>
+        
+        {/* AI + экспертиза подпись */}
+        <div 
+          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10"
+          style={{ color: '#94A3B8', fontSize: '12px' }}
+        >
+          AI + экспертиза косметолога
         </div>
       </div>
       
@@ -1836,7 +2098,7 @@ export default function Quiz() {
                 <div className="absolute inset-0 rounded-full border-4 border-t-neutral-900 animate-spin"></div>
               </div>
             </div>
-            <h2 className="text-[18px] font-semibold text-gray-900 mb-3">✨ Анализируем ваши ответы</h2>
+            <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Анализируем ваши ответы</h2>
               <p className="text-neutral-700 text-lg">Создаём персональный план ухода...</p>
             <div className="mt-6 flex justify-center gap-1">
               <div className="w-2 h-2 bg-neutral-900 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
@@ -1869,6 +2131,16 @@ export default function Quiz() {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
         }
+        @keyframes onboarding-fade-in {
+          from { 
+            opacity: 0; 
+            transform: translateY(20px); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateY(0); 
+          }
+        }
         .animate-fade-in {
           animation: fade-in 0.5s ease-out;
         }
@@ -1877,6 +2149,10 @@ export default function Quiz() {
         }
         .animate-shimmer {
           animation: shimmer 3.8s ease-in-out infinite;
+        }
+        .animate-onboarding-fade-in {
+          animation: onboarding-fade-in 0.6s ease-out forwards;
+          opacity: 0;
         }
         .quiz-gradient-animation {
           background: linear-gradient(130deg, #d9dbe6 0%, #e9ebf2 40%, #ffffff 70%, #e2e5ed 100%);
