@@ -209,6 +209,7 @@ function ProgressRing({ completed = 0, total = 5, size = 120, stroke = 8 }: { co
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
+  const isCompleted = completed === total && total > 0;
   
   return (
     <div className="flex flex-col items-center gap-4">
@@ -242,7 +243,7 @@ function ProgressRing({ completed = 0, total = 5, size = 120, stroke = 8 }: { co
           <div className="w-full h-full flex items-center justify-center">
             <div className="text-center">
               <div 
-                className="text-[32px] font-bold tabular-nums leading-none"
+                className="text-[34px] font-bold tabular-nums leading-none"
                 style={{ color: '#1F2A44' }}
               >
                 {completed} из {total}
@@ -251,15 +252,28 @@ function ProgressRing({ completed = 0, total = 5, size = 120, stroke = 8 }: { co
           </div>
         </foreignObject>
       </svg>
-      {/* Dynamic text below progress - 18sp */}
-      <div 
-        className="text-[18px] font-medium text-center min-h-[24px]"
-        style={{ color: '#475467' }}
-      >
-        {completed === 0 && "Начните утренний уход"}
-        {completed > 0 && completed < total && `Осталось ${total - completed} ${getRemainingStepsText(total - completed)}`}
-        {completed === total && "Уход завершён"}
-      </div>
+      {/* Dynamic text below progress - 18sp или 28sp для завершенного */}
+      {isCompleted ? (
+        <div className="flex items-center gap-2">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#0A5F59" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <div 
+            className="text-[28px] font-bold text-center"
+            style={{ color: '#0A5F59' }}
+          >
+            Уход завершён
+          </div>
+        </div>
+      ) : (
+        <div 
+          className="text-[18px] font-medium text-center min-h-[24px]"
+          style={{ color: '#475467' }}
+        >
+          {completed === 0 && "Начните утренний уход"}
+          {completed > 0 && completed < total && `Осталось ${total - completed} ${getRemainingStepsText(total - completed)}`}
+        </div>
+      )}
     </div>
   );
 }
@@ -275,23 +289,23 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
   
   return (
     <div 
-      className="backdrop-blur-[16px] border h-[84px] px-5 flex items-center gap-4 select-none transition-all duration-300 animate-card-appear"
+      className="backdrop-blur-[18px] border h-[88px] px-5 flex items-center gap-4 select-none transition-all duration-300 animate-card-appear"
       style={{ 
         animationDelay: `${index * 50}ms`,
-        backgroundColor: isCompleted ? 'rgba(10, 95, 89, 0.15)' : 'rgba(255, 255, 255, 0.5)',
+        backgroundColor: isCompleted ? 'rgba(10, 95, 89, 0.08)' : 'rgba(255, 255, 255, 0.55)',
         borderColor: 'rgba(255, 255, 255, 0.3)',
         borderTopWidth: index === 0 ? '1px' : '0px',
         borderBottomWidth: '1px',
         borderLeftWidth: '0px',
-        borderRightWidth: '0px'
+        borderRightWidth: '0px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
       }}
     >
-      {/* Circle with number or checkmark - 48dp */}
+      {/* Circle with number or checkmark - 48dp, белая цифра/галочка на #0A5F59 */}
       <div 
         className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
         style={{ 
-          backgroundColor: isCompleted ? '#0A5F59' : 'transparent',
-          border: isCompleted ? 'none' : '2px solid #0A5F59'
+          backgroundColor: '#0A5F59'
         }}
       >
         {isCompleted ? (
@@ -301,48 +315,61 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
         ) : (
           <span 
             className="text-lg font-semibold"
-            style={{ color: '#0A5F59' }}
+            style={{ color: 'white' }}
           >
             {index + 1}
           </span>
         )}
       </div>
       
-      {/* Icon - 48x48dp with white background */}
-      <div className="w-12 h-12 flex items-center justify-center flex-shrink-0 rounded-xl bg-white shadow-sm">
+      {/* Icon - 48x48dp без белого фона */}
+      <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
         {item.icon ? (
-          <img src={item.icon} alt="" className="w-10 h-10 object-contain" />
+          <img src={item.icon} alt="" className="w-12 h-12 object-contain" />
         ) : (
-          <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+          <div className="w-12 h-12 bg-gray-200 rounded-lg" />
         )}
       </div>
       
       {/* Content */}
       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
         <div 
-          className={`text-[18px] font-bold truncate transition-all ${isCompleted ? 'line-through' : ''}`}
-          style={{ color: isCompleted ? '#64748B' : '#1F2A44' }}
+          className={`text-[18px] sm:text-[19px] font-bold truncate transition-all ${isCompleted ? 'line-through' : ''}`}
+          style={{ 
+            color: isCompleted ? '#0A5F59' : '#1F2A44',
+            fontWeight: isCompleted ? 500 : 700,
+            textDecorationColor: isCompleted ? 'rgba(10, 95, 89, 0.4)' : 'transparent'
+          }}
         >
           {item.title}
         </div>
         <div 
-          className={`text-[15px] truncate mt-0.5 ${isCompleted ? 'line-through' : ''}`}
-          style={{ color: isCompleted ? '#94A3B8' : '#475467' }}
+          className={`text-[14px] sm:text-[15px] truncate mt-0.5 ${isCompleted ? 'line-through' : ''}`}
+          style={{ 
+            color: isCompleted ? '#0A5F59' : '#475467',
+            fontWeight: isCompleted ? 400 : 400,
+            textDecorationColor: isCompleted ? 'rgba(10, 95, 89, 0.4)' : 'transparent'
+          }}
         >
           {item.subtitle}
         </div>
       </button>
       
-      {/* Toggle button - right */}
+      {/* Toggle button - right, белая галочка на #0A5F59 если выполнено */}
       <button
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-pressed={isCompleted}
         className="ml-auto w-10 h-10 flex items-center justify-center flex-shrink-0"
       >
         {isCompleted ? (
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0A5F59" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          <div 
+            className="w-7 h-7 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: '#0A5F59' }}
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
         ) : (
           <div 
             className="w-6 h-6 rounded-full border-2 transition-all duration-200"
@@ -474,7 +501,7 @@ export default function MobileSkinIQHome() {
       className="w-full min-h-screen relative overflow-x-hidden pb-16 sm:pb-20"
       style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 72px)` }}
     >
-      {/* Background - light gradient */}
+      {/* Background - vertical gradient #F8FFFD → #F0FDFA */}
       <div 
         className="fixed inset-0 -z-10"
         style={{
@@ -546,17 +573,20 @@ export default function MobileSkinIQHome() {
         />
       </div>
 
-      {/* Greeting + Progress Panel - single glass card */}
+      {/* Greeting + Progress Panel - big glass card (35-40% height) */}
       <div className="mx-4 mt-20 mb-5">
         <div 
-          className="backdrop-blur-[20px] border rounded-[28px] p-5"
+          className="backdrop-blur-[20px] border rounded-[32px] p-6"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.55)',
-            borderColor: 'rgba(255, 255, 255, 0.3)'
+            backgroundColor: 'rgba(255, 255, 255, 0.58)',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
+            minHeight: '35vh',
+            maxHeight: '40vh'
           }}
         >
-          {/* Top row: Avatar + Greeting */}
-          <div className="flex items-center gap-4 mb-5">
+          {/* Top row: Avatar + Greeting - 28sp bold */}
+          <div className="flex items-center gap-4 mb-6">
             {/* Avatar */}
             <div 
               className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
@@ -581,9 +611,9 @@ export default function MobileSkinIQHome() {
               })()}
             </div>
             
-            {/* Greeting text */}
+            {/* Greeting text - 28sp bold */}
             <div 
-              className="text-[24px] sm:text-[26px] font-bold leading-tight"
+              className="text-[26px] sm:text-[28px] font-bold leading-tight"
               style={{ color: '#0A5F59' }}
             >
               {greeting}, {userName}
@@ -601,10 +631,11 @@ export default function MobileSkinIQHome() {
       <section className="relative z-20 mx-4 overflow-visible">
         {/* SegmentedButton AM/PM - glass-segmented */}
         <div 
-          className="mb-5 rounded-2xl p-1 grid grid-cols-2 h-12 backdrop-blur-[16px] border"
+          className="mb-5 rounded-2xl p-1 grid grid-cols-2 h-12 backdrop-blur-[18px] border"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-            borderColor: 'rgba(255, 255, 255, 0.3)'
+            backgroundColor: 'rgba(255, 255, 255, 0.55)',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
           }}
         >
           {["AM", "PM"].map((t) => (
@@ -618,7 +649,7 @@ export default function MobileSkinIQHome() {
               }`}
               style={tab === t 
                 ? { backgroundColor: '#0A5F59', color: 'white' }
-                : { color: '#64748B' }
+                : { color: '#64748B', backgroundColor: 'transparent' }
               }
             >
               {t === "AM" ? "Утро" : "Вечер"}
@@ -628,10 +659,11 @@ export default function MobileSkinIQHome() {
 
         {/* Routine list - glass rows container */}
         <div 
-          className="mb-5 backdrop-blur-[16px] border rounded-2xl overflow-hidden fade-in-routine"
+          className="mb-5 backdrop-blur-[18px] border rounded-[28px] overflow-hidden fade-in-routine"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-            borderColor: 'rgba(255, 255, 255, 0.3)'
+            backgroundColor: 'rgba(255, 255, 255, 0.55)',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)'
           }}
           key={fadeKey}
         >
@@ -664,83 +696,151 @@ export default function MobileSkinIQHome() {
           )}
         </div>
 
-        {/* Completion buttons - показать кнопки всегда, но filled только при завершении */}
-        <div className="mb-8 mt-6">
-          {completed === items.length && items.length > 0 ? (
-            /* Все выполнено - показываем обе кнопки */
-            <div className="animate-onboarding-fade-in" style={{ animationDelay: '300ms' }}>
-              {/* Вариант А: две кнопки в ряд (большие экраны) */}
-              <div className="hidden sm:flex gap-3 w-full">
-                {/* Outlined кнопка - Перепройти анкету */}
-                <button
-                  onClick={() => navigate("/quiz")}
-                  className="flex-1 h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                    borderColor: '#0A5F59',
-                    color: '#0A5F59'
-                  }}
-                >
-                  Перепройти анкету
-                </button>
-                
-                {/* Filled кнопка - Подробный план */}
-                <button
-                  onClick={() => navigate("/plan")}
-                  className="flex-1 h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
-                  style={{
-                    backgroundColor: '#0A5F59'
-                  }}
-                >
-                  Подробный план →
-                </button>
-              </div>
-
-              {/* Вариант Б: одна под другой (маленькие экраны) */}
-              <div className="flex flex-col gap-3 sm:hidden w-full">
-                {/* Filled кнопка - Подробный план (первая) */}
-                <button
-                  onClick={() => navigate("/plan")}
-                  className="w-full h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
-                  style={{
-                    backgroundColor: '#0A5F59'
-                  }}
-                >
-                  Подробный план →
-                </button>
-                
-                {/* Outlined кнопка - Перепройти анкету (вторая) */}
-                <button
-                  onClick={() => navigate("/quiz")}
-                  className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                    borderColor: '#0A5F59',
-                    color: '#0A5F59'
-                  }}
-                >
-                  Перепройти анкету
-                </button>
-              </div>
+        {/* Completion buttons - после списка шагов, перед советом */}
+        {completed === items.length && items.length > 0 && (
+          <div className="mb-6 mt-6 animate-onboarding-fade-in" style={{ animationDelay: '300ms' }}>
+            {/* Вариант А: две кнопки в ряд (большие экраны) */}
+            <div className="hidden sm:flex gap-3 w-full">
+              {/* Outlined кнопка - Перепройти анкету */}
+              <button
+                onClick={() => navigate("/quiz")}
+                className="flex-1 h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[18px] border-2"
+                style={{
+                  backgroundColor: 'transparent',
+                  borderColor: '#0A5F59',
+                  borderWidth: '2px',
+                  color: '#0A5F59'
+                }}
+              >
+                Перепройти анкету
+              </button>
+              
+              {/* Filled кнопка - Подробный план */}
+              <button
+                onClick={() => navigate("/plan")}
+                className="flex-1 h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  backgroundColor: '#0A5F59'
+                }}
+              >
+                Подробный план →
+              </button>
             </div>
-          ) : (
-            /* Не все выполнено - показываем только кнопку "Перепройти анкету" */
+
+            {/* Вариант Б: одна под другой (маленькие экраны) */}
+            <div className="flex flex-col gap-3 sm:hidden w-full">
+              {/* Filled кнопка - Подробный план (первая) */}
+              <button
+                onClick={() => navigate("/plan")}
+                className="w-full h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  backgroundColor: '#0A5F59'
+                }}
+              >
+                Подробный план →
+              </button>
+              
+              {/* Outlined кнопка - Перепройти анкету (вторая) */}
+              <button
+                onClick={() => navigate("/quiz")}
+                className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[18px] border-2"
+                style={{
+                  backgroundColor: 'transparent',
+                  borderColor: '#0A5F59',
+                  borderWidth: '2px',
+                  color: '#0A5F59'
+                }}
+              >
+                Перепройти анкету
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Кнопка "Перепройти анкету" если не все выполнено */}
+        {completed < items.length && (
+          <div className="mb-6 mt-6">
             <button
               onClick={() => navigate("/quiz")}
-              className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
+              className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[18px] border-2"
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                backgroundColor: 'transparent',
                 borderColor: '#0A5F59',
+                borderWidth: '2px',
                 color: '#0A5F59'
               }}
             >
               Перепройти анкету
             </button>
-          )}
+          </div>
+        )}
+
+        {/* Совет косметолога - одна glass-карточка */}
+        <div 
+          className="mt-6 mb-20 backdrop-blur-[20px] border rounded-[28px] p-5"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.58)',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)'
+          }}
+        >
+          <div className="flex items-start gap-4">
+            {/* Icon in circle #0A5F59 */}
+            <div 
+              className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: '#0A5F59' }}
+            >
+              <svg 
+                className="w-7 h-7" 
+                fill="none" 
+                stroke="white" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              {/* Заголовок - 20sp bold #0A5F59 */}
+              <div 
+                className="text-[20px] font-bold mb-2 leading-tight"
+                style={{ color: '#0A5F59' }}
+              >
+                Усилить увлажнение
+              </div>
+              {/* Текст совета - 16sp */}
+              <div 
+                className="text-[16px] leading-relaxed"
+                style={{ color: '#475467' }}
+              >
+                В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
+              </div>
+            </div>
+            
+            {/* Hydration icon - справа, кольцевая */}
+            <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
+              <div 
+                className="w-20 h-20 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(10, 95, 89, 0.1) 0%, rgba(10, 95, 89, 0.2) 100%)'
+                }}
+              >
+                <img src="/icons/hydration.PNG" alt="Hydration" className="w-16 h-16 object-contain" />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* AI + экспертиза подпись - внизу по центру */}
+        <div 
+          className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10 text-center"
+          style={{ color: '#94A3B8', fontSize: '12px' }}
+        >
+          AI + экспертиза косметолога
         </div>
 
-        {/* Widgets carousel - горизонтальный скролл */}
-        <div className="mt-4 mb-20">
+        {/* Widgets carousel - горизонтальный скролл (опционально, можно оставить) */}
+        <div className="mt-4 mb-20 hidden">
           <div className="relative overflow-visible px-4" id="widgets-container">
             <div 
               className="flex gap-4 overflow-x-auto overflow-y-hidden pr-4 py-2 snap-x snap-mandatory scrollbar-hide"
@@ -752,61 +852,6 @@ export default function MobileSkinIQHome() {
                 msOverflowStyle: 'none'
               }}
             >
-              {/* Daily Advice Card - glassmorphism expert style */}
-              <article 
-                className="snap-start shrink-0 w-[320px] h-[200px] backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                  borderColor: 'rgba(255, 255, 255, 0.3)'
-                }}
-              >
-                <div className="flex items-start gap-4 mb-3">
-                  {/* Icon 64x64dp in #0A5F59 */}
-                  <div 
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: 'rgba(10, 95, 89, 0.1)' }}
-                  >
-                    <svg 
-                      className="w-10 h-10" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                      style={{ color: '#0A5F59' }}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div 
-                      className="text-[11px] mb-1 font-bold tracking-wide uppercase"
-                      style={{ color: '#0A5F59' }}
-                    >
-                      Совет косметолога
-                    </div>
-                    <div 
-                      className="text-[15px] font-bold mb-2 leading-tight"
-                      style={{ color: '#1F2A44' }}
-                    >
-                      Усильте увлажнение
-                    </div>
-                    <div 
-                      className="text-[12px] leading-relaxed"
-                      style={{ color: '#475467' }}
-                    >
-                      В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
-                    </div>
-                  </div>
-                </div>
-                
-                {/* "More advice" button */}
-                <button 
-                  className="mt-auto text-[13px] font-semibold transition-colors text-left hover:opacity-70"
-                  style={{ color: '#0A5F59' }}
-                >
-                  Ещё советы →
-                </button>
-              </article>
 
               {/* Hydration Widget */}
               <article 
