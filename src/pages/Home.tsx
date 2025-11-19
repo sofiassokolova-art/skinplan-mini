@@ -664,126 +664,218 @@ export default function MobileSkinIQHome() {
           )}
         </div>
 
-        {/* Completion buttons - показать только когда все шаги выполнены */}
-        {completed === items.length && items.length > 0 && (
-          <div 
-            className="mb-8 mt-6 animate-onboarding-fade-in"
-            style={{ animationDelay: '300ms' }}
-          >
-            {/* Вариант А: две кнопки в ряд (большие экраны) */}
-            <div className="hidden sm:flex gap-3 w-full">
-              {/* Outlined кнопка - Перепройти анкету */}
-              <button
-                onClick={() => navigate("/quiz")}
-                className="flex-1 h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                  borderColor: '#0A5F59',
-                  color: '#0A5F59'
-                }}
-              >
-                Перепройти анкету
-              </button>
-              
-              {/* Filled кнопка - Подробный план */}
-              <button
-                onClick={() => navigate("/plan")}
-                className="flex-1 h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
-                style={{
-                  backgroundColor: '#0A5F59'
-                }}
-              >
-                Подробный план →
-              </button>
-            </div>
+        {/* Completion buttons - показать кнопки всегда, но filled только при завершении */}
+        <div className="mb-8 mt-6">
+          {completed === items.length && items.length > 0 ? (
+            /* Все выполнено - показываем обе кнопки */
+            <div className="animate-onboarding-fade-in" style={{ animationDelay: '300ms' }}>
+              {/* Вариант А: две кнопки в ряд (большие экраны) */}
+              <div className="hidden sm:flex gap-3 w-full">
+                {/* Outlined кнопка - Перепройти анкету */}
+                <button
+                  onClick={() => navigate("/quiz")}
+                  className="flex-1 h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                    borderColor: '#0A5F59',
+                    color: '#0A5F59'
+                  }}
+                >
+                  Перепройти анкету
+                </button>
+                
+                {/* Filled кнопка - Подробный план */}
+                <button
+                  onClick={() => navigate("/plan")}
+                  className="flex-1 h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                  style={{
+                    backgroundColor: '#0A5F59'
+                  }}
+                >
+                  Подробный план →
+                </button>
+              </div>
 
-            {/* Вариант Б: одна под другой (маленькие экраны) */}
-            <div className="flex flex-col gap-3 sm:hidden w-full">
-              {/* Filled кнопка - Подробный план (первая) */}
-              <button
-                onClick={() => navigate("/plan")}
-                className="w-full h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
-                style={{
-                  backgroundColor: '#0A5F59'
-                }}
-              >
-                Подробный план →
-              </button>
-              
-              {/* Outlined кнопка - Перепройти анкету (вторая) */}
-              <button
-                onClick={() => navigate("/quiz")}
-                className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                  borderColor: '#0A5F59',
-                  color: '#0A5F59'
-                }}
-              >
-                Перепройти анкету
-              </button>
+              {/* Вариант Б: одна под другой (маленькие экраны) */}
+              <div className="flex flex-col gap-3 sm:hidden w-full">
+                {/* Filled кнопка - Подробный план (первая) */}
+                <button
+                  onClick={() => navigate("/plan")}
+                  className="w-full h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                  style={{
+                    backgroundColor: '#0A5F59'
+                  }}
+                >
+                  Подробный план →
+                </button>
+                
+                {/* Outlined кнопка - Перепройти анкету (вторая) */}
+                <button
+                  onClick={() => navigate("/quiz")}
+                  className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                    borderColor: '#0A5F59',
+                    color: '#0A5F59'
+                  }}
+                >
+                  Перепройти анкету
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Bottom card: Advice + Plan link */}
-        <div 
-          className="mb-20 backdrop-blur-[16px] border rounded-2xl p-5"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-            borderColor: 'rgba(255, 255, 255, 0.3)'
-          }}
-        >
-          <div className="flex items-start gap-4 mb-4">
-            {/* Icon in circle #0A5F59 */}
-            <div 
-              className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: '#0A5F59' }}
+          ) : (
+            /* Не все выполнено - показываем только кнопку "Перепройти анкету" */
+            <button
+              onClick={() => navigate("/quiz")}
+              className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                borderColor: '#0A5F59',
+                color: '#0A5F59'
+              }}
             >
-              <svg 
-                className="w-7 h-7" 
-                fill="none" 
-                stroke="white" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <div 
-                className="text-[20px] font-bold mb-2 leading-tight"
-                style={{ color: '#1F2A44' }}
-              >
-                Усильте увлажнение
-              </div>
-              <div 
-                className="text-[16px] leading-relaxed mb-4"
-                style={{ color: '#475467' }}
-              >
-                В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
-              </div>
-              
-              {/* Plan link */}
-              <button 
-                onClick={() => navigate("/plan")}
-                className="text-[14px] font-medium transition-colors hover:opacity-70"
-                style={{ color: '#0A5F59' }}
-              >
-                Подробный план
-              </button>
-            </div>
-            
-            {/* Hydration icon - right side */}
-            <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
-              <div 
-                className="w-20 h-20 rounded-full flex items-center justify-center"
+              Перепройти анкету
+            </button>
+          )}
+        </div>
+
+        {/* Widgets carousel - горизонтальный скролл */}
+        <div className="mt-4 mb-20">
+          <div className="relative overflow-visible" id="widgets-container">
+            <div 
+              className="flex gap-3 overflow-x-auto pr-8 py-1 snap-x snap-mandatory scrollbar-hide"
+              style={{touchAction: 'pan-x', overscrollBehavior: 'contain'}}
+            >
+              {/* Daily Advice Card - glassmorphism expert style */}
+              <article 
+                className="snap-start shrink-0 w-[280px] h-[180px] mx-0 backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(10, 95, 89, 0.1) 0%, rgba(10, 95, 89, 0.2) 100%)'
+                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'rgba(255, 255, 255, 0.3)'
                 }}
               >
-                <img src="/icons/hydration.PNG" alt="Hydration" className="w-16 h-16 object-contain" />
-              </div>
+                <div className="flex items-start gap-4 mb-3">
+                  {/* Icon 64x64dp in #0A5F59 */}
+                  <div 
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: 'rgba(10, 95, 89, 0.1)' }}
+                  >
+                    <svg 
+                      className="w-10 h-10" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                      style={{ color: '#0A5F59' }}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div 
+                      className="text-[11px] mb-1 font-bold tracking-wide uppercase"
+                      style={{ color: '#0A5F59' }}
+                    >
+                      Совет косметолога
+                    </div>
+                    <div 
+                      className="text-[15px] font-bold mb-2 leading-tight"
+                      style={{ color: '#1F2A44' }}
+                    >
+                      Усильте увлажнение
+                    </div>
+                    <div 
+                      className="text-[12px] leading-relaxed"
+                      style={{ color: '#475467' }}
+                    >
+                      В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
+                    </div>
+                  </div>
+                </div>
+                
+                {/* "More advice" button */}
+                <button 
+                  className="mt-auto text-[13px] font-semibold transition-colors text-left hover:opacity-70"
+                  style={{ color: '#0A5F59' }}
+                >
+                  Ещё советы →
+                </button>
+              </article>
+
+              {/* Hydration Widget */}
+              <article 
+                className="snap-start shrink-0 w-[280px] h-[180px] mx-0 backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  animationDelay: '100ms'
+                }}
+              >
+                <div 
+                  className="text-[13px] mb-3"
+                  style={{ color: '#475467' }}
+                >
+                  Гидрация
+                </div>
+                <div className="flex items-start gap-4 h-full -mt-2">
+                  <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
+                    <img src="/icons/hydration.PNG" alt="Hydration" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex flex-col justify-center flex-1">
+                    <div 
+                      className="text-[12px] mb-1"
+                      style={{ color: '#64748B' }}
+                    >
+                      Уровень
+                    </div>
+                    <div 
+                      className="text-[15px] font-semibold"
+                      style={{ color: '#1F2A44' }}
+                    >
+                      Оптимально
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              {/* UV Index Widget */}
+              <article 
+                className="snap-start shrink-0 w-[280px] h-[180px] mx-0 backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  animationDelay: '200ms'
+                }}
+              >
+                <div 
+                  className="text-[13px] mb-3"
+                  style={{ color: '#475467' }}
+                >
+                  UV-индекс
+                </div>
+                <div className="flex items-center gap-4 h-full">
+                  <div 
+                    className="text-[56px] font-bold tabular-nums leading-none flex-shrink-0"
+                    style={{ color: '#1F2A44' }}
+                  >
+                    —
+                  </div>
+                  <div className="flex flex-col justify-center flex-1">
+                    <div 
+                      className="text-[11px] mb-1 font-medium"
+                      style={{ color: '#64748B' }}
+                    >
+                      Умеренный
+                    </div>
+                    <div 
+                      className="text-[13px] leading-tight"
+                      style={{ color: '#475467' }}
+                    >
+                      Сегодня: SPF 30
+                    </div>
+                  </div>
+                </div>
+              </article>
             </div>
           </div>
         </div>
