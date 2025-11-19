@@ -620,7 +620,7 @@ const screens: Screen[] = [
     ctaText: "Пройти диагностику кожи →"
   },
 
-  // 2. Персональный анализ кожи - Expert glassmorphism
+  // 2. Персональный анализ кожи - Expert glassmorphism Premium 2025
   {
     kind: "info",
     id: "personal_analysis",
@@ -628,37 +628,38 @@ const screens: Screen[] = [
     subtitle: "",
     renderBody: () => (
       <div className="space-y-6 w-full max-w-md mx-auto">
-        {/* Main glass card - 85% width */}
+        {/* Main glass card - 90% width, radius 32dp */}
         <div 
-          className="w-[85%] mx-auto backdrop-blur-[20px] border rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.12)] animate-onboarding-fade-in"
+          className="w-[90%] mx-auto backdrop-blur-[22px] border rounded-[32px] p-6 animate-onboarding-fade-in"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.55)',
+            backgroundColor: 'rgba(255, 255, 255, 0.6)',
             borderColor: 'rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12)',
             animationDelay: '0ms'
           }}
         >
-          {/* Title */}
+          {/* Title - 34sp bold #0A5F59 */}
           <h2 
-            className="text-[26px] sm:text-[28px] font-bold mb-2 text-center"
+            className="text-[30px] sm:text-[34px] font-bold mb-3 text-center"
             style={{ color: '#0A5F59' }}
           >
             Что именно мы проанализируем
           </h2>
           
-          {/* Subtitle */}
+          {/* Subtitle - 18sp #475467 */}
           <p 
-            className="text-[16px] sm:text-[17px] text-center mb-6"
+            className="text-[17px] sm:text-[18px] text-center mb-6"
             style={{ color: '#475467' }}
           >
             Искусственный интеллект + проверка косметологом
           </p>
 
-          {/* 4 analysis points */}
-          <div className="space-y-0">
+          {/* 4 analysis points - отступы 20dp */}
+          <div className="space-y-5 mb-6">
             {[
               {
                 icon: (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
                     <path d="M12 2L2 7l10 5 10-5-10-5z" />
                     <path d="M2 17l10 5 10-5" />
                     <path d="M2 12l10 5 10-5" />
@@ -668,7 +669,7 @@ const screens: Screen[] = [
               },
               {
                 icon: (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
                     <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
                   </svg>
                 ),
@@ -676,7 +677,7 @@ const screens: Screen[] = [
               },
               {
                 icon: (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
                     <circle cx="12" cy="12" r="10" />
                     <circle cx="12" cy="12" r="6" />
                     <circle cx="12" cy="12" r="2" />
@@ -686,99 +687,76 @@ const screens: Screen[] = [
               },
               {
                 icon: (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8">
                     <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />
                   </svg>
                 ),
                 text: "Здоровье кожи: покраснения, воспаления, раздражения"
               },
             ].map((feature, index) => (
-              <div key={index}>
+              <div 
+                key={index}
+                className="flex items-start gap-4 animate-onboarding-fade-in"
+                style={{ animationDelay: `${(index + 1) * 120}ms` }}
+              >
+                {/* Icon - 32dp, color #0A5F59 */}
                 <div 
-                  className="flex items-start gap-4 py-4 animate-onboarding-fade-in"
-                  style={{ animationDelay: `${(index + 1) * 100}ms` }}
+                  className="w-8 h-8 flex items-center justify-center flex-shrink-0"
+                  style={{ color: '#0A5F59' }}
                 >
-                  {/* Icon - 28dp, color #0A5F59 */}
-                  <div 
-                    className="w-7 h-7 flex items-center justify-center flex-shrink-0"
-                    style={{ color: '#0A5F59' }}
-                  >
-                    {feature.icon}
-                  </div>
-                  
-                  {/* Text - 17sp, bold first line */}
-                  <span 
-                    className="text-[16px] sm:text-[17px] leading-relaxed text-left flex-1 pt-0.5"
-                    style={{ color: '#1F2A44', fontWeight: 600 }}
-                  >
-                    {feature.text}
-                  </span>
+                  {feature.icon}
                 </div>
                 
-                {/* Divider - except last */}
-                {index < 3 && (
-                  <div 
-                    className="h-px"
-                    style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
-                  />
-                )}
+                {/* Text - 19sp, bold first line */}
+                <span 
+                  className="text-[18px] sm:text-[19px] leading-relaxed text-left flex-1 pt-0.5"
+                  style={{ color: '#1F2A44', fontWeight: 600 }}
+                >
+                  {feature.text}
+                </span>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Social proof block - more dense glass */}
-        <div 
-          className="w-[85%] mx-auto backdrop-blur-[20px] border rounded-2xl p-5 space-y-3 shadow-[0_8px_32px_rgba(0,0,0,0.12)] animate-onboarding-fade-in"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.7)',
-            borderColor: 'rgba(255, 255, 255, 0.3)',
-            animationDelay: '500ms'
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <svg 
-              viewBox="0 0 24 24" 
-              width="20" 
-              height="20" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="3" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className="flex-shrink-0 mt-0.5"
-              style={{ color: '#0A5F59' }}
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <span 
-              className="text-[16px] sm:text-[17px] leading-relaxed text-left"
-              style={{ color: '#1F2A44' }}
-            >
-              89% клиенток отмечают улучшение уже через 4 недели
-            </span>
-          </div>
-          <div className="flex items-start gap-3">
-            <svg 
-              viewBox="0 0 24 24" 
-              width="20" 
-              height="20" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="3" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className="flex-shrink-0 mt-0.5"
-              style={{ color: '#0A5F59' }}
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <span 
-              className="text-[16px] sm:text-[17px] leading-relaxed text-left"
-              style={{ color: '#1F2A44' }}
-            >
-              Наш подход в 3 раза эффективнее обычных рутин
-            </span>
+          {/* Social proof - внутри карточки снизу */}
+          <div 
+            className="pt-5 border-t border-white/30 space-y-3"
+            style={{ 
+              animation: 'onboarding-fade-in 0.6s ease-out 600ms forwards, scale-in 0.4s ease-out 1000ms forwards',
+              opacity: 0,
+              transform: 'scale(0.95)'
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <svg 
+                viewBox="0 0 24 24" 
+                width="20" 
+                height="20" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="3" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+                className="flex-shrink-0 mt-0.5"
+                style={{ color: '#0A5F59' }}
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span 
+                className="text-[17px] sm:text-[18px] font-bold leading-relaxed text-left"
+                style={{ color: '#0A5F59' }}
+              >
+                89% клиенток отмечают улучшение уже через 4 недели
+              </span>
+            </div>
+            <div className="flex items-start gap-3 pl-8">
+              <span 
+                className="text-[16px] sm:text-[17px] leading-relaxed text-left"
+                style={{ color: '#475467' }}
+              >
+                Наш подход в 3 раза эффективнее обычных рутин
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -2038,13 +2016,13 @@ export default function Quiz() {
                 )}
               </>
             )}
-            <div className={currentStep.id === "welcome" ? "mb-6" : "mb-6"}>
+            <div className={currentStep.id === "welcome" ? "mb-6" : currentStep.id === "personal_analysis" ? "mb-6" : "mb-6"}>
               {currentStep.renderBody(answers)}
             </div>
               {/* Special styling for welcome, how_it_works, and personal_analysis screens */}
               {(currentStep.id === "welcome" || currentStep.id === "how_it_works" || currentStep.id === "personal_analysis") ? (
                 <div 
-                  className="space-y-3 animate-onboarding-fade-in" 
+                  className={`space-y-3 animate-onboarding-fade-in ${currentStep.id === "personal_analysis" ? "mt-6" : ""}`}
                   style={{ 
                     animationDelay: currentStep.id === "welcome" ? '480ms' : 
                                    currentStep.id === "how_it_works" ? '750ms' : 
@@ -2069,7 +2047,7 @@ export default function Quiz() {
                       ? "Бесплатно · Данные конфиденциальны · Проверка косметологом"
                       : currentStep.id === "how_it_works"
                       ? "Бесплатно · Данные конфиденциальны"
-                      : "Фото обрабатывается только ИИ и косметологом · Удаляется через 24 ч"
+                      : "Фото удаляется через 24 часа · Только ИИ и косметолог"
                     }
                   </p>
                 </div>
