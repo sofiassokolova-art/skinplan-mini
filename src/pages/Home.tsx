@@ -927,14 +927,6 @@ export default function MobileSkinIQHome() {
 
       {/* Bottom Sheet */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} item={sheetItem} />
-      
-      {/* AI + экспертиза подпись - centered bottom */}
-      <div 
-        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10 text-center"
-        style={{ color: '#94A3B8', fontSize: '12px' }}
-      >
-        AI + экспертиза косметолога
-      </div>
     </div>
   );
 }

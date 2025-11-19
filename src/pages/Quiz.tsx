@@ -2087,14 +2087,6 @@ export default function Quiz() {
             </div>
           </div>
         </div>
-        
-        {/* AI + экспертиза подпись */}
-        <div 
-          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10"
-          style={{ color: '#94A3B8', fontSize: '12px' }}
-        >
-          AI + экспертиза косметолога
-        </div>
       </div>
       
       {/* Экран загрузки */}
