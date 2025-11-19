@@ -48,24 +48,6 @@ function getGreeting(date = new Date()): string {
   }
 })();
 
-// Helper for SPF recommendation based on UV index
-function getSPFRecommendation(uv: number | null): string {
-  if (uv === null) return "SPF 30";
-  if (uv <= 2) return "SPF 15-30";
-  if (uv <= 5) return "SPF 30";
-  if (uv <= 7) return "SPF 30-50";
-  if (uv <= 10) return "SPF 50";
-  return "SPF 50+";
-}
-
-function getUVLevel(uv: number | null): string {
-  if (uv === null) return "Умеренный";
-  if (uv <= 2) return "Низкий";
-  if (uv <= 5) return "Умеренный";
-  if (uv <= 7) return "Высокий";
-  if (uv <= 10) return "Очень высокий";
-  return "Экстремальный";
-}
 
 
 // ----- Tokens -----
@@ -222,14 +204,14 @@ const eveningDefault = [
 ];
 
 // ----- Visual components -----
-function ProgressRing({ completed = 0, total = 5, size = 110, stroke = 8 }: { completed?: number; total?: number; size?: number; stroke?: number }) {
+function ProgressRing({ completed = 0, total = 5, size = 120, stroke = 8 }: { completed?: number; total?: number; size?: number; stroke?: number }) {
   const value = total > 0 ? (completed / total) * 100 : 0;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (value / 100) * c;
   
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-4">
       <svg width={size} height={size} className="block" style={{overflow: 'visible'}}>
         {/* Background circle - light gray */}
         <circle 
@@ -269,9 +251,9 @@ function ProgressRing({ completed = 0, total = 5, size = 110, stroke = 8 }: { co
           </div>
         </foreignObject>
       </svg>
-      {/* Dynamic text below progress */}
+      {/* Dynamic text below progress - 18sp */}
       <div 
-        className="text-[14px] font-medium text-center min-h-[20px]"
+        className="text-[18px] font-medium text-center min-h-[24px]"
         style={{ color: '#475467' }}
       >
         {completed === 0 && "Начните утренний уход"}
@@ -293,28 +275,32 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
   
   return (
     <div 
-      className="backdrop-blur-[16px] border rounded-2xl h-[80px] px-4 py-3 flex items-center gap-4 select-none shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-all duration-300 animate-card-appear"
+      className="backdrop-blur-[16px] border h-[84px] px-5 flex items-center gap-4 select-none transition-all duration-300 animate-card-appear"
       style={{ 
         animationDelay: `${index * 50}ms`,
-        backgroundColor: isCompleted ? 'rgba(10, 95, 89, 0.2)' : 'rgba(255, 255, 255, 0.5)',
-        borderColor: 'rgba(255, 255, 255, 0.3)'
+        backgroundColor: isCompleted ? 'rgba(10, 95, 89, 0.15)' : 'rgba(255, 255, 255, 0.5)',
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderTopWidth: index === 0 ? '1px' : '0px',
+        borderBottomWidth: '1px',
+        borderLeftWidth: '0px',
+        borderRightWidth: '0px'
       }}
     >
-      {/* Circle with number or checkmark */}
+      {/* Circle with number or checkmark - 48dp */}
       <div 
-        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
         style={{ 
           backgroundColor: isCompleted ? '#0A5F59' : 'transparent',
           border: isCompleted ? 'none' : '2px solid #0A5F59'
         }}
       >
         {isCompleted ? (
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         ) : (
           <span 
-            className="text-base font-semibold"
+            className="text-lg font-semibold"
             style={{ color: '#0A5F59' }}
           >
             {index + 1}
@@ -322,52 +308,47 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
         )}
       </div>
       
-      {/* Icon - 48x48dp */}
-      <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
+      {/* Icon - 48x48dp with white background */}
+      <div className="w-12 h-12 flex items-center justify-center flex-shrink-0 rounded-xl bg-white shadow-sm">
         {item.icon ? (
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center">
-            <img src={item.icon} alt="" className="w-10 h-10 object-contain" />
-          </div>
+          <img src={item.icon} alt="" className="w-10 h-10 object-contain" />
         ) : (
-          <div className="w-12 h-12 rounded-xl bg-gray-200" />
+          <div className="w-10 h-10 bg-gray-200 rounded-lg" />
         )}
       </div>
       
       {/* Content */}
       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
         <div 
-          className={`text-[15px] font-semibold truncate transition-all ${isCompleted ? 'line-through' : ''}`}
+          className={`text-[18px] font-bold truncate transition-all ${isCompleted ? 'line-through' : ''}`}
           style={{ color: isCompleted ? '#64748B' : '#1F2A44' }}
         >
           {item.title}
         </div>
         <div 
-          className={`text-[12px] truncate ${isCompleted ? 'line-through' : ''}`}
+          className={`text-[15px] truncate mt-0.5 ${isCompleted ? 'line-through' : ''}`}
           style={{ color: isCompleted ? '#94A3B8' : '#475467' }}
         >
           {item.subtitle}
         </div>
       </button>
       
-      {/* Toggle button */}
+      {/* Toggle button - right */}
       <button
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-pressed={isCompleted}
         className="ml-auto w-10 h-10 flex items-center justify-center flex-shrink-0"
       >
-        <div 
-          className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
-          style={{ 
-            backgroundColor: isCompleted ? '#0A5F59' : 'transparent',
-            border: isCompleted ? 'none' : '2px solid #0A5F59'
-          }}
-        >
-          {isCompleted ? (
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          ) : null}
-        </div>
+        {isCompleted ? (
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0A5F59" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <div 
+            className="w-6 h-6 rounded-full border-2 transition-all duration-200"
+            style={{ borderColor: '#0A5F59' }}
+          />
+        )}
       </button>
     </div>
   );
@@ -452,43 +433,6 @@ export default function MobileSkinIQHome() {
   }, []);
 
 
-  // UV Index state
-  const [uvIndex, setUvIndex] = useState<number | null>(null);
-  const [uvLoading, setUvLoading] = useState(true);
-
-  // Fetch UV Index based on user location
-  useEffect(() => {
-    const fetchUVIndex = async () => {
-      try {
-        // Get user location
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject);
-        });
-
-        const { latitude, longitude } = position.coords;
-
-        // Fetch UV index from Open-Meteo API
-        const response = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=uv_index_max&timezone=auto&forecast_days=1`
-        );
-        
-        const data = await response.json();
-        const uvValue = data.daily?.uv_index_max?.[0];
-        
-        if (uvValue !== undefined) {
-          setUvIndex(Math.round(uvValue));
-        }
-      } catch (error) {
-        console.error('Error fetching UV index:', error);
-        // Fallback to default value
-        setUvIndex(3);
-      } finally {
-        setUvLoading(false);
-      }
-    };
-
-    fetchUVIndex();
-  }, []);
 
   const items = tab === "AM" ? morning : evening;
   const completed = items.filter((i) => i.done).length;
@@ -602,17 +546,18 @@ export default function MobileSkinIQHome() {
         />
       </div>
 
-      {/* Greeting + Progress Panel - glassmorphism */}
-      <div className="mx-4 mt-24 mb-6">
+      {/* Greeting + Progress Panel - single glass card */}
+      <div className="mx-4 mt-20 mb-5">
         <div 
-          className="backdrop-blur-[20px] border rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+          className="backdrop-blur-[20px] border rounded-[28px] p-5"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            backgroundColor: 'rgba(255, 255, 255, 0.55)',
             borderColor: 'rgba(255, 255, 255, 0.3)'
           }}
         >
-          {/* Greeting */}
-          <div className="flex items-center gap-4 mb-6">
+          {/* Top row: Avatar + Greeting */}
+          <div className="flex items-center gap-4 mb-5">
+            {/* Avatar */}
             <div 
               className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
               style={{ backgroundColor: '#0A5F59' }}
@@ -635,6 +580,8 @@ export default function MobileSkinIQHome() {
                 }
               })()}
             </div>
+            
+            {/* Greeting text */}
             <div 
               className="text-[24px] sm:text-[26px] font-bold leading-tight"
               style={{ color: '#0A5F59' }}
@@ -643,18 +590,18 @@ export default function MobileSkinIQHome() {
             </div>
           </div>
           
-          {/* Progress Ring */}
-          <div className="mt-6">
-            <ProgressRing completed={completed} total={items.length} size={110} stroke={8} />
+          {/* Progress Ring - centered */}
+          <div className="flex justify-center">
+            <ProgressRing completed={completed} total={items.length} size={120} stroke={8} />
           </div>
         </div>
       </div>
 
       {/* Main Panel */}
       <section className="relative z-20 mx-4 overflow-visible">
-        {/* SegmentedButton AM/PM - glassmorphism */}
+        {/* SegmentedButton AM/PM - glass-segmented */}
         <div 
-          className="mb-4 rounded-2xl p-1 grid grid-cols-2 h-12 backdrop-blur-[16px] border shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+          className="mb-5 rounded-2xl p-1 grid grid-cols-2 h-12 backdrop-blur-[16px] border"
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.5)',
             borderColor: 'rgba(255, 255, 255, 0.3)'
@@ -666,34 +613,44 @@ export default function MobileSkinIQHome() {
               onClick={() => handleTabChange(t)}
               className={`relative rounded-xl text-[14px] font-medium transition-all duration-300 overflow-hidden ${
                 tab === t
-                  ? " bg-white font-bold shadow-sm"
+                  ? " font-bold"
                   : " bg-transparent"
               }`}
-              style={tab === t ? {} : { color: '#64748B' }}
+              style={tab === t 
+                ? { backgroundColor: '#0A5F59', color: 'white' }
+                : { color: '#64748B' }
+              }
             >
               {t === "AM" ? "Утро" : "Вечер"}
             </button>
           ))}
         </div>
 
-        {/* Routine list with fade-in animation */}
-        {isLoading ? (
-          <div className="mb-8 space-y-3 pb-6">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="skeleton bg-white/40 backdrop-blur-xl border border-white/50 rounded-2xl h-[80px] px-4 py-3 flex items-center gap-4">
-                <div className="w-6 h-6 skeleton rounded" />
-                <div className="w-12 h-12 skeleton rounded-xl" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 skeleton rounded w-3/4" />
-                  <div className="h-3 skeleton rounded w-1/2" />
+        {/* Routine list - glass rows container */}
+        <div 
+          className="mb-5 backdrop-blur-[16px] border rounded-2xl overflow-hidden fade-in-routine"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderColor: 'rgba(255, 255, 255, 0.3)'
+          }}
+          key={fadeKey}
+        >
+          {isLoading ? (
+            <div className="py-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="skeleton h-[84px] px-5 flex items-center gap-4 border-b border-white/20 last:border-b-0">
+                  <div className="w-12 h-12 skeleton rounded-full" />
+                  <div className="w-12 h-12 skeleton rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 skeleton rounded w-3/4" />
+                    <div className="h-4 skeleton rounded w-1/2" />
+                  </div>
+                  <div className="w-6 h-6 skeleton rounded-full" />
                 </div>
-                <div className="w-10 h-10 skeleton rounded-full" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="mb-8 fade-in-routine" key={fadeKey}>
-            <div className="space-y-3 pb-6">
+              ))}
+            </div>
+          ) : (
+            <div className="py-0">
               {items.map((it, idx) => (
                 <RoutineCard
                   key={it.id}
@@ -704,110 +661,130 @@ export default function MobileSkinIQHome() {
                 />
               ))}
             </div>
+          )}
+        </div>
+
+        {/* Completion buttons - показать только когда все шаги выполнены */}
+        {completed === items.length && items.length > 0 && (
+          <div 
+            className="mb-8 mt-6 animate-onboarding-fade-in"
+            style={{ animationDelay: '300ms' }}
+          >
+            {/* Вариант А: две кнопки в ряд (большие экраны) */}
+            <div className="hidden sm:flex gap-3 w-full">
+              {/* Outlined кнопка - Перепройти анкету */}
+              <button
+                onClick={() => navigate("/quiz")}
+                className="flex-1 h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                  borderColor: '#0A5F59',
+                  color: '#0A5F59'
+                }}
+              >
+                Перепройти анкету
+              </button>
+              
+              {/* Filled кнопка - Подробный план */}
+              <button
+                onClick={() => navigate("/plan")}
+                className="flex-1 h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  backgroundColor: '#0A5F59'
+                }}
+              >
+                Подробный план →
+              </button>
+            </div>
+
+            {/* Вариант Б: одна под другой (маленькие экраны) */}
+            <div className="flex flex-col gap-3 sm:hidden w-full">
+              {/* Filled кнопка - Подробный план (первая) */}
+              <button
+                onClick={() => navigate("/plan")}
+                className="w-full h-14 rounded-2xl font-medium text-[16px] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  backgroundColor: '#0A5F59'
+                }}
+              >
+                Подробный план →
+              </button>
+              
+              {/* Outlined кнопка - Перепройти анкету (вторая) */}
+              <button
+                onClick={() => navigate("/quiz")}
+                className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-80 active:scale-[0.98] backdrop-blur-[16px] border-2"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                  borderColor: '#0A5F59',
+                  color: '#0A5F59'
+                }}
+              >
+                Перепройти анкету
+              </button>
+            </div>
           </div>
         )}
-          
-        {/* CTA - text link only */}
-        <div className="mt-6 pt-4">
-          <button 
-            onClick={() => navigate("/plan")}
-            className="text-[14px] font-medium transition-colors w-full text-center"
-            style={{ color: '#0A5F59' }}
-          >
-            Подробный план
-          </button>
-        </div>
-      </section>
 
-      {/* Widgets carousel */}
-      <section className="mt-4 pb-12 px-4">
-        <div className="relative overflow-visible" id="widgets-container">
-          
-          <div 
-            className="flex gap-3 overflow-x-auto pr-8 py-1 snap-x snap-mandatory scrollbar-hide"
-            style={{touchAction: 'pan-x', overscrollBehavior: 'contain'}}
-          >
-            {/* Daily Advice Card - glassmorphism expert style */}
-            <article 
-              className="snap-start shrink-0 w-[280px] h-[180px] mx-0 backdrop-blur-[16px] border rounded-3xl p-5 flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.12)] animate-card-appear"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                borderColor: 'rgba(255, 255, 255, 0.3)'
-              }}
+        {/* Bottom card: Advice + Plan link */}
+        <div 
+          className="mb-20 backdrop-blur-[16px] border rounded-2xl p-5"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            borderColor: 'rgba(255, 255, 255, 0.3)'
+          }}
+        >
+          <div className="flex items-start gap-4 mb-4">
+            {/* Icon in circle #0A5F59 */}
+            <div 
+              className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: '#0A5F59' }}
             >
-              <div className="flex items-start gap-4 mb-3">
-                {/* Icon 64x64dp in #0A5F59 */}
-                <div 
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: 'rgba(10, 95, 89, 0.1)' }}
-                >
-                  <svg 
-                    className="w-10 h-10" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                    style={{ color: '#0A5F59' }}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div 
-                    className="text-[11px] mb-1 font-bold tracking-wide uppercase"
-                    style={{ color: '#0A5F59' }}
-                  >
-                    Совет косметолога
-                  </div>
-                  <div 
-                    className="text-[15px] font-bold mb-2 leading-tight"
-                    style={{ color: '#1F2A44' }}
-                  >
-                    Усильте увлажнение
-                  </div>
-                  <div 
-                    className="text-[12px] leading-relaxed"
-                    style={{ color: '#475467' }}
-                  >
-                    В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
-                  </div>
-                </div>
+              <svg 
+                className="w-7 h-7" 
+                fill="none" 
+                stroke="white" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div 
+                className="text-[20px] font-bold mb-2 leading-tight"
+                style={{ color: '#1F2A44' }}
+              >
+                Усильте увлажнение
+              </div>
+              <div 
+                className="text-[16px] leading-relaxed mb-4"
+                style={{ color: '#475467' }}
+              >
+                В холодное время кожа нуждается в дополнительном увлажнении. Используйте гиалуроновую кислоту утром и плотный крем вечером.
               </div>
               
-              {/* "More advice" button */}
+              {/* Plan link */}
               <button 
-                className="mt-auto text-[13px] font-semibold transition-colors text-left hover:opacity-70"
+                onClick={() => navigate("/plan")}
+                className="text-[14px] font-medium transition-colors hover:opacity-70"
                 style={{ color: '#0A5F59' }}
               >
-                Ещё советы →
+                Подробный план
               </button>
-            </article>
-            <WidgetCard title="Гидрация">
-              <div className="flex items-start gap-4 h-full -mt-2">
-                <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
-                  <img src="/icons/hydration.PNG" alt="Hydration" className="w-full h-full object-contain" />
-                </div>
-                <div className="flex flex-col justify-center flex-1">
-                  <div className="text-[12px] text-gray-600 mb-1">Уровень</div>
-                  <div className="text-[15px] font-semibold text-gray-900">Оптимально</div>
-                </div>
+            </div>
+            
+            {/* Hydration icon - right side */}
+            <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
+              <div 
+                className="w-20 h-20 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(10, 95, 89, 0.1) 0%, rgba(10, 95, 89, 0.2) 100%)'
+                }}
+              >
+                <img src="/icons/hydration.PNG" alt="Hydration" className="w-16 h-16 object-contain" />
               </div>
-            </WidgetCard>
-            <WidgetCard title="UV-индекс">
-              <div className="flex items-center gap-4 h-full">
-                {uvLoading ? (
-                  <div className="text-sm text-neutral-500">Загрузка...</div>
-                ) : (
-                  <>
-                    <div className="text-[56px] font-bold tabular-nums text-gray-900 leading-none flex-shrink-0">{uvIndex ?? "—"}</div>
-                    <div className="flex flex-col justify-center flex-1">
-                      <div className="text-[11px] text-neutral-500 mb-1 font-medium">{getUVLevel(uvIndex)}</div>
-                      <div className="text-[13px] text-gray-600 leading-tight">Сегодня: {getSPFRecommendation(uvIndex)}</div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </WidgetCard>
+            </div>
           </div>
         </div>
       </section>
@@ -816,39 +793,13 @@ export default function MobileSkinIQHome() {
       {/* Bottom Sheet */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} item={sheetItem} />
       
-      {/* AI + экспертиза подпись */}
+      {/* AI + экспертиза подпись - centered bottom */}
       <div 
-        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10"
+        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10 text-center"
         style={{ color: '#94A3B8', fontSize: '12px' }}
       >
         AI + экспертиза косметолога
       </div>
     </div>
-  );
-}
-
-
-function WidgetCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <article 
-      className="snap-start shrink-0 w-[280px] h-[140px] mx-0 backdrop-blur-[16px] border rounded-3xl p-4 flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
-      style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        borderColor: 'rgba(255, 255, 255, 0.3)'
-      }}
-    >
-      <div 
-        className="text-[13px] mb-3"
-        style={{ color: '#475467' }}
-      >
-        {title}
-      </div>
-      <div 
-        className="flex-1"
-        style={{ color: '#1F2A44' }}
-      >
-        {children}
-      </div>
-    </article>
   );
 }
