@@ -526,20 +526,36 @@ const screens: Screen[] = [
   {
     kind: "info",
     id: "how_it_works",
-    title: "Четыре шага до вашего персонального плана",
-    subtitle: "Займёт не более 3 минут. Проверка косметологом",
+    title: "",
+    subtitle: "",
     renderBody: () => (
-      <div className="space-y-4">
-        {/* Social proof */}
+      <div className="space-y-6 w-full max-w-md mx-auto">
+        {/* Title - 32sp bold #0A5F59 */}
+        <h1 
+          className="text-[28px] sm:text-[32px] font-bold leading-tight text-center animate-onboarding-fade-in"
+          style={{ color: '#0A5F59', animationDelay: '0ms' }}
+        >
+          Четыре шага до вашего персонального плана
+        </h1>
+
+        {/* Subtitle - 17sp #475467 */}
         <p 
-          className="text-[15px] text-center mb-6"
-          style={{ color: '#64748B' }}
+          className="text-[16px] sm:text-[17px] leading-relaxed text-center animate-onboarding-fade-in"
+          style={{ color: '#475467', animationDelay: '120ms' }}
+        >
+          Займёт не более 3 минут · Проверка косметологом
+        </p>
+
+        {/* Social proof - 17sp #0A5F59 Medium */}
+        <p 
+          className="text-[16px] sm:text-[17px] font-medium text-center animate-onboarding-fade-in"
+          style={{ color: '#0A5F59', animationDelay: '240ms' }}
         >
           47 832 клиенток уже получили результат
         </p>
 
         {/* Four glass cards */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[
             {
               number: "1",
@@ -564,27 +580,25 @@ const screens: Screen[] = [
           ].map((step, index) => (
             <div
               key={index}
-              className={`flex items-start gap-4 rounded-2xl px-4 py-4 animate-onboarding-fade-in backdrop-blur-[16px] border shadow-[0_8px_32px_rgba(0,0,0,0.12)] ${
-                step.isCompleted ? '' : ''
-              }`}
+              className="flex items-start gap-4 rounded-3xl px-5 py-5 animate-onboarding-fade-in backdrop-blur-[18px] border"
               style={{ 
-                animationDelay: `${(index + 1) * 150}ms`,
-                backgroundColor: step.isCompleted ? 'rgba(230, 247, 244, 0.6)' : 'rgba(255, 255, 255, 0.5)',
+                animationDelay: `${360 + (index + 1) * 120}ms`,
+                backgroundColor: step.isCompleted ? 'rgba(10, 95, 89, 0.1)' : 'rgba(255, 255, 255, 0.55)',
                 borderColor: 'rgba(255, 255, 255, 0.3)',
               }}
             >
               {/* Circle with number or checkmark - 56dp */}
               <div 
                 className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
-                style={step.isCompleted ? { backgroundColor: '#0A5F59' } : { backgroundColor: '#0A5F59', border: 'none' }}
+                style={{ backgroundColor: '#0A5F59' }}
               >
                 {step.isCompleted ? (
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 ) : (
                   <span 
-                    className="text-lg font-semibold"
+                    className="text-xl font-semibold"
                     style={{ color: 'white' }}
                   >
                     {step.number}
@@ -592,8 +606,8 @@ const screens: Screen[] = [
                 )}
               </div>
               <span 
-                className="text-[17px] sm:text-[18px] leading-relaxed text-left flex-1 pt-2"
-                style={{ color: '#1F2A44' }}
+                className="text-[17px] sm:text-[18px] leading-relaxed text-left flex-1 pt-1.5 font-semibold"
+                style={{ color: step.isCompleted ? '#FFFFFF' : '#1F2A44' }}
               >
                 {step.text}
               </span>
@@ -2002,8 +2016,8 @@ export default function Quiz() {
             </div>
           ) : (
             <div>
-            {/* Don't show title/subtitle for welcome and personal_analysis screens as they're in renderBody */}
-            {currentStep.id !== "welcome" && currentStep.id !== "personal_analysis" && (
+            {/* Don't show title/subtitle for welcome, how_it_works and personal_analysis screens as they're in renderBody */}
+            {currentStep.id !== "welcome" && currentStep.id !== "how_it_works" && currentStep.id !== "personal_analysis" && (
               <>
                 {currentStep.title && (
                   <h2 
@@ -2053,7 +2067,7 @@ export default function Quiz() {
                     {currentStep.id === "welcome" 
                       ? "Бесплатно · Данные конфиденциальны · Проверка косметологом"
                       : currentStep.id === "how_it_works"
-                      ? "Бесплатно · Данные конфиденциальны · Проверка косметологом"
+                      ? "Бесплатно · Данные конфиденциальны"
                       : "Фото обрабатывается только ИИ и косметологом · Удаляется через 24 ч"
                     }
                   </p>
