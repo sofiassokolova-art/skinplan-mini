@@ -461,22 +461,27 @@ const screens: Screen[] = [
     title: "",
     subtitle: "",
     renderBody: () => (
-      <div className="flex flex-col items-center w-full max-w-md mx-auto px-4">
-        {/* Large glass card */}
+      <div className="flex flex-col items-center w-full mx-auto px-4">
+        {/* Large glass card - 88% width, ~75% height */}
         <div 
-          className="w-full rounded-3xl p-6 sm:p-8 animate-onboarding-fade-in backdrop-blur-[20px] border shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
+          className="w-[88%] rounded-[32px] overflow-hidden animate-onboarding-fade-in backdrop-blur-[20px] border"
           style={{ 
-            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            backgroundColor: 'rgba(255, 255, 255, 0.55)',
             borderColor: 'rgba(255, 255, 255, 0.3)',
-            animationDelay: '0ms'
+            animationDelay: '0ms',
+            minHeight: '75vh',
+            maxHeight: '75vh'
           }}
         >
-          <div className="flex flex-col items-center text-center gap-6">
-            {/* Portrait image with dark edges */}
+          <div className="flex flex-col h-full">
+            {/* Photo - крупный портрет, 320-340dp высотой, радиус сверху 32dp */}
             <div 
-              className="relative w-[240px] h-[240px] sm:w-[280px] sm:h-[280px] rounded-2xl overflow-hidden"
+              className="relative w-full overflow-hidden animate-onboarding-fade-in"
               style={{
-                boxShadow: 'inset 0 0 40px rgba(0, 0, 0, 0.1)'
+                height: '320px',
+                borderTopLeftRadius: '32px',
+                borderTopRightRadius: '32px',
+                animationDelay: '0ms'
               }}
             >
               <img
@@ -486,29 +491,32 @@ const screens: Screen[] = [
               />
             </div>
 
-            {/* Title - 30sp bold #0A5F59 */}
-            <h1 
-              className="text-[26px] sm:text-[30px] font-bold leading-tight animate-onboarding-fade-in"
-              style={{ color: '#0A5F59', animationDelay: '150ms' }}
-            >
-              Персональный план ухода уровня косметолога-дерматолога
-            </h1>
+            {/* Content inside card */}
+            <div className="flex flex-col flex-1 px-6 pt-6 pb-8 justify-center">
+              {/* Title - 34sp bold #0A5F59 */}
+              <h1 
+                className="text-[30px] sm:text-[34px] font-bold leading-tight text-center mb-5 animate-onboarding-fade-in"
+                style={{ color: '#0A5F59', animationDelay: '120ms' }}
+              >
+                Персональный план ухода{'\n'}уровня косметолога-дерматолога
+              </h1>
 
-            {/* Subtitle - 17sp */}
-            <p 
-              className="text-[16px] sm:text-[17px] leading-relaxed animate-onboarding-fade-in"
-              style={{ color: '#475467', animationDelay: '300ms' }}
-            >
-              Точная диагностика и рекомендации экспертов за 2–3 минуты
-            </p>
+              {/* Subtitle - 18sp #475467 */}
+              <p 
+                className="text-[17px] sm:text-[18px] leading-relaxed text-center mb-5 animate-onboarding-fade-in"
+                style={{ color: '#475467', animationDelay: '240ms' }}
+              >
+                Точная диагностика и рекомендации экспертов{'\n'}за 2–3 минуты
+              </p>
 
-            {/* Social proof - 16sp */}
-            <p 
-              className="text-[15px] sm:text-[16px] animate-onboarding-fade-in"
-              style={{ color: '#64748B', animationDelay: '450ms' }}
-            >
-              47 832 клиенток уже решили свои проблемы с кожей
-            </p>
+              {/* Social proof - 17sp #0A5F59 (жирное) */}
+              <p 
+                className="text-[16px] sm:text-[17px] font-semibold text-center animate-onboarding-fade-in"
+                style={{ color: '#0A5F59', animationDelay: '360ms' }}
+              >
+                47 832 клиенток уже решили свои проблемы с кожей
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -2023,14 +2031,14 @@ export default function Quiz() {
                 <div 
                   className="space-y-3 animate-onboarding-fade-in" 
                   style={{ 
-                    animationDelay: currentStep.id === "welcome" ? '600ms' : 
+                    animationDelay: currentStep.id === "welcome" ? '480ms' : 
                                    currentStep.id === "how_it_works" ? '750ms' : 
                                    '900ms'
                   }}
                 >
                   <button
                     onClick={goNext}
-                    className="w-full h-[56px] rounded-2xl font-semibold text-[16px] sm:text-[17px] text-white hover:opacity-90 active:scale-[0.98] transition-all duration-200 touch-manipulation"
+                    className="w-full h-[56px] rounded-2xl font-medium text-[17px] sm:text-[18px] text-white hover:opacity-90 active:scale-[0.98] transition-all duration-200 touch-manipulation"
                     style={{ 
                       backgroundColor: '#0A5F59',
                       borderRadius: '16px'
@@ -2043,7 +2051,7 @@ export default function Quiz() {
                     style={{ color: '#64748B' }}
                   >
                     {currentStep.id === "welcome" 
-                      ? "Бесплатно · Данные конфиденциальны"
+                      ? "Бесплатно · Данные конфиденциальны · Проверка косметологом"
                       : currentStep.id === "how_it_works"
                       ? "Бесплатно · Данные конфиденциальны · Проверка косметологом"
                       : "Фото обрабатывается только ИИ и косметологом · Удаляется через 24 ч"
