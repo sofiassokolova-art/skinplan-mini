@@ -741,14 +741,20 @@ export default function MobileSkinIQHome() {
 
         {/* Widgets carousel - горизонтальный скролл */}
         <div className="mt-4 mb-20">
-          <div className="relative overflow-visible" id="widgets-container">
+          <div className="relative overflow-visible px-4" id="widgets-container">
             <div 
-              className="flex gap-3 overflow-x-auto pr-8 py-1 snap-x snap-mandatory scrollbar-hide"
-              style={{touchAction: 'pan-x', overscrollBehavior: 'contain'}}
+              className="flex gap-4 overflow-x-auto overflow-y-hidden pr-4 py-2 snap-x snap-mandatory scrollbar-hide"
+              style={{
+                touchAction: 'pan-x', 
+                overscrollBehavior: 'contain',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none'
+              }}
             >
               {/* Daily Advice Card - glassmorphism expert style */}
               <article 
-                className="snap-start shrink-0 w-[280px] h-[180px] mx-0 backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
+                className="snap-start shrink-0 w-[320px] h-[200px] backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.5)',
                   borderColor: 'rgba(255, 255, 255, 0.3)'
@@ -804,7 +810,7 @@ export default function MobileSkinIQHome() {
 
               {/* Hydration Widget */}
               <article 
-                className="snap-start shrink-0 w-[280px] h-[180px] mx-0 backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
+                className="snap-start shrink-0 w-[320px] h-[200px] backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.5)',
                   borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -840,7 +846,7 @@ export default function MobileSkinIQHome() {
 
               {/* UV Index Widget */}
               <article 
-                className="snap-start shrink-0 w-[280px] h-[180px] mx-0 backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
+                className="snap-start shrink-0 w-[320px] h-[200px] backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col animate-card-appear"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.5)',
                   borderColor: 'rgba(255, 255, 255, 0.3)',
@@ -874,6 +880,43 @@ export default function MobileSkinIQHome() {
                       Сегодня: SPF 30
                     </div>
                   </div>
+                </div>
+              </article>
+
+              {/* Подробный план - карточка-кнопка */}
+              <article 
+                className="snap-start shrink-0 w-[320px] h-[200px] backdrop-blur-[16px] border rounded-2xl p-5 flex flex-col justify-center items-center animate-card-appear cursor-pointer hover:opacity-90 transition-opacity"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                  animationDelay: '300ms'
+                }}
+                onClick={() => navigate("/plan")}
+              >
+                <div 
+                  className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                  style={{ backgroundColor: '#0A5F59' }}
+                >
+                  <svg 
+                    className="w-8 h-8" 
+                    fill="none" 
+                    stroke="white" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div 
+                  className="text-[18px] font-bold mb-2 text-center"
+                  style={{ color: '#1F2A44' }}
+                >
+                  Подробный план
+                </div>
+                <div 
+                  className="text-[14px] text-center leading-relaxed"
+                  style={{ color: '#475467' }}
+                >
+                  Полная программа ухода на 12 недель с детальными рекомендациями
                 </div>
               </article>
             </div>
