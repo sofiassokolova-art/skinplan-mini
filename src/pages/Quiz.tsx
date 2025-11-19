@@ -529,10 +529,10 @@ const screens: Screen[] = [
     title: "",
     subtitle: "",
     renderBody: () => (
-      <div className="space-y-6 w-full max-w-md mx-auto">
-        {/* Title - 32sp bold #0A5F59 */}
+      <div className="space-y-5 w-full max-w-md mx-auto">
+        {/* Title - 34sp bold #0A5F59 */}
         <h1 
-          className="text-[28px] sm:text-[32px] font-bold leading-tight text-center animate-onboarding-fade-in"
+          className="text-[30px] sm:text-[34px] font-bold leading-tight text-center animate-onboarding-fade-in"
           style={{ color: '#0A5F59', animationDelay: '0ms' }}
         >
           Четыре шага до вашего персонального плана
@@ -546,16 +546,16 @@ const screens: Screen[] = [
           Займёт не более 3 минут · Проверка косметологом
         </p>
 
-        {/* Social proof - 17sp #0A5F59 Medium */}
+        {/* Social proof - 18sp #0A5F59 Medium */}
         <p 
-          className="text-[16px] sm:text-[17px] font-medium text-center animate-onboarding-fade-in"
+          className="text-[17px] sm:text-[18px] font-medium text-center animate-onboarding-fade-in"
           style={{ color: '#0A5F59', animationDelay: '240ms' }}
         >
           47 832 клиенток уже получили результат
         </p>
 
-        {/* Four glass cards */}
-        <div className="space-y-4">
+        {/* Four glass cards - 88% width */}
+        <div className="space-y-[18px] w-[88%] mx-auto">
           {[
             {
               number: "1",
@@ -580,11 +580,12 @@ const screens: Screen[] = [
           ].map((step, index) => (
             <div
               key={index}
-              className="flex items-start gap-4 rounded-3xl px-5 py-5 animate-onboarding-fade-in backdrop-blur-[18px] border"
+              className="flex items-start gap-4 rounded-[28px] px-5 py-5 animate-onboarding-fade-in backdrop-blur-[20px] border w-full"
               style={{ 
-                animationDelay: `${360 + (index + 1) * 120}ms`,
-                backgroundColor: step.isCompleted ? 'rgba(10, 95, 89, 0.1)' : 'rgba(255, 255, 255, 0.55)',
+                animationDelay: `${360 + (index + 1) * 100}ms`,
+                backgroundColor: step.isCompleted ? 'rgba(10, 95, 89, 0.13)' : 'rgba(255, 255, 255, 0.58)',
                 borderColor: 'rgba(255, 255, 255, 0.3)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
               }}
             >
               {/* Circle with number or checkmark - 56dp */}
@@ -2052,7 +2053,7 @@ export default function Quiz() {
                 >
                   <button
                     onClick={goNext}
-                    className="w-full h-[56px] rounded-2xl font-medium text-[17px] sm:text-[18px] text-white hover:opacity-90 active:scale-[0.98] transition-all duration-200 touch-manipulation"
+                    className="w-full h-[58px] rounded-2xl font-medium text-[17px] sm:text-[18px] text-white hover:opacity-90 active:scale-[0.98] transition-all duration-200 touch-manipulation"
                     style={{ 
                       backgroundColor: '#0A5F59',
                       borderRadius: '16px'
