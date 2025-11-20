@@ -380,10 +380,11 @@ export default function MobileSkinIQHome() {
 
       {/* Header */}
       <header 
-        className="flex items-center justify-center px-5 pt-5 pb-3 relative z-10"
+        className="flex items-center justify-between px-5 pt-5 pb-3 relative z-10"
       >
+        <div className="flex-1" /> {/* Spacer left */}
         <h1 
-          className="text-[28px] font-black tracking-tight"
+          className="text-[28px] font-black tracking-tight flex-1 text-center"
           style={{ 
             color: '#FAFAFA',
             textShadow: '0 0 12px rgba(212, 165, 116, 0.3)',
@@ -394,24 +395,28 @@ export default function MobileSkinIQHome() {
         >
           SkinIQ
         </h1>
-        <button
-          onClick={() => navigate("/quiz")}
-          className="backdrop-blur-[20px] border px-4 py-2 rounded-[20px] text-sm font-semibold transition-all duration-200 hover:opacity-90"
-          style={{
-            backgroundColor: 'rgba(212, 165, 116, 0.18)',
-            borderColor: '#D4A574',
-            borderWidth: '1px',
-            color: '#D4A574'
-          }}
-        >
-          <span className="flex items-center gap-1.5">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-            AI Skin Scan
-          </span>
-        </button>
+        <div className="flex-1 flex justify-end"> {/* Spacer right with button */}
+          <button
+            onClick={() => navigate("/quiz")}
+            className="backdrop-blur-[20px] border px-4 py-2 rounded-[20px] text-sm font-semibold transition-all duration-200 hover:opacity-90"
+            style={{
+              backgroundColor: 'rgba(212, 165, 116, 0.18)',
+              borderColor: '#D4A574',
+              borderWidth: '1px',
+              color: '#D4A574',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600
+            }}
+          >
+            <span className="flex items-center gap-1.5">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              AI Skin Scan
+            </span>
+          </button>
+        </div>
       </header>
 
       {/* Tab switcher - glass style */}
