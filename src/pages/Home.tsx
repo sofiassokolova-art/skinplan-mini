@@ -94,7 +94,7 @@ const morningDefault: RoutineItem[] = [
   },
   {
     id: "spf",
-    title: "SPF",
+    title: "SPF-защита",
     subtitle: "SPF 50 PA++++",
     icon: ICONS.spf,
     howto: {
@@ -777,7 +777,7 @@ export default function MobileSkinIQHome() {
                 color: '#0A5F59'
               }}
             >
-              {tab === "AM" ? "Morning Ritual" : "Evening Ritual"}
+              {tab === "AM" ? "Утренний ритуал" : "Вечерний ритуал"}
             </div>
             <div
               style={{
@@ -787,7 +787,7 @@ export default function MobileSkinIQHome() {
                 color: '#0A5F59'
               }}
             >
-              {completed}/{total} steps
+              {completed} из {total} шагов
           </div>
         </div>
           
