@@ -178,7 +178,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div 
         className="absolute left-0 right-0 bottom-0 rounded-t-3xl p-4 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] relative"
-        style={{
+        style={{ 
           backgroundColor: 'rgba(18, 24, 36, 0.82)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
@@ -273,7 +273,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
                 }}
               >
                 Объём
-              </div>
+            </div>
               <div 
                 className="text-[14px] font-medium"
                 style={{ 
@@ -282,8 +282,8 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
                 }}
               >
                 {item.howto?.volume || '—'}
-              </div>
             </div>
+          </div>
             <div 
               className="rounded-2xl p-3 backdrop-blur-[24px] border transition-all duration-300 hover:border-opacity-60"
               style={{
@@ -311,7 +311,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
                 }}
               >
                 Совет
-              </div>
+        </div>
               <div 
                 className="text-[14px] font-medium"
                 style={{ 
@@ -384,7 +384,7 @@ export default function MobileSkinIQHome() {
       setHintShown(hintWasShown);
       
       // Telegram ready
-      const tg = (window as any)?.Telegram?.WebApp;
+    const tg = (window as any)?.Telegram?.WebApp;
       if (tg) {
         tg.ready();
         tg.expand();
@@ -500,7 +500,7 @@ export default function MobileSkinIQHome() {
       const selectedItem = currentItems[idx];
       if (selectedItem && selectedItem.howto) {
         setSheetItem(selectedItem);
-        setSheetOpen(true);
+    setSheetOpen(true);
       } else {
         console.warn('openHowTo: item or howto is missing', { idx, item: selectedItem });
       }
@@ -546,12 +546,12 @@ export default function MobileSkinIQHome() {
             opacity: 0; 
           }
         }
-        @keyframes pulseGlow {
-          0%, 100% {
+        @keyframes pulseGlow { 
+          0%, 100% { 
             opacity: 1;
             transform: scale(1);
-          }
-          50% {
+          } 
+          50% { 
             opacity: 0.7;
             transform: scale(1.1);
           }
@@ -611,7 +611,7 @@ export default function MobileSkinIQHome() {
           }}
         >
           {greeting || 'Добрый день'}, {userName}
-        </div>
+            </div>
         <div 
           className="text-[14px] mt-1 font-medium"
           style={{
@@ -626,15 +626,15 @@ export default function MobileSkinIQHome() {
       </div>
 
       {/* Tab switcher */}
-      <div className="px-5 mb-4 relative z-10">
+      <div className="mb-4 relative z-10" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
         <div 
-          className="inline-flex rounded-full p-0.5 border"
+          className="inline-flex rounded-full p-0.5"
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.6)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
-            borderColor: 'rgba(15, 118, 110, 0.2)',
-            borderWidth: '1px'
+            border: '1px solid rgba(15, 118, 110, 0.2)',
+            borderRadius: '9999px'
           }}
         >
           {(["AM", "PM"] as const).map((t) => (
@@ -650,11 +650,13 @@ export default function MobileSkinIQHome() {
                       background: '#0F766E',
                       color: 'white',
                       fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 600
+                      fontWeight: 600,
+                      border: 'none'
                     }
                   : { 
                       color: '#0F766E',
                       backgroundColor: 'transparent',
+                      border: '1px solid #0F766E',
                       fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 500
                     }
@@ -670,6 +672,7 @@ export default function MobileSkinIQHome() {
       {/* Title Row */}
       <div 
         className="flex justify-between items-center px-6 py-4 relative z-10"
+        style={{ paddingLeft: '24px', paddingRight: '24px' }}
       >
         <h2 
           className="text-[28px] font-black"
@@ -692,22 +695,30 @@ export default function MobileSkinIQHome() {
         >
           {completed}/{items.length} steps
         </span>
-      </div>
+        </div>
             
       {/* Divider line */}
       <div 
-        className="mx-6 mb-4 h-px relative z-10"
-        style={{ backgroundColor: 'rgba(15, 118, 110, 0.2)' }}
+        className="mb-4 h-px relative z-10"
+        style={{ 
+          backgroundColor: 'rgba(15, 118, 110, 0.2)',
+          marginLeft: '24px',
+          marginRight: '24px'
+        }}
       />
       
       {/* Dermatologist Tip */}
       <div 
-        className="mx-5 mb-4 p-4 rounded-2xl border relative z-10"
+        className="mb-4 p-4 rounded-2xl border relative z-10"
         style={{
-          backgroundColor: '#F0FDFB',
+          backgroundColor: 'rgba(240, 253, 251, 0.72)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
           borderColor: '#CCFBF1',
           borderWidth: '1px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+          marginLeft: '20px',
+          marginRight: '20px'
         }}
       >
         <div className="flex items-start gap-3">
@@ -721,7 +732,7 @@ export default function MobileSkinIQHome() {
             }}
           >
             Tip
-          </div>
+              </div>
           <p 
             className="text-[14px] leading-relaxed flex-1"
             style={{
@@ -732,16 +743,16 @@ export default function MobileSkinIQHome() {
           >
             Сегодня идеальная влажность — после тонера подождите 60 секунд перед сывороткой
           </p>
-        </div>
-      </div>
+                  </div>
+                </div>
 
       {/* Steps */}
-      <main className="px-5 pb-32 relative z-10">
+      <main className="pb-32 relative z-10" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
         {items.map((item, index) => {
           const isCompleted = item.done;
           const isFirstUncompleted = index === 0 && !isCompleted && !hintShown;
           return (
-          <div key={item.id} className="relative mb-3">
+          <div key={item.id} className="relative" style={{ marginBottom: index < items.length - 1 ? '14px' : '0' }}>
             {/* First step hint */}
             {isFirstUncompleted && (
               <div 
@@ -760,7 +771,7 @@ export default function MobileSkinIQHome() {
                   }}
                 >
                   Нажмите карточку → выполнен
-                </div>
+              </div>
                 {/* Arrow pointer */}
                 <div 
                   className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full"
@@ -783,7 +794,7 @@ export default function MobileSkinIQHome() {
                     opacity: 0.5
                   }}
                 />
-              </div>
+                </div>
             )}
             
           <button 
@@ -801,13 +812,13 @@ export default function MobileSkinIQHome() {
               style={{
                 animation: `fadeInUp 0.6s backwards`,
                 animationDelay: `${index * 0.1}s`,
-                backgroundColor: 'rgba(255, 255, 255, 0.78)',
-                WebkitBackdropFilter: 'blur(32px)',
-                backdropFilter: 'blur(32px)',
+                backgroundColor: 'rgba(255, 255, 255, 0.68)',
+                WebkitBackdropFilter: 'blur(28px)',
+                backdropFilter: 'blur(28px)',
                 borderColor: 'rgba(255, 255, 255, 0.4)',
                 borderWidth: '1px',
                 borderRadius: '24px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.06)'
+                boxShadow: '0 8px 32px rgba(0,0,0,0.07)'
               }}
             >
               {/* Product Image */}
@@ -841,7 +852,7 @@ export default function MobileSkinIQHome() {
                   }}
                 >
                   {item.subtitle}
-                </div>
+              </div>
               </div>
 
               {/* Step indicator - bottom right (i button or checkmark) */}
@@ -888,24 +899,30 @@ export default function MobileSkinIQHome() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '18px',
-                    fontWeight: 700,
-                    backgroundColor: '#10B981',
-                    color: 'white',
-                    border: 'none',
-                    animation: 'fadeInUp 0.3s ease'
+                    fontWeight: 300,
+                    backgroundColor: 'white',
+                    color: '#0F766E',
+                    border: '1.5px solid #0F766E',
+                    animation: 'fadeInUp 0.3s ease',
+                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
                   }}
                 >
                   ✓
-                </div>
-              )}
+                    </div>
+                )}
             </button>
-          </div>
+              </div>
           );
         })}
       </main>
 
       {/* Action Buttons - after cards */}
-      <div className="px-5 mt-6 mb-6 relative z-10 flex gap-3" style={{ marginTop: '24px', marginBottom: '24px' }}>
+      <div className="mt-6 mb-6 relative z-10 flex gap-3" style={{ 
+        marginTop: '32px', 
+        marginBottom: '24px',
+        paddingLeft: '20px',
+        paddingRight: '20px'
+      }}>
         <button
           onClick={() => navigate("/plan")}
           className="flex-1 h-12 px-5 rounded-[16px] font-semibold text-base transition-all duration-200 hover:opacity-90 active:scale-95 border"
@@ -933,7 +950,7 @@ export default function MobileSkinIQHome() {
         >
           Пройти анкету заново →
         </button>
-      </div>
+          </div>
 
       {/* Aura glow when all completed */}
       {completed === items.length && items.length > 0 && (
