@@ -1,5 +1,5 @@
 // Bottom Navigation Component
-// Telegram-style glassmorphism navigation
+// Telegram-style glassmorphism navigation - Premium 2025
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 
@@ -33,23 +33,26 @@ export default function BottomNavigation() {
 
   // Calculate opacity and transform based on scroll
   const scrollProgress = Math.min(scrollY / 100, 1);
-  const opacity = 0.62 - (scrollProgress * 0.15); // Starts at 0.62, becomes 0.47
-  const translateY = Math.min(scrollY / 200, 8); // Max 8px up
+  const opacity = 0.64 - (scrollProgress * 0.14); // Starts at 0.64, becomes 0.78 when scrolled
+  const translateY = Math.min(scrollY / 200, 10); // Max 10px up
 
   return (
     <nav 
       className="fixed flex justify-around items-center"
       style={{
         position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '84px',
+        bottom: '20px', // 20dp от края экрана (парящий эффект)
+        left: '3%', // Отступ слева 3% (чтобы блок был 94% ширины)
+        right: '3%', // Отступ справа 3%
+        width: '94%',
+        height: '78px',
         backgroundColor: `rgba(255, 255, 255, ${opacity})`,
-        backdropFilter: 'blur(26px)',
-        WebkitBackdropFilter: 'blur(26px)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.15)',
-        boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.12), 0 -2px 8px rgba(0, 0, 0, 0.08)',
+        backdropFilter: 'blur(28px)',
+        WebkitBackdropFilter: 'blur(28px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '34px',
+        boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.12), 0 -4px 16px rgba(0, 0, 0, 0.08)',
         padding: '0 20px',
         paddingTop: '8px',
         paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 12px)`,
@@ -58,7 +61,7 @@ export default function BottomNavigation() {
         justifyContent: 'space-around',
         zIndex: 1000,
         transform: `translateY(-${translateY}px)`,
-        transition: 'transform 0.2s ease-out, background-color 0.2s ease-out'
+        transition: 'transform 0.2s ease-out, background-color 0.2s ease-out, opacity 0.2s ease-out'
       }}
     >
       {navItems.map((item) => {
@@ -78,22 +81,22 @@ export default function BottomNavigation() {
               color: active ? '#0A5F59' : '#94A3B8',
               minWidth: '64px',
               position: 'relative',
-              background: active ? 'rgba(10, 95, 89, 0.18)' : 'transparent',
+              background: active ? 'rgba(10, 95, 89, 0.20)' : 'transparent',
               border: 'none',
-              borderRadius: '32px',
+              borderRadius: '36px',
               cursor: 'pointer',
               padding: '8px 12px',
-              transform: active ? 'scale(1.08)' : 'scale(1)',
+              transform: active ? 'scale(1.06)' : 'scale(1)',
               transition: 'transform 0.2s ease-out, background-color 0.2s ease-out'
             }}
             onMouseDown={(e) => {
               e.currentTarget.style.transform = active ? 'scale(1.0)' : 'scale(0.95)';
             }}
             onMouseUp={(e) => {
-              e.currentTarget.style.transform = active ? 'scale(1.08)' : 'scale(1)';
+              e.currentTarget.style.transform = active ? 'scale(1.06)' : 'scale(1)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = active ? 'scale(1.08)' : 'scale(1)';
+              e.currentTarget.style.transform = active ? 'scale(1.06)' : 'scale(1)';
             }}
           >
             {item.icon === 'home' && (
@@ -175,4 +178,3 @@ export default function BottomNavigation() {
     </nav>
   );
 }
-

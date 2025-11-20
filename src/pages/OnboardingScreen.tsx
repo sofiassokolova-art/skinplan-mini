@@ -21,23 +21,38 @@ export default function OnboardingScreen() {
 
   return (
     <div 
-      className="min-h-screen relative overflow-hidden flex items-center justify-center"
+      className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center"
       style={{
         background: 'linear-gradient(180deg, #F5FFFC 0%, #E8FBF7 100%)',
         padding: '0',
         position: 'relative',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        gap: 0
       }}
     >
+      {/* Logo - над карточкой, отступ снизу 32px */}
+      <div 
+        style={{
+          marginBottom: '32px',
+          opacity: mounted ? 1 : 0,
+          transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
+          transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s',
+          transitionDelay: '0.2s'
+        }}
+      >
+        <SkinIQLogo size={48} />
+      </div>
+
       {/* Main glass card - 88% width, centered with 6% margins */}
       <div 
         className="relative flex flex-col items-center"
         style={{
           width: '88%',
           maxWidth: '420px',
-          minHeight: '82vh',
+          minHeight: 'auto',
           backgroundColor: 'rgba(255, 255, 255, 0.58)',
           backdropFilter: 'blur(26px)',
           WebkitBackdropFilter: 'blur(26px)',
@@ -47,7 +62,7 @@ export default function OnboardingScreen() {
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'scale(1)' : 'scale(0.94)',
-          transition: 'opacity 0.6s ease-out, transform 0.6s ease-out',
+          transition: 'opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -55,19 +70,6 @@ export default function OnboardingScreen() {
           gap: 0
         }}
       >
-        {/* Logo - SkinIQ 48sp, отступ сверху уже в padding-top карточки (36px) */}
-        <div 
-          style={{
-            marginBottom: '36px',
-            opacity: mounted ? 1 : 0,
-            transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
-            transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s',
-            transitionDelay: '0.2s'
-          }}
-        >
-          <SkinIQLogo size={48} />
-        </div>
-
         {/* Title - 36sp, lineHeight 42px, margin 28px снизу */}
         <h1 
           style={{
@@ -81,8 +83,8 @@ export default function OnboardingScreen() {
             textAlign: 'center',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
-            transition: 'opacity 0.6s ease-out 0.5s, transform 0.6s ease-out 0.5s',
-            transitionDelay: '0.5s'
+            transition: 'opacity 0.6s ease-out 0.6s, transform 0.6s ease-out 0.6s',
+            transitionDelay: '0.6s'
           }}
         >
           Получите план ухода<br />
@@ -103,8 +105,8 @@ export default function OnboardingScreen() {
             textAlign: 'center',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
-            transition: 'opacity 0.5s ease-out 0.7s, transform 0.5s ease-out 0.7s',
-            transitionDelay: '0.7s'
+            transition: 'opacity 0.5s ease-out 0.8s, transform 0.5s ease-out 0.8s',
+            transitionDelay: '0.8s'
           }}
         >
           Персональная программа от дипломированного специалиста
@@ -132,8 +134,8 @@ export default function OnboardingScreen() {
                 marginBottom: index < 2 ? '28px' : '0',
                 opacity: mounted ? 1 : 0,
                 transform: mounted ? 'translateX(0)' : 'translateX(-10px)',
-                transition: `opacity 0.4s ease-out ${0.9 + index * 0.15}s, transform 0.4s ease-out ${0.9 + index * 0.15}s`,
-                transitionDelay: `${0.9 + index * 0.15}s`
+                transition: `opacity 0.4s ease-out ${1.0 + index * 0.15}s, transform 0.4s ease-out ${1.0 + index * 0.15}s`,
+                transitionDelay: `${1.0 + index * 0.15}s`
               }}
             >
               <div 
@@ -183,8 +185,8 @@ export default function OnboardingScreen() {
             cursor: 'pointer',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.95)',
-            transition: 'opacity 0.5s ease-out 1.4s, transform 0.5s ease-out 1.4s',
-            transitionDelay: '1.4s'
+            transition: 'opacity 0.5s ease-out 1.5s, transform 0.5s ease-out 1.5s',
+            transitionDelay: '1.5s'
           }}
           onMouseDown={(e) => {
             e.currentTarget.style.transform = 'translateY(0) scale(0.95)';
@@ -200,14 +202,11 @@ export default function OnboardingScreen() {
         </button>
       </div>
 
-      {/* Secondary link - outside card, below, отступ 28dp от карточки */}
+      {/* Secondary link - под карточкой, отступ 28dp от карточки */}
       <button
         onClick={() => navigate('/plan')}
         style={{
-          position: 'absolute',
-          bottom: '120px',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          marginTop: '28px',
           color: '#0A5F59',
           fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
           fontWeight: 400,
@@ -219,8 +218,9 @@ export default function OnboardingScreen() {
           cursor: 'pointer',
           padding: '8px 12px',
           opacity: mounted ? 1 : 0,
-          transition: 'opacity 0.5s ease-out 1.6s, transform 0.5s ease-out 1.6s',
-          transitionDelay: '1.6s'
+          transform: mounted ? 'translateY(0)' : 'translateY(10px)',
+          transition: 'opacity 0.5s ease-out 1.7s, transform 0.5s ease-out 1.7s',
+          transitionDelay: '1.7s'
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.opacity = '0.7';
