@@ -174,10 +174,10 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
     return null;
   }
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0" style={{ zIndex: 2000 }}>
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose} />
       <div 
-        className="absolute left-0 right-0 bottom-0 max-h-[90vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] relative"
+        className="absolute left-0 right-0 bottom-0 max-h-[85vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] relative"
         style={{ 
           backgroundColor: 'rgba(250, 251, 253, 0.92)',
           backdropFilter: 'blur(32px)',
@@ -186,7 +186,9 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           borderTopRightRadius: '28px',
           borderTop: '1px solid rgba(15, 118, 110, 0.12)',
           boxShadow: '0 -8px 32px rgba(0,0,0,0.08)',
-          padding: '24px 20px 40px'
+          padding: '24px 20px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+          maxHeight: '85vh'
         }}
       >
         {/* Handle bar - top center */}
@@ -211,8 +213,8 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
             <img 
               src={item.icon} 
               alt={item.title}
-              className="w-16 h-16 rounded-2xl object-cover flex-shrink-0"
-              style={{ borderRadius: '16px' }}
+              className="w-14 h-14 rounded-2xl object-contain flex-shrink-0"
+              style={{ borderRadius: '14px', backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
             />
           ) : null}
           <div className="flex-1">
@@ -817,8 +819,8 @@ export default function MobileSkinIQHome() {
               <img 
                 src={item.icon} 
                 alt={item.title}
-                className="w-16 h-16 rounded-2xl object-cover flex-shrink-0"
-                style={{ borderRadius: '16px' }}
+                className="w-14 h-14 rounded-2xl object-contain flex-shrink-0"
+                style={{ borderRadius: '14px', backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
               />
 
               {/* Text Container */}
