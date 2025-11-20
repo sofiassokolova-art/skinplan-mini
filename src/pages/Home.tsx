@@ -347,8 +347,10 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
       
       {/* Icon - увеличенные 64-72px с gold glow */}
       <div 
-        className="w-16 h-16 sm:w-18 sm:h-18 flex items-center justify-center flex-shrink-0 rounded-xl relative"
+        className="flex items-center justify-center flex-shrink-0 rounded-xl relative"
         style={{
+          width: '64px',
+          height: '64px',
           backgroundColor: 'rgba(255, 255, 255, 0.03)',
           boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.1)'
         }}
@@ -357,15 +359,17 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
           <img 
             src={item.icon} 
             alt="" 
-            className="w-16 h-16 sm:w-18 sm:h-18 object-contain" 
+            className="object-contain" 
             style={{ 
+              width: '64px',
+              height: '64px',
               filter: isCompleted 
                 ? 'opacity(0.6) drop-shadow(0 0 6px rgba(212, 165, 116, 0.5))' 
                 : 'drop-shadow(0 0 4px rgba(212, 165, 116, 0.3))' 
             }} 
           />
         ) : (
-          <div className="w-16 h-16 sm:w-18 sm:h-18 bg-gray-700 rounded-lg opacity-30" />
+          <div className="bg-gray-700 rounded-lg opacity-30" style={{ width: '64px', height: '64px' }} />
         )}
       </div>
       
@@ -988,17 +992,18 @@ export default function MobileSkinIQHome() {
           <div className="mb-6 mt-6">
             <button
               onClick={() => navigate("/quiz")}
-              className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-90 active:scale-[0.98] backdrop-blur-[25px] border relative overflow-hidden"
+              className="w-full h-14 rounded-[24px] font-medium text-[16px] transition-all duration-200 hover:opacity-90 active:scale-[0.98] backdrop-blur-[22px] border relative overflow-hidden"
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                borderColor: 'rgba(212, 193, 156, 0.3)',
-                borderWidth: '0.5px',
-                color: '#D4C19C',
-                boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.4)'
+                background: 'linear-gradient(135deg, rgba(13, 74, 82, 0.4) 0%, rgba(212, 165, 116, 0.2) 100%)',
+                borderColor: 'rgba(212, 165, 116, 0.3)',
+                borderWidth: '1px',
+                borderRadius: '24px',
+                color: '#D4A574',
+                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
               }}
             >
               <div className="flex items-center justify-center gap-2">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 4px rgba(212, 165, 116, 0.4))' }}>
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                   <circle cx="12" cy="13" r="4" />
                 </svg>
