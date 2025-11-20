@@ -372,35 +372,46 @@ export default function MobileSkinIQHome() {
 
   // Check if quiz is completed
   useEffect(() => {
-    const quizDone = localStorage.getItem('skinQuizCompleted') === 'true';
-    setHasCompletedQuiz(quizDone);
-    
-    // Check if hint was shown
-    const hintWasShown = localStorage.getItem('firstStepHintShown') === 'true';
-    setHintShown(hintWasShown);
-    
-    // Telegram ready
-    const tg = (window as any)?.Telegram?.WebApp;
-    if (tg) {
-      tg.ready();
-      tg.expand();
+    try {
+      const quizDone = localStorage.getItem('skinQuizCompleted') === 'true';
+      setHasCompletedQuiz(quizDone);
+      
+      // Check if hint was shown
+      const hintWasShown = localStorage.getItem('firstStepHintShown') === 'true';
+      setHintShown(hintWasShown);
+      
+      // Telegram ready
+      const tg = (window as any)?.Telegram?.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+      }
+    } catch (error) {
+      console.error('Error checking quiz status:', error);
+      setHasCompletedQuiz(false);
     }
   }, []);
 
   // Personalization: get greeting and user name
   useEffect(() => {
-    // Get name from Telegram
-    const tg = (window as any)?.Telegram?.WebApp;
-    const user = tg?.initDataUnsafe?.user;
-    const firstName = user?.first_name || 'друг';
-    setUserName(firstName);
+    try {
+      // Get name from Telegram
+      const tg = (window as any)?.Telegram?.WebApp;
+      const user = tg?.initDataUnsafe?.user;
+      const firstName = user?.first_name || 'друг';
+      setUserName(firstName);
 
-    // Determine greeting by local time
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) setGreeting('Доброе утро');
-    else if (hour >= 12 && hour < 18) setGreeting('Добрый день');
-    else if (hour >= 18 && hour < 23) setGreeting('Добрый вечер');
-    else setGreeting('Доброй ночи');
+      // Determine greeting by local time
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) setGreeting('Доброе утро');
+      else if (hour >= 12 && hour < 18) setGreeting('Добрый день');
+      else if (hour >= 18 && hour < 23) setGreeting('Добрый вечер');
+      else setGreeting('Доброй ночи');
+    } catch (error) {
+      console.error('Error setting greeting:', error);
+      setGreeting('Добрый день');
+      setUserName('друг');
+    }
   }, []);
 
   // Show loading spinner while checking
@@ -408,12 +419,12 @@ export default function MobileSkinIQHome() {
     return (
       <div 
         className="min-h-screen flex items-center justify-center"
-        style={{ background: '#0C1219' }}
+        style={{ background: '#FAFAFA' }}
       >
         <div 
           className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
           style={{ 
-            borderColor: '#E8E1D9',
+            borderColor: '#0F766E',
             borderTopColor: 'transparent'
           }}
         />
@@ -457,13 +468,6 @@ export default function MobileSkinIQHome() {
     setSheetOpen(true);
   };
 
-  // Telegram WebApp ready
-  useEffect(() => {
-    if ((window as any)?.Telegram?.WebApp) {
-      (window as any).Telegram.WebApp.ready();
-      (window as any).Telegram.WebApp.expand();
-    }
-  }, []);
 
   // Celebration when all completed
   useEffect(() => {
