@@ -435,7 +435,7 @@ export default function MobileSkinIQHome() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
                 tab === t ? 'active' : ''
               }`}
               style={tab === t 
@@ -443,18 +443,22 @@ export default function MobileSkinIQHome() {
                     background: 'linear-gradient(90deg, rgba(13,74,82,0.8) 0%, rgba(17,107,119,0.8) 100%)',
                     borderColor: '#D4A574',
                     borderWidth: '1px',
+                    borderStyle: 'solid',
                     color: '#D4A574',
                     boxShadow: '0 0 12px rgba(212,165,116,0.2)'
                   }
                 : { 
                     color: '#B8B8B8',
-                    backgroundColor: 'transparent'
+                    backgroundColor: 'transparent',
+                    borderColor: 'transparent',
+                    borderWidth: '1px',
+                    borderStyle: 'solid'
                   }
               }
             >
               {t === "AM" ? "Утро" : "Вечер"}
             </button>
-            ))}
+          ))}
           </div>
         </div>
           
