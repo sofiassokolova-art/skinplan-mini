@@ -1867,6 +1867,8 @@ export default function Quiz() {
       // Показываем экран загрузки на 5 секунд перед планом
       setIsAnalyzing(true);
       setTimeout(() => {
+        // Mark quiz as completed
+        localStorage.setItem('skinQuizCompleted', 'true');
         navigate("/plan");
       }, 5000);
     }

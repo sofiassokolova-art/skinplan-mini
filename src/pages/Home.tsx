@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import OnboardingScreen from "./OnboardingScreen";
 
 // ---------- Types ----------
 interface RoutineItem {
@@ -356,6 +357,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
 // ----- Main Component -----
 export default function MobileSkinIQHome() {
   const navigate = useNavigate();
+  const [hasCompletedQuiz, setHasCompletedQuiz] = useState<boolean | null>(null);
   const [tab, setTab] = useState<"AM" | "PM">("AM");
   const [morning, setMorning] = useState<RoutineItem[]>(morningDefault);
   const [evening, setEvening] = useState<RoutineItem[]>(eveningDefault);
@@ -366,6 +368,19 @@ export default function MobileSkinIQHome() {
 
   const items = tab === "AM" ? morning : evening;
   const completed = items.filter((i) => i.done).length;
+
+  // Check if quiz is completed
+  useEffect(() => {
+    const quizDone = localStorage.getItem('skinQuizCompleted') === 'true';
+    setHasCompletedQuiz(quizDone);
+    
+    // Telegram ready
+    const tg = (window as any)?.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+  }, []);
 
   // Personalization: get greeting and user name
   useEffect(() => {
@@ -382,6 +397,29 @@ export default function MobileSkinIQHome() {
     else if (hour >= 18 && hour < 23) setGreeting('Добрый вечер');
     else setGreeting('Доброй ночи');
   }, []);
+
+  // Show loading spinner while checking
+  if (hasCompletedQuiz === null) {
+    return (
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: '#0C1219' }}
+      >
+        <div 
+          className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ 
+            borderColor: '#E8E1D9',
+            borderTopColor: 'transparent'
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Show onboarding if quiz not completed
+  if (!hasCompletedQuiz) {
+    return <OnboardingScreen />;
+  }
 
   const toggleAt = (idx: number) => () => {
     if (tab === "AM") {
