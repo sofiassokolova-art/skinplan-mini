@@ -170,31 +170,65 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div 
-        className="absolute left-0 right-0 bottom-0 rounded-t-3xl p-4 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] backdrop-blur-[28px] border-t"
+        className="absolute left-0 right-0 bottom-0 rounded-t-3xl p-4 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] relative"
         style={{
-          backgroundColor: 'rgba(20, 26, 36, 0.95)',
-          borderTopColor: 'rgba(255, 255, 255, 0.09)',
+          backgroundColor: 'rgba(20, 26, 36, 0.82)',
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
+          border: '1px solid rgba(255, 255, 255, 0.09)',
           borderTopWidth: '1px',
+          borderBottomWidth: '0',
+          borderLeftWidth: '0',
+          borderRightWidth: '0',
           boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.5)'
         }}
       >
+        {/* Close button - top right */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95 z-10"
+          style={{
+            color: '#FAFAFA',
+            opacity: 0.7,
+            fontSize: '24px',
+            lineHeight: 1
+          }}
+        >
+          ×
+        </button>
+        
         <div className="mx-auto h-1 w-10 rounded-full mb-3" style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }} />
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-4 mb-4">
           {item.icon ? (
+            <img 
+              src={item.icon} 
+              alt={item.title}
+              className="w-16 h-16 rounded-2xl object-cover flex-shrink-0"
+              style={{ borderRadius: '16px' }}
+            />
+          ) : null}
+          <div className="flex-1">
             <div 
-              className="w-10 h-10 rounded-2xl flex items-center justify-center backdrop-blur-[10px] border"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                borderColor: 'rgba(255, 255, 255, 0.09)',
-                borderWidth: '1px'
+              className="text-[18px] font-semibold"
+              style={{ 
+                color: '#D4A574',
+                fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                letterSpacing: '-0.01em'
               }}
             >
-              <img src={item.icon} alt="" className="w-6 h-6 object-contain opacity-90" />
+              {item.title}
             </div>
-          ) : null}
-          <div>
-            <div className="text-[16px] font-medium" style={{ color: '#FAFAFA' }}>{item.title}</div>
-            <div className="text-[12px]" style={{ color: '#B8B8B8' }}>{item.subtitle}</div>
+            <div 
+              className="text-[14px] mt-0.5"
+              style={{ 
+                color: '#B8B8B8',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400
+              }}
+            >
+              {item.subtitle}
+            </div>
           </div>
         </div>
         <div className="mt-3">
@@ -204,53 +238,111 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
               <li key={i}>{s}</li>
             ))}
           </ol>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <div 
-              className="rounded-2xl p-3 backdrop-blur-[20px] border"
+              className="rounded-2xl p-3 backdrop-blur-[24px] border transition-all duration-300 hover:border-opacity-60"
               style={{
-                backgroundColor: 'rgba(20, 26, 36, 0.72)',
-                borderColor: 'rgba(255, 255, 255, 0.09)',
-                borderWidth: '1px'
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                borderColor: '#D4A574',
+                borderWidth: '1px',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(212,165,116,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08)';
               }}
             >
-              <div className="text-[12px]" style={{ color: '#B8B8B8' }}>Объём</div>
-              <div className="text-[14px] font-medium" style={{ color: '#FAFAFA' }}>{item.howto?.volume}</div>
+              <div 
+                className="text-[12px] mb-1"
+                style={{ 
+                  color: '#D4A574',
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  opacity: 0.8
+                }}
+              >
+                Объём
+              </div>
+              <div 
+                className="text-[14px] font-medium"
+                style={{ 
+                  color: '#FAFAFA',
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+                }}
+              >
+                {item.howto?.volume}
+              </div>
             </div>
             <div 
-              className="rounded-2xl p-3 backdrop-blur-[20px] border"
+              className="rounded-2xl p-3 backdrop-blur-[24px] border transition-all duration-300 hover:border-opacity-60"
               style={{
-                backgroundColor: 'rgba(20, 26, 36, 0.72)',
-                borderColor: 'rgba(255, 255, 255, 0.09)',
-                borderWidth: '1px'
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                borderColor: '#D4A574',
+                borderWidth: '1px',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(212,165,116,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08)';
               }}
             >
-              <div className="text-[12px]" style={{ color: '#B8B8B8' }}>Совет</div>
-              <div className="text-[14px] font-medium" style={{ color: '#FAFAFA' }}>{item.howto?.tip}</div>
+              <div 
+                className="text-[12px] mb-1"
+                style={{ 
+                  color: '#D4A574',
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  opacity: 0.8
+                }}
+              >
+                Совет
+              </div>
+              <div 
+                className="text-[14px] font-medium"
+                style={{ 
+                  color: '#FAFAFA',
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+                }}
+              >
+                {item.howto?.tip}
+              </div>
             </div>
           </div>
         </div>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex gap-3">
           <button 
             onClick={onClose} 
             className="flex-1 h-12 rounded-2xl text-[15px] font-medium backdrop-blur-[20px] border transition-all duration-200 hover:opacity-80"
             style={{
-              backgroundColor: 'rgba(20, 26, 36, 0.72)',
+              backgroundColor: 'rgba(255, 255, 255, 0.06)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
               borderColor: 'rgba(255, 255, 255, 0.09)',
               borderWidth: '1px',
-              color: '#FAFAFA'
+              color: '#FAFAFA',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
             }}
           >
             Закрыть
           </button>
           <button 
             onClick={onClose} 
-            className="flex-1 h-12 rounded-2xl text-[15px] font-medium transition-all duration-200 hover:opacity-90"
+            className="flex-1 h-12 rounded-2xl text-[15px] font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             style={{
-              background: 'linear-gradient(135deg, rgba(13, 74, 82, 0.9) 0%, rgba(13, 74, 82, 0.7) 100%)',
-              borderColor: 'rgba(212, 165, 116, 0.2)',
-              borderWidth: '1px',
-              color: '#FAFAFA',
-              boxShadow: '0 0 20px rgba(13, 74, 82, 0.6)'
+              background: 'linear-gradient(135deg, #D4A574 0%, #E8C49A 100%)',
+              border: '1px solid rgba(212, 165, 116, 0.5)',
+              color: '#0B1215',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600,
+              boxShadow: '0 4px 16px rgba(212, 165, 116, 0.4), 0 0 20px rgba(212, 165, 116, 0.2)'
             }}
           >
             Понятно
@@ -577,16 +669,52 @@ export default function MobileSkinIQHome() {
               </div>
 
               {/* Chevron / Checkmark */}
-              <span 
-                className={`text-[28px] font-light ml-2 flex-shrink-0 ${isCompleted ? 'checkmark' : ''}`}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleAt(index)();
+                }}
+                className="ml-2 flex-shrink-0 w-10 h-10 flex items-center justify-center"
                 style={{ 
                   color: '#D4A574',
                   textShadow: isCompleted ? '0 0 12px rgba(212,165,116,0.6)' : 'none',
-                  animation: isCompleted ? 'pulseGlow 1s infinite' : 'none'
+                  animation: isCompleted ? 'pulseGlow 1s infinite' : 'none',
+                  fontSize: '28px',
+                  fontWeight: 300
                 }}
               >
                 {isCompleted ? '✓' : '›'}
-              </span>
+              </button>
+
+              {/* Info button - bottom right */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openHowTo(index)();
+                }}
+                className="absolute right-4 bottom-3 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
+                style={{
+                  backgroundColor: 'rgba(212, 165, 116, 0.18)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid #D4A574',
+                  color: '#D4A574',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  opacity: isCompleted ? 0.7 : 1,
+                  zIndex: 10,
+                  pointerEvents: 'auto'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(212, 165, 116, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(212, 165, 116, 0.18)';
+                }}
+              >
+                i
+              </button>
 
               {/* Glow effect when completed */}
               {isCompleted && (
