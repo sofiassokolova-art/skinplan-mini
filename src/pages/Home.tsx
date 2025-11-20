@@ -624,7 +624,7 @@ export default function MobileSkinIQHome() {
                 backgroundColor: 'rgba(255, 255, 255, 0.06)',
                 WebkitBackdropFilter: 'blur(24px)',
                 backdropFilter: 'blur(24px)',
-                borderColor: 'rgba(255, 255, 255, 0.11)',
+                borderColor: 'rgba(255, 255, 255, 0.08)',
                 borderWidth: '1px',
                 borderRadius: '24px',
                 boxShadow: isCompleted 
