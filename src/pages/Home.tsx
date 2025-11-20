@@ -170,18 +170,10 @@ const eveningDefault: RoutineItem[] = [
 
 // ----- BottomSheet Component -----
 function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => void; item: RoutineItem | null }) {
+  // Early returns for safety
   if (!open || !item) return null;
-  
-  // Additional safety check
   if (!item.howto) {
-          logger.warn('BottomSheet: item.howto is missing', item);
-    return null;
-  }
-  if (!open || !item) return null;
-  
-  // Additional safety check
-  if (!item.howto) {
-          logger.warn('BottomSheet: item.howto is missing', item);
+    logger.warn('BottomSheet: item.howto is missing', item);
     return null;
   }
   
@@ -467,7 +459,7 @@ export default function MobileSkinIQHome() {
     }
   }, [tab, morning, evening, hasCompletedQuiz]);
 
-  // Show loading spinner while checking
+  // Conditional rendering - must be after all hooks
   if (hasCompletedQuiz === null) {
     return (
       <div 
@@ -485,7 +477,6 @@ export default function MobileSkinIQHome() {
     );
   }
 
-  // Show onboarding if quiz not completed
   if (!hasCompletedQuiz) {
     return <OnboardingScreen />;
   }
