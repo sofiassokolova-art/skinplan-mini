@@ -285,7 +285,7 @@ function ProgressRing({ completed = 0, total = 5, size = 100, stroke = 3 }: { co
       ) : (
         <div 
           className="text-[14px] font-regular text-center min-h-[20px]"
-          style={{ color: '#A0A0A0' }}
+          style={{ color: '#B8B8B8' }}
         >
           {completed === 0 && `${total === 4 ? 'Вечерний' : 'Утренний'} ритуал • ${total} шага`}
           {completed > 0 && completed < total && `• ${total - completed} ${getRemainingStepsText(total - completed)} осталось`}
@@ -1079,13 +1079,15 @@ export default function MobileSkinIQHome() {
         
         {/* AI + экспертиза подпись - внизу по центру, dark style */}
         <div 
-          className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10 text-center backdrop-blur-[20px] px-4 py-2 rounded-full border"
+          className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10 text-center backdrop-blur-[24px] px-4 py-2 rounded-full border"
           style={{ 
             color: '#B8B8B8',
             fontSize: '12px',
-            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-            borderColor: 'rgba(255, 255, 255, 0.08)',
-            borderWidth: '0.5px'
+            backgroundColor: 'rgba(255, 255, 255, 0.07)',
+            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(24px)',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+            borderWidth: '1px'
           }}
         >
           AI + экспертиза косметолога
