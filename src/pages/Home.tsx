@@ -172,10 +172,10 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
       <div 
         className="absolute left-0 right-0 bottom-0 rounded-t-3xl p-4 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] relative"
         style={{
-          backgroundColor: 'rgba(17, 24, 39, 0.82)',
+          backgroundColor: 'rgba(18, 24, 36, 0.82)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          border: '1px solid rgba(226, 232, 240, 0.1)',
           borderTopWidth: '1px',
           borderBottomWidth: '0',
           borderLeftWidth: '0',
@@ -211,7 +211,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
             <div 
               className="text-[18px] font-semibold"
               style={{ 
-                color: '#F4E4BC',
+                color: '#E8E1D9',
                 fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 600,
                 letterSpacing: '-0.01em'
@@ -242,15 +242,15 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
             <div 
               className="rounded-2xl p-3 backdrop-blur-[24px] border transition-all duration-300 hover:border-opacity-60"
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                backgroundColor: 'rgba(18, 24, 36, 0.78)',
                 backdropFilter: 'blur(24px)',
                 WebkitBackdropFilter: 'blur(24px)',
-                borderColor: '#F4E4BC',
+                borderColor: '#E8E1D9',
                 borderWidth: '1px',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(244,228,188,0.2)';
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(232,225,217,0.2)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08)';
@@ -259,7 +259,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
               <div 
                 className="text-[12px] mb-1"
                 style={{ 
-                  color: '#F4E4BC',
+                  color: '#E8E1D9',
                   fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
                   opacity: 0.8
@@ -280,15 +280,15 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
             <div 
               className="rounded-2xl p-3 backdrop-blur-[24px] border transition-all duration-300 hover:border-opacity-60"
               style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                backgroundColor: 'rgba(18, 24, 36, 0.78)',
                 backdropFilter: 'blur(24px)',
                 WebkitBackdropFilter: 'blur(24px)',
-                borderColor: '#F4E4BC',
+                borderColor: '#E8E1D9',
                 borderWidth: '1px',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(244,228,188,0.2)';
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(232,225,217,0.2)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08)';
@@ -297,7 +297,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
               <div 
                 className="text-[12px] mb-1"
                 style={{ 
-                  color: '#F4E4BC',
+                  color: '#E8E1D9',
                   fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
                   opacity: 0.8
@@ -325,7 +325,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
               backgroundColor: 'rgba(255, 255, 255, 0.06)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
-              borderColor: 'rgba(255, 255, 255, 0.08)',
+              borderColor: 'rgba(226, 232, 240, 0.1)',
               borderWidth: '1px',
               color: '#FAFAFA',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
@@ -337,12 +337,12 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
             onClick={onClose} 
             className="flex-1 h-12 rounded-2xl text-[15px] font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             style={{
-              background: 'linear-gradient(135deg, #F4E4BC 0%, #E8DAB2 100%)',
-              border: '1px solid rgba(244, 228, 188, 0.5)',
+              background: 'linear-gradient(135deg, #E8E1D9 0%, #D4C9B8 100%)',
+              border: '1px solid rgba(232, 225, 217, 0.5)',
               color: '#0B1215',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
-              boxShadow: '0 4px 16px rgba(244, 228, 188, 0.4), 0 0 20px rgba(244, 228, 188, 0.2)'
+              boxShadow: '0 4px 16px rgba(232, 225, 217, 0.4), 0 0 20px rgba(232, 225, 217, 0.2)'
             }}
           >
             Понятно
@@ -411,7 +411,7 @@ export default function MobileSkinIQHome() {
     <div
       className="w-full min-h-screen relative overflow-x-hidden"
       style={{ 
-          backgroundColor: '#0A0F1A',
+          backgroundColor: '#0C1219',
         paddingBottom: '120px'
       }}
     >
@@ -472,14 +472,13 @@ export default function MobileSkinIQHome() {
 
       {/* Header */}
       <header 
-        className="flex items-center justify-between px-5 pt-5 pb-3 relative z-10"
+        className="flex items-center justify-center px-5 pt-5 pb-3 relative z-10"
       >
-        <div className="flex-1" /> {/* Spacer left */}
         <h1 
-          className="text-[28px] font-black tracking-tight flex-1 text-center"
+          className="text-[28px] font-black tracking-tight text-center"
           style={{ 
             color: '#FAFAFA',
-            textShadow: '0 0 12px rgba(244, 228, 188, 0.3)',
+            textShadow: '0 0 12px rgba(232, 225, 217, 0.3)',
             fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 900,
             letterSpacing: '-0.03em'
@@ -487,29 +486,40 @@ export default function MobileSkinIQHome() {
         >
           SkinIQ
         </h1>
-        <div className="flex-1 flex justify-end"> {/* Spacer right with button */}
-          <button
-            onClick={() => navigate("/quiz")}
-            className="backdrop-blur-[20px] border px-4 py-2 rounded-[20px] text-sm font-semibold transition-all duration-200 hover:opacity-90"
-            style={{
-              backgroundColor: 'rgba(244, 228, 188, 0.18)',
-              borderColor: '#F4E4BC',
-              borderWidth: '1px',
-              color: '#F4E4BC',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600
-            }}
-          >
-            <span className="flex items-center gap-1.5">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              AI Skin Scan
-            </span>
-          </button>
-        </div>
       </header>
+      
+      {/* Header Actions */}
+      <div className="px-5 pb-4 relative z-10 flex gap-3">
+        <button
+          onClick={() => navigate("/plan")}
+          className="flex-1 h-11 px-5 rounded-[18px] font-semibold text-sm transition-all duration-200 hover:opacity-90 active:scale-95"
+          style={{
+            background: 'transparent',
+            border: '1.5px solid #E8E1D9',
+            color: '#E8E1D9',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 600
+          }}
+        >
+          Подробный план ухода →
+        </button>
+        <button
+          onClick={() => navigate("/quiz")}
+          className="flex-1 h-11 px-5 rounded-[18px] font-semibold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          style={{
+            background: 'linear-gradient(90deg, #E8E1D9, #D4C9B8)',
+            color: '#0C1219',
+            border: 'none',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 600,
+            boxShadow: '0 8px 20px rgba(232,225,217,0.25)'
+          }}
+        >
+          Пройти анкету заново →
+        </button>
+      </div>
 
       {/* Tab switcher - glass style */}
       <div className="px-5 mb-4 relative z-10">
@@ -519,7 +529,7 @@ export default function MobileSkinIQHome() {
             backgroundColor: 'rgba(255, 255, 255, 0.06)',
             WebkitBackdropFilter: 'blur(24px)',
             backdropFilter: 'blur(24px)',
-            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderColor: 'rgba(226, 232, 240, 0.1)',
             borderWidth: '1px',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 16px rgba(0,0,0,0.3)'
           }}
@@ -534,12 +544,12 @@ export default function MobileSkinIQHome() {
               style={{
                 ...(tab === t 
                   ? { 
-                      background: 'linear-gradient(90deg, rgba(15,76,92,0.8) 0%, rgba(15,76,92,0.6) 100%)',
-                      borderColor: '#F4E4BC',
+                      background: 'linear-gradient(90deg, rgba(10,95,110,0.8) 0%, rgba(10,95,110,0.6) 100%)',
+                      borderColor: '#E8E1D9',
                       borderWidth: '1px',
                       borderStyle: 'solid',
-                      color: '#F4E4BC',
-                      boxShadow: '0 0 12px rgba(244,228,188,0.2)'
+                      color: '#E8E1D9',
+                      boxShadow: '0 0 12px rgba(232,225,217,0.2)'
                     }
                   : { 
                       color: '#94A3B8',
@@ -578,14 +588,14 @@ export default function MobileSkinIQHome() {
           className="text-[18px] font-medium"
           style={{ 
             color: completed === items.length && items.length > 0 
-              ? '#F4E4BC' 
-              : '#F4E4BC',
+              ? '#E8E1D9' 
+              : '#E8E1D9',
             background: completed === items.length && items.length > 0
-              ? 'linear-gradient(to right, #F4E4BC, #E8DAB2)'
+              ? 'linear-gradient(to right, #E8E1D9, #D4C9B8)'
               : 'transparent',
             WebkitBackgroundClip: completed === items.length && items.length > 0 ? 'text' : 'unset',
-            WebkitTextFillColor: completed === items.length && items.length > 0 ? 'transparent' : '#F4E4BC',
-            textShadow: '0 0 8px rgba(244,228,188,0.5)',
+            WebkitTextFillColor: completed === items.length && items.length > 0 ? 'transparent' : '#E8E1D9',
+            textShadow: '0 0 8px rgba(232,225,217,0.5)',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 500
           }}
@@ -597,8 +607,45 @@ export default function MobileSkinIQHome() {
       {/* Divider line */}
       <div 
         className="mx-6 mb-4 h-px relative z-10"
-        style={{ backgroundColor: 'rgba(244, 228, 188, 0.4)' }}
+        style={{ backgroundColor: 'rgba(226, 232, 240, 0.1)' }}
       />
+      
+      {/* Dermatologist Tip */}
+      <div 
+        className="mx-5 mb-4 p-4 rounded-2xl backdrop-blur-[32px] border relative z-10"
+        style={{
+          backgroundColor: 'rgba(18, 24, 36, 0.78)',
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
+          borderColor: 'rgba(226, 232, 240, 0.1)',
+          borderWidth: '1px',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.6)'
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <div 
+            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+            style={{
+              backgroundColor: 'rgba(232, 225, 217, 0.15)',
+              border: '1px solid #E8E1D9',
+              color: '#E8E1D9',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+            }}
+          >
+            Tip
+              </div>
+          <p 
+            className="text-[14px] leading-relaxed flex-1"
+            style={{
+              color: '#FAFAFA',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400
+            }}
+          >
+            Сегодня идеальная влажность — после тонера подождите 60 секунд перед сывороткой
+          </p>
+                  </div>
+                </div>
 
       {/* Steps */}
       <main className="px-5 pb-32 relative z-10">
@@ -621,14 +668,14 @@ export default function MobileSkinIQHome() {
               style={{
                 animation: `fadeInUp 0.6s backwards`,
                 animationDelay: `${index * 0.1}s`,
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                backgroundColor: 'rgba(18, 24, 36, 0.78)',
                 WebkitBackdropFilter: 'blur(24px)',
                 backdropFilter: 'blur(24px)',
-                borderColor: 'rgba(255, 255, 255, 0.08)',
+                borderColor: 'rgba(226, 232, 240, 0.1)',
                 borderWidth: '1px',
                 borderRadius: '24px',
                 boxShadow: isCompleted 
-                  ? '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px rgba(244,228,188,0.3)'
+                  ? '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px rgba(232,225,217,0.3)'
                   : '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)'
               }}
             >
@@ -645,11 +692,10 @@ export default function MobileSkinIQHome() {
                 <div 
                   className="text-[17px] font-medium truncate"
                   style={{ 
-                    color: '#FAFAFA',
+                    color: '#BFC4CD',
                     fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontWeight: 500,
-                    letterSpacing: '-0.01em',
-                    opacity: 0.9
+                    letterSpacing: '-0.01em'
                   }}
                 >
                   {item.title}
@@ -657,8 +703,8 @@ export default function MobileSkinIQHome() {
                 <div 
                   className="text-[19px] font-bold truncate mt-0.5"
                   style={{ 
-                    color: '#F4E4BC',
-                    textShadow: '0 0 4px rgba(244,228,188,0.3)',
+                    color: '#E8E1D9',
+                    textShadow: '0 0 4px rgba(232,225,217,0.3)',
                     fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontWeight: 700,
                     letterSpacing: '-0.02em'
@@ -676,8 +722,8 @@ export default function MobileSkinIQHome() {
                 }}
                 className="ml-2 flex-shrink-0 w-10 h-10 flex items-center justify-center"
                 style={{ 
-                  color: '#F4E4BC',
-                  textShadow: isCompleted ? '0 0 12px rgba(244,228,188,0.6)' : 'none',
+                  color: '#E8E1D9',
+                  textShadow: isCompleted ? '0 0 12px rgba(232,225,217,0.6)' : 'none',
                   animation: isCompleted ? 'pulseGlow 1s infinite' : 'none',
                   fontSize: '28px',
                   fontWeight: 300
@@ -694,11 +740,11 @@ export default function MobileSkinIQHome() {
                 }}
                 className="absolute right-4 bottom-3 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
                 style={{
-                  backgroundColor: 'rgba(244, 228, 188, 0.18)',
+                  backgroundColor: 'rgba(232, 225, 217, 0.18)',
                   backdropFilter: 'blur(10px)',
                   WebkitBackdropFilter: 'blur(10px)',
-                  border: '1px solid #F4E4BC',
-                  color: '#F4E4BC',
+                  border: '1px solid #E8E1D9',
+                  color: '#E8E1D9',
                   fontSize: '14px',
                   fontWeight: 700,
                   fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -707,10 +753,10 @@ export default function MobileSkinIQHome() {
                   pointerEvents: 'auto'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(244, 228, 188, 0.4)';
+                  e.currentTarget.style.backgroundColor = 'rgba(232, 225, 217, 0.4)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(244, 228, 188, 0.18)';
+                  e.currentTarget.style.backgroundColor = 'rgba(232, 225, 217, 0.18)';
                 }}
               >
                 i
@@ -721,7 +767,7 @@ export default function MobileSkinIQHome() {
                 <div 
                   className="absolute inset-0 rounded-[24px] pointer-events-none"
                   style={{
-                    boxShadow: '0 0 20px rgba(244,228,188,0.4)',
+                    boxShadow: '0 0 20px rgba(232,225,217,0.4)',
                     animation: 'pulse 2s ease-in-out infinite'
                   }}
                 />
@@ -736,7 +782,7 @@ export default function MobileSkinIQHome() {
         <div 
           className="fixed inset-0 pointer-events-none z-20"
           style={{
-            background: 'radial-gradient(circle at center, rgba(244, 228, 188, 0.15) 0%, transparent 70%)',
+            background: 'radial-gradient(circle at center, rgba(232, 225, 217, 0.15) 0%, transparent 70%)',
             animation: 'pulse 1.5s ease-in-out'
           }}
         />
@@ -749,7 +795,7 @@ export default function MobileSkinIQHome() {
           backgroundColor: 'rgba(255, 255, 255, 0.06)',
           WebkitBackdropFilter: 'blur(24px)',
           backdropFilter: 'blur(24px)',
-          borderTopColor: 'rgba(255, 255, 255, 0.08)',
+          borderTopColor: 'rgba(226, 232, 240, 0.1)',
           borderTopWidth: '1px',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 -8px 16px rgba(0,0,0,0.3)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)'
@@ -781,8 +827,8 @@ export default function MobileSkinIQHome() {
         <button 
           className="w-12 h-12 flex items-center justify-center rounded-full transition-all duration-200"
           style={{ 
-            color: '#F4E4BC',
-            filter: 'drop-shadow(0 0 12px rgba(244, 228, 188, 0.6))'
+            color: '#E8E1D9',
+            filter: 'drop-shadow(0 0 12px rgba(232, 225, 217, 0.6))'
           }}
         >
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
