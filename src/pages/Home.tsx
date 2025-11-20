@@ -581,30 +581,6 @@ export default function MobileSkinIQHome() {
     }
   };
 
-  // Celebration confetti when all completed
-  useEffect(() => {
-    if (hasCompletedQuiz !== true) return;
-    
-    const currentItems = tab === "AM" ? morning : evening;
-    const currentCompleted = currentItems?.filter((i) => i.done)?.length || 0;
-    
-    if (currentItems && currentItems.length > 0 && currentCompleted === currentItems.length) {
-      // Confetti animation
-      const particles = Array.from({ length: 12 }, (_, i) => ({
-        id: Date.now() + i,
-        x: Math.random() * 100,
-        y: Math.random() * 100
-      }));
-      setConfetti(particles);
-      setTimeout(() => setConfetti([]), 800);
-      
-      // Haptic feedback
-      if (navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
-      }
-    }
-  }, [tab, morning, evening, hasCompletedQuiz]);
-
   return (
     <div
       className="w-full min-h-screen relative overflow-x-hidden"
