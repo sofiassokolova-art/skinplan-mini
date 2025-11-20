@@ -36,10 +36,12 @@ export default function OnboardingScreen() {
         }}
       />
 
-      {/* Main glass card */}
+      {/* Main glass card - 90% width, 38dp radius */}
       <div 
-        className="relative w-full max-w-[420px]"
+        className="relative"
         style={{
+          width: '90%',
+          maxWidth: '420px',
           backgroundColor: 'rgba(255, 255, 255, 0.6)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
