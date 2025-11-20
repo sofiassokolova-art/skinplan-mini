@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import OnboardingScreen from "./OnboardingScreen";
 
 // ---------- Types ----------
@@ -175,28 +175,29 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
   }
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose} />
       <div 
-        className="absolute left-0 right-0 bottom-0 rounded-t-3xl p-4 max-h-[70vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] relative"
+        className="absolute left-0 right-0 bottom-0 max-h-[90vh] overflow-y-auto translate-y-0 animate-[sheetUp_220ms_cubic-bezier(0.22,1,0.36,1)] relative"
         style={{ 
-          backgroundColor: 'rgba(18, 24, 36, 0.82)',
+          backgroundColor: 'rgba(250, 251, 253, 0.92)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
-          border: '1px solid rgba(226, 232, 240, 0.1)',
-          borderTopWidth: '1px',
-          borderBottomWidth: '0',
-          borderLeftWidth: '0',
-          borderRightWidth: '0',
-          boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.5)'
+          borderTopLeftRadius: '28px',
+          borderTopRightRadius: '28px',
+          borderTop: '1px solid rgba(15, 118, 110, 0.12)',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.08)',
+          padding: '24px 20px 40px'
         }}
       >
+        {/* Handle bar - top center */}
+        <div className="mx-auto h-1 w-10 rounded-full mb-6" style={{ backgroundColor: '#CBD5E1' }} />
+        
         {/* Close button - top right */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95 z-10"
+          className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-gray-100 active:scale-95 z-10"
           style={{
-            color: '#FAFAFA',
-            opacity: 0.7,
+            color: '#94A3B8',
             fontSize: '24px',
             lineHeight: 1
           }}
@@ -204,8 +205,8 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           ×
         </button>
         
-        <div className="mx-auto h-1 w-10 rounded-full mb-3" style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }} />
-        <div className="flex items-center gap-4 mb-4">
+        {/* Product header */}
+        <div className="flex items-center gap-4 mb-6">
           {item.icon ? (
             <img 
               src={item.icon} 
@@ -216,126 +217,113 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           ) : null}
           <div className="flex-1">
             <div 
-              className="text-[18px] font-semibold"
+              className="text-[22px] font-bold"
               style={{ 
-                color: '#E8E1D9',
+                color: '#0F766E',
                 fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600,
+                fontWeight: 700,
                 letterSpacing: '-0.01em'
               }}
             >
               {item.title}
             </div>
             <div 
-              className="text-[14px] mt-0.5"
+              className="text-[15px] mt-1"
               style={{ 
-                color: '#94A3B8',
+                color: '#475569',
                 fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 400
               }}
             >
               {item.subtitle}
-            </div>
           </div>
         </div>
-        <div className="mt-3">
-          <div className="text-[13px] font-medium mb-1" style={{ color: '#FAFAFA' }}>Как выполнить</div>
-          <ol className="list-decimal list-inside text-[14px] space-y-1" style={{ color: '#94A3B8', lineHeight: '1.4' }}>
+        </div>
+        
+        {/* Instructions */}
+        <div className="mb-6">
+          <div className="text-[14px] font-semibold mb-2" style={{ color: '#334155', fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif" }}>Как выполнить</div>
+          <ol className="list-decimal list-inside text-[15px] space-y-2" style={{ color: '#334155', lineHeight: '1.6', fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif" }}>
             {item.howto?.steps?.map((s: string, i: number) => (
               <li key={i}>{s || ''}</li>
             )) || <li>Инструкции скоро появятся</li>}
           </ol>
-          <div className="mt-3 grid grid-cols-2 gap-3">
+            </div>
+        
+        {/* Badges */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div 
+            className="rounded-2xl p-4 border transition-all duration-200"
+            style={{
+              backgroundColor: '#F0FDFB',
+              borderColor: '#CCFBF1',
+              borderWidth: '1px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+            }}
+          >
             <div 
-              className="rounded-2xl p-3 backdrop-blur-[24px] border transition-all duration-300 hover:border-opacity-60"
-              style={{
-                backgroundColor: 'rgba(18, 24, 36, 0.78)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                borderColor: '#E8E1D9',
-                borderWidth: '1px',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(232,225,217,0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08)';
+              className="text-[12px] mb-2 font-semibold"
+              style={{ 
+                color: '#0F766E',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600
               }}
             >
-              <div 
-                className="text-[12px] mb-1"
-                style={{ 
-                  color: '#E8E1D9',
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 600,
-                  opacity: 0.8
-                }}
-              >
-                Объём
+              Объём
             </div>
-              <div 
-                className="text-[14px] font-medium"
-                style={{ 
-                  color: '#FAFAFA',
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
-                }}
-              >
-                {item.howto?.volume || '—'}
-            </div>
+            <div 
+              className="text-[14px] font-medium"
+              style={{ 
+                color: '#334155',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+              }}
+            >
+              {item.howto?.volume || '—'}
           </div>
+        </div>
+          <div 
+            className="rounded-2xl p-4 border transition-all duration-200"
+            style={{
+              backgroundColor: '#F0FDFB',
+              borderColor: '#CCFBF1',
+              borderWidth: '1px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+            }}
+          >
             <div 
-              className="rounded-2xl p-3 backdrop-blur-[24px] border transition-all duration-300 hover:border-opacity-60"
-              style={{
-                backgroundColor: 'rgba(18, 24, 36, 0.78)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                borderColor: '#E8E1D9',
-                borderWidth: '1px',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(232,225,217,0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08)';
+              className="text-[12px] mb-2 font-semibold"
+              style={{ 
+                color: '#0F766E',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600
               }}
             >
-              <div 
-                className="text-[12px] mb-1"
-                style={{ 
-                  color: '#E8E1D9',
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 600,
-                  opacity: 0.8
-                }}
-              >
-                Совет
-        </div>
-              <div 
-                className="text-[14px] font-medium"
-                style={{ 
-                  color: '#FAFAFA',
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
-                }}
-              >
-                {item.howto?.tip || 'Совет скоро появится'}
-              </div>
+              Совет
+            </div>
+            <div 
+              className="text-[14px] font-medium"
+              style={{ 
+                color: '#334155',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+              }}
+            >
+              {item.howto?.tip || '—'}
             </div>
           </div>
         </div>
-        <div className="mt-4 flex gap-3">
+        
+        {/* Buttons */}
+        <div className="flex gap-3">
           <button 
             onClick={onClose} 
-            className="flex-1 h-12 rounded-2xl text-[15px] font-medium backdrop-blur-[20px] border transition-all duration-200 hover:opacity-80"
+            className="flex-1 h-12 rounded-2xl text-[15px] font-medium border transition-all duration-200 hover:opacity-80 active:scale-95"
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              borderColor: 'rgba(226, 232, 240, 0.1)',
+              backgroundColor: 'transparent',
+              borderColor: '#CBD5E1',
               borderWidth: '1px',
-              color: '#FAFAFA',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+              color: '#475569',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 500
             }}
           >
             Закрыть
@@ -344,15 +332,15 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
             onClick={onClose} 
             className="flex-1 h-12 rounded-2xl text-[15px] font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             style={{
-              background: 'linear-gradient(135deg, #E8E1D9 0%, #D4C9B8 100%)',
-              border: '1px solid rgba(232, 225, 217, 0.5)',
-              color: '#0B1215',
+              background: '#0F766E',
+              border: 'none',
+              color: 'white',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
-              boxShadow: '0 4px 16px rgba(232, 225, 217, 0.4), 0 0 20px rgba(232, 225, 217, 0.2)'
+              boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)'
             }}
           >
-            Понятно
+            Понятно →
           </button>
         </div>
       </div>
@@ -363,6 +351,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
 // ----- Main Component -----
 export default function MobileSkinIQHome() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [hasCompletedQuiz, setHasCompletedQuiz] = useState<boolean | null>(null);
   const [tab, setTab] = useState<"AM" | "PM">("AM");
   const [morning, setMorning] = useState<RoutineItem[]>(morningDefault);
@@ -665,10 +654,10 @@ export default function MobileSkinIQHome() {
             >
               {t === "AM" ? "Утро" : "Вечер"}
             </button>
-            ))}
+          ))}
           </div>
         </div>
-          
+
       {/* Title Row */}
       <div 
         className="flex justify-between items-center px-6 py-4 relative z-10"
@@ -743,9 +732,9 @@ export default function MobileSkinIQHome() {
           >
             Сегодня идеальная влажность — после тонера подождите 60 секунд перед сывороткой
           </p>
-                  </div>
-                </div>
-
+          </div>
+        </div>
+          
       {/* Steps */}
       <main className="pb-32 relative z-10" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
         {items.map((item, index) => {
@@ -797,7 +786,7 @@ export default function MobileSkinIQHome() {
                 </div>
             )}
             
-          <button 
+          <button
               onClick={() => {
                 toggleAt(index)();
                 // Micro-confetti on completion
@@ -853,8 +842,8 @@ export default function MobileSkinIQHome() {
                 >
                   {item.subtitle}
               </div>
-              </div>
-
+            </div>
+            
               {/* Step indicator - bottom right (i button or checkmark) */}
               {!isCompleted ? (
                 <button
@@ -935,9 +924,9 @@ export default function MobileSkinIQHome() {
           }}
         >
           Подробный план ухода →
-        </button>
-        <button
-          onClick={() => navigate("/quiz")}
+          </button>
+          <button 
+            onClick={() => navigate("/quiz")}
           className="flex-1 h-12 px-5 rounded-[16px] font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           style={{
             background: '#0F766E',
@@ -949,8 +938,8 @@ export default function MobileSkinIQHome() {
           }}
         >
           Пройти анкету заново →
-        </button>
-          </div>
+          </button>
+        </div>
 
       {/* Aura glow when all completed */}
       {completed === items.length && items.length > 0 && (
@@ -963,63 +952,232 @@ export default function MobileSkinIQHome() {
         />
       )}
 
-      {/* Bottom Navigation - light style */}
+      {/* Bottom Navigation - Premium Floating Glass Tab 2025 */}
       <nav 
-        className="fixed bottom-0 left-0 right-0 backdrop-blur-[24px] border-t flex justify-around items-center py-4 z-30"
+        className="fixed flex justify-around items-center z-1000"
         style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          WebkitBackdropFilter: 'blur(24px)',
-          backdropFilter: 'blur(24px)',
-          borderTopColor: 'rgba(226, 232, 240, 0.4)',
-          borderTopWidth: '1px',
-          boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)'
+          position: 'fixed',
+          bottom: '12px',
+          left: '16px',
+          right: '16px',
+          height: '72px',
+          backgroundColor: 'rgba(255, 255, 255, 0.78)',
+          backdropFilter: 'blur(40px)',
+          WebkitBackdropFilter: 'blur(40px)',
+          border: '1px solid rgba(15, 118, 110, 0.15)',
+          borderRadius: '24px',
+          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
+          padding: '0 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          zIndex: 1000,
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0px)'
         }}
       >
         {/* Home */}
         <button 
-          className="w-10 h-10 flex items-center justify-center transition-all duration-200"
-          style={{ opacity: 0.6 }}
+          onClick={() => navigate("/")}
+          className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
+          style={{ 
+            color: location.pathname === '/' ? '#0F766E' : '#94A3B8',
+            minWidth: '60px',
+            position: 'relative'
+          }}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#334155' }}>
+          {location.pathname === '/' && (
+            <div 
+              className="absolute -top-1 left-1/2 transform -translate-x-1/2"
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: '#0F766E'
+              }}
+            />
+          )}
+          <svg 
+            viewBox="0 0 24 24" 
+            width="24" 
+            height="24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{ 
+              stroke: location.pathname === '/' ? '#0F766E' : '#94A3B8',
+              fill: 'none'
+            }}
+          >
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
+          <span 
+            className="text-[11px] font-semibold"
+            style={{
+              color: location.pathname === '/' ? '#0F766E' : '#94A3B8',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600
+            }}
+          >
+            Главная
+          </span>
         </button>
         
-        {/* Search */}
+        {/* Plan */}
         <button 
-          className="w-10 h-10 flex items-center justify-center transition-all duration-200"
-          style={{ opacity: 0.6 }}
-        >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#334155' }}>
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-        </button>
-        
-        {/* Scan/Ritual - active */}
-        <button 
-          className="w-12 h-12 flex items-center justify-center rounded-full transition-all duration-200"
+          onClick={() => navigate("/plan")}
+          className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
           style={{ 
-            color: '#0F766E',
-            filter: 'drop-shadow(0 0 8px rgba(15, 118, 110, 0.3))'
+            color: location.pathname === '/plan' ? '#0F766E' : '#94A3B8',
+            minWidth: '60px',
+            position: 'relative'
           }}
         >
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          {location.pathname === '/plan' && (
+            <div 
+              className="absolute -top-1 left-1/2 transform -translate-x-1/2"
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: '#0F766E'
+              }}
+            />
+          )}
+          <svg 
+            viewBox="0 0 24 24" 
+            width="24" 
+            height="24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{ 
+              stroke: location.pathname === '/plan' ? '#0F766E' : '#94A3B8',
+              fill: 'none'
+            }}
+          >
+            <path d="M8 6h13" />
+            <path d="M8 12h13" />
+            <path d="M8 18h13" />
+            <path d="M3 6h.01" />
+            <path d="M3 12h.01" />
+            <path d="M3 18h.01" />
+                </svg>
+          <span 
+            className="text-[11px] font-semibold"
+            style={{
+              color: location.pathname === '/plan' ? '#0F766E' : '#94A3B8',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600
+            }}
+          >
+            План
+          </span>
+        </button>
+        
+        {/* Cart */}
+        <button 
+          onClick={() => navigate("/cart")}
+          className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
+          style={{ 
+            color: location.pathname === '/cart' ? '#0F766E' : '#94A3B8',
+            minWidth: '60px',
+            position: 'relative'
+          }}
+        >
+          {location.pathname === '/cart' && (
+            <div 
+              className="absolute -top-1 left-1/2 transform -translate-x-1/2"
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: '#0F766E'
+              }}
+            />
+          )}
+          <svg 
+            viewBox="0 0 24 24" 
+            width="24" 
+            height="24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{ 
+              stroke: location.pathname === '/cart' ? '#0F766E' : '#94A3B8',
+              fill: 'none'
+            }}
+          >
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
           </svg>
+          <span 
+            className="text-[11px] font-semibold"
+            style={{
+              color: location.pathname === '/cart' ? '#0F766E' : '#94A3B8',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600
+            }}
+          >
+            Корзина
+          </span>
         </button>
         
         {/* Profile */}
         <button 
-          className="w-10 h-10 flex items-center justify-center transition-all duration-200"
-          style={{ opacity: 0.6 }}
+          onClick={() => navigate("/profile")}
+          className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
+          style={{ 
+            color: location.pathname === '/profile' ? '#0F766E' : '#94A3B8',
+            minWidth: '60px',
+            position: 'relative'
+          }}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#334155' }}>
+          {location.pathname === '/profile' && (
+            <div 
+              className="absolute -top-1 left-1/2 transform -translate-x-1/2"
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: '#0F766E'
+              }}
+            />
+          )}
+          <svg 
+            viewBox="0 0 24 24" 
+            width="24" 
+            height="24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{ 
+              stroke: location.pathname === '/profile' ? '#0F766E' : '#94A3B8',
+              fill: 'none'
+            }}
+          >
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
+          <span 
+            className="text-[11px] font-semibold"
+            style={{
+              color: location.pathname === '/profile' ? '#0F766E' : '#94A3B8',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600
+            }}
+          >
+            Профиль
+          </span>
         </button>
       </nav>
 

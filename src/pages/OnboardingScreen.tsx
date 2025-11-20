@@ -2,183 +2,152 @@ import { useNavigate } from "react-router-dom";
 
 export default function OnboardingScreen() {
   const navigate = useNavigate();
-  const tg = (window as any)?.Telegram?.WebApp;
-  const user = tg?.initDataUnsafe?.user;
-  const name = user?.first_name || 'друг';
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Доброе утро' : hour < 18 ? 'Добрый день' : 'Добрый вечер';
 
   return (
     <div 
       className="min-h-screen relative"
       style={{
         background: '#FAFBFD',
-        padding: '40px 20px',
+        padding: '40px 24px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center'
       }}
     >
       <div 
-        className="max-w-[380px] text-center"
+        className="max-w-[420px] text-center"
       >
-        <h1 
-          className="text-[36px] font-extrabold leading-tight mb-4"
-          style={{
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 900,
-            lineHeight: 1.15,
-            color: '#0F766E',
-            marginBottom: '16px'
-          }}
-        >
-          {greeting},<br />
-          <span 
-            style={{
-              color: '#1E293B',
+        {/* Logo */}
+        <div className="mb-8">
+          <h1 
+            className="text-[28px] font-black tracking-tight"
+            style={{ 
+              color: '#0F766E',
               fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 900
+              fontWeight: 900,
+              letterSpacing: '-0.03em'
             }}
           >
-            {name}
-          </span>
+            SkinIQ
+          </h1>
+        </div>
+
+        {/* Main heading */}
+        <h1 
+          className="text-[36px] font-bold leading-tight mb-4"
+          style={{
+            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            lineHeight: 1.2,
+            color: '#0F766E',
+            marginBottom: '12px'
+          }}
+        >
+          Получите план ухода<br />
+          уровня косметолога-дерматолога
         </h1>
 
+        {/* Subtitle */}
         <p 
-          className="text-[18px] mb-10"
+          className="text-[17px] mb-8"
           style={{
             color: '#475569',
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 500,
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 400,
             lineHeight: 1.5,
-            marginBottom: '40px'
+            marginBottom: '32px'
           }}
         >
-          Получите персональный план ухода<br />
-          уровня косметолога-дерматолога
+          Персональная программа от дипломированного специалиста
         </p>
 
+        {/* Benefits card - без галочек */}
         <div 
-          className="text-left rounded-[28px] mb-12 backdrop-blur-[32px] border"
+          className="text-left rounded-[24px] mb-8 backdrop-blur-[32px] border"
           style={{
-            background: 'rgba(255, 255, 255, 0.72)',
+            background: 'rgba(255, 255, 255, 0.68)',
             backdropFilter: 'blur(32px)',
             WebkitBackdropFilter: 'blur(32px)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            borderRadius: '28px',
-            padding: '28px',
-            marginBottom: '48px',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
+            borderRadius: '24px',
+            padding: '28px 24px',
+            marginBottom: '32px',
             textAlign: 'left',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6)',
-            maxWidth: '380px',
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+            boxShadow: '0 8px 32px rgba(0,0,0,0.07)',
+            maxWidth: '420px',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
           }}
         >
           <div 
-            className="relative text-[16px]"
+            className="text-[18px] font-bold mb-3"
             style={{
-              position: 'relative',
-              paddingLeft: '36px',
-              marginBottom: '18px',
-              fontSize: '16px',
+              fontSize: '18px',
               color: '#1E293B',
-              fontWeight: 500
+              fontWeight: 700,
+              lineHeight: 1.6,
+              marginBottom: '12px'
             }}
           >
-            <span 
-              className="absolute left-0 font-bold"
-              style={{
-                position: 'absolute',
-                left: 0,
-                color: '#10B981',
-                fontWeight: 700,
-                fontSize: '20px'
-              }}
-            >
-              ✓
-            </span>
-            Точная диагностика типа и состояния кожи
+            • Точная диагностика типа и состояния кожи
           </div>
           <div 
-            className="relative text-[16px]"
+            className="text-[18px] font-bold mb-3"
             style={{
-              position: 'relative',
-              paddingLeft: '36px',
-              marginBottom: '18px',
-              fontSize: '16px',
+              fontSize: '18px',
               color: '#1E293B',
-              fontWeight: 500
+              fontWeight: 700,
+              lineHeight: 1.6,
+              marginBottom: '12px'
             }}
           >
-            <span 
-              className="absolute left-0 font-bold"
-              style={{
-                position: 'absolute',
-                left: 0,
-                color: '#10B981',
-                fontWeight: 700,
-                fontSize: '20px'
-              }}
-            >
-              ✓
-            </span>
-            Ритуалы утром и вечером под ваш тип
+            • Ритуалы утром и вечером под ваш тип
           </div>
           <div 
-            className="relative text-[16px]"
+            className="text-[18px] font-bold"
             style={{
-              position: 'relative',
-              paddingLeft: '36px',
-              fontSize: '16px',
+              fontSize: '18px',
               color: '#1E293B',
-              fontWeight: 500
+              fontWeight: 700,
+              lineHeight: 1.6
             }}
           >
-            <span 
-              className="absolute left-0 font-bold"
-              style={{
-                position: 'absolute',
-                left: 0,
-                color: '#10B981',
-                fontWeight: 700,
-                fontSize: '20px'
-              }}
-            >
-              ✓
-            </span>
-            Только рабочие продукты и правильная последовательность
+            • Только рабочие продукты и правильная последовательность
           </div>
         </div>
 
+        {/* Primary button */}
         <button 
           onClick={() => navigate('/quiz')}
-          className="w-full rounded-[22px] font-semibold mb-4 transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+          className="w-full rounded-[20px] font-semibold mb-4 transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
           style={{
             background: '#0F766E',
             color: 'white',
             border: 'none',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 600,
-            fontSize: '17px',
-            padding: '18px',
-            borderRadius: '22px',
-            marginTop: '32px',
+            fontSize: '18px',
+            padding: '18px 24px',
+            borderRadius: '20px',
             marginBottom: '16px',
-            boxShadow: '0 12px 30px rgba(15,118,110,0.25)'
+            boxShadow: '0 8px 24px rgba(15,118,110,0.3)',
+            height: '56px'
           }}
         >
-          Пройти диагностику кожи →
+          Получить свой план →
         </button>
 
+        {/* Secondary link */}
         <button 
           onClick={() => navigate('/plan')}
-          className="text-[15px] underline bg-transparent border-none transition-all duration-200 hover:opacity-70"
+          className="text-[15px] bg-transparent border-none transition-all duration-200 hover:opacity-70 underline"
           style={{
             color: '#64748B',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontSize: '15px',
-            textDecoration: 'underline'
+            textDecoration: 'underline',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer'
           }}
         >
           Посмотреть пример плана
