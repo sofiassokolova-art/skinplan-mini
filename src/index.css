@@ -25,6 +25,9 @@
 }
 
 @layer base {
+  /* Satoshi font - уже подключен через Fontshare API в index.html */
+  /* Если нужно использовать локальные файлы, можно добавить @font-face здесь */
+  
   html, body, #root { 
     height: 100%; 
     font-family: 'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import SkinIQLogo from "../components/SkinIQLogo";
 
 export default function Header() {
   return (
@@ -9,11 +10,7 @@ export default function Header() {
           aria-label="На главную" 
           className="flex items-center group"
         >
-          <img 
-            src="/skiniq-logo.png" 
-            alt="SkinIQ" 
-            className="h-32 w-auto group-hover:scale-105 transition-transform duration-300 drop-shadow-sm"
-          />
+          <SkinIQLogo size={28} className="group-hover:scale-105 transition-transform duration-300" />
         </Link>
       </div>
     </header>

@@ -4,6 +4,7 @@ import OnboardingScreen from "./OnboardingScreen";
 import { logger } from "../utils/logger";
 import { storage } from "../utils/storage";
 import { tg } from "../lib/tg";
+import SkinIQLogo from "../components/SkinIQLogo";
 
 // ---------- Types ----------
 interface RoutineItem {
@@ -809,20 +810,7 @@ export default function MobileSkinIQHome() {
         className="flex items-center justify-center px-5 pt-5 pb-3 relative z-10"
         style={{ animation: 'cardAppear 0.4s ease-out', animationDelay: '0ms' }}
       >
-        <h1 
-          className="text-[32px] font-black tracking-tight text-center"
-          style={{ 
-            background: 'linear-gradient(135deg, #0A5F59 0%, #14B8A6 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 900,
-            letterSpacing: '-0.03em'
-          }}
-        >
-          SkinIQ
-        </h1>
+        <SkinIQLogo size={32} />
       </header>
 
       {/* Premium Greeting Glass Card - 35% screen height */}

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import SkinIQLogo from "../components/SkinIQLogo";
 
 export default function OnboardingScreen() {
   const navigate = useNavigate();
@@ -19,17 +20,7 @@ export default function OnboardingScreen() {
       >
         {/* Logo */}
         <div className="mb-8">
-          <h1 
-            className="text-[28px] font-black tracking-tight"
-            style={{ 
-              color: '#0F766E',
-              fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 900,
-              letterSpacing: '-0.03em'
-            }}
-          >
-            SkinIQ
-          </h1>
+          <SkinIQLogo size={28} />
         </div>
 
         {/* Main heading */}
