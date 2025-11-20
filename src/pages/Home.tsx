@@ -435,7 +435,7 @@ export default function MobileSkinIQHome() {
     }
   }, []);
 
-  // Celebration when all completed - moved before conditional returns
+  // Celebration when all completed - must be BEFORE conditional returns
   useEffect(() => {
     if (hasCompletedQuiz !== true) return;
     

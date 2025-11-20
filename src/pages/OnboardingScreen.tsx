@@ -200,7 +200,7 @@ export default function OnboardingScreen() {
       {/* Secondary link - outside card, below */}
       <button
         onClick={() => navigate('/plan')}
-        className="absolute bottom-6 left-0 right-0 text-center text-[15px] transition-all duration-200 active:opacity-70"
+        className="text-center text-[15px] transition-all duration-200 active:opacity-70"
         style={{
           color: '#0A5F59',
           fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -213,13 +213,12 @@ export default function OnboardingScreen() {
           cursor: 'pointer',
           padding: '8px',
           opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateY(0)' : 'translateY(10px)',
+          transform: mounted ? 'translateX(-50%)' : 'translateX(-50%) translateY(10px)',
           transition: 'opacity 0.5s ease-out 1.5s, transform 0.5s ease-out 1.5s',
           transitionDelay: '1.5s',
           position: 'absolute',
           bottom: '24px',
-          left: '50%',
-          transform: mounted ? 'translateX(-50%)' : 'translateX(-50%) translateY(10px)'
+          left: '50%'
         }}
       >
         Посмотреть пример плана
