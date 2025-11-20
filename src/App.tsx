@@ -16,6 +16,19 @@ function App() {
   const location = useLocation();
   const [showNavigation, setShowNavigation] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
+  
+  // Слушаем событие открытия/закрытия BottomSheet
+  useEffect(() => {
+    const handleBottomSheetToggle = (event: CustomEvent) => {
+      setBottomSheetOpen(event.detail.isOpen);
+    };
+    
+    window.addEventListener('bottomSheetToggle', handleBottomSheetToggle as EventListener);
+    return () => {
+      window.removeEventListener('bottomSheetToggle', handleBottomSheetToggle as EventListener);
+    };
+  }, []);
   
   // Показываем Header только на страницах, где он нужен (не на главной и не в анкете)
   const showHeader = location.pathname !== '/' && location.pathname !== '/quiz';
@@ -27,15 +40,16 @@ function App() {
       const isOnboarding = location.pathname === '/' && !quizCompleted;
       const shouldShowNav = location.pathname !== '/quiz' && 
                             !location.pathname.startsWith('/quiz') && 
-                            !isOnboarding;
+                            !isOnboarding &&
+                            !bottomSheetOpen; // Скрываем навигацию когда открыт BottomSheet
       setShowNavigation(shouldShowNav);
       setIsLoading(false);
     } catch (error) {
       console.error('Error checking quiz status in App:', error);
-      setShowNavigation(location.pathname !== '/quiz' && !location.pathname.startsWith('/quiz'));
+      setShowNavigation(location.pathname !== '/quiz' && !location.pathname.startsWith('/quiz') && !bottomSheetOpen);
       setIsLoading(false);
     }
-  }, [location.pathname]);
+  }, [location.pathname, bottomSheetOpen]);
   
   // Не показываем навигацию пока загружаемся
   if (isLoading) {

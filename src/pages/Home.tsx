@@ -34,7 +34,7 @@ const morningDefault: RoutineItem[] = [
   {
     id: "cleanser",
     title: "Очищение",
-    subtitle: "La Roche-Posay Toleriane Cleanser",
+    subtitle: "La Roche-Posay Toleriane",
     icon: ICONS.cleanser,
     howto: {
       steps: [
@@ -372,6 +372,12 @@ export default function MobileSkinIQHome() {
   const [morning, setMorning] = useState<RoutineItem[]>(morningDefault);
   const [evening, setEvening] = useState<RoutineItem[]>(eveningDefault);
   const [sheetOpen, setSheetOpen] = useState(false);
+  
+  // Сообщаем App.tsx о состоянии BottomSheet для скрытия навигации
+  useEffect(() => {
+    const event = new CustomEvent('bottomSheetToggle', { detail: { isOpen: sheetOpen } });
+    window.dispatchEvent(event);
+  }, [sheetOpen]);
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
   const [greeting, setGreeting] = useState('');
   const [userName, setUserName] = useState('друг');
