@@ -471,6 +471,10 @@ export default function MobileSkinIQHome() {
 
   const openHowTo = (idx: number) => () => {
     try {
+      if (!items || idx < 0 || idx >= items.length) {
+        console.warn('openHowTo: invalid index or items', { idx, itemsLength: items?.length });
+        return;
+      }
       const selectedItem = items[idx];
       if (selectedItem && selectedItem.howto) {
         setSheetItem(selectedItem);
@@ -486,12 +490,13 @@ export default function MobileSkinIQHome() {
 
   // Celebration when all completed
   useEffect(() => {
+    if (!hasCompletedQuiz || hasCompletedQuiz === null) return;
     if (items && items.length > 0 && completed === items.length) {
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
     }
-  }, [completed, items]);
+  }, [completed, items.length, hasCompletedQuiz]);
 
   return (
     <div
