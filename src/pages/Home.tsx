@@ -262,7 +262,7 @@ function ProgressRing({ completed = 0, total = 5, size = 100, stroke = 3 }: { co
           <div className="text-center">
             <div 
               className="text-[20px] font-medium tabular-nums leading-none"
-              style={{ color: '#E5E5E5' }}
+              style={{ color: '#FAFAFA' }}
             >
               {completed}/{total}
           </div>
@@ -306,11 +306,13 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
   
   return (
     <div 
-      className="backdrop-blur-[22px] border h-[88px] px-5 flex items-center gap-4 select-none transition-all duration-300 animate-card-appear relative overflow-hidden"
+      className="backdrop-blur-[24px] border h-[88px] px-5 flex items-center gap-4 select-none transition-all duration-300 animate-card-appear relative overflow-hidden"
       style={{ 
         animationDelay: `${index * 50}ms`,
         backgroundColor: 'rgba(255, 255, 255, 0.07)',
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        WebkitBackdropFilter: 'blur(24px)',
+        backdropFilter: 'blur(24px)',
+        borderColor: 'rgba(255, 255, 255, 0.12)',
         borderWidth: '1px',
         borderTopWidth: index === 0 ? '1px' : '0px',
         borderBottomWidth: '1px',
@@ -321,14 +323,14 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
         opacity: isCompleted ? 1 : 0.9
       }}
     >
-      {/* Circle with number - glass with glow */}
+      {/* Circle with number - обводка #D4A574 2px + glow */}
       <div 
-        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 backdrop-blur-[10px] border relative"
+        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 backdrop-blur-[10px] border-2 relative"
         style={{ 
-          backgroundColor: isCompleted ? 'rgba(212, 165, 116, 0.2)' : 'rgba(255, 255, 255, 0.08)',
-          borderColor: isCompleted ? 'rgba(212, 165, 116, 0.4)' : 'rgba(255, 255, 255, 0.12)',
-          borderWidth: '1px',
-          boxShadow: isCompleted ? '0 0 12px rgba(212, 165, 116, 0.3)' : 'none'
+          backgroundColor: isCompleted ? 'rgba(212, 165, 116, 0.15)' : 'transparent',
+          borderColor: '#D4A574',
+          borderWidth: '2px',
+          boxShadow: '0 0 12px rgba(212, 165, 116, 0.4)'
         }}
       >
         {isCompleted ? (
@@ -338,7 +340,7 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
         ) : (
           <span 
             className="text-base font-medium"
-            style={{ color: '#E5E5E5' }}
+            style={{ color: '#FAFAFA' }}
           >
             {index + 1}
           </span>
@@ -378,7 +380,7 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
         <div 
           className={`text-[17px] font-medium truncate transition-all leading-tight ${isCompleted ? 'line-through' : ''}`}
           style={{ 
-            color: isCompleted ? '#D4A574' : '#E5E5E5',
+            color: isCompleted ? '#D4A574' : '#FAFAFA',
             fontFamily: '"Inter", -apple-system, sans-serif',
             fontWeight: 500,
             textDecorationColor: 'rgba(212, 165, 116, 0.5)'
@@ -389,9 +391,8 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
         <div 
           className={`text-[15px] truncate mt-1 ${isCompleted ? 'line-through' : ''}`}
           style={{ 
-            color: '#A0A0A0',
+            color: '#B8B8B8',
             lineHeight: '1.4',
-            opacity: 0.8,
             fontFamily: '"Inter", -apple-system, sans-serif',
             fontWeight: 400,
             textDecorationColor: 'rgba(212, 165, 116, 0.3)'
@@ -401,7 +402,7 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
         </div>
         </button>
       
-      {/* Toggle button - right, gold checkmark when completed */}
+      {/* Toggle button - right, gold checkmark с обводкой 2px */}
         <button
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-pressed={isCompleted}
@@ -409,11 +410,11 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
       >
         {isCompleted ? (
           <div 
-            className="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-[10px] border relative"
+            className="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-[10px] border-2 relative"
             style={{ 
-              backgroundColor: 'rgba(212, 165, 116, 0.2)',
-              borderColor: 'rgba(212, 165, 116, 0.4)',
-              borderWidth: '1px',
+              backgroundColor: 'rgba(212, 165, 116, 0.15)',
+              borderColor: '#D4A574',
+              borderWidth: '2px',
               boxShadow: '0 0 12px rgba(212, 165, 116, 0.4)',
               animation: 'pulse 2s ease-in-out infinite'
             }}
@@ -424,8 +425,8 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
           </div>
         ) : (
           <div 
-            className="w-6 h-6 rounded-full border transition-all duration-200"
-            style={{ borderColor: 'rgba(255, 255, 255, 0.2)', borderWidth: '1px' }}
+            className="w-6 h-6 rounded-full border-2 transition-all duration-200"
+            style={{ borderColor: 'rgba(255, 255, 255, 0.2)', borderWidth: '2px' }}
           />
         )}
         </button>
@@ -609,25 +610,13 @@ export default function MobileSkinIQHome() {
       className="w-full min-h-screen relative overflow-x-hidden pb-16 sm:pb-20"
       style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 72px)` }}
     >
-      {/* Background - dark premium #0A0E12 with noise texture */}
+      {/* Background - темный #0B1215 */}
       <div 
         className="fixed inset-0 -z-10"
         style={{
-          background: 'linear-gradient(180deg, #0A0E12 0%, #0B1215 100%)',
-          position: 'relative'
+          backgroundColor: '#0B1215'
         }}
-      >
-        {/* Noise overlay for texture - opacity 4-6% */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            opacity: 0.05,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            backgroundSize: '200px 200px',
-            pointerEvents: 'none'
-          }}
-        />
-      </div>
+      />
       
       <style>{`
         @keyframes sheetUp { from { transform: translateY(12px); opacity: .5; } to { transform: translateY(0); opacity: 1; } }
@@ -732,14 +721,16 @@ export default function MobileSkinIQHome() {
         />
       </div>
 
-      {/* Top section - thin glass panel with greeting and stats (компактная) */}
+      {/* Top section - glass panel с единым стилем */}
       <div className="mx-4 mt-16 mb-5">
-        {/* Glass panel - компактная панель без огромного круга */}
+        {/* Glass panel - единый glass-стиль */}
         <div 
           className="backdrop-blur-[24px] border rounded-[24px] p-4 relative overflow-hidden"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: 'rgba(255, 255, 255, 0.07)',
+            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(24px)',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
             borderWidth: '1px',
             borderRadius: '24px',
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
@@ -750,7 +741,7 @@ export default function MobileSkinIQHome() {
             <div 
               className="text-[22px] font-bold leading-tight"
               style={{ 
-                color: '#D4A574', 
+                color: '#FAFAFA', 
                 fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
                 fontWeight: 600
               }}
@@ -763,7 +754,7 @@ export default function MobileSkinIQHome() {
               <div 
                 className="text-[32px] font-bold tabular-nums leading-none"
                 style={{ 
-                  color: '#D4A574',
+                  color: '#FAFAFA',
                   fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
                   fontWeight: 700
                 }}
@@ -781,34 +772,34 @@ export default function MobileSkinIQHome() {
 
           {/* Stats row - метрики */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1">
-              <div 
-                className="text-[13px] font-regular"
-                style={{ color: '#A0A0A0' }}
-              >
-                Гидратация
+              <div className="flex items-center gap-1">
+                <div 
+                  className="text-[13px] font-regular"
+                  style={{ color: '#B8B8B8' }}
+                >
+                  Гидратация
         </div>
-              <div className="w-12 h-1.5 rounded-full overflow-hidden backdrop-blur-[5px]" style={{ backgroundColor: 'rgba(13, 74, 82, 0.3)', border: '0.5px solid rgba(13, 74, 82, 0.5)' }}>
-                <div className="h-full rounded-full" style={{ width: '82%', backgroundColor: '#0D4A52', boxShadow: '0 0 8px rgba(13, 74, 82, 0.6)' }} />
+                <div className="w-12 h-1.5 rounded-full overflow-hidden backdrop-blur-[5px]" style={{ backgroundColor: 'rgba(13, 74, 82, 0.3)', border: '0.5px solid rgba(13, 74, 82, 0.5)' }}>
+                  <div className="h-full rounded-full" style={{ width: '82%', backgroundColor: '#00D4C1', boxShadow: '0 0 8px rgba(0, 212, 193, 0.6)' }} />
+                </div>
+                <div 
+                  className="text-[13px] font-regular"
+                  style={{ color: '#B8B8B8' }}
+                >
+                  82%
+                </div>
               </div>
               <div 
                 className="text-[13px] font-regular"
-                style={{ color: '#A0A0A0' }}
+                style={{ color: '#B8B8B8' }}
               >
-                82%
+                •
               </div>
-            </div>
-            <div 
-              className="text-[13px] font-regular"
-              style={{ color: '#A0A0A0' }}
-            >
-              •
-            </div>
-            <div 
-              className="text-[13px] font-regular"
-              style={{ color: '#A0A0A0' }}
-            >
-              Воспаление – 6%
+              <div 
+                className="text-[13px] font-regular"
+                style={{ color: '#B8B8B8' }}
+              >
+                Воспаление – 6%
             </div>
           </div>
         </div>
@@ -821,12 +812,14 @@ export default function MobileSkinIQHome() {
 
       {/* Main Panel */}
       <section className="relative z-20 mx-4 overflow-visible">
-        {/* SegmentedButton AM/PM - тонкая стеклянная пилюля */}
+        {/* SegmentedButton AM/PM - glass с градиентом для активной */}
         <div 
-          className="mb-5 rounded-full p-0.5 grid grid-cols-2 h-10 backdrop-blur-[22px] border relative w-fit mx-auto"
+          className="mb-5 rounded-full p-0.5 grid grid-cols-2 h-10 backdrop-blur-[24px] border relative w-fit mx-auto"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(24px)',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
             borderWidth: '1px',
             borderRadius: '999px',
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)',
@@ -845,13 +838,12 @@ export default function MobileSkinIQHome() {
               }`}
               style={tab === t 
                 ? { 
-                    backgroundColor: 'rgba(212, 165, 116, 0.15)',
+                    background: 'linear-gradient(135deg, #0D4A52 0%, #1E6B6F 100%)',
                     color: '#D4A574',
-                    boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.1)',
-                    filter: 'drop-shadow(0 0 4px rgba(212, 165, 116, 0.3))'
+                    boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.1)'
                   }
                 : { 
-                    color: '#A0A0A0',
+                    color: '#B8B8B8',
                     backgroundColor: 'transparent'
                   }
               }
@@ -861,12 +853,14 @@ export default function MobileSkinIQHome() {
           ))}
         </div>
 
-        {/* Routine list - glass container с правильными параметрами */}
+        {/* Routine list - glass container с единым стилем */}
         <div 
-          className="mb-5 backdrop-blur-[22px] border rounded-[24px] overflow-hidden fade-in-routine"
+          className="mb-5 backdrop-blur-[24px] border rounded-[24px] overflow-hidden fade-in-routine"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: 'rgba(255, 255, 255, 0.07)',
+            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(24px)',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
             borderWidth: '1px',
             borderRadius: '24px',
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
@@ -1013,12 +1007,14 @@ export default function MobileSkinIQHome() {
           </div>
         )}
 
-        {/* Совет косметолога - floating glass блок */}
+        {/* Совет косметолога - единый glass-стиль */}
         <div 
-          className="mt-6 mb-20 backdrop-blur-[22px] border rounded-[24px] p-5 relative overflow-hidden"
+          className="mt-6 mb-20 backdrop-blur-[24px] border rounded-[24px] p-5 relative overflow-hidden"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: 'rgba(255, 255, 255, 0.07)',
+            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(24px)',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
             borderWidth: '1px',
             borderRadius: '24px',
             boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
