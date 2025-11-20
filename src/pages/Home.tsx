@@ -471,12 +471,12 @@ export default function MobileSkinIQHome() {
 
   // Celebration when all completed
   useEffect(() => {
-    if (completed === items.length && items.length > 0) {
+    if (items && items.length > 0 && completed === items.length) {
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
     }
-  }, [completed, items.length]);
+  }, [completed, items]);
 
   return (
     <div
@@ -502,24 +502,6 @@ export default function MobileSkinIQHome() {
           }
         }
         @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.02);
-          }
-        }
-        @keyframes pulseGlow {
-          0%, 100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.7;
-            transform: scale(1.1);
-          }
-        }
-        @keyframes pulse {
           0% { 
             transform: scale(0.9); 
             opacity: 0.7; 
@@ -531,6 +513,16 @@ export default function MobileSkinIQHome() {
           100% { 
             transform: scale(0.9); 
             opacity: 0; 
+          }
+        }
+        @keyframes pulseGlow {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.1);
           }
         }
         @keyframes bounce {
