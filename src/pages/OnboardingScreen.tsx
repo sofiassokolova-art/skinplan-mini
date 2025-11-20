@@ -24,26 +24,26 @@ export default function OnboardingScreen() {
       className="min-h-screen relative overflow-hidden flex items-center justify-center"
       style={{
         background: 'linear-gradient(180deg, #F5FFFC 0%, #E8FBF7 100%)',
-        padding: '20px 0',
-        position: 'relative'
+        padding: '0',
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}
     >
-      {/* Main glass card - 88% width, отступы 6% с каждой стороны */}
+      {/* Main glass card - 88% width, centered with 6% margins */}
       <div 
-        className="relative flex flex-col items-center justify-between"
+        className="relative flex flex-col items-center"
         style={{
           width: '88%',
           maxWidth: '420px',
           minHeight: '82vh',
-          maxHeight: '82vh',
           backgroundColor: 'rgba(255, 255, 255, 0.58)',
           backdropFilter: 'blur(26px)',
           WebkitBackdropFilter: 'blur(26px)',
           border: '1px solid rgba(255, 255, 255, 0.2)',
           borderRadius: '44px',
-          padding: '0 28px',
-          paddingTop: '36px',
-          paddingBottom: '32px',
+          padding: '36px 28px 32px 28px',
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'scale(1)' : 'scale(0.94)',
@@ -51,134 +51,121 @@ export default function OnboardingScreen() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'flex-start',
+          gap: 0
         }}
       >
-        {/* Content wrapper - centered */}
+        {/* Logo - SkinIQ 48sp, отступ сверху уже в padding-top карточки (36px) */}
         <div 
-          className="flex flex-col items-center text-center w-full"
           style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            width: '100%'
+            marginBottom: '36px',
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
+            transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s',
+            transitionDelay: '0.2s'
           }}
         >
-          {/* Logo - SkinIQ 48sp (как в примере) */}
-          <div 
-            style={{
-              marginTop: '0',
-              marginBottom: '36px',
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
-              transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s',
-              transitionDelay: '0.2s'
-            }}
-          >
-            <SkinIQLogo size={48} />
-          </div>
-
-          {/* Title - 36sp, lineHeight 42sp, 3 lines exactly as specified */}
-          <h1 
-            className="leading-tight"
-            style={{
-              fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 700,
-              fontSize: '36px',
-              lineHeight: '42px',
-              color: '#0A5F59',
-              marginBottom: '28px',
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
-              transition: 'opacity 0.6s ease-out 0.5s, transform 0.6s ease-out 0.5s',
-              transitionDelay: '0.5s',
-              textAlign: 'center'
-            }}
-          >
-            Получите план ухода<br />
-            уровня косметолога-<br />
-            дерматолога
-          </h1>
-
-          {/* Subtitle - 18sp #475467, margin 28px */}
-          <p 
-            style={{
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '1.5',
-              color: '#475467',
-              marginBottom: '28px',
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
-              transition: 'opacity 0.5s ease-out 0.7s, transform 0.5s ease-out 0.7s',
-              transitionDelay: '0.7s'
-            }}
-          >
-            Персональная программа от дипломированного специалиста
-          </p>
-
-          {/* Benefits list - 3 items with green circles, 28px spacing */}
-          <div 
-            className="w-full"
-            style={{
-              width: '100%',
-              marginTop: '0',
-              marginBottom: 'auto'
-            }}
-          >
-            {[
-              'Точная диагностика типа и состояния кожи',
-              'Ритуалы утром и вечером под ваш тип',
-              'Только рабочие продукты и правильная последовательность'
-            ].map((benefit, index) => (
-              <div 
-                key={index}
-                className="flex items-start gap-4"
-                style={{
-                  opacity: mounted ? 1 : 0,
-                  transform: mounted ? 'translateX(0)' : 'translateX(-10px)',
-                  transition: `opacity 0.4s ease-out ${0.9 + index * 0.15}s, transform 0.4s ease-out ${0.9 + index * 0.15}s`,
-                  transitionDelay: `${0.9 + index * 0.15}s`,
-                  marginBottom: '28px',
-                  justifyContent: 'flex-start',
-                  alignItems: 'flex-start'
-                }}
-              >
-                <div 
-                  className="flex-shrink-0"
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: '#0A5F59',
-                    flexShrink: 0,
-                    marginTop: '9px'
-                  }}
-                />
-                <span 
-                  style={{
-                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontWeight: 400,
-                    fontSize: '19px',
-                    lineHeight: '1.5',
-                    color: '#1F2A44',
-                    textAlign: 'left'
-                  }}
-                >
-                  {benefit}
-                </span>
-              </div>
-            ))}
-          </div>
+          <SkinIQLogo size={48} />
         </div>
 
-        {/* Button - inside card, bottom, отступ 36dp от последнего пункта, ширина 84% от карточки */}
+        {/* Title - 36sp, lineHeight 42px, margin 28px снизу */}
+        <h1 
+          style={{
+            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '36px',
+            lineHeight: '42px',
+            color: '#0A5F59',
+            margin: '0 0 28px 0',
+            padding: 0,
+            textAlign: 'center',
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
+            transition: 'opacity 0.6s ease-out 0.5s, transform 0.6s ease-out 0.5s',
+            transitionDelay: '0.5s'
+          }}
+        >
+          Получите план ухода<br />
+          уровня косметолога-<br />
+          дерматолога
+        </h1>
+
+        {/* Subtitle - 18sp #475467, margin 28px снизу */}
+        <p 
+          style={{
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 400,
+            fontSize: '18px',
+            lineHeight: '1.5',
+            color: '#475467',
+            margin: '0 0 28px 0',
+            padding: 0,
+            textAlign: 'center',
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
+            transition: 'opacity 0.5s ease-out 0.7s, transform 0.5s ease-out 0.7s',
+            transitionDelay: '0.7s'
+          }}
+        >
+          Персональная программа от дипломированного специалиста
+        </p>
+
+        {/* Benefits list - 3 items with green circles, 28px spacing */}
+        <div 
+          style={{
+            width: '100%',
+            margin: '0 0 auto 0',
+            padding: 0
+          }}
+        >
+          {[
+            'Точная диагностика типа и состояния кожи',
+            'Ритуалы утром и вечером под ваш тип',
+            'Только рабочие продукты и правильная последовательность'
+          ].map((benefit, index) => (
+            <div 
+              key={index}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                marginBottom: index < 2 ? '28px' : '0',
+                opacity: mounted ? 1 : 0,
+                transform: mounted ? 'translateX(0)' : 'translateX(-10px)',
+                transition: `opacity 0.4s ease-out ${0.9 + index * 0.15}s, transform 0.4s ease-out ${0.9 + index * 0.15}s`,
+                transitionDelay: `${0.9 + index * 0.15}s`
+              }}
+            >
+              <div 
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: '#0A5F59',
+                  flexShrink: 0,
+                  marginTop: '9px'
+                }}
+              />
+              <span 
+                style={{
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 400,
+                  fontSize: '19px',
+                  lineHeight: '1.5',
+                  color: '#1F2A44',
+                  textAlign: 'left',
+                  flex: 1
+                }}
+              >
+                {benefit}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Button - inside card, отступ 36dp от последнего пункта, ширина 84% */}
         <button 
           onClick={handleGetPlan}
-          className="rounded-[32px] text-[19px] font-medium transition-all duration-200 active:scale-[0.98] relative overflow-hidden"
           style={{
             width: '84%',
             height: '64px',
@@ -192,11 +179,21 @@ export default function OnboardingScreen() {
             boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
             marginTop: '36px',
             marginBottom: '0',
+            padding: '0',
+            cursor: 'pointer',
             opacity: mounted ? 1 : 0,
-            transform: mounted ? 'translateY(0)' : 'translateY(20px)',
+            transform: mounted ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.95)',
             transition: 'opacity 0.5s ease-out 1.4s, transform 0.5s ease-out 1.4s',
-            transitionDelay: '1.4s',
-            cursor: 'pointer'
+            transitionDelay: '1.4s'
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = 'translateY(0) scale(0.95)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0) scale(1)';
           }}
         >
           Получить свой план →
@@ -206,8 +203,11 @@ export default function OnboardingScreen() {
       {/* Secondary link - outside card, below, отступ 28dp от карточки */}
       <button
         onClick={() => navigate('/plan')}
-        className="text-center text-[15px] transition-all duration-200 active:opacity-70"
         style={{
+          position: 'absolute',
+          bottom: '120px',
+          left: '50%',
+          transform: 'translateX(-50%)',
           color: '#0A5F59',
           fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
           fontWeight: 400,
@@ -217,14 +217,16 @@ export default function OnboardingScreen() {
           background: 'transparent',
           border: 'none',
           cursor: 'pointer',
-          padding: '8px',
-          marginTop: '28px',
+          padding: '8px 12px',
           opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateY(0)' : 'translateY(10px)',
           transition: 'opacity 0.5s ease-out 1.6s, transform 0.5s ease-out 1.6s',
-          transitionDelay: '1.6s',
-          position: 'absolute',
-          bottom: '100px'
+          transitionDelay: '1.6s'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = '0.7';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = mounted ? '1' : '0';
         }}
       >
         Посмотреть пример плана
