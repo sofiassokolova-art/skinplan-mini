@@ -1,4 +1,5 @@
 import { Routes, Route, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import Quiz from "./pages/Quiz";
 import Cart from "./pages/Cart";
@@ -9,15 +10,37 @@ import Insights from "./pages/Insights";
 import Header from "./ui/Header";
 import ErrorBoundary from "./ErrorBoundary";
 import BottomNavigation from "./components/BottomNavigation";
+import { storage } from "./utils/storage";
 
 function App() {
   const location = useLocation();
+  const [showNavigation, setShowNavigation] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Показываем Header только на страницах, где он нужен (не на главной и не в анкете)
   const showHeader = location.pathname !== '/' && location.pathname !== '/quiz';
   
-  // Показываем навигацию везде кроме анкеты и онбординга
-  const showNavigation = location.pathname !== '/quiz' && !location.pathname.startsWith('/quiz');
+  // Проверяем состояние онбординга для показа/скрытия навигации
+  useEffect(() => {
+    try {
+      const quizCompleted = storage.get<boolean>('skinQuizCompleted', false);
+      const isOnboarding = location.pathname === '/' && !quizCompleted;
+      const shouldShowNav = location.pathname !== '/quiz' && 
+                            !location.pathname.startsWith('/quiz') && 
+                            !isOnboarding;
+      setShowNavigation(shouldShowNav);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error checking quiz status in App:', error);
+      setShowNavigation(location.pathname !== '/quiz' && !location.pathname.startsWith('/quiz'));
+      setIsLoading(false);
+    }
+  }, [location.pathname]);
+  
+  // Не показываем навигацию пока загружаемся
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <ErrorBoundary>
