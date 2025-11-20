@@ -175,8 +175,6 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           backgroundColor: 'rgba(17, 24, 39, 0.82)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
-          backdropFilter: 'blur(32px)',
-          WebkitBackdropFilter: 'blur(32px)',
           border: '1px solid rgba(255, 255, 255, 0.08)',
           borderTopWidth: '1px',
           borderBottomWidth: '0',
@@ -252,7 +250,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(212,165,116,0.2)';
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(244,228,188,0.2)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08)';
@@ -290,7 +288,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(212,165,116,0.2)';
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08), 0 0 12px rgba(244,228,188,0.2)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.08)';
@@ -536,12 +534,12 @@ export default function MobileSkinIQHome() {
               style={{
                 ...(tab === t 
                   ? { 
-                      background: 'linear-gradient(90deg, rgba(13,74,82,0.8) 0%, rgba(17,107,119,0.8) 100%)',
+                      background: 'linear-gradient(90deg, rgba(15,76,92,0.8) 0%, rgba(15,76,92,0.6) 100%)',
                       borderColor: '#F4E4BC',
                       borderWidth: '1px',
                       borderStyle: 'solid',
                       color: '#F4E4BC',
-                      boxShadow: '0 0 12px rgba(212,165,116,0.2)'
+                      boxShadow: '0 0 12px rgba(244,228,188,0.2)'
                     }
                   : { 
                       color: '#94A3B8',
@@ -587,7 +585,7 @@ export default function MobileSkinIQHome() {
               : 'transparent',
             WebkitBackgroundClip: completed === items.length && items.length > 0 ? 'text' : 'unset',
             WebkitTextFillColor: completed === items.length && items.length > 0 ? 'transparent' : '#F4E4BC',
-            textShadow: '0 0 8px rgba(212,165,116,0.5)',
+            textShadow: '0 0 8px rgba(244,228,188,0.5)',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 500
           }}
@@ -630,7 +628,7 @@ export default function MobileSkinIQHome() {
                 borderWidth: '1px',
                 borderRadius: '24px',
                 boxShadow: isCompleted 
-                  ? '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px rgba(212,165,116,0.3)'
+                  ? '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px rgba(244,228,188,0.3)'
                   : '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)'
               }}
             >
@@ -660,7 +658,7 @@ export default function MobileSkinIQHome() {
                   className="text-[19px] font-bold truncate mt-0.5"
                   style={{ 
                     color: '#F4E4BC',
-                    textShadow: '0 0 4px rgba(212,165,116,0.3)',
+                    textShadow: '0 0 4px rgba(244,228,188,0.3)',
                     fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontWeight: 700,
                     letterSpacing: '-0.02em'
@@ -679,7 +677,7 @@ export default function MobileSkinIQHome() {
                 className="ml-2 flex-shrink-0 w-10 h-10 flex items-center justify-center"
                 style={{ 
                   color: '#F4E4BC',
-                  textShadow: isCompleted ? '0 0 12px rgba(212,165,116,0.6)' : 'none',
+                  textShadow: isCompleted ? '0 0 12px rgba(244,228,188,0.6)' : 'none',
                   animation: isCompleted ? 'pulseGlow 1s infinite' : 'none',
                   fontSize: '28px',
                   fontWeight: 300
@@ -723,7 +721,7 @@ export default function MobileSkinIQHome() {
                 <div 
                   className="absolute inset-0 rounded-[24px] pointer-events-none"
                   style={{
-                    boxShadow: '0 0 20px rgba(212,165,116,0.4)',
+                    boxShadow: '0 0 20px rgba(244,228,188,0.4)',
                     animation: 'pulse 2s ease-in-out infinite'
                   }}
                 />
