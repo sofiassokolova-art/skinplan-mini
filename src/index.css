@@ -23,7 +23,8 @@
 @layer base {
   html, body, #root { 
     height: 100%; 
-    font-family: 'Inter', 'Neue Haas Grotesk', system-ui, sans-serif;
+    font-family: 'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.01em;
   }
   
   body { 
@@ -37,7 +38,8 @@
   
   /* Premium typography */
   h1, h2, h3 {
-    font-family: 'Inter', 'Neue Haas Grotesk', system-ui, sans-serif;
+    font-family: 'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.01em;
     color: var(--premium-dark);
     margin: 0;
   }

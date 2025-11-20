@@ -380,20 +380,16 @@ export default function MobileSkinIQHome() {
 
       {/* Header */}
       <header 
-        className="flex items-center justify-between px-5 pt-5 pb-3 relative z-10"
+        className="flex items-center justify-center px-5 pt-5 pb-3 relative z-10"
       >
-        <button 
-          onClick={() => navigate(-1)}
-          className="text-[32px] bg-transparent border-none"
-          style={{ color: '#FAFAFA', opacity: 0.7 }}
-        >
-          ←
-        </button>
         <h1 
-          className="text-[28px] font-extrabold tracking-wide"
+          className="text-[28px] font-black tracking-tight"
           style={{ 
             color: '#FAFAFA',
-            textShadow: '0 0 12px rgba(212, 165, 116, 0.3)'
+            textShadow: '0 0 12px rgba(212, 165, 116, 0.3)',
+            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 900,
+            letterSpacing: '-0.03em'
           }}
         >
           SkinIQ
@@ -438,27 +434,31 @@ export default function MobileSkinIQHome() {
               className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
                 tab === t ? 'active' : ''
               }`}
-              style={tab === t 
-                ? { 
-                    background: 'linear-gradient(90deg, rgba(13,74,82,0.8) 0%, rgba(17,107,119,0.8) 100%)',
-                    borderColor: '#D4A574',
-                    borderWidth: '1px',
-                    borderStyle: 'solid',
-                    color: '#D4A574',
-                    boxShadow: '0 0 12px rgba(212,165,116,0.2)'
-                  }
-                : { 
-                    color: '#B8B8B8',
-                    backgroundColor: 'transparent',
-                    borderColor: 'transparent',
-                    borderWidth: '1px',
-                    borderStyle: 'solid'
-                  }
-              }
+              style={{
+                ...(tab === t 
+                  ? { 
+                      background: 'linear-gradient(90deg, rgba(13,74,82,0.8) 0%, rgba(17,107,119,0.8) 100%)',
+                      borderColor: '#D4A574',
+                      borderWidth: '1px',
+                      borderStyle: 'solid',
+                      color: '#D4A574',
+                      boxShadow: '0 0 12px rgba(212,165,116,0.2)'
+                    }
+                  : { 
+                      color: '#B8B8B8',
+                      backgroundColor: 'transparent',
+                      borderColor: 'transparent',
+                      borderWidth: '1px',
+                      borderStyle: 'solid'
+                    }
+                ),
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 500
+              }}
             >
               {t === "AM" ? "Утро" : "Вечер"}
             </button>
-          ))}
+            ))}
           </div>
         </div>
           
@@ -467,13 +467,18 @@ export default function MobileSkinIQHome() {
         className="flex justify-between items-center px-6 py-6 relative z-10"
       >
         <h2 
-          className="text-[28px] font-bold"
-          style={{ color: '#FAFAFA' }}
+          className="text-[28px] font-black"
+          style={{ 
+            color: '#FAFAFA',
+            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 900,
+            letterSpacing: '-0.03em'
+          }}
         >
           {tab === "AM" ? "Morning Ritual" : "Evening Ritual"}
         </h2>
         <span 
-          className="text-[18px] font-semibold"
+          className="text-[18px] font-medium"
           style={{ 
             color: completed === items.length && items.length > 0 
               ? '#D4A574' 
@@ -483,7 +488,9 @@ export default function MobileSkinIQHome() {
               : 'transparent',
             WebkitBackgroundClip: completed === items.length && items.length > 0 ? 'text' : 'unset',
             WebkitTextFillColor: completed === items.length && items.length > 0 ? 'transparent' : '#D4A574',
-            textShadow: '0 0 8px rgba(212,165,116,0.5)'
+            textShadow: '0 0 8px rgba(212,165,116,0.5)',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 500
           }}
         >
           {completed}/{items.length} steps
@@ -540,7 +547,13 @@ export default function MobileSkinIQHome() {
               <div className="ml-4 text-left flex-1 min-w-0">
                 <div 
                   className="text-[17px] font-medium truncate"
-                  style={{ color: '#FAFAFA' }}
+                  style={{ 
+                    color: '#FAFAFA',
+                    fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 500,
+                    letterSpacing: '-0.01em',
+                    opacity: 0.9
+                  }}
                 >
                   {item.title}
                 </div>
@@ -548,7 +561,10 @@ export default function MobileSkinIQHome() {
                   className="text-[19px] font-bold truncate mt-0.5"
                   style={{ 
                     color: '#D4A574',
-                    textShadow: '0 0 4px rgba(212,165,116,0.3)'
+                    textShadow: '0 0 4px rgba(212,165,116,0.3)',
+                    fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em'
                   }}
                 >
                   {item.subtitle}
