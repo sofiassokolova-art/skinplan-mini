@@ -4,7 +4,6 @@ import OnboardingScreen from "./OnboardingScreen";
 import { logger } from "../utils/logger";
 import { storage } from "../utils/storage";
 import { tg } from "../lib/tg";
-import SkinIQLogo from "../components/SkinIQLogo";
 
 // ---------- Types ----------
 interface RoutineItem {
@@ -170,7 +169,6 @@ const eveningDefault: RoutineItem[] = [
 
 // ----- BottomSheet Component -----
 function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => void; item: RoutineItem | null }) {
-  // Early returns for safety
   if (!open || !item) return null;
   if (!item.howto) {
     logger.warn('BottomSheet: item.howto is missing', item);
@@ -213,10 +211,8 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           zIndex: 2001
         }}
       >
-        {/* Handle bar - top center */}
         <div className="mx-auto h-1 w-10 rounded-full mb-6" style={{ backgroundColor: '#CBD5E1' }} />
         
-        {/* Close button - top right */}
         <button
           onClick={onClose}
           className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:bg-gray-100 active:scale-95 z-10"
@@ -229,7 +225,6 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           ×
         </button>
         
-        {/* Product header */}
         <div className="flex items-center gap-4 mb-6">
           {item.icon ? (
             <img 
@@ -264,7 +259,6 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
         </div>
         </div>
         
-        {/* Instructions */}
         <div className="mb-6">
           <div className="text-[14px] font-semibold mb-2" style={{ color: '#334155', fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif" }}>Как выполнить</div>
           <ol className="list-decimal list-inside text-[15px] space-y-2" style={{ color: '#334155', lineHeight: '1.6', fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif" }}>
@@ -274,7 +268,6 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           </ol>
             </div>
         
-        {/* Badges */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div 
             className="rounded-2xl p-4 border transition-all duration-200"
@@ -336,7 +329,6 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           </div>
         </div>
         
-        {/* Buttons */}
         <div className="flex gap-3">
           <button 
             onClick={onClose} 
@@ -384,8 +376,10 @@ export default function MobileSkinIQHome() {
   const [greeting, setGreeting] = useState('');
   const [userName, setUserName] = useState('друг');
   const [confetti, setConfetti] = useState<Array<{id: number, x: number, y: number}>>([]);
-  const [ripples, setRipples] = useState<Array<{id: number, x: number, y: number}>>([]);
+  const [ripples, setRipples] = useState<Array<{id: number, x: number, y: number, itemId: string}>>([]);
   const [hintShown, setHintShown] = useState(false);
+  const [cardMounted, setCardMounted] = useState(false);
+  const [gradientBright, setGradientBright] = useState(false);
 
   // Check if quiz is completed
   useEffect(() => {
@@ -393,15 +387,20 @@ export default function MobileSkinIQHome() {
       const quizDone = storage.get<boolean>('skinQuizCompleted', false);
       setHasCompletedQuiz(quizDone);
       
-      // Check if hint was shown
       const hintWasShown = storage.get<boolean>('firstStepHintShown', false);
       setHintShown(hintWasShown);
       
-      // Telegram ready
       if (tg) {
         tg.ready();
         tg.expand();
       }
+      
+      const savedMorning = storage.get<RoutineItem[]>('morningRoutine', morningDefault);
+      const savedEvening = storage.get<RoutineItem[]>('eveningRoutine', eveningDefault);
+      setMorning(savedMorning);
+      setEvening(savedEvening);
+      
+      setTimeout(() => setCardMounted(true), 50);
     } catch (error) {
       logger.error('Error checking quiz status:', error);
       setHasCompletedQuiz(false);
@@ -411,7 +410,6 @@ export default function MobileSkinIQHome() {
   // Personalization: get greeting and user name
   useEffect(() => {
     try {
-      // Get name from Telegram
       const user = tg?.initDataUnsafe?.user;
       if (user) {
         const firstName = user.first_name || '';
@@ -422,7 +420,6 @@ export default function MobileSkinIQHome() {
         setUserName('друг');
       }
 
-      // Determine greeting by local time
       const hour = new Date().getHours();
       if (hour >= 5 && hour < 12) setGreeting('Доброе утро');
       else if (hour >= 12 && hour < 18) setGreeting('Добрый день');
@@ -435,7 +432,7 @@ export default function MobileSkinIQHome() {
     }
   }, []);
 
-  // Celebration when all completed - BEFORE conditional returns (hook rule!)
+  // Celebration when all completed
   useEffect(() => {
     if (hasCompletedQuiz !== true) return;
     
@@ -443,57 +440,34 @@ export default function MobileSkinIQHome() {
     const currentCompleted = currentItems?.filter((i) => i.done)?.length || 0;
     
     if (currentItems && currentItems.length > 0 && currentCompleted === currentItems.length) {
-      // Confetti animation
       const particles = Array.from({ length: 12 }, (_, i) => ({
         id: Date.now() + i,
         x: Math.random() * 100,
         y: Math.random() * 100
       }));
       setConfetti(particles);
-      setTimeout(() => setConfetti([]), 800);
+      setTimeout(() => setConfetti([]), 900);
       
-      // Haptic feedback
+      setGradientBright(true);
+      setTimeout(() => setGradientBright(false), 2000);
+      
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
     }
   }, [tab, morning, evening, hasCompletedQuiz]);
 
-  // Celebration when all completed - must be BEFORE conditional returns
-  useEffect(() => {
-    if (hasCompletedQuiz !== true) return;
-    
-    const currentItems = tab === "AM" ? morning : evening;
-    const currentCompleted = currentItems?.filter((i) => i.done)?.length || 0;
-    
-    if (currentItems && currentItems.length > 0 && currentCompleted === currentItems.length) {
-      // Confetti animation
-      const particles = Array.from({ length: 12 }, (_, i) => ({
-        id: Date.now() + i,
-        x: Math.random() * 100,
-        y: Math.random() * 100
-      }));
-      setConfetti(particles);
-      setTimeout(() => setConfetti([]), 800);
-      
-      // Haptic feedback
-      if (navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
-      }
-    }
-  }, [tab, morning, evening, hasCompletedQuiz]);
-
-  // Conditional rendering - must be after all hooks
+  // Conditional rendering
   if (hasCompletedQuiz === null) {
     return (
       <div 
         className="min-h-screen flex items-center justify-center"
-        style={{ background: '#FAFBFD' }}
+        style={{ background: 'linear-gradient(180deg, #F5FFFC 0%, #E8FBF7 100%)' }}
       >
         <div 
           className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
           style={{ 
-            borderColor: '#0F766E',
+            borderColor: '#0A5F59',
             borderTopColor: 'transparent'
           }}
         />
@@ -505,9 +479,9 @@ export default function MobileSkinIQHome() {
     return <OnboardingScreen />;
   }
 
-  // Calculate items and completed only after we know quiz is completed
   const items = tab === "AM" ? morning : evening;
   const completed = items?.filter((i) => i.done)?.length || 0;
+  const total = items?.length || 0;
 
   const toggleAt = (idx: number) => (e?: React.MouseEvent) => {
     try {
@@ -517,12 +491,11 @@ export default function MobileSkinIQHome() {
         return;
       }
       
-      // Ripple effect on tap
       if (e) {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
-        const newRipple = { id: Date.now(), x, y };
+        const newRipple = { id: Date.now(), x, y, itemId: currentItems[idx].id };
         setRipples(prev => [...prev, newRipple]);
         setTimeout(() => {
           setRipples(prev => prev.filter(r => r.id !== newRipple.id));
@@ -531,6 +504,7 @@ export default function MobileSkinIQHome() {
       
       const newItems = [...currentItems];
       newItems[idx] = { ...newItems[idx], done: !newItems[idx].done };
+      
     if (tab === "AM") {
         setMorning(newItems);
         try {
@@ -547,7 +521,6 @@ export default function MobileSkinIQHome() {
         }
       }
       
-      // Haptic feedback
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
@@ -555,7 +528,6 @@ export default function MobileSkinIQHome() {
       logger.error('Error toggling item:', error);
     }
     
-    // Hide hint after first interaction
     if (!hintShown && idx === 0) {
       storage.set('firstStepHintShown', true);
       setHintShown(true);
@@ -581,13 +553,15 @@ export default function MobileSkinIQHome() {
     }
   };
 
+  const getAdvice = () => {
+    if (tab === "AM") {
+      return "Для утреннего ухода важно не пересушить кожу. Используйте мягкие очищающие средства и обязательно SPF.";
+    }
+    return "Вечером уделите внимание восстановлению кожи. Двойное очищение и увлажняющий крем — ваши друзья.";
+  };
+
   return (
-    <div
-      className="w-full min-h-screen relative overflow-x-hidden"
-      style={{ 
-        paddingBottom: '120px' // Space for bottom navigation
-      }}
-    >
+    <>
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -597,675 +571,502 @@ export default function MobileSkinIQHome() {
           from { 
             transform: translateY(100%); 
             opacity: 0; 
-          } 
+          }
           to { 
             transform: translateY(0); 
             opacity: 1; 
-          } 
+          }
         }
-        @keyframes fadeInUp {
+        @keyframes cardAppear {
           from { 
-            opacity: 0; 
-            transform: translateY(20px); 
+            opacity: 0;
+            transform: scale(0.96);
           }
           to { 
-            opacity: 1; 
-            transform: translateY(0); 
-          }
-        }
-        @keyframes livingGradient {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-        @keyframes meshGradient {
-          0% {
-            background-position: 0% 0%, 50% 50%, 100% 100%;
-          }
-          33% {
-            background-position: 100% 0%, 0% 50%, 0% 100%;
-          }
-          66% {
-            background-position: 100% 100%, 50% 0%, 0% 50%;
-          }
-          100% {
-            background-position: 0% 0%, 50% 50%, 100% 100%;
-          }
-        }
-        @keyframes radialWave {
-          0% {
-            transform: scale(0.8);
-            opacity: 0.12;
-          }
-          50% {
-            transform: scale(1.2);
-            opacity: 0.08;
-          }
-          100% {
-            transform: scale(0.8);
-            opacity: 0.12;
-          }
-        }
-        @keyframes greenFlash {
-          0%, 100% {
-            opacity: 0;
-          }
-          50% {
-            opacity: 0.15;
+            opacity: 1;
+            transform: scale(1);
           }
         }
         @keyframes ripple {
           0% {
             transform: scale(0);
             opacity: 1;
-          }
+          } 
           100% {
-            transform: scale(2);
+            transform: scale(4);
             opacity: 0;
           }
         }
-        @keyframes pulse {
-          0% { 
-            transform: scale(0.9); 
-            opacity: 0.7; 
-          }
-          70% { 
-            transform: scale(1.1); 
-            opacity: 0; 
-          }
-          100% { 
-            transform: scale(0.9); 
-            opacity: 0; 
-          }
-        }
-        @keyframes pulseGlow { 
-          0%, 100% { 
-            opacity: 1;
-            transform: scale(1);
-          } 
-          50% { 
-            opacity: 0.7;
-            transform: scale(1.1);
-          }
-        }
-        @keyframes bounce {
-          0%, 100% { 
-            transform: translateX(-50%) translateY(0); 
-          }
-          50% { 
-            transform: translateX(-50%) translateY(-6px); 
-          }
-        }
-        @keyframes confetti {
+        @keyframes confettiFall {
           0% {
             transform: translateY(0) rotate(0deg);
             opacity: 1;
-          } 
-          100% {
-            transform: translateY(-100px) rotate(360deg);
-            opacity: 0;
-          } 
-        }
-        @keyframes cardAppear {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
           }
-          to {
-            opacity: 1;
-            transform: translateY(0);
+          100% {
+            transform: translateY(100vh) rotate(360deg);
+            opacity: 0;
           } 
         }
       `}</style>
 
-      {/* Mesh gradient background with animated circles */}
-      <div 
-        className="fixed inset-0 -z-10 overflow-hidden"
-        style={{
-          background: 'linear-gradient(135deg, #E8FBF7 0%, #E0FAF5 25%, #E8FDFA 50%, #D8F7F0 75%, #E8FBF7 100%)',
-          backgroundSize: '200% 200%',
-          animation: 'meshGradient 35s ease infinite'
+      <div
+        className="w-full min-h-screen relative overflow-x-hidden"
+        style={{ 
+          paddingBottom: '120px',
+          background: gradientBright 
+            ? 'linear-gradient(180deg, #E0FAF5 0%, #D0F5EB 100%)'
+            : 'linear-gradient(180deg, #F5FFFC 0%, #E8FBF7 100%)',
+          transition: 'background 2s ease-out'
         }}
       >
-        {/* Animated radial waves from center */}
-        <div
-          className="absolute"
-          style={{
-            top: '30%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '120vw',
-            height: '120vw',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(192, 245, 232, 0.12) 0%, transparent 70%)',
-            animation: 'radialWave 8s ease-in-out infinite',
-            pointerEvents: 'none'
-          }}
-        />
-        <div
-          className="absolute"
-          style={{
-            top: '40%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '160vw',
-            height: '160vw',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(10, 95, 89, 0.08) 0%, transparent 70%)',
-            animation: 'radialWave 12s ease-in-out infinite 2s',
-            pointerEvents: 'none'
-          }}
-        />
-        
-        {/* Green flash on completion */}
-        {completed === items.length && items.length > 0 && (
+        {/* Confetti */}
+        {confetti.map((particle) => (
           <div
-            className="absolute inset-0"
+            key={particle.id}
             style={{
-              background: 'radial-gradient(circle at center, rgba(10, 95, 89, 0.15) 0%, transparent 70%)',
-              animation: 'greenFlash 2s ease-out',
+              position: 'fixed',
+              left: `${particle.x}%`,
+              top: `${particle.y}%`,
+              width: '8px',
+              height: '8px',
+              backgroundColor: '#0A5F59',
+              borderRadius: '50%',
               pointerEvents: 'none',
-              zIndex: 1
+              zIndex: 3000,
+              animation: 'confettiFall 0.9s ease-out forwards',
+              transform: `translate(${Math.random() * 40 - 20}px, ${Math.random() * 40 - 20}px)`
             }}
           />
-        )}
-      </div>
+        ))}
 
-      {/* Confetti particles */}
-      {confetti.map(particle => (
-        <div
-          key={particle.id}
-          className="fixed pointer-events-none z-50"
-          style={{
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-            width: '8px',
-            height: '8px',
-            backgroundColor: '#0A5F59',
-            borderRadius: '50%',
-            animation: 'confetti 0.8s ease-out forwards',
-            boxShadow: '0 0 8px rgba(10, 95, 89, 0.5)'
-          }}
-        />
-      ))}
-
-      {/* Header - Logo */}
-      <header 
-        className="flex items-center justify-center px-5 pt-5 pb-3 relative z-10"
-        style={{ animation: 'cardAppear 0.4s ease-out', animationDelay: '0ms' }}
-      >
-        <SkinIQLogo size={32} />
-      </header>
-
-      {/* Premium Greeting Glass Card - 35% screen height */}
-      <div 
-        className="mx-5 mb-4 p-6 relative z-10 rounded-[36px]"
-        style={{
-          height: '35vh',
-          maxHeight: '280px',
-          minHeight: '240px',
-          backgroundColor: 'rgba(255, 255, 255, 0.58)',
-          backdropFilter: 'blur(22px)',
-          WebkitBackdropFilter: 'blur(22px)',
-          border: '1px solid rgba(255, 255, 255, 0.15)', // #26FFFFFF = rgba(255,255,255,0.15)
-          borderRadius: '36px',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.08)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '20px',
-          animation: 'cardAppear 0.5s ease-out',
-          animationDelay: '80ms',
-          animationFillMode: 'backwards'
-        }}
-      >
-        {/* Avatar - 56dp с тонкой обводкой */}
+        {/* Main Content - Large Glass Card (90% width, 5% margins, radius 40dp top, 0dp bottom) */}
         <div
           style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            border: '1px solid #0A5F59', // Тонкая обводка
+            width: '90%',
+            maxWidth: '600px',
+            margin: '20px auto 0 auto',
+            backgroundColor: 'rgba(255, 255, 255, 0.58)',
+            backdropFilter: 'blur(26px)',
+            WebkitBackdropFilter: 'blur(26px)',
+            border: '1px solid rgba(255, 255, 255, 0.15)', // #26FFFFFF = rgba(255,255,255,0.15)
+            borderRadius: '40px 40px 0 0',
+            padding: '24px 20px 32px 20px',
+            boxShadow: '0 16px 48px rgba(0, 0, 0, 0.08)',
+            opacity: cardMounted ? 1 : 0,
+            transform: cardMounted ? 'scale(1)' : 'scale(0.96)',
+            transition: 'opacity 0.6s ease-out, transform 0.6s ease-out',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            backgroundColor: 'rgba(10, 95, 89, 0.08)',
-            fontSize: '24px',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            color: '#0A5F59'
+            flexDirection: 'column',
+            gap: '20px'
           }}
         >
-          {userName.charAt(0).toUpperCase()}
-          </div>
-          
-        {/* Greeting Text */}
-        <div className="flex-1 min-w-0">
-          <div 
-            className="text-[28px] font-bold leading-tight mb-1"
-            style={{
-              color: '#0A5F59',
-              fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 700,
-              lineHeight: 1.2
-            }}
-          >
-            {greeting || 'Добрый день'}, {userName}
-            </div>
-          <div 
-            className="text-[17px] font-medium"
-            style={{
-              color: '#475467',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 500
-            }}
-          >
-            Ваш {tab === "AM" ? "утренний" : "вечерний"} ритуал готов · {items.length} шаг{items.length > 1 ? (items.length < 5 ? "а" : "ов") : ""}
-          </div>
-        </div>
-      </div>
-
-      {/* Glass Tab Switcher */}
-      <div 
-        className="mb-4 relative z-10" 
-        style={{ 
-          paddingLeft: '24px', 
-          paddingRight: '24px',
-          animation: 'cardAppear 0.5s ease-out',
-          animationDelay: '160ms',
-          animationFillMode: 'backwards'
-        }}
-      >
-        <div 
-          className="inline-flex rounded-full p-0.5"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.4)',
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            borderRadius: '9999px'
-          }}
-        >
-          {(["AM", "PM"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                tab === t ? 'active' : ''
-              }`}
+          {/* Header - Greeting with Avatar (64dp circle with 2dp border) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div
               style={{
-                ...(tab === t 
-                  ? { 
-                      background: '#0A5F59',
-                      color: 'white',
-                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 600,
-                      border: 'none'
-                    }
-                  : { 
-                      color: '#0A5F59',
-                      backgroundColor: 'transparent',
-                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 500
-                    }
-                )
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                border: '2px solid #0A5F59',
+                backgroundColor: '#E8FDFA',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                backgroundImage: `url('https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0A5F59&color=fff&size=64')`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
               }}
-            >
-              {t === "AM" ? "Утро" : "Вечер"}
-            </button>
-          ))}
-        </div>
-        </div>
-
-      {/* Title Glass Strip */}
-      <div 
-        className="flex justify-between items-center mx-5 mb-4 px-5 relative z-10 rounded-[24px]"
-        style={{
-          height: '72px',
-          backgroundColor: 'rgba(255, 255, 255, 0.55)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.4)',
-          borderRadius: '24px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
-          animation: 'cardAppear 0.5s ease-out',
-          animationDelay: '240ms',
-          animationFillMode: 'backwards'
-        }}
-      >
-        <h2 
-          className="text-[32px] font-bold"
-          style={{ 
-            color: '#0A5F59',
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            letterSpacing: '-0.02em'
-          }}
-        >
-          {tab === "AM" ? "Morning Ritual" : "Evening Ritual"}
-        </h2>
-        <span 
-          className="text-[18px] font-medium"
-          style={{ 
-            color: '#0A5F59',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 500
-          }}
-        >
-          {completed}/{items.length} steps
-        </span>
-      </div>
-      
-      {/* Dermatologist Tip - Glass Card */}
-      <div 
-        className="mb-4 mx-5 p-4 rounded-[24px] border relative z-10 flex items-center gap-3"
-        style={{
-          backgroundColor: 'rgba(232, 253, 250, 0.7)', // #E8FDFA alpha 0.7
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderColor: 'rgba(10, 95, 89, 0.15)',
-          borderWidth: '1px',
-          borderRadius: '24px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
-          animation: 'cardAppear 0.5s ease-out',
-          animationDelay: '320ms',
-          animationFillMode: 'backwards'
-        }}
-      >
-        {/* Tip icon in circle #0A5F59 */}
-        <div 
-          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          💡
-        </div>
-        <p 
-          className="text-[17px] leading-relaxed flex-1"
-          style={{
-            fontSize: '17px',
-            color: '#1F2A44',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            lineHeight: 1.5
-          }}
-        >
-          Сегодня идеальная влажность — после тонера подождите 60 секунд перед сывороткой
-        </p>
-      </div>
-          
-      {/* Steps */}
-      <main className="pb-4 relative z-10" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
-        {items.map((item, index) => {
-          const isCompleted = item.done;
-          const isFirstUncompleted = index === 0 && !isCompleted && !hintShown;
-          return (
-          <div key={item.id} className="relative" style={{ marginBottom: index < items.length - 1 ? '14px' : '20px' }}>
-            {/* First step hint */}
-            {isFirstUncompleted && (
-              <div 
-                className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full mb-2 z-20"
-                style={{
-                  animation: 'bounce 2s infinite'
-                }}
-              >
-                <div 
-                  className="px-4 py-2 rounded-[20px] text-[13px] font-medium whitespace-nowrap"
-                  style={{
-                    background: '#0F766E',
-                    color: 'white',
-                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                    boxShadow: '0 4px 12px rgba(15, 118, 110, 0.3)'
-                  }}
-                >
-                  Нажмите карточку → выполнен
-              </div>
-                {/* Arrow pointer */}
-                <div 
-                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full"
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderLeft: '6px solid transparent',
-                    borderRight: '6px solid transparent',
-                    borderTop: '6px solid #0F766E'
-                  }}
-                />
-                {/* Pulse ring */}
-                <div 
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    border: '3px solid #0F766E',
-                    borderRadius: '50%',
-                    animation: 'pulse 2s infinite',
-                    transform: 'scale(1.2)',
-                    opacity: 0.5
-                  }}
-                />
-                </div>
-            )}
-            
-          <button
-              onClick={(e) => {
-                toggleAt(index)(e);
-              }}
-              onDoubleClick={openHowTo(index)}
-              className={`w-full flex items-center backdrop-blur-[20px] border rounded-[24px] transition-all duration-300 relative overflow-hidden ${
-                isCompleted ? 'completed' : ''
-              }`}
-              style={{
-                height: '96px',
-                padding: '0 18px',
-                animation: `cardAppear 0.5s ease-out backwards`,
-                animationDelay: `${400 + index * 80}ms`,
-                backgroundColor: 'rgba(255, 255, 255, 0.55)',
-                WebkitBackdropFilter: 'blur(20px)',
-                backdropFilter: 'blur(20px)',
-                borderColor: 'rgba(255, 255, 255, 0.4)',
-                borderWidth: '1px',
-                borderRadius: '24px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.06)'
-              }}
-            >
-              {/* Ripple effects */}
-              {ripples.filter(r => r.id > Date.now() - 600).map(ripple => (
-                <div
-                  key={ripple.id}
-                  className="absolute pointer-events-none rounded-full"
-                  style={{
-                    left: `${ripple.x}%`,
-                    top: `${ripple.y}%`,
-                    width: '200px',
-                    height: '200px',
-                    backgroundColor: 'rgba(10, 95, 89, 0.15)',
-                    transform: 'translate(-50%, -50%)',
-                    animation: 'ripple 0.6s ease-out',
-                    borderRadius: '50%'
-                  }}
-              />
-            ))}
-
-              {/* Left Circle - Step Number/Checkmark */}
+            />
+            <div style={{ flex: 1 }}>
               <div
                 style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  backgroundColor: isCompleted ? '#0A5F59' : 'transparent',
-                  border: isCompleted ? 'none' : '2px solid #0A5F59',
-                  marginRight: '16px',
-                  fontSize: '24px',
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 700,
-                  color: isCompleted ? 'white' : '#0A5F59',
-                  transition: 'all 0.3s ease'
+                  fontSize: '28px',
+                  color: '#0A5F59',
+                  lineHeight: '1.2',
+                  marginBottom: '4px'
                 }}
               >
-                {isCompleted ? '✓' : index + 1}
-              </div>
-
-              {/* Product Icon - 64dp without white background */}
-              <img 
-                src={item.icon} 
-                alt={item.title}
-                className="w-16 h-16 rounded-2xl object-contain flex-shrink-0"
-                style={{ 
-                  borderRadius: '16px', 
-                  marginRight: '16px',
-                  width: '64px',
-                  height: '64px'
+                {greeting}, {userName}
+          </div>
+              <div
+                style={{
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 400,
+                  fontSize: '16px',
+                  color: '#475467',
+                  lineHeight: '1.4'
                 }}
-              />
+              >
+                Ваш {tab === "AM" ? "утренний" : "вечерний"} ритуал готов · {total} шагов
+          </div>
+        </div>
+      </div>
 
-              {/* Text Container */}
-              <div className="flex-1 text-left min-w-0">
-                <div 
-                  className="text-[20px] font-bold truncate"
-                  style={{ 
-                    color: '#0A5F59',
-                    fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontWeight: 700,
-                    letterSpacing: '-0.01em'
-                  }}
-                >
-                  {item.title}
-                </div>
-                <div 
-                  className="text-[15px] font-medium truncate mt-1"
-                  style={{ 
-                    color: '#475467',
-                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontWeight: 500
-                  }}
-                >
-                  {item.subtitle}
+          {/* Toggle - AM/PM (glass-segmented) */}
+          <div
+            style={{
+              display: 'flex',
+              backgroundColor: 'rgba(255, 255, 255, 0.4)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '16px',
+              padding: '4px',
+              gap: '4px'
+            }}
+          >
+            <button
+              onClick={() => setTab("AM")}
+              style={{
+                flex: 1,
+                padding: '12px 20px',
+                borderRadius: '12px',
+                border: 'none',
+                backgroundColor: tab === "AM" ? '#0A5F59' : 'transparent',
+                color: tab === "AM" ? 'white' : '#0A5F59',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-out'
+              }}
+            >
+              Утро
+            </button>
+            <button
+              onClick={() => setTab("PM")}
+              style={{
+                flex: 1,
+                padding: '12px 20px',
+                borderRadius: '12px',
+                border: 'none',
+                backgroundColor: tab === "PM" ? '#0A5F59' : 'transparent',
+                color: tab === "PM" ? 'white' : '#0A5F59',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-out'
+              }}
+            >
+              Вечер
+            </button>
+        </div>
+
+          {/* Title Strip - Morning/Evening Ritual (thin glass strip, radius 28dp) */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: 'rgba(255, 255, 255, 0.55)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '28px',
+              padding: '16px 20px',
+              border: '1px solid rgba(255, 255, 255, 0.3)'
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                fontSize: '34px',
+                color: '#0A5F59'
+              }}
+            >
+              {tab === "AM" ? "Morning Ritual" : "Evening Ritual"}
+            </div>
+            <div
+              style={{
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 500,
+                fontSize: '17px',
+                color: '#0A5F59'
+              }}
+            >
+              {completed}/{total} steps
           </div>
         </div>
           
-              {/* Right Indicator - Info or Checkmark */}
-              {!isCompleted ? (
-          <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openHowTo(index)();
-                  }}
-                  className="transition-all duration-300 hover:scale-110 active:scale-95 flex-shrink-0 self-center"
-                  style={{
-                    width: '26px',
-                    height: '26px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    backgroundColor: 'transparent',
-                    border: '1.5px solid #0A5F59',
-                    color: '#0A5F59',
-                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                    zIndex: 10,
-                    pointerEvents: 'auto',
-                    marginLeft: '12px',
-                    alignSelf: 'center'
-                  }}
-                >
-                  i
-                </button>
-              ) : (
-                <div
-                  className="flex-shrink-0 self-center"
-                  style={{
-                    width: '26px',
-                    height: '26px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '16px',
-                    fontWeight: 300,
-                    backgroundColor: '#0A5F59', // Зелёная галочка (используем #0A5F59 как зелёный)
-                    color: 'white',
-                    border: 'none',
-                    animation: 'fadeInUp 0.3s ease',
-                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                    marginLeft: '12px',
-                    alignSelf: 'center'
-                  }}
-                >
-                  ✓
+          {/* Tip Card (separate glass card #E8FDFA alpha 0.7, radius 28dp) */}
+          <div
+            style={{
+              backgroundColor: 'rgba(232, 253, 250, 0.7)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '28px',
+              padding: '16px 20px',
+              border: '1px solid rgba(10, 95, 89, 0.15)',
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'flex-start'
+            }}
+          >
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                backgroundColor: '#0A5F59',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+              </svg>
             </div>
-              )}
+            <div
+              style={{
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '17px',
+                color: '#1F2A44',
+                lineHeight: '1.5',
+                flex: 1
+              }}
+            >
+              {getAdvice()}
+        </div>
+          </div>
+
+          {/* Routine Steps - Inside Card (104dp height rows, NOT separate cards) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {items.map((item, idx) => {
+              const isCompleted = item.done;
+              const showRipple = ripples.find(r => r.itemId === item.id);
+              
+              return (
+                <div
+                  key={item.id}
+                  onClick={toggleAt(idx)}
+                  style={{
+                    height: '104px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    padding: '0 4px',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    opacity: isCompleted ? 0.7 : 1,
+                    textDecoration: isCompleted ? 'line-through' : 'none',
+                    textDecorationColor: '#0A5F59',
+                    transition: 'opacity 0.2s ease-out'
+                  }}
+                >
+                  {/* Ripple Effect */}
+                  {showRipple && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: `${showRipple.x}%`,
+                        top: `${showRipple.y}%`,
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(10, 95, 89, 0.3)',
+                        transform: 'translate(-50%, -50%)',
+                        pointerEvents: 'none',
+                        animation: 'ripple 0.6s ease-out',
+                        zIndex: 1
+                      }}
+                    />
+                  )}
+
+                  {/* Step Number Circle (56dp) */}
+                  <div
+                    style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '50%',
+                      backgroundColor: isCompleted ? '#0A5F59' : 'transparent',
+                      border: isCompleted ? 'none' : '2px solid #0A5F59',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 700,
+                      fontSize: '20px',
+                      color: isCompleted ? 'white' : '#0A5F59',
+                      position: 'relative',
+                      transition: 'all 0.3s ease-out',
+                      transform: isCompleted ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                  >
+                    {isCompleted ? '✓' : idx + 1}
+              </div>
+              
+                  {/* Product Icon (72dp, no white background) */}
+                  {item.icon && (
+                    <img
+                      src={item.icon}
+                      alt={item.title}
+                      style={{
+                        width: '72px',
+                        height: '72px',
+                        borderRadius: '16px',
+                        objectFit: 'contain',
+                        flexShrink: 0
+                      }}
+                    />
+                  )}
+
+                  {/* Text Content */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                        fontWeight: 700,
+                        fontSize: '21px',
+                        color: '#0A5F59',
+                        marginBottom: '4px',
+                        lineHeight: '1.3'
+                      }}
+                    >
+                      {item.title}
+                  </div>
+                    <div
+                      style={{
+                        fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                        fontWeight: 400,
+                        fontSize: '16px',
+                        color: '#475467',
+                        lineHeight: '1.4'
+                      }}
+                    >
+                      {item.subtitle}
+                </div>
+              </div>
+
+                  {/* Info Button (i circle #0A5F59) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openHowTo(idx)();
+                    }}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      border: '1.5px solid #0A5F59',
+                      backgroundColor: 'transparent',
+                      color: '#0A5F59',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      transition: 'all 0.2s ease-out'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#0A5F59';
+                      e.currentTarget.style.color = 'white';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = '#0A5F59';
+                    }}
+                  >
+                    i
+                  </button>
+                </div>
+              );
+            })}
+                </div>
+
+          {/* Action Buttons (inside card, 2 buttons in row, height 62dp, radius 31dp) */}
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+            <button
+              onClick={() => navigate('/plan')}
+              style={{
+                flex: 1,
+                height: '62px',
+                borderRadius: '31px',
+                border: '2px solid #0A5F59',
+                backgroundColor: 'transparent',
+                color: '#0A5F59',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-out'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              Подробный план ухода →
+            </button>
+            <button
+              onClick={() => {
+                storage.remove('skinQuizCompleted');
+                navigate('/quiz');
+              }}
+              style={{
+                flex: 1,
+                height: '62px',
+                borderRadius: '31px',
+                border: 'none',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.25)',
+                transition: 'all 0.2s ease-out'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              Пройти анкету заново →
             </button>
               </div>
-          );
-        })}
-      </main>
+                    </div>
 
-      {/* Action Buttons - after cards */}
-      <div className="mb-6 relative z-10 flex gap-3" style={{ 
-        marginTop: '20px', 
-        marginBottom: '24px',
-        paddingLeft: '20px',
-        paddingRight: '20px'
-      }}>
-        <button
-          onClick={() => navigate("/plan")}
-          className="flex-1 h-12 px-5 rounded-[16px] font-semibold text-base transition-all duration-200 hover:opacity-90 active:scale-95 border"
-          style={{
-            background: 'transparent',
-            border: '1.5px solid #0A5F59',
-            color: '#0A5F59',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600,
-            animation: 'cardAppear 0.5s ease-out backwards',
-            animationDelay: `${400 + (items?.length || 0) * 80}ms`
-          }}
-        >
-          Подробный план ухода →
-          </button>
-          <button 
-            onClick={() => navigate("/quiz")}
-          className="flex-1 h-12 px-5 rounded-[16px] font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-          style={{
-            background: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600,
-            boxShadow: '0 4px 12px rgba(10, 95, 89, 0.25)',
-            animation: 'cardAppear 0.5s ease-out backwards',
-            animationDelay: `${400 + (items?.length || 0) * 80 + 80}ms`
-          }}
-        >
-          Пройти анкету заново →
-          </button>
-        </div>
+        {/* First Step Hint */}
+        {!hintShown && items.length > 0 && !items[0].done && (
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'rgba(10, 95, 89, 0.95)',
+              color: 'white',
+              padding: '16px 24px',
+              borderRadius: '20px',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '14px',
+              fontWeight: 500,
+              zIndex: 2000,
+              animation: 'pulse 2s infinite',
+              pointerEvents: 'none'
+            }}
+          >
+            Нажмите, чтобы отметить выполненным
+              </div>
+        )}
 
-      {/* Aura glow when all completed - removed (handled in background) */}
-
-      {/* BottomSheet */}
+        {/* BottomSheet */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} item={sheetItem} />
             </div>
+    </>
   );
 }
