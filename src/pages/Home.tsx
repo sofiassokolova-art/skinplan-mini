@@ -741,12 +741,12 @@ export default function MobileSkinIQHome() {
         </div>
           
       {/* Steps */}
-      <main className="pb-32 relative z-10" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
+      <main className="pb-4 relative z-10" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
         {items.map((item, index) => {
           const isCompleted = item.done;
           const isFirstUncompleted = index === 0 && !isCompleted && !hintShown;
           return (
-          <div key={item.id} className="relative" style={{ marginBottom: index < items.length - 1 ? '14px' : '0' }}>
+          <div key={item.id} className="relative" style={{ marginBottom: index < items.length - 1 ? '14px' : '20px' }}>
             {/* First step hint */}
             {isFirstUncompleted && (
               <div 
@@ -911,8 +911,8 @@ export default function MobileSkinIQHome() {
       </main>
 
       {/* Action Buttons - after cards */}
-      <div className="mt-6 mb-6 relative z-10 flex gap-3" style={{ 
-        marginTop: '32px', 
+      <div className="mb-6 relative z-10 flex gap-3" style={{ 
+        marginTop: '20px', 
         marginBottom: '24px',
         paddingLeft: '20px',
         paddingRight: '20px'
