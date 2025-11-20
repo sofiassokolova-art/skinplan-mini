@@ -401,8 +401,14 @@ export default function MobileSkinIQHome() {
       // Get name from Telegram
       const tg = (window as any)?.Telegram?.WebApp;
       const user = tg?.initDataUnsafe?.user;
-      const firstName = user?.first_name || 'друг';
-      setUserName(firstName);
+      if (user) {
+        const firstName = user.first_name || '';
+        const lastName = user.last_name || '';
+        const fullName = lastName ? `${firstName} ${lastName}` : firstName || 'друг';
+        setUserName(fullName);
+      } else {
+        setUserName('друг');
+      }
 
       // Determine greeting by local time
       const hour = new Date().getHours();
@@ -507,7 +513,7 @@ export default function MobileSkinIQHome() {
     <div
       className="w-full min-h-screen relative overflow-x-hidden"
       style={{ 
-          backgroundColor: '#0C1219',
+          backgroundColor: '#FAFBFD',
         paddingBottom: '120px'
       }}
     >
@@ -570,25 +576,15 @@ export default function MobileSkinIQHome() {
         }
       `}</style>
 
-      {/* Noise overlay */}
-      <div 
-        className="fixed inset-0 pointer-events-none z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          backgroundSize: '200px 200px',
-          opacity: 0.04
-        }}
-      />
 
-      {/* Header */}
+      {/* Header - Logo */}
       <header 
         className="flex items-center justify-center px-5 pt-5 pb-3 relative z-10"
       >
         <h1 
           className="text-[28px] font-black tracking-tight text-center"
           style={{ 
-            color: '#FAFAFA',
-            textShadow: '0 0 12px rgba(232, 225, 217, 0.3)',
+            color: '#0F766E',
             fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 900,
             letterSpacing: '-0.03em'
@@ -597,122 +593,72 @@ export default function MobileSkinIQHome() {
           SkinIQ
         </h1>
       </header>
-      
-      {/* Header Actions */}
-      <div className="px-5 pb-4 relative z-10 flex gap-3">
-        <button
-          onClick={() => navigate("/plan")}
-          className="flex-1 h-11 px-5 rounded-[18px] font-semibold text-sm transition-all duration-200 hover:opacity-90 active:scale-95"
-          style={{
-            background: 'transparent',
-            border: '1.5px solid #E8E1D9',
-            color: '#E8E1D9',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600
-          }}
-        >
-          Подробный план ухода →
-        </button>
-        <button
-          onClick={() => navigate("/quiz")}
-          className="flex-1 h-11 px-5 rounded-[18px] font-semibold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-          style={{
-            background: 'linear-gradient(90deg, #E8E1D9, #D4C9B8)',
-            color: '#0C1219',
-            border: 'none',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600,
-            boxShadow: '0 8px 20px rgba(232,225,217,0.25)'
-          }}
-        >
-          Пройти анкету заново →
-        </button>
-      </div>
 
       {/* Personal Greeting */}
       <div 
         className="px-6 pt-2 pb-4 relative z-10"
         style={{
-          marginTop: '8px',
           textAlign: 'left'
         }}
       >
         <div 
-          className="text-[26px] font-bold leading-tight"
+          className="text-[22px] font-bold leading-tight"
           style={{
-            color: '#FAFAFA',
+            color: '#334155',
             fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             lineHeight: 1.2
           }}
         >
-          {greeting || 'Добрый день'}, <span 
-            style={{
-              background: 'linear-gradient(90deg, #E8E1D9, #D4C9B8)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 800,
-              fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
-            }}
-          >
-            {userName}
-          </span>
-          </div>
+          {greeting || 'Добрый день'}, {userName}
+        </div>
         <div 
-          className="text-[15px] mt-1.5 font-medium"
+          className="text-[14px] mt-1 font-medium"
           style={{
-            color: '#94A3B8',
+            color: '#64748B',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 500,
-            marginTop: '6px'
+            marginTop: '4px'
           }}
         >
           Ваш {tab === "AM" ? "утренний" : "вечерний"} ритуал готов · {items.length} шаг{items.length > 1 ? (items.length < 5 ? "а" : "ов") : ""}
         </div>
       </div>
 
-      {/* Tab switcher - glass style */}
+      {/* Tab switcher */}
       <div className="px-5 mb-4 relative z-10">
         <div 
-          className="inline-flex rounded-full p-0.5 backdrop-blur-[24px] border"
+          className="inline-flex rounded-full p-0.5 border"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            WebkitBackdropFilter: 'blur(24px)',
-            backdropFilter: 'blur(24px)',
-            borderColor: 'rgba(226, 232, 240, 0.1)',
-            borderWidth: '1px',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 16px rgba(0,0,0,0.3)'
+            backgroundColor: 'rgba(255, 255, 255, 0.6)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderColor: 'rgba(15, 118, 110, 0.2)',
+            borderWidth: '1px'
           }}
         >
           {(["AM", "PM"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 border ${
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                 tab === t ? 'active' : ''
               }`}
               style={{
                 ...(tab === t 
                   ? { 
-                      background: 'linear-gradient(90deg, rgba(10,95,110,0.8) 0%, rgba(10,95,110,0.6) 100%)',
-                      borderColor: '#E8E1D9',
-                      borderWidth: '1px',
-                      borderStyle: 'solid',
-                      color: '#E8E1D9',
-                      boxShadow: '0 0 12px rgba(232,225,217,0.2)'
+                      background: '#0F766E',
+                      color: 'white',
+                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 600
                     }
                   : { 
-                      color: '#94A3B8',
+                      color: '#0F766E',
                       backgroundColor: 'transparent',
-                      borderColor: 'transparent',
-                      borderWidth: '1px',
-                      borderStyle: 'solid'
+                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 500
                     }
-                ),
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 500
+                )
               }}
             >
               {t === "AM" ? "Утро" : "Вечер"}
@@ -723,12 +669,12 @@ export default function MobileSkinIQHome() {
           
       {/* Title Row */}
       <div 
-        className="flex justify-between items-center px-6 py-6 relative z-10"
+        className="flex justify-between items-center px-6 py-4 relative z-10"
       >
         <h2 
           className="text-[28px] font-black"
           style={{ 
-            color: '#FAFAFA',
+            color: '#334155',
             fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 900,
             letterSpacing: '-0.03em'
@@ -739,65 +685,55 @@ export default function MobileSkinIQHome() {
         <span 
           className="text-[18px] font-medium"
           style={{ 
-            color: completed === items.length && items.length > 0 
-              ? '#E8E1D9' 
-              : '#E8E1D9',
-            background: completed === items.length && items.length > 0
-              ? 'linear-gradient(to right, #E8E1D9, #D4C9B8)'
-              : 'transparent',
-            WebkitBackgroundClip: completed === items.length && items.length > 0 ? 'text' : 'unset',
-            WebkitTextFillColor: completed === items.length && items.length > 0 ? 'transparent' : '#E8E1D9',
-            textShadow: '0 0 8px rgba(232,225,217,0.5)',
+            color: '#0F766E',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 500
           }}
         >
           {completed}/{items.length} steps
         </span>
-            </div>
+      </div>
             
       {/* Divider line */}
       <div 
         className="mx-6 mb-4 h-px relative z-10"
-        style={{ backgroundColor: 'rgba(226, 232, 240, 0.1)' }}
+        style={{ backgroundColor: 'rgba(15, 118, 110, 0.2)' }}
       />
       
       {/* Dermatologist Tip */}
       <div 
-        className="mx-5 mb-4 p-4 rounded-2xl backdrop-blur-[32px] border relative z-10"
+        className="mx-5 mb-4 p-4 rounded-2xl border relative z-10"
         style={{
-          backgroundColor: 'rgba(18, 24, 36, 0.78)',
-          backdropFilter: 'blur(32px)',
-          WebkitBackdropFilter: 'blur(32px)',
-          borderColor: 'rgba(226, 232, 240, 0.1)',
+          backgroundColor: '#F0FDFB',
+          borderColor: '#CCFBF1',
           borderWidth: '1px',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.6)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
         }}
       >
         <div className="flex items-start gap-3">
           <div 
             className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
             style={{
-              backgroundColor: 'rgba(232, 225, 217, 0.15)',
-              border: '1px solid #E8E1D9',
-              color: '#E8E1D9',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+              backgroundColor: '#0F766E',
+              color: 'white',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 700
             }}
           >
             Tip
-              </div>
+          </div>
           <p 
             className="text-[14px] leading-relaxed flex-1"
             style={{
-              color: '#FAFAFA',
+              color: '#334155',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400
             }}
           >
             Сегодня идеальная влажность — после тонера подождите 60 секунд перед сывороткой
           </p>
-                  </div>
-                </div>
+        </div>
+      </div>
 
       {/* Steps */}
       <main className="px-5 pb-32 relative z-10">
@@ -823,7 +759,7 @@ export default function MobileSkinIQHome() {
                     boxShadow: '0 4px 12px rgba(15, 118, 110, 0.3)'
                   }}
                 >
-                  Нажмите, чтобы отметить выполненным
+                  Нажмите карточку → выполнен
                 </div>
                 {/* Arrow pointer */}
                 <div 
@@ -859,21 +795,19 @@ export default function MobileSkinIQHome() {
                 }
               }}
               onDoubleClick={openHowTo(index)}
-              className={`w-full flex items-center backdrop-blur-[24px] border rounded-[24px] p-[18px] transition-all duration-300 relative ${
+              className={`w-full flex items-center backdrop-blur-[32px] border rounded-[24px] p-[18px] transition-all duration-300 relative ${
                 isCompleted ? 'completed' : ''
               }`}
               style={{
                 animation: `fadeInUp 0.6s backwards`,
                 animationDelay: `${index * 0.1}s`,
-                backgroundColor: 'rgba(18, 24, 36, 0.78)',
-                WebkitBackdropFilter: 'blur(24px)',
-                backdropFilter: 'blur(24px)',
-                borderColor: 'rgba(226, 232, 240, 0.1)',
+                backgroundColor: 'rgba(255, 255, 255, 0.78)',
+                WebkitBackdropFilter: 'blur(32px)',
+                backdropFilter: 'blur(32px)',
+                borderColor: 'rgba(255, 255, 255, 0.4)',
                 borderWidth: '1px',
                 borderRadius: '24px',
-                boxShadow: isCompleted 
-                  ? '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px rgba(232,225,217,0.3)'
-                  : '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)'
+                boxShadow: '0 8px 32px rgba(0,0,0,0.06)'
               }}
             >
               {/* Product Image */}
@@ -889,7 +823,7 @@ export default function MobileSkinIQHome() {
                 <div 
                   className="text-[17px] font-medium truncate"
                   style={{ 
-                    color: '#BFC4CD',
+                    color: '#0F766E',
                     fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontWeight: 500,
                     letterSpacing: '-0.01em'
@@ -900,8 +834,7 @@ export default function MobileSkinIQHome() {
                 <div 
                   className="text-[19px] font-bold truncate mt-0.5"
                   style={{ 
-                    color: '#E8E1D9',
-                    textShadow: '0 0 4px rgba(232,225,217,0.3)',
+                    color: '#334155',
                     fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontWeight: 700,
                     letterSpacing: '-0.02em'
@@ -911,63 +844,59 @@ export default function MobileSkinIQHome() {
                 </div>
               </div>
 
-              {/* Chevron / Checkmark */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleAt(index)();
-                }}
-                className="ml-2 flex-shrink-0 w-10 h-10 flex items-center justify-center"
-                style={{ 
-                  color: '#E8E1D9',
-                  textShadow: isCompleted ? '0 0 12px rgba(232,225,217,0.6)' : 'none',
-                  animation: isCompleted ? 'pulseGlow 1s infinite' : 'none',
-                  fontSize: '28px',
-                  fontWeight: 300
-                }}
-              >
-                {isCompleted ? '✓' : '›'}
-              </button>
-
-              {/* Info button - bottom right */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openHowTo(index)();
-                }}
-                className="absolute right-4 bottom-3 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
-                style={{
-                  backgroundColor: 'rgba(232, 225, 217, 0.18)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  border: '1px solid #E8E1D9',
-                  color: '#E8E1D9',
-                  fontSize: '14px',
-                  fontWeight: 700,
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                  opacity: isCompleted ? 0.7 : 1,
-                  zIndex: 10,
-                  pointerEvents: 'auto'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(232, 225, 217, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(232, 225, 217, 0.18)';
-                }}
-              >
-                i
-              </button>
-
-              {/* Glow effect when completed */}
-              {isCompleted && (
-                <div 
-                  className="absolute inset-0 rounded-[24px] pointer-events-none"
-                  style={{
-                    boxShadow: '0 0 20px rgba(232,225,217,0.4)',
-                    animation: 'pulse 2s ease-in-out infinite'
+              {/* Step indicator - bottom right (i button or checkmark) */}
+              {!isCompleted ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openHowTo(index)();
                   }}
-                />
+                  className="absolute transition-all duration-300 hover:scale-110 active:scale-95"
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    bottom: '16px',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: 700,
+                    backgroundColor: 'rgba(15,118,110,0.12)',
+                    border: '1.5px solid #0F766E',
+                    color: '#0F766E',
+                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                    zIndex: 10,
+                    pointerEvents: 'auto'
+                  }}
+                >
+                  i
+                </button>
+              ) : (
+                <div
+                  className="absolute"
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    bottom: '16px',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: 700,
+                    backgroundColor: '#10B981',
+                    color: 'white',
+                    border: 'none',
+                    animation: 'fadeInUp 0.3s ease'
+                  }}
+                >
+                  ✓
+                </div>
               )}
             </button>
           </div>
@@ -975,27 +904,58 @@ export default function MobileSkinIQHome() {
         })}
       </main>
 
+      {/* Action Buttons - after cards */}
+      <div className="px-5 mt-6 mb-6 relative z-10 flex gap-3" style={{ marginTop: '24px', marginBottom: '24px' }}>
+        <button
+          onClick={() => navigate("/plan")}
+          className="flex-1 h-12 px-5 rounded-[16px] font-semibold text-base transition-all duration-200 hover:opacity-90 active:scale-95 border"
+          style={{
+            background: 'transparent',
+            border: '1.5px solid #0F766E',
+            color: '#0F766E',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 600
+          }}
+        >
+          Подробный план ухода →
+        </button>
+        <button
+          onClick={() => navigate("/quiz")}
+          className="flex-1 h-12 px-5 rounded-[16px] font-semibold text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          style={{
+            background: '#0F766E',
+            color: 'white',
+            border: 'none',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 600,
+            boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)'
+          }}
+        >
+          Пройти анкету заново →
+        </button>
+      </div>
+
       {/* Aura glow when all completed */}
       {completed === items.length && items.length > 0 && (
         <div 
           className="fixed inset-0 pointer-events-none z-20"
           style={{
-            background: 'radial-gradient(circle at center, rgba(232, 225, 217, 0.15) 0%, transparent 70%)',
+            background: 'radial-gradient(circle at center, rgba(15, 118, 110, 0.1) 0%, transparent 70%)',
             animation: 'pulse 1.5s ease-in-out'
           }}
         />
       )}
 
-      {/* Bottom Navigation - glass style */}
+      {/* Bottom Navigation - light style */}
       <nav 
         className="fixed bottom-0 left-0 right-0 backdrop-blur-[24px] border-t flex justify-around items-center py-4 z-30"
         style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
           WebkitBackdropFilter: 'blur(24px)',
           backdropFilter: 'blur(24px)',
-          borderTopColor: 'rgba(226, 232, 240, 0.1)',
+          borderTopColor: 'rgba(226, 232, 240, 0.4)',
           borderTopWidth: '1px',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 -8px 16px rgba(0,0,0,0.3)',
+          boxShadow: '0 -4px 16px rgba(0,0,0,0.06)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)'
         }}
       >
@@ -1004,7 +964,7 @@ export default function MobileSkinIQHome() {
           className="w-10 h-10 flex items-center justify-center transition-all duration-200"
           style={{ opacity: 0.6 }}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#FAFAFA' }}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#334155' }}>
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
@@ -1015,7 +975,7 @@ export default function MobileSkinIQHome() {
           className="w-10 h-10 flex items-center justify-center transition-all duration-200"
           style={{ opacity: 0.6 }}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#FAFAFA' }}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#334155' }}>
             <circle cx="11" cy="11" r="8" />
             <path d="M21 21l-4.35-4.35" />
           </svg>
@@ -1025,8 +985,8 @@ export default function MobileSkinIQHome() {
         <button 
           className="w-12 h-12 flex items-center justify-center rounded-full transition-all duration-200"
           style={{ 
-            color: '#E8E1D9',
-            filter: 'drop-shadow(0 0 12px rgba(232, 225, 217, 0.6))'
+            color: '#0F766E',
+            filter: 'drop-shadow(0 0 8px rgba(15, 118, 110, 0.3))'
           }}
         >
           <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1039,7 +999,7 @@ export default function MobileSkinIQHome() {
           className="w-10 h-10 flex items-center justify-center transition-all duration-200"
           style={{ opacity: 0.6 }}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#FAFAFA' }}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#334155' }}>
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
