@@ -6,19 +6,22 @@
 @tailwind utilities;
 
 :root {
-  /* Obsidian & White Gold — экспертная премиум-палитра */
-  --bg: #0C1219;                    /* Obsidian */
-  --card: rgba(18, 24, 36, 0.78);   /* Deep Slate Glass */
-  --card-border: rgba(226, 232, 240, 0.1); /* Platinum 10% opacity */
-  --accent: #E8E1D9;                /* White Gold (холодное) */
-  --accent-soft: #BFC4CD;           /* Soft Platinum */
-  --teal: #0A5F6E;                  /* Ice Teal */
-  --text: #FAFAFA;                  /* Pure White */
-  --text-secondary: #94A3B8;        /* Cool Gray */
+  /* Clinical White & Soft Teal — светлая экспертная премиум-палитра */
+  --bg: #FAFAFA;                    /* Clean White */
+  --card: rgba(255, 255, 255, 0.92); /* Soft Glass */
+  --card-border: #E4E4E7;          /* Light Gray */
+  --accent: #0F766E;               /* Deep Teal */
+  --accent-soft: #94A3B8;          /* Muted Teal */
+  --teal: #0F766E;                 /* Deep Teal */
+  --success: #10B981;              /* Success Green */
+  --text: #1F2937;                 /* Dark Gray */
+  --text-secondary: #94A3B8;       /* Muted Teal */
+  --tip-bg: #F0FDFB;               /* Light Teal bg */
+  --tip-border: #CCFBF1;           /* Light Teal border */
   
   /* Legacy support */
-  --premium-bg: #0C1219;
-  --premium-dark: #1e293b;
+  --premium-bg: #FAFAFA;
+  --premium-dark: #1F2937;
 }
 
 @layer base {

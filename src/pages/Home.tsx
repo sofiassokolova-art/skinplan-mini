@@ -365,6 +365,7 @@ export default function MobileSkinIQHome() {
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
   const [greeting, setGreeting] = useState('');
   const [userName, setUserName] = useState('друг');
+  const [hintShown, setHintShown] = useState(false);
 
   const items = tab === "AM" ? morning : evening;
   const completed = items.filter((i) => i.done).length;
@@ -373,6 +374,10 @@ export default function MobileSkinIQHome() {
   useEffect(() => {
     const quizDone = localStorage.getItem('skinQuizCompleted') === 'true';
     setHasCompletedQuiz(quizDone);
+    
+    // Check if hint was shown
+    const hintWasShown = localStorage.getItem('firstStepHintShown') === 'true';
+    setHintShown(hintWasShown);
     
     // Telegram ready
     const tg = (window as any)?.Telegram?.WebApp;
@@ -439,6 +444,12 @@ export default function MobileSkinIQHome() {
         navigator.vibrate(50);
       }
     }
+    
+    // Hide hint after first interaction
+    if (!hintShown && idx === 0) {
+      localStorage.setItem('firstStepHintShown', 'true');
+      setHintShown(true);
+    }
   };
 
   const openHowTo = (idx: number) => () => {
@@ -494,14 +505,36 @@ export default function MobileSkinIQHome() {
             transform: scale(1.02);
           }
         }
-        @keyframes pulseGlow { 
-          0%, 100% { 
+        @keyframes pulseGlow {
+          0%, 100% {
             opacity: 1;
             transform: scale(1);
           }
           50% {
             opacity: 0.7;
             transform: scale(1.1);
+          }
+        }
+        @keyframes pulse {
+          0% { 
+            transform: scale(0.9); 
+            opacity: 0.7; 
+          }
+          70% { 
+            transform: scale(1.1); 
+            opacity: 0; 
+          }
+          100% { 
+            transform: scale(0.9); 
+            opacity: 0; 
+          }
+        }
+        @keyframes bounce {
+          0%, 100% { 
+            transform: translateX(-50%) translateY(0); 
+          }
+          50% { 
+            transform: translateX(-50%) translateY(-6px); 
           }
         }
         @keyframes confetti {
@@ -749,9 +782,54 @@ export default function MobileSkinIQHome() {
       <main className="px-5 pb-32 relative z-10">
         {items.map((item, index) => {
           const isCompleted = item.done;
+          const isFirstUncompleted = index === 0 && !isCompleted && !hintShown;
           return (
+          <div key={item.id} className="relative mb-3">
+            {/* First step hint */}
+            {isFirstUncompleted && (
+              <div 
+                className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full mb-2 z-20"
+                style={{
+                  animation: 'bounce 2s infinite'
+                }}
+              >
+                <div 
+                  className="px-4 py-2 rounded-[20px] text-[13px] font-medium whitespace-nowrap"
+                  style={{
+                    background: '#0F766E',
+                    color: 'white',
+                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                    boxShadow: '0 4px 12px rgba(15, 118, 110, 0.3)'
+                  }}
+                >
+                  Нажмите, чтобы отметить выполненным
+                </div>
+                {/* Arrow pointer */}
+                <div 
+                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full"
+                  style={{
+                    width: 0,
+                    height: 0,
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderTop: '6px solid #0F766E'
+                  }}
+                />
+                {/* Pulse ring */}
+                <div 
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    border: '3px solid #0F766E',
+                    borderRadius: '50%',
+                    animation: 'pulse 2s infinite',
+                    transform: 'scale(1.2)',
+                    opacity: 0.5
+                  }}
+                />
+              </div>
+            )}
+            
           <button 
-              key={item.id}
               onClick={() => {
                 toggleAt(index)();
                 // Micro-confetti on completion
@@ -760,7 +838,7 @@ export default function MobileSkinIQHome() {
                 }
               }}
               onDoubleClick={openHowTo(index)}
-              className={`w-full flex items-center backdrop-blur-[24px] border rounded-[24px] p-[18px] mb-3 transition-all duration-300 relative ${
+              className={`w-full flex items-center backdrop-blur-[24px] border rounded-[24px] p-[18px] transition-all duration-300 relative ${
                 isCompleted ? 'completed' : ''
               }`}
               style={{
@@ -871,6 +949,7 @@ export default function MobileSkinIQHome() {
                 />
               )}
             </button>
+          </div>
           );
         })}
       </main>
