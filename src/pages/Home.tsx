@@ -435,6 +435,30 @@ export default function MobileSkinIQHome() {
     }
   }, []);
 
+  // Celebration when all completed - BEFORE conditional returns (hook rule!)
+  useEffect(() => {
+    if (hasCompletedQuiz !== true) return;
+    
+    const currentItems = tab === "AM" ? morning : evening;
+    const currentCompleted = currentItems?.filter((i) => i.done)?.length || 0;
+    
+    if (currentItems && currentItems.length > 0 && currentCompleted === currentItems.length) {
+      // Confetti animation
+      const particles = Array.from({ length: 12 }, (_, i) => ({
+        id: Date.now() + i,
+        x: Math.random() * 100,
+        y: Math.random() * 100
+      }));
+      setConfetti(particles);
+      setTimeout(() => setConfetti([]), 800);
+      
+      // Haptic feedback
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+    }
+  }, [tab, morning, evening, hasCompletedQuiz]);
+
   // Celebration when all completed - must be BEFORE conditional returns
   useEffect(() => {
     if (hasCompletedQuiz !== true) return;
