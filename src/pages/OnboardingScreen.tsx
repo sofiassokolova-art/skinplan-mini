@@ -60,13 +60,16 @@ export default function OnboardingScreen() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'flex-start'
+            justifyContent: 'flex-start',
+            width: '100%'
           }}
         >
-          {/* Logo - SkinIQ 44sp */}
+          {/* Logo - SkinIQ 44sp, отступ сверху 44px */}
           <div 
             className="mb-6"
             style={{
+              marginTop: '0',
+              marginBottom: '24px',
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
               transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s',
@@ -76,7 +79,7 @@ export default function OnboardingScreen() {
             <SkinIQLogo size={44} />
           </div>
 
-          {/* Title - 38sp bold, 3 lines, line-height 1.1, appears later */}
+          {/* Title - 38sp bold, 3 lines, line-height 1.1, appears later (staggered) */}
           <h1 
             className="leading-tight mb-6"
             style={{
@@ -88,8 +91,8 @@ export default function OnboardingScreen() {
               marginBottom: '24px',
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
-              transition: 'opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s',
-              transitionDelay: '0.4s'
+              transition: 'opacity 0.6s ease-out 0.5s, transform 0.6s ease-out 0.5s',
+              transitionDelay: '0.5s'
             }}
           >
             Получите план ухода<br />
@@ -109,16 +112,16 @@ export default function OnboardingScreen() {
               marginBottom: '24px',
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
-              transition: 'opacity 0.5s ease-out 0.6s, transform 0.5s ease-out 0.6s',
-              transitionDelay: '0.6s'
+              transition: 'opacity 0.5s ease-out 0.7s, transform 0.5s ease-out 0.7s',
+              transitionDelay: '0.7s'
             }}
           >
             Персональная программа от дипломированного специалиста
           </p>
 
-          {/* Benefits list - 3 items with green circles */}
+          {/* Benefits list - 3 items with green circles, 28px spacing */}
           <div 
-            className="w-full space-y-7"
+            className="w-full"
             style={{
               width: '100%',
               marginTop: '24px',
@@ -136,20 +139,22 @@ export default function OnboardingScreen() {
                 style={{
                   opacity: mounted ? 1 : 0,
                   transform: mounted ? 'translateX(0)' : 'translateX(-10px)',
-                  transition: `opacity 0.4s ease-out ${0.8 + index * 0.15}s, transform 0.4s ease-out ${0.8 + index * 0.15}s`,
-                  transitionDelay: `${0.8 + index * 0.15}s`,
-                  marginBottom: '28px'
+                  transition: `opacity 0.4s ease-out ${0.9 + index * 0.15}s, transform 0.4s ease-out ${0.9 + index * 0.15}s`,
+                  transitionDelay: `${0.9 + index * 0.15}s`,
+                  marginBottom: '28px',
+                  justifyContent: 'flex-start',
+                  alignItems: 'flex-start'
                 }}
               >
                 <div 
-                  className="flex-shrink-0 mt-1"
+                  className="flex-shrink-0"
                   style={{
                     width: '8px',
                     height: '8px',
                     borderRadius: '50%',
                     backgroundColor: '#0A5F59',
                     flexShrink: 0,
-                    marginTop: '8px'
+                    marginTop: '9px'
                   }}
                 />
                 <span 
@@ -169,7 +174,7 @@ export default function OnboardingScreen() {
           </div>
         </div>
 
-        {/* Button - inside card, bottom */}
+        {/* Button - inside card, bottom, отступ снизу 32px */}
         <button 
           onClick={handleGetPlan}
           className="w-full rounded-[28px] text-[19px] font-medium transition-all duration-200 active:scale-[0.98] relative overflow-hidden"
@@ -188,8 +193,8 @@ export default function OnboardingScreen() {
             marginBottom: '32px',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'opacity 0.5s ease-out 1.3s, transform 0.5s ease-out 1.3s',
-            transitionDelay: '1.3s',
+            transition: 'opacity 0.5s ease-out 1.4s, transform 0.5s ease-out 1.4s',
+            transitionDelay: '1.4s',
             cursor: 'pointer'
           }}
         >
@@ -197,7 +202,7 @@ export default function OnboardingScreen() {
         </button>
       </div>
 
-      {/* Secondary link - outside card, below */}
+      {/* Secondary link - outside card, below, centered */}
       <button
         onClick={() => navigate('/plan')}
         className="text-center text-[15px] transition-all duration-200 active:opacity-70"
@@ -214,10 +219,10 @@ export default function OnboardingScreen() {
           padding: '8px',
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'translateX(-50%)' : 'translateX(-50%) translateY(10px)',
-          transition: 'opacity 0.5s ease-out 1.5s, transform 0.5s ease-out 1.5s',
-          transitionDelay: '1.5s',
+          transition: 'opacity 0.5s ease-out 1.6s, transform 0.5s ease-out 1.6s',
+          transitionDelay: '1.6s',
           position: 'absolute',
-          bottom: '24px',
+          bottom: '20px',
           left: '50%'
         }}
       >
