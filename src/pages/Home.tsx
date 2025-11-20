@@ -201,7 +201,7 @@ const eveningDefault = [
 ];
 
 // ----- Visual components -----
-function ProgressRing({ completed = 0, total = 5, size = 100, stroke = 2 }: { completed?: number; total?: number; size?: number; stroke?: number }) {
+function ProgressRing({ completed = 0, total = 5, size = 100, stroke = 3 }: { completed?: number; total?: number; size?: number; stroke?: number }) {
   const value = total > 0 ? (completed / total) * 100 : 0;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -239,7 +239,7 @@ function ProgressRing({ completed = 0, total = 5, size = 100, stroke = 2 }: { co
           strokeWidth={stroke} 
           fill="none"
         />
-          {/* Progress circle - gold with glow */}
+          {/* Progress circle - gold 3px with glow */}
         <circle 
         cx={size / 2}
         cy={size / 2}
@@ -253,7 +253,7 @@ function ProgressRing({ completed = 0, total = 5, size = 100, stroke = 2 }: { co
           strokeDashoffset: offset, 
               transition: "stroke-dashoffset 800ms cubic-bezier(0.22,1,0.36,1)",
               transformOrigin: "center",
-              filter: 'drop-shadow(0 0 6px rgba(212, 165, 116, 0.5))'
+              filter: 'drop-shadow(0 0 8px rgba(212, 165, 116, 0.6))'
         }}
       />
         </svg>
@@ -306,17 +306,18 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
   
   return (
     <div 
-      className="backdrop-blur-[20px] border h-[88px] px-5 flex items-center gap-4 select-none transition-all duration-300 animate-card-appear relative overflow-hidden"
+      className="backdrop-blur-[22px] border h-[88px] px-5 flex items-center gap-4 select-none transition-all duration-300 animate-card-appear relative overflow-hidden"
       style={{ 
         animationDelay: `${index * 50}ms`,
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        backgroundColor: 'rgba(255, 255, 255, 0.07)',
         borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: '1px',
         borderTopWidth: index === 0 ? '1px' : '0px',
         borderBottomWidth: '1px',
         borderLeftWidth: '0px',
         borderRightWidth: '0px',
-        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.4)',
+        borderRadius: index === 0 ? '24px 24px 0 0' : index === 3 ? '0 0 24px 24px' : '0',
+        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)',
         opacity: isCompleted ? 1 : 0.9
       }}
     >
@@ -344,9 +345,9 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
         )}
           </div>
       
-      {/* Icon - larger with inner glow and gold glow */}
+      {/* Icon - увеличенные 64-72px с gold glow */}
       <div 
-        className="w-14 h-14 flex items-center justify-center flex-shrink-0 rounded-xl relative"
+        className="w-16 h-16 sm:w-18 sm:h-18 flex items-center justify-center flex-shrink-0 rounded-xl relative"
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.03)',
           boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.1)'
@@ -356,36 +357,39 @@ function RoutineCard({ item, index, onToggle, onOpen }: { item: RoutineItem; ind
           <img 
             src={item.icon} 
             alt="" 
-            className="w-12 h-12 object-contain" 
+            className="w-16 h-16 sm:w-18 sm:h-18 object-contain" 
             style={{ 
               filter: isCompleted 
-                ? 'opacity(0.6) drop-shadow(0 0 4px rgba(212, 165, 116, 0.4))' 
-                : 'drop-shadow(0 0 2px rgba(212, 165, 116, 0.2))' 
+                ? 'opacity(0.6) drop-shadow(0 0 6px rgba(212, 165, 116, 0.5))' 
+                : 'drop-shadow(0 0 4px rgba(212, 165, 116, 0.3))' 
             }} 
           />
         ) : (
-          <div className="w-12 h-12 bg-gray-700 rounded-lg opacity-30" />
+          <div className="w-16 h-16 sm:w-18 sm:h-18 bg-gray-700 rounded-lg opacity-30" />
         )}
       </div>
       
       {/* Content */}
       <button onClick={onOpen} className="flex-1 min-w-0 text-left">
         <div 
-          className={`text-[16px] font-medium truncate transition-all leading-tight ${isCompleted ? 'line-through' : ''}`}
+          className={`text-[17px] font-medium truncate transition-all leading-tight ${isCompleted ? 'line-through' : ''}`}
           style={{ 
             color: isCompleted ? '#D4A574' : '#E5E5E5',
             fontFamily: '"Inter", -apple-system, sans-serif',
-            fontWeight: isCompleted ? 400 : 500,
+            fontWeight: 500,
             textDecorationColor: 'rgba(212, 165, 116, 0.5)'
           }}
         >
           {item.title}
         </div>
         <div 
-          className={`text-[14px] truncate mt-1 ${isCompleted ? 'line-through' : ''}`}
+          className={`text-[15px] truncate mt-1 ${isCompleted ? 'line-through' : ''}`}
           style={{ 
             color: '#A0A0A0',
             lineHeight: '1.4',
+            opacity: 0.8,
+            fontFamily: '"Inter", -apple-system, sans-serif',
+            fontWeight: 400,
             textDecorationColor: 'rgba(212, 165, 116, 0.3)'
           }}
         >
@@ -601,20 +605,22 @@ export default function MobileSkinIQHome() {
       className="w-full min-h-screen relative overflow-x-hidden pb-16 sm:pb-20"
       style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 72px)` }}
     >
-      {/* Background - dark premium #0A0E12 with subtle noise texture */}
+      {/* Background - dark premium #0A0E12 with noise texture */}
       <div 
         className="fixed inset-0 -z-10"
         style={{
-          background: 'linear-gradient(180deg, #0A0E12 0%, #0D1216 100%)',
+          background: 'linear-gradient(180deg, #0A0E12 0%, #0B1215 100%)',
           position: 'relative'
         }}
       >
-        {/* Subtle noise overlay for texture */}
+        {/* Noise overlay for texture - opacity 4-6% */}
         <div 
-          className="absolute inset-0 opacity-[0.015]"
+          className="absolute inset-0"
           style={{
+            opacity: 0.05,
             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            backgroundSize: '200px 200px'
+            backgroundSize: '200px 200px',
+            pointerEvents: 'none'
           }}
         />
       </div>
@@ -680,6 +686,16 @@ export default function MobileSkinIQHome() {
             opacity: 1;
           }
         }
+        @keyframes auraGlow {
+          0%, 100% {
+            opacity: 0.1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.2;
+            transform: scale(1.05);
+          }
+        }
         @keyframes skeleton-loading {
           0% {
             background-position: -200px 0;
@@ -712,122 +728,123 @@ export default function MobileSkinIQHome() {
         />
       </div>
 
-      {/* Top section - glass panel with greeting and stats (40% height) */}
+      {/* Top section - thin glass panel with greeting and stats (компактная) */}
       <div className="mx-4 mt-16 mb-5">
-        {/* Glass panel */}
+        {/* Glass panel - компактная панель без огромного круга */}
         <div 
-          className="backdrop-blur-[30px] border rounded-3xl p-5 relative overflow-hidden"
+          className="backdrop-blur-[24px] border rounded-[24px] p-4 relative overflow-hidden"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderColor: 'rgba(255, 255, 255, 0.12)',
-            borderWidth: '0.5px',
-            boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.6)',
-            minHeight: '35vh',
-            maxHeight: '40vh'
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: '1px',
+            borderRadius: '24px',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
           }}
         >
-          {/* Top row: Greeting + Stats */}
-          <div className="mb-4">
+          {/* Top row: Greeting + Skin Score крупно */}
+          <div className="flex items-start justify-between mb-3">
             <div 
-              className="text-[24px] font-bold mb-3 leading-tight"
-              style={{ color: '#D4A574', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}
+              className="text-[22px] font-bold leading-tight"
+              style={{ 
+                color: '#D4A574', 
+                fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+                fontWeight: 600
+              }}
             >
               {greeting}, {userName.split(' ')[0]}
           </div>
           
-            {/* Stats row */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <div 
-                  className="text-[15px] font-medium"
-                  style={{ color: '#E5E5E5' }}
-                >
-                  Skin Score:
+            {/* Skin Score - Bold 32-36pt */}
+            <div className="flex items-baseline gap-1.5">
+              <div 
+                className="text-[32px] font-bold tabular-nums leading-none"
+                style={{ 
+                  color: '#D4A574',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+                  fontWeight: 700
+                }}
+              >
+                87/100
             </div>
-                <div 
-                  className="text-[15px] font-medium"
-                  style={{ color: '#D4A574' }}
-                >
-                  87/100
-                </div>
-                <div 
-                  className="text-[13px] font-regular"
-                  style={{ color: '#D4A574' }}
-                >
-                  ↑2
-                </div>
-              </div>
               <div 
-                className="text-[13px] font-regular"
-                style={{ color: '#A0A0A0' }}
+                className="text-[14px] font-medium"
+                style={{ color: '#D4A574' }}
               >
-                •
-              </div>
-              <div className="flex items-center gap-1">
-                <div 
-                  className="text-[13px] font-regular"
-                  style={{ color: '#A0A0A0' }}
-                >
-                  Гидратация
-                </div>
-                <div className="w-12 h-1.5 rounded-full overflow-hidden backdrop-blur-[5px]" style={{ backgroundColor: 'rgba(13, 74, 82, 0.3)', border: '0.5px solid rgba(13, 74, 82, 0.5)' }}>
-                  <div className="h-full rounded-full" style={{ width: '82%', backgroundColor: '#0D4A52', boxShadow: '0 0 8px rgba(13, 74, 82, 0.6)' }} />
-                </div>
-                <div 
-                  className="text-[13px] font-regular"
-                  style={{ color: '#A0A0A0' }}
-                >
-                  82%
-                </div>
-              </div>
-              <div 
-                className="text-[13px] font-regular"
-                style={{ color: '#A0A0A0' }}
-              >
-                •
-              </div>
-              <div 
-                className="text-[13px] font-regular"
-                style={{ color: '#A0A0A0' }}
-              >
-                Воспаление – 6%
+                ↑2
           </div>
         </div>
       </div>
 
-          {/* Progress Ring - compact, centered */}
-          <div className="flex justify-center items-center mt-4">
-            <ProgressRing completed={completed} total={items.length} size={100} stroke={2} />
+          {/* Stats row - метрики */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1">
+              <div 
+                className="text-[13px] font-regular"
+                style={{ color: '#A0A0A0' }}
+              >
+                Гидратация
         </div>
+              <div className="w-12 h-1.5 rounded-full overflow-hidden backdrop-blur-[5px]" style={{ backgroundColor: 'rgba(13, 74, 82, 0.3)', border: '0.5px solid rgba(13, 74, 82, 0.5)' }}>
+                <div className="h-full rounded-full" style={{ width: '82%', backgroundColor: '#0D4A52', boxShadow: '0 0 8px rgba(13, 74, 82, 0.6)' }} />
+              </div>
+              <div 
+                className="text-[13px] font-regular"
+                style={{ color: '#A0A0A0' }}
+              >
+                82%
+              </div>
+            </div>
+            <div 
+              className="text-[13px] font-regular"
+              style={{ color: '#A0A0A0' }}
+            >
+              •
+            </div>
+            <div 
+              className="text-[13px] font-regular"
+              style={{ color: '#A0A0A0' }}
+            >
+              Воспаление – 6%
+            </div>
+          </div>
+        </div>
+        
+        {/* Progress Ring - отдельно под панелью, компактный */}
+        <div className="flex justify-center items-center mt-4">
+          <ProgressRing completed={completed} total={items.length} size={100} stroke={3} />
         </div>
       </div>
 
       {/* Main Panel */}
       <section className="relative z-20 mx-4 overflow-visible">
-        {/* SegmentedButton AM/PM - thin glass strip with glow */}
+        {/* SegmentedButton AM/PM - тонкая стеклянная пилюля */}
         <div 
-          className="mb-5 rounded-2xl p-0.5 grid grid-cols-2 h-10 backdrop-blur-[25px] border relative"
+          className="mb-5 rounded-full p-0.5 grid grid-cols-2 h-10 backdrop-blur-[22px] border relative w-fit mx-auto"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-            borderColor: 'rgba(255, 255, 255, 0.12)',
-            borderWidth: '0.5px',
-            boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.4)'
+            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: '1px',
+            borderRadius: '999px',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)',
+            width: 'fit-content',
+            margin: '0 auto'
           }}
         >
           {["AM", "PM"].map((t) => (
             <button
               key={t}
               onClick={() => handleTabChange(t)}
-              className={`relative rounded-xl text-[14px] font-medium transition-all duration-300 overflow-hidden ${
+              className={`relative rounded-full text-[14px] font-medium transition-all duration-300 overflow-hidden px-6 ${
                 tab === t
                   ? " font-medium"
                   : " bg-transparent"
               }`}
               style={tab === t 
                 ? { 
-                    backgroundColor: 'rgba(212, 165, 116, 0.2)',
+                    backgroundColor: 'rgba(212, 165, 116, 0.15)',
                     color: '#D4A574',
-                    boxShadow: '0 0 16px rgba(212, 165, 116, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1)'
+                    boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.1)',
+                    filter: 'drop-shadow(0 0 4px rgba(212, 165, 116, 0.3))'
                   }
                 : { 
                     color: '#A0A0A0',
@@ -840,14 +857,15 @@ export default function MobileSkinIQHome() {
           ))}
         </div>
 
-        {/* Routine list - dark glass container */}
+        {/* Routine list - glass container с правильными параметрами */}
         <div 
-          className="mb-5 backdrop-blur-[25px] border rounded-3xl overflow-hidden fade-in-routine"
+          className="mb-5 backdrop-blur-[22px] border rounded-[24px] overflow-hidden fade-in-routine"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-            borderColor: 'rgba(255, 255, 255, 0.12)',
-            borderWidth: '0.5px',
-            boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.6)'
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: '1px',
+            borderRadius: '24px',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
           }}
           key={fadeKey}
         >
@@ -885,20 +903,21 @@ export default function MobileSkinIQHome() {
           <div className="mb-6 mt-6 animate-onboarding-fade-in" style={{ animationDelay: '300ms' }}>
             {/* Вариант А: две кнопки в ряд (большие экраны) */}
             <div className="hidden sm:flex gap-3 w-full">
-              {/* Outlined кнопка - AI Skin Scan */}
+              {/* AI Skin Scan - glass с градиентом teal → gold */}
               <button
                 onClick={() => navigate("/quiz")}
-                className="flex-1 h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-90 active:scale-[0.98] backdrop-blur-[25px] border relative overflow-hidden"
+                className="flex-1 h-14 rounded-[24px] font-medium text-[16px] transition-all duration-200 hover:opacity-90 active:scale-[0.98] backdrop-blur-[22px] border relative overflow-hidden"
                 style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  background: 'linear-gradient(135deg, rgba(13, 74, 82, 0.4) 0%, rgba(212, 165, 116, 0.2) 100%)',
                   borderColor: 'rgba(212, 165, 116, 0.3)',
                   borderWidth: '1px',
+                  borderRadius: '24px',
                   color: '#D4A574',
-                  boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.4)'
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
                 }}
               >
                 <div className="flex items-center justify-center gap-2">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 4px rgba(212, 165, 116, 0.4))' }}>
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                     <circle cx="12" cy="13" r="4" />
                   </svg>
@@ -939,20 +958,21 @@ export default function MobileSkinIQHome() {
                 Подробный план →
           </button>
               
-              {/* Outlined кнопка - AI Skin Scan (вторая) */}
+              {/* AI Skin Scan - glass с градиентом (вторая) */}
           <button 
             onClick={() => navigate("/quiz")}
-                className="w-full h-14 rounded-2xl font-medium text-[16px] transition-all duration-200 hover:opacity-90 active:scale-[0.98] backdrop-blur-[25px] border relative overflow-hidden"
+                className="w-full h-14 rounded-[24px] font-medium text-[16px] transition-all duration-200 hover:opacity-90 active:scale-[0.98] backdrop-blur-[22px] border relative overflow-hidden"
                 style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  background: 'linear-gradient(135deg, rgba(13, 74, 82, 0.4) 0%, rgba(212, 165, 116, 0.2) 100%)',
                   borderColor: 'rgba(212, 165, 116, 0.3)',
                   borderWidth: '1px',
+                  borderRadius: '24px',
                   color: '#D4A574',
-                  boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.4)'
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
                 }}
               >
                 <div className="flex items-center justify-center gap-2">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 4px rgba(212, 165, 116, 0.4))' }}>
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                     <circle cx="12" cy="13" r="4" />
                   </svg>
@@ -988,14 +1008,15 @@ export default function MobileSkinIQHome() {
           </div>
         )}
 
-        {/* Совет косметолога - dark glass card */}
+        {/* Совет косметолога - floating glass блок */}
         <div 
-          className="mt-6 mb-20 backdrop-blur-[25px] border rounded-3xl p-5 relative overflow-hidden"
+          className="mt-6 mb-20 backdrop-blur-[22px] border rounded-[24px] p-5 relative overflow-hidden"
           style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderColor: 'rgba(255, 255, 255, 0.12)',
-            borderWidth: '0.5px',
-            boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.6)'
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            borderWidth: '1px',
+            borderRadius: '24px',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 16px rgba(0, 0, 0, 0.3)'
           }}
         >
           <div className="flex items-start gap-4">
