@@ -1836,10 +1836,24 @@ export default function Quiz() {
   }, []);
 
 
-  const currentStep = screens[currentStepIndex];
+  // Безопасная проверка индекса
+  const safeIndex = Math.max(0, Math.min(currentStepIndex, screens.length - 1));
+  const currentStep = screens[safeIndex];
   
+  // Если индекс выходит за границы, сбрасываем на последний шаг
+  useEffect(() => {
+    if (currentStepIndex >= screens.length || currentStepIndex < 0) {
+      console.warn('Invalid step index, resetting:', { currentStepIndex, screensLength: screens.length });
+      const safeIndex = Math.max(0, Math.min(currentStepIndex, screens.length - 1));
+      if (safeIndex !== currentStepIndex) {
+        setCurrentStepIndex(safeIndex);
+      }
+    }
+  }, [currentStepIndex]);
+
   // Проверка валидности текущего шага
   const isStepValid = useMemo(() => {
+    if (!currentStep) return false;
     if (currentStep.kind === "info") return true;
     if (currentStep.kind !== "question") return true;
     if (!currentStep.required) return true;
@@ -1858,11 +1872,22 @@ export default function Quiz() {
       let nextIndex = currentStepIndex + 1;
       
       // Пропускаем вопрос о беременности для мужчин
-      if (screens[nextIndex]?.id === "pregnancy_status" && answers.gender === "Мужской") {
+      // Проверяем, что следующий индекс валиден
+      while (nextIndex < screens.length && screens[nextIndex]?.id === "pregnancy_status" && answers.gender === "Мужской") {
         nextIndex++;
       }
       
-      setCurrentStepIndex(nextIndex);
+      // Проверяем, что индекс не выходит за границы
+      if (nextIndex >= screens.length) {
+        // Достигли конца, показываем экран загрузки
+        setIsAnalyzing(true);
+        setTimeout(() => {
+          localStorage.setItem('skinQuizCompleted', 'true');
+          navigate("/plan");
+        }, 5000);
+      } else {
+        setCurrentStepIndex(nextIndex);
+      }
     } else {
       // Показываем экран загрузки на 5 секунд перед планом
       setIsAnalyzing(true);
@@ -1879,11 +1904,18 @@ export default function Quiz() {
       let prevIndex = currentStepIndex - 1;
       
       // Пропускаем вопрос о беременности для мужчин при возврате
-      if (screens[prevIndex]?.id === "pregnancy_status" && answers.gender === "Мужской") {
+      // Проверяем, что предыдущий индекс валиден
+      while (prevIndex >= 0 && screens[prevIndex]?.id === "pregnancy_status" && answers.gender === "Мужской") {
         prevIndex--;
       }
       
-      setCurrentStepIndex(prevIndex);
+      // Проверяем, что индекс не отрицательный
+      if (prevIndex >= 0) {
+        setCurrentStepIndex(prevIndex);
+      } else {
+        // Если дошли до начала, остаемся на первом шаге
+        setCurrentStepIndex(0);
+      }
     }
   };
 
@@ -1938,7 +1970,7 @@ export default function Quiz() {
           isPageLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}
       >
-        {currentStep.kind === "question" && <ProgressBar currentStepIndex={currentStepIndex} />}
+        {currentStep && currentStep.kind === "question" && <ProgressBar currentStepIndex={currentStepIndex} />}
 
         <div className="relative w-full max-w-2xl mx-auto">
           {/* Main glassmorphism container */}
@@ -1952,7 +1984,17 @@ export default function Quiz() {
             
             {/* Content */}
             <div className="relative z-10">
-        {currentStep.kind === "question" ? (
+        {!currentStep ? (
+          <div className="text-center py-8">
+            <p className="text-gray-600 mb-4">Загрузка...</p>
+            <button
+              onClick={() => setCurrentStepIndex(0)}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Начать заново
+            </button>
+          </div>
+        ) : currentStep.kind === "question" ? (
             <div>
             <h1 className="text-[18px] font-semibold text-gray-900 mb-4 text-center leading-tight">
                 {currentStep.title}
