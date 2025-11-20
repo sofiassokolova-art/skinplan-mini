@@ -13,27 +13,15 @@ export default function OnboardingScreen() {
     <div 
       className="min-h-screen relative"
       style={{
-        background: '#0C1219',
-        color: 'white',
-        position: 'relative',
+        background: '#FAFAFA',
         padding: '40px 24px',
         display: 'flex',
-        flexDirection: 'column',
+        alignItems: 'center',
         justifyContent: 'center'
       }}
     >
-      {/* Noise overlay */}
       <div 
-        className="fixed inset-0 pointer-events-none z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          backgroundSize: '200px 200px',
-          opacity: 0.04
-        }}
-      />
-
-      <div 
-        className="relative z-10 max-w-[380px] mx-auto text-center"
+        className="max-w-[380px] text-center"
       >
         <h1 
           className="text-[36px] font-extrabold leading-tight mb-4"
@@ -41,17 +29,16 @@ export default function OnboardingScreen() {
             fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 800,
             lineHeight: 1.15,
-            color: '#FAFAFA'
+            color: '#0F766E',
+            marginBottom: '16px'
           }}
         >
           {greeting},<br />
           <span 
             style={{
-              background: 'linear-gradient(90deg, #E8E1D9, #D4C9B8)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: '#1E293B',
               fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 800
+              fontWeight: 900
             }}
           >
             {name}
@@ -61,9 +48,10 @@ export default function OnboardingScreen() {
         <p 
           className="text-[18px] mb-10"
           style={{
-            color: '#94A3B8',
+            color: '#475569',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            lineHeight: 1.5
+            lineHeight: 1.5,
+            marginBottom: '40px'
           }}
         >
           Получите персональный план ухода<br />
@@ -71,32 +59,36 @@ export default function OnboardingScreen() {
         </p>
 
         <div 
-          className="text-left rounded-2xl p-5 mb-12 backdrop-blur-[32px] border"
+          className="text-left rounded-[20px] p-6 mb-12"
           style={{
-            background: 'rgba(18,24,36,0.78)',
-            backdropFilter: 'blur(32px)',
-            WebkitBackdropFilter: 'blur(32px)',
-            border: '1px solid rgba(226, 232, 240, 0.1)',
-            borderRadius: '24px',
-            fontSize: '16px',
-            color: '#CBD5E1',
+            background: 'white',
+            border: '1px solid #E2E8F0',
+            borderRadius: '20px',
+            padding: '24px',
+            marginBottom: '48px',
+            textAlign: 'left',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
           }}
         >
           <div 
-            className="relative pl-7 mb-4"
+            className="relative pl-8 mb-4 text-[16px]"
             style={{
               position: 'relative',
-              paddingLeft: '28px'
+              paddingLeft: '32px',
+              marginBottom: '16px',
+              fontSize: '16px',
+              color: '#334155'
             }}
           >
             <span 
-              className="absolute left-0 font-bold"
+              className="absolute left-0 font-bold text-[18px]"
               style={{
                 position: 'absolute',
                 left: 0,
-                color: '#E8E1D9',
-                fontWeight: 700
+                color: '#10B981',
+                fontWeight: 700,
+                fontSize: '18px'
               }}
             >
               ✓
@@ -104,19 +96,23 @@ export default function OnboardingScreen() {
             Точная диагностика типа и состояния кожи
           </div>
           <div 
-            className="relative pl-7 mb-4"
+            className="relative pl-8 mb-4 text-[16px]"
             style={{
               position: 'relative',
-              paddingLeft: '28px'
+              paddingLeft: '32px',
+              marginBottom: '16px',
+              fontSize: '16px',
+              color: '#334155'
             }}
           >
             <span 
-              className="absolute left-0 font-bold"
+              className="absolute left-0 font-bold text-[18px]"
               style={{
                 position: 'absolute',
                 left: 0,
-                color: '#E8E1D9',
-                fontWeight: 700
+                color: '#10B981',
+                fontWeight: 700,
+                fontSize: '18px'
               }}
             >
               ✓
@@ -124,19 +120,22 @@ export default function OnboardingScreen() {
             Ритуалы утром и вечером под ваш тип
           </div>
           <div 
-            className="relative pl-7"
+            className="relative pl-8 text-[16px]"
             style={{
               position: 'relative',
-              paddingLeft: '28px'
+              paddingLeft: '32px',
+              fontSize: '16px',
+              color: '#334155'
             }}
           >
             <span 
-              className="absolute left-0 font-bold"
+              className="absolute left-0 font-bold text-[18px]"
               style={{
                 position: 'absolute',
                 left: 0,
-                color: '#E8E1D9',
-                fontWeight: 700
+                color: '#10B981',
+                fontWeight: 700,
+                fontSize: '18px'
               }}
             >
               ✓
@@ -147,14 +146,18 @@ export default function OnboardingScreen() {
 
         <button 
           onClick={() => navigate('/quiz')}
-          className="w-full h-14 rounded-[22px] font-semibold text-lg mb-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full h-14 rounded-[20px] font-semibold text-lg mb-4 transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
           style={{
-            background: 'linear-gradient(90deg, #E8E1D9, #D4C9B8)',
-            color: '#0C1219',
+            background: '#0F766E',
+            color: 'white',
             border: 'none',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 600,
-            boxShadow: '0 12px 30px rgba(232,225,217,0.3)'
+            fontSize: '18px',
+            padding: '18px',
+            borderRadius: '20px',
+            marginBottom: '16px',
+            boxShadow: '0 8px 25px rgba(15,118,110,0.2)'
           }}
         >
           Пройти диагностику кожи →
@@ -164,8 +167,10 @@ export default function OnboardingScreen() {
           onClick={() => navigate('/plan')}
           className="text-[15px] underline bg-transparent border-none transition-all duration-200 hover:opacity-70"
           style={{
-            color: '#94A3B8',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+            color: '#64748B',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontSize: '15px',
+            textDecoration: 'underline'
           }}
         >
           Посмотреть пример плана
