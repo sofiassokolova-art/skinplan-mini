@@ -167,6 +167,12 @@ const eveningDefault: RoutineItem[] = [
 // ----- BottomSheet Component -----
 function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => void; item: RoutineItem | null }) {
   if (!open || !item) return null;
+  
+  // Additional safety check
+  if (!item.howto) {
+    console.warn('BottomSheet: item.howto is missing', item);
+    return null;
+  }
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -464,8 +470,17 @@ export default function MobileSkinIQHome() {
   };
 
   const openHowTo = (idx: number) => () => {
-    setSheetItem(items[idx]);
-    setSheetOpen(true);
+    try {
+      const selectedItem = items[idx];
+      if (selectedItem && selectedItem.howto) {
+        setSheetItem(selectedItem);
+        setSheetOpen(true);
+      } else {
+        console.warn('openHowTo: item or howto is missing', { idx, item: selectedItem });
+      }
+    } catch (error) {
+      console.error('Error opening how-to:', error);
+    }
   };
 
 
