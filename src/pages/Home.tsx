@@ -373,9 +373,6 @@ export default function MobileSkinIQHome() {
   const [userName, setUserName] = useState('друг');
   const [hintShown, setHintShown] = useState(false);
 
-  const items = tab === "AM" ? morning : evening;
-  const completed = items.filter((i) => i.done).length;
-
   // Check if quiz is completed
   useEffect(() => {
     try {
@@ -420,12 +417,26 @@ export default function MobileSkinIQHome() {
     }
   }, []);
 
+  // Celebration when all completed - moved before conditional returns
+  useEffect(() => {
+    if (hasCompletedQuiz !== true) return;
+    
+    const currentItems = tab === "AM" ? morning : evening;
+    const currentCompleted = currentItems?.filter((i) => i.done)?.length || 0;
+    
+    if (currentItems && currentItems.length > 0 && currentCompleted === currentItems.length) {
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+    }
+  }, [tab, morning, evening, hasCompletedQuiz]);
+
   // Show loading spinner while checking
   if (hasCompletedQuiz === null) {
     return (
       <div 
         className="min-h-screen flex items-center justify-center"
-        style={{ background: '#FAFAFA' }}
+        style={{ background: '#FAFBFD' }}
       >
         <div 
           className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
@@ -442,6 +453,10 @@ export default function MobileSkinIQHome() {
   if (!hasCompletedQuiz) {
     return <OnboardingScreen />;
   }
+
+  // Calculate items and completed only after we know quiz is completed
+  const items = tab === "AM" ? morning : evening;
+  const completed = items?.filter((i) => i.done)?.length || 0;
 
   const toggleAt = (idx: number) => () => {
     if (tab === "AM") {
@@ -471,11 +486,12 @@ export default function MobileSkinIQHome() {
 
   const openHowTo = (idx: number) => () => {
     try {
-      if (!items || idx < 0 || idx >= items.length) {
-        console.warn('openHowTo: invalid index or items', { idx, itemsLength: items?.length });
+      const currentItems = tab === "AM" ? morning : evening;
+      if (!currentItems || idx < 0 || idx >= currentItems.length) {
+        console.warn('openHowTo: invalid index or items', { idx, itemsLength: currentItems?.length });
         return;
       }
-      const selectedItem = items[idx];
+      const selectedItem = currentItems[idx];
       if (selectedItem && selectedItem.howto) {
         setSheetItem(selectedItem);
         setSheetOpen(true);
@@ -486,17 +502,6 @@ export default function MobileSkinIQHome() {
       console.error('Error opening how-to:', error);
     }
   };
-
-
-  // Celebration when all completed
-  useEffect(() => {
-    if (!hasCompletedQuiz || hasCompletedQuiz === null) return;
-    if (items && items.length > 0 && completed === items.length) {
-      if (navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
-      }
-    }
-  }, [completed, items.length, hasCompletedQuiz]);
 
   return (
     <div
