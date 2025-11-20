@@ -1,7 +1,6 @@
 // SkinIQ Logo Component
 // Использует шрифт Satoshi Bold (подключен через Fontshare API в index.html)
 // Если нужны локальные файлы, добавьте @font-face в index.css
-import React from 'react';
 
 interface SkinIQLogoProps {
   size?: number;
