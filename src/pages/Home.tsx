@@ -282,7 +282,7 @@ export default function MobileSkinIQHome() {
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-    } else {
+      } else {
       const copy = [...evening];
       copy[idx] = { ...copy[idx], done: !copy[idx].done };
       setEvening(copy);
@@ -316,7 +316,7 @@ export default function MobileSkinIQHome() {
   }, [completed, items.length]);
 
   return (
-    <div 
+    <div
       className="w-full min-h-screen relative overflow-x-hidden"
       style={{ 
         backgroundColor: '#0B1215',
@@ -346,15 +346,25 @@ export default function MobileSkinIQHome() {
             transform: scale(1.02);
           }
         }
+        @keyframes pulseGlow { 
+          0%, 100% { 
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.1);
+          }
+        }
         @keyframes confetti {
           0% {
             transform: translateY(0) rotate(0deg);
             opacity: 1;
-          }
+          } 
           100% {
             transform: translateY(-100px) rotate(360deg);
             opacity: 0;
-          }
+          } 
         }
       `}</style>
 
@@ -408,14 +418,17 @@ export default function MobileSkinIQHome() {
         </button>
       </header>
 
-      {/* Tab switcher */}
+      {/* Tab switcher - glass style */}
       <div className="px-5 mb-4 relative z-10">
         <div 
-          className="inline-flex rounded-full p-0.5 backdrop-blur-[28px] border"
+          className="inline-flex rounded-full p-0.5 backdrop-blur-[24px] border"
           style={{
-            backgroundColor: 'rgba(20, 26, 36, 0.72)',
+            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+            WebkitBackdropFilter: 'blur(24px)',
+            backdropFilter: 'blur(24px)',
             borderColor: 'rgba(255, 255, 255, 0.09)',
-            borderWidth: '1px'
+            borderWidth: '1px',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 16px rgba(0,0,0,0.3)'
           }}
         >
           {(["AM", "PM"] as const).map((t) => (
@@ -423,12 +436,15 @@ export default function MobileSkinIQHome() {
               key={t}
               onClick={() => setTab(t)}
               className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                tab === t ? '' : ''
+                tab === t ? 'active' : ''
               }`}
               style={tab === t 
                 ? { 
-                    background: 'linear-gradient(135deg, #0D4A52 0%, #1E6B6F 100%)',
-                    color: '#D4A574'
+                    background: 'linear-gradient(90deg, rgba(13,74,82,0.8) 0%, rgba(17,107,119,0.8) 100%)',
+                    borderColor: '#D4A574',
+                    borderWidth: '1px',
+                    color: '#D4A574',
+                    boxShadow: '0 0 12px rgba(212,165,116,0.2)'
                   }
                 : { 
                     color: '#B8B8B8',
@@ -438,10 +454,10 @@ export default function MobileSkinIQHome() {
             >
               {t === "AM" ? "Утро" : "Вечер"}
             </button>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-
+          
       {/* Title Row */}
       <div 
         className="flex justify-between items-center px-6 py-6 relative z-10"
@@ -454,12 +470,22 @@ export default function MobileSkinIQHome() {
         </h2>
         <span 
           className="text-[18px] font-semibold"
-          style={{ color: '#D4A574' }}
+          style={{ 
+            color: completed === items.length && items.length > 0 
+              ? '#D4A574' 
+              : '#D4A574',
+            background: completed === items.length && items.length > 0
+              ? 'linear-gradient(to right, #D4A574, #F0D9B5)'
+              : 'transparent',
+            WebkitBackgroundClip: completed === items.length && items.length > 0 ? 'text' : 'unset',
+            WebkitTextFillColor: completed === items.length && items.length > 0 ? 'transparent' : '#D4A574',
+            textShadow: '0 0 8px rgba(212,165,116,0.5)'
+          }}
         >
           {completed}/{items.length} steps
         </span>
-      </div>
-
+            </div>
+            
       {/* Divider line */}
       <div 
         className="mx-6 mb-4 h-px relative z-10"
@@ -471,7 +497,7 @@ export default function MobileSkinIQHome() {
         {items.map((item, index) => {
           const isCompleted = item.done;
           return (
-            <button
+          <button 
               key={item.id}
               onClick={() => {
                 toggleAt(index)();
@@ -481,21 +507,21 @@ export default function MobileSkinIQHome() {
                 }
               }}
               onDoubleClick={openHowTo(index)}
-              className={`w-full flex items-center backdrop-blur-[28px] border rounded-[24px] p-[18px] mb-3 transition-all duration-300 relative ${
+              className={`w-full flex items-center backdrop-blur-[24px] border rounded-[24px] p-[18px] mb-3 transition-all duration-300 relative ${
                 isCompleted ? 'completed' : ''
               }`}
               style={{
                 animation: `fadeInUp 0.6s backwards`,
                 animationDelay: `${index * 0.1}s`,
-                backgroundColor: 'rgba(20, 26, 36, 0.72)',
-                WebkitBackdropFilter: 'blur(28px)',
-                backdropFilter: 'blur(28px)',
-                borderColor: 'rgba(255, 255, 255, 0.09)',
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                WebkitBackdropFilter: 'blur(24px)',
+                backdropFilter: 'blur(24px)',
+                borderColor: 'rgba(255, 255, 255, 0.11)',
                 borderWidth: '1px',
                 borderRadius: '24px',
                 boxShadow: isCompleted 
-                  ? '0 8px 32px rgba(0,0,0,0.37), 0 0 20px rgba(212,165,116,0.3)'
-                  : '0 8px 32px rgba(0,0,0,0.37)'
+                  ? '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 20px rgba(212,165,116,0.3)'
+                  : '0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)'
               }}
             >
               {/* Product Image */}
@@ -516,7 +542,10 @@ export default function MobileSkinIQHome() {
                 </div>
                 <div 
                   className="text-[19px] font-bold truncate mt-0.5"
-                  style={{ color: '#D4A574' }}
+                  style={{ 
+                    color: '#D4A574',
+                    textShadow: '0 0 4px rgba(212,165,116,0.3)'
+                  }}
                 >
                   {item.subtitle}
                 </div>
@@ -524,8 +553,12 @@ export default function MobileSkinIQHome() {
 
               {/* Chevron / Checkmark */}
               <span 
-                className="text-[28px] font-light ml-2 flex-shrink-0"
-                style={{ color: '#D4A574' }}
+                className={`text-[28px] font-light ml-2 flex-shrink-0 ${isCompleted ? 'checkmark' : ''}`}
+                style={{ 
+                  color: '#D4A574',
+                  textShadow: isCompleted ? '0 0 12px rgba(212,165,116,0.6)' : 'none',
+                  animation: isCompleted ? 'pulseGlow 1s infinite' : 'none'
+                }}
               >
                 {isCompleted ? '✓' : '›'}
               </span>
@@ -556,32 +589,68 @@ export default function MobileSkinIQHome() {
         />
       )}
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - glass style */}
       <nav 
-        className="fixed bottom-0 left-0 right-0 backdrop-blur-[20px] border-t flex justify-around items-center py-4 z-30"
+        className="fixed bottom-0 left-0 right-0 backdrop-blur-[24px] border-t flex justify-around items-center py-4 z-30"
         style={{
-          backgroundColor: 'rgba(20, 26, 36, 0.8)',
-          borderTopColor: 'rgba(255, 255, 255, 0.08)',
+          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+          WebkitBackdropFilter: 'blur(24px)',
+          backdropFilter: 'blur(24px)',
+          borderTopColor: 'rgba(255, 255, 255, 0.09)',
           borderTopWidth: '1px',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 -8px 16px rgba(0,0,0,0.3)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)'
         }}
       >
-        <button className="text-[26px] opacity-60">🏠</button>
-        <button className="text-[26px] opacity-60">🔍</button>
+        {/* Home */}
         <button 
-          className="text-[30px]"
+          className="w-10 h-10 flex items-center justify-center transition-all duration-200"
+          style={{ opacity: 0.6 }}
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#FAFAFA' }}>
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+        </button>
+        
+        {/* Search */}
+        <button 
+          className="w-10 h-10 flex items-center justify-center transition-all duration-200"
+          style={{ opacity: 0.6 }}
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#FAFAFA' }}>
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        </button>
+        
+        {/* Scan/Ritual - active */}
+        <button 
+          className="w-12 h-12 flex items-center justify-center rounded-full transition-all duration-200"
           style={{ 
             color: '#D4A574',
-            filter: 'drop-shadow(0 0 8px rgba(212, 165, 116, 0.5))'
+            filter: 'drop-shadow(0 0 12px rgba(212, 165, 116, 0.6))'
           }}
         >
-          ✨
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
         </button>
-        <button className="text-[26px] opacity-60">👤</button>
+        
+        {/* Profile */}
+        <button 
+          className="w-10 h-10 flex items-center justify-center transition-all duration-200"
+          style={{ opacity: 0.6 }}
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#FAFAFA' }}>
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        </button>
       </nav>
 
       {/* BottomSheet */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} item={sheetItem} />
-    </div>
+            </div>
   );
 }
