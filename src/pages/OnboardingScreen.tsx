@@ -1,5 +1,5 @@
 // Premium Onboarding Screen with Glassmorphism 2025
-// СРОЧНО — 25 МИНУТ — НЕ КАКАШКА
+// СРОЧНО — 8 МИНУТ ДО 100%
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SkinIQLogo from "../components/SkinIQLogo";
@@ -28,20 +28,22 @@ export default function OnboardingScreen() {
         position: 'relative'
       }}
     >
-      {/* Main glass card - 88% width, ~78% height */}
+      {/* Main glass card - 88% width, отступы 6% с каждой стороны */}
       <div 
         className="relative flex flex-col items-center justify-between"
         style={{
           width: '88%',
           maxWidth: '420px',
-          minHeight: '78vh',
-          maxHeight: '78vh',
-          backgroundColor: 'rgba(255, 255, 255, 0.62)',
+          minHeight: '82vh',
+          maxHeight: '82vh',
+          backgroundColor: 'rgba(255, 255, 255, 0.58)',
           backdropFilter: 'blur(26px)',
           WebkitBackdropFilter: 'blur(26px)',
           border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '40px',
-          padding: '44px 32px 32px 32px',
+          borderRadius: '44px',
+          padding: '0 28px',
+          paddingTop: '36px',
+          paddingBottom: '32px',
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'scale(1)' : 'scale(0.94)',
@@ -64,35 +66,35 @@ export default function OnboardingScreen() {
             width: '100%'
           }}
         >
-          {/* Logo - SkinIQ 44sp, отступ сверху 44px */}
+          {/* Logo - SkinIQ 48sp (как в примере) */}
           <div 
-            className="mb-6"
             style={{
               marginTop: '0',
-              marginBottom: '24px',
+              marginBottom: '36px',
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
               transition: 'opacity 0.5s ease-out 0.2s, transform 0.5s ease-out 0.2s',
               transitionDelay: '0.2s'
             }}
           >
-            <SkinIQLogo size={44} />
+            <SkinIQLogo size={48} />
           </div>
 
-          {/* Title - 38sp bold, 3 lines, line-height 1.1, appears later (staggered) */}
+          {/* Title - 36sp, lineHeight 42sp, 3 lines exactly as specified */}
           <h1 
-            className="leading-tight mb-6"
+            className="leading-tight"
             style={{
               fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 700,
-              fontSize: '38px',
-              lineHeight: '1.1',
+              fontSize: '36px',
+              lineHeight: '42px',
               color: '#0A5F59',
-              marginBottom: '24px',
+              marginBottom: '28px',
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
               transition: 'opacity 0.6s ease-out 0.5s, transform 0.6s ease-out 0.5s',
-              transitionDelay: '0.5s'
+              transitionDelay: '0.5s',
+              textAlign: 'center'
             }}
           >
             Получите план ухода<br />
@@ -100,16 +102,15 @@ export default function OnboardingScreen() {
             дерматолога
           </h1>
 
-          {/* Subtitle - 18sp #475467, margin 24px */}
+          {/* Subtitle - 18sp #475467, margin 28px */}
           <p 
-            className="mb-8"
             style={{
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontSize: '18px',
               lineHeight: '1.5',
               color: '#475467',
-              marginBottom: '24px',
+              marginBottom: '28px',
               opacity: mounted ? 1 : 0,
               transform: mounted ? 'translateY(0)' : 'translateY(-10px)',
               transition: 'opacity 0.5s ease-out 0.7s, transform 0.5s ease-out 0.7s',
@@ -124,7 +125,7 @@ export default function OnboardingScreen() {
             className="w-full"
             style={{
               width: '100%',
-              marginTop: '24px',
+              marginTop: '0',
               marginBottom: 'auto'
             }}
           >
@@ -174,23 +175,23 @@ export default function OnboardingScreen() {
           </div>
         </div>
 
-        {/* Button - inside card, bottom, отступ снизу 32px */}
+        {/* Button - inside card, bottom, отступ 36dp от последнего пункта, ширина 84% от карточки */}
         <button 
           onClick={handleGetPlan}
-          className="w-full rounded-[28px] text-[19px] font-medium transition-all duration-200 active:scale-[0.98] relative overflow-hidden"
+          className="rounded-[32px] text-[19px] font-medium transition-all duration-200 active:scale-[0.98] relative overflow-hidden"
           style={{
-            width: '100%',
-            height: '62px',
+            width: '84%',
+            height: '64px',
             background: '#0A5F59',
             color: 'white',
             border: 'none',
-            borderRadius: '28px',
+            borderRadius: '32px',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 500,
             fontSize: '19px',
             boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-            marginTop: 'auto',
-            marginBottom: '32px',
+            marginTop: '36px',
+            marginBottom: '0',
             opacity: mounted ? 1 : 0,
             transform: mounted ? 'translateY(0)' : 'translateY(20px)',
             transition: 'opacity 0.5s ease-out 1.4s, transform 0.5s ease-out 1.4s',
@@ -202,7 +203,7 @@ export default function OnboardingScreen() {
         </button>
       </div>
 
-      {/* Secondary link - outside card, below, centered */}
+      {/* Secondary link - outside card, below, отступ 28dp от карточки */}
       <button
         onClick={() => navigate('/plan')}
         className="text-center text-[15px] transition-all duration-200 active:opacity-70"
@@ -217,13 +218,13 @@ export default function OnboardingScreen() {
           border: 'none',
           cursor: 'pointer',
           padding: '8px',
+          marginTop: '28px',
           opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateX(-50%)' : 'translateX(-50%) translateY(10px)',
+          transform: mounted ? 'translateY(0)' : 'translateY(10px)',
           transition: 'opacity 0.5s ease-out 1.6s, transform 0.5s ease-out 1.6s',
           transitionDelay: '1.6s',
           position: 'absolute',
-          bottom: '20px',
-          left: '50%'
+          bottom: '100px'
         }}
       >
         Посмотреть пример плана
