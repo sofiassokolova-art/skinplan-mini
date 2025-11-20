@@ -1,9 +1,11 @@
 // src/lib/tg.ts
 // Хелпер для работы с Telegram WebApp API
 
-export const tg: (null | any) =
-  typeof window !== "undefined" && (window as any).Telegram
-    ? (window as any).Telegram.WebApp
+import type { TelegramWebApp } from '../types/telegram';
+
+export const tg: TelegramWebApp | null =
+  typeof window !== "undefined" && window.Telegram
+    ? window.Telegram.WebApp
     : null;
 
 export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
@@ -17,7 +19,8 @@ export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
       buttons: [{ type: "close" }],
     });
     return { ok: true };
-  } catch (e: any) {
-    return { ok: false, reason: e?.message || "unknown" };
+  } catch (e) {
+    const error = e as Error;
+    return { ok: false, reason: error?.message || "unknown" };
   }
 }
