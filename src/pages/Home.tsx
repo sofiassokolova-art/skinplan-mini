@@ -571,9 +571,12 @@ export default function MobileSkinIQHome() {
         className="flex items-center justify-center px-5 pt-5 pb-3 relative z-10"
       >
         <h1 
-          className="text-[28px] font-black tracking-tight text-center"
+          className="text-[32px] font-black tracking-tight text-center"
           style={{ 
-            color: '#0F766E',
+            background: 'linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
             fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 900,
             letterSpacing: '-0.03em'
@@ -700,9 +703,9 @@ export default function MobileSkinIQHome() {
       <div 
         className="mb-4 p-4 rounded-2xl border relative z-10"
         style={{
-          backgroundColor: 'rgba(240, 253, 251, 0.72)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          backgroundColor: 'rgba(240, 253, 251, 0.7)',
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
           borderColor: '#CCFBF1',
           borderWidth: '1px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
@@ -802,12 +805,12 @@ export default function MobileSkinIQHome() {
                 animation: `fadeInUp 0.6s backwards`,
                 animationDelay: `${index * 0.1}s`,
                 backgroundColor: 'rgba(255, 255, 255, 0.68)',
-                WebkitBackdropFilter: 'blur(28px)',
-                backdropFilter: 'blur(28px)',
+                WebkitBackdropFilter: 'blur(32px)',
+                backdropFilter: 'blur(32px)',
                 borderColor: 'rgba(255, 255, 255, 0.4)',
                 borderWidth: '1px',
                 borderRadius: '24px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.07)'
+                boxShadow: '0 12px 32px rgba(0,0,0,0.08)'
               }}
             >
               {/* Product Image */}
@@ -864,8 +867,8 @@ export default function MobileSkinIQHome() {
                     justifyContent: 'center',
                     fontSize: '18px',
                     fontWeight: 700,
-                    backgroundColor: 'rgba(15,118,110,0.12)',
-                    border: '1.5px solid #0F766E',
+                    backgroundColor: 'transparent',
+                    border: '1.8px solid #0F766E',
                     color: '#0F766E',
                     fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                     zIndex: 10,
@@ -889,9 +892,9 @@ export default function MobileSkinIQHome() {
                     justifyContent: 'center',
                     fontSize: '18px',
                     fontWeight: 300,
-                    backgroundColor: 'white',
-                    color: '#0F766E',
-                    border: '1.5px solid #0F766E',
+                    backgroundColor: '#0F766E',
+                    color: 'white',
+                    border: 'none',
                     animation: 'fadeInUp 0.3s ease',
                     fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
                   }}
@@ -957,16 +960,16 @@ export default function MobileSkinIQHome() {
         className="fixed flex justify-around items-center z-1000"
         style={{
           position: 'fixed',
-          bottom: '12px',
+          bottom: '14px',
           left: '16px',
           right: '16px',
-          height: '72px',
+          height: '76px',
           backgroundColor: 'rgba(255, 255, 255, 0.78)',
           backdropFilter: 'blur(40px)',
           WebkitBackdropFilter: 'blur(40px)',
           border: '1px solid rgba(15, 118, 110, 0.15)',
-          borderRadius: '24px',
-          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
+          borderRadius: '26px',
+          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04)',
           padding: '0 20px',
           display: 'flex',
           alignItems: 'center',
