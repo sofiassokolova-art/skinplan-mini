@@ -381,11 +381,11 @@ export default function MobileSkinIQHome() {
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
   const [greeting, setGreeting] = useState('');
   const [userName, setUserName] = useState('друг');
-  const [confetti, setConfetti] = useState<Array<{id: number, x: number, y: number}>>([]);
   const [ripples, setRipples] = useState<Array<{id: number, x: number, y: number, itemId: string}>>([]);
   const [hintShown, setHintShown] = useState(false);
   const [cardMounted, setCardMounted] = useState(false);
   const [gradientBright, setGradientBright] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Check if quiz is completed
   useEffect(() => {
@@ -446,19 +446,17 @@ export default function MobileSkinIQHome() {
     const currentCompleted = currentItems?.filter((i) => i.done)?.length || 0;
     
     if (currentItems && currentItems.length > 0 && currentCompleted === currentItems.length) {
-      const particles = Array.from({ length: 12 }, (_, i) => ({
-        id: Date.now() + i,
-        x: Math.random() * 100,
-        y: Math.random() * 100
-      }));
-      setConfetti(particles);
-      setTimeout(() => setConfetti([]), 900);
-      
+      // Золотисто-мятная вспышка вместо конфетти
       setGradientBright(true);
-      setTimeout(() => setGradientBright(false), 2000);
+      setTimeout(() => setGradientBright(false), 1200);
       
+      // Показываем плашку успеха
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+      
+      // Вибрация "успех"
       if (navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
+        navigator.vibrate([100, 50, 100, 50, 100]);
       }
     }
   }, [tab, morning, evening, hasCompletedQuiz]);
@@ -603,14 +601,18 @@ export default function MobileSkinIQHome() {
             opacity: 0;
           }
         }
-        @keyframes confettiFall {
-          0% {
-            transform: translateY(0) rotate(0deg);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(100vh) rotate(360deg);
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+        @keyframes fadeInUp {
+          from {
             opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
           } 
         }
       `}</style>
@@ -618,109 +620,137 @@ export default function MobileSkinIQHome() {
       <div
         className="w-full min-h-screen relative overflow-x-hidden"
         style={{ 
-          paddingBottom: '120px',
+          paddingBottom: '40px',
           background: gradientBright 
             ? 'linear-gradient(180deg, #E0FAF5 0%, #D0F5EB 100%)'
             : 'linear-gradient(180deg, #F5FFFC 0%, #E8FBF7 100%)',
-          transition: 'background 2s ease-out'
+          transition: 'background 1.2s ease-out'
         }}
       >
-        {/* Confetti */}
-        {confetti.map((particle) => (
+        {/* Золотисто-мятная вспышка при 100% завершении */}
+        {showSuccessMessage && (
           <div
-            key={particle.id}
             style={{
               position: 'fixed',
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-              width: '8px',
-              height: '8px',
-              backgroundColor: '#0A5F59',
-              borderRadius: '50%',
+              inset: 0,
+              backgroundColor: 'rgba(204, 251, 241, 0.3)', // #CCFBF1 alpha 0.3
               pointerEvents: 'none',
-              zIndex: 3000,
-              animation: 'confettiFall 0.9s ease-out forwards',
-              transform: `translate(${Math.random() * 40 - 20}px, ${Math.random() * 40 - 20}px)`
+              zIndex: 2000,
+              animation: 'fadeIn 0.3s ease-out, fadeOut 0.9s ease-out 0.3s',
+              animationFillMode: 'forwards'
             }}
           />
-        ))}
+        )}
+        
+        {/* Плашка "Идеально! Кожа благодарна ✨" при 100% */}
+        {showSuccessMessage && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '100px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: 'rgba(10, 95, 89, 0.95)',
+              color: 'white',
+              padding: '14px 24px',
+              borderRadius: '24px',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontSize: '16px',
+              fontWeight: 600,
+              zIndex: 3000,
+              animation: 'fadeInUp 0.4s ease-out, fadeOut 0.3s ease-out 2.7s',
+              animationFillMode: 'forwards',
+              boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3)'
+            }}
+          >
+            Идеально! Кожа благодарна ✨
+          </div>
+        )}
+
+        {/* Header - Greeting with Avatar (outside card) */}
+        <div style={{ 
+          width: '90%',
+          maxWidth: '600px',
+          margin: '20px auto 16px auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <div
+            style={{
+              width: '72px',
+              height: '72px',
+              borderRadius: '50%',
+              border: '2px solid #0A5F59',
+              backgroundColor: '#E8FDFA',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              backgroundImage: `url('https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0A5F59&color=fff&size=64')`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          />
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                fontSize: '30px',
+                color: '#0A5F59',
+                lineHeight: '1.2'
+              }}
+            >
+              {greeting}, {userName}
+            </div>
+            <div
+              style={{
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '16px',
+                color: '#475467',
+                lineHeight: '1.4'
+              }}
+            >
+              Ваш {tab === "AM" ? "утренний" : "вечерний"} ритуал готов
+          </div>
+        </div>
+      </div>
 
         {/* Main Content - Large Glass Card (90% width, 5% margins, radius 40dp top, 0dp bottom) */}
         <div
           style={{
             width: '90%',
             maxWidth: '600px',
-            margin: '20px auto 0 auto',
-            backgroundColor: 'rgba(255, 255, 255, 0.58)',
-            backdropFilter: 'blur(26px)',
-            WebkitBackdropFilter: 'blur(26px)',
-            border: '1px solid rgba(255, 255, 255, 0.15)', // #26FFFFFF = rgba(255,255,255,0.15)
-            borderRadius: '40px 40px 0 0',
+            margin: '0 auto 20px auto',
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            WebkitBackdropFilter: 'blur(28px)',
+            border: '1px solid rgba(255, 255, 255, 0.13)',
+            borderRadius: '44px',
             padding: '24px 20px 32px 20px',
             boxShadow: '0 16px 48px rgba(0, 0, 0, 0.08)',
             opacity: cardMounted ? 1 : 0,
-            transform: cardMounted ? 'scale(1)' : 'scale(0.96)',
+            transform: cardMounted ? 'scale(1)' : 'scale(0.95)',
             transition: 'opacity 0.6s ease-out, transform 0.6s ease-out',
             display: 'flex',
             flexDirection: 'column',
             gap: '20px'
           }}
         >
-          {/* Header - Greeting with Avatar (64dp circle with 2dp border) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div
-              style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                border: '2px solid #0A5F59',
-                backgroundColor: '#E8FDFA',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                backgroundImage: `url('https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=0A5F59&color=fff&size=64')`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}
-            />
-            <div style={{ flex: 1 }}>
-              <div
-                style={{
-                  fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 700,
-                  fontSize: '28px',
-                  color: '#0A5F59',
-                  lineHeight: '1.2',
-                  marginBottom: '4px'
-                }}
-              >
-                {greeting}, {userName}
-          </div>
-              <div
-                style={{
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 400,
-                  fontSize: '16px',
-                  color: '#475467',
-                  lineHeight: '1.4'
-                }}
-              >
-                Ваш {tab === "AM" ? "утренний" : "вечерний"} ритуал готов · {total} шагов
-          </div>
-        </div>
-      </div>
 
           {/* Toggle - AM/PM (glass-segmented) */}
           <div
             style={{
               display: 'flex',
-              backgroundColor: 'rgba(255, 255, 255, 0.4)',
+              backgroundColor: 'rgba(255, 255, 255, 0.38)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               borderRadius: '16px',
               padding: '4px',
-              gap: '4px'
+              gap: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.3)'
             }}
           >
             <button
@@ -730,7 +760,9 @@ export default function MobileSkinIQHome() {
                 padding: '12px 20px',
                 borderRadius: '12px',
                 border: 'none',
-                backgroundColor: tab === "AM" ? '#0A5F59' : 'transparent',
+                backgroundColor: tab === "AM" ? '#0A5F59' : 'rgba(255, 255, 255, 0.38)',
+                backdropFilter: tab === "AM" ? 'none' : 'blur(20px)',
+                WebkitBackdropFilter: tab === "AM" ? 'none' : 'blur(20px)',
                 color: tab === "AM" ? 'white' : '#0A5F59',
                 fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 600,
@@ -748,7 +780,9 @@ export default function MobileSkinIQHome() {
                 padding: '12px 20px',
                 borderRadius: '12px',
                 border: 'none',
-                backgroundColor: tab === "PM" ? '#0A5F59' : 'transparent',
+                backgroundColor: tab === "PM" ? '#0A5F59' : 'rgba(255, 255, 255, 0.38)',
+                backdropFilter: tab === "PM" ? 'none' : 'blur(20px)',
+                WebkitBackdropFilter: tab === "PM" ? 'none' : 'blur(20px)',
                 color: tab === "PM" ? 'white' : '#0A5F59',
                 fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 600,
@@ -761,71 +795,71 @@ export default function MobileSkinIQHome() {
             </button>
         </div>
 
-          {/* Title Strip - Morning/Evening Ritual (thin glass strip, radius 28dp) */}
+          {/* Title Strip - Уход сегодня */}
           <div
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.55)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              borderRadius: '28px',
-              padding: '16px 20px',
-              border: '1px solid rgba(255, 255, 255, 0.3)'
+              flexDirection: 'column',
+              gap: '8px'
             }}
           >
             <div
               style={{
                 fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 700,
-                fontSize: '34px',
+                fontSize: '36px',
                 color: '#0A5F59'
               }}
             >
-              {tab === "AM" ? "Утренний ритуал" : "Вечерний ритуал"}
+              Уход сегодня
             </div>
+            {/* Тонкая изумрудная полоска */}
+            <div
+              style={{
+                width: '100%',
+                height: '2px',
+                backgroundColor: '#0A5F59',
+                borderRadius: '1px'
+              }}
+            />
             <div
               style={{
                 fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 500,
-                fontSize: '17px',
-                color: '#0A5F59'
+                fontSize: '18px',
+                color: '#0A5F59',
+                marginTop: '4px'
               }}
             >
-              {completed} из {total} шагов
+              {completed}/{total} шагов
           </div>
         </div>
           
-          {/* Tip Card (separate glass card #E8FDFA alpha 0.7, radius 28dp) */}
+          {/* Tip Card (separate glass card #E8FDFA alpha 0.68, radius 32dp) */}
           <div
             style={{
-              backgroundColor: 'rgba(232, 253, 250, 0.7)',
+              backgroundColor: 'rgba(232, 253, 250, 0.68)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
-              borderRadius: '28px',
+              borderRadius: '32px',
               padding: '16px 20px',
               border: '1px solid rgba(10, 95, 89, 0.15)',
               display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start'
+              flexDirection: 'column',
+              gap: '8px'
             }}
           >
             <div
               style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: '#0A5F59',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '11px',
+                color: '#0A5F59',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-              </svg>
+              СОВЕТ ОТ ЭКСПЕРТА
             </div>
             <div
               style={{
@@ -833,45 +867,52 @@ export default function MobileSkinIQHome() {
                 fontWeight: 400,
                 fontSize: '17px',
                 color: '#1F2A44',
-                lineHeight: '1.5',
-                flex: 1
+                lineHeight: '1.5'
               }}
             >
               {getAdvice()}
         </div>
           </div>
 
-          {/* Routine Steps - Inside Card (104dp height rows, NOT separate cards) */}
+          {/* Routine Steps - Each on separate card */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {items.map((item, idx) => {
               const isCompleted = item.done;
-              const showRipple = ripples.find(r => r.itemId === item.id);
               
               return (
                 <div
                   key={item.id}
                   onClick={toggleAt(idx)}
                   style={{
-                    height: '104px',
+                    height: '108px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderRadius: '24px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '16px',
-                    padding: '0 4px',
+                    padding: '0 20px',
                     cursor: 'pointer',
                     position: 'relative',
-                    opacity: isCompleted ? 0.7 : 1,
+                    opacity: isCompleted ? 0.6 : 1,
                     textDecoration: isCompleted ? 'line-through' : 'none',
                     textDecorationColor: '#0A5F59',
-                    transition: 'opacity 0.2s ease-out'
+                    textDecorationThickness: '1.5px',
+                    transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
+                    transform: isCompleted ? 'translateY(-2px)' : 'translateY(0)'
                   }}
                 >
-                  {/* Ripple Effect */}
-                  {showRipple && (
+                  {/* Ripple Effect при отметке шага */}
+                  {ripples.filter(r => r.itemId === item.id).map((ripple) => (
                     <div
+                      key={ripple.id}
                       style={{
                         position: 'absolute',
-                        left: `${showRipple.x}%`,
-                        top: `${showRipple.y}%`,
+                        left: `${ripple.x}%`,
+                        top: `${ripple.y}%`,
                         width: '40px',
                         height: '40px',
                         borderRadius: '50%',
@@ -882,16 +923,16 @@ export default function MobileSkinIQHome() {
                         zIndex: 1
                       }}
                     />
-                  )}
+                  ))}
 
-                  {/* Step Number Circle (56dp) */}
+                  {/* Step Number Circle (60dp) */}
                   <div
                     style={{
-                      width: '56px',
-                      height: '56px',
+                      width: '60px',
+                      height: '60px',
                       borderRadius: '50%',
-                      backgroundColor: isCompleted ? '#0A5F59' : 'transparent',
-                      border: isCompleted ? 'none' : '2px solid #0A5F59',
+                      backgroundColor: isCompleted ? '#0A5F59' : '#0A5F59',
+                      border: 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -899,10 +940,11 @@ export default function MobileSkinIQHome() {
                       fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 700,
                       fontSize: '20px',
-                      color: isCompleted ? 'white' : '#0A5F59',
+                      color: 'white',
                       position: 'relative',
                       transition: 'all 0.3s ease-out',
-                      transform: isCompleted ? 'scale(1.1)' : 'scale(1)'
+                      transform: isCompleted ? 'scale(1.1)' : 'scale(1)',
+                      animation: isCompleted ? 'none' : 'none'
                     }}
                   >
                     {isCompleted ? '✓' : idx + 1}
@@ -914,8 +956,8 @@ export default function MobileSkinIQHome() {
                       src={item.icon}
                       alt={item.title}
                       style={{
-                        width: '72px',
-                        height: '72px',
+                        width: '76px',
+                        height: '76px',
                         borderRadius: '16px',
                         objectFit: 'contain',
                         flexShrink: 0
@@ -929,7 +971,7 @@ export default function MobileSkinIQHome() {
                       style={{
                         fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                         fontWeight: 700,
-                        fontSize: '21px',
+                        fontSize: '22px',
                         color: '#0A5F59',
                         marginBottom: '4px',
                         lineHeight: '1.3'
@@ -943,7 +985,10 @@ export default function MobileSkinIQHome() {
                         fontWeight: 400,
                         fontSize: '16px',
                         color: '#475467',
-                        lineHeight: '1.4'
+                        lineHeight: '1.4',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
                       {item.subtitle}
@@ -995,8 +1040,8 @@ export default function MobileSkinIQHome() {
               onClick={() => navigate('/plan')}
               style={{
                 flex: 1,
-                height: '62px',
-                borderRadius: '31px',
+                height: '64px',
+                borderRadius: '32px',
                 border: '2px solid #0A5F59',
                 backgroundColor: 'transparent',
                 color: '#0A5F59',
@@ -1022,8 +1067,8 @@ export default function MobileSkinIQHome() {
               }}
               style={{
                 flex: 1,
-                height: '62px',
-                borderRadius: '31px',
+                height: '64px',
+                borderRadius: '32px',
                 border: 'none',
                 backgroundColor: '#0A5F59',
                 color: 'white',
