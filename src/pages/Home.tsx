@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import OnboardingScreen from "./OnboardingScreen";
 import { logger } from "../utils/logger";
 import { storage } from "../utils/storage";
@@ -383,7 +383,6 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
 // ----- Main Component -----
 export default function MobileSkinIQHome() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [hasCompletedQuiz, setHasCompletedQuiz] = useState<boolean | null>(null);
   const [tab, setTab] = useState<"AM" | "PM">("AM");
   const [morning, setMorning] = useState<RoutineItem[]>(morningDefault);
@@ -399,7 +398,7 @@ export default function MobileSkinIQHome() {
   // Check if quiz is completed
   useEffect(() => {
     try {
-      const quizDone = localStorage.getItem('skinQuizCompleted') === 'true';
+      const quizDone = storage.get<boolean>('skinQuizCompleted', false);
       setHasCompletedQuiz(quizDone);
       
       // Check if hint was shown
@@ -1273,235 +1272,6 @@ export default function MobileSkinIQHome() {
         </div>
 
       {/* Aura glow when all completed - removed (handled in background) */}
-
-      {/* Bottom Navigation - Premium Glass with Upward Shadow */}
-      <nav 
-        className="fixed flex justify-around items-center z-1000"
-        style={{
-          position: 'fixed',
-          bottom: '14px',
-          left: '16px',
-          right: '16px',
-          height: '76px',
-          backgroundColor: 'rgba(255, 255, 255, 0.6)', // White alpha 0.6
-          backdropFilter: 'blur(25px)', // blur 25dp
-          WebkitBackdropFilter: 'blur(25px)',
-          border: '1px solid rgba(255, 255, 255, 0.4)',
-          borderRadius: '26px',
-          boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.08), 0 -4px 12px rgba(0, 0, 0, 0.04)', // Лёгкая тень вверх
-          padding: '0 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-around',
-          zIndex: 1000,
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0px)'
-        }}
-      >
-        {/* Home */}
-        <button 
-          onClick={() => navigate("/")}
-          className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
-            style={{ 
-              color: location.pathname === '/' ? '#0A5F59' : '#94A3B8',
-              minWidth: '60px',
-              position: 'relative'
-            }}
-          >
-          {location.pathname === '/' && (
-            <div 
-              className="absolute -top-1 left-1/2 transform -translate-x-1/2"
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: '#0A5F59'
-              }}
-            />
-          )}
-          <svg 
-            viewBox="0 0 24 24" 
-            width="24" 
-            height="24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            style={{ 
-              stroke: location.pathname === '/' ? '#0A5F59' : '#94A3B8',
-              fill: 'none'
-            }}
-          >
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
-          <span 
-            className="text-[11px] font-semibold"
-            style={{
-              color: location.pathname === '/' ? '#0F766E' : '#94A3B8',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600
-            }}
-          >
-            Главная
-          </span>
-        </button>
-        
-        {/* Plan */}
-        <button 
-          onClick={() => navigate("/plan")}
-          className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
-          style={{ 
-            color: location.pathname === '/plan' ? '#0F766E' : '#94A3B8',
-            minWidth: '60px',
-            position: 'relative'
-          }}
-        >
-          {location.pathname === '/plan' && (
-            <div 
-              className="absolute -top-1 left-1/2 transform -translate-x-1/2"
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: '#0F766E'
-              }}
-            />
-          )}
-          <svg 
-            viewBox="0 0 24 24" 
-            width="24" 
-            height="24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            style={{ 
-              stroke: location.pathname === '/plan' ? '#0F766E' : '#94A3B8',
-              fill: 'none'
-            }}
-          >
-            <path d="M8 6h13" />
-            <path d="M8 12h13" />
-            <path d="M8 18h13" />
-            <path d="M3 6h.01" />
-            <path d="M3 12h.01" />
-            <path d="M3 18h.01" />
-                </svg>
-          <span 
-            className="text-[11px] font-semibold"
-            style={{
-              color: location.pathname === '/plan' ? '#0F766E' : '#94A3B8',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600
-            }}
-          >
-            План
-          </span>
-        </button>
-        
-        {/* Cart */}
-        <button 
-          onClick={() => navigate("/cart")}
-          className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
-          style={{ 
-            color: location.pathname === '/cart' ? '#0F766E' : '#94A3B8',
-            minWidth: '60px',
-            position: 'relative'
-          }}
-        >
-          {location.pathname === '/cart' && (
-            <div 
-              className="absolute -top-1 left-1/2 transform -translate-x-1/2"
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: '#0F766E'
-              }}
-            />
-          )}
-          <svg 
-            viewBox="0 0 24 24" 
-            width="24" 
-            height="24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            style={{ 
-              stroke: location.pathname === '/cart' ? '#0F766E' : '#94A3B8',
-              fill: 'none'
-            }}
-          >
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <path d="M16 10a4 4 0 0 1-8 0" />
-          </svg>
-          <span 
-            className="text-[11px] font-semibold"
-            style={{
-              color: location.pathname === '/cart' ? '#0F766E' : '#94A3B8',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600
-            }}
-          >
-            Корзина
-          </span>
-        </button>
-        
-        {/* Profile */}
-        <button 
-          onClick={() => navigate("/profile")}
-          className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
-          style={{ 
-            color: location.pathname === '/profile' ? '#0F766E' : '#94A3B8',
-            minWidth: '60px',
-            position: 'relative'
-          }}
-        >
-          {location.pathname === '/profile' && (
-            <div 
-              className="absolute -top-1 left-1/2 transform -translate-x-1/2"
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: '#0F766E'
-              }}
-            />
-          )}
-          <svg 
-            viewBox="0 0 24 24" 
-            width="24" 
-            height="24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            style={{ 
-              stroke: location.pathname === '/profile' ? '#0F766E' : '#94A3B8',
-              fill: 'none'
-            }}
-          >
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          <span 
-            className="text-[11px] font-semibold"
-            style={{
-              color: location.pathname === '/profile' ? '#0F766E' : '#94A3B8',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600
-            }}
-          >
-            Профиль
-          </span>
-        </button>
-      </nav>
 
       {/* BottomSheet */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} item={sheetItem} />
