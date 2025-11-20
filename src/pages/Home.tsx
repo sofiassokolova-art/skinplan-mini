@@ -458,27 +458,60 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
         </div>
         <div className="mt-3">
           <div className="text-[13px] font-medium mb-1" style={{ color: '#E8E8E8' }}>Как выполнить</div>
-          <ol className="list-decimal list-inside text-[14px] text-neutral-800 space-y-1">
+          <ol className="list-decimal list-inside text-[14px] space-y-1" style={{ color: '#B8B8B8', lineHeight: '1.4' }}>
             {item.howto?.steps?.map((s: string, i: number) => (
               <li key={i}>{s}</li>
             ))}
           </ol>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className={`${glass} ${radiusCard} p-3`}>
-              <div className="text-[12px] text-gray-600">Объём</div>
-              <div className="text-[14px] font-medium">{item.howto?.volume}</div>
+            <div 
+              className="rounded-2xl p-3 backdrop-blur-[20px] border"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                borderColor: 'rgba(255, 255, 255, 0.12)',
+                borderWidth: '0.5px'
+              }}
+            >
+              <div className="text-[12px]" style={{ color: '#B8B8B8' }}>Объём</div>
+              <div className="text-[14px] font-medium" style={{ color: '#E8E8E8' }}>{item.howto?.volume}</div>
             </div>
-            <div className={`${glass} ${radiusCard} p-3`}>
-              <div className="text-[12px] text-gray-600">Совет</div>
-              <div className="text-[14px] font-medium">{item.howto?.tip}</div>
+            <div 
+              className="rounded-2xl p-3 backdrop-blur-[20px] border"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                borderColor: 'rgba(255, 255, 255, 0.12)',
+                borderWidth: '0.5px'
+              }}
+            >
+              <div className="text-[12px]" style={{ color: '#B8B8B8' }}>Совет</div>
+              <div className="text-[14px] font-medium" style={{ color: '#E8E8E8' }}>{item.howto?.tip}</div>
             </div>
           </div>
         </div>
         <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} ${glass} text-[15px] font-semibold`}>
+          <button 
+            onClick={onClose} 
+            className="flex-1 h-12 rounded-2xl text-[15px] font-medium backdrop-blur-[20px] border transition-all duration-200 hover:opacity-80"
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              borderColor: 'rgba(255, 255, 255, 0.12)',
+              borderWidth: '0.5px',
+              color: '#E8E8E8'
+            }}
+          >
             Закрыть
           </button>
-          <button onClick={onClose} className={`flex-1 h-12 ${radiusCard} bg-gradient-to-r from-gray-600 to-gray-700 text-white text-[15px] font-semibold`}>
+          <button 
+            onClick={onClose} 
+            className="flex-1 h-12 rounded-2xl text-[15px] font-medium transition-all duration-200 hover:opacity-90"
+            style={{
+              background: 'linear-gradient(135deg, rgba(10, 61, 66, 0.9) 0%, rgba(15, 43, 51, 0.9) 100%)',
+              borderColor: 'rgba(212, 193, 156, 0.3)',
+              borderWidth: '0.5px',
+              color: '#F5F5F5',
+              boxShadow: '0 0 20px rgba(10, 61, 66, 0.5)'
+            }}
+          >
             Понятно
           </button>
         </div>
