@@ -1,41 +1,64 @@
 // Bottom Navigation Component
-// Используется на всех страницах приложения
+// Telegram-style glassmorphism navigation
 import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 export default function BottomNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [scrollY, setScrollY] = useState(0);
+
+  // Track scroll for hide/show effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navItems = [
     { path: '/', label: 'Главная', icon: 'home' },
     { path: '/plan', label: 'План', icon: 'plan' },
-    { path: '/photo', label: 'Фото', icon: 'camera' },
-    { path: '/insights', label: 'Анализ', icon: 'chart' },
+    { path: '/cart', label: 'Корзина', icon: 'cart' },
+    { path: '/insights', label: 'Профиль', icon: 'profile' },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  // Calculate opacity and transform based on scroll
+  const scrollProgress = Math.min(scrollY / 100, 1);
+  const opacity = 0.62 - (scrollProgress * 0.15); // Starts at 0.62, becomes 0.47
+  const translateY = Math.min(scrollY / 200, 8); // Max 8px up
 
   return (
     <nav 
-      className="fixed flex justify-around items-center z-1000"
+      className="fixed flex justify-around items-center"
       style={{
         position: 'fixed',
-        bottom: '14px',
-        left: '16px',
-        right: '16px',
-        height: '76px',
-        backgroundColor: 'rgba(255, 255, 255, 0.6)',
-        backdropFilter: 'blur(25px)',
-        WebkitBackdropFilter: 'blur(25px)',
-        border: '1px solid rgba(255, 255, 255, 0.4)',
-        borderRadius: '26px',
-        boxShadow: '0 -8px 24px rgba(0, 0, 0, 0.08), 0 -4px 12px rgba(0, 0, 0, 0.04)',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '84px',
+        backgroundColor: `rgba(255, 255, 255, ${opacity})`,
+        backdropFilter: 'blur(26px)',
+        WebkitBackdropFilter: 'blur(26px)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.15)',
+        boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.12), 0 -2px 8px rgba(0, 0, 0, 0.08)',
         padding: '0 20px',
+        paddingTop: '8px',
+        paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 12px)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
         zIndex: 1000,
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0px)'
+        transform: `translateY(-${translateY}px)`,
+        transition: 'transform 0.2s ease-out, background-color 0.2s ease-out'
       }}
     >
       {navItems.map((item) => {
@@ -43,36 +66,43 @@ export default function BottomNavigation() {
         return (
           <button
             key={item.path}
-            onClick={() => navigate(item.path)}
+            onClick={() => {
+              navigate(item.path);
+              // Haptic feedback
+              if (navigator.vibrate) {
+                navigator.vibrate(10);
+              }
+            }}
             className="flex flex-col items-center justify-center gap-1 transition-all duration-200 relative"
             style={{ 
               color: active ? '#0A5F59' : '#94A3B8',
-              minWidth: '60px',
+              minWidth: '64px',
               position: 'relative',
-              background: 'transparent',
+              background: active ? 'rgba(10, 95, 89, 0.18)' : 'transparent',
               border: 'none',
+              borderRadius: '32px',
               cursor: 'pointer',
-              padding: '8px'
+              padding: '8px 12px',
+              transform: active ? 'scale(1.08)' : 'scale(1)',
+              transition: 'transform 0.2s ease-out, background-color 0.2s ease-out'
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = active ? 'scale(1.0)' : 'scale(0.95)';
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = active ? 'scale(1.08)' : 'scale(1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = active ? 'scale(1.08)' : 'scale(1)';
             }}
           >
-            {active && (
-              <div 
-                className="absolute -top-1 left-1/2 transform -translate-x-1/2"
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: '#0A5F59'
-                }}
-              />
-            )}
             {item.icon === 'home' && (
               <svg 
                 viewBox="0 0 24 24" 
                 width="24" 
                 height="24" 
                 fill="none" 
-                stroke="currentColor" 
+                stroke={active ? '#0A5F59' : '#94A3B8'} 
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
@@ -87,7 +117,7 @@ export default function BottomNavigation() {
                 width="24" 
                 height="24" 
                 fill="none" 
-                stroke="currentColor" 
+                stroke={active ? '#0A5F59' : '#94A3B8'} 
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
@@ -96,43 +126,45 @@ export default function BottomNavigation() {
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
             )}
-            {item.icon === 'camera' && (
+            {item.icon === 'cart' && (
               <svg 
                 viewBox="0 0 24 24" 
                 width="24" 
                 height="24" 
                 fill="none" 
-                stroke="currentColor" 
+                stroke={active ? '#0A5F59' : '#94A3B8'} 
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
               >
-                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-                <circle cx="12" cy="13" r="3" />
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
               </svg>
             )}
-            {item.icon === 'chart' && (
+            {item.icon === 'profile' && (
               <svg 
                 viewBox="0 0 24 24" 
                 width="24" 
                 height="24" 
                 fill="none" 
-                stroke="currentColor" 
+                stroke={active ? '#0A5F59' : '#94A3B8'} 
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
               >
-                <line x1="18" y1="20" x2="18" y2="10" />
-                <line x1="12" y1="20" x2="12" y2="4" />
-                <line x1="6" y1="20" x2="6" y2="14" />
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
               </svg>
             )}
             <span 
-              className="text-[11px] font-semibold"
+              className="text-[11px]"
               style={{
                 color: active ? '#0A5F59' : '#94A3B8',
                 fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600
+                fontWeight: active ? 700 : 500,
+                fontSize: '11px',
+                lineHeight: '1.2'
               }}
             >
               {item.label}

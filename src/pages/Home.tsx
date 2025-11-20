@@ -585,7 +585,7 @@ export default function MobileSkinIQHome() {
     <div
       className="w-full min-h-screen relative overflow-x-hidden"
       style={{ 
-        paddingBottom: '120px'
+        paddingBottom: '120px' // Space for bottom navigation
       }}
     >
       <style>{`

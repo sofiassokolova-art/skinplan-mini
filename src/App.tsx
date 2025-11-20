@@ -24,7 +24,7 @@ function App() {
       <div className="min-h-screen relative">
         {showHeader && <Header />}
         
-        <main className={showHeader ? "px-4 py-2 w-full sm:px-6 relative z-10" : "relative z-10"} style={{ paddingBottom: showNavigation ? '100px' : '0' }}>
+        <main className={showHeader ? "px-4 py-2 w-full sm:px-6 relative z-10" : "relative z-10"} style={{ paddingBottom: showNavigation ? '120px' : '0' }}>
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Home/>} />
