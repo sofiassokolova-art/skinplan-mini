@@ -361,9 +361,27 @@ export default function MobileSkinIQHome() {
   const [evening, setEvening] = useState<RoutineItem[]>(eveningDefault);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetItem, setSheetItem] = useState<RoutineItem | null>(null);
+  const [greeting, setGreeting] = useState('');
+  const [userName, setUserName] = useState('друг');
 
   const items = tab === "AM" ? morning : evening;
   const completed = items.filter((i) => i.done).length;
+
+  // Personalization: get greeting and user name
+  useEffect(() => {
+    // Get name from Telegram
+    const tg = (window as any)?.Telegram?.WebApp;
+    const user = tg?.initDataUnsafe?.user;
+    const firstName = user?.first_name || 'друг';
+    setUserName(firstName);
+
+    // Determine greeting by local time
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) setGreeting('Доброе утро');
+    else if (hour >= 12 && hour < 18) setGreeting('Добрый день');
+    else if (hour >= 18 && hour < 23) setGreeting('Добрый вечер');
+    else setGreeting('Доброй ночи');
+  }, []);
 
   const toggleAt = (idx: number) => () => {
     if (tab === "AM") {
@@ -519,6 +537,48 @@ export default function MobileSkinIQHome() {
         >
           Пройти анкету заново →
         </button>
+      </div>
+
+      {/* Personal Greeting */}
+      <div 
+        className="px-6 pt-2 pb-4 relative z-10"
+        style={{
+          marginTop: '8px',
+          textAlign: 'left'
+        }}
+      >
+        <div 
+          className="text-[26px] font-bold leading-tight"
+          style={{
+            color: '#FAFAFA',
+            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            lineHeight: 1.2
+          }}
+        >
+          {greeting || 'Добрый день'}, <span 
+            style={{
+              background: 'linear-gradient(90deg, #E8E1D9, #D4C9B8)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 800,
+              fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
+            }}
+          >
+            {userName}
+          </span>
+          </div>
+        <div 
+          className="text-[15px] mt-1.5 font-medium"
+          style={{
+            color: '#94A3B8',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 500,
+            marginTop: '6px'
+          }}
+        >
+          Ваш {tab === "AM" ? "утренний" : "вечерний"} ритуал готов · {items.length} шаг{items.length > 1 ? (items.length < 5 ? "а" : "ов") : ""}
+        </div>
       </div>
 
       {/* Tab switcher - glass style */}
