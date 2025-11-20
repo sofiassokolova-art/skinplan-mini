@@ -236,8 +236,8 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           <div className="text-[13px] font-medium mb-1" style={{ color: '#FAFAFA' }}>Как выполнить</div>
           <ol className="list-decimal list-inside text-[14px] space-y-1" style={{ color: '#94A3B8', lineHeight: '1.4' }}>
             {item.howto?.steps?.map((s: string, i: number) => (
-              <li key={i}>{s}</li>
-            ))}
+              <li key={i}>{s || ''}</li>
+            )) || <li>Инструкции скоро появятся</li>}
           </ol>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div 
@@ -275,7 +275,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
                   fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
                 }}
               >
-                {item.howto?.volume}
+                {item.howto?.volume || '—'}
               </div>
             </div>
             <div 
@@ -313,7 +313,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
                   fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif"
                 }}
               >
-                {item.howto?.tip}
+                {item.howto?.tip || 'Совет скоро появится'}
               </div>
             </div>
           </div>
