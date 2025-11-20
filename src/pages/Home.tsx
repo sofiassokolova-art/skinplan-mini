@@ -50,10 +50,7 @@ function getGreeting(date = new Date()): string {
 
 
 
-// ----- Tokens -----
-const glass = "bg-white/20 backdrop-blur-xl border border-white/40 shadow-[0_8px_24px_rgba(0,0,0,0.08)]";
-const radiusPanel = "rounded-3xl";
-const radiusCard = "rounded-2xl";
+// ----- Tokens (removed - now using inline styles for dark theme) -----
 
 // ----- Icons (using PNG files) -----
 const ICONS = {
