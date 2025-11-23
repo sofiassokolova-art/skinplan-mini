@@ -197,7 +197,7 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(250, 251, 253, 0.92)',
+          backgroundColor: 'rgba(250, 251, 253, 0.75)',
           backdropFilter: 'blur(32px)',
           WebkitBackdropFilter: 'blur(32px)',
           borderTopLeftRadius: '28px',
@@ -328,37 +328,6 @@ function BottomSheet({ open, onClose, item }: { open: boolean; onClose: () => vo
             </div>
           </div>
         </div>
-        
-        <div className="flex gap-3">
-          <button 
-            onClick={onClose} 
-            className="flex-1 h-12 rounded-2xl text-[15px] font-medium border transition-all duration-200 hover:opacity-80 active:scale-95"
-            style={{
-              backgroundColor: 'transparent',
-              borderColor: '#CBD5E1',
-              borderWidth: '1px',
-              color: '#475569',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 500
-            }}
-          >
-            Закрыть
-          </button>
-          <button 
-            onClick={onClose} 
-            className="flex-1 h-12 rounded-2xl text-[15px] font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            style={{
-              background: '#0F766E',
-              border: 'none',
-              color: 'white',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 600,
-              boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)'
-            }}
-          >
-            Понятно →
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -383,7 +352,6 @@ export default function MobileSkinIQHome() {
   const [userName, setUserName] = useState('друг');
   const [ripples, setRipples] = useState<Array<{id: number, x: number, y: number, itemId: string}>>([]);
   const [hintShown, setHintShown] = useState(false);
-  const [cardMounted, setCardMounted] = useState(false);
   const [gradientBright, setGradientBright] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -406,7 +374,6 @@ export default function MobileSkinIQHome() {
       setMorning(savedMorning);
       setEvening(savedEvening);
       
-      setTimeout(() => setCardMounted(true), 50);
     } catch (error) {
       logger.error('Error checking quiz status:', error);
       setHasCompletedQuiz(false);
@@ -438,21 +405,28 @@ export default function MobileSkinIQHome() {
     }
   }, []);
 
-  // Celebration when all completed
+  // Celebration when all completed (only once per tab)
   useEffect(() => {
     if (hasCompletedQuiz !== true) return;
     
     const currentItems = tab === "AM" ? morning : evening;
     const currentCompleted = currentItems?.filter((i) => i.done)?.length || 0;
     
-    if (currentItems && currentItems.length > 0 && currentCompleted === currentItems.length) {
+    // Проверяем, показывалось ли уже сообщение успеха для этого таба
+    const successShownKey = `successMessageShown_${tab}`;
+    const successShown = storage.get<boolean>(successShownKey, false);
+    
+    if (currentItems && currentItems.length > 0 && currentCompleted === currentItems.length && !successShown) {
       // Золотисто-мятная вспышка вместо конфетти
       setGradientBright(true);
-      setTimeout(() => setGradientBright(false), 1200);
+      setTimeout(() => setGradientBright(false), 2300); // Увеличено до 2.3s для более плавного перехода
       
       // Показываем плашку успеха
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 3000);
+      
+      // Сохраняем, что сообщение уже было показано для этого таба
+      storage.set(successShownKey, true);
       
       // Вибрация "успех"
       if (navigator.vibrate) {
@@ -615,44 +589,131 @@ export default function MobileSkinIQHome() {
             transform: translateX(-50%) translateY(0);
           } 
         }
+        @keyframes meshGradient {
+          0% {
+            background-position: 0% 0%;
+          }
+          25% {
+            background-position: 100% 25%;
+          }
+          50% {
+            background-position: 100% 100%;
+          }
+          75% {
+            background-position: 0% 75%;
+          }
+          100% {
+            background-position: 0% 0%;
+          }
+        }
+        @keyframes radialWave {
+          0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.4;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.2);
+            opacity: 0.2;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.4;
+          } 
+        }
       `}</style>
 
       <div
         className="w-full min-h-screen relative overflow-x-hidden"
         style={{ 
-          paddingBottom: '20px',
-          background: gradientBright 
-            ? 'linear-gradient(180deg, #E0FAF5 0%, #D0F5EB 100%)'
-            : 'linear-gradient(180deg, #F5FFFC 0%, #E8FBF7 100%)',
-          transition: 'background 1.2s ease-out'
+          paddingBottom: '40px',
+          position: 'relative'
         }}
       >
+        {/* Animated mesh gradient background */}
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 0,
+            background: gradientBright 
+              ? 'linear-gradient(135deg, #94E4C8 0%, #ABEDD8 15%, #C5F5E8 30%, #DBF9F0 50%, #EBFCF6 70%, #F5FFFC 85%, #FFFFFF 100%)'
+              : 'linear-gradient(135deg, #A1E8D0 0%, #B8F0DE 18%, #CDF5EA 35%, #DFF9F1 52%, #EDFCF7 70%, #F7FFFC 85%, #FFFFFF 100%)',
+            backgroundSize: '300% 300%',
+            animation: 'meshGradient 20s ease-in-out infinite',
+            transition: 'background 2.3s ease-in-out'
+          }}
+        />
+        
+        {/* Radial wave effects */}
+        <div
+          style={{
+            position: 'fixed',
+            top: '20%',
+            left: '10%',
+            width: '400px',
+            height: '400px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(148, 228, 200, 0.18) 0%, rgba(171, 237, 216, 0.12) 40%, rgba(197, 245, 232, 0.06) 60%, transparent 75%)',
+            zIndex: 0,
+            animation: 'radialWave 8s ease-in-out infinite',
+            pointerEvents: 'none'
+          }}
+        />
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20%',
+            right: '15%',
+            width: '500px',
+            height: '500px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(161, 232, 208, 0.15) 0%, rgba(184, 240, 222, 0.10) 40%, rgba(205, 245, 234, 0.05) 60%, transparent 75%)',
+            zIndex: 0,
+            animation: 'radialWave 12s ease-in-out infinite reverse',
+            pointerEvents: 'none'
+          }}
+        />
+        
+        {/* Content container */}
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1
+          }}
+        >
         {/* Золотисто-мятная вспышка при 100% завершении */}
         {showSuccessMessage && (
           <div
             style={{
               position: 'fixed',
-              inset: 0,
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100%',
+              height: '100vh',
               backgroundColor: 'rgba(204, 251, 241, 0.3)', // #CCFBF1 alpha 0.3
               pointerEvents: 'none',
               zIndex: 2000,
-              animation: 'fadeIn 0.3s ease-out, fadeOut 0.9s ease-out 0.3s',
+              animation: 'fadeIn 0.8s ease-in-out, fadeOut 1.5s ease-in-out 0.8s',
               animationFillMode: 'forwards'
             }}
           />
         )}
         
-        {/* Плашка "Идеально! Кожа благодарна ✨" при 100% */}
+        {/* Плашка "Идеально!" при 100% */}
         {showSuccessMessage && (
           <div
             style={{
               position: 'fixed',
-              bottom: '100px',
+              bottom: '140px',
               left: '50%',
               transform: 'translateX(-50%)',
-              backgroundColor: 'rgba(10, 95, 89, 0.95)',
+              backgroundColor: 'rgba(10, 95, 89, 0.5)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
               color: 'white',
-              padding: '14px 24px',
+              padding: '16px 40px',
               borderRadius: '24px',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontSize: '16px',
@@ -660,10 +721,12 @@ export default function MobileSkinIQHome() {
               zIndex: 3000,
               animation: 'fadeInUp 0.4s ease-out, fadeOut 0.3s ease-out 2.7s',
               animationFillMode: 'forwards',
-              boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3)'
+              boxShadow: '0 8px 24px rgba(10, 95, 89, 0.2)',
+              minWidth: '200px',
+              textAlign: 'center'
             }}
           >
-            Идеально! Кожа благодарна ✨
+            Идеально!
           </div>
         )}
 
@@ -673,28 +736,37 @@ export default function MobileSkinIQHome() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          marginTop: '20px',
-          marginBottom: '16px'
+          marginTop: '8px',
+          marginBottom: '0px'
         }}>
-          <SkinIQLogo size={36} />
+          <img 
+            src="/skiniq-logo.png" 
+            alt="SkinIQ" 
+            style={{
+              height: '140px',
+              width: 'auto',
+              objectFit: 'contain'
+            }}
+          />
         </div>
 
         {/* Header - Greeting (without avatar) */}
         <div style={{ 
           width: '90%',
           maxWidth: '600px',
-          margin: '0 auto 16px auto'
+          margin: '0 auto 8px auto'
         }}>
           <div
             style={{
               fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 700,
-              fontSize: '30px',
-              color: '#0A5F59',
+              fontWeight: 600,
+              fontSize: '26px',
+              color: '#374151',
               lineHeight: '1.2'
             }}
           >
-            {greeting}, {userName}
+            {greeting},<br />
+            <span style={{ fontWeight: 600, fontSize: '26px', color: '#374151' }}>{userName}</span>
           </div>
           <div
             style={{
@@ -706,41 +778,59 @@ export default function MobileSkinIQHome() {
               marginTop: '4px'
             }}
           >
-            Ваш {tab === "AM" ? "утренний" : "вечерний"} ритуал готов
+            Время заботиться о своей коже
           </div>
         </div>
 
-        {/* Toggle - AM/PM (separate glass container, like navigation) */}
+        {/* Toggle - AM/PM (premium glassmorphism) */}
         <div
           style={{
             width: '90%',
             maxWidth: '600px',
             margin: '0 auto 16px auto',
             display: 'flex',
-            backgroundColor: 'rgba(255, 255, 255, 0.64)',
-            backdropFilter: 'blur(28px)',
-            WebkitBackdropFilter: 'blur(28px)',
-            borderRadius: '26px',
-            padding: '4px',
-            gap: '4px',
-            border: '1px solid rgba(255, 255, 255, 0.33)',
-            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08)'
+            backgroundColor: 'rgba(255, 255, 255, 0.42)',
+            backdropFilter: 'blur(32px)',
+            WebkitBackdropFilter: 'blur(32px)',
+            borderRadius: '28px',
+            padding: '6px',
+            gap: '6px',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6)'
           }}
         >
           <button
             onClick={() => setTab("AM")}
             style={{
               flex: 1,
-              padding: '12px 20px',
-              borderRadius: '22px',
+              padding: '14px 20px',
+              borderRadius: '24px',
               border: 'none',
-              backgroundColor: tab === "AM" ? '#0A5F59' : 'transparent',
+              backgroundColor: tab === "AM" 
+                ? 'rgba(10, 95, 89, 0.75)' 
+                : 'rgba(255, 255, 255, 0.3)',
+              backdropFilter: tab === "AM" ? 'blur(20px)' : 'blur(16px)',
+              WebkitBackdropFilter: tab === "AM" ? 'blur(20px)' : 'blur(16px)',
               color: tab === "AM" ? 'white' : '#0A5F59',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
               fontSize: '16px',
               cursor: 'pointer',
-              transition: 'all 0.2s ease-out'
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: tab === "AM" 
+                ? '0 4px 16px rgba(10, 95, 89, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)' 
+                : 'none',
+              transform: tab === "AM" ? 'scale(1.02)' : 'scale(1)'
+            }}
+            onMouseEnter={(e) => {
+              if (tab !== "AM") {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.45)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (tab !== "AM") {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+              }
             }}
           >
             Утро
@@ -749,22 +839,40 @@ export default function MobileSkinIQHome() {
             onClick={() => setTab("PM")}
             style={{
               flex: 1,
-              padding: '12px 20px',
-              borderRadius: '22px',
+              padding: '14px 20px',
+              borderRadius: '24px',
               border: 'none',
-              backgroundColor: tab === "PM" ? '#0A5F59' : 'transparent',
+              backgroundColor: tab === "PM" 
+                ? 'rgba(10, 95, 89, 0.75)' 
+                : 'rgba(255, 255, 255, 0.3)',
+              backdropFilter: tab === "PM" ? 'blur(20px)' : 'blur(16px)',
+              WebkitBackdropFilter: tab === "PM" ? 'blur(20px)' : 'blur(16px)',
               color: tab === "PM" ? 'white' : '#0A5F59',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
               fontSize: '16px',
               cursor: 'pointer',
-              transition: 'all 0.2s ease-out'
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: tab === "PM" 
+                ? '0 4px 16px rgba(10, 95, 89, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)' 
+                : 'none',
+              transform: tab === "PM" ? 'scale(1.02)' : 'scale(1)'
+            }}
+            onMouseEnter={(e) => {
+              if (tab !== "PM") {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.45)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (tab !== "PM") {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+              }
             }}
           >
             Вечер
           </button>
-        </div>
-
+          </div>
+          
         {/* Title Strip - Уход сегодня (with steps count on the right) */}
         <div
           style={{
@@ -782,9 +890,9 @@ export default function MobileSkinIQHome() {
               style={{
                 fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 700,
-                fontSize: '28px',
-                color: '#0A5F59',
-                marginBottom: '8px'
+                fontSize: '24px',
+                color: '#374151',
+                marginBottom: '12px'
               }}
             >
               Уход сегодня
@@ -795,15 +903,16 @@ export default function MobileSkinIQHome() {
                 width: '100%',
                 height: '2px',
                 backgroundColor: '#0A5F59',
-                borderRadius: '1px'
+                borderRadius: '1px',
+                marginTop: '4px'
               }}
             />
           </div>
           <div
             style={{
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 500,
-              fontSize: '18px',
+              fontWeight: 400,
+              fontSize: '16px',
               color: '#0A5F59',
               marginBottom: '2px',
               whiteSpace: 'nowrap'
@@ -811,15 +920,15 @@ export default function MobileSkinIQHome() {
           >
             {completed}/{total} шагов
           </div>
-        </div>
-          
+      </div>
+
         {/* Tip Card (separate glass card, smaller) */}
         <div
           style={{
             width: '90%',
             maxWidth: '600px',
             margin: '0 auto 16px auto',
-            backgroundColor: 'rgba(232, 253, 250, 0.68)',
+            backgroundColor: 'rgba(232, 253, 250, 0.82)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             borderRadius: '28px',
@@ -841,13 +950,13 @@ export default function MobileSkinIQHome() {
             }}
           >
             СОВЕТ ОТ ЭКСПЕРТА
-          </div>
+        </div>
           <div
             style={{
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontSize: '15px',
-              color: '#1F2A44',
+              color: '#111827',
               lineHeight: '1.5'
             }}
           >
@@ -872,7 +981,7 @@ export default function MobileSkinIQHome() {
                   key={item.id}
                   onClick={toggleAt(idx)}
                   style={{
-                    height: '108px',
+                    height: '88px',
                     backgroundColor: 'rgba(255, 255, 255, 0.55)',
                     backdropFilter: 'blur(20px)',
                     WebkitBackdropFilter: 'blur(20px)',
@@ -885,9 +994,6 @@ export default function MobileSkinIQHome() {
                     cursor: 'pointer',
                     position: 'relative',
                     opacity: isCompleted ? 0.6 : 1,
-                    textDecoration: isCompleted ? 'line-through' : 'none',
-                    textDecorationColor: '#0A5F59',
-                    textDecorationThickness: '1.5px',
                     transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
                     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)'
                   }}
@@ -912,11 +1018,11 @@ export default function MobileSkinIQHome() {
                     />
                   ))}
 
-                  {/* Step Number Circle (30dp - уменьшен в 2 раза) */}
+                  {/* Step Number Circle (32dp - same size as info button) */}
                   <div
                     style={{
-                      width: '30px',
-                      height: '30px',
+                      width: '32px',
+                      height: '32px',
                       borderRadius: '50%',
                       backgroundColor: isCompleted ? '#0A5F59' : '#0A5F59',
                       border: 'none',
@@ -934,16 +1040,16 @@ export default function MobileSkinIQHome() {
                     }}
                   >
                     {isCompleted ? '✓' : idx + 1}
-              </div>
-              
-                  {/* Product Icon (72dp, no white background) */}
+        </div>
+
+                  {/* Product Icon (60dp, no white background) */}
                   {item.icon && (
                     <img
                       src={item.icon}
                       alt={item.title}
                       style={{
-                        width: '76px',
-                        height: '76px',
+                        width: '60px',
+                        height: '60px',
                         borderRadius: '16px',
                         objectFit: 'contain',
                         flexShrink: 0
@@ -957,10 +1063,13 @@ export default function MobileSkinIQHome() {
                       style={{
                         fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                         fontWeight: 700,
-                        fontSize: '22px',
+                        fontSize: '17px',
                         color: '#0A5F59',
                         marginBottom: '4px',
-                        lineHeight: '1.3'
+                        lineHeight: '1.3',
+                        textDecoration: isCompleted ? 'line-through' : 'none',
+                        textDecorationColor: '#0A5F59',
+                        textDecorationThickness: '1.5px'
                       }}
                     >
                       {item.title}
@@ -974,22 +1083,25 @@ export default function MobileSkinIQHome() {
                         lineHeight: '1.4',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        textOverflow: 'ellipsis',
+                        textDecoration: isCompleted ? 'line-through' : 'none',
+                        textDecorationColor: '#475467',
+                        textDecorationThickness: '1px'
                       }}
                     >
                       {item.subtitle}
-                </div>
-              </div>
-
-                  {/* Info Button (i circle #0A5F59) */}
-                  <button
+          </div>
+        </div>
+          
+                  {/* Info Button (i circle #0A5F59 - slightly smaller) */}
+          <button
                     onClick={(e) => {
                       e.stopPropagation();
                       openHowTo(idx)();
                     }}
                     style={{
-                      width: '32px',
-                      height: '32px',
+                      width: '28px',
+                      height: '28px',
                       borderRadius: '50%',
                       border: '1.5px solid #0A5F59',
                       backgroundColor: 'transparent',
@@ -1001,7 +1113,7 @@ export default function MobileSkinIQHome() {
                       flexShrink: 0,
                       fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 700,
-                      fontSize: '14px',
+                      fontSize: '12px',
                       transition: 'all 0.2s ease-out'
                     }}
                     onMouseEnter={(e) => {
@@ -1018,8 +1130,8 @@ export default function MobileSkinIQHome() {
                 </div>
               );
             })}
-        </div>
-
+            </div>
+            
         {/* Action Buttons (outside big card, 2 buttons in row) */}
         <div style={{ 
           width: '90%',
@@ -1050,9 +1162,9 @@ export default function MobileSkinIQHome() {
               e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
-            Подробный план ухода →
+            Подробный план →
           </button>
-          <button
+          <button 
             onClick={() => {
               storage.remove('skinQuizCompleted');
               navigate('/quiz');
@@ -1069,7 +1181,12 @@ export default function MobileSkinIQHome() {
               fontSize: '16px',
               cursor: 'pointer',
               boxShadow: '0 4px 12px rgba(10, 95, 89, 0.25)',
-              transition: 'all 0.2s ease-out'
+              transition: 'all 0.2s ease-out',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              whiteSpace: 'pre-line',
+              lineHeight: '1.3'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'scale(1.02)';
@@ -1078,7 +1195,7 @@ export default function MobileSkinIQHome() {
               e.currentTarget.style.transform = 'scale(1)';
             }}
           >
-            Пройти анкету заново →
+            Пройти анкету{'\n'}заново →
           </button>
         </div>
 
@@ -1109,6 +1226,7 @@ export default function MobileSkinIQHome() {
         {/* BottomSheet */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} item={sheetItem} />
             </div>
+      </div>
     </>
   );
 }

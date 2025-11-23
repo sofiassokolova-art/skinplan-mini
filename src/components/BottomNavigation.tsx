@@ -33,7 +33,7 @@ export default function BottomNavigation() {
 
   // Calculate opacity and transform based on scroll
   const scrollProgress = Math.min(scrollY / 100, 1);
-  const opacity = 0.64 - (scrollProgress * 0.14); // Starts at 0.64, becomes 0.78 when scrolled
+  const opacity = 0.25 - (scrollProgress * 0.06); // Starts at 0.25, becomes 0.31 when scrolled (more transparent)
   const translateY = Math.min(scrollY / 200, 10); // Max 10px up
 
   return (
