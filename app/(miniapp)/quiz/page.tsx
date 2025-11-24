@@ -33,13 +33,24 @@ interface Questionnaire {
   questions: Question[];
 }
 
+// Информационные экраны перед вопросами
+const INFO_SCREENS = [
+  {
+    id: 'welcome',
+    title: 'Подбери уход для своей кожи со SkinIQ',
+    subtitle: 'Персональный план ухода уровня косметолога-дерматолога',
+    image: '/quiz_welocme_image.png',
+    ctaText: 'Продолжить',
+  },
+];
+
 export default function QuizPage() {
   const router = useRouter();
   const { initialize, isAvailable } = useTelegram();
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
+  const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
 
@@ -66,6 +77,18 @@ export default function QuizPage() {
   const handleNext = () => {
     if (!questionnaire) return;
 
+    // Если мы на информационных экранах, переходим к следующему или к вопросам
+    if (currentInfoScreenIndex < INFO_SCREENS.length - 1) {
+      setCurrentInfoScreenIndex(currentInfoScreenIndex + 1);
+      return;
+    }
+
+    if (currentInfoScreenIndex === INFO_SCREENS.length - 1) {
+      // Переходим к первому вопросу
+      setCurrentInfoScreenIndex(INFO_SCREENS.length);
+      return;
+    }
+
     const allQuestions = [
       ...questionnaire.groups.flatMap((g) => g.questions),
       ...questionnaire.questions,
@@ -82,11 +105,27 @@ export default function QuizPage() {
   const handleBack = () => {
     if (!questionnaire) return;
 
+    // Если мы на первом информационном экране, возвращаемся на главную
+    if (currentInfoScreenIndex === 0) {
+      router.push('/');
+      return;
+    }
+
+    // Если мы на первом вопросе, возвращаемся к последнему информационному экрану
+    if (currentInfoScreenIndex === INFO_SCREENS.length && currentQuestionIndex === 0) {
+      setCurrentInfoScreenIndex(INFO_SCREENS.length - 1);
+      return;
+    }
+
+    // Если мы на информационных экранах, переходим к предыдущему
+    if (currentInfoScreenIndex > 0 && currentInfoScreenIndex < INFO_SCREENS.length) {
+      setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
+      return;
+    }
+
+    // Если мы на вопросах, переходим к предыдущему
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
-    } else {
-      // Если мы на первом вопросе, возвращаемся на главную
-      router.push('/');
     }
   };
 
@@ -152,7 +191,100 @@ export default function QuizPage() {
     ...questionnaire.questions,
   ];
 
-  const currentQuestion = allQuestions[currentQuestionIndex];
+  // Проверяем, показываем ли мы информационный экран или вопрос
+  const isShowingInfoScreen = currentInfoScreenIndex < INFO_SCREENS.length;
+  const currentInfoScreen = isShowingInfoScreen ? INFO_SCREENS[currentInfoScreenIndex] : null;
+  const currentQuestion = !isShowingInfoScreen ? allQuestions[currentQuestionIndex] : null;
+
+  // Если мы на информационном экране
+  if (isShowingInfoScreen && currentInfoScreen) {
+    return (
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          width: '88%',
+          maxWidth: '420px',
+          backgroundColor: 'rgba(255, 255, 255, 0.58)',
+          backdropFilter: 'blur(26px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '44px',
+          padding: '36px 28px 32px 28px',
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
+        }}>
+          {currentInfoScreen.image && (
+            <div style={{
+              width: '100%',
+              height: '320px',
+              borderRadius: '32px 32px 0 0',
+              overflow: 'hidden',
+              marginBottom: '24px',
+            }}>
+              <img
+                src={currentInfoScreen.image}
+                alt={currentInfoScreen.title}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            </div>
+          )}
+          
+          <h1 style={{
+            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '36px',
+            lineHeight: '42px',
+            color: '#0A5F59',
+            margin: '0 0 16px 0',
+            textAlign: 'center',
+          }}>
+            {currentInfoScreen.title}
+          </h1>
+
+          {currentInfoScreen.subtitle && (
+            <p style={{
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '18px',
+              lineHeight: '1.5',
+              color: '#475467',
+              margin: '0 0 28px 0',
+              textAlign: 'center',
+            }}>
+              {currentInfoScreen.subtitle}
+            </p>
+          )}
+
+          <button
+            onClick={handleNext}
+            style={{
+              width: '100%',
+              height: '64px',
+              background: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              borderRadius: '32px',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 500,
+              fontSize: '19px',
+              boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+              cursor: 'pointer',
+            }}
+          >
+            {currentInfoScreen.ctaText || 'Продолжить'} →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentQuestion) {
     return (
@@ -178,7 +310,7 @@ export default function QuizPage() {
         margin: '0 auto',
       }}>
         {/* Кнопка "Назад" - скрыта на первом вопросе */}
-        {currentQuestionIndex > 0 && (
+        {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
           <button
             onClick={handleBack}
             style={{
