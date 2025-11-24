@@ -8,19 +8,6 @@ import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 
-// Расширяем Window для TypeScript
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: {
-        initData?: string;
-        ready?: () => void;
-        expand?: () => void;
-      };
-    };
-  }
-}
-
 interface RoutineItem {
   id: string;
   title: string;
