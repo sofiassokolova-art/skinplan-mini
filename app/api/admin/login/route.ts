@@ -64,8 +64,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (!admin) {
+      console.error('Admin not found:', {
+        telegramUsername,
+        telegramId,
+        searchedBy: telegramUsername ? 'username' : 'telegramId',
+      });
       return NextResponse.json(
-        { error: 'Access denied. You are not an administrator.' },
+        { 
+          error: 'Access denied. You are not an administrator.',
+          debug: {
+            telegramUsername,
+            telegramId,
+            searchedBy: telegramUsername ? 'username' : 'telegramId',
+          },
+        },
         { status: 403 }
       );
     }

@@ -42,7 +42,12 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Ошибка входа. У вас нет доступа к админ-панели.');
+        console.error('Login error:', {
+          status: response.status,
+          error: data.error,
+          initDataAvailable: !!initData,
+        });
+        setError(data.error || `Ошибка входа (${response.status}). У вас нет доступа к админ-панели.`);
         return;
       }
 
