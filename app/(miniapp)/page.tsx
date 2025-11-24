@@ -8,6 +8,19 @@ import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 
+// Расширяем Window для TypeScript
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        initData?: string;
+        ready?: () => void;
+        expand?: () => void;
+      };
+    };
+  }
+}
+
 interface RoutineItem {
   id: string;
   title: string;
@@ -54,19 +67,44 @@ export default function HomePage() {
   const [routineItems, setRoutineItems] = useState<RoutineItem[]>([]);
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
   const [selectedItem, setSelectedItem] = useState<RoutineItem | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
     initialize();
     
-    // Проверка авторизации
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (!token) {
-      router.push('/quiz');
-      return;
-    }
+    // Авторизация через Telegram и загрузка данных
+    const initAndLoad = async () => {
+      // Проверяем наличие токена
+      let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      
+      // Если токена нет, пытаемся авторизоваться через Telegram
+      if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        try {
+          const initData = window.Telegram.WebApp.initData;
+          const authResult = await api.authTelegram(initData);
+          if (authResult.token) {
+            token = authResult.token;
+            console.log('✅ Авторизованы через Telegram');
+          }
+        } catch (err) {
+          console.warn('Ошибка авторизации через Telegram:', err);
+        }
+      }
 
-    loadRecommendations();
+      // Если токена все еще нет, перенаправляем на анкету
+      if (!token) {
+        console.log('Нет токена, перенаправляем на анкету');
+        router.push('/quiz');
+        return;
+      }
+
+      // Загружаем рекомендации
+      await loadRecommendations();
+    };
+
+    initAndLoad();
   }, [router]);
 
   const loadRecommendations = async () => {
@@ -154,9 +192,28 @@ export default function HomePage() {
       }
       
       setRoutineItems(items);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading recommendations:', error);
-      // Fallback на дефолтные данные
+      
+      // Проверяем тип ошибки
+      if (error?.message?.includes('Unauthorized') || error?.message?.includes('401')) {
+        // Токен невалидный или истек - удаляем и перенаправляем на анкету
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token');
+        }
+        router.push('/quiz');
+        return;
+      }
+      
+      if (error?.message?.includes('404') || error?.message?.includes('No skin profile')) {
+        // Профиль не найден - перенаправляем на анкету
+        console.log('Профиль не найден, перенаправляем на анкету');
+        router.push('/quiz');
+        return;
+      }
+      
+      // Другие ошибки - показываем сообщение
+      setError(error?.message || 'Ошибка загрузки рекомендаций');
       setRoutineItems([]);
     } finally {
       setLoading(false);
@@ -179,9 +236,57 @@ export default function HomePage() {
         alignItems: 'center', 
         height: '100vh',
         flexDirection: 'column',
-        gap: '16px'
+        gap: '16px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
       }}>
-        <div>Загрузка...</div>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(10, 95, 89, 0.2)',
+          borderTop: '4px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error && routineItems.length === 0) {
+    return (
+      <div style={{ 
+        padding: '20px', 
+        textAlign: 'center',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка загрузки</h1>
+        <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
+        <button
+          onClick={() => router.push('/quiz')}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '12px',
+            backgroundColor: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          }}
+        >
+          Пройти анкету заново
+        </button>
       </div>
     );
   }
