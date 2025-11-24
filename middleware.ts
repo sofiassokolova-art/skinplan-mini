@@ -8,7 +8,11 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Публичные маршруты, которые не требуют авторизации
-const publicRoutes = ['/api/auth', '/admin/login'];
+const publicRoutes = [
+  '/api/auth',
+  '/api/questionnaire/active', // Публичный доступ к анкете
+  '/admin/login',
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -18,8 +22,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Для API маршрутов (кроме auth) проверяем токен
-  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth')) {
+  // Для API маршрутов (кроме публичных) проверяем токен
+  if (pathname.startsWith('/api/')) {
+    // Пропускаем публичные API маршруты
+    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+    if (isPublicRoute) {
+      return NextResponse.next();
+    }
+
     const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
                   request.cookies.get('auth_token')?.value;
 
