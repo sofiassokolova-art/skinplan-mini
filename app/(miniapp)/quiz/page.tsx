@@ -62,9 +62,37 @@ export default function QuizPage() {
 
   useEffect(() => {
     initialize();
+    
+    // Автоматическая авторизация через Telegram при загрузке
+    const autoAuth = async () => {
+      if (!initData) {
+        console.log('⚠️ initData не доступен');
+        return;
+      }
+      
+      // Проверяем наличие токена
+      const existingToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      
+      // Если токена нет, авторизуемся
+      if (!existingToken) {
+        try {
+          console.log('🔐 Автоматическая авторизация через Telegram...');
+          const authResult = await api.authTelegram(initData);
+          if (authResult.token) {
+            console.log('✅ Авторизованы через Telegram');
+          }
+        } catch (err) {
+          console.error('❌ Ошибка автоматической авторизации:', err);
+        }
+      } else {
+        console.log('✅ Токен уже существует');
+      }
+    };
+    
+    autoAuth();
     loadQuestionnaire();
     loadSavedProgress();
-  }, []);
+  }, [initData]);
 
   // Загружаем сохранённый прогресс
   const loadSavedProgress = () => {

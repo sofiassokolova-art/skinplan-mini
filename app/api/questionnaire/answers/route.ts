@@ -62,25 +62,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Сохраняем ответы
+    // Сохраняем или обновляем ответы (upsert для избежания дубликатов)
     const savedAnswers = await Promise.all(
       answers.map(async (answer: AnswerInput) => {
-        return prisma.userAnswer.create({
-          data: {
+        // Проверяем, существует ли уже ответ
+        const existingAnswer = await prisma.userAnswer.findFirst({
+          where: {
             userId,
             questionnaireId,
             questionId: answer.questionId,
-            answerValue: answer.answerValue || null,
-            answerValues: answer.answerValues ? (answer.answerValues as any) : null,
-          },
-          include: {
-            question: {
-              include: {
-                answerOptions: true,
-              },
-            },
           },
         });
+
+        if (existingAnswer) {
+          // Обновляем существующий ответ (updatedAt обновляется автоматически через @updatedAt)
+          return prisma.userAnswer.update({
+            where: { id: existingAnswer.id },
+            data: {
+              answerValue: answer.answerValue || null,
+              answerValues: answer.answerValues ? (answer.answerValues as any) : null,
+            },
+            include: {
+              question: {
+                include: {
+                  answerOptions: true,
+                },
+              },
+            },
+          });
+        } else {
+          // Создаем новый ответ
+          return prisma.userAnswer.create({
+            data: {
+              userId,
+              questionnaireId,
+              questionId: answer.questionId,
+              answerValue: answer.answerValue || null,
+              answerValues: answer.answerValues ? (answer.answerValues as any) : null,
+            },
+            include: {
+              question: {
+                include: {
+                  answerOptions: true,
+                },
+              },
+            },
+          });
+        }
       })
     );
 
