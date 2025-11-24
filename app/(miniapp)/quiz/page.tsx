@@ -132,7 +132,8 @@ export default function QuizPage() {
     if (currentInfoScreenIndex < INFO_SCREENS.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
       setCurrentInfoScreenIndex(newIndex);
-      setTimeout(() => saveProgress(answers, currentQuestionIndex, newIndex), 100);
+      // Сохраняем прогресс с новым индексом
+      saveProgress(answers, currentQuestionIndex, newIndex);
       return;
     }
 
@@ -140,7 +141,7 @@ export default function QuizPage() {
       // Переходим к первому вопросу
       const newInfoIndex = INFO_SCREENS.length;
       setCurrentInfoScreenIndex(newInfoIndex);
-      setTimeout(() => saveProgress(answers, currentQuestionIndex, newInfoIndex), 100);
+      saveProgress(answers, currentQuestionIndex, newInfoIndex);
       return;
     }
 
@@ -153,7 +154,7 @@ export default function QuizPage() {
       const newIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(newIndex);
       // Сохраняем прогресс с новым индексом
-      setTimeout(() => saveProgress(answers, newIndex, currentInfoScreenIndex), 100);
+      saveProgress(answers, newIndex, currentInfoScreenIndex);
     } else {
       // Завершение анкеты
       submitAnswers();
