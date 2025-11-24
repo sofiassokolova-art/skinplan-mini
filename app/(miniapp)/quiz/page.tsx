@@ -66,8 +66,6 @@ export default function QuizPage() {
   const handleNext = () => {
     if (!questionnaire) return;
 
-    // Логика перехода к следующему вопросу
-    // TODO: Реализовать полную логику навигации
     const allQuestions = [
       ...questionnaire.groups.flatMap((g) => g.questions),
       ...questionnaire.questions,
@@ -78,6 +76,17 @@ export default function QuizPage() {
     } else {
       // Завершение анкеты
       submitAnswers();
+    }
+  };
+
+  const handleBack = () => {
+    if (!questionnaire) return;
+
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    } else {
+      // Если мы на первом вопросе, возвращаемся на главную
+      router.push('/');
     }
   };
 
@@ -168,6 +177,35 @@ export default function QuizPage() {
         maxWidth: '600px',
         margin: '0 auto',
       }}>
+        {/* Кнопка "Назад" */}
+        <button
+          onClick={handleBack}
+          style={{
+            marginBottom: '16px',
+            padding: '8px 16px',
+            borderRadius: '12px',
+            border: '1px solid rgba(10, 95, 89, 0.2)',
+            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+            color: '#0A5F59',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+          }}
+        >
+          <span>←</span>
+          <span>{currentQuestionIndex === 0 ? 'На главную' : 'Назад'}</span>
+        </button>
+
         <div style={{ marginBottom: '16px', color: '#0A5F59', fontSize: '14px' }}>
           Вопрос {currentQuestionIndex + 1} из {allQuestions.length}
         </div>

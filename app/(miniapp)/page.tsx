@@ -68,7 +68,6 @@ export default function HomePage() {
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
   const [selectedItem, setSelectedItem] = useState<RoutineItem | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
