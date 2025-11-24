@@ -96,8 +96,8 @@ export default function QuizPage() {
 
       const result = await api.submitAnswers(questionnaire.id, answerArray);
       
-      // Перенаправление на главную после успешного завершения
-      router.push('/');
+      // Перенаправление на инсайты после успешного завершения
+      router.push('/insights');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка сохранения ответов');
     }
