@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { analyzeSkinPhoto } from "../lib/skinAnalysis";
+import { authWithTelegram, isTelegramWebApp, getTelegramInitData, submitAnswers } from "../lib/api-client";
 
 // Haptic feedback utility
 const vibrate = (pattern: number | number[] = 10) => {
@@ -1824,8 +1825,31 @@ export default function Quiz() {
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Используем фиксированный ID анкеты (из seed-questionnaire-full.ts создается анкета с version 1)
+  // В продакшене можно получать из API
+  const [questionnaireId] = useState<number>(1);
 
-
+  // Авторизация через Telegram при загрузке (если открыто в Telegram)
+  useEffect(() => {
+    const initTelegramAuth = async () => {
+      if (isTelegramWebApp()) {
+        const initData = getTelegramInitData();
+        if (initData) {
+          try {
+            const result = await authWithTelegram(initData);
+            if (result.error) {
+              console.warn('Telegram auth failed:', result.error);
+              // Продолжаем работу без авторизации
+            }
+          } catch (err) {
+            console.warn('Telegram auth error:', err);
+            // Продолжаем работу без авторизации
+          }
+        }
+      }
+    };
+    initTelegramAuth();
+  }, []);
 
   useEffect(() => {
     saveAnswers(answers);
@@ -1867,7 +1891,86 @@ export default function Quiz() {
     return !!answer;
   }, [currentStep, answers]);
 
-  const goNext = () => {
+  // Функция для сохранения ответов через API
+  const saveAnswersToAPI = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      console.log('No auth token, skipping API save (continuing with localStorage only)');
+      return;
+    }
+
+    try {
+      // Загружаем анкету из API, чтобы получить ID вопросов
+      const questionnaireResponse = await fetch('/api/questionnaire/active');
+      if (!questionnaireResponse.ok) {
+        console.warn('Failed to load questionnaire, skipping API save');
+        return;
+      }
+      
+      const questionnaire = await questionnaireResponse.json();
+      
+      // Создаем маппинг questionCode -> questionId
+      const questionMap = new Map<number, string>();
+      questionnaire.groups.forEach((group: any) => {
+        group.questions.forEach((q: any) => {
+          questionMap.set(q.id, q.code);
+        });
+      });
+      
+      // Преобразуем ответы в формат API
+      const apiAnswers: Array<{ questionId: number; questionCode?: string; value?: string; values?: string[] }> = [];
+      
+      screens
+        .filter(screen => screen.kind === 'question' && screen.id !== 'photo')
+        .forEach(screen => {
+          const answer = answers[screen.id as keyof Answers];
+          if (!answer) return;
+
+          // Ищем вопрос в анкете по code (screen.id соответствует question.code в БД)
+          const question = questionnaire.groups
+            .flatMap((g: any) => g.questions)
+            .find((q: any) => q.code === screen.id.toUpperCase().replace(/-/g, '_'));
+          
+          if (!question) {
+            console.warn(`Question not found for code: ${screen.id}`);
+            return;
+          }
+
+          if (screen.type === 'multi' && Array.isArray(answer)) {
+            apiAnswers.push({
+              questionId: question.id,
+              questionCode: question.code,
+              values: answer,
+            });
+          } else if (typeof answer === 'string') {
+            apiAnswers.push({
+              questionId: question.id,
+              questionCode: question.code,
+              value: answer,
+            });
+          }
+        });
+
+      if (apiAnswers.length === 0) {
+        console.log('No answers to save');
+        return;
+      }
+
+      // Отправляем на API
+      const result = await submitAnswers(questionnaireId, apiAnswers);
+      
+      if (result.success) {
+        console.log('Answers saved to API successfully');
+      } else {
+        console.warn('Failed to save answers to API:', result.error);
+      }
+    } catch (err) {
+      console.error('Error saving answers to API:', err);
+      // Не показываем ошибку пользователю, просто логируем
+    }
+  };
+
+  const goNext = async () => {
     if (currentStepIndex < screens.length - 1) {
       let nextIndex = currentStepIndex + 1;
       
@@ -1881,6 +1984,10 @@ export default function Quiz() {
       if (nextIndex >= screens.length) {
         // Достигли конца, показываем экран загрузки
         setIsAnalyzing(true);
+        
+        // Сохраняем ответы через API (в фоне, не блокируя UI)
+        saveAnswersToAPI().catch(console.error);
+        
         setTimeout(() => {
           localStorage.setItem('skinQuizCompleted', 'true');
           navigate("/plan");
@@ -1891,6 +1998,10 @@ export default function Quiz() {
     } else {
       // Показываем экран загрузки на 5 секунд перед планом
       setIsAnalyzing(true);
+      
+      // Сохраняем ответы через API (в фоне, не блокируя UI)
+      saveAnswersToAPI().catch(console.error);
+      
       setTimeout(() => {
         // Mark quiz as completed
         localStorage.setItem('skinQuizCompleted', 'true');

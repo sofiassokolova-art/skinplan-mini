@@ -1,0 +1,8 @@
+# Игнорируем старые файлы Vite при деплое
+src/pages/
+src/App.tsx
+src/main.tsx
+index.html
+vite.config.ts
+dist/
+
