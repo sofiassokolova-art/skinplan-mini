@@ -15,6 +15,7 @@ const publicRoutes = [
   '/admin/login',
   '/api/debug', // Отладочные endpoints
   '/debug', // Отладочные страницы
+  '/logs', // Страница логов
 ];
 
 export function middleware(request: NextRequest) {
