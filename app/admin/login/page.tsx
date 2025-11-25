@@ -30,26 +30,61 @@ export default function AdminLogin() {
       return;
     }
 
+    // Проверяем, открыто ли через Telegram Mini App
+    const isMiniApp = typeof window !== 'undefined' && 
+                      window.Telegram?.WebApp?.initDataUnsafe?.user;
+    
+    if (isMiniApp) {
+      // Если открыто через Mini App, используем initData напрямую
+      console.log('Открыто через Telegram Mini App, используем initData');
+      const initData = window.Telegram?.WebApp?.initData;
+      if (initData) {
+        handleMiniAppAuth(initData);
+      } else {
+        setError('Не удалось получить данные авторизации из Telegram Mini App. Попробуйте открыть через обычный браузер.');
+      }
+      return;
+    }
+
+    // Если не Mini App, загружаем Telegram Login Widget
     // Настраиваем callback для Telegram Login Widget
     window.onTelegramAuth = (user: any) => {
       handleTelegramAuth(user);
     };
 
-    // Загружаем скрипт Telegram Login Widget
-    const script = document.createElement('script');
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.setAttribute('data-telegram-login', TELEGRAM_BOT_NAME);
-    script.setAttribute('data-size', 'large');
-    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-    script.setAttribute('data-request-access', 'write');
-    script.async = true;
-    
-    const container = document.getElementById('telegram-login-container');
-    if (container && !container.hasChildNodes()) {
+    // Ждем, пока DOM будет готов
+    const loadWidget = () => {
+      const container = document.getElementById('telegram-login-container');
+      if (!container) {
+        console.error('Container not found');
+        return;
+      }
+
+      // Очищаем контейнер от предыдущих попыток
+      container.innerHTML = '';
+
+      // Создаем скрипт Telegram Login Widget
+      const script = document.createElement('script');
+      script.src = 'https://telegram.org/js/telegram-widget.js?22';
+      script.setAttribute('data-telegram-login', TELEGRAM_BOT_NAME);
+      script.setAttribute('data-size', 'large');
+      script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      script.setAttribute('data-request-access', 'write');
+      script.setAttribute('data-radius', '10');
+      script.async = true;
+      script.onerror = (e) => {
+        console.error('Failed to load Telegram Login Widget script:', e);
+        setError('Не удалось загрузить виджет авторизации Telegram. Проверьте подключение к интернету.');
+      };
+      
       container.appendChild(script);
-    }
+    };
+
+    // Загружаем виджет после небольшой задержки, чтобы убедиться, что контейнер существует
+    const timeout = setTimeout(loadWidget, 100);
 
     return () => {
+      clearTimeout(timeout);
       // Cleanup
       if (window.onTelegramAuth) {
         delete window.onTelegramAuth;
@@ -87,6 +122,44 @@ export default function AdminLogin() {
       router.push('/admin');
     } catch (err) {
       console.error('Error during login:', err);
+      setError('Ошибка соединения. Проверьте подключение к интернету.');
+      setLoading(false);
+    }
+  };
+
+  const handleMiniAppAuth = async (initData: string) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': initData,
+        },
+        body: JSON.stringify({ initData }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          setError('Доступ запрещен. Ваш аккаунт не в списке администраторов.');
+        } else {
+          setError(data.error || `Ошибка входа (${response.status})`);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Сохраняем токен
+      localStorage.setItem('admin_token', data.token);
+      
+      // Перенаправляем в админ-панель
+      router.push('/admin');
+    } catch (err) {
+      console.error('Error during Mini App login:', err);
       setError('Ошибка соединения. Проверьте подключение к интернету.');
       setLoading(false);
     }

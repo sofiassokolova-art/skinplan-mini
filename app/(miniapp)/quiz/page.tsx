@@ -377,17 +377,34 @@ export default function QuizPage() {
     try {
       // Проверяем, что приложение открыто через Telegram
       const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
+      
       console.log('📱 Проверка Telegram WebApp:', {
         hasWindow: typeof window !== 'undefined',
         hasTelegram: typeof window !== 'undefined' && !!window.Telegram,
-        hasWebApp: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
+        hasWebApp: isInTelegram,
         hasInitData: !!initData,
         initDataLength: initData?.length || 0,
       });
 
+      // Если мы в Telegram, но initData нет - это может быть preview mode
+      if (isInTelegram && !initData) {
+        console.error('❌ Telegram WebApp доступен, но initData отсутствует (возможно, preview mode)');
+        setError('Приложение открыто в режиме предпросмотра. Пожалуйста, откройте его через кнопку бота или используйте ссылку формата: https://t.me/your_bot?startapp=...');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!isInTelegram) {
+        console.error('❌ Telegram WebApp не доступен');
+        setError('Пожалуйста, откройте приложение через Telegram Mini App (не просто по ссылке, а через кнопку бота).');
+        setIsSubmitting(false);
+        return;
+      }
+
       if (!initData) {
         console.error('❌ Telegram WebApp initData не доступен');
-        setError('Пожалуйста, откройте приложение через Telegram Mini App.');
+        setError('Не удалось получить данные авторизации. Попробуйте обновить страницу.');
         setIsSubmitting(false);
         return;
       }
