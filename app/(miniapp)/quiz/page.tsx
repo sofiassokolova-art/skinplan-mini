@@ -364,8 +364,22 @@ export default function QuizPage() {
   };
 
   const submitAnswers = async () => {
+    console.log('🚀 submitAnswers вызвана!');
+    console.log('📊 Состояние:', { 
+      hasQuestionnaire: !!questionnaire, 
+      answersCount: Object.keys(answers).length,
+      isSubmitting,
+      questionnaireId: questionnaire?.id 
+    });
+    
     if (!questionnaire) {
       console.error('❌ Нет анкеты для отправки ответов');
+      setError('Анкета не загружена. Пожалуйста, обновите страницу.');
+      return;
+    }
+
+    if (isSubmitting) {
+      console.warn('⚠️ Уже идет отправка, пропускаем');
       return;
     }
 
@@ -418,15 +432,22 @@ export default function QuizPage() {
         };
       });
 
+      console.log('📤 Отправляем ответы на сервер...');
+      console.log('📋 Массив ответов:', answerArray);
+      
       const result = await api.submitAnswers(questionnaire.id, answerArray);
+      console.log('✅ Ответы успешно отправлены:', result);
       
       // Очищаем сохранённый прогресс после успешной отправки
       clearProgress();
+      console.log('🧹 Прогресс очищен');
       
       // Небольшая задержка для показа лоадера перед перенаправлением
+      console.log('⏳ Ждем 1 секунду перед редиректом...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Перенаправление на страницу плана после успешного завершения
+      console.log('🚀 Перенаправляем на /plan');
       router.push('/plan');
     } catch (err: any) {
       console.error('Error submitting answers:', err);
@@ -992,19 +1013,28 @@ export default function QuizPage() {
             // Проверяем, является ли это последним инфо-экраном (want_improve)
             const isLastInfoScreen = screen.id === 'want_improve';
             const nextInfoScreen = INFO_SCREENS.find(s => s.showAfterQuestionCode === screen.id);
-            const isActuallyLast = !nextInfoScreen && isTinderScreen;
-
-            // Если это последний инфо-экран, показываем кнопку "Получить план"
-            if (isLastInfoScreen || isActuallyLast) {
+            
+            // Для последнего tinder-экрана кнопки обрабатываются отдельно ниже
+            // Если это не tinder-экран, но последний - показываем кнопку "Получить план"
+            if (isLastInfoScreen && !nextInfoScreen && !isTinderScreen) {
               return (
                 <button
-                  onClick={async () => {
-                    console.log('🚀 Нажата кнопка "Получить план" на последнем инфо-экране');
-                    try {
-                      await submitAnswers();
-                    } catch (err) {
-                      console.error('❌ Ошибка при отправке ответов:', err);
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🚀 Нажата кнопка "Получить план" на последнем инфо-экране:', screen.id);
+                    console.log('📊 Состояние:', { isSubmitting, answersCount: Object.keys(answers).length });
+                    
+                    if (isSubmitting) {
+                      console.warn('⚠️ Уже идет отправка, игнорируем клик');
+                      return;
                     }
+                    
+                    submitAnswers().catch((err) => {
+                      console.error('❌ Ошибка при отправке ответов:', err);
+                      setError(err?.message || 'Ошибка отправки ответов');
+                      setIsSubmitting(false);
+                    });
                   }}
                   disabled={isSubmitting}
                   style={{
@@ -1029,11 +1059,31 @@ export default function QuizPage() {
             }
 
             // Tinder-кнопки для других Tinder-экранов
+            // Если это последний tinder-экран (want_improve), то кнопка "Да" вызывает submitAnswers
             if (isTinderScreen) {
+              const isWantImproveScreen = screen.id === 'want_improve';
+              const nextInfoAfterThis = INFO_SCREENS.find(s => s.showAfterQuestionCode === screen.id);
+              const isLastTinderScreen = isWantImproveScreen && !nextInfoAfterThis;
+              
               return (
                 <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                   <button
-                    onClick={handleNext}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (isLastTinderScreen) {
+                        // На последнем экране кнопка "Нет" тоже вызывает submitAnswers
+                        console.log('🚀 Нажата кнопка "Нет" на последнем экране, отправляем ответы');
+                        submitAnswers().catch((err) => {
+                          console.error('❌ Ошибка при отправке ответов:', err);
+                          setError(err?.message || 'Ошибка отправки ответов');
+                          setIsSubmitting(false);
+                        });
+                      } else {
+                        handleNext();
+                      }
+                    }}
+                    disabled={isSubmitting}
                     style={{
                       flex: 1,
                       height: '64px',
@@ -1044,14 +1094,30 @@ export default function QuizPage() {
                       fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 600,
                       fontSize: '18px',
-                      cursor: 'pointer',
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                      opacity: isSubmitting ? 0.7 : 1,
                     }}
                   >
                     ❌ Нет
                   </button>
                   <button
-                    onClick={handleNext}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (isLastTinderScreen) {
+                        // На последнем экране кнопка "Да" вызывает submitAnswers
+                        console.log('🚀 Нажата кнопка "Да" на последнем экране, отправляем ответы');
+                        submitAnswers().catch((err) => {
+                          console.error('❌ Ошибка при отправке ответов:', err);
+                          setError(err?.message || 'Ошибка отправки ответов');
+                          setIsSubmitting(false);
+                        });
+                      } else {
+                        handleNext();
+                      }
+                    }}
+                    disabled={isSubmitting}
                     style={{
                       flex: 1,
                       height: '64px',
@@ -1062,11 +1128,12 @@ export default function QuizPage() {
                       fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 600,
                       fontSize: '18px',
-                      cursor: 'pointer',
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
                       boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                      opacity: isSubmitting ? 0.7 : 1,
                     }}
                   >
-                    ✅ Да
+                    {isSubmitting ? 'Отправка...' : '✅ Да'}
                   </button>
                 </div>
               );

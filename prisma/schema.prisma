@@ -172,6 +172,7 @@ model Product {
   isFragranceFree Boolean  @default(false) @map("is_fragrance_free")
   isNonComedogenic Boolean @default(false) @map("is_non_comedogenic")
   priceSegment    String?  @map("price_segment") // mass / mid / premium
+  price           Float?   // Цена в рублях
   descriptionUser String?  @map("description_user") // Текст для карточки
   marketLinks     Json?    @map("market_links") // JSON: { "ozon": "...", "wb": "..." }
   status          String   @default("draft") // draft / published
