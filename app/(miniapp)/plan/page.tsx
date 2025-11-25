@@ -103,13 +103,33 @@ export default function PlanPage() {
         }
       }
     } catch (err: any) {
-      console.error('Error loading plan:', err);
+      console.error('❌ Error loading plan:', err);
+      console.error('❌ Error details:', {
+        message: err?.message,
+        response: err?.response,
+        stack: err?.stack,
+      });
+      
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
         localStorage.removeItem('auth_token');
         router.push('/quiz');
         return;
       }
-      setError(err?.message || 'Ошибка загрузки плана');
+
+      // Более понятные сообщения об ошибках
+      let errorMessage = err?.message || 'Ошибка загрузки плана';
+      
+      if (err?.message?.includes('No skin profile found') || err?.message?.includes('Профиль кожи не найден')) {
+        errorMessage = 'Профиль не найден. Пожалуйста, пройдите анкету заново.';
+      } else if (err?.message?.includes('No products available') || err?.message?.includes('Продукты не найдены')) {
+        errorMessage = 'Продукты не найдены. Обратитесь к администратору.';
+      } else if (err?.message?.includes('404') || err?.response?.status === 404) {
+        errorMessage = 'План не найден. Пожалуйста, пройдите анкету заново.';
+      } else if (err?.message?.includes('500') || err?.response?.status === 500) {
+        errorMessage = 'Ошибка сервера. Пожалуйста, попробуйте позже.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

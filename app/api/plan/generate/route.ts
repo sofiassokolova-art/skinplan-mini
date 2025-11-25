@@ -222,7 +222,34 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
       console.log(`✅ RecommendationSession created on-the-fly with ${productIds.length} products`);
     } else {
-      throw new Error('No matching recommendation rule found. Please configure recommendation rules in the admin panel.');
+      // Если нет правил, создаем базовую сессию с любыми продуктами
+      console.warn(`⚠️ No matching rule found, creating fallback recommendation session...`);
+      
+      // Получаем любые опубликованные продукты для базового плана
+      const fallbackProducts = await prisma.product.findMany({
+        where: { status: 'published' },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { brand: true },
+      });
+
+      if (fallbackProducts.length === 0) {
+        throw new Error('No products found in database. Please add products through the admin panel.');
+      }
+
+      const fallbackProductIds = fallbackProducts.map(p => p.id);
+      
+      // Создаем RecommendationSession с базовыми продуктами
+      recommendations = await prisma.recommendationSession.create({
+        data: {
+          userId,
+          profileId: profile.id,
+          ruleId: null, // Нет правила
+          products: fallbackProductIds,
+        },
+      });
+
+      console.log(`✅ Fallback RecommendationSession created with ${fallbackProductIds.length} products`);
     }
   }
 
@@ -231,15 +258,25 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     ? recommendations.products as number[]
     : [];
 
-  const products = await prisma.product.findMany({
+  if (productIds.length === 0) {
+    console.warn(`⚠️ No products in RecommendationSession, fetching any published products...`);
+  }
+
+  let products = await prisma.product.findMany({
     where: {
-      id: { in: productIds },
+      id: { in: productIds.length > 0 ? productIds : undefined },
       status: 'published',
     },
     include: {
       brand: true,
     },
+    take: productIds.length > 0 ? undefined : 10, // Если нет ID, берем первые 10
   });
+
+  // Если продуктов нет вообще, выбрасываем ошибку
+  if (products.length === 0) {
+    throw new Error('No products available. Please add products through the admin panel.');
+  }
 
   // Группируем продукты по шагам
   const productsByStep: Record<string, typeof products> = {};
