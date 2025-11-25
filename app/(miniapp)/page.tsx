@@ -55,6 +55,12 @@ export default function HomePage() {
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
   const [selectedItem, setSelectedItem] = useState<RoutineItem | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showResumeScreen, setShowResumeScreen] = useState(false);
+  const [savedProgress, setSavedProgress] = useState<{
+    answers: Record<number, string | string[]>;
+    questionIndex: number;
+    infoScreenIndex: number;
+  } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -69,12 +75,79 @@ export default function HomePage() {
         return;
       }
 
+      // Сначала проверяем, есть ли незавершенная анкета
+      const hasIncompleteQuiz = await checkIncompleteQuiz();
+      
+      // Если есть незавершенная анкета, не загружаем рекомендации
+      if (hasIncompleteQuiz) {
+        return;
+      }
+
       // Загружаем рекомендации (initData передается автоматически в запросе)
       await loadRecommendations();
     };
 
     initAndLoad();
   }, [router]);
+
+  const checkIncompleteQuiz = async () => {
+    try {
+      // Проверяем локально
+      const savedProgressStr = typeof window !== 'undefined' ? localStorage.getItem('quiz_progress') : null;
+      if (savedProgressStr) {
+        try {
+          const progress = JSON.parse(savedProgressStr);
+          if (progress.answers && Object.keys(progress.answers).length > 0) {
+            setSavedProgress(progress);
+            setShowResumeScreen(true);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          // Игнорируем ошибки парсинга
+        }
+      }
+
+      // Проверяем на сервере (только если Telegram WebApp доступен)
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        try {
+          const response = await api.getQuizProgress() as {
+            progress?: {
+              answers: Record<number, string | string[]>;
+              questionIndex: number;
+              infoScreenIndex: number;
+            } | null;
+          };
+          if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+            setSavedProgress(response.progress);
+            setShowResumeScreen(true);
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          // Игнорируем ошибки загрузки прогресса - продолжаем загрузку рекомендаций
+        }
+      }
+    } catch (err) {
+      // Игнорируем ошибки - продолжаем загрузку рекомендаций
+    }
+    
+    // Если незавершенной анкеты нет, продолжаем загрузку рекомендаций
+    // loading останется true, пока не загрузятся рекомендации или не будет ошибки
+  };
+
+  const resumeQuiz = () => {
+    router.push('/quiz');
+  };
+
+  const startOver = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('quiz_progress');
+    }
+    setShowResumeScreen(false);
+    setSavedProgress(null);
+    router.push('/quiz');
+  };
 
   const loadRecommendations = async () => {
     try {
@@ -193,6 +266,183 @@ export default function HomePage() {
       )
     );
   };
+
+  // Экран незавершенной анкеты
+  if (showResumeScreen && savedProgress) {
+    const answeredCount = Object.keys(savedProgress.answers).length;
+    const progressPercent = 22 > 0 ? Math.round((answeredCount / 22) * 100) : 0;
+
+    return (
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          width: '88%',
+          maxWidth: '420px',
+          backgroundColor: 'rgba(255, 255, 255, 0.58)',
+          backdropFilter: 'blur(26px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '44px',
+          padding: '36px 28px 32px 28px',
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
+        }}>
+          <h1 style={{
+            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '32px',
+            lineHeight: '38px',
+            color: '#0A5F59',
+            margin: '0 0 16px 0',
+            textAlign: 'center',
+          }}>
+            Вы не завершили анкету
+          </h1>
+
+          <p style={{
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 400,
+            fontSize: '18px',
+            lineHeight: '1.5',
+            color: '#475467',
+            margin: '0 0 24px 0',
+            textAlign: 'center',
+          }}>
+            Продолжите, чтобы получить персональный план ухода
+          </p>
+
+          <div style={{
+            marginBottom: '28px',
+            padding: '16px',
+            backgroundColor: 'rgba(10, 95, 89, 0.08)',
+            borderRadius: '16px',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: '8px',
+              fontSize: '14px',
+              color: '#0A5F59',
+              fontWeight: 600,
+            }}>
+              <span>Прогресс</span>
+              <span>{answeredCount} из 22 вопросов</span>
+            </div>
+            <div style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: 'rgba(10, 95, 89, 0.2)',
+              borderRadius: '4px',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                width: `${progressPercent}%`,
+                height: '100%',
+                backgroundColor: '#0A5F59',
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
+          </div>
+
+          <div style={{
+            marginBottom: '28px',
+            padding: '0',
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: 600,
+              color: '#0A5F59',
+              marginBottom: '12px',
+            }}>
+              Что вы получите:
+            </h3>
+            {[
+              'Персональный план ухода на 12 недель',
+              'Рекомендации от косметолога-дерматолога',
+              'Точная диагностика типа и состояния кожи',
+            ].map((benefit, index) => (
+              <div key={index} style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                marginBottom: index < 2 ? '12px' : '0',
+              }}>
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  backgroundColor: '#0A5F59',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: '2px',
+                }}>
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <span style={{
+                  fontSize: '15px',
+                  color: '#1F2A44',
+                  lineHeight: '1.5',
+                }}>
+                  {benefit}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}>
+            <button
+              onClick={resumeQuiz}
+              style={{
+                width: '100%',
+                height: '64px',
+                background: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                borderRadius: '32px',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 500,
+                fontSize: '19px',
+                boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                cursor: 'pointer',
+              }}
+            >
+              Продолжить с вопроса {savedProgress.questionIndex + 1} →
+            </button>
+            
+            <button
+              onClick={startOver}
+              style={{
+                width: '100%',
+                height: '48px',
+                background: 'transparent',
+                color: '#0A5F59',
+                border: '1px solid rgba(10, 95, 89, 0.3)',
+                borderRadius: '24px',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 500,
+                fontSize: '16px',
+                cursor: 'pointer',
+              }}
+            >
+              Начать заново
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!mounted || loading) {
     return (

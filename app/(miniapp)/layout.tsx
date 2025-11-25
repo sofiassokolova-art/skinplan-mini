@@ -4,7 +4,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
@@ -15,6 +15,7 @@ export default function MiniappLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
@@ -39,9 +40,55 @@ export default function MiniappLayout({
 
   // Скрываем навигацию на определенных страницах
   const hideNav = pathname === '/quiz' || pathname.startsWith('/quiz/');
+  
+  // Скрываем логотип на главной странице (там он уже есть) и на странице незавершенной анкеты
+  const showLogo = pathname !== '/';
 
   return (
     <>
+      {/* Логотип наверху всех экранов (кроме главной) */}
+      {showLogo && (
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backgroundColor: 'rgba(245, 255, 252, 0.9)',
+          backdropFilter: 'blur(10px)',
+          padding: '12px 20px',
+          display: 'flex',
+          justifyContent: 'center',
+          borderBottom: '1px solid rgba(10, 95, 89, 0.1)',
+        }}>
+          <button
+            onClick={() => router.push('/')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src="/skiniq-logo.png"
+              alt="SkinIQ"
+              style={{
+                height: '48px',
+                width: 'auto',
+                transition: 'transform 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            />
+          </button>
+        </div>
+      )}
       {children}
       {!hideNav && <BottomNavigation />}
     </>
