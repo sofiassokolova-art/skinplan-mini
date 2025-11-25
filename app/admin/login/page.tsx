@@ -1,21 +1,14 @@
 // app/admin/login/page.tsx
-// Страница входа в админ-панель через Telegram Login Widget
+// Страница входа в админ-панель по секретному слову
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-declare global {
-  interface Window {
-    onTelegramAuth?: (user: any) => void;
-  }
-}
-
-const TELEGRAM_BOT_NAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || 'skinplanned_bot';
-
 export default function AdminLogin() {
   const router = useRouter();
+  const [secretWord, setSecretWord] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -29,134 +22,25 @@ export default function AdminLogin() {
       router.push('/admin');
       return;
     }
-
-    // Проверяем, открыто ли через Telegram Mini App
-    const isMiniApp = typeof window !== 'undefined' && 
-                      window.Telegram?.WebApp?.initDataUnsafe?.user;
-    
-    if (isMiniApp) {
-      // Если открыто через Mini App, используем initData напрямую
-      console.log('Открыто через Telegram Mini App, используем initData');
-      const initData = window.Telegram?.WebApp?.initData;
-      if (initData) {
-        handleMiniAppAuth(initData);
-      } else {
-        setError('Не удалось получить данные авторизации из Telegram Mini App. Попробуйте открыть через обычный браузер.');
-      }
-      return;
-    }
-
-    // Если не Mini App, загружаем Telegram Login Widget
-    // Настраиваем callback для Telegram Login Widget
-    window.onTelegramAuth = (user: any) => {
-      console.log('🔔 onTelegramAuth called with user:', user);
-      handleTelegramAuth(user);
-    };
-
-    // Ждем, пока DOM будет готов
-    const loadWidget = () => {
-      const container = document.getElementById('telegram-login-container');
-      if (!container) {
-        console.error('❌ Container not found');
-        return;
-      }
-
-      // Очищаем контейнер от предыдущих попыток
-      container.innerHTML = '';
-
-      console.log('📦 Loading Telegram Login Widget for bot:', TELEGRAM_BOT_NAME);
-
-      // Создаем скрипт Telegram Login Widget
-      const script = document.createElement('script');
-      script.src = 'https://telegram.org/js/telegram-widget.js?22';
-      script.setAttribute('data-telegram-login', TELEGRAM_BOT_NAME);
-      script.setAttribute('data-size', 'large');
-      script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-      script.setAttribute('data-request-access', 'write');
-      script.setAttribute('data-radius', '10');
-      script.async = true;
-      script.onload = () => {
-        console.log('✅ Telegram Login Widget script loaded');
-      };
-      script.onerror = (e) => {
-        console.error('❌ Failed to load Telegram Login Widget script:', e);
-        setError('Не удалось загрузить виджет авторизации Telegram. Проверьте подключение к интернету.');
-      };
-      
-      container.appendChild(script);
-      console.log('📤 Widget script added to container');
-    };
-
-    // Загружаем виджет после небольшой задержки, чтобы убедиться, что контейнер существует
-    const timeout = setTimeout(loadWidget, 100);
-
-    return () => {
-      clearTimeout(timeout);
-      // Cleanup
-      if (window.onTelegramAuth) {
-        delete window.onTelegramAuth;
-      }
-    };
   }, [router]);
 
-  const handleTelegramAuth = async (user: any) => {
-    console.log('🔐 Telegram Login Widget callback received:', user);
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
-
-    try {
-      console.log('📤 Sending auth data to server...');
-      const response = await fetch('/api/admin/telegram-callback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(user),
-      });
-
-      const data = await response.json();
-      console.log('📥 Server response:', { status: response.status, data });
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          setError('Доступ запрещен. Ваш аккаунт не в списке администраторов.');
-        } else {
-          setError(data.error || `Ошибка входа (${response.status})`);
-        }
-        setLoading(false);
-        return;
-      }
-
-      // Сохраняем токен
-      localStorage.setItem('admin_token', data.token);
-      console.log('✅ Token saved, redirecting to admin panel...');
-      
-      // Перенаправляем в админ-панель
-      router.push('/admin');
-    } catch (err) {
-      console.error('❌ Error during login:', err);
-      setError('Ошибка соединения. Проверьте подключение к интернету.');
-      setLoading(false);
-    }
-  };
-
-  const handleMiniAppAuth = async (initData: string) => {
     setLoading(true);
-    setError('');
 
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Telegram-Init-Data': initData,
-        },
-        body: JSON.stringify({ initData }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secretWord }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 403) {
-          setError('Доступ запрещен. Ваш аккаунт не в списке администраторов.');
+        if (response.status === 401 || response.status === 403) {
+          setError('Неверное секретное слово. Доступ запрещен.');
         } else {
           setError(data.error || `Ошибка входа (${response.status})`);
         }
@@ -170,7 +54,7 @@ export default function AdminLogin() {
       // Перенаправляем в админ-панель
       router.push('/admin');
     } catch (err) {
-      console.error('Error during Mini App login:', err);
+      console.error('Error during login:', err);
       setError('Ошибка соединения. Проверьте подключение к интернету.');
       setLoading(false);
     }
@@ -210,7 +94,7 @@ export default function AdminLogin() {
           color: '#475467',
           marginBottom: '24px',
         }}>
-          Авторизуйтесь через Telegram для доступа
+          Введите секретное слово для доступа
         </p>
 
         {error && (
@@ -234,43 +118,77 @@ export default function AdminLogin() {
           </div>
         )}
 
-        {loading && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '16px',
-            marginBottom: '24px',
-          }}>
-            <div style={{
-              width: '48px',
-              height: '48px',
-              border: '4px solid rgba(10, 95, 89, 0.2)',
-              borderTop: '4px solid #0A5F59',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-            }}></div>
-            <div style={{ color: '#0A5F59', fontSize: '14px' }}>
-              Авторизация...
-            </div>
-            <style>{`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}</style>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '24px' }}>
+            <input
+              type="password"
+              value={secretWord}
+              onChange={(e) => setSecretWord(e.target.value)}
+              placeholder="Секретное слово"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid rgba(10, 95, 89, 0.2)',
+                fontSize: '16px',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                backgroundColor: 'white',
+                color: '#0A5F59',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#0A5F59';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(10, 95, 89, 0.2)';
+              }}
+              autoFocus
+            />
           </div>
-        )}
 
-        {!loading && (
-          <div id="telegram-login-container" style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: '24px',
-          }}>
-            {/* Telegram Login Widget будет встроен сюда */}
-          </div>
-        )}
+          <button
+            type="submit"
+            disabled={loading || !secretWord.trim()}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: '12px',
+              backgroundColor: loading || !secretWord.trim() ? 'rgba(10, 95, 89, 0.5)' : '#0A5F59',
+              color: 'white',
+              border: 'none',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: loading || !secretWord.trim() ? 'not-allowed' : 'pointer',
+              transition: 'background-color 0.2s',
+              boxShadow: loading || !secretWord.trim() ? 'none' : '0 4px 12px rgba(10, 95, 89, 0.3)',
+            }}
+          >
+            {loading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255, 255, 255, 0.3)',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                  animation: 'spin 0.6s linear infinite',
+                }}></div>
+                <span>Вход...</span>
+              </div>
+            ) : (
+              'Войти'
+            )}
+          </button>
+        </form>
+
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
 
         <div style={{
           marginTop: '24px',
@@ -285,50 +203,15 @@ export default function AdminLogin() {
             marginBottom: '8px',
             fontSize: '14px',
           }}>
-            💡 Как работает авторизация:
+            🔒 Безопасность
           </div>
-          <ol style={{
-            textAlign: 'left',
+          <div style={{
             color: '#1E3A8A',
-            fontSize: '13px',
-            lineHeight: '1.8',
-            paddingLeft: '20px',
-            margin: 0,
-          }}>
-            <li>Нажмите кнопку "Войти через Telegram" выше</li>
-            <li>Введите номер телефона (в международном формате)</li>
-            <li>Подтвердите доступ через Telegram</li>
-            <li>Если ваш аккаунт в списке администраторов - вы автоматически войдете в панель</li>
-          </ol>
-        </div>
-
-        <div style={{
-          marginTop: '16px',
-          padding: '16px',
-          backgroundColor: '#FEF3C7',
-          borderRadius: '12px',
-          border: '1px solid #FCD34D',
-        }}>
-          <div style={{
-            color: '#92400E',
-            fontWeight: '600',
-            marginBottom: '8px',
-            fontSize: '14px',
-          }}>
-            ⚠️ Важно: Настройка домена
-          </div>
-          <div style={{
-            color: '#78350F',
             fontSize: '13px',
             lineHeight: '1.6',
           }}>
-            Если сообщение не приходит, нужно настроить домен в BotFather:
-            <ol style={{ marginTop: '8px', paddingLeft: '20px' }}>
-              <li>Откройте <strong>@BotFather</strong> в Telegram</li>
-              <li>Отправьте команду <code>/setdomain</code></li>
-              <li>Выберите бота <code>@skinplanned_bot</code></li>
-              <li>Введите домен: <code>skinplan-mini.vercel.app</code></li>
-            </ol>
+            Секретное слово требуется для доступа к админ-панели. 
+            Оно хранится в переменных окружения и известно только администраторам.
           </div>
         </div>
       </div>
