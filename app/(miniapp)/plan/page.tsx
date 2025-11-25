@@ -79,10 +79,11 @@ export default function PlanPage() {
     loadPlan();
   }, []);
 
-  const loadPlan = async () => {
+  const loadPlan = async (retryCount = 0) => {
     try {
-      console.log('📥 Начинаем загрузку плана...');
+      console.log(`📥 Загрузка плана (попытка ${retryCount + 1})...`);
       setLoading(true);
+      setError(null);
       
       // Проверяем токен
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
@@ -112,6 +113,22 @@ export default function PlanPage() {
         setPlan(data);
       } catch (apiError: any) {
         console.error('❌ Ошибка при запросе плана:', apiError);
+        console.error('❌ Детали:', {
+          message: apiError?.message,
+          status: apiError?.response?.status,
+        });
+        
+        // Если ошибка "No skin profile found" и это первая попытка - ждем и повторяем
+        if (retryCount < 2 && (
+          apiError?.message?.includes('No skin profile found') ||
+          apiError?.message?.includes('Профиль не найден') ||
+          apiError?.response?.status === 404
+        )) {
+          console.log(`⏳ Ждем 2 секунды перед повторной попыткой...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return loadPlan(retryCount + 1);
+        }
+        
         throw apiError;
       }
 
@@ -141,15 +158,19 @@ export default function PlanPage() {
 
       // Более понятные сообщения об ошибках
       let errorMessage = err?.message || 'Ошибка загрузки плана';
+      let showRetry = true;
       
       if (err?.message?.includes('No skin profile found') || err?.message?.includes('Профиль кожи не найден')) {
-        errorMessage = 'Профиль не найден. Пожалуйста, пройдите анкету заново.';
+        errorMessage = 'Профиль не найден. Возможно, анкета еще обрабатывается. Попробуйте обновить страницу.';
       } else if (err?.message?.includes('No products available') || err?.message?.includes('Продукты не найдены')) {
         errorMessage = 'Продукты не найдены. Обратитесь к администратору.';
-      } else if (err?.message?.includes('404') || err?.response?.status === 404) {
-        errorMessage = 'План не найден. Пожалуйста, пройдите анкету заново.';
+        showRetry = false;
+      } else if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
+        errorMessage = 'Ошибка авторизации. Перенаправляем на анкету...';
+        setTimeout(() => router.push('/quiz'), 2000);
+        return;
       } else if (err?.message?.includes('500') || err?.response?.status === 500) {
-        errorMessage = 'Ошибка сервера. Пожалуйста, попробуйте позже.';
+        errorMessage = 'Ошибка сервера. Попробуйте позже.';
       }
       
       setError(errorMessage);
@@ -247,7 +268,7 @@ export default function PlanPage() {
           <button
             onClick={() => {
               console.log('🔄 Перезагружаем план...');
-              loadPlan();
+              loadPlan(0);
             }}
             style={{
               padding: '12px 24px',
@@ -260,7 +281,7 @@ export default function PlanPage() {
               fontWeight: 'bold',
             }}
           >
-            Попробовать снова
+            Обновить страницу
           </button>
           <button
             onClick={() => {
