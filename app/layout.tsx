@@ -4,6 +4,8 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import './globals.css';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { Toaster } from '@/components/Toaster';
 
 export const metadata: Metadata = {
   title: 'SkinIQ - Умный уход за кожей',
@@ -24,7 +26,12 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <ErrorBoundary>
+          {children}
+          <Toaster />
+        </ErrorBoundary>
+      </body>
     </html>
   );
 }

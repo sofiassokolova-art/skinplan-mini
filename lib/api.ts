@@ -36,6 +36,15 @@ async function request<T>(
       throw new Error('Missing Telegram initData. Please open the app through Telegram Mini App.');
     }
     
+    // Для 429 (rate limit) добавляем информацию о времени ожидания
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After');
+      const message = retryAfter 
+        ? `Слишком много запросов. Попробуйте через ${retryAfter} секунд.`
+        : 'Слишком много запросов. Попробуйте позже.';
+      throw new Error(message);
+    }
+    
     throw new Error(errorMessage);
   }
 

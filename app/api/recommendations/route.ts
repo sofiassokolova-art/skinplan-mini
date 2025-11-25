@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { getCachedRecommendations, setCachedRecommendations } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 
@@ -135,6 +136,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Проверяем кэш
+    const cachedRecommendations = await getCachedRecommendations(userId, profile.version);
+    if (cachedRecommendations) {
+      console.log('✅ Recommendations retrieved from cache');
+      return NextResponse.json(cachedRecommendations);
+    }
+
     // Получаем все активные правила, отсортированные по приоритету
     const rules = await prisma.recommendationRule.findMany({
       where: { isActive: true },
@@ -189,7 +197,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    const response = {
       profile_summary: {
         skinType: profile.skinType,
         sensitivityLevel: profile.sensitivityLevel,
@@ -200,7 +208,12 @@ export async function GET(request: NextRequest) {
         name: matchedRule.name,
       },
       steps,
-    });
+    };
+
+    // Сохраняем в кэш
+    await setCachedRecommendations(userId, profile.version, response);
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching recommendations:', error);
     return NextResponse.json(

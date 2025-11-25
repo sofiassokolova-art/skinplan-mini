@@ -1,0 +1,159 @@
+// components/ErrorBoundary.tsx
+// Глобальный Error Boundary для обработки ошибок React
+
+'use client';
+
+import { Component, ReactNode } from 'react';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error('Error caught by ErrorBoundary:', error, errorInfo);
+    
+    // Отправка в Sentry (будет добавлено позже)
+    // Sentry.captureException(error, { contexts: { react: errorInfo } });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            borderRadius: '24px',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '16px',
+            }}>
+              😔
+            </div>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: '#0A5F59',
+              marginBottom: '12px',
+            }}>
+              Что-то пошло не так
+            </h2>
+            <p style={{
+              color: '#475467',
+              marginBottom: '24px',
+              lineHeight: '1.6',
+            }}>
+              Произошла неожиданная ошибка. Попробуйте обновить страницу или вернуться на главную.
+            </p>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+            }}>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+                }}
+              >
+                Обновить страницу
+              </button>
+              <button
+                onClick={() => window.location.href = '/'}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(10, 95, 89, 0.1)',
+                  color: '#0A5F59',
+                  border: '2px solid #0A5F59',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                }}
+              >
+                На главную
+              </button>
+            </div>
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <details style={{
+                marginTop: '24px',
+                textAlign: 'left',
+                padding: '16px',
+                backgroundColor: '#FEF2F2',
+                borderRadius: '12px',
+                border: '1px solid #FCA5A5',
+              }}>
+                <summary style={{
+                  cursor: 'pointer',
+                  color: '#991B1B',
+                  fontWeight: '600',
+                  marginBottom: '8px',
+                }}>
+                  Детали ошибки (только для разработки)
+                </summary>
+                <pre style={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  overflow: 'auto',
+                  marginTop: '8px',
+                  color: '#991B1B',
+                }}>
+                  {this.state.error.toString()}
+                  {'\n\n'}
+                  {this.state.error.stack}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+

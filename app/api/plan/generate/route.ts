@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getCachedPlan, setCachedPlan } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 
@@ -201,10 +202,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       product.skinTypes.includes(profileClassification.skinType);
 
     // Проверка бюджета (если указан)
+    const productPrice = (product as any).price as number | null | undefined;
     const budgetMatches = !profileClassification.budget || 
       profileClassification.budget === 'любой' ||
-      !product.price ||
-      getBudgetTier(product.price) === profileClassification.budget;
+      !productPrice ||
+      getBudgetTier(productPrice) === profileClassification.budget;
 
     // Проверка исключенных ингредиентов
     const productIngredients = product.concerns || []; // Используем concerns как ингредиенты (можно добавить отдельное поле)
@@ -454,8 +456,37 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('✅ User identified from initData, userId:', userId);
+    
+    // Получаем профиль для версии
+    const profile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { version: true },
+    });
+
+    if (!profile) {
+      console.error('❌ No skin profile found for user ${userId}');
+      return NextResponse.json(
+        { error: 'No skin profile found' },
+        { status: 404 }
+      );
+    }
+
+    // Проверяем кэш
+    console.log('🔍 Checking cache for plan...');
+    const cachedPlan = await getCachedPlan(userId, profile.version);
+    if (cachedPlan) {
+      console.log('✅ Plan retrieved from cache');
+      return NextResponse.json(cachedPlan);
+    }
+
     console.log('📋 Starting plan generation for userId:', userId);
     const plan = await generate28DayPlan(userId);
+    
+    // Сохраняем в кэш
+    console.log('💾 Caching plan...');
+    await setCachedPlan(userId, profile.version, plan);
+    
     console.log('✅ Plan generated successfully:', {
       weeksCount: plan.weeks?.length || 0,
       productsCount: plan.products?.length || 0,
