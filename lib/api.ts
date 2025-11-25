@@ -77,6 +77,11 @@ export const api = {
     return request('/recommendations');
   },
 
+  // План ухода (28 дней)
+  async getPlan() {
+    return request('/plan/generate');
+  },
+
   // Прогресс анкеты
   async getQuizProgress() {
     return request('/questionnaire/progress');

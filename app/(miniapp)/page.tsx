@@ -331,6 +331,22 @@ export default function HomePage() {
         }}>
           Время заботиться о своей коже
         </div>
+        <button
+          onClick={() => router.push('/plan')}
+          style={{
+            marginTop: '16px',
+            padding: '12px 24px',
+            borderRadius: '12px',
+            backgroundColor: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          }}
+        >
+          📅 28-дневный план →
+        </button>
         {recommendations?.profile_summary && (
           <div style={{
             fontSize: '16px',
