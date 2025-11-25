@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function DebugPage() {
@@ -11,6 +11,11 @@ export default function DebugPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const testPlan = async () => {
     setLoading(true);
@@ -18,7 +23,7 @@ export default function DebugPage() {
     setResult(null);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       if (!token) {
         setError('Токен не найден. Сначала авторизуйтесь.');
         return;
@@ -45,7 +50,7 @@ export default function DebugPage() {
     setResult(null);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       if (!token) {
         setError('Токен не найден. Сначала авторизуйтесь.');
         return;
@@ -168,8 +173,8 @@ export default function DebugPage() {
       <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#e7f3ff', borderRadius: '8px' }}>
         <h3>Информация:</h3>
         <ul>
-          <li>Токен: {localStorage.getItem('auth_token') ? '✅ Найден' : '❌ Не найден'}</li>
-          <li>Telegram WebApp: {typeof window !== 'undefined' && window.Telegram?.WebApp ? '✅ Доступен' : '❌ Не доступен'}</li>
+          <li>Токен: {mounted && typeof window !== 'undefined' ? (localStorage.getItem('auth_token') ? '✅ Найден' : '❌ Не найден') : 'Загрузка...'}</li>
+          <li>Telegram WebApp: {mounted && typeof window !== 'undefined' && window.Telegram?.WebApp ? '✅ Доступен' : '❌ Не доступен'}</li>
         </ul>
       </div>
     </div>
