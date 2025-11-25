@@ -13,6 +13,8 @@ const publicRoutes = [
   '/api/questionnaire/active', // Публичный доступ к анкете
   '/api/telegram/webhook', // Webhook от Telegram (POST от Telegram, GET для управления)
   '/admin/login',
+  '/api/debug', // Отладочные endpoints
+  '/debug', // Отладочные страницы
 ];
 
 export function middleware(request: NextRequest) {
