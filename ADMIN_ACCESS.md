@@ -1,48 +1,76 @@
-# Доступ к админ-панели
+# Как попасть в админ-панель
 
-## Требования
+## Шаг 1: Убедитесь, что вы админ в базе данных
 
-- Админ-панель доступна только для пользователей, добавленных в таблицу `admins` в базе данных
-- Авторизация происходит через **Telegram Mini App** (Telegram WebApp)
-- Необходимо открыть `/admin/login` через Telegram Mini App
+Ваш Telegram username должен быть в базе данных как администратор. У вас уже настроен username: `@sofiagguseynova`
 
-## Текущий админ
+Чтобы создать/обновить админа, выполните:
+```bash
+npm run seed:admin
+```
 
-- **Telegram username**: `@sofiagguseynova`
-- **Role**: `admin`
+Это создаст админа с username `sofiagguseynova` в базе данных.
 
-## Как добавить нового админа
+## Шаг 2: Откройте страницу входа через Telegram Mini App
 
-1. Добавить запись в таблицу `admins` через Prisma Studio или SQL:
-   ```sql
-   INSERT INTO admins (telegram_username, role, created_at, updated_at)
-   VALUES ('username', 'admin', NOW(), NOW());
+**Важно:** Админ-панель доступна ТОЛЬКО через Telegram Mini App!
+
+### Вариант 1: Через Telegram бота
+1. Откройте вашего Telegram бота
+2. Отправьте команду `/start`
+3. Нажмите на кнопку "Открыть SkinIQ Mini App"
+4. В открывшемся приложении перейдите по адресу: `/admin/login`
+   - Полный URL: `https://skinplan-mini.vercel.app/admin/login`
+
+### Вариант 2: Прямая ссылка в Telegram
+1. Откройте Telegram
+2. Отправьте себе сообщение со ссылкой:
    ```
-
-   Или через скрипт (создать файл `scripts/seed-admin-USERNAME.ts`):
-   ```typescript
-   const admin = await prisma.admin.create({
-     data: {
-       telegramUsername: 'username', // без @
-       role: 'admin',
-     },
-   });
+   https://t.me/your_bot_name?start=admin
    ```
+   Или создайте кнопку в боте, которая открывает Mini App по адресу `/admin/login`
 
-2. Запустить скрипт или выполнить SQL запрос
+## Шаг 3: Авторизация
 
-## Безопасность
+1. На странице `/admin/login` нажмите кнопку "Войти через Telegram"
+2. Система автоматически проверит ваш Telegram username
+3. Если вы админ (`@sofiagguseynova`), вас перенаправит в админ-панель
+4. Если нет доступа - получите ошибку "Access denied"
 
-- Авторизация проверяет `initData` от Telegram (подпись)
-- JWT токен хранится в `localStorage` на клиенте
-- Каждый API запрос проверяет токен на сервере
-- Токен действителен 7 дней
+## Структура админ-панели
 
-## Структура
+После входа вы попадете на:
+- **Дашборд**: `/admin` - главная страница админ-панели
+- **Продукты**: `/admin/products` - управление продуктами
+- **Анкета**: `/admin/questionnaire` - просмотр и редактирование анкеты
+- **Правила**: `/admin/rules` - управление правилами рекомендаций
 
-- `/admin` - главная страница (дашборд)
-- `/admin/login` - вход через Telegram
-- `/admin/products` - управление продуктами
-- `/admin/questionnaire` - управление анкетой
-- `/admin/rules` - управление правилами рекомендаций
+## Отладка проблем
 
+Если у вас не получается войти:
+
+1. Откройте страницу отладки: `/admin/debug`
+2. Проверьте:
+   - Доступен ли Telegram WebApp (`telegram.available`)
+   - Есть ли initData (`telegram.initData`)
+   - Какой ваш Telegram username (`telegram.user.username`)
+   - Существует ли админ в базе данных
+
+3. Убедитесь, что:
+   - Вы открыли страницу через Telegram Mini App (не просто в браузере)
+   - Ваш Telegram username совпадает с тем, что в базе данных (`sofiagguseynova`)
+   - Админ создан в базе данных (выполните `npm run seed:admin`)
+
+## Важно
+
+- **Админ-панель работает только через Telegram Mini App!**
+- Открытие `/admin/login` в обычном браузере не сработает
+- Авторизация происходит автоматически на основе Telegram username
+- Токен хранится в `localStorage` как `admin_token`
+
+## Быстрый доступ
+
+Если у вас настроен Telegram бот, самый простой способ:
+1. Откройте бота в Telegram
+2. Создайте кнопку, которая открывает Mini App с URL: `https://skinplan-mini.vercel.app/admin/login`
+3. Или просто отправьте себе ссылку на Mini App в Telegram
