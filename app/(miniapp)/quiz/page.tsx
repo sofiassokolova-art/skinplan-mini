@@ -65,36 +65,42 @@ export default function QuizPage() {
     
     // Автоматическая авторизация через Telegram при загрузке
     const autoAuth = async () => {
-      if (!initData) {
-        console.log('⚠️ initData не доступен');
-        return;
-      }
-      
       // Проверяем наличие токена
-      const existingToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       
-      // Если токена нет, авторизуемся
-      if (!existingToken) {
+      // Если токена нет, пытаемся авторизоваться через Telegram
+      if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
+          const telegramInitData = window.Telegram.WebApp.initData;
           console.log('🔐 Автоматическая авторизация через Telegram...');
-          const authResult = await api.authTelegram(initData);
+          const authResult = await api.authTelegram(telegramInitData);
           if (authResult.token) {
+            token = authResult.token;
             console.log('✅ Авторизованы через Telegram');
           }
         } catch (err) {
           console.error('❌ Ошибка автоматической авторизации:', err);
         }
-      } else {
-        console.log('✅ Токен уже существует');
+      }
+      
+      if (token) {
+        // Загружаем прогресс из БД после успешной авторизации
+        loadSavedProgressFromServer();
       }
     };
     
-    autoAuth();
-    loadQuestionnaire();
-    loadSavedProgress();
-  }, [initData]);
+    const init = async () => {
+      await autoAuth();
+      await loadQuestionnaire();
+      // После загрузки анкеты загружаем прогресс
+      // Сначала с сервера, потом из localStorage как fallback
+      await loadSavedProgressFromServer();
+    };
+    
+    init();
+  }, []);
 
-  // Загружаем сохранённый прогресс
+  // Загружаем сохранённый прогресс из localStorage (fallback)
   const loadSavedProgress = () => {
     if (typeof window === 'undefined') return;
     
@@ -110,6 +116,32 @@ export default function QuizPage() {
       } catch (err) {
         console.error('Error loading saved progress:', err);
       }
+    }
+  };
+
+  // Загружаем прогресс с сервера (синхронизация между устройствами)
+  const loadSavedProgressFromServer = async () => {
+    try {
+      const response = await api.getQuizProgress() as {
+        progress?: {
+          answers: Record<number, string | string[]>;
+          questionIndex: number;
+          infoScreenIndex: number;
+          timestamp: number;
+        } | null;
+      };
+      if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+        setSavedProgress(response.progress);
+        setShowResumeScreen(true);
+        // Также сохраняем в localStorage для офлайн доступа
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
+        }
+      }
+    } catch (err) {
+      console.warn('Не удалось загрузить прогресс с сервера:', err);
+      // Fallback на localStorage
+      loadSavedProgress();
     }
   };
 
@@ -146,11 +178,27 @@ export default function QuizPage() {
     }
   };
 
-  const handleAnswer = (questionId: number, value: string | string[]) => {
+  const handleAnswer = async (questionId: number, value: string | string[]) => {
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
-    // Сохраняем прогресс сразу
+    
+    // Сохраняем в localStorage
     saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
+    
+    // Сохраняем в БД для синхронизации между устройствами
+    if (questionnaire) {
+      try {
+        const isArray = Array.isArray(value);
+        await api.saveQuizProgress(
+          questionnaire.id,
+          questionId,
+          isArray ? undefined : (value as string),
+          isArray ? (value as string[]) : undefined
+        );
+      } catch (err) {
+        console.warn('Не удалось сохранить прогресс на сервере:', err);
+      }
+    }
   };
 
   const handleNext = () => {
@@ -224,15 +272,11 @@ export default function QuizPage() {
       let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       
       // Если токена нет, пытаемся авторизоваться через Telegram
-      if (!token) {
-        if (!initData) {
-          setError('Необходима авторизация. Пожалуйста, откройте приложение через Telegram.');
-          return;
-        }
-        
+      if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
+          const telegramInitData = window.Telegram.WebApp.initData;
           console.log('🔐 Попытка авторизации перед отправкой ответов...');
-          const authResult = await api.authTelegram(initData);
+          const authResult = await api.authTelegram(telegramInitData);
           if (authResult.token) {
             token = authResult.token;
             console.log('✅ Авторизованы через Telegram перед отправкой ответов');
@@ -273,9 +317,10 @@ export default function QuizPage() {
       
       // Если ошибка авторизации, пытаемся обновить токен
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
-        if (initData) {
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
           try {
-            const authResult = await api.authTelegram(initData);
+            const telegramInitData = window.Telegram.WebApp.initData;
+            const authResult = await api.authTelegram(telegramInitData);
             if (authResult.token) {
               // Повторяем отправку после обновления токена
               setTimeout(() => submitAnswers(), 500);

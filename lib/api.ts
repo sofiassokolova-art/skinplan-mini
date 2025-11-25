@@ -76,4 +76,21 @@ export const api = {
   async getRecommendations() {
     return request('/recommendations');
   },
+
+  // Прогресс анкеты
+  async getQuizProgress() {
+    return request('/questionnaire/progress');
+  },
+
+  async saveQuizProgress(questionnaireId: number, questionId: number, answerValue?: string, answerValues?: string[]) {
+    return request('/questionnaire/progress', {
+      method: 'POST',
+      body: JSON.stringify({
+        questionnaireId,
+        questionId,
+        answerValue,
+        answerValues,
+      }),
+    });
+  },
 };
