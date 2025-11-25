@@ -87,19 +87,26 @@ export async function GET(request: NextRequest) {
     checks.hasProducts = products.length > 0;
     checks.productsCount = products.length;
 
-    // Пытаемся вызвать генерацию плана
-    try {
-      const { generate28DayPlan } = await import('@/app/api/plan/generate/route');
-      // Это не сработает, так как функция не экспортирована
-      // Но мы можем проверить все условия
-    } catch (e) {
-      // Игнорируем
+    // Определяем статус
+    let status = 'ok';
+    let message = 'Все проверки пройдены. План должен генерироваться.';
+    
+    if (!checks.hasProfile) {
+      status = 'error';
+      message = 'Профиль не найден. Пройдите анкету сначала.';
+    } else if (!checks.hasRecommendationSession) {
+      status = 'warning';
+      message = 'RecommendationSession не найден, но будет создан автоматически при генерации плана.';
+    } else if (!checks.hasProducts) {
+      status = 'error';
+      message = 'Продукты не найдены в базе данных. Добавьте продукты через админ-панель.';
     }
 
     return NextResponse.json({
-      success: true,
+      success: status === 'ok',
+      status,
       checks,
-      message: 'Все проверки пройдены. План должен генерироваться.',
+      message,
     });
   } catch (error: any) {
     console.error('Test plan error:', error);
