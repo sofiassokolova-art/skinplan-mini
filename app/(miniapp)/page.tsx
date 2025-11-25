@@ -51,7 +51,8 @@ export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<Recommendation | null>(null);
-  const [routineItems, setRoutineItems] = useState<RoutineItem[]>([]);
+  const [morningItems, setMorningItems] = useState<RoutineItem[]>([]);
+  const [eveningItems, setEveningItems] = useState<RoutineItem[]>([]);
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
   const [selectedItem, setSelectedItem] = useState<RoutineItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +91,7 @@ export default function HomePage() {
     initAndLoad();
   }, [router]);
 
-  const checkIncompleteQuiz = async () => {
+  const checkIncompleteQuiz = async (): Promise<boolean> => {
     try {
       // Проверяем локально
       const savedProgressStr = typeof window !== 'undefined' ? localStorage.getItem('quiz_progress') : null;
@@ -101,7 +102,7 @@ export default function HomePage() {
             setSavedProgress(progress);
             setShowResumeScreen(true);
             setLoading(false);
-            return;
+            return true; // Есть незавершенная анкета
           }
         } catch (e) {
           // Игнорируем ошибки парсинга
@@ -122,18 +123,18 @@ export default function HomePage() {
             setSavedProgress(response.progress);
             setShowResumeScreen(true);
             setLoading(false);
-            return;
+            return true; // Есть незавершенная анкета
           }
         } catch (err) {
           // Игнорируем ошибки загрузки прогресса - продолжаем загрузку рекомендаций
         }
       }
+      
+      return false; // Нет незавершенной анкеты, можно загружать рекомендации
     } catch (err) {
-      // Игнорируем ошибки - продолжаем загрузку рекомендаций
+      // В случае ошибки продолжаем загрузку рекомендаций
+      return false;
     }
-    
-    // Если незавершенной анкеты нет, продолжаем загрузку рекомендаций
-    // loading останется true, пока не загрузятся рекомендации или не будет ошибки
   };
 
   const resumeQuiz = () => {
@@ -154,86 +155,149 @@ export default function HomePage() {
       const data = await api.getRecommendations() as Recommendation;
       setRecommendations(data);
       
-      // Преобразуем рекомендации в RoutineItem[]
-      const items: RoutineItem[] = [];
+      // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
+      const morning: RoutineItem[] = [];
+      const evening: RoutineItem[] = [];
       
-      // Утренняя рутина
+      // УТРЕННЯЯ РУТИНА
       if (data?.steps?.cleanser) {
-        items.push({
-          id: 'cleanser',
+        morning.push({
+          id: 'morning-cleanser',
           title: 'Очищение',
           subtitle: data.steps.cleanser[0]?.name || 'Очищающее средство',
           icon: ICONS.cleanser,
           howto: {
-            steps: ['Смочите лицо тёплой водой', 'Нанесите средство', 'Массируйте 30–40 сек', 'Смойте'],
-            volume: '1–2 дозы',
-            tip: 'Используйте тёплую воду',
+            steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
+            volume: 'Гель: 1–2 пшика',
+            tip: 'Если кожа сухая утром — можно умыться только водой.',
           },
           done: false,
         });
       }
       
       if (data?.steps?.toner) {
-        items.push({
-          id: 'toner',
+        morning.push({
+          id: 'morning-toner',
           title: 'Тонер',
           subtitle: data.steps.toner[0]?.name || 'Тоник',
           icon: ICONS.toner,
           howto: {
-            steps: ['Нанесите на руки', 'Распределите похлопывающими движениями'],
+            steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
             volume: '3–5 капель',
-            tip: 'Избегайте ватных дисков',
+            tip: 'Избегайте ватных дисков — тратите меньше продукта.',
           },
           done: false,
         });
       }
       
       if (data?.steps?.treatment) {
-        items.push({
-          id: 'active',
+        morning.push({
+          id: 'morning-active',
           title: 'Актив',
           subtitle: data.steps.treatment[0]?.name || 'Активное средство',
           icon: ICONS.serum,
           howto: {
-            steps: ['1–2 пипетки на кожу', 'Нанесите равномерно'],
+            steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
             volume: '4–6 капель',
-            tip: 'Подождите 1–2 минуты до крема',
+            tip: 'Если есть раздражение — пропустите актив на день.',
           },
           done: false,
         });
       }
       
       if (data?.steps?.moisturizer) {
-        items.push({
-          id: 'cream',
+        morning.push({
+          id: 'morning-cream',
           title: 'Крем',
           subtitle: data.steps.moisturizer[0]?.name || 'Увлажняющий крем',
           icon: ICONS.cream,
           howto: {
-            steps: ['Горох крема распределить по лицу', 'Мягко втереть'],
+            steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
             volume: 'Горошина',
-            tip: 'Не забывайте шею',
+            tip: 'Не забывайте шею и линию подбородка.',
           },
           done: false,
         });
       }
       
       if (data?.steps?.spf) {
-        items.push({
-          id: 'spf',
+        morning.push({
+          id: 'morning-spf',
           title: 'SPF-защита',
           subtitle: data.steps.spf[0]?.name || 'SPF 50',
           icon: ICONS.spf,
           howto: {
-            steps: ['Нанести 2 пальца SPF', 'Обновлять каждые 2–3 часа'],
+            steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
             volume: '~1.5–2 мл',
-            tip: 'Обязательно при UV > 3',
+            tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
           },
           done: false,
         });
       }
       
-      setRoutineItems(items);
+      // ВЕЧЕРНЯЯ РУТИНА
+      if (data?.steps?.cleanser) {
+        evening.push({
+          id: 'evening-cleanser',
+          title: 'Очищение',
+          subtitle: data.steps.cleanser[0]?.name || 'Двойное очищение',
+          icon: ICONS.cleanser,
+          howto: {
+            steps: ['1) Масло: сухими руками распределить, эмульгировать водой', '2) Гель: умыть 30–40 сек, смыть'],
+            volume: '1–2 дозы масла + 1–2 пшика геля',
+            tip: 'Двойное очищение — в дни макияжа/кислот.',
+          },
+          done: false,
+        });
+      }
+      
+      if (data?.steps?.treatment || data?.steps?.acid) {
+        evening.push({
+          id: 'evening-acid',
+          title: 'Кислоты (по расписанию)',
+          subtitle: data.steps?.treatment?.[0]?.name || data.steps?.acid?.[0]?.name || 'AHA/BHA/PHА пилинг',
+          icon: ICONS.acid,
+          howto: {
+            steps: ['Нанести тонким слоем на Т‑зону', 'Выдержать 5–10 минут (по переносимости)', 'Смыть/нейтрализовать, далее крем'],
+            volume: 'Тонкий слой',
+            tip: 'При покраснении — пауза 3–5 дней.',
+          },
+          done: false,
+        });
+      }
+      
+      if (data?.steps?.treatment || data?.steps?.serum) {
+        evening.push({
+          id: 'evening-serum',
+          title: 'Сыворотка',
+          subtitle: data.steps?.treatment?.[0]?.name || data.steps?.serum?.[0]?.name || 'Пептидная / успокаивающая',
+          icon: ICONS.serum,
+          howto: {
+            steps: ['3–6 капель', 'Равномерно нанести, дать впитаться 1 мин'],
+            volume: '3–6 капель',
+            tip: 'В дни кислот сыворотка — без кислот/ретинола.',
+          },
+          done: false,
+        });
+      }
+      
+      if (data?.steps?.moisturizer) {
+        evening.push({
+          id: 'evening-cream',
+          title: 'Крем',
+          subtitle: data.steps.moisturizer[0]?.name || 'Питательный крем',
+          icon: ICONS.cream,
+          howto: {
+            steps: ['Горох крема', 'Распределить, не втирая сильно'],
+            volume: 'Горошина',
+            tip: 'Если сухо — добавьте каплю масла локально.',
+          },
+          done: false,
+        });
+      }
+      
+      setMorningItems(morning);
+      setEveningItems(evening);
     } catch (error: any) {
       console.error('Error loading recommendations:', error);
       
@@ -253,18 +317,27 @@ export default function HomePage() {
       
       // Другие ошибки - показываем сообщение
       setError(error?.message || 'Ошибка загрузки рекомендаций');
-      setRoutineItems([]);
+      setMorningItems([]);
+      setEveningItems([]);
     } finally {
       setLoading(false);
     }
   };
 
   const toggleItem = (itemId: string) => {
-    setRoutineItems((items) =>
-      items.map((item) =>
-        item.id === itemId ? { ...item, done: !item.done } : item
-      )
-    );
+    if (tab === 'AM') {
+      setMorningItems((items) =>
+        items.map((item) =>
+          item.id === itemId ? { ...item, done: !item.done } : item
+        )
+      );
+    } else {
+      setEveningItems((items) =>
+        items.map((item) =>
+          item.id === itemId ? { ...item, done: !item.done } : item
+        )
+      );
+    }
   };
 
   // Экран незавершенной анкеты
@@ -474,6 +547,9 @@ export default function HomePage() {
     );
   }
 
+  // Получаем текущие элементы в зависимости от вкладки
+  const routineItems = tab === 'AM' ? morningItems : eveningItems;
+  
   if (error && routineItems.length === 0) {
     return (
       <div style={{ 
