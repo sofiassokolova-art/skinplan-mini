@@ -89,13 +89,18 @@ export default function AdminLogin() {
     }
 
     // Создаем и добавляем новый скрипт
+    // Используем data-auth-url (рекомендуется) - Telegram перенаправит на callback URL
     const script = document.createElement('script');
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
     script.async = true;
     script.setAttribute('data-telegram-login', botUsername.replace('@', '')); // Убираем @ если есть
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-radius', '12');
-    script.setAttribute('data-onauth', 'TelegramLoginWidget.onAuth(user)');
+    // Используем auth-url вместо onauth для более надежной работы
+    const authUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/admin/telegram-callback`
+      : '/admin/telegram-callback';
+    script.setAttribute('data-auth-url', authUrl);
     script.setAttribute('data-request-access', 'write');
     
     script.onload = () => {
@@ -166,9 +171,29 @@ export default function AdminLogin() {
           <div className="text-xs text-gray-400 mt-1">
             Используется бот: <code className="bg-gray-100 px-1 rounded">@{botUsername.replace('@', '')}</code>
           </div>
+          
+          {!widgetReady && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-left">
+              <p className="font-semibold text-yellow-800 mb-2 text-sm">⚠️ Важно: Настройка Login URL</p>
+              <p className="text-xs text-yellow-700 mb-2">
+                Чтобы виджет работал, нужно настроить Login URL в @BotFather:
+              </p>
+              <ol className="text-xs text-yellow-700 list-decimal list-inside space-y-1 ml-2">
+                <li>Откройте @BotFather в Telegram</li>
+                <li>Отправьте <code className="bg-yellow-100 px-1 rounded">/mybots</code></li>
+                <li>Выберите вашего бота</li>
+                <li>Выберите "Payments & Login" → "Login URL"</li>
+                <li>Укажите: <code className="bg-yellow-100 px-1 rounded">https://skinplan-mini.vercel.app</code></li>
+              </ol>
+              <p className="text-xs text-yellow-600 mt-2">
+                После настройки обновите страницу
+              </p>
+            </div>
+          )}
+          
           {error && error.includes('domain') && (
             <div className="text-red-600 mt-2 text-xs">
-              ⚠️ Bot domain invalid: добавьте домен в BotFather → Bot Settings → Domain
+              ⚠️ Bot domain invalid: добавьте домен в BotFather → Payments & Login → Login URL
             </div>
           )}
           {error && !error.includes('domain') && (
