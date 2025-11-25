@@ -425,8 +425,8 @@ export default function QuizPage() {
       // Небольшая задержка для показа лоадера перед перенаправлением
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Перенаправление на главную страницу (план) после успешного завершения
-      router.push('/');
+      // Перенаправление на страницу плана после успешного завершения
+      router.push('/plan');
     } catch (err: any) {
       console.error('Error submitting answers:', err);
       setIsSubmitting(false);
