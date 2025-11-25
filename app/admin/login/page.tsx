@@ -126,11 +126,11 @@ export default function AdminLogin() {
               <div className="text-xs space-y-1">
                 <p className="font-semibold">Локально (.env файл):</p>
                 <code className="block bg-blue-100 px-2 py-1 rounded font-mono text-xs">
-                  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=@ваш_бот
+                  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=@skinplanned_bot
                 </code>
                 <p className="font-semibold mt-2">На Vercel (Settings → Environment Variables):</p>
                 <p className="text-xs">Ключ: <code className="bg-blue-100 px-1 rounded">NEXT_PUBLIC_TELEGRAM_BOT_USERNAME</code></p>
-                <p className="text-xs">Значение: <code className="bg-blue-100 px-1 rounded">@ваш_бот</code> (username вашего бота от BotFather)</p>
+                <p className="text-xs">Значение: <code className="bg-blue-100 px-1 rounded">@skinplanned_bot</code></p>
               </div>
             </div>
           )}

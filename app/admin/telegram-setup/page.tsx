@@ -140,7 +140,7 @@ export default function TelegramSetupPage() {
           <div className="space-y-2 text-sm font-mono bg-gray-50 p-4 rounded">
             <div>TELEGRAM_BOT_TOKEN=ваш_токен_бота</div>
             <div>TELEGRAM_SECRET_TOKEN=ваш_секретный_токен (опционально)</div>
-            <div>NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=@your_bot</div>
+            <div>NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=@skinplanned_bot</div>
             <div>NEXT_PUBLIC_MINI_APP_URL=https://skinplan-mini.vercel.app</div>
           </div>
           <p className="text-gray-600 mt-4 text-sm">

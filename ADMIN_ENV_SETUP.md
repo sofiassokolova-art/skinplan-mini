@@ -9,7 +9,7 @@
 1. Откройте [@BotFather](https://t.me/botfather) в Telegram
 2. Отправьте команду: `/mybots`
 3. Выберите вашего бота
-4. В информации о боте будет указан **Username** (например: `@skiniq_bot` или `skiniq_bot`)
+4. В информации о боте будет указан **Username** (для вашего бота: `@skinplanned_bot`)
 
 ### Настройка:
 
