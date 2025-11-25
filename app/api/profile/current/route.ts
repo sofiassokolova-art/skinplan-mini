@@ -3,30 +3,26 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 
 export async function GET(request: NextRequest) {
   try {
-    // Проверяем токен
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                  request.cookies.get('auth_token')?.value;
+    // Получаем initData из заголовков
+    const initData = request.headers.get('x-telegram-init-data');
 
-    if (!token) {
+    if (!initData) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
         { status: 401 }
       );
     }
 
-    let userId: string;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-      userId = decoded.userId;
-    } catch {
+    // Получаем userId из initData
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Invalid token' },
+        { error: 'Invalid or expired initData' },
         { status: 401 }
       );
     }

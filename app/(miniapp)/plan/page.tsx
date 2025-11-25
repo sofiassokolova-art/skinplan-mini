@@ -77,32 +77,14 @@ export default function PlanPage() {
   useEffect(() => {
     console.log('📄 Plan page mounted, loading plan...');
     
-    // Пытаемся авторизоваться, если токена нет
-    const tryAuth = async () => {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      
-      if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        try {
-          console.log('🔐 Пытаемся авторизоваться через Telegram...');
-          const { useTelegram } = await import('@/lib/telegram-client');
-          const { api } = await import('@/lib/api');
-          
-          const telegramInitData = window.Telegram.WebApp.initData;
-          const authResult = await api.authTelegram(telegramInitData);
-          if (authResult.token) {
-            console.log('✅ Авторизован, загружаем план...');
-            setTimeout(() => loadPlan(0), 500);
-            return;
-          }
-        } catch (err) {
-          console.error('Auth error:', err);
-        }
-      }
-      
-      loadPlan(0);
-    };
+    // Проверяем, что приложение открыто через Telegram
+    if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+      setError('Пожалуйста, откройте приложение через Telegram Mini App.');
+      setLoading(false);
+      return;
+    }
     
-    tryAuth();
+    loadPlan(0);
   }, []);
 
   const loadPlan = async (retryCount = 0) => {
@@ -111,13 +93,10 @@ export default function PlanPage() {
       setLoading(true);
       setError(null);
       
-      // Проверяем токен
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      console.log('🔑 Токен найден:', !!token);
-      
-      if (!token) {
-        console.warn('⚠️ Токен не найден, перенаправляем на /quiz');
-        router.push('/quiz');
+      // Проверяем, что приложение открыто через Telegram
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        setError('Пожалуйста, откройте приложение через Telegram Mini App.');
+        setLoading(false);
         return;
       }
 
@@ -176,9 +155,10 @@ export default function PlanPage() {
         stack: err?.stack,
       });
       
-      if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
-        localStorage.removeItem('auth_token');
-        router.push('/quiz');
+      if (err?.message?.includes('Unauthorized') || err?.message?.includes('401') || err?.message?.includes('initData')) {
+        setError('Ошибка идентификации. Пожалуйста, откройте приложение через Telegram.');
+        // Перенаправляем на анкету, если пользователь не идентифицирован
+        setTimeout(() => router.push('/quiz'), 2000);
         return;
       }
 

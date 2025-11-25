@@ -87,37 +87,16 @@ export default function QuizPage() {
       
       // Ждем готовности Telegram WebApp
       await waitForTelegram();
-      
-      // Автоматическая авторизация через Telegram
-      let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      
-      // Если токена нет, пытаемся авторизоваться через Telegram
-      if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        try {
-          const telegramInitData = window.Telegram.WebApp.initData;
-          const authResult = await api.authTelegram(telegramInitData);
-          if (authResult.token) {
-            token = authResult.token;
-          }
-        } catch (err) {
-          console.error('Auth error:', err);
-        }
-      }
 
-      // Загружаем анкету (публичный маршрут, не требует авторизации)
+      // Загружаем анкету (публичный маршрут)
       await loadQuestionnaire();
 
-      // Загружаем прогресс с сервера (требует авторизации)
-      if (token) {
-        try {
-          await loadSavedProgressFromServer();
-        } catch (err) {
-          console.warn('Не удалось загрузить прогресс с сервера:', err);
-          // Fallback на localStorage
-          loadSavedProgress();
-        }
-      } else {
-        // Если токена нет, загружаем только из localStorage
+      // Загружаем прогресс с сервера (использует initData автоматически)
+      try {
+        await loadSavedProgressFromServer();
+      } catch (err) {
+        console.warn('Не удалось загрузить прогресс с сервера:', err);
+        // Fallback на localStorage
         loadSavedProgress();
       }
     };
@@ -355,31 +334,9 @@ export default function QuizPage() {
     setError(null);
 
     try {
-      // Проверяем и обновляем токен перед отправкой
-      let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      
-      // Если токена нет, пытаемся авторизоваться через Telegram
-      if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        try {
-          const telegramInitData = window.Telegram.WebApp.initData;
-          const authResult = await api.authTelegram(telegramInitData);
-          if (authResult.token) {
-            token = authResult.token;
-          } else {
-            setError('Не удалось получить токен авторизации. Пожалуйста, обновите страницу.');
-            setIsSubmitting(false);
-            return;
-          }
-        } catch (err) {
-          console.error('❌ Ошибка авторизации через Telegram:', err);
-          setError('Ошибка авторизации. Пожалуйста, обновите страницу и попробуйте снова.');
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      if (!token) {
-        setError('Необходима авторизация. Пожалуйста, откройте приложение через Telegram.');
+      // Проверяем, что приложение открыто через Telegram
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        setError('Пожалуйста, откройте приложение через Telegram Mini App.');
         setIsSubmitting(false);
         return;
       }
@@ -425,20 +382,8 @@ export default function QuizPage() {
       console.error('Error submitting answers:', err);
       setIsSubmitting(false);
       
-      if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
-        if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-          try {
-            const telegramInitData = window.Telegram.WebApp.initData;
-            const authResult = await api.authTelegram(telegramInitData);
-            if (authResult.token) {
-              setTimeout(() => submitAnswers(), 500);
-              return;
-            }
-          } catch {
-            // Игнорируем ошибки повторной авторизации
-          }
-        }
-        setError('Ошибка авторизации. Пожалуйста, обновите страницу и попробуйте снова.');
+      if (err?.message?.includes('Unauthorized') || err?.message?.includes('401') || err?.message?.includes('initData')) {
+        setError('Ошибка идентификации. Пожалуйста, откройте приложение через Telegram и обновите страницу.');
       } else {
         setError(err?.message || err?.error || 'Ошибка сохранения ответов. Попробуйте еще раз.');
       }

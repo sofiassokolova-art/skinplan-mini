@@ -7,12 +7,16 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// Публичные маршруты, которые не требуют авторизации
+// Публичные маршруты - теперь большинство пользовательских маршрутов публичные
+// Они используют initData из заголовков для идентификации
 const publicRoutes = [
-  '/api/auth',
   '/api/questionnaire/active', // Публичный доступ к анкете
-  '/api/questionnaire/progress', // Сохранение прогресса анкеты (может быть до авторизации)
-  '/api/telegram/webhook', // Webhook от Telegram (POST от Telegram, GET для управления)
+  '/api/questionnaire/answers', // Использует initData напрямую
+  '/api/questionnaire/progress', // Использует initData напрямую
+  '/api/plan/generate', // Использует initData напрямую
+  '/api/recommendations', // Использует initData напрямую
+  '/api/profile/current', // Использует initData напрямую
+  '/api/telegram/webhook', // Webhook от Telegram
   '/admin/login',
   '/api/debug', // Отладочные endpoints
   '/debug', // Отладочные страницы

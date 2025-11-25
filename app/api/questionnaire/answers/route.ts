@@ -4,12 +4,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createSkinProfile } from '@/lib/profile-calculator';
-import jwt from 'jsonwebtoken';
+import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 
-// Используем Node.js runtime для поддержки jsonwebtoken
 export const runtime = 'nodejs';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 interface AnswerInput {
   questionId: number;
@@ -19,29 +16,28 @@ interface AnswerInput {
 
 export async function POST(request: NextRequest) {
   try {
-    // Проверяем токен
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                  request.cookies.get('auth_token')?.value;
+    // Получаем initData из заголовков
+    const initData = request.headers.get('x-telegram-init-data');
 
-    if (!token) {
+    if (!initData) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
         { status: 401 }
       );
     }
 
-    let userId: string;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-      userId = decoded.userId;
-    } catch {
+    // Получаем userId из initData (автоматически создает/обновляет пользователя)
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Invalid token' },
+        { error: 'Invalid or expired initData' },
         { status: 401 }
       );
     }
 
-    const { questionnaireId, answers } = await request.json();
+    const body = await request.json();
+    const { questionnaireId, answers } = body;
 
     if (!questionnaireId || !Array.isArray(answers)) {
       return NextResponse.json(

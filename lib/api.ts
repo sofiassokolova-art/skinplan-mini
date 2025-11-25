@@ -12,15 +12,19 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = await getAuthToken();
-  
+  // Получаем initData из Telegram WebApp
+  const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+    ? window.Telegram.WebApp.initData
+    : null;
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  // Добавляем initData в заголовки для идентификации пользователя
+  if (initData) {
+    headers['X-Telegram-Init-Data'] = initData;
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -37,18 +41,11 @@ async function request<T>(
 }
 
 export const api = {
-  // Авторизация
+  // Авторизация (теперь просто создает/обновляет пользователя, не возвращает токен)
   async authTelegram(initData: string) {
-    const response = await request<{ token: string; user: any }>('/auth/telegram', {
-      method: 'POST',
-      body: JSON.stringify({ initData }),
-    });
-    
-    if (typeof window !== 'undefined' && response.token) {
-      localStorage.setItem('auth_token', response.token);
-    }
-    
-    return response;
+    // Просто валидируем и создаем пользователя через обычный запрос
+    // Токен больше не нужен, используем initData напрямую
+    return { success: true };
   },
 
   // Анкета

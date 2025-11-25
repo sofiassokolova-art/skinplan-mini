@@ -3,30 +3,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 
 // GET - загрузка прогресса
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                  request.cookies.get('auth_token')?.value;
+    const initData = request.headers.get('x-telegram-init-data');
 
-    if (!token) {
+    if (!initData) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Missing Telegram initData' },
         { status: 401 }
       );
     }
 
-    let userId: string;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-      userId = decoded.userId;
-    } catch {
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Invalid token' },
+        { error: 'Invalid or expired initData' },
         { status: 401 }
       );
     }
@@ -112,23 +107,20 @@ export async function GET(request: NextRequest) {
 // POST - сохранение прогресса (ответы)
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                  request.cookies.get('auth_token')?.value;
+    const initData = request.headers.get('x-telegram-init-data');
 
-    if (!token) {
+    if (!initData) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Missing Telegram initData' },
         { status: 401 }
       );
     }
 
-    let userId: string;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-      userId = decoded.userId;
-    } catch {
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Invalid token' },
+        { error: 'Invalid or expired initData' },
         { status: 401 }
       );
     }

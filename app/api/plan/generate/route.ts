@@ -412,33 +412,30 @@ export async function GET(request: NextRequest) {
   console.log('🚀 Plan generation request received');
   
   try {
-    // Проверяем токен
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                  request.cookies.get('auth_token')?.value;
+    // Получаем initData из заголовков
+    const initData = request.headers.get('x-telegram-init-data');
 
-    console.log('🔑 Token check:', { hasToken: !!token, tokenLength: token?.length || 0 });
-
-    if (!token) {
-      console.error('❌ No token provided');
+    if (!initData) {
+      console.error('❌ No initData provided');
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
         { status: 401 }
       );
     }
 
-    let userId: string;
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-      userId = decoded.userId;
-      console.log('✅ Token verified, userId:', userId);
-    } catch (error: any) {
-      console.error('❌ Token verification failed:', error.message);
+    // Получаем userId из initData (автоматически создает/обновляет пользователя)
+    const { getUserIdFromInitData } = await import('@/lib/get-user-from-initdata');
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
+      console.error('❌ Invalid or expired initData');
       return NextResponse.json(
-        { error: 'Invalid token' },
+        { error: 'Invalid or expired Telegram initData' },
         { status: 401 }
       );
     }
 
+    console.log('✅ User identified from initData, userId:', userId);
     console.log('📋 Starting plan generation for userId:', userId);
     const plan = await generate28DayPlan(userId);
     console.log('✅ Plan generated successfully:', {
