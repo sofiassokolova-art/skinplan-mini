@@ -269,7 +269,31 @@ export async function POST(request: NextRequest) {
 
         console.log(`✅ RecommendationSession created for user ${userId} with ${productIds.length} products`);
       } else {
-        console.warn(`⚠️ No matching rule found for profile ${profile.id}`);
+        // Если правило не найдено, создаем fallback сессию с базовыми продуктами
+        console.warn(`⚠️ No matching rule found for profile ${profile.id}, creating fallback session...`);
+        
+        const fallbackProducts = await prisma.product.findMany({
+          where: { status: 'published' },
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+        });
+
+        if (fallbackProducts.length > 0) {
+          const fallbackProductIds = fallbackProducts.map(p => p.id);
+          
+          await prisma.recommendationSession.create({
+            data: {
+              userId,
+              profileId: profile.id,
+              ruleId: null,
+              products: fallbackProductIds,
+            },
+          });
+          
+          console.log(`✅ Fallback RecommendationSession created with ${fallbackProductIds.length} products`);
+        } else {
+          console.error(`❌ No products available for fallback session`);
+        }
       }
     } catch (recommendationError) {
       // Не блокируем сохранение ответов, если рекомендации не создались
