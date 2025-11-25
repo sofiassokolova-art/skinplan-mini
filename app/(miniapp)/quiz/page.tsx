@@ -434,7 +434,26 @@ export default function QuizPage() {
         return;
       }
 
-      const answerArray = Object.entries(answers).map(([questionId, value]) => {
+      // Собираем ответы из state, если они пустые - пытаемся загрузить из localStorage
+      let answersToSubmit = answers;
+      if (Object.keys(answersToSubmit).length === 0) {
+        console.warn('⚠️ Объект answers пуст, пытаемся загрузить из localStorage');
+        try {
+          const savedProgressStr = localStorage.getItem('quiz_progress');
+          if (savedProgressStr) {
+            const savedProgress = JSON.parse(savedProgressStr);
+            if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+              console.log('📦 Найдены сохраненные ответы в localStorage, используем их');
+              answersToSubmit = savedProgress.answers;
+              setAnswers(savedProgress.answers);
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Не удалось загрузить ответы из localStorage:', e);
+        }
+      }
+
+      const answerArray = Object.entries(answersToSubmit).map(([questionId, value]) => {
         const isArray = Array.isArray(value);
         return {
           questionId: parseInt(questionId),
@@ -445,6 +464,12 @@ export default function QuizPage() {
 
       console.log('📤 Отправляем ответы на сервер...');
       console.log('📋 Массив ответов:', answerArray);
+      console.log('📊 Количество ответов:', answerArray.length);
+      
+      // Даже если массив пуст, отправляем - возможно, ответы уже сохранены через saveQuizProgress
+      if (answerArray.length === 0) {
+        console.warn('⚠️ Массив ответов пуст, но продолжаем отправку (возможно, ответы уже сохранены на сервере)');
+      }
       
       const result = await api.submitAnswers(questionnaire.id, answerArray);
       console.log('✅ Ответы успешно отправлены:', result);
