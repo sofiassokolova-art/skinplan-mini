@@ -35,8 +35,10 @@ export default function AdminLogin() {
     if (typeof window === 'undefined' || scriptLoaded.current) return;
 
     // Глобальная функция для обработки авторизации через Telegram Login Widget
+    // Вариант 1: Использование data-onauth (callback функция)
     window.TelegramLoginWidget = {
       onAuth: async (user: any) => {
+        console.log('📱 Telegram Login Widget callback:', user);
         setError('');
         setLoading(true);
 
@@ -72,7 +74,10 @@ export default function AdminLogin() {
     script.async = true;
     script.setAttribute('data-telegram-login', botUsername || 'your_bot');
     script.setAttribute('data-size', 'large');
+    script.setAttribute('data-radius', '12');
     script.setAttribute('data-onauth', 'TelegramLoginWidget.onAuth(user)');
+    // Альтернативный вариант: использовать data-auth-url (рекомендуется для production)
+    // script.setAttribute('data-auth-url', `${window.location.origin}/admin/telegram-callback`);
     script.setAttribute('data-request-access', 'write');
     script.onload = () => {
       scriptLoaded.current = true;

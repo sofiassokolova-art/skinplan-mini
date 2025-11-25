@@ -20,17 +20,44 @@ interface TelegramUser {
 }
 
 // Функция для валидации данных, полученных от Telegram Login Widget
+// Согласно официальной документации Telegram: https://core.telegram.org/widgets/login
 function validateTelegramLoginData(data: TelegramUser, botToken: string): boolean {
   const { hash, ...rest } = data;
-  const checkString = Object.keys(rest)
+  
+  // Проверяем, что данные не старше 24 часов
+  const authDate = data.auth_date;
+  const now = Math.floor(Date.now() / 1000);
+  if (now - authDate > 86400) { // 24 часа
+    console.warn('Telegram login data expired:', { authDate, now, diff: now - authDate });
+    return false;
+  }
+
+  // Формируем строку для проверки: отсортированные ключи со значениями
+  const dataCheckString = Object.keys(rest)
     .sort()
     .map(key => `${key}=${rest[key as keyof typeof rest]}`)
     .join('\n');
 
+  // Создаем секретный ключ из bot token
   const secretKey = crypto.createHash('sha256').update(botToken).digest();
-  const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+  
+  // Вычисляем HMAC
+  const calculatedHash = crypto
+    .createHmac('sha256', secretKey)
+    .update(dataCheckString)
+    .digest('hex');
 
-  return hmac === hash;
+  const isValid = calculatedHash === hash;
+  
+  if (!isValid) {
+    console.warn('Invalid Telegram login hash:', {
+      received: hash,
+      calculated: calculatedHash,
+      dataCheckString: dataCheckString.substring(0, 100) + '...',
+    });
+  }
+
+  return isValid;
 }
 
 export async function POST(request: NextRequest) {
