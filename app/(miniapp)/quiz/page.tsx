@@ -186,11 +186,16 @@ export default function QuizPage() {
   };
 
   // Очищаем сохранённый прогресс
-  const clearProgress = () => {
+  const clearProgress = async () => {
     if (typeof window === 'undefined') return;
+    
+    // Очищаем локальный прогресс
     localStorage.removeItem('quiz_progress');
     setSavedProgress(null);
     setShowResumeScreen(false);
+    
+    // Также очищаем прогресс на сервере (опционально, если нужна явная очистка)
+    // Но обычно прогресс очищается автоматически при создании профиля
   };
 
   const loadQuestionnaire = async () => {

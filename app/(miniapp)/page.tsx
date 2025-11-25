@@ -67,29 +67,38 @@ export default function HomePage() {
   const checkIncompleteQuiz = async (): Promise<boolean> => {
     try {
       // СНАЧАЛА проверяем, есть ли уже профиль кожи (анкета завершена)
+      // Это самая надежная проверка - если профиль есть, анкета точно завершена
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
-          // Пробуем загрузить рекомендации - если получилось, значит профиль есть и анкета завершена
-          await api.getRecommendations();
+          // Пробуем загрузить профиль напрямую - это более надежный способ проверки
+          const profile = await api.getCurrentProfile();
           
-          // Если рекомендации загрузились, значит анкета точно завершена
-          // Очищаем весь прогресс (локально)
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('quiz_progress');
+          // Если профиль загрузился, значит анкета завершена
+          // Очищаем весь прогресс (локально и состояние)
+          if (profile && (profile as any).id) {
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('quiz_progress');
+            }
+            setSavedProgress(null);
+            setShowResumeScreen(false);
+            console.log('✅ Quiz completed, profile exists:', (profile as any).id);
+            return false; // Анкета завершена, нет незавершенной анкеты
           }
-          // Также очищаем состояние
-          setSavedProgress(null);
-          setShowResumeScreen(false);
-          console.log('✅ Quiz completed, profile exists');
-          return false; // Анкета завершена
         } catch (err: any) {
+          // Проверяем, какая именно ошибка
+          const errorMessage = err?.message || err?.toString() || '';
+          
           // Если 404 или "No skin profile" - значит анкета не завершена, продолжаем проверку прогресса
-          if (err?.message?.includes('404') || err?.message?.includes('No skin profile')) {
+          if (errorMessage.includes('404') || 
+              errorMessage.includes('No skin profile') ||
+              errorMessage.includes('Skin profile not found') ||
+              errorMessage.includes('Profile not found')) {
             console.log('ℹ️ No profile found, checking for incomplete quiz...');
-            // Продолжаем проверку прогресса
+            // Продолжаем проверку прогресса ниже
           } else {
-            // Другая ошибка - логируем и продолжаем проверку прогресса
-            console.warn('⚠️ Error checking recommendations:', err?.message);
+            // Другая ошибка (сеть, авторизация и т.д.) - логируем
+            console.warn('⚠️ Error checking profile:', errorMessage);
+            // Продолжаем проверку прогресса, так как ошибка может быть временной
           }
         }
       }
@@ -155,6 +164,8 @@ export default function HomePage() {
       // Проверяем на сервере (только если Telegram WebApp доступен)
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
+          // Сначала еще раз проверяем наличие профиля через API прогресса
+          // (API прогресса уже проверяет наличие профиля и возвращает null, если профиль есть)
           const response = await api.getQuizProgress() as {
             progress?: {
               answers: Record<number, string | string[]>;
@@ -164,13 +175,15 @@ export default function HomePage() {
           };
           
           // Если сервер не возвращает прогресс (null), значит профиль есть или прогресс очищен
-          if (!response?.progress) {
+          // Это означает, что анкета завершена
+          if (!response || !response.progress) {
             // Очищаем локальный прогресс тоже
             if (typeof window !== 'undefined') {
               localStorage.removeItem('quiz_progress');
             }
             setSavedProgress(null);
             setShowResumeScreen(false);
+            console.log('✅ No progress from server - quiz completed or no progress');
             return false; // Анкета завершена или нет прогресса
           }
           
@@ -178,11 +191,15 @@ export default function HomePage() {
           if (response.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
             // Сохраняем в localStorage для офлайн доступа
             if (typeof window !== 'undefined') {
-              localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
+              localStorage.setItem('quiz_progress', JSON.stringify({
+                ...response.progress,
+                timestamp: Date.now(),
+              }));
             }
             setSavedProgress(response.progress);
             setShowResumeScreen(true);
             setLoading(false);
+            console.log('ℹ️ Incomplete quiz found:', Object.keys(response.progress.answers).length, 'answers');
             return true; // Есть незавершенная анкета
           }
         } catch (err) {
