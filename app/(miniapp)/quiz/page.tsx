@@ -250,7 +250,21 @@ export default function QuizPage() {
         saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
-      saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+      
+      // Если нет следующего info screen, закрываем pending и переходим к следующему вопросу
+      setPendingInfoScreen(null);
+      
+      // Проверяем, не последний ли это вопрос
+      const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+      if (isLastQuestion) {
+        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        return;
+      }
+      
+      // Переходим к следующему вопросу
+      const newIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(newIndex);
+      saveProgress(answers, newIndex, currentInfoScreenIndex);
       return;
     }
 
