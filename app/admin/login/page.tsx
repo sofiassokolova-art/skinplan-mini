@@ -11,20 +11,6 @@ declare global {
     TelegramLoginWidget?: {
       onAuth: (user: any) => void;
     };
-    Telegram?: {
-      Login?: {
-        auth: (options: {
-          bot_id: string;
-          request_access?: boolean;
-          callback: (user: any) => void;
-        }) => void;
-      };
-      WebApp?: {
-        initData?: string;
-        ready?: () => void;
-        expand?: () => void;
-      };
-    };
   }
 }
 
