@@ -84,16 +84,24 @@ export async function POST(request: NextRequest) {
     }
 
     const update: TelegramUpdate = await request.json();
-    console.log('📥 Получено обновление от Telegram:', update.update_id);
+    console.log('📥 Получено обновление от Telegram:', {
+      updateId: update.update_id,
+      hasMessage: !!update.message,
+      messageText: update.message?.text,
+      chatId: update.message?.chat?.id,
+      fromId: update.message?.from?.id,
+      fromUsername: update.message?.from?.username,
+    });
 
     // Обработка команды /start
-    if (update.message?.text === '/start' || update.message?.text?.startsWith('/start')) {
+    if (update.message?.text && (update.message.text === '/start' || update.message.text.startsWith('/start'))) {
       const chatId = update.message.chat.id;
       const firstName = update.message.from.first_name || 'друг';
 
       console.log(`📨 Processing /start command from user ${firstName} (chatId: ${chatId})`);
       console.log(`🌐 Mini App URL: ${MINI_APP_URL}`);
       console.log(`🤖 Bot Token configured: ${!!TELEGRAM_BOT_TOKEN}`);
+      console.log(`🔑 Bot Token length: ${TELEGRAM_BOT_TOKEN?.length || 0}`);
 
       const welcomeText = `👋 Привет, ${firstName}!
 
@@ -124,15 +132,33 @@ export async function POST(request: NextRequest) {
 
       try {
         console.log(`📤 Sending welcome message to chat ${chatId}...`);
+        console.log(`📝 Message text length: ${welcomeText.length}`);
+        console.log(`🔘 Reply markup:`, JSON.stringify(replyMarkup));
+        
         const result = await sendMessage(chatId, welcomeText, replyMarkup);
-        console.log(`✅ Welcome message sent successfully to chat ${chatId}:`, result.ok);
+        
+        console.log(`✅ Welcome message sent successfully to chat ${chatId}:`, {
+          ok: result.ok,
+          messageId: result.result?.message_id,
+          chatId: result.result?.chat?.id,
+        });
       } catch (error: any) {
         console.error(`❌ Failed to send welcome message to chat ${chatId}:`, error);
-        console.error(`   Error details:`, error.message || error);
-        // Все равно возвращаем успех, чтобы Telegram не повторял запрос
+        console.error(`   Error message:`, error.message);
+        console.error(`   Error stack:`, error.stack);
+        console.error(`   Error response:`, error.response);
+        
+        // Пытаемся отправить простое сообщение без кнопки
+        try {
+          const simpleText = `👋 Привет, ${firstName}!\n\nДобро пожаловать в SkinIQ!\n\nОткройте приложение по ссылке: ${MINI_APP_URL}`;
+          await sendMessage(chatId, simpleText);
+          console.log(`✅ Fallback message sent successfully`);
+        } catch (fallbackError: any) {
+          console.error(`❌ Failed to send fallback message:`, fallbackError);
+        }
       }
       
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, processed: 'start_command' });
     }
 
     // Обработка других команд (можно расширить)
@@ -147,10 +173,26 @@ export async function POST(request: NextRequest) {
 <b>Что дальше?</b>
 Нажмите на кнопку "Открыть SkinIQ" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями SkinIQ!`;
 
-      await sendMessage(chatId, helpText);
+      try {
+        await sendMessage(chatId, helpText);
+        console.log(`✅ Help message sent to chat ${chatId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to send help message:`, error);
+      }
+      
+      return NextResponse.json({ ok: true, processed: 'help_command' });
     }
 
-    return NextResponse.json({ ok: true });
+    // Если это сообщение, но не команда - логируем для отладки
+    if (update.message) {
+      console.log(`📩 Received message (not a command):`, {
+        text: update.message.text,
+        chatId: update.message.chat.id,
+        fromId: update.message.from.id,
+      });
+    }
+
+    return NextResponse.json({ ok: true, processed: 'none' });
   } catch (error) {
     console.error('Webhook error:', error);
     return NextResponse.json(
