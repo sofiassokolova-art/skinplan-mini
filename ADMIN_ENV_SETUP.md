@@ -18,13 +18,13 @@
 Добавьте строку в файл `.env` в корне проекта:
 
 ```env
-NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=@ваш_бот
+NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=@skinplanned_bot
 ```
 
 Или без @ (оба варианта работают):
 
 ```env
-NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=ваш_бот
+NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=skinplanned_bot
 ```
 
 #### На Vercel:
@@ -34,7 +34,7 @@ NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=ваш_бот
 3. Перейдите в **Settings** → **Environment Variables**
 4. Добавьте переменную:
    - **Key:** `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`
-   - **Value:** `@ваш_бот` (или `ваш_бот` без @)
+   - **Value:** `@skinplanned_bot` (или `skinplanned_bot` без @)
    - **Environment:** Production, Preview, Development (все)
 
 ### После добавления:

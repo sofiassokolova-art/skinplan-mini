@@ -50,7 +50,7 @@
 
 - `TELEGRAM_BOT_TOKEN` - токен бота от BotFather
 - `TELEGRAM_SECRET_TOKEN` (опционально) - секретный токен для защиты вебхука
-- `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` - username бота (например, `@your_bot` или `your_bot`)
+- `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` - username бота: `@skinplanned_bot` (или `skinplanned_bot` без @)
 - `NEXT_PUBLIC_MINI_APP_URL` - URL мини-приложения (например, `https://skinplan-mini.vercel.app`)
 
 ## Проверка работы
