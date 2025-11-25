@@ -38,7 +38,7 @@ interface TelegramUpdate {
 async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
   if (!TELEGRAM_BOT_TOKEN) {
     console.error('TELEGRAM_BOT_TOKEN not configured');
-    return;
+    throw new Error('TELEGRAM_BOT_TOKEN not configured');
   }
 
   try {
@@ -55,10 +55,16 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Telegram API error:', error);
+      console.error('Telegram API error:', response.status, error);
+      throw new Error(`Telegram API error: ${response.status} - ${error}`);
     }
+
+    const result = await response.json();
+    console.log('Message sent successfully:', result.ok);
+    return result;
   } catch (error) {
     console.error('Error sending message:', error);
+    throw error;
   }
 }
 
@@ -75,8 +81,10 @@ export async function POST(request: NextRequest) {
     // Обработка команды /start
     if (update.message?.text === '/start' || update.message?.text?.startsWith('/start')) {
       const chatId = update.message.chat.id;
-      const firstName = update.message.from.first_name;
-      const username = update.message.from.username;
+      const firstName = update.message.from.first_name || 'друг';
+
+      console.log(`Processing /start command from user ${firstName} (chatId: ${chatId})`);
+      console.log(`Mini App URL: ${MINI_APP_URL}`);
 
       const welcomeText = `👋 Привет, ${firstName}!
 
@@ -85,23 +93,35 @@ export async function POST(request: NextRequest) {
 ✨ <b>Что умеет SkinIQ:</b>
 • 📋 Анализ вашей кожи через анкету
 • 🎯 Персональные рекомендации по уходу
-• 📅 Ежедневный план ухода
-• 💡 Советы от экспертов
+• 📅 Ежедневный план ухода на 12 недель
+• 💡 Советы от экспертов-дерматологов
+• 📸 Фото-анализ состояния кожи с помощью ИИ
 
-Нажмите на кнопку ниже, чтобы начать:`;
+<b>🎁 Начните прямо сейчас!</b>
+Пройти анкету займёт всего 5 минут, и вы получите персонализированный план ухода, подобранный специально для вашей кожи.
+
+Нажмите на кнопку ниже, чтобы открыть приложение:`;
 
       const replyMarkup = {
         inline_keyboard: [
           [
             {
-              text: '🚀 Открыть SkinIQ',
+              text: '🚀 Открыть SkinIQ Mini App',
               web_app: { url: MINI_APP_URL },
             },
           ],
         ],
       };
 
-      await sendMessage(chatId, welcomeText, replyMarkup);
+      try {
+        await sendMessage(chatId, welcomeText, replyMarkup);
+        console.log(`Welcome message sent successfully to chat ${chatId}`);
+      } catch (error) {
+        console.error(`Failed to send welcome message to chat ${chatId}:`, error);
+        // Все равно возвращаем успех, чтобы Telegram не повторял запрос
+      }
+      
+      return NextResponse.json({ ok: true });
     }
 
     // Обработка других команд (можно расширить)

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
+import { INFO_SCREENS, getInfoScreenAfterQuestion, type InfoScreen } from './info-screens';
 
 interface Question {
   id: number;
@@ -33,17 +34,6 @@ interface Questionnaire {
   questions: Question[];
 }
 
-// Информационные экраны перед вопросами
-const INFO_SCREENS = [
-  {
-    id: 'welcome',
-    title: 'Подбери уход для своей кожи со SkinIQ',
-    subtitle: 'Персональный план ухода уровня косметолога-дерматолога',
-    image: '/quiz_welocme_image.png',
-    ctaText: 'Продолжить',
-  },
-];
-
 export default function QuizPage() {
   const router = useRouter();
   const { initialize, isAvailable, initData } = useTelegram();
@@ -54,6 +44,8 @@ export default function QuizPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [showResumeScreen, setShowResumeScreen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingInfoScreen, setPendingInfoScreen] = useState<InfoScreen | null>(null); // Информационный экран между вопросами
   const [savedProgress, setSavedProgress] = useState<{
     answers: Record<number, string | string[]>;
     questionIndex: number;
@@ -250,6 +242,24 @@ export default function QuizPage() {
   const handleNext = () => {
     if (!questionnaire) return;
 
+    // Если показывается информационный экран между вопросами, закрываем его и переходим к следующему вопросу
+    if (pendingInfoScreen) {
+      setPendingInfoScreen(null);
+      const allQuestions = [
+        ...questionnaire.groups.flatMap((g) => g.questions),
+        ...questionnaire.questions,
+      ];
+      
+      if (currentQuestionIndex < allQuestions.length - 1) {
+        const newIndex = currentQuestionIndex + 1;
+        setCurrentQuestionIndex(newIndex);
+        saveProgress(answers, newIndex, currentInfoScreenIndex);
+      } else {
+        submitAnswers();
+      }
+      return;
+    }
+
     // Если мы на информационных экранах, переходим к следующему или к вопросам
     if (currentInfoScreenIndex < INFO_SCREENS.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
@@ -271,6 +281,18 @@ export default function QuizPage() {
       ...questionnaire.groups.flatMap((g) => g.questions),
       ...questionnaire.questions,
     ];
+
+    // Проверяем, нужно ли показать информационный экран после текущего вопроса
+    const currentQuestion = allQuestions[currentQuestionIndex];
+    if (currentQuestion) {
+      const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+      if (infoScreen) {
+        // Показываем информационный экран перед следующим вопросом
+        setPendingInfoScreen(infoScreen);
+        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        return;
+      }
+    }
 
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
@@ -313,6 +335,9 @@ export default function QuizPage() {
   const submitAnswers = async () => {
     if (!questionnaire) return;
 
+    setIsSubmitting(true);
+    setError(null);
+
     try {
       // Проверяем и обновляем токен перед отправкой
       let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
@@ -328,17 +353,20 @@ export default function QuizPage() {
             console.log('✅ Авторизованы через Telegram перед отправкой ответов');
           } else {
             setError('Не удалось получить токен авторизации. Пожалуйста, обновите страницу.');
+            setIsSubmitting(false);
             return;
           }
         } catch (err) {
           console.error('❌ Ошибка авторизации через Telegram:', err);
           setError('Ошибка авторизации. Пожалуйста, обновите страницу и попробуйте снова.');
+          setIsSubmitting(false);
           return;
         }
       }
 
       if (!token) {
         setError('Необходима авторизация. Пожалуйста, откройте приложение через Telegram.');
+        setIsSubmitting(false);
         return;
       }
 
@@ -356,10 +384,14 @@ export default function QuizPage() {
       // Очищаем сохранённый прогресс после успешной отправки
       clearProgress();
       
-      // Перенаправление на инсайты после успешного завершения
-      router.push('/insights');
+      // Небольшая задержка для показа лоадера перед перенаправлением
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Перенаправление на главную страницу (план) после успешного завершения
+      router.push('/');
     } catch (err: any) {
       console.error('Error submitting answers:', err);
+      setIsSubmitting(false);
       
       // Если ошибка авторизации, пытаемся обновить токен
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
@@ -402,6 +434,68 @@ export default function QuizPage() {
     setShowResumeScreen(false);
   };
 
+  // Лоадер при отправке ответов
+  if (isSubmitting) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '24px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.58)',
+          backdropFilter: 'blur(26px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '44px',
+          padding: '48px 36px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '24px',
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
+        }}>
+          {/* Анимированный лоадер */}
+          <div style={{
+            width: '80px',
+            height: '80px',
+            border: '4px solid rgba(10, 95, 89, 0.1)',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <div style={{
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontSize: '20px',
+            fontWeight: 600,
+            color: '#0A5F59',
+            textAlign: 'center'
+          }}>
+            Формируем ваш план...
+          </div>
+          <div style={{
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontSize: '16px',
+            color: '#475467',
+            textAlign: 'center'
+          }}>
+            Это займёт всего несколько секунд
+          </div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={{ 
@@ -410,9 +504,24 @@ export default function QuizPage() {
         alignItems: 'center', 
         height: '100vh',
         flexDirection: 'column',
-        gap: '16px'
+        gap: '16px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
       }}>
-        <div>Загрузка анкеты...</div>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(10, 95, 89, 0.2)',
+          borderTop: '4px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анкеты...</div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -667,6 +776,96 @@ export default function QuizPage() {
     );
   }
 
+  // Если показывается информационный экран между вопросами
+  if (pendingInfoScreen) {
+    return (
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          width: '88%',
+          maxWidth: '420px',
+          backgroundColor: 'rgba(255, 255, 255, 0.58)',
+          backdropFilter: 'blur(26px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '44px',
+          padding: '36px 28px 32px 28px',
+          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
+        }}>
+          {pendingInfoScreen.image && (
+            <div style={{
+              width: '100%',
+              height: '320px',
+              borderRadius: '32px 32px 0 0',
+              overflow: 'hidden',
+              marginBottom: '24px',
+            }}>
+              <img
+                src={pendingInfoScreen.image}
+                alt={pendingInfoScreen.title}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            </div>
+          )}
+          
+          <h1 style={{
+            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '36px',
+            lineHeight: '42px',
+            color: '#0A5F59',
+            margin: '0 0 16px 0',
+            textAlign: 'center',
+          }}>
+            {pendingInfoScreen.title}
+          </h1>
+
+          {pendingInfoScreen.subtitle && (
+            <p style={{
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '18px',
+              lineHeight: '1.5',
+              color: '#475467',
+              margin: '0 0 28px 0',
+              textAlign: 'center',
+            }}>
+              {pendingInfoScreen.subtitle}
+            </p>
+          )}
+
+          <button
+            onClick={handleNext}
+            style={{
+              width: '100%',
+              height: '64px',
+              background: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              borderRadius: '32px',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 500,
+              fontSize: '19px',
+              boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+              cursor: 'pointer',
+            }}
+          >
+            {pendingInfoScreen.ctaText || 'Продолжить'} →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Если мы на информационном экране
   if (isShowingInfoScreen && currentInfoScreen) {
     return (
@@ -826,30 +1025,61 @@ export default function QuizPage() {
 
         {currentQuestion.type === 'single_choice' && currentQuestion.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {currentQuestion.options.map((option) => (
+            {currentQuestion.options.map((option) => {
+              const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+              
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => {
+                    handleAnswer(currentQuestion.id, option.value);
+                    if (isLastQuestion) {
+                      // На последнем вопросе не переходим автоматически
+                      return;
+                    }
+                    setTimeout(handleNext, 300);
+                  }}
+                  style={{
+                    padding: '16px',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(10, 95, 89, 0.2)',
+                    backgroundColor: answers[currentQuestion.id] === option.value
+                      ? 'rgba(10, 95, 89, 0.1)'
+                      : 'rgba(255, 255, 255, 0.5)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '16px',
+                    color: '#0A5F59',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+            {/* Показываем кнопку "Получить план" на последнем вопросе */}
+            {currentQuestionIndex === allQuestions.length - 1 && answers[currentQuestion.id] && (
               <button
-                key={option.id}
-                onClick={() => {
-                  handleAnswer(currentQuestion.id, option.value);
-                  setTimeout(handleNext, 300);
-                }}
+                onClick={submitAnswers}
+                disabled={isSubmitting}
                 style={{
-                  padding: '16px',
+                  marginTop: '24px',
+                  padding: '18px',
                   borderRadius: '16px',
-                  border: '1px solid rgba(10, 95, 89, 0.2)',
-                  backgroundColor: answers[currentQuestion.id] === option.value
-                    ? 'rgba(10, 95, 89, 0.1)'
-                    : 'rgba(255, 255, 255, 0.5)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontSize: '16px',
-                  color: '#0A5F59',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
                   transition: 'all 0.2s',
+                  opacity: isSubmitting ? 0.7 : 1,
                 }}
               >
-                {option.label}
+                Получить план →
               </button>
-            ))}
+            )}
           </div>
         )}
 
@@ -886,24 +1116,48 @@ export default function QuizPage() {
                 </button>
               );
             })}
-            <button
-              onClick={handleNext}
-              disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)}
-              style={{
-                marginTop: '24px',
-                padding: '16px',
-                borderRadius: '16px',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                opacity: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)) ? 0.5 : 1,
-              }}
-            >
-              Далее
-            </button>
+            {/* Проверяем, последний ли это вопрос */}
+            {currentQuestionIndex === allQuestions.length - 1 ? (
+              <button
+                onClick={submitAnswers}
+                disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting}
+                style={{
+                  marginTop: '24px',
+                  padding: '18px',
+                  borderRadius: '16px',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  cursor: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting) ? 'not-allowed' : 'pointer',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                  opacity: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting) ? 0.5 : 1,
+                  transition: 'all 0.2s',
+                }}
+              >
+                Получить план →
+              </button>
+            ) : (
+              <button
+                onClick={handleNext}
+                disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)}
+                style={{
+                  marginTop: '24px',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  opacity: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)) ? 0.5 : 1,
+                }}
+              >
+                Далее
+              </button>
+            )}
           </div>
         )}
       </div>
