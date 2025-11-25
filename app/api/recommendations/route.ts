@@ -71,7 +71,10 @@ async function getProductsForStep(step: RuleStep) {
     where.category = { in: step.category };
   }
 
-  if (step.skin_types && step.skin_types.length > 0) {
+  // SPF универсален для всех типов кожи - не фильтруем по типу кожи
+  const isSPF = step.category?.includes('spf') || step.category?.some((c: string) => c.toLowerCase().includes('spf'));
+  
+  if (step.skin_types && step.skin_types.length > 0 && !isSPF) {
     where.skinTypes = { hasSome: step.skin_types };
   }
 
