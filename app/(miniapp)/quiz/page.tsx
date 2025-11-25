@@ -820,8 +820,16 @@ export default function QuizPage() {
     );
   }
 
-  // Если показывается информационный экран между вопросами
-  if (pendingInfoScreen) {
+  // Функция для рендеринга инфо-экрана с поддержкой специальных типов
+  const renderInfoScreen = (screen: InfoScreen) => {
+    const isTinderScreen = screen.type === 'tinder';
+    const isTestimonialsScreen = screen.type === 'testimonials';
+    const isComparisonScreen = screen.type === 'comparison';
+    const isProductsScreen = screen.type === 'products';
+
+    // Разбиваем subtitle на строки для многострочного отображения
+    const subtitleLines = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
+
     return (
       <div style={{ 
         padding: '20px',
@@ -833,7 +841,7 @@ export default function QuizPage() {
       }}>
         <div style={{
           width: '88%',
-          maxWidth: '420px',
+          maxWidth: isTestimonialsScreen ? '90%' : '420px',
           backgroundColor: 'rgba(255, 255, 255, 0.58)',
           backdropFilter: 'blur(26px)',
           border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -841,7 +849,8 @@ export default function QuizPage() {
           padding: '36px 28px 32px 28px',
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
         }}>
-          {pendingInfoScreen.image && (
+          {/* Изображение */}
+          {screen.image && !isTinderScreen && (
             <div style={{
               width: '100%',
               height: '320px',
@@ -850,8 +859,30 @@ export default function QuizPage() {
               marginBottom: '24px',
             }}>
               <img
-                src={pendingInfoScreen.image}
-                alt={pendingInfoScreen.title}
+                src={screen.image}
+                alt={screen.title}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Tinder-экран с изображением */}
+          {isTinderScreen && screen.image && (
+            <div style={{
+              width: '100%',
+              height: '400px',
+              borderRadius: '32px',
+              overflow: 'hidden',
+              marginBottom: '24px',
+              position: 'relative',
+            }}>
+              <img
+                src={screen.image}
+                alt={screen.title}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -861,6 +892,7 @@ export default function QuizPage() {
             </div>
           )}
           
+          {/* Заголовок */}
           <h1 style={{
             fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
@@ -870,134 +902,167 @@ export default function QuizPage() {
             margin: '0 0 16px 0',
             textAlign: 'center',
           }}>
-            {pendingInfoScreen.title}
+            {screen.title}
           </h1>
 
-          {pendingInfoScreen.subtitle && (
-            <p style={{
+          {/* Подзаголовок - многострочный */}
+          {screen.subtitle && (
+            <div style={{
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontSize: '18px',
-              lineHeight: '1.5',
+              lineHeight: '1.6',
               color: '#475467',
               margin: '0 0 28px 0',
               textAlign: 'center',
+              whiteSpace: 'pre-line',
             }}>
-              {pendingInfoScreen.subtitle}
-            </p>
+              {screen.subtitle}
+            </div>
           )}
 
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '64px',
-              background: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              borderRadius: '32px',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 500,
-              fontSize: '19px',
-              boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-              cursor: 'pointer',
-            }}
-          >
-            {pendingInfoScreen.ctaText || 'Продолжить'} →
-          </button>
+          {/* Отзывы с горизонтальным скроллом */}
+          {isTestimonialsScreen && screen.content && Array.isArray(screen.content) && (
+            <div style={{ 
+              display: 'flex', 
+              gap: '16px', 
+              overflowX: 'auto',
+              padding: '8px 0',
+              marginBottom: '28px',
+              scrollbarWidth: 'thin',
+              WebkitOverflowScrolling: 'touch',
+              msOverflowStyle: '-ms-autohiding-scrollbar',
+            }}>
+              {screen.content.map((testimonial: any, idx: number) => (
+                <div key={idx} style={{
+                  minWidth: '280px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                  borderRadius: '20px',
+                  padding: '20px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  flexShrink: 0,
+                }}>
+                  <div style={{ fontSize: '18px', marginBottom: '12px' }}>
+                    {'⭐'.repeat(testimonial.stars || 5)}
+                  </div>
+                  <p style={{ fontSize: '14px', color: '#475467', marginBottom: '16px', lineHeight: '1.5' }}>
+                    "{testimonial.text}"
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#0A5F59', fontWeight: 600 }}>
+                    — {testimonial.author}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Продукты (карточки) */}
+          {isProductsScreen && screen.content && Array.isArray(screen.content) && (
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
+              {screen.content.map((product: any, idx: number) => (
+                <div key={idx} style={{
+                  flex: '1 1 100px',
+                  minWidth: '100px',
+                  maxWidth: '120px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  textAlign: 'center',
+                }}>
+                  {product.icon && (
+                    <img src={product.icon} alt={product.name} style={{ width: '60px', height: '60px', marginBottom: '8px', objectFit: 'contain' }} />
+                  )}
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#0A5F59', marginBottom: '4px' }}>{product.name}</div>
+                  <div style={{ fontSize: '10px', color: '#475467' }}>{product.desc}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Сравнение (comparison) */}
+          {isComparisonScreen && (
+            <div style={{ marginBottom: '28px' }}>
+              {/* Текст уже в subtitle, здесь можем добавить визуальные элементы если нужно */}
+            </div>
+          )}
+
+          {/* Кнопки действий */}
+          {isTinderScreen ? (
+            // Tinder-кнопки: Нет и Да
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+              <button
+                onClick={handleNext}
+                style={{
+                  flex: 1,
+                  height: '64px',
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  color: '#0A5F59',
+                  border: '2px solid rgba(10, 95, 89, 0.3)',
+                  borderRadius: '32px',
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                }}
+              >
+                ❌ Нет
+              </button>
+              <button
+                onClick={handleNext}
+                style={{
+                  flex: 1,
+                  height: '64px',
+                  background: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '32px',
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                }}
+              >
+                ✅ Да
+              </button>
+            </div>
+          ) : (
+            // Обычная кнопка "Продолжить"
+            screen.ctaText && (
+              <button
+                onClick={handleNext}
+                style={{
+                  width: '100%',
+                  height: '64px',
+                  background: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '32px',
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 500,
+                  fontSize: '19px',
+                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                  cursor: 'pointer',
+                }}
+              >
+                {screen.ctaText} →
+              </button>
+            )
+          )}
         </div>
       </div>
     );
+  };
+
+  // Если показывается информационный экран между вопросами
+  if (pendingInfoScreen) {
+    return renderInfoScreen(pendingInfoScreen);
   }
 
   // Если мы на начальном информационном экране
   if (isShowingInitialInfoScreen && currentInitialInfoScreen) {
-    return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <div style={{
-          width: '88%',
-          maxWidth: '420px',
-          backgroundColor: 'rgba(255, 255, 255, 0.58)',
-          backdropFilter: 'blur(26px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '44px',
-          padding: '36px 28px 32px 28px',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
-        }}>
-          {currentInitialInfoScreen.image && (
-            <div style={{
-              width: '100%',
-              height: '320px',
-              borderRadius: '32px 32px 0 0',
-              overflow: 'hidden',
-              marginBottom: '24px',
-            }}>
-              <img
-                src={currentInitialInfoScreen.image}
-                alt={currentInitialInfoScreen.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-              />
-            </div>
-          )}
-          
-          <h1 style={{
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '36px',
-            lineHeight: '42px',
-            color: '#0A5F59',
-            margin: '0 0 16px 0',
-            textAlign: 'center',
-          }}>
-            {currentInitialInfoScreen.title}
-          </h1>
-
-          {currentInitialInfoScreen.subtitle && (
-            <p style={{
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '1.5',
-              color: '#475467',
-              margin: '0 0 28px 0',
-              textAlign: 'center',
-            }}>
-              {currentInitialInfoScreen.subtitle}
-            </p>
-          )}
-
-          <button
-            onClick={handleNext}
-            style={{
-              width: '100%',
-              height: '64px',
-              background: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              borderRadius: '32px',
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 500,
-              fontSize: '19px',
-              boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-              cursor: 'pointer',
-            }}
-          >
-            {currentInitialInfoScreen.ctaText || 'Продолжить'} →
-          </button>
-        </div>
-      </div>
-    );
+    return renderInfoScreen(currentInitialInfoScreen);
   }
 
   if (!currentQuestion) {

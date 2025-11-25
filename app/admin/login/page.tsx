@@ -120,8 +120,18 @@ export default function AdminLogin() {
         <div className="text-center text-xs text-gray-500 space-y-2">
           <div>Авторизуйтесь через Telegram для доступа к админ-панели</div>
           {!botUsername && (
-            <div className="text-red-600 mt-2">
-              ⚠️ NEXT_PUBLIC_TELEGRAM_BOT_USERNAME не настроен
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mt-2">
+              <p className="font-semibold mb-2 text-sm">📋 Требуется настройка:</p>
+              <p className="text-xs mb-2">Добавьте переменную окружения <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono">NEXT_PUBLIC_TELEGRAM_BOT_USERNAME</code></p>
+              <div className="text-xs space-y-1">
+                <p className="font-semibold">Локально (.env файл):</p>
+                <code className="block bg-blue-100 px-2 py-1 rounded font-mono text-xs">
+                  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=@ваш_бот
+                </code>
+                <p className="font-semibold mt-2">На Vercel (Settings → Environment Variables):</p>
+                <p className="text-xs">Ключ: <code className="bg-blue-100 px-1 rounded">NEXT_PUBLIC_TELEGRAM_BOT_USERNAME</code></p>
+                <p className="text-xs">Значение: <code className="bg-blue-100 px-1 rounded">@ваш_бот</code> (username вашего бота от BotFather)</p>
+              </div>
             </div>
           )}
           {error && error.includes('domain') && (
