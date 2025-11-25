@@ -3,11 +3,6 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
-async function getAuthToken(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token');
-}
-
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -41,10 +36,8 @@ async function request<T>(
 }
 
 export const api = {
-  // Авторизация (теперь просто создает/обновляет пользователя, не возвращает токен)
+  // Устаревшая функция - больше не нужна, initData передается автоматически
   async authTelegram(initData: string) {
-    // Просто валидируем и создаем пользователя через обычный запрос
-    // Токен больше не нужен, используем initData напрямую
     return { success: true };
   },
 

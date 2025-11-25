@@ -24,7 +24,7 @@ export default function BottomNavigation() {
     { path: '/', label: 'Главная', icon: 'home' },
     { path: '/plan', label: 'План', icon: 'plan' },
     { path: '/cart', label: 'Корзина', icon: 'cart' },
-    { path: '/insights', label: 'Профиль', icon: 'profile' },
+    { path: '/profile', label: 'Профиль', icon: 'profile' },
   ];
 
   const isActive = (path: string) => {

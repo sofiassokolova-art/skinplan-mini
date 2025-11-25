@@ -23,36 +23,19 @@ export default function DebugPage() {
     // Инициализируем Telegram WebApp
     initialize();
     
-    // Пытаемся авторизоваться автоматически
-    const tryAuth = async () => {
-      let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      
-      // Если токена нет и Telegram доступен, пытаемся авторизоваться
-      if (!token && isAvailable && initData) {
-        try {
-          setAuthStatus('Авторизация через Telegram...');
-          const authResult = await api.authTelegram(initData);
-          if (authResult.token) {
-            token = authResult.token;
-            setAuthStatus('✅ Авторизован через Telegram');
-          } else {
-            setAuthStatus('❌ Не удалось получить токен');
-          }
-        } catch (err: any) {
-          console.error('Auth error:', err);
-          setAuthStatus(`❌ Ошибка авторизации: ${err?.message || 'Неизвестная ошибка'}`);
-        }
-      } else if (token) {
-        setAuthStatus('✅ Токен найден в localStorage');
-      } else if (!isAvailable) {
+    // Проверяем доступность Telegram WebApp
+    const checkStatus = () => {
+      if (!isAvailable) {
         setAuthStatus('⚠️ Telegram WebApp не доступен (откройте через Telegram Mini App)');
+      } else if (!initData) {
+        setAuthStatus('⚠️ Telegram WebApp доступен, но initData отсутствует');
       } else {
-        setAuthStatus('⚠️ Токен не найден, Telegram WebApp доступен, но initData отсутствует');
+        setAuthStatus('✅ Telegram WebApp готов, пользователь идентифицирован через initData');
       }
     };
     
     // Даем время на инициализацию
-    setTimeout(tryAuth, 500);
+    setTimeout(checkStatus, 500);
   }, [initialize, initData, isAvailable]);
 
   const testPlan = async () => {
@@ -61,15 +44,15 @@ export default function DebugPage() {
     setResult(null);
 
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      if (!token) {
-        setError('Токен не найден. Сначала авторизуйтесь.');
+      if (!initData) {
+        setError('Telegram WebApp не доступен. Откройте приложение через Telegram Mini App.');
+        setLoading(false);
         return;
       }
 
       const response = await fetch('/api/debug/test-plan', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'X-Telegram-Init-Data': initData,
         },
       });
 
@@ -88,15 +71,15 @@ export default function DebugPage() {
     setResult(null);
 
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      if (!token) {
-        setError('Токен не найден. Сначала авторизуйтесь.');
+      if (!initData) {
+        setError('Telegram WebApp не доступен. Откройте приложение через Telegram Mini App.');
+        setLoading(false);
         return;
       }
 
       const response = await fetch('/api/plan/generate', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'X-Telegram-Init-Data': initData,
         },
       });
 
@@ -211,8 +194,7 @@ export default function DebugPage() {
       <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#e7f3ff', borderRadius: '8px' }}>
         <h3>Информация:</h3>
         <ul style={{ lineHeight: '1.8' }}>
-          <li><strong>Статус авторизации:</strong> {authStatus}</li>
-          <li><strong>Токен:</strong> {mounted && typeof window !== 'undefined' ? (localStorage.getItem('auth_token') ? '✅ Найден' : '❌ Не найден') : 'Загрузка...'}</li>
+          <li><strong>Статус:</strong> {authStatus}</li>
           <li><strong>Telegram WebApp:</strong> {mounted ? (isAvailable ? '✅ Доступен' : '❌ Не доступен') : 'Загрузка...'}</li>
           <li><strong>initData:</strong> {mounted && initData ? `✅ Есть (${initData.length} символов)` : '❌ Нет'}</li>
         </ul>

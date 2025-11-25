@@ -60,33 +60,16 @@ export default function HomePage() {
     setMounted(true);
     initialize();
     
-    // Авторизация через Telegram и загрузка данных
+    // Загружаем данные (пользователь идентифицируется автоматически через initData)
     const initAndLoad = async () => {
-      // Проверяем наличие токена
-      let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      
-      // Если токена нет, пытаемся авторизоваться через Telegram
-      if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        try {
-          const initData = window.Telegram.WebApp.initData;
-          const authResult = await api.authTelegram(initData);
-          if (authResult.token) {
-            token = authResult.token;
-            console.log('✅ Авторизованы через Telegram');
-          }
-        } catch (err) {
-          console.warn('Ошибка авторизации через Telegram:', err);
-        }
-      }
-
-      // Если токена все еще нет, перенаправляем на анкету
-      if (!token) {
-        console.log('Нет токена, перенаправляем на анкету');
+      // Проверяем, что приложение открыто через Telegram
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        console.log('Telegram WebApp не доступен, перенаправляем на анкету');
         router.push('/quiz');
         return;
       }
 
-      // Загружаем рекомендации
+      // Загружаем рекомендации (initData передается автоматически в запросе)
       await loadRecommendations();
     };
 
@@ -182,11 +165,8 @@ export default function HomePage() {
       console.error('Error loading recommendations:', error);
       
       // Проверяем тип ошибки
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('401')) {
-        // Токен невалидный или истек - удаляем и перенаправляем на анкету
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth_token');
-        }
+      if (error?.message?.includes('Unauthorized') || error?.message?.includes('401') || error?.message?.includes('initData')) {
+        // Ошибка идентификации - перенаправляем на анкету
         router.push('/quiz');
         return;
       }
