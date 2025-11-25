@@ -165,7 +165,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const action = searchParams.get('action');
 
+  console.log('🔍 GET webhook request:', { action, url: request.url });
+
   if (!TELEGRAM_BOT_TOKEN) {
+    console.error('❌ TELEGRAM_BOT_TOKEN not configured');
     return NextResponse.json(
       { error: 'TELEGRAM_BOT_TOKEN not configured' },
       { status: 500 }
