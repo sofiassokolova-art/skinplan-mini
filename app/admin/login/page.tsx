@@ -178,24 +178,29 @@ export default function AdminLogin() {
             ⚠️ Выберите ваш персональный Telegram аккаунт (не Mini App бота)
           </div>
           
-          {!widgetReady && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-left">
-              <p className="font-semibold text-yellow-800 mb-2 text-sm">⚠️ Важно: Настройка Login URL</p>
-              <p className="text-xs text-yellow-700 mb-2">
-                Чтобы виджет работал, нужно настроить Login URL в @BotFather:
-              </p>
-              <ol className="text-xs text-yellow-700 list-decimal list-inside space-y-1 ml-2">
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-left">
+            <p className="font-semibold text-yellow-800 mb-2 text-sm">⚠️ Важно: Перед авторизацией</p>
+            <p className="text-xs text-yellow-700 mb-2">
+              Чтобы получить подтверждение в Telegram, нужно:
+            </p>
+            <ol className="text-xs text-yellow-700 list-decimal list-inside space-y-1 ml-2 mb-2">
+              <li><strong>Начать диалог с ботом</strong> — откройте <code className="bg-yellow-100 px-1 rounded">@{botUsername.replace('@', '')}</code> в Telegram и отправьте <code className="bg-yellow-100 px-1 rounded">/start</code></li>
+              <li><strong>Настроить Login URL</strong> в @BotFather (если еще не настроен):</li>
+              <ul className="text-xs text-yellow-600 list-disc list-inside ml-4 mt-1 space-y-0.5">
                 <li>Откройте @BotFather в Telegram</li>
                 <li>Отправьте <code className="bg-yellow-100 px-1 rounded">/mybots</code></li>
-                <li>Выберите вашего бота</li>
+                <li>Выберите вашего бота <code className="bg-yellow-100 px-1 rounded">@{botUsername.replace('@', '')}</code></li>
                 <li>Выберите "Payments & Login" → "Login URL"</li>
                 <li>Укажите: <code className="bg-yellow-100 px-1 rounded">https://skinplan-mini.vercel.app</code></li>
-              </ol>
-              <p className="text-xs text-yellow-600 mt-2">
-                После настройки обновите страницу
+              </ul>
+            </ol>
+            <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-xs text-blue-800 font-semibold mb-1">💡 Быстрая проверка:</p>
+              <p className="text-xs text-blue-700">
+                Если бот не отвечает на <code className="bg-blue-100 px-1 rounded">/start</code>, проверьте настройку webhook на странице <a href="/admin/webhook-status" className="underline">webhook-status</a>
               </p>
             </div>
-          )}
+          </div>
           
           {error && error.includes('domain') && (
             <div className="text-red-600 mt-2 text-xs">
