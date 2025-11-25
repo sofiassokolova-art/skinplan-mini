@@ -1233,10 +1233,27 @@ export default function QuizPage() {
               return (
                 <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      handleButtonClick('no');
+                      console.log('🔴 Нажата кнопка "Нет" на экране', screen.id);
+                      
+                      // Для экрана want_improve обе кнопки вызывают submitAnswers
+                      if (isWantImproveScreen) {
+                        console.log('✅ Это экран want_improve, вызываем submitAnswers()');
+                        if (!isSubmitting && questionnaire) {
+                          setIsSubmitting(true);
+                          try {
+                            await submitAnswers();
+                          } catch (err: any) {
+                            console.error('❌ Ошибка:', err);
+                            setError(err?.message || 'Ошибка отправки ответов');
+                            setIsSubmitting(false);
+                          }
+                        }
+                      } else {
+                        handleButtonClick('no');
+                      }
                     }}
                     disabled={isSubmitting}
                     style={{
@@ -1257,10 +1274,27 @@ export default function QuizPage() {
                     {isSubmitting ? 'Отправка...' : '❌ Нет'}
                   </button>
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      handleButtonClick('yes');
+                      console.log('🟢 Нажата кнопка "Да" на экране', screen.id);
+                      
+                      // Для экрана want_improve обе кнопки вызывают submitAnswers
+                      if (isWantImproveScreen) {
+                        console.log('✅ Это экран want_improve, вызываем submitAnswers()');
+                        if (!isSubmitting && questionnaire) {
+                          setIsSubmitting(true);
+                          try {
+                            await submitAnswers();
+                          } catch (err: any) {
+                            console.error('❌ Ошибка:', err);
+                            setError(err?.message || 'Ошибка отправки ответов');
+                            setIsSubmitting(false);
+                          }
+                        }
+                      } else {
+                        handleButtonClick('yes');
+                      }
                     }}
                     disabled={isSubmitting}
                     style={{
