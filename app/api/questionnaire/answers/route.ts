@@ -193,17 +193,21 @@ export async function POST(request: NextRequest) {
               break;
             }
           } else if (typeof condition === 'object' && condition !== null) {
-            const conditionObj = condition as { gte?: number; lte?: number };
-            if ('gte' in conditionObj && typeof profileValue === 'number' && typeof conditionObj.gte === 'number') {
-              if (profileValue < conditionObj.gte) {
-                matches = false;
-                break;
+            const conditionObj = condition as Record<string, unknown>;
+            if (typeof profileValue === 'number') {
+              if ('gte' in conditionObj && typeof conditionObj.gte === 'number') {
+                const gteValue = conditionObj.gte as number;
+                if (profileValue < gteValue) {
+                  matches = false;
+                  break;
+                }
               }
-            }
-            if ('lte' in conditionObj && typeof profileValue === 'number' && typeof conditionObj.lte === 'number') {
-              if (profileValue > conditionObj.lte) {
-                matches = false;
-                break;
+              if ('lte' in conditionObj && typeof conditionObj.lte === 'number') {
+                const lteValue = conditionObj.lte as number;
+                if (profileValue > lteValue) {
+                  matches = false;
+                  break;
+                }
               }
             }
           } else if (condition !== profileValue) {
