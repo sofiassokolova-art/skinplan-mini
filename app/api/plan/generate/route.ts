@@ -250,6 +250,83 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     productsByStep[step].push(product);
   });
 
+  // ГАРАНТИРУЕМ наличие очищения (cleanser) и SPF - они обязательны для всех
+  // Если их нет в отфильтрованных продуктах, добавляем отдельно
+  
+  // Проверяем и добавляем очищение, если его нет
+  if (!productsByStep['cleanser'] || productsByStep['cleanser'].length === 0) {
+    console.log('⚠️ No cleanser products found, searching for fallback...');
+    const whereCleanser: any = {
+      status: 'published',
+      step: 'cleansing',
+    };
+    
+    // Очищение должно быть доступно, но если есть тип кожи - предпочтем его
+    if (profileClassification.skinType) {
+      whereCleanser.OR = [
+        { skinTypes: { has: profileClassification.skinType } },
+        { skinTypes: { isEmpty: true } },
+      ];
+    }
+    
+    const fallbackCleanser = await prisma.product.findFirst({
+      where: whereCleanser,
+      include: { brand: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    if (fallbackCleanser) {
+      if (!productsByStep['cleanser']) {
+        productsByStep['cleanser'] = [];
+      }
+      productsByStep['cleanser'].push(fallbackCleanser);
+      console.log(`✅ Added fallback cleanser: ${fallbackCleanser.name}`);
+    } else {
+      // Если даже с фильтром не нашли, берем любой очищающий продукт
+      const anyCleanser = await prisma.product.findFirst({
+        where: {
+          status: 'published',
+          step: 'cleansing',
+        },
+        include: { brand: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      if (anyCleanser) {
+        if (!productsByStep['cleanser']) {
+          productsByStep['cleanser'] = [];
+        }
+        productsByStep['cleanser'].push(anyCleanser);
+        console.log(`✅ Added any available cleanser: ${anyCleanser.name}`);
+      }
+    }
+  }
+
+  // Проверяем и добавляем SPF, если его нет (SPF универсален для всех)
+  if (!productsByStep['spf'] || productsByStep['spf'].length === 0) {
+    console.log('⚠️ No SPF products found, searching for fallback...');
+    const fallbackSPF = await prisma.product.findFirst({
+      where: {
+        status: 'published',
+        OR: [
+          { step: 'spf' },
+          { category: 'spf' },
+        ],
+        // SPF универсален - не фильтруем по типу кожи
+      },
+      include: { brand: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    if (fallbackSPF) {
+      if (!productsByStep['spf']) {
+        productsByStep['spf'] = [];
+      }
+      productsByStep['spf'].push(fallbackSPF);
+      console.log(`✅ Added fallback SPF: ${fallbackSPF.name}`);
+    }
+  }
+
   // Определяем базовые шаги на основе предпочтений
   // Умывание (cleanser) и SPF обязательны для всех
   let maxSteps = 3;
@@ -301,11 +378,36 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         }
       });
       
+      // Убеждаемся, что очищение (cleanser) и SPF всегда включены в шаги, даже если продуктов нет
+      // Очищение должно быть и утром, и вечером
+      if (!morningSteps.includes('cleanser')) {
+        morningSteps.unshift('cleanser');
+      }
+      if (!eveningStepsFiltered.includes('cleanser')) {
+        eveningStepsFiltered.unshift('cleanser');
+      }
+      
+      // SPF только утром
+      if (!morningSteps.includes('spf')) {
+        morningSteps.push('spf');
+      }
+      
       days.push({
         day,
         week: weekNum,
-        morning: morningSteps.filter(s => productsByStep[s]?.length > 0),
-        evening: eveningStepsFiltered.filter(s => productsByStep[s]?.length > 0),
+        // Очищение и SPF всегда в списке шагов, даже если продукта нет
+        morning: morningSteps.filter(s => {
+          // Очищение и SPF всегда показываем
+          if (s === 'cleanser' || s === 'spf') return true;
+          // Остальные - только если есть продукты
+          return productsByStep[s]?.length > 0;
+        }),
+        evening: eveningStepsFiltered.filter(s => {
+          // Очищение всегда показываем
+          if (s === 'cleanser') return true;
+          // Остальные - только если есть продукты
+          return productsByStep[s]?.length > 0;
+        }),
         products: dayProducts,
         completed: false,
       });
