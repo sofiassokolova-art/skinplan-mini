@@ -73,18 +73,21 @@ export async function POST(request: NextRequest) {
     // Проверка секретного токена (опционально, но рекомендуется)
     const secretToken = request.headers.get('x-telegram-bot-api-secret-token');
     if (TELEGRAM_SECRET_TOKEN && secretToken !== TELEGRAM_SECRET_TOKEN) {
+      console.warn('⚠️ Неверный секретный токен вебхука');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const update: TelegramUpdate = await request.json();
+    console.log('📥 Получено обновление от Telegram:', update.update_id);
 
     // Обработка команды /start
     if (update.message?.text === '/start' || update.message?.text?.startsWith('/start')) {
       const chatId = update.message.chat.id;
       const firstName = update.message.from.first_name || 'друг';
 
-      console.log(`Processing /start command from user ${firstName} (chatId: ${chatId})`);
-      console.log(`Mini App URL: ${MINI_APP_URL}`);
+      console.log(`📨 Processing /start command from user ${firstName} (chatId: ${chatId})`);
+      console.log(`🌐 Mini App URL: ${MINI_APP_URL}`);
+      console.log(`🤖 Bot Token configured: ${!!TELEGRAM_BOT_TOKEN}`);
 
       const welcomeText = `👋 Привет, ${firstName}!
 
@@ -114,10 +117,12 @@ export async function POST(request: NextRequest) {
       };
 
       try {
-        await sendMessage(chatId, welcomeText, replyMarkup);
-        console.log(`Welcome message sent successfully to chat ${chatId}`);
-      } catch (error) {
-        console.error(`Failed to send welcome message to chat ${chatId}:`, error);
+        console.log(`📤 Sending welcome message to chat ${chatId}...`);
+        const result = await sendMessage(chatId, welcomeText, replyMarkup);
+        console.log(`✅ Welcome message sent successfully to chat ${chatId}:`, result.ok);
+      } catch (error: any) {
+        console.error(`❌ Failed to send welcome message to chat ${chatId}:`, error);
+        console.error(`   Error details:`, error.message || error);
         // Все равно возвращаем успех, чтобы Telegram не повторял запрос
       }
       
@@ -149,31 +154,59 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET для установки webhook (можно использовать отдельно)
+// GET для установки и проверки webhook
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const action = searchParams.get('action');
 
-  if (action === 'set-webhook' && TELEGRAM_BOT_TOKEN) {
-    const webhookUrl = searchParams.get('url') || `${request.nextUrl.origin}/api/telegram/webhook`;
-    const secretToken = TELEGRAM_SECRET_TOKEN;
+  if (!TELEGRAM_BOT_TOKEN) {
+    return NextResponse.json(
+      { error: 'TELEGRAM_BOT_TOKEN not configured' },
+      { status: 500 }
+    );
+  }
 
+  // Проверка статуса вебхука
+  if (action === 'check') {
     try {
       const response = await fetch(
-        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}&secret_token=${secretToken}`,
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo`,
         { method: 'GET' }
       );
-
       const data = await response.json();
       return NextResponse.json(data);
-    } catch (error) {
+    } catch (error: any) {
       return NextResponse.json(
-        { error: 'Failed to set webhook' },
+        { error: 'Failed to check webhook', details: error.message },
         { status: 500 }
       );
     }
   }
 
-  return NextResponse.json({ message: 'Telegram webhook endpoint' });
+  // Установка вебхука
+  if (action === 'set-webhook') {
+    const webhookUrl = searchParams.get('url') || `${request.nextUrl.origin}/api/telegram/webhook`;
+    const secretToken = TELEGRAM_SECRET_TOKEN;
+
+    try {
+      const url = new URL(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook`);
+      url.searchParams.set('url', webhookUrl);
+      if (secretToken) {
+        url.searchParams.set('secret_token', secretToken);
+      }
+      url.searchParams.set('allowed_updates', JSON.stringify(['message']));
+
+      const response = await fetch(url.toString(), { method: 'GET' });
+      const data = await response.json();
+      return NextResponse.json(data);
+    } catch (error: any) {
+      return NextResponse.json(
+        { error: 'Failed to set webhook', details: error.message },
+        { status: 500 }
+      );
+    }
+  }
+
+  return NextResponse.json({ message: 'Telegram webhook endpoint. Use ?action=check or ?action=set-webhook' });
 }
 

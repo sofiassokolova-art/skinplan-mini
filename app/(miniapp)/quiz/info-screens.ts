@@ -26,6 +26,20 @@ export const INFO_SCREENS: InfoScreen[] = [
     ctaText: 'Продолжить',
   },
   {
+    id: 'how_it_works',
+    title: 'Четыре шага до вашего персонального плана',
+    subtitle: 'Займёт не более 3 минут · Проверка косметологом',
+    // Нет showAfterQuestionCode - начальный экран, показывается после welcome
+    ctaText: 'Продолжить',
+  },
+  {
+    id: 'personal_analysis',
+    title: 'Что именно мы проанализируем',
+    subtitle: 'Искусственный интеллект + проверка косметологом',
+    // Нет showAfterQuestionCode - начальный экран, показывается после how_it_works
+    ctaText: 'Продолжить',
+  },
+  {
     id: 'goals_intro',
     title: 'Какую цель вы ставите перед собой?',
     subtitle: 'Помогите нам понять, к чему вы стремитесь в уходе за кожей',
@@ -157,6 +171,20 @@ export const INFO_SCREENS: InfoScreen[] = [
     title: 'Посмотрите, как меняется ваша кожа!',
     subtitle: 'Отслеживайте прогресс с помощью фото-анализа',
     showAfterQuestionCode: 'created_for_you', // После экрана "создан для вас"
+    ctaText: 'Продолжить',
+  },
+  {
+    id: 'want_improve',
+    title: 'Хотите улучшить состояние кожи?',
+    // После экрана "создан для вас" или "трансформация"
+    showAfterQuestionCode: 'skin_transformation',
+    ctaText: 'Продолжить',
+  },
+  {
+    id: 'want_establish_routine',
+    title: 'Хотите наладить свой уход за кожей?',
+    // После экрана "хотите улучшить"
+    showAfterQuestionCode: 'want_improve',
     ctaText: 'Продолжить',
   },
 ];

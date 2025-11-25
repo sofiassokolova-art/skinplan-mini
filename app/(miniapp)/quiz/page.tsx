@@ -245,21 +245,34 @@ export default function QuizPage() {
   const handleNext = () => {
     if (!questionnaire) return;
 
-    // Если показывается информационный экран между вопросами, закрываем его и переходим к следующему вопросу
+    const allQuestions = [
+      ...questionnaire.groups.flatMap((g) => g.questions),
+      ...questionnaire.questions,
+    ];
+
+    // Если показывается информационный экран между вопросами, проверяем, есть ли следующий инфо-экран в цепочке
     if (pendingInfoScreen) {
+      // Проверяем, есть ли следующий инфо-экран, который должен быть показан после текущего
+      const nextInfoScreen = INFO_SCREENS.find(screen => screen.showAfterQuestionCode === pendingInfoScreen.id);
+      if (nextInfoScreen) {
+        // Показываем следующий инфо-экран в цепочке
+        console.log('📱 Показываем следующий инфо-экран в цепочке:', nextInfoScreen.id);
+        setPendingInfoScreen(nextInfoScreen);
+        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        return;
+      }
+
+      // Если следующего инфо-экрана нет, закрываем текущий и переходим к следующему вопросу
       setPendingInfoScreen(null);
-      const allQuestions = [
-        ...questionnaire.groups.flatMap((g) => g.questions),
-        ...questionnaire.questions,
-      ];
       
       if (currentQuestionIndex < allQuestions.length - 1) {
         const newIndex = currentQuestionIndex + 1;
         setCurrentQuestionIndex(newIndex);
         saveProgress(answers, newIndex, currentInfoScreenIndex);
       } else {
-        // Это последний вопрос, отправляем ответы
-        submitAnswers();
+        // Это последний вопрос - НЕ отправляем автоматически, показываем кнопку "Получить план"
+        console.log('✅ Это последний вопрос, кнопка "Получить план" должна быть видна');
+        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
       }
       return;
     }
@@ -283,11 +296,6 @@ export default function QuizPage() {
       return;
     }
 
-    const allQuestions = [
-      ...questionnaire.groups.flatMap((g) => g.questions),
-      ...questionnaire.questions,
-    ];
-
     // Проверяем, нужно ли показать информационный экран после текущего вопроса
     const currentQuestion = allQuestions[currentQuestionIndex];
     if (currentQuestion) {
@@ -304,9 +312,9 @@ export default function QuizPage() {
     // Проверяем, не последний ли это вопрос
     const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
     if (isLastQuestion) {
-      // Завершение анкеты
-      console.log('✅ Последний вопрос пройден, отправляем ответы...');
-      submitAnswers();
+      // Это последний вопрос - НЕ отправляем автоматически, показываем кнопку "Получить план"
+      console.log('✅ Это последний вопрос, кнопка "Получить план" должна быть видна');
+      saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
       return;
     }
 

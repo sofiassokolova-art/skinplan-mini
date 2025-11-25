@@ -117,8 +117,18 @@ export default function AdminLogin() {
 
         </div>
 
-        <div className="text-center text-xs text-gray-500">
-          Авторизуйтесь через Telegram для доступа к админ-панели
+        <div className="text-center text-xs text-gray-500 space-y-2">
+          <div>Авторизуйтесь через Telegram для доступа к админ-панели</div>
+          {!botUsername && (
+            <div className="text-red-600 mt-2">
+              ⚠️ NEXT_PUBLIC_TELEGRAM_BOT_USERNAME не настроен
+            </div>
+          )}
+          {error && error.includes('domain') && (
+            <div className="text-red-600 mt-2 text-xs">
+              ⚠️ Bot domain invalid: добавьте домен в BotFather → Bot Settings → Domain
+            </div>
+          )}
         </div>
       </div>
     </div>
