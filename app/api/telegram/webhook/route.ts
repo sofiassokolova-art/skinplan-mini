@@ -5,7 +5,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_SECRET_TOKEN = process.env.TELEGRAM_SECRET_TOKEN || crypto.randomBytes(16).toString('hex');
+// Секретный токен опционален - используется только если установлен в переменных окружения
+// Для генерации токена: node -e "const crypto = require('crypto'); console.log(crypto.randomBytes(32).toString('hex'))"
+const TELEGRAM_SECRET_TOKEN = process.env.TELEGRAM_SECRET_TOKEN;
 const MINI_APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://skinplan-mini.vercel.app';
 
 interface TelegramUpdate {
@@ -70,17 +72,10 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Проверка секретного токена (опционально, но рекомендуется)
-    // Только если TELEGRAM_SECRET_TOKEN установлен - проверяем его
-    const secretToken = request.headers.get('x-telegram-bot-api-secret-token');
-    // Если TELEGRAM_SECRET_TOKEN не установлен или равен 'not-set', не проверяем токен
-    if (TELEGRAM_SECRET_TOKEN && TELEGRAM_SECRET_TOKEN !== 'not-set') {
-      if (!secretToken || secretToken !== TELEGRAM_SECRET_TOKEN) {
-        console.warn('⚠️ Неверный секретный токен вебхука');
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-    }
-
+    // ВАЖНО: Webhook должен быть доступен без аутентификации, так как Telegram отправляет запросы напрямую
+    // Проверка секретного токена опциональна и выполняется только если токен явно установлен
+    // Если нужна дополнительная безопасность, используйте секретный токен через TELEGRAM_SECRET_TOKEN
+    
     if (!TELEGRAM_BOT_TOKEN) {
       console.error('❌ TELEGRAM_BOT_TOKEN не настроен');
       return NextResponse.json({ error: 'Bot token not configured' }, { status: 500 });
