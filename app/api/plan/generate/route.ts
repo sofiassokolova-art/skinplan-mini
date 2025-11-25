@@ -33,6 +33,8 @@ interface PlanWeek {
 interface GeneratedPlan {
   profile: {
     skinType: string;
+    sensitivityLevel?: string | null;
+    acneLevel?: number | null;
     primaryFocus: string;
     concerns: string[];
     ageGroup: string;
