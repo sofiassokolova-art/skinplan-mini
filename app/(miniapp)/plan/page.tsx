@@ -95,13 +95,25 @@ export default function PlanPage() {
       }
 
       console.log('📡 Запрашиваем план с сервера...');
-      const data = await api.getPlan() as GeneratedPlan;
-      console.log('✅ План получен:', {
-        profile: data.profile,
-        weeksCount: data.weeks?.length || 0,
-        productsCount: data.products?.length || 0,
-      });
-      setPlan(data);
+      
+      let data: GeneratedPlan;
+      try {
+        data = await api.getPlan() as GeneratedPlan;
+        console.log('✅ План получен:', {
+          profile: data.profile,
+          weeksCount: data.weeks?.length || 0,
+          productsCount: data.products?.length || 0,
+        });
+        
+        if (!data || !data.weeks || data.weeks.length === 0) {
+          throw new Error('План пустой или неполный');
+        }
+        
+        setPlan(data);
+      } catch (apiError: any) {
+        console.error('❌ Ошибка при запросе плана:', apiError);
+        throw apiError;
+      }
 
       // Загружаем сохраненный прогресс из localStorage
       const savedProgress = localStorage.getItem('plan_progress');

@@ -64,15 +64,25 @@ interface GeneratedPlan {
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
  */
 async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
+  console.log(`📊 Generating plan for user ${userId}...`);
+  
   // Получаем профиль кожи
+  console.log(`🔍 Looking for skin profile for user ${userId}...`);
   const profile = await prisma.skinProfile.findFirst({
     where: { userId },
     orderBy: { createdAt: 'desc' },
   });
 
   if (!profile) {
+    console.error(`❌ No skin profile found for user ${userId}`);
     throw new Error('No skin profile found');
   }
+  
+  console.log(`✅ Skin profile found:`, {
+    profileId: profile.id,
+    skinType: profile.skinType,
+    version: profile.version,
+  });
 
   // Получаем ответы пользователя
   const userAnswers = await prisma.userAnswer.findMany({
@@ -118,6 +128,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   }
 
   // Получаем рекомендации
+  console.log(`🔍 Looking for RecommendationSession for user ${userId}, profile ${profile.id}...`);
   let recommendations = await prisma.recommendationSession.findFirst({
     where: {
       userId,
@@ -129,6 +140,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // Если рекомендаций нет, создаем их на лету
   if (!recommendations) {
     console.log(`⚠️ No RecommendationSession found for user ${userId}, creating recommendations...`);
+    console.log(`   Profile ID: ${profile.id}`);
     
     // Получаем все активные правила
     const rules = await prisma.recommendationRule.findMany({
@@ -280,8 +292,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
   // Если продуктов нет вообще, выбрасываем ошибку
   if (products.length === 0) {
+    console.error(`❌ No products found in database (productIds: ${productIds.length}, published products: 0)`);
     throw new Error('No products available. Please add products through the admin panel.');
   }
+  
+  console.log(`✅ Found ${products.length} products for plan generation`);
 
   // Группируем продукты по шагам
   const productsByStep: Record<string, typeof products> = {};
@@ -394,12 +409,17 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 }
 
 export async function GET(request: NextRequest) {
+  console.log('🚀 Plan generation request received');
+  
   try {
     // Проверяем токен
     const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
                   request.cookies.get('auth_token')?.value;
 
+    console.log('🔑 Token check:', { hasToken: !!token, tokenLength: token?.length || 0 });
+
     if (!token) {
+      console.error('❌ No token provided');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -410,14 +430,22 @@ export async function GET(request: NextRequest) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
       userId = decoded.userId;
-    } catch {
+      console.log('✅ Token verified, userId:', userId);
+    } catch (error: any) {
+      console.error('❌ Token verification failed:', error.message);
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
       );
     }
 
+    console.log('📋 Starting plan generation for userId:', userId);
     const plan = await generate28DayPlan(userId);
+    console.log('✅ Plan generated successfully:', {
+      weeksCount: plan.weeks?.length || 0,
+      productsCount: plan.products?.length || 0,
+      profile: plan.profile?.skinType || 'unknown',
+    });
 
     return NextResponse.json(plan);
   } catch (error: any) {
