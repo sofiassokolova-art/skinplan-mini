@@ -105,41 +105,6 @@ export default function AdminLogin() {
     };
   }, [botUsername, router]);
 
-  const handleManualLogin = async () => {
-    setError('');
-    setLoading(true);
-
-    try {
-      // Простая авторизация через username (для отладки)
-      // В продакшене лучше использовать Telegram Login Widget
-      const username = prompt('Введите ваш Telegram username (без @):');
-      if (!username) {
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch('/api/admin/login-manual', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username.toLowerCase() }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Доступ запрещен. Вы не являетесь администратором.');
-        setLoading(false);
-        return;
-      }
-
-      localStorage.setItem('admin_token', data.token);
-      router.push('/admin');
-    } catch (err) {
-      setError('Ошибка соединения');
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
