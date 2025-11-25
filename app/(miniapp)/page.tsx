@@ -71,10 +71,13 @@ export default function HomePage() {
         try {
           await api.getRecommendations();
           // Если рекомендации загрузились, значит анкета завершена
-          // Очищаем прогресс, если он есть
+          // Очищаем весь прогресс (локально и на сервере)
           if (typeof window !== 'undefined') {
             localStorage.removeItem('quiz_progress');
           }
+          // Также очищаем состояние
+          setSavedProgress(null);
+          setShowResumeScreen(false);
           return false; // Анкета завершена
         } catch (err: any) {
           // Если 404 или "No skin profile" - значит анкета не завершена, продолжаем проверку прогресса

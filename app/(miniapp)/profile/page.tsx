@@ -27,21 +27,59 @@ interface SkinProfile {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, initData, isAvailable } = useTelegram();
+  const { user, initData, initialize } = useTelegram();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [skinProfile, setSkinProfile] = useState<SkinProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAvailable || !initData) {
-      setError('Откройте приложение через Telegram Mini App');
-      setLoading(false);
-      return;
-    }
+    // Инициализируем Telegram WebApp
+    initialize();
+    
+    // Проверяем доступность Telegram WebApp (как на других страницах)
+    const waitForTelegram = (): Promise<void> => {
+      return new Promise((resolve) => {
+        if (typeof window === 'undefined') {
+          resolve();
+          return;
+        }
 
-    loadProfile();
-  }, [isAvailable, initData]);
+        // Если уже доступен
+        if (window.Telegram?.WebApp?.initData) {
+          resolve();
+          return;
+        }
+
+        // Ждем максимум 2 секунды
+        let attempts = 0;
+        const maxAttempts = 20; // 20 * 100ms = 2 секунды
+
+        const checkInterval = setInterval(() => {
+          attempts++;
+          if (window.Telegram?.WebApp?.initData || attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 100);
+      });
+    };
+
+    const init = async () => {
+      await waitForTelegram();
+      
+      // Проверяем доступность Telegram WebApp после ожидания
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        setError('Откройте приложение через Telegram Mini App');
+        setLoading(false);
+        return;
+      }
+
+      loadProfile();
+    };
+
+    init();
+  }, []);
 
   const loadProfile = async () => {
     try {
