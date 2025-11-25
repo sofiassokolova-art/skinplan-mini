@@ -448,29 +448,45 @@ export default function QuizPage() {
       
       // Перенаправление на страницу плана после успешного завершения
       console.log('🚀 Перенаправляем на /plan');
-      router.push('/plan');
+      
+      // Используем window.location для более надежного редиректа
+      if (typeof window !== 'undefined') {
+        window.location.href = '/plan';
+      } else {
+        router.push('/plan');
+      }
     } catch (err: any) {
-      console.error('Error submitting answers:', err);
+      console.error('❌ Error submitting answers:', err);
+      console.error('❌ Error details:', {
+        message: err?.message,
+        stack: err?.stack,
+        response: err?.response,
+      });
+      
       setIsSubmitting(false);
       
       // Если ошибка авторизации, пытаемся обновить токен
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
+        console.log('🔄 Попытка повторной авторизации...');
         if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
           try {
             const telegramInitData = window.Telegram.WebApp.initData;
             const authResult = await api.authTelegram(telegramInitData);
             if (authResult.token) {
+              console.log('✅ Авторизация обновлена, повторяем отправку...');
               // Повторяем отправку после обновления токена
               setTimeout(() => submitAnswers(), 500);
               return;
             }
           } catch (authErr) {
-            console.error('Error re-authenticating:', authErr);
+            console.error('❌ Error re-authenticating:', authErr);
           }
         }
         setError('Ошибка авторизации. Пожалуйста, обновите страницу и попробуйте снова.');
       } else {
-        setError(err?.message || 'Ошибка сохранения ответов');
+        const errorMessage = err?.message || err?.error || 'Ошибка сохранения ответов. Попробуйте еще раз.';
+        console.error('❌ Setting error message:', errorMessage);
+        setError(errorMessage);
       }
     }
   };

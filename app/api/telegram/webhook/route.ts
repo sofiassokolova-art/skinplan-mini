@@ -71,10 +71,16 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
 export async function POST(request: NextRequest) {
   try {
     // Проверка секретного токена (опционально, но рекомендуется)
+    // Только если TELEGRAM_SECRET_TOKEN установлен - проверяем его
     const secretToken = request.headers.get('x-telegram-bot-api-secret-token');
-    if (TELEGRAM_SECRET_TOKEN && secretToken !== TELEGRAM_SECRET_TOKEN) {
+    if (TELEGRAM_SECRET_TOKEN && TELEGRAM_SECRET_TOKEN !== 'not-set' && secretToken !== TELEGRAM_SECRET_TOKEN) {
       console.warn('⚠️ Неверный секретный токен вебхука');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!TELEGRAM_BOT_TOKEN) {
+      console.error('❌ TELEGRAM_BOT_TOKEN не настроен');
+      return NextResponse.json({ error: 'Bot token not configured' }, { status: 500 });
     }
 
     const update: TelegramUpdate = await request.json();
