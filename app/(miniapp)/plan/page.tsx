@@ -75,21 +75,32 @@ export default function PlanPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('📄 Plan page mounted, loading plan...');
     loadPlan();
   }, []);
 
   const loadPlan = async () => {
     try {
+      console.log('📥 Начинаем загрузку плана...');
       setLoading(true);
       
       // Проверяем токен
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      console.log('🔑 Токен найден:', !!token);
+      
       if (!token) {
+        console.warn('⚠️ Токен не найден, перенаправляем на /quiz');
         router.push('/quiz');
         return;
       }
 
+      console.log('📡 Запрашиваем план с сервера...');
       const data = await api.getPlan() as GeneratedPlan;
+      console.log('✅ План получен:', {
+        profile: data.profile,
+        weeksCount: data.weeks?.length || 0,
+        productsCount: data.products?.length || 0,
+      });
       setPlan(data);
 
       // Загружаем сохраненный прогресс из localStorage

@@ -448,10 +448,16 @@ export default function QuizPage() {
       
       // Перенаправление на страницу плана после успешного завершения
       console.log('🚀 Перенаправляем на /plan');
+      console.log('🌐 URL для редиректа:', typeof window !== 'undefined' ? window.location.origin + '/plan' : '/plan');
       
       // Используем window.location для более надежного редиректа
       if (typeof window !== 'undefined') {
-        window.location.href = '/plan';
+        const planUrl = '/plan';
+        console.log('🔗 Выполняем редирект на:', planUrl);
+        // Даем время для завершения всех операций
+        setTimeout(() => {
+          window.location.href = planUrl;
+        }, 100);
       } else {
         router.push('/plan');
       }
@@ -1113,9 +1119,20 @@ export default function QuizPage() {
                 
                 if (shouldSubmit) {
                   console.log('✅ Это последний экран (want_improve), вызываем submitAnswers()');
+                  console.log('📊 Данные для отправки:', {
+                    questionnaireId: questionnaire?.id,
+                    answersCount: Object.keys(answers).length,
+                    answers: answers,
+                  });
+                  
                   // Вызываем submitAnswers напрямую
                   submitAnswers().catch((err) => {
                     console.error('❌ Ошибка при отправке ответов:', err);
+                    console.error('❌ Полная ошибка:', {
+                      message: err?.message,
+                      stack: err?.stack,
+                      response: err?.response,
+                    });
                     setError(err?.message || 'Ошибка отправки ответов');
                     setIsSubmitting(false);
                   });
