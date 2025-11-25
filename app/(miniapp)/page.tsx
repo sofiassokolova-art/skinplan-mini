@@ -63,36 +63,28 @@ export default function HomePage() {
     infoScreenIndex: number;
   } | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
-    initialize();
-    
-    // Загружаем данные (пользователь идентифицируется автоматически через initData)
-    const initAndLoad = async () => {
-      // Проверяем, что приложение открыто через Telegram
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-        console.log('Telegram WebApp не доступен, перенаправляем на анкету');
-        router.push('/quiz');
-        return;
-      }
-
-      // Сначала проверяем, есть ли незавершенная анкета
-      const hasIncompleteQuiz = await checkIncompleteQuiz();
-      
-      // Если есть незавершенная анкета, не загружаем рекомендации
-      if (hasIncompleteQuiz) {
-        return;
-      }
-
-      // Загружаем рекомендации (initData передается автоматически в запросе)
-      await loadRecommendations();
-    };
-
-    initAndLoad();
-  }, [router]);
-
+  // Проверка незавершённой анкеты (объявляем до использования)
   const checkIncompleteQuiz = async (): Promise<boolean> => {
     try {
+      // СНАЧАЛА проверяем, есть ли уже профиль кожи (анкета завершена)
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        try {
+          await api.getRecommendations();
+          // Если рекомендации загрузились, значит анкета завершена
+          // Очищаем прогресс, если он есть
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('quiz_progress');
+          }
+          return false; // Анкета завершена
+        } catch (err: any) {
+          // Если 404 или "No skin profile" - значит анкета не завершена, продолжаем проверку прогресса
+          if (!err?.message?.includes('404') && !err?.message?.includes('No skin profile')) {
+            // Другая ошибка - игнорируем и проверяем прогресс
+          }
+        }
+      }
+
+      // Если профиля нет, проверяем незавершённую анкету
       // Проверяем локально
       const savedProgressStr = typeof window !== 'undefined' ? localStorage.getItem('quiz_progress') : null;
       if (savedProgressStr) {
@@ -136,6 +128,34 @@ export default function HomePage() {
       return false;
     }
   };
+
+  useEffect(() => {
+    setMounted(true);
+    initialize();
+    
+    // Загружаем данные (пользователь идентифицируется автоматически через initData)
+    const initAndLoad = async () => {
+      // Проверяем, что приложение открыто через Telegram
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        console.log('Telegram WebApp не доступен, перенаправляем на анкету');
+        router.push('/quiz');
+        return;
+      }
+
+      // Сначала проверяем, есть ли незавершенная анкета
+      const hasIncompleteQuiz = await checkIncompleteQuiz();
+      
+      // Если есть незавершенная анкета, не загружаем рекомендации
+      if (hasIncompleteQuiz) {
+        return;
+      }
+
+      // Загружаем рекомендации (initData передается автоматически в запросе)
+      await loadRecommendations();
+    };
+
+    initAndLoad();
+  }, [router]);
 
   const resumeQuiz = () => {
     router.push('/quiz');

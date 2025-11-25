@@ -73,9 +73,12 @@ export async function POST(request: NextRequest) {
     // Проверка секретного токена (опционально, но рекомендуется)
     // Только если TELEGRAM_SECRET_TOKEN установлен - проверяем его
     const secretToken = request.headers.get('x-telegram-bot-api-secret-token');
-    if (TELEGRAM_SECRET_TOKEN && TELEGRAM_SECRET_TOKEN !== 'not-set' && secretToken !== TELEGRAM_SECRET_TOKEN) {
-      console.warn('⚠️ Неверный секретный токен вебхука');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Если TELEGRAM_SECRET_TOKEN не установлен или равен 'not-set', не проверяем токен
+    if (TELEGRAM_SECRET_TOKEN && TELEGRAM_SECRET_TOKEN !== 'not-set') {
+      if (!secretToken || secretToken !== TELEGRAM_SECRET_TOKEN) {
+        console.warn('⚠️ Неверный секретный токен вебхука');
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     if (!TELEGRAM_BOT_TOKEN) {

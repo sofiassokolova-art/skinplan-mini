@@ -479,11 +479,26 @@ export default function QuizPage() {
 
   // Продолжить с сохранённого места
   const resumeQuiz = () => {
-    if (!savedProgress) return;
+    if (!savedProgress || !questionnaire) return;
     
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    
+    // Восстанавливаем прогресс
     setAnswers(savedProgress.answers);
-    setCurrentQuestionIndex(savedProgress.questionIndex);
-    setCurrentInfoScreenIndex(savedProgress.infoScreenIndex);
+    
+    // Если infoScreenIndex указывает на начальный экран, который уже пройден - пропускаем
+    // Если вопрос уже начался (infoScreenIndex >= initialInfoScreens.length), используем сохранённые значения
+    if (savedProgress.infoScreenIndex >= initialInfoScreens.length) {
+      // Начальные экраны пройдены, переходим к вопросам
+      setCurrentQuestionIndex(savedProgress.questionIndex);
+      setCurrentInfoScreenIndex(savedProgress.infoScreenIndex);
+    } else {
+      // Начальные экраны ещё не все пройдены, но вопрос уже начался
+      // В этом случае пропускаем начальные экраны и идём к вопросам
+      setCurrentQuestionIndex(savedProgress.questionIndex);
+      setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
+    }
+    
     setShowResumeScreen(false);
   };
 
