@@ -76,7 +76,33 @@ export default function PlanPage() {
 
   useEffect(() => {
     console.log('📄 Plan page mounted, loading plan...');
-    loadPlan();
+    
+    // Пытаемся авторизоваться, если токена нет
+    const tryAuth = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      
+      if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        try {
+          console.log('🔐 Пытаемся авторизоваться через Telegram...');
+          const { useTelegram } = await import('@/lib/telegram-client');
+          const { api } = await import('@/lib/api');
+          
+          const telegramInitData = window.Telegram.WebApp.initData;
+          const authResult = await api.authTelegram(telegramInitData);
+          if (authResult.token) {
+            console.log('✅ Авторизован, загружаем план...');
+            setTimeout(() => loadPlan(0), 500);
+            return;
+          }
+        } catch (err) {
+          console.error('Auth error:', err);
+        }
+      }
+      
+      loadPlan(0);
+    };
+    
+    tryAuth();
   }, []);
 
   const loadPlan = async (retryCount = 0) => {
