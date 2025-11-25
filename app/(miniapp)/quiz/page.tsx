@@ -258,25 +258,28 @@ export default function QuizPage() {
         setCurrentQuestionIndex(newIndex);
         saveProgress(answers, newIndex, currentInfoScreenIndex);
       } else {
+        // Это последний вопрос, отправляем ответы
         submitAnswers();
       }
       return;
     }
 
-    // Если мы на информационных экранах, переходим к следующему или к вопросам
-    if (currentInfoScreenIndex < INFO_SCREENS.length - 1) {
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+
+    // Если мы на начальных информационных экранах, переходим к следующему или к вопросам
+    if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
       setCurrentInfoScreenIndex(newIndex);
-      // Сохраняем прогресс с новым индексом
       saveProgress(answers, currentQuestionIndex, newIndex);
       return;
     }
 
-    if (currentInfoScreenIndex === INFO_SCREENS.length - 1) {
+    if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
       // Переходим к первому вопросу
-      const newInfoIndex = INFO_SCREENS.length;
+      const newInfoIndex = initialInfoScreens.length;
       setCurrentInfoScreenIndex(newInfoIndex);
-      saveProgress(answers, currentQuestionIndex, newInfoIndex);
+      setCurrentQuestionIndex(0);
+      saveProgress(answers, 0, newInfoIndex);
       return;
     }
 
@@ -286,53 +289,61 @@ export default function QuizPage() {
     ];
 
     // Проверяем, нужно ли показать информационный экран после текущего вопроса
-    // НО ТОЛЬКО ЕСЛИ ЭТО НЕ ПОСЛЕДНИЙ ВОПРОС
-    const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
-    
-    if (!isLastQuestion) {
-      const currentQuestion = allQuestions[currentQuestionIndex];
-      if (currentQuestion) {
-        const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
-        if (infoScreen) {
-          // Показываем информационный экран перед следующим вопросом
-          console.log('📱 Показываем информационный экран после вопроса', currentQuestion.code);
-          setPendingInfoScreen(infoScreen);
-          saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-          return;
-        }
+    const currentQuestion = allQuestions[currentQuestionIndex];
+    if (currentQuestion) {
+      const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+      if (infoScreen) {
+        // Показываем информационный экран перед следующим вопросом
+        console.log('📱 Показываем информационный экран после вопроса', currentQuestion.code);
+        setPendingInfoScreen(infoScreen);
+        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        return;
       }
     }
 
+    // Проверяем, не последний ли это вопрос
+    const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+    if (isLastQuestion) {
+      // Завершение анкеты
+      console.log('✅ Последний вопрос пройден, отправляем ответы...');
+      submitAnswers();
+      return;
+    }
+
+    // Переходим к следующему вопросу
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
       console.log('➡️ Переход к вопросу', newIndex + 1, 'из', allQuestions.length);
       setCurrentQuestionIndex(newIndex);
-      // Сохраняем прогресс с новым индексом
       saveProgress(answers, newIndex, currentInfoScreenIndex);
-    } else {
-      // Завершение анкеты
-      console.log('✅ Последний вопрос пройден, отправляем ответы...');
-      submitAnswers();
     }
   };
 
   const handleBack = () => {
     if (!questionnaire) return;
 
-    // Если мы на первом информационном экране, возвращаемся на главную
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+
+    // Если показывается инфо-экран между вопросами, просто закрываем его
+    if (pendingInfoScreen) {
+      setPendingInfoScreen(null);
+      return;
+    }
+
+    // Если мы на первом начальном информационном экране, возвращаемся на главную
     if (currentInfoScreenIndex === 0) {
       router.push('/');
       return;
     }
 
-    // Если мы на первом вопросе, возвращаемся к последнему информационному экрану
-    if (currentInfoScreenIndex === INFO_SCREENS.length && currentQuestionIndex === 0) {
-      setCurrentInfoScreenIndex(INFO_SCREENS.length - 1);
+    // Если мы на первом вопросе, возвращаемся к последнему начальному инфо-экрану
+    if (currentInfoScreenIndex === initialInfoScreens.length && currentQuestionIndex === 0) {
+      setCurrentInfoScreenIndex(initialInfoScreens.length - 1);
       return;
     }
 
-    // Если мы на информационных экранах, переходим к предыдущему
-    if (currentInfoScreenIndex > 0 && currentInfoScreenIndex < INFO_SCREENS.length) {
+    // Если мы на начальных информационных экранах, переходим к предыдущему
+    if (currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialInfoScreens.length) {
       setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
       return;
     }
@@ -605,10 +616,16 @@ export default function QuizPage() {
     ...questionnaire.questions,
   ];
 
-  // Проверяем, показываем ли мы информационный экран или вопрос
-  const isShowingInfoScreen = currentInfoScreenIndex < INFO_SCREENS.length;
-  const currentInfoScreen = isShowingInfoScreen ? INFO_SCREENS[currentInfoScreenIndex] : null;
-  const currentQuestion = !isShowingInfoScreen ? allQuestions[currentQuestionIndex] : null;
+  // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
+  const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+  const infoScreensBetweenQuestions = INFO_SCREENS.filter(screen => screen.showAfterQuestionCode);
+
+  // Определяем, показываем ли мы начальный инфо-экран
+  const isShowingInitialInfoScreen = currentInfoScreenIndex < initialInfoScreens.length;
+  const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
+  
+  // Текущий вопрос (показывается после начальных инфо-экранов)
+  const currentQuestion = !isShowingInitialInfoScreen && !pendingInfoScreen ? allQuestions[currentQuestionIndex] : null;
 
   // Экран продолжения анкеты
   if (showResumeScreen && savedProgress) {
@@ -885,8 +902,8 @@ export default function QuizPage() {
     );
   }
 
-  // Если мы на информационном экране
-  if (isShowingInfoScreen && currentInfoScreen) {
+  // Если мы на начальном информационном экране
+  if (isShowingInitialInfoScreen && currentInitialInfoScreen) {
     return (
       <div style={{ 
         padding: '20px',
@@ -906,7 +923,7 @@ export default function QuizPage() {
           padding: '36px 28px 32px 28px',
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
         }}>
-          {currentInfoScreen.image && (
+          {currentInitialInfoScreen.image && (
             <div style={{
               width: '100%',
               height: '320px',
@@ -915,8 +932,8 @@ export default function QuizPage() {
               marginBottom: '24px',
             }}>
               <img
-                src={currentInfoScreen.image}
-                alt={currentInfoScreen.title}
+                src={currentInitialInfoScreen.image}
+                alt={currentInitialInfoScreen.title}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -935,10 +952,10 @@ export default function QuizPage() {
             margin: '0 0 16px 0',
             textAlign: 'center',
           }}>
-            {currentInfoScreen.title}
+            {currentInitialInfoScreen.title}
           </h1>
 
-          {currentInfoScreen.subtitle && (
+          {currentInitialInfoScreen.subtitle && (
             <p style={{
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
@@ -948,7 +965,7 @@ export default function QuizPage() {
               margin: '0 0 28px 0',
               textAlign: 'center',
             }}>
-              {currentInfoScreen.subtitle}
+              {currentInitialInfoScreen.subtitle}
             </p>
           )}
 
@@ -968,7 +985,7 @@ export default function QuizPage() {
               cursor: 'pointer',
             }}
           >
-            {currentInfoScreen.ctaText || 'Продолжить'} →
+            {currentInitialInfoScreen.ctaText || 'Продолжить'} →
           </button>
         </div>
       </div>
@@ -1089,10 +1106,16 @@ export default function QuizPage() {
             {/* Показываем кнопку "Получить план" на последнем вопросе */}
             {currentQuestionIndex === allQuestions.length - 1 && answers[currentQuestion.id] && (
               <button
-                onClick={() => {
+                onClick={async () => {
                   console.log('🚀 Нажата кнопка "Получить план", отправляем ответы...');
                   console.log('📋 Ответы:', answers);
-                  submitAnswers();
+                  console.log('📋 Текущий вопрос:', currentQuestion);
+                  console.log('📋 Индекс вопроса:', currentQuestionIndex, 'из', allQuestions.length);
+                  try {
+                    await submitAnswers();
+                  } catch (err) {
+                    console.error('❌ Ошибка при отправке ответов:', err);
+                  }
                 }}
                 disabled={isSubmitting}
                 style={{

@@ -30,7 +30,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     title: 'Какую цель вы ставите перед собой?',
     subtitle: 'Помогите нам понять, к чему вы стремитесь в уходе за кожей',
     image: '/icons/quiz_goal.png',
-    showAfterQuestionCode: undefined, // Перед первым вопросом о целях
+    // Нет showAfterQuestionCode - это начальный экран, показывается перед вопросами
     ctaText: 'Продолжить',
   },
   {
