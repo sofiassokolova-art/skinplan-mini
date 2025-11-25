@@ -197,18 +197,33 @@ export async function GET(request: NextRequest) {
     const webhookUrl = searchParams.get('url') || `${request.nextUrl.origin}/api/telegram/webhook`;
     const secretToken = TELEGRAM_SECRET_TOKEN;
 
+    console.log('🔧 Setting webhook:', {
+      webhookUrl,
+      hasSecretToken: !!secretToken,
+      origin: request.nextUrl.origin,
+    });
+
     try {
       const url = new URL(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook`);
       url.searchParams.set('url', webhookUrl);
-      if (secretToken) {
+      if (secretToken && secretToken !== 'not-set') {
         url.searchParams.set('secret_token', secretToken);
       }
       url.searchParams.set('allowed_updates', JSON.stringify(['message']));
 
+      console.log('📡 Sending setWebhook request to Telegram API...');
       const response = await fetch(url.toString(), { method: 'GET' });
       const data = await response.json();
+      
+      console.log('📊 Telegram API response:', {
+        ok: data.ok,
+        description: data.description,
+        error_code: data.error_code,
+      });
+      
       return NextResponse.json(data);
     } catch (error: any) {
+      console.error('❌ Error setting webhook:', error);
       return NextResponse.json(
         { error: 'Failed to set webhook', details: error.message },
         { status: 500 }

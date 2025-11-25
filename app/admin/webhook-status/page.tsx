@@ -146,13 +146,50 @@ export default function WebhookStatusPage() {
             )}
 
             <div className="mt-6 p-4 bg-blue-50 rounded">
-              <h3 className="font-semibold mb-2">Инструкция:</h3>
+              <h3 className="font-semibold mb-2">Пошаговая инструкция:</h3>
               <ol className="list-decimal list-inside space-y-2 text-sm">
                 <li>Убедитесь, что в Vercel установлена переменная окружения <code className="bg-blue-100 px-1 rounded">TELEGRAM_BOT_TOKEN</code></li>
-                <li>Нажмите &quot;Установить webhook&quot; чтобы настроить webhook для бота</li>
-                <li>Проверьте статус, нажав &quot;Проверить webhook&quot;</li>
-                <li>Отправьте команду <code className="bg-blue-100 px-1 rounded">/start</code> боту в Telegram</li>
+                <li>Нажмите кнопку <strong>&quot;Установить webhook&quot;</strong> выше</li>
+                <li>Нажмите <strong>&quot;Проверить webhook&quot;</strong> чтобы увидеть текущий статус</li>
+                <li>Если в статусе есть ошибки - проверьте логи ниже</li>
+                <li>Отправьте команду <code className="bg-blue-100 px-1 rounded">/start</code> боту <code className="bg-blue-100 px-1 rounded">@skinplanned_bot</code> в Telegram</li>
               </ol>
+              
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                <p className="font-semibold text-yellow-800 text-sm mb-1">⚠️ Если бот не отвечает:</p>
+                <ul className="text-xs text-yellow-700 list-disc list-inside space-y-1">
+                  <li>Проверьте логи Vercel Functions в разделе &quot;Logs&quot;</li>
+                  <li>Убедитесь, что webhook URL правильный (должен быть <code className="bg-yellow-100 px-1 rounded">https://skinplan-mini.vercel.app/api/telegram/webhook</code>)</li>
+                  <li>Проверьте, что <code className="bg-yellow-100 px-1 rounded">TELEGRAM_BOT_TOKEN</code> установлен и правильный</li>
+                  <li>Подождите 1-2 минуты после установки webhook, затем попробуйте снова</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="mt-4 p-4 bg-gray-50 rounded">
+              <h3 className="font-semibold mb-2 text-sm">Прямые ссылки:</h3>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <strong>Проверить webhook:</strong>
+                  <a 
+                    href="/api/telegram/webhook?action=check" 
+                    target="_blank"
+                    className="text-blue-600 hover:underline ml-2"
+                  >
+                    /api/telegram/webhook?action=check
+                  </a>
+                </div>
+                <div>
+                  <strong>Установить webhook:</strong>
+                  <a 
+                    href="/api/telegram/webhook?action=set-webhook" 
+                    target="_blank"
+                    className="text-blue-600 hover:underline ml-2"
+                  >
+                    /api/telegram/webhook?action=set-webhook
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
