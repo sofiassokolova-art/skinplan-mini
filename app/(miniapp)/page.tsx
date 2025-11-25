@@ -69,38 +69,86 @@ export default function HomePage() {
       // СНАЧАЛА проверяем, есть ли уже профиль кожи (анкета завершена)
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
+          // Пробуем загрузить рекомендации - если получилось, значит профиль есть и анкета завершена
           await api.getRecommendations();
-          // Если рекомендации загрузились, значит анкета завершена
-          // Очищаем весь прогресс (локально и на сервере)
+          
+          // Если рекомендации загрузились, значит анкета точно завершена
+          // Очищаем весь прогресс (локально)
           if (typeof window !== 'undefined') {
             localStorage.removeItem('quiz_progress');
           }
           // Также очищаем состояние
           setSavedProgress(null);
           setShowResumeScreen(false);
+          console.log('✅ Quiz completed, profile exists');
           return false; // Анкета завершена
         } catch (err: any) {
           // Если 404 или "No skin profile" - значит анкета не завершена, продолжаем проверку прогресса
-          if (!err?.message?.includes('404') && !err?.message?.includes('No skin profile')) {
-            // Другая ошибка - игнорируем и проверяем прогресс
+          if (err?.message?.includes('404') || err?.message?.includes('No skin profile')) {
+            console.log('ℹ️ No profile found, checking for incomplete quiz...');
+            // Продолжаем проверку прогресса
+          } else {
+            // Другая ошибка - логируем и продолжаем проверку прогресса
+            console.warn('⚠️ Error checking recommendations:', err?.message);
           }
         }
       }
 
       // Если профиля нет, проверяем незавершённую анкету
-      // Проверяем локально
-      const savedProgressStr = typeof window !== 'undefined' ? localStorage.getItem('quiz_progress') : null;
-      if (savedProgressStr) {
-        try {
-          const progress = JSON.parse(savedProgressStr);
-          if (progress.answers && Object.keys(progress.answers).length > 0) {
-            setSavedProgress(progress);
-            setShowResumeScreen(true);
-            setLoading(false);
-            return true; // Есть незавершенная анкета
+      // Сначала очищаем localStorage, если там остался старый прогресс
+      if (typeof window !== 'undefined') {
+        const savedProgressStr = localStorage.getItem('quiz_progress');
+        if (savedProgressStr) {
+          try {
+            const progress = JSON.parse(savedProgressStr);
+            // Проверяем, не старый ли это прогресс (больше 24 часов)
+            if (progress.timestamp && Date.now() - progress.timestamp > 24 * 60 * 60 * 1000) {
+              localStorage.removeItem('quiz_progress');
+              console.log('🗑️ Removed old quiz progress from localStorage (>24h)');
+            } else if (progress.answers && Object.keys(progress.answers).length > 0) {
+              // Проверяем на сервере, есть ли уже профиль
+              // Если профиль есть, очищаем локальный прогресс
+              if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+                try {
+                  const serverProgress = await api.getQuizProgress() as {
+                    progress?: {
+                      answers: Record<number, string | string[]>;
+                      questionIndex: number;
+                      infoScreenIndex: number;
+                    } | null;
+                  };
+                  
+                  // Если сервер не возвращает прогресс (null), значит профиль есть или прогресс очищен
+                  if (!serverProgress?.progress) {
+                    localStorage.removeItem('quiz_progress');
+                    setSavedProgress(null);
+                    setShowResumeScreen(false);
+                    console.log('✅ Server has no progress, clearing local progress');
+                    return false;
+                  }
+                  
+                  // Если сервер возвращает прогресс, используем его (более актуальный)
+                  if (serverProgress.progress && serverProgress.progress.answers && Object.keys(serverProgress.progress.answers).length > 0) {
+                    setSavedProgress(serverProgress.progress);
+                    setShowResumeScreen(true);
+                    setLoading(false);
+                    return true; // Есть незавершенная анкета
+                  }
+                } catch (err) {
+                  // Игнорируем ошибки загрузки прогресса с сервера
+                }
+              }
+              
+              // Если серверный прогресс недоступен, используем локальный
+              setSavedProgress(progress);
+              setShowResumeScreen(true);
+              setLoading(false);
+              return true; // Есть незавершенная анкета
+            }
+          } catch (e) {
+            // Игнорируем ошибки парсинга
+            localStorage.removeItem('quiz_progress');
           }
-        } catch (e) {
-          // Игнорируем ошибки парсинга
         }
       }
 
@@ -114,7 +162,24 @@ export default function HomePage() {
               infoScreenIndex: number;
             } | null;
           };
-          if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+          
+          // Если сервер не возвращает прогресс (null), значит профиль есть или прогресс очищен
+          if (!response?.progress) {
+            // Очищаем локальный прогресс тоже
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('quiz_progress');
+            }
+            setSavedProgress(null);
+            setShowResumeScreen(false);
+            return false; // Анкета завершена или нет прогресса
+          }
+          
+          // Если есть прогресс и есть ответы - показываем экран продолжения
+          if (response.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+            // Сохраняем в localStorage для офлайн доступа
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
+            }
             setSavedProgress(response.progress);
             setShowResumeScreen(true);
             setLoading(false);
@@ -122,12 +187,21 @@ export default function HomePage() {
           }
         } catch (err) {
           // Игнорируем ошибки загрузки прогресса - продолжаем загрузку рекомендаций
+          console.warn('⚠️ Error loading quiz progress from server:', err);
         }
       }
       
-      return false; // Нет незавершенной анкеты, можно загружать рекомендации
+      // Нет незавершенной анкеты, можно загружать рекомендации
+      // Очищаем локальный прогресс на всякий случай
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('quiz_progress');
+      }
+      setSavedProgress(null);
+      setShowResumeScreen(false);
+      return false;
     } catch (err) {
       // В случае ошибки продолжаем загрузку рекомендаций
+      console.error('❌ Error in checkIncompleteQuiz:', err);
       return false;
     }
   };

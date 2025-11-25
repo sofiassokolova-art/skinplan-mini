@@ -296,6 +296,21 @@ export async function POST(request: NextRequest) {
       console.error('Error creating recommendations:', recommendationError);
     }
 
+    // После успешного создания профиля, очищаем прогресс анкеты на сервере
+    // Прогресс больше не нужен, так как анкета завершена
+    try {
+      await prisma.userAnswer.deleteMany({
+        where: {
+          userId,
+          questionnaireId,
+        },
+      });
+      console.log(`✅ Quiz progress cleared for user ${userId} after profile creation`);
+    } catch (clearError) {
+      // Не критично, если не удалось очистить - прогресс просто не будет показываться
+      console.warn('⚠️ Failed to clear quiz progress (non-critical):', clearError);
+    }
+
     return NextResponse.json({
       success: true,
       profile: {

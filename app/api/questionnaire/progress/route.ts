@@ -26,6 +26,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ВАЖНО: Если у пользователя уже есть профиль кожи (анкета завершена), не возвращаем прогресс
+    const existingProfile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existingProfile) {
+      // Анкета завершена, прогресс не нужен
+      return NextResponse.json({
+        progress: null,
+      });
+    }
+
     // Получаем последние ответы пользователя для активной анкеты
     const activeQuestionnaire = await prisma.questionnaire.findFirst({
       where: { isActive: true },
