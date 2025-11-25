@@ -11,31 +11,36 @@ npm run seed:admin
 
 Это создаст админа с username `sofiagguseynova` в базе данных.
 
-## Шаг 2: Откройте страницу входа через Telegram Mini App
+## Шаг 2: Откройте страницу входа
 
-**Важно:** Админ-панель доступна ТОЛЬКО через Telegram Mini App!
+**Важно:** Админ-панель использует **Telegram Login Widget**, который работает через **персональные аккаунты Telegram**, а не через Mini App бота.
 
-### Вариант 1: Через Telegram бота
-1. Откройте вашего Telegram бота
-2. Отправьте команду `/start`
-3. Нажмите на кнопку "Открыть SkinIQ Mini App"
-4. В открывшемся приложении перейдите по адресу: `/admin/login`
-   - Полный URL: `https://skinplan-mini.vercel.app/admin/login`
+### Доступ к админ-панели
 
-### Вариант 2: Прямая ссылка в Telegram
-1. Откройте Telegram
-2. Отправьте себе сообщение со ссылкой:
-   ```
-   https://t.me/your_bot_name?start=admin
-   ```
-   Или создайте кнопку в боте, которая открывает Mini App по адресу `/admin/login`
+1. Откройте в браузере: `https://skinplan-mini.vercel.app/admin/login`
+2. Или локально: `http://localhost:3000/admin/login`
 
-## Шаг 3: Авторизация
+**Не требуется:** Открывать через Telegram Mini App или бота - виджет работает независимо!
 
-1. На странице `/admin/login` нажмите кнопку "Войти через Telegram"
-2. Система автоматически проверит ваш Telegram username
-3. Если вы админ (`@sofiagguseynova`), вас перенаправит в админ-панель
-4. Если нет доступа - получите ошибку "Access denied"
+## Шаг 3: Авторизация через Telegram Login Widget
+
+1. На странице `/admin/login` появится кнопка "Войти через Telegram" (Telegram Login Widget)
+2. Нажмите на кнопку - откроется окно авторизации Telegram
+3. Выберите ваш **персональный Telegram аккаунт** (тот, где username `@sofiagguseynova`)
+4. Подтвердите вход
+5. Система автоматически проверит ваш Telegram username из персонального аккаунта
+6. Если вы админ (`@sofiagguseynova`), вас перенаправит в админ-панель
+7. Если нет доступа - получите ошибку "Access denied"
+
+### Настройка Login URL в BotFather (требуется один раз)
+
+Чтобы виджет работал, нужно настроить Login URL в @BotFather:
+1. Откройте @BotFather в Telegram
+2. Отправьте `/mybots`
+3. Выберите вашего бота (`@skinplanned_bot`)
+4. Выберите "Payments & Login" → "Login URL"
+5. Укажите: `https://skinplan-mini.vercel.app`
+6. Сохраните изменения
 
 ## Структура админ-панели
 
@@ -51,26 +56,40 @@ npm run seed:admin
 
 1. Откройте страницу отладки: `/admin/debug`
 2. Проверьте:
-   - Доступен ли Telegram WebApp (`telegram.available`)
-   - Есть ли initData (`telegram.initData`)
-   - Какой ваш Telegram username (`telegram.user.username`)
+   - Загрузился ли Telegram Login Widget на странице
+   - Видна ли кнопка "Войти через Telegram"
+   - Какой ваш Telegram username в персональном аккаунте
    - Существует ли админ в базе данных
 
 3. Убедитесь, что:
-   - Вы открыли страницу через Telegram Mini App (не просто в браузере)
+   - Вы используете правильный персональный Telegram аккаунт (с username `@sofiagguseynova`)
    - Ваш Telegram username совпадает с тем, что в базе данных (`sofiagguseynova`)
    - Админ создан в базе данных (выполните `npm run seed:admin`)
+   - Login URL настроен в BotFather (см. Шаг 3)
+
+4. Если виджет не загружается:
+   - Проверьте консоль браузера на ошибки
+   - Убедитесь, что домен добавлен в BotFather → Payments & Login → Login URL
+   - Попробуйте очистить кеш браузера
 
 ## Важно
 
-- **Админ-панель работает только через Telegram Mini App!**
-- Открытие `/admin/login` в обычном браузере не сработает
-- Авторизация происходит автоматически на основе Telegram username
+- **Админ-панель использует Telegram Login Widget - работает в обычном браузере!**
+- **Не требуется** открывать через Telegram Mini App или бота
+- Авторизация происходит через **персональные аккаунты Telegram** (не через бота)
+- Система проверяет ваш Telegram username из персонального аккаунта
 - Токен хранится в `localStorage` как `admin_token`
+- Для работы виджета нужно настроить Login URL в BotFather (один раз)
 
-## Быстрый доступ
+## Как добавить нового админа
 
-Если у вас настроен Telegram бот, самый простой способ:
-1. Откройте бота в Telegram
-2. Создайте кнопку, которая открывает Mini App с URL: `https://skinplan-mini.vercel.app/admin/login`
-3. Или просто отправьте себе ссылку на Mini App в Telegram
+1. Узнайте Telegram username нового админа (например, `@username`)
+2. Добавьте админа в базу данных:
+   ```typescript
+   // В scripts/seed-admin.ts измените:
+   const telegramUsername = 'username'; // Без @
+   
+   // Затем выполните:
+   npm run seed:admin
+   ```
+3. Новый админ сможет войти через Telegram Login Widget со своим персональным аккаунтом

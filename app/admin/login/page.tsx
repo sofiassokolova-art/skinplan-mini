@@ -137,6 +137,9 @@ export default function AdminLogin() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Доступ только для администраторов
           </p>
+          <p className="mt-1 text-center text-xs text-gray-500">
+            Авторизация через персональный Telegram аккаунт
+          </p>
         </div>
 
         {error && (
@@ -167,9 +170,12 @@ export default function AdminLogin() {
         </div>
 
         <div className="text-center text-xs text-gray-500 space-y-2">
-          <div>Авторизуйтесь через Telegram для доступа к админ-панели</div>
+          <div>Авторизуйтесь через <strong>персональный Telegram аккаунт</strong> для доступа к админ-панели</div>
           <div className="text-xs text-gray-400 mt-1">
-            Используется бот: <code className="bg-gray-100 px-1 rounded">@{botUsername.replace('@', '')}</code>
+            Виджет авторизации через бота: <code className="bg-gray-100 px-1 rounded">@{botUsername.replace('@', '')}</code>
+          </div>
+          <div className="text-xs text-gray-400">
+            ⚠️ Выберите ваш персональный Telegram аккаунт (не Mini App бота)
           </div>
           
           {!widgetReady && (
