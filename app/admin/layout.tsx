@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function AdminLayout({
@@ -12,15 +12,26 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Проверяем, находимся ли мы на странице входа
+  const isLoginPage = pathname === '/admin/login';
+
   useEffect(() => {
+    // Если это страница входа, не проверяем авторизацию
+    if (isLoginPage) {
+      setLoading(false);
+      return;
+    }
+
     // Проверка авторизации админа
     const checkAuth = async () => {
       const token = localStorage.getItem('admin_token');
       if (!token) {
         router.push('/admin/login');
+        setLoading(false);
         return;
       }
 
@@ -35,18 +46,26 @@ export default function AdminLayout({
         if (!response.ok) {
           localStorage.removeItem('admin_token');
           router.push('/admin/login');
+          setLoading(false);
           return;
         }
+
+        setIsAuthenticated(true);
       } catch (error) {
         // Если проверка не удалась, все равно разрешаем доступ
         // (токен будет проверен при каждом API запросе)
+        setIsAuthenticated(true);
+      } finally {
+        setLoading(false);
       }
-
-      setIsAuthenticated(true);
-      setLoading(false);
     };
     checkAuth();
-  }, [router]);
+  }, [router, isLoginPage]);
+
+  // На странице входа показываем children без проверки авторизации
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
