@@ -1,131 +1,47 @@
 // app/admin/login/page.tsx
-// Страница входа в админ-панель через Telegram
+// Страница входа в админ-панель через email и пароль
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-declare global {
-  interface Window {
-    TelegramLoginWidget?: {
-      onAuth: (user: any) => void;
-    };
-  }
-}
 
 export default function AdminLogin() {
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const scriptLoaded = useRef(false);
-  // Используем fallback на бота, если переменная окружения не установлена
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'skinplanned_bot';
-  const [widgetReady, setWidgetReady] = useState(false);
 
-  useEffect(() => {
-    // Проверяем, есть ли уже токен
-    const token = localStorage.getItem('admin_token');
-    if (token) {
-      router.push('/admin');
-      return;
-    }
-  }, [router]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-  // Загружаем скрипт Telegram Login Widget
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    console.log('🔧 Initializing Telegram Login Widget...', {
-      botUsername,
-      scriptLoaded: scriptLoaded.current,
-    });
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Глобальная функция для обработки авторизации через Telegram Login Widget
-    window.TelegramLoginWidget = {
-      onAuth: async (user: any) => {
-        console.log('📱 Telegram Login Widget callback:', user);
-        setError('');
-        setLoading(true);
+      const data = await response.json();
 
-        try {
-          const response = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              telegramUser: user,
-            }),
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            setError(data.error || `Ошибка входа (${response.status}). У вас нет доступа к админ-панели.`);
-            setLoading(false);
-            return;
-          }
-
-          localStorage.setItem('admin_token', data.token);
-          router.push('/admin');
-        } catch (err) {
-          console.error('Error during Telegram login:', err);
-          setError('Ошибка соединения или обработки запроса.');
-          setLoading(false);
-        }
-      },
-    };
-
-    // Очищаем контейнер перед добавлением скрипта
-    const container = document.getElementById('telegram-login-container');
-    if (!container) {
-      console.error('❌ Container not found');
-      return;
-    }
-
-    // Удаляем старый скрипт, если есть
-    const oldScript = container.querySelector('script[src*="telegram-widget"]');
-    if (oldScript) {
-      oldScript.remove();
-    }
-
-    // Создаем и добавляем новый скрипт
-    // Используем data-auth-url (рекомендуется) - Telegram перенаправит на callback URL
-    const script = document.createElement('script');
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.async = true;
-    script.setAttribute('data-telegram-login', botUsername.replace('@', '')); // Убираем @ если есть
-    script.setAttribute('data-size', 'large');
-    script.setAttribute('data-radius', '12');
-    // Используем auth-url вместо onauth для более надежной работы
-    const authUrl = typeof window !== 'undefined' 
-      ? `${window.location.origin}/admin/telegram-callback`
-      : '/admin/telegram-callback';
-    script.setAttribute('data-auth-url', authUrl);
-    script.setAttribute('data-request-access', 'write');
-    
-    script.onload = () => {
-      console.log('✅ Telegram Login Widget script loaded');
-      scriptLoaded.current = true;
-      setWidgetReady(true);
-    };
-    
-    script.onerror = () => {
-      console.error('❌ Failed to load Telegram Login Widget script');
-      setError('Не удалось загрузить виджет Telegram. Проверьте подключение к интернету.');
-    };
-
-    container.appendChild(script);
-    console.log('📦 Script element added to container');
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
+      if (!response.ok) {
+        setError(data.error || `Ошибка входа (${response.status})`);
+        setLoading(false);
+        return;
       }
-      delete (window as any).TelegramLoginWidget;
-      scriptLoaded.current = false;
-      setWidgetReady(false);
-    };
-  }, [botUsername, router]);
+
+      // Сохраняем токен
+      localStorage.setItem('admin_token', data.token);
+      router.push('/admin');
+    } catch (err) {
+      console.error('Error during login:', err);
+      setError('Ошибка соединения. Проверьте подключение к интернету.');
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -135,86 +51,65 @@ export default function AdminLogin() {
             Вход в админ-панель
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Доступ только для администраторов
-          </p>
-          <p className="mt-1 text-center text-xs text-gray-500">
-            Авторизация через персональный Telegram аккаунт
+            Введите email и пароль для доступа
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {error}
-          </div>
-        )}
-
-        {/* Telegram Login Widget будет загружен через скрипт */}
-        <div className="flex flex-col items-center space-y-4">
-          <div 
-            id="telegram-login-container" 
-            className="w-full flex justify-center min-h-[60px] items-center"
-            style={{ minHeight: '60px' }}
-          >
-            {loading && (
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
-                <p className="text-sm text-gray-600">Обработка авторизации...</p>
-              </div>
-            )}
-            {!loading && !widgetReady && (
-              <div className="text-center text-gray-500 text-sm">
-                Загрузка виджета...
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="text-center text-xs text-gray-500 space-y-2">
-          <div>Авторизуйтесь через <strong>персональный Telegram аккаунт</strong> для доступа к админ-панели</div>
-          <div className="text-xs text-gray-400 mt-1">
-            Виджет авторизации через бота: <code className="bg-gray-100 px-1 rounded">@{botUsername.replace('@', '')}</code>
-          </div>
-          <div className="text-xs text-gray-400">
-            ⚠️ Выберите ваш персональный Telegram аккаунт (не Mini App бота)
-          </div>
-          
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded text-left">
-            <p className="font-semibold text-yellow-800 mb-2 text-sm">⚠️ Важно: Перед авторизацией</p>
-            <p className="text-xs text-yellow-700 mb-2">
-              Чтобы получить подтверждение в Telegram, нужно:
-            </p>
-            <ol className="text-xs text-yellow-700 list-decimal list-inside space-y-1 ml-2 mb-2">
-              <li><strong>Начать диалог с ботом</strong> — откройте <code className="bg-yellow-100 px-1 rounded">@{botUsername.replace('@', '')}</code> в Telegram и отправьте <code className="bg-yellow-100 px-1 rounded">/start</code></li>
-              <li><strong>Настроить Login URL</strong> в @BotFather (если еще не настроен):</li>
-              <ul className="text-xs text-yellow-600 list-disc list-inside ml-4 mt-1 space-y-0.5">
-                <li>Откройте @BotFather в Telegram</li>
-                <li>Отправьте <code className="bg-yellow-100 px-1 rounded">/mybots</code></li>
-                <li>Выберите вашего бота <code className="bg-yellow-100 px-1 rounded">@{botUsername.replace('@', '')}</code></li>
-                <li>Выберите "Payments & Login" → "Login URL"</li>
-                <li>Укажите: <code className="bg-yellow-100 px-1 rounded">https://skinplan-mini.vercel.app</code></li>
-              </ul>
-            </ol>
-            <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
-              <p className="text-xs text-blue-800 font-semibold mb-1">💡 Быстрая проверка:</p>
-              <p className="text-xs text-blue-700">
-                Если бот не отвечает на <code className="bg-blue-100 px-1 rounded">/start</code>, проверьте настройку webhook на странице <a href="/admin/webhook-status" className="underline">webhook-status</a>
-              </p>
-            </div>
-          </div>
-          
-          {error && error.includes('domain') && (
-            <div className="text-red-600 mt-2 text-xs">
-              ⚠️ Bot domain invalid: добавьте домен в BotFather → Payments & Login → Login URL
-            </div>
-          )}
-          {error && !error.includes('domain') && (
-            <div className="text-red-600 mt-2 text-xs">
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
             </div>
           )}
-        </div>
+
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Пароль
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Вход...' : 'Войти'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
-

@@ -29,7 +29,9 @@
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "@tailwindcss/postcss": "^4.1.13",
+    "@types/bcryptjs": "^2.4.6",
     "@vercel/kv": "^3.0.0",
+    "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.2",
     "next": "^16.0.3",

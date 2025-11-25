@@ -1,166 +1,84 @@
 // app/api/admin/login/route.ts
-// Авторизация админа через Telegram Login Widget
+// Авторизация админа через email и пароль
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
-interface TelegramUser {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-}
-
-// Функция для валидации данных, полученных от Telegram Login Widget
-// Согласно официальной документации Telegram: https://core.telegram.org/widgets/login
-function validateTelegramLoginData(data: TelegramUser, botToken: string): boolean {
-  const { hash, ...rest } = data;
-  
-  // Проверяем, что данные не старше 24 часов
-  const authDate = data.auth_date;
-  const now = Math.floor(Date.now() / 1000);
-  if (now - authDate > 86400) { // 24 часа
-    console.warn('Telegram login data expired:', { authDate, now, diff: now - authDate });
-    return false;
-  }
-
-  // Формируем строку для проверки: отсортированные ключи со значениями
-  const dataCheckString = Object.keys(rest)
-    .sort()
-    .map(key => `${key}=${rest[key as keyof typeof rest]}`)
-    .join('\n');
-
-  // Создаем секретный ключ из bot token
-  const secretKey = crypto.createHash('sha256').update(botToken).digest();
-  
-  // Вычисляем HMAC
-  const calculatedHash = crypto
-    .createHmac('sha256', secretKey)
-    .update(dataCheckString)
-    .digest('hex');
-
-  const isValid = calculatedHash === hash;
-  
-  if (!isValid) {
-    console.warn('Invalid Telegram login hash:', {
-      received: hash,
-      calculated: calculatedHash,
-      dataCheckString: dataCheckString.substring(0, 100) + '...',
-    });
-  }
-
-  return isValid;
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const { telegramUser } = await request.json();
+    const { email, password } = await request.json();
 
-    if (!telegramUser) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'Missing Telegram user data' },
+        { error: 'Email и пароль обязательны' },
         { status: 400 }
       );
     }
 
-    if (!TELEGRAM_BOT_TOKEN) {
-      return NextResponse.json(
-        { error: 'Bot token not configured' },
-        { status: 500 }
-      );
-    }
+    // Ищем админа по email
+    const admin = await prisma.admin.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
 
-    // Валидируем данные, полученные от виджета
-    const isValid = validateTelegramLoginData(telegramUser, TELEGRAM_BOT_TOKEN);
-
-    if (!isValid) {
+    if (!admin) {
+      console.warn('Admin login attempt with non-existent email:', email);
+      // Не сообщаем, что пользователь не существует (безопасность)
       return NextResponse.json(
-        { error: 'Invalid Telegram login data' },
+        { error: 'Неверный email или пароль' },
         { status: 401 }
       );
     }
 
-    // Получаем username без @
-    const telegramUsername = telegramUser.username?.toLowerCase().replace('@', '') || null;
-    const telegramId = telegramUser.id.toString();
-
-    // Ищем админа по username или telegramId
-    let admin = telegramUsername 
-      ? await prisma.admin.findUnique({
-          where: { telegramUsername },
-        })
-      : null;
-
-    if (!admin) {
-      admin = await prisma.admin.findUnique({
-        where: { telegramId },
-      });
-    }
-
-    if (!admin) {
-      console.error('Admin not found:', {
-        telegramUsername,
-        telegramId,
-        searchedBy: telegramUsername ? 'username' : 'telegramId',
-      });
+    // Проверяем, что у админа есть пароль
+    if (!admin.passwordHash) {
+      console.error('Admin has no password hash:', admin.id);
       return NextResponse.json(
-        { 
-          error: 'Access denied. You are not an administrator.',
-          debug: {
-            telegramUsername,
-            telegramId,
-            searchedBy: telegramUsername ? 'username' : 'telegramId',
-          },
-        },
-        { status: 403 }
+        { error: 'Пароль не настроен. Обратитесь к администратору.' },
+        { status: 401 }
       );
     }
 
-    // Обновляем telegramId и username если их не было
-    if (!admin.telegramId || !admin.telegramUsername) {
-      admin = await prisma.admin.update({
-        where: { id: admin.id },
-        data: {
-          telegramId: admin.telegramId || telegramId,
-          telegramUsername: admin.telegramUsername || telegramUsername,
-        },
-      });
+    // Проверяем пароль
+    const isValidPassword = await bcrypt.compare(password, admin.passwordHash);
+
+    if (!isValidPassword) {
+      console.warn('Invalid password attempt for admin:', admin.id);
+      return NextResponse.json(
+        { error: 'Неверный email или пароль' },
+        { status: 401 }
+      );
     }
 
     // Генерируем JWT токен
     const token = jwt.sign(
       {
         adminId: admin.id,
-        telegramId: admin.telegramId,
-        telegramUsername: admin.telegramUsername,
+        email: admin.email,
         role: admin.role || 'admin',
       },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
+    console.log('✅ Admin logged in:', { adminId: admin.id, email: admin.email });
+
     return NextResponse.json({
       token,
       admin: {
         id: admin.id,
-        telegramUsername: admin.telegramUsername,
+        email: admin.email,
         role: admin.role,
       },
     });
   } catch (error) {
     console.error('Admin login error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Внутренняя ошибка сервера' },
       { status: 500 }
     );
   }
 }
-
