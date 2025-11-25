@@ -450,14 +450,44 @@ export default function QuizPage() {
       console.log('🚀 Перенаправляем на /plan');
       console.log('🌐 URL для редиректа:', typeof window !== 'undefined' ? window.location.origin + '/plan' : '/plan');
       
+      // Проверяем доступность плана перед редиректом
+      try {
+        console.log('🔍 Проверяем доступность плана перед редиректом...');
+        const testResponse = await fetch('/api/debug/test-plan', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        if (testResponse.ok) {
+          const testData = await testResponse.json();
+          console.log('✅ Проверка плана успешна:', testData);
+        } else {
+          const testError = await testResponse.json();
+          console.warn('⚠️ Проблема с генерацией плана:', testError);
+        }
+      } catch (testErr) {
+        console.warn('⚠️ Не удалось проверить план:', testErr);
+      }
+      
       // Используем window.location для более надежного редиректа
       if (typeof window !== 'undefined') {
         const planUrl = '/plan';
         console.log('🔗 Выполняем редирект на:', planUrl);
+        console.log('📍 Текущий URL:', window.location.href);
+        
         // Даем время для завершения всех операций
         setTimeout(() => {
-          window.location.href = planUrl;
-        }, 100);
+          console.log('⏰ Таймаут истек, выполняем редирект...');
+          try {
+            window.location.href = planUrl;
+            console.log('✅ Редирект выполнен');
+          } catch (redirectErr) {
+            console.error('❌ Ошибка при редиректе:', redirectErr);
+            // Fallback на router
+            router.push(planUrl);
+          }
+        }, 500); // Увеличиваем задержку для надежности
       } else {
         router.push('/plan');
       }
@@ -1124,6 +1154,15 @@ export default function QuizPage() {
                     answersCount: Object.keys(answers).length,
                     answers: answers,
                   });
+                  
+                  // Проверяем, что есть ответы
+                  if (Object.keys(answers).length === 0) {
+                    console.error('❌ Нет ответов для отправки!');
+                    setError('Нет ответов для отправки. Пожалуйста, заполните анкету.');
+                    return;
+                  }
+                  
+                  console.log('🚀 Вызываем submitAnswers()...');
                   
                   // Вызываем submitAnswers напрямую
                   submitAnswers().catch((err) => {
