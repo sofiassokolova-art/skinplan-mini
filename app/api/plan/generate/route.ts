@@ -152,14 +152,15 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
             break;
           }
         } else if (typeof condition === 'object' && condition !== null) {
-          if ('gte' in condition && typeof profileValue === 'number') {
-            if (profileValue < condition.gte!) {
+          const conditionObj = condition as { gte?: number; lte?: number };
+          if ('gte' in conditionObj && typeof profileValue === 'number' && typeof conditionObj.gte === 'number') {
+            if (profileValue < conditionObj.gte) {
               matches = false;
               break;
             }
           }
-          if ('lte' in condition && typeof profileValue === 'number') {
-            if (profileValue > condition.lte!) {
+          if ('lte' in conditionObj && typeof profileValue === 'number' && typeof conditionObj.lte === 'number') {
+            if (profileValue > conditionObj.lte) {
               matches = false;
               break;
             }
