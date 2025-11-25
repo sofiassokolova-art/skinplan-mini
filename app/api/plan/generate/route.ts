@@ -390,7 +390,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     name: p.name,
     brand: p.brand.name,
     category: p.category,
-    price: p.price || 0,
+    price: (p as any).price || 0,
     available: (p.marketLinks as any)?.ozon ? 'Ozon' : 
                (p.marketLinks as any)?.wb ? 'Wildberries' :
                (p.marketLinks as any)?.apteka ? 'Apteka.ru' :
