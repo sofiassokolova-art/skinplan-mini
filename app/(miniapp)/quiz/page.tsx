@@ -217,8 +217,10 @@ export default function QuizPage() {
   };
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
+    console.log('💾 Сохраняем ответ:', { questionId, value });
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
+    console.log('✅ Ответы обновлены:', newAnswers);
     
     // Сохраняем в localStorage
     saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
@@ -233,8 +235,9 @@ export default function QuizPage() {
           isArray ? undefined : (value as string),
           isArray ? (value as string[]) : undefined
         );
+        console.log('✅ Прогресс сохранён на сервере');
       } catch (err) {
-        console.warn('Не удалось сохранить прогресс на сервере:', err);
+        console.warn('⚠️ Не удалось сохранить прогресс на сервере:', err);
       }
     }
   };
@@ -283,24 +286,32 @@ export default function QuizPage() {
     ];
 
     // Проверяем, нужно ли показать информационный экран после текущего вопроса
-    const currentQuestion = allQuestions[currentQuestionIndex];
-    if (currentQuestion) {
-      const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
-      if (infoScreen) {
-        // Показываем информационный экран перед следующим вопросом
-        setPendingInfoScreen(infoScreen);
-        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-        return;
+    // НО ТОЛЬКО ЕСЛИ ЭТО НЕ ПОСЛЕДНИЙ ВОПРОС
+    const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+    
+    if (!isLastQuestion) {
+      const currentQuestion = allQuestions[currentQuestionIndex];
+      if (currentQuestion) {
+        const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+        if (infoScreen) {
+          // Показываем информационный экран перед следующим вопросом
+          console.log('📱 Показываем информационный экран после вопроса', currentQuestion.code);
+          setPendingInfoScreen(infoScreen);
+          saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+          return;
+        }
       }
     }
 
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
+      console.log('➡️ Переход к вопросу', newIndex + 1, 'из', allQuestions.length);
       setCurrentQuestionIndex(newIndex);
       // Сохраняем прогресс с новым индексом
       saveProgress(answers, newIndex, currentInfoScreenIndex);
     } else {
       // Завершение анкеты
+      console.log('✅ Последний вопрос пройден, отправляем ответы...');
       submitAnswers();
     }
   };
@@ -333,7 +344,15 @@ export default function QuizPage() {
   };
 
   const submitAnswers = async () => {
-    if (!questionnaire) return;
+    if (!questionnaire) {
+      console.error('❌ Нет анкеты для отправки ответов');
+      return;
+    }
+
+    console.log('📤 Начинаем отправку ответов...');
+    console.log('📋 Анкета ID:', questionnaire.id);
+    console.log('📝 Количество ответов:', Object.keys(answers).length);
+    console.log('📊 Ответы:', answers);
 
     setIsSubmitting(true);
     setError(null);
@@ -1012,6 +1031,12 @@ export default function QuizPage() {
 
         <div style={{ marginBottom: '16px', color: '#0A5F59', fontSize: '14px' }}>
           Вопрос {currentQuestionIndex + 1} из {allQuestions.length}
+          {process.env.NODE_ENV === 'development' && (
+            <div style={{ fontSize: '10px', color: '#999', marginTop: '4px' }}>
+              Debug: Question ID: {currentQuestion.id}, Code: {currentQuestion.code}, Type: {currentQuestion.type}
+              {currentQuestionIndex === allQuestions.length - 1 && ' (ПОСЛЕДНИЙ ВОПРОС)'}
+            </div>
+          )}
         </div>
 
         <h2 style={{ 
@@ -1027,14 +1052,18 @@ export default function QuizPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentQuestion.options.map((option) => {
               const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+              const isSelected = answers[currentQuestion.id] === option.value;
               
               return (
                 <button
                   key={option.id}
                   onClick={() => {
+                    console.log('📝 Выбран ответ на вопрос', currentQuestion.id, 'вариант:', option.value);
+                    console.log('📊 Это последний вопрос?', isLastQuestion);
                     handleAnswer(currentQuestion.id, option.value);
                     if (isLastQuestion) {
-                      // На последнем вопросе не переходим автоматически
+                      // На последнем вопросе не переходим автоматически, кнопка появится после выбора
+                      console.log('✅ Ответ на последний вопрос сохранён, должна появиться кнопка "Получить план"');
                       return;
                     }
                     setTimeout(handleNext, 300);
@@ -1043,7 +1072,7 @@ export default function QuizPage() {
                     padding: '16px',
                     borderRadius: '16px',
                     border: '1px solid rgba(10, 95, 89, 0.2)',
-                    backgroundColor: answers[currentQuestion.id] === option.value
+                    backgroundColor: isSelected
                       ? 'rgba(10, 95, 89, 0.1)'
                       : 'rgba(255, 255, 255, 0.5)',
                     cursor: 'pointer',
@@ -1060,7 +1089,11 @@ export default function QuizPage() {
             {/* Показываем кнопку "Получить план" на последнем вопросе */}
             {currentQuestionIndex === allQuestions.length - 1 && answers[currentQuestion.id] && (
               <button
-                onClick={submitAnswers}
+                onClick={() => {
+                  console.log('🚀 Нажата кнопка "Получить план", отправляем ответы...');
+                  console.log('📋 Ответы:', answers);
+                  submitAnswers();
+                }}
                 disabled={isSubmitting}
                 style={{
                   marginTop: '24px',
@@ -1077,7 +1110,7 @@ export default function QuizPage() {
                   opacity: isSubmitting ? 0.7 : 1,
                 }}
               >
-                Получить план →
+                {isSubmitting ? 'Отправка...' : 'Получить план →'}
               </button>
             )}
           </div>
