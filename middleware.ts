@@ -11,6 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 const publicRoutes = [
   '/api/auth',
   '/api/questionnaire/active', // Публичный доступ к анкете
+  '/api/questionnaire/progress', // Сохранение прогресса анкеты (может быть до авторизации)
   '/api/telegram/webhook', // Webhook от Telegram (POST от Telegram, GET для управления)
   '/admin/login',
   '/api/debug', // Отладочные endpoints
