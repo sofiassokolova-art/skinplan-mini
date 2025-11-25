@@ -23,6 +23,7 @@
     "seed:products": "tsx scripts/seed-products.ts",
     "seed:rules": "tsx scripts/seed-rules.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
+    "seed:admin-telegram": "tsx scripts/seed-admin-telegram.ts",
     "seed:all": "tsx scripts/seed-all.ts",
     "telegram:webhook": "tsx scripts/setup-telegram-webhook.ts"
   },
