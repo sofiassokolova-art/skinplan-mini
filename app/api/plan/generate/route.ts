@@ -118,7 +118,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   }
 
   // Получаем рекомендации
-  const recommendations = await prisma.recommendationSession.findFirst({
+  let recommendations = await prisma.recommendationSession.findFirst({
     where: {
       userId,
       profileId: profile.id,
@@ -126,8 +126,104 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     orderBy: { createdAt: 'desc' },
   });
 
+  // Если рекомендаций нет, создаем их на лету
   if (!recommendations) {
-    throw new Error('No recommendations found. Please complete the questionnaire first.');
+    console.log(`⚠️ No RecommendationSession found for user ${userId}, creating recommendations...`);
+    
+    // Получаем все активные правила
+    const rules = await prisma.recommendationRule.findMany({
+      where: { isActive: true },
+      orderBy: { priority: 'desc' },
+    });
+
+    // Находим подходящее правило
+    let matchedRule: any = null;
+    
+    for (const rule of rules) {
+      const conditions = rule.conditionsJson as any;
+      let matches = true;
+
+      for (const [key, condition] of Object.entries(conditions)) {
+        const profileValue = (profile as any)[key];
+
+        if (Array.isArray(condition)) {
+          if (!condition.includes(profileValue)) {
+            matches = false;
+            break;
+          }
+        } else if (typeof condition === 'object' && condition !== null) {
+          if ('gte' in condition && typeof profileValue === 'number') {
+            if (profileValue < condition.gte!) {
+              matches = false;
+              break;
+            }
+          }
+          if ('lte' in condition && typeof profileValue === 'number') {
+            if (profileValue > condition.lte!) {
+              matches = false;
+              break;
+            }
+          }
+        } else if (condition !== profileValue) {
+          matches = false;
+          break;
+        }
+      }
+
+      if (matches) {
+        matchedRule = rule;
+        break;
+      }
+    }
+
+    if (matchedRule) {
+      const stepsJson = matchedRule.stepsJson as any;
+      const productIds: number[] = [];
+
+      // Собираем продукты
+      for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
+        const where: any = { status: 'published' };
+        const step = stepConfig as any;
+
+        if (step.category && Array.isArray(step.category) && step.category.length > 0) {
+          where.category = { in: step.category };
+        }
+        if (step.skin_types && Array.isArray(step.skin_types) && step.skin_types.length > 0) {
+          where.skinTypes = { hasSome: step.skin_types };
+        }
+        if (step.concerns && Array.isArray(step.concerns) && step.concerns.length > 0) {
+          where.concerns = { hasSome: step.concerns };
+        }
+        if (step.is_non_comedogenic === true) {
+          where.isNonComedogenic = true;
+        }
+        if (step.is_fragrance_free === true) {
+          where.isFragranceFree = true;
+        }
+
+        const products = await prisma.product.findMany({
+          where,
+          take: step.max_items || 3,
+          orderBy: { createdAt: 'desc' },
+        });
+
+        productIds.push(...products.map(p => p.id));
+      }
+
+      // Создаем RecommendationSession
+      recommendations = await prisma.recommendationSession.create({
+        data: {
+          userId,
+          profileId: profile.id,
+          ruleId: matchedRule.id,
+          products: productIds,
+        },
+      });
+
+      console.log(`✅ RecommendationSession created on-the-fly with ${productIds.length} products`);
+    } else {
+      throw new Error('No matching recommendation rule found. Please configure recommendation rules in the admin panel.');
+    }
   }
 
   // Получаем продукты из сессии
