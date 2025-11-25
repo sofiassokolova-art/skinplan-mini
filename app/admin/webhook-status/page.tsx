@@ -17,16 +17,27 @@ export default function WebhookStatusPage() {
     setSuccess('');
     
     try {
+      console.log('🔍 Checking webhook status...');
       const response = await fetch('/api/telegram/webhook?action=check');
       const data = await response.json();
+      
+      console.log('📊 Webhook status response:', data);
       setWebhookInfo(data);
       
       if (data.ok && data.result) {
-        setSuccess(`Webhook установлен: ${data.result.url}`);
+        const url = data.result.url;
+        if (url && url !== '') {
+          setSuccess(`✅ Webhook установлен: ${url}`);
+        } else {
+          setError('⚠️ Webhook не установлен');
+        }
+      } else if (data.error) {
+        setError(`Ошибка: ${data.error}${data.details ? ` - ${data.details}` : ''}`);
       } else {
-        setError('Webhook не установлен или произошла ошибка');
+        setError('Не удалось получить информацию о webhook');
       }
     } catch (err: any) {
+      console.error('❌ Error checking webhook:', err);
       setError(err.message || 'Ошибка при проверке webhook');
     } finally {
       setLoading(false);
@@ -40,16 +51,21 @@ export default function WebhookStatusPage() {
     
     try {
       const webhookUrl = `${window.location.origin}/api/telegram/webhook`;
+      console.log('🔧 Setting webhook to:', webhookUrl);
+      
       const response = await fetch(`/api/telegram/webhook?action=set-webhook&url=${encodeURIComponent(webhookUrl)}`);
       const data = await response.json();
       
+      console.log('📊 Set webhook response:', data);
+      setWebhookInfo(data);
+      
       if (data.ok) {
-        setSuccess('✅ Webhook успешно установлен!');
-        setWebhookInfo(data);
+        setSuccess(`✅ Webhook успешно установлен! URL: ${webhookUrl}`);
       } else {
-        setError(`Ошибка установки webhook: ${data.description || 'Неизвестная ошибка'}`);
+        setError(`Ошибка установки webhook: ${data.description || data.error || 'Неизвестная ошибка'}`);
       }
     } catch (err: any) {
+      console.error('❌ Error setting webhook:', err);
       setError(err.message || 'Ошибка при установке webhook');
     } finally {
       setLoading(false);
@@ -98,9 +114,34 @@ export default function WebhookStatusPage() {
             {webhookInfo && (
               <div className="mt-4">
                 <h2 className="text-lg font-semibold mb-2">Информация о webhook:</h2>
-                <pre className="bg-gray-100 p-4 rounded overflow-auto text-sm">
-                  {JSON.stringify(webhookInfo, null, 2)}
-                </pre>
+                <div className="bg-gray-100 p-4 rounded overflow-auto text-sm">
+                  {webhookInfo.result && (
+                    <div className="space-y-2 mb-4">
+                      <div><strong>URL:</strong> {webhookInfo.result.url || 'не установлен'}</div>
+                      <div><strong>Pending updates:</strong> {webhookInfo.result.pending_update_count || 0}</div>
+                      {webhookInfo.result.last_error_date && (
+                        <div className="text-red-600">
+                          <strong>Last error:</strong> {webhookInfo.result.last_error_message || 'нет ошибок'}
+                          <br />
+                          <span className="text-xs">Date: {new Date(webhookInfo.result.last_error_date * 1000).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {webhookInfo.result.last_synchronization_error_date && (
+                        <div className="text-yellow-600">
+                          <strong>Last sync error:</strong> {webhookInfo.result.last_synchronization_error_message || 'нет'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <details>
+                    <summary className="cursor-pointer text-gray-600 hover:text-gray-900">
+                      Полный JSON ответ
+                    </summary>
+                    <pre className="mt-2 text-xs">
+                      {JSON.stringify(webhookInfo, null, 2)}
+                    </pre>
+                  </details>
+                </div>
               </div>
             )}
 
