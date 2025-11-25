@@ -414,6 +414,8 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   return {
     profile: {
       skinType: profile.skinType || 'normal',
+      sensitivityLevel: profile.sensitivityLevel || 'low',
+      acneLevel: profile.acneLevel || null,
       primaryFocus,
       concerns: concerns.slice(0, 3),
       ageGroup: profile.ageGroup || '25-34',

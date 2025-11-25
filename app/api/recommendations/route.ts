@@ -143,6 +143,72 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cachedRecommendations);
     }
 
+    // Проверяем, есть ли уже сессия рекомендаций для этого профиля
+    const existingSession = await prisma.recommendationSession.findFirst({
+      where: {
+        userId,
+        profileId: profile.id,
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        rule: true,
+      },
+    });
+
+    if (existingSession && existingSession.products && Array.isArray(existingSession.products)) {
+      console.log('✅ Using existing recommendation session');
+      
+      // Получаем продукты из сессии
+      const productIds = existingSession.products as number[];
+      const products = await prisma.product.findMany({
+        where: {
+          id: { in: productIds },
+          status: 'published',
+        },
+        include: {
+          brand: true,
+        },
+      });
+
+      // Группируем продукты по шагам
+      const steps: Record<string, any[]> = {};
+      for (const product of products) {
+        const step = product.step || 'other';
+        if (!steps[step]) {
+          steps[step] = [];
+        }
+        steps[step].push({
+          id: product.id,
+          name: product.name,
+          brand: product.brand.name,
+          line: product.line,
+          category: product.category,
+          step: product.step,
+          description: product.descriptionUser,
+          marketLinks: product.marketLinks,
+          imageUrl: product.imageUrl,
+        });
+      }
+
+      const response = {
+        profile_summary: {
+          skinType: profile.skinType,
+          sensitivityLevel: profile.sensitivityLevel,
+          acneLevel: profile.acneLevel,
+          notes: profile.notes,
+        },
+        rule: {
+          name: existingSession.rule?.name || 'Рекомендации',
+        },
+        steps,
+      };
+
+      // Сохраняем в кэш
+      await setCachedRecommendations(userId, profile.version, response);
+      
+      return NextResponse.json(response);
+    }
+
     // Получаем все активные правила, отсортированные по приоритету
     const rules = await prisma.recommendationRule.findMany({
       where: { isActive: true },
@@ -160,11 +226,83 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Если правило не найдено, используем fallback - возвращаем базовые продукты
     if (!matchedRule) {
-      return NextResponse.json(
-        { error: 'No matching recommendation rule found' },
-        { status: 404 }
-      );
+      console.warn(`⚠️ No matching rule found for profile ${profile.id}, using fallback products`);
+      
+      // Fallback: возвращаем базовые опубликованные продукты по категориям
+      const fallbackSteps: Record<string, any[]> = {};
+      
+      // Получаем продукты для базовых шагов
+      const steps = ['cleanser', 'toner', 'moisturizer', 'spf', 'serum'];
+      
+      for (const step of steps) {
+        const products = await prisma.product.findMany({
+          where: {
+            status: 'published',
+            step: step === 'spf' ? 'spf' : step,
+            ...(profile.skinType && {
+              skinTypes: { has: profile.skinType },
+            }),
+          },
+          include: {
+            brand: true,
+          },
+          take: 1,
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+        
+        if (products.length > 0) {
+          fallbackSteps[step] = products.map(p => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand.name,
+            line: p.line,
+            category: p.category,
+            step: p.step,
+            description: p.descriptionUser,
+            marketLinks: p.marketLinks,
+            imageUrl: p.imageUrl,
+          }));
+        }
+      }
+      
+      // Если есть хотя бы один продукт, возвращаем fallback
+      if (Object.keys(fallbackSteps).length > 0) {
+        const response = {
+          profile_summary: {
+            skinType: profile.skinType,
+            sensitivityLevel: profile.sensitivityLevel,
+            acneLevel: profile.acneLevel,
+            notes: profile.notes,
+          },
+          rule: {
+            name: 'Базовые рекомендации',
+          },
+          steps: fallbackSteps,
+        };
+        
+        // Сохраняем в кэш
+        await setCachedRecommendations(userId, profile.version, response);
+        
+        return NextResponse.json(response);
+      }
+      
+      // Если даже fallback не сработал, возвращаем пустой ответ, но не ошибку
+      return NextResponse.json({
+        profile_summary: {
+          skinType: profile.skinType,
+          sensitivityLevel: profile.sensitivityLevel,
+          acneLevel: profile.acneLevel,
+          notes: profile.notes,
+        },
+        rule: {
+          name: 'Рекомендации',
+        },
+        steps: {},
+      });
     }
 
     // Получаем продукты для каждого шага

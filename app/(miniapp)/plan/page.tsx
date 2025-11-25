@@ -57,6 +57,8 @@ interface PlanWeek {
 interface GeneratedPlan {
   profile: {
     skinType: string;
+    sensitivityLevel?: string | null;
+    acneLevel?: number | null;
     primaryFocus: string;
     concerns: string[];
     ageGroup: string;
@@ -402,12 +404,76 @@ export default function PlanPage() {
         }}>
           План ухода на 28 дней
         </div>
+        {/* Персональная информация */}
         <div style={{
-          fontSize: '16px',
-          color: '#475467',
+          backgroundColor: 'rgba(255, 255, 255, 0.56)',
+          backdropFilter: 'blur(28px)',
+          borderRadius: '20px',
+          padding: '20px',
           marginBottom: '20px',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
         }}>
-          Ваш тип кожи: {plan.profile.skinType || 'Нормальная'}
+          <div style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: '#0A5F59',
+            marginBottom: '16px',
+          }}>
+            Персональная информация
+          </div>
+          
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: '12px',
+              borderBottom: '1px solid rgba(10, 95, 89, 0.1)',
+            }}>
+              <span style={{ fontSize: '14px', color: '#475467' }}>Тип кожи</span>
+              <span style={{ fontSize: '16px', fontWeight: '600', color: '#0A5F59' }}>
+                {plan.profile.skinType === 'combo' ? 'Комбинированная' :
+                 plan.profile.skinType === 'oily' ? 'Жирная' :
+                 plan.profile.skinType === 'dry' ? 'Сухая' :
+                 plan.profile.skinType === 'sensitive' ? 'Чувствительная' :
+                 plan.profile.skinType === 'normal' ? 'Нормальная' :
+                 plan.profile.skinType || 'Не определен'}
+              </span>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: '12px',
+              borderBottom: '1px solid rgba(10, 95, 89, 0.1)',
+            }}>
+              <span style={{ fontSize: '14px', color: '#475467' }}>Чувствительность</span>
+              <span style={{ fontSize: '16px', fontWeight: '600', color: '#0A5F59' }}>
+                {plan.profile.sensitivityLevel === 'low' ? 'Низкая' :
+                 plan.profile.sensitivityLevel === 'medium' ? 'Средняя' :
+                 plan.profile.sensitivityLevel === 'high' ? 'Высокая' :
+                 plan.profile.sensitivityLevel || 'Не определена'}
+              </span>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <span style={{ fontSize: '14px', color: '#475467' }}>Уровень акне</span>
+              <span style={{ fontSize: '16px', fontWeight: '600', color: '#0A5F59' }}>
+                {plan.profile.acneLevel !== null && plan.profile.acneLevel !== undefined 
+                  ? `${plan.profile.acneLevel} из 5`
+                  : 'Не определен'}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Прогресс-бар */}

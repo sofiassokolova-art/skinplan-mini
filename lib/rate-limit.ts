@@ -2,54 +2,57 @@
 // Rate limiter для защиты API (с поддержкой Redis через Upstash)
 
 import type { NextRequest } from 'next/server';
-import { redis } from './redis';
+import { getRedis } from './redis';
 
 // Пробуем использовать Upstash Redis для production
 let ratelimit: any = null;
 let useRedis = false;
 
 try {
-  // Проверяем, есть ли переменные окружения для Upstash
+  // Получаем Redis экземпляр через singleton
+  const redis = getRedis();
+
+  // Проверяем, есть ли Redis и переменные окружения для Upstash
   if (
+    redis &&
     process.env.UPSTASH_REDIS_REST_URL &&
     process.env.UPSTASH_REDIS_REST_TOKEN
   ) {
     // Динамический импорт, чтобы не падать, если пакеты не установлены
     const { Ratelimit } = require('@upstash/ratelimit');
 
-    // Используем singleton Redis экземпляр
-    if (redis) {
-      // Создаем разные лимитеры для разных endpoints
-      ratelimit = {
-        // Для генерации плана - 10 запросов в минуту
-        plan: new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(10, '1 m'),
-          analytics: true,
-        }),
-        // Для ответов анкеты - 5 запросов в минуту
-        answers: new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(5, '1 m'),
-          analytics: true,
-        }),
-        // Для рекомендаций - 20 запросов в минуту
-        recommendations: new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(20, '1 m'),
-          analytics: true,
-        }),
-        // Для админки - 3 попытки за 15 минут
-        admin: new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(3, '15 m'),
-          analytics: true,
-        }),
-      };
+    // Создаем разные лимитеры для разных endpoints
+    ratelimit = {
+      // Для генерации плана - 10 запросов в минуту
+      plan: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(10, '1 m'),
+        analytics: true,
+      }),
+      // Для ответов анкеты - 5 запросов в минуту
+      answers: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(5, '1 m'),
+        analytics: true,
+      }),
+      // Для рекомендаций - 20 запросов в минуту
+      recommendations: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(20, '1 m'),
+        analytics: true,
+      }),
+      // Для админки - 3 попытки за 15 минут
+      admin: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(3, '15 m'),
+        analytics: true,
+      }),
+    };
 
-      useRedis = true;
-      console.log('✅ Using Upstash Redis for rate limiting');
-    }
+    useRedis = true;
+    console.log('✅ Using Upstash Redis for rate limiting');
+  } else {
+    console.log('ℹ️ Redis not configured, using in-memory fallback for rate limiting');
   }
 } catch (error) {
   console.warn('⚠️ Upstash Redis not available, using in-memory fallback:', error);
