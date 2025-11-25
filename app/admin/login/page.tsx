@@ -49,6 +49,7 @@ export default function AdminLogin() {
     // Если не Mini App, загружаем Telegram Login Widget
     // Настраиваем callback для Telegram Login Widget
     window.onTelegramAuth = (user: any) => {
+      console.log('🔔 onTelegramAuth called with user:', user);
       handleTelegramAuth(user);
     };
 
@@ -56,12 +57,14 @@ export default function AdminLogin() {
     const loadWidget = () => {
       const container = document.getElementById('telegram-login-container');
       if (!container) {
-        console.error('Container not found');
+        console.error('❌ Container not found');
         return;
       }
 
       // Очищаем контейнер от предыдущих попыток
       container.innerHTML = '';
+
+      console.log('📦 Loading Telegram Login Widget for bot:', TELEGRAM_BOT_NAME);
 
       // Создаем скрипт Telegram Login Widget
       const script = document.createElement('script');
@@ -72,12 +75,16 @@ export default function AdminLogin() {
       script.setAttribute('data-request-access', 'write');
       script.setAttribute('data-radius', '10');
       script.async = true;
+      script.onload = () => {
+        console.log('✅ Telegram Login Widget script loaded');
+      };
       script.onerror = (e) => {
-        console.error('Failed to load Telegram Login Widget script:', e);
+        console.error('❌ Failed to load Telegram Login Widget script:', e);
         setError('Не удалось загрузить виджет авторизации Telegram. Проверьте подключение к интернету.');
       };
       
       container.appendChild(script);
+      console.log('📤 Widget script added to container');
     };
 
     // Загружаем виджет после небольшой задержки, чтобы убедиться, что контейнер существует
@@ -93,10 +100,12 @@ export default function AdminLogin() {
   }, [router]);
 
   const handleTelegramAuth = async (user: any) => {
+    console.log('🔐 Telegram Login Widget callback received:', user);
     setLoading(true);
     setError('');
 
     try {
+      console.log('📤 Sending auth data to server...');
       const response = await fetch('/api/admin/telegram-callback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -104,6 +113,7 @@ export default function AdminLogin() {
       });
 
       const data = await response.json();
+      console.log('📥 Server response:', { status: response.status, data });
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -117,11 +127,12 @@ export default function AdminLogin() {
 
       // Сохраняем токен
       localStorage.setItem('admin_token', data.token);
+      console.log('✅ Token saved, redirecting to admin panel...');
       
       // Перенаправляем в админ-панель
       router.push('/admin');
     } catch (err) {
-      console.error('Error during login:', err);
+      console.error('❌ Error during login:', err);
       setError('Ошибка соединения. Проверьте подключение к интернету.');
       setLoading(false);
     }
@@ -285,9 +296,40 @@ export default function AdminLogin() {
             margin: 0,
           }}>
             <li>Нажмите кнопку "Войти через Telegram" выше</li>
-            <li>Выберите ваш Telegram аккаунт</li>
+            <li>Введите номер телефона (в международном формате)</li>
+            <li>Подтвердите доступ через Telegram</li>
             <li>Если ваш аккаунт в списке администраторов - вы автоматически войдете в панель</li>
           </ol>
+        </div>
+
+        <div style={{
+          marginTop: '16px',
+          padding: '16px',
+          backgroundColor: '#FEF3C7',
+          borderRadius: '12px',
+          border: '1px solid #FCD34D',
+        }}>
+          <div style={{
+            color: '#92400E',
+            fontWeight: '600',
+            marginBottom: '8px',
+            fontSize: '14px',
+          }}>
+            ⚠️ Важно: Настройка домена
+          </div>
+          <div style={{
+            color: '#78350F',
+            fontSize: '13px',
+            lineHeight: '1.6',
+          }}>
+            Если сообщение не приходит, нужно настроить домен в BotFather:
+            <ol style={{ marginTop: '8px', paddingLeft: '20px' }}>
+              <li>Откройте <strong>@BotFather</strong> в Telegram</li>
+              <li>Отправьте команду <code>/setdomain</code></li>
+              <li>Выберите бота <code>@skinplanned_bot</code></li>
+              <li>Введите домен: <code>skinplan-mini.vercel.app</code></li>
+            </ol>
+          </div>
         </div>
       </div>
     </div>
