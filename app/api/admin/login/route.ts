@@ -1,54 +1,69 @@
 // app/api/admin/login/route.ts
-// Авторизация админа через Telegram
+// Авторизация админа через Telegram Login Widget
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { validateTelegramInitData } from '@/lib/telegram';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+interface TelegramUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
+
+// Функция для валидации данных, полученных от Telegram Login Widget
+function validateTelegramLoginData(data: TelegramUser, botToken: string): boolean {
+  const { hash, ...rest } = data;
+  const checkString = Object.keys(rest)
+    .sort()
+    .map(key => `${key}=${rest[key as keyof typeof rest]}`)
+    .join('\n');
+
+  const secretKey = crypto.createHash('sha256').update(botToken).digest();
+  const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+
+  return hmac === hash;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { initData } = await request.json();
+    const { telegramUser } = await request.json();
 
-    if (!initData) {
+    if (!telegramUser) {
       return NextResponse.json(
-        { error: 'Missing initData. Please open this page through Telegram Mini App.' },
+        { error: 'Missing Telegram user data' },
         { status: 400 }
       );
     }
 
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) {
+    if (!TELEGRAM_BOT_TOKEN) {
       return NextResponse.json(
         { error: 'Bot token not configured' },
         { status: 500 }
       );
     }
 
-    // Валидируем данные Telegram
-    const validation = validateTelegramInitData(initData, botToken);
-    
-    if (!validation.valid || !validation.data) {
-      return NextResponse.json(
-        { error: validation.error || 'Invalid Telegram data' },
-        { status: 401 }
-      );
-    }
+    // Валидируем данные, полученные от виджета
+    const isValid = validateTelegramLoginData(telegramUser, TELEGRAM_BOT_TOKEN);
 
-    const { user } = validation.data;
-    
-    if (!user) {
+    if (!isValid) {
       return NextResponse.json(
-        { error: 'User data not found' },
+        { error: 'Invalid Telegram login data' },
         { status: 401 }
       );
     }
 
     // Получаем username без @
-    const telegramUsername = user.username?.toLowerCase().replace('@', '') || null;
-    const telegramId = user.id.toString();
+    const telegramUsername = telegramUser.username?.toLowerCase().replace('@', '') || null;
+    const telegramId = telegramUser.id.toString();
 
     // Ищем админа по username или telegramId
     let admin = telegramUsername 

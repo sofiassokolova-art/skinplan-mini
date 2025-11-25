@@ -8,6 +8,9 @@ import { useRouter } from 'next/navigation';
 
 declare global {
   interface Window {
+    TelegramLoginWidget?: {
+      onAuth: (user: any) => void;
+    };
     Telegram?: {
       Login?: {
         auth: (options: {
@@ -33,65 +36,74 @@ export default function AdminLogin() {
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || '';
 
   useEffect(() => {
-    // Пробуем авторизацию через Telegram Mini App (если доступен)
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-      handleMiniAppLogin();
+    // Проверяем, есть ли уже токен
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      router.push('/admin');
+      return;
     }
-  }, []);
+  }, [router]);
 
   // Загружаем скрипт Telegram Login Widget
   useEffect(() => {
     if (typeof window === 'undefined' || scriptLoaded.current) return;
+
+    // Глобальная функция для обработки авторизации через Telegram Login Widget
+    window.TelegramLoginWidget = {
+      onAuth: async (user: any) => {
+        setError('');
+        setLoading(true);
+
+        try {
+          const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              telegramUser: user,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            setError(data.error || `Ошибка входа (${response.status}). У вас нет доступа к админ-панели.`);
+            setLoading(false);
+            return;
+          }
+
+          localStorage.setItem('admin_token', data.token);
+          router.push('/admin');
+        } catch (err) {
+          console.error('Error during Telegram login:', err);
+          setError('Ошибка соединения или обработки запроса.');
+          setLoading(false);
+        }
+      },
+    };
 
     const script = document.createElement('script');
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
     script.async = true;
     script.setAttribute('data-telegram-login', botUsername || 'your_bot');
     script.setAttribute('data-size', 'large');
-    script.setAttribute('data-auth-url', '/api/admin/login-telegram');
+    script.setAttribute('data-onauth', 'TelegramLoginWidget.onAuth(user)');
     script.setAttribute('data-request-access', 'write');
     script.onload = () => {
       scriptLoaded.current = true;
     };
-    document.body.appendChild(script);
+    
+    const container = document.getElementById('telegram-login-container');
+    if (container) {
+      container.appendChild(script);
+    }
 
     return () => {
       if (script.parentNode) {
         script.parentNode.removeChild(script);
       }
+      delete (window as any).TelegramLoginWidget;
     };
-  }, []);
-
-  const handleMiniAppLogin = async () => {
-    if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) return;
-
-    setError('');
-    setLoading(true);
-
-    try {
-      const initData = window.Telegram.WebApp.initData;
-
-      const response = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || `Ошибка входа (${response.status}). У вас нет доступа к админ-панели.`);
-        setLoading(false);
-        return;
-      }
-
-      localStorage.setItem('admin_token', data.token);
-      router.push('/admin');
-    } catch (err) {
-      setError('Ошибка соединения');
-      setLoading(false);
-    }
-  };
+  }, [botUsername, router]);
 
   const handleManualLogin = async () => {
     setError('');
@@ -152,21 +164,10 @@ export default function AdminLogin() {
             {/* Здесь появится кнопка Telegram Login Widget */}
           </div>
 
-          <div className="text-center text-sm text-gray-500">
-            или
-          </div>
-
-          <button
-            onClick={handleManualLogin}
-            disabled={loading}
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
-          >
-            {loading ? 'Проверка доступа...' : 'Войти по username (для отладки)'}
-          </button>
         </div>
 
         <div className="text-center text-xs text-gray-500">
-          Авторизуйтесь через Telegram или используйте username для входа
+          Авторизуйтесь через Telegram для доступа к админ-панели
         </div>
       </div>
     </div>
