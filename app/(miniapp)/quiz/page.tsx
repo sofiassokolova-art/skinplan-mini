@@ -91,12 +91,20 @@ export default function QuizPage() {
       // Загружаем анкету (публичный маршрут)
       await loadQuestionnaire();
 
-      // Загружаем прогресс с сервера (использует initData автоматически)
-      try {
-        await loadSavedProgressFromServer();
-      } catch (err) {
-        console.warn('Не удалось загрузить прогресс с сервера:', err);
-        // Fallback на localStorage
+      // Загружаем прогресс с сервера (только если Telegram WebApp доступен)
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        try {
+          await loadSavedProgressFromServer();
+        } catch (err: any) {
+          // Если ошибка 401 - это нормально, просто используем localStorage
+          if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
+            console.warn('Не удалось загрузить прогресс с сервера:', err);
+          }
+          // Fallback на localStorage
+          loadSavedProgress();
+        }
+      } else {
+        // Если Telegram WebApp не доступен, используем только localStorage
         loadSavedProgress();
       }
     };
@@ -129,6 +137,12 @@ export default function QuizPage() {
 
   // Загружаем прогресс с сервера (синхронизация между устройствами)
   const loadSavedProgressFromServer = async () => {
+    // Проверяем, что Telegram WebApp доступен перед запросом
+    if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+      console.warn('Telegram WebApp не доступен, пропускаем загрузку прогресса с сервера');
+      return;
+    }
+
     try {
       const response = await api.getQuizProgress() as {
         progress?: {
@@ -146,10 +160,14 @@ export default function QuizPage() {
           localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
         }
       }
-    } catch (err) {
-      console.warn('Не удалось загрузить прогресс с сервера:', err);
-      // Fallback на localStorage
-      loadSavedProgress();
+    } catch (err: any) {
+      // Если ошибка 401 - это нормально, просто не используем серверный прогресс
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
+        // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
+        return;
+      }
+      console.warn('Ошибка загрузки прогресса с сервера:', err);
+      // Не вызываем loadSavedProgress() здесь, чтобы избежать множественных вызовов
     }
   };
 
@@ -198,8 +216,8 @@ export default function QuizPage() {
     setAnswers(newAnswers);
     saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
     
-    // Сохраняем в БД для синхронизации между устройствами
-    if (questionnaire) {
+    // Сохраняем в БД для синхронизации между устройствами (только если Telegram WebApp доступен)
+    if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       try {
         const isArray = Array.isArray(value);
         await api.saveQuizProgress(
@@ -208,8 +226,11 @@ export default function QuizPage() {
           isArray ? undefined : (value as string),
           isArray ? (value as string[]) : undefined
         );
-      } catch (err) {
-        // Прогресс сохранен локально, ошибка не критична
+      } catch (err: any) {
+        // Если ошибка 401 - это нормально, прогресс сохранен локально
+        if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
+          console.warn('Ошибка сохранения прогресса на сервер:', err);
+        }
       }
     }
   };
@@ -337,19 +358,35 @@ export default function QuizPage() {
   };
 
   const submitAnswers = async () => {
+    console.log('🚀 submitAnswers вызвана');
+    
     if (!questionnaire) {
+      console.error('❌ Анкета не загружена');
       setError('Анкета не загружена. Пожалуйста, обновите страницу.');
       return;
     }
 
-    if (isSubmitting) return;
+    if (isSubmitting) {
+      console.warn('⚠️ Уже отправляется, игнорируем повторный вызов');
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
 
     try {
       // Проверяем, что приложение открыто через Telegram
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+      const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      console.log('📱 Проверка Telegram WebApp:', {
+        hasWindow: typeof window !== 'undefined',
+        hasTelegram: typeof window !== 'undefined' && !!window.Telegram,
+        hasWebApp: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
+        hasInitData: !!initData,
+        initDataLength: initData?.length || 0,
+      });
+
+      if (!initData) {
+        console.error('❌ Telegram WebApp initData не доступен');
         setError('Пожалуйста, откройте приложение через Telegram Mini App.');
         setIsSubmitting(false);
         return;
@@ -357,7 +394,10 @@ export default function QuizPage() {
 
       // Собираем ответы из state, если они пустые - пытаемся загрузить из localStorage
       let answersToSubmit = answers;
+      console.log('📝 Текущие ответы в state:', Object.keys(answersToSubmit).length);
+      
       if (Object.keys(answersToSubmit).length === 0) {
+        console.log('📦 Ответы пустые, пытаемся загрузить из localStorage...');
         try {
           const savedProgressStr = localStorage.getItem('quiz_progress');
           if (savedProgressStr) {
@@ -365,11 +405,19 @@ export default function QuizPage() {
             if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
               answersToSubmit = savedProgress.answers;
               setAnswers(savedProgress.answers);
+              console.log('✅ Загружены ответы из localStorage:', Object.keys(savedProgress.answers).length);
             }
           }
         } catch (e) {
-          // Игнорируем ошибки парсинга
+          console.error('❌ Ошибка загрузки из localStorage:', e);
         }
+      }
+
+      if (Object.keys(answersToSubmit).length === 0) {
+        console.error('❌ Нет ответов для отправки');
+        setError('Нет ответов для отправки. Пожалуйста, пройдите анкету.');
+        setIsSubmitting(false);
+        return;
       }
 
       const answerArray = Object.entries(answersToSubmit).map(([questionId, value]) => {
@@ -381,11 +429,17 @@ export default function QuizPage() {
         };
       });
 
+      console.log('📤 Отправка ответов на сервер:', {
+        questionnaireId: questionnaire.id,
+        answersCount: answerArray.length,
+      });
+
       const result = await api.submitAnswers(questionnaire.id, answerArray);
-      console.log('✅ Answers submitted, profile created:', result);
+      console.log('✅ Ответы отправлены, профиль создан:', result);
       clearProgress();
       
       // Редирект на страницу плана - прямой переход без задержек
+      console.log('🔄 Редирект на /plan');
       if (typeof window !== 'undefined') {
         // Используем window.location для гарантированного редиректа
         window.location.href = '/plan';
@@ -393,7 +447,9 @@ export default function QuizPage() {
         router.push('/plan');
       }
     } catch (err: any) {
-      console.error('Error submitting answers:', err);
+      console.error('❌ Ошибка при отправке ответов:', err);
+      console.error('   Error message:', err?.message);
+      console.error('   Error stack:', err?.stack);
       setIsSubmitting(false);
       
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401') || err?.message?.includes('initData')) {
@@ -856,20 +912,48 @@ export default function QuizPage() {
           </h1>
 
           {/* Подзаголовок - многострочный */}
-          {screen.subtitle && (
-            <div style={{
-              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '18px',
-              lineHeight: '1.6',
-              color: '#475467',
-              margin: '0 0 28px 0',
-              textAlign: 'center',
-              whiteSpace: 'pre-line',
-            }}>
-              {screen.subtitle}
-            </div>
-          )}
+              {screen.subtitle && (
+                <div style={{
+                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 400,
+                  fontSize: '18px',
+                  lineHeight: '1.6',
+                  color: '#475467',
+                  margin: '0 0 28px 0',
+                  textAlign: 'center',
+                  whiteSpace: 'pre-line',
+                }}>
+                  {screen.subtitle}
+                </div>
+              )}
+
+              {/* Отображение ошибок */}
+              {error && (
+                <div style={{
+                  backgroundColor: '#FEE2E2',
+                  border: '1px solid #FCA5A5',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                  textAlign: 'center',
+                }}>
+                  <div style={{
+                    color: '#DC2626',
+                    fontWeight: '600',
+                    marginBottom: '4px',
+                    fontSize: '14px',
+                  }}>
+                    ❌ Ошибка
+                  </div>
+                  <div style={{ 
+                    color: '#991B1B', 
+                    fontSize: '14px',
+                    lineHeight: '1.4',
+                  }}>
+                    {error}
+                  </div>
+                </div>
+              )}
 
           {/* Отзывы с горизонтальным скроллом */}
           {isTestimonialsScreen && screen.content && Array.isArray(screen.content) && (
@@ -985,13 +1069,22 @@ export default function QuizPage() {
               
               // Общий обработчик для кнопок want_improve
               const handleWantImproveClick = async () => {
-                if (isSubmitting || !questionnaire) return;
-                setIsSubmitting(true);
+                console.log('🔘 handleWantImproveClick вызван');
+                if (isSubmitting) {
+                  console.warn('⚠️ Уже отправляется');
+                  return;
+                }
+                if (!questionnaire) {
+                  console.error('❌ Анкета не загружена');
+                  setError('Анкета не загружена. Пожалуйста, обновите страницу.');
+                  return;
+                }
+                console.log('🚀 Запуск submitAnswers...');
                 try {
                   await submitAnswers();
                 } catch (err: any) {
-                  console.error('Error submitting answers:', err);
-                  setError(err?.message || 'Ошибка отправки ответов');
+                  console.error('❌ Ошибка в handleWantImproveClick:', err);
+                  setError(err?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
                   setIsSubmitting(false);
                 }
               };

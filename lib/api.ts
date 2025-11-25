@@ -17,7 +17,7 @@ async function request<T>(
     ...(options.headers as Record<string, string> || {}),
   };
 
-  // Добавляем initData в заголовки для идентификации пользователя
+  // Добавляем initData в заголовки для идентификации пользователя (только если доступен)
   if (initData) {
     headers['X-Telegram-Init-Data'] = initData;
   }
@@ -29,7 +29,14 @@ async function request<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    const errorMessage = error.error || `HTTP ${response.status}`;
+    
+    // Для 401 ошибок добавляем более информативное сообщение
+    if (response.status === 401 && !initData) {
+      throw new Error('Missing Telegram initData. Please open the app through Telegram Mini App.');
+    }
+    
+    throw new Error(errorMessage);
   }
 
   return response.json();
