@@ -410,23 +410,14 @@ export default function QuizPage() {
         };
       });
 
-      await api.submitAnswers(questionnaire.id, answerArray);
+      const result = await api.submitAnswers(questionnaire.id, answerArray);
+      console.log('✅ Answers submitted, profile created:', result);
       clearProgress();
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Редирект на страницу плана
+      // Редирект на страницу плана - прямой переход без задержек
       if (typeof window !== 'undefined') {
-        setTimeout(() => {
-          try {
-            window.location.replace('/plan');
-          } catch {
-            try {
-              window.location.href = '/plan';
-            } catch {
-              router.push('/plan');
-            }
-          }
-        }, 1000);
+        // Используем window.location для гарантированного редиректа
+        window.location.href = '/plan';
       } else {
         router.push('/plan');
       }
