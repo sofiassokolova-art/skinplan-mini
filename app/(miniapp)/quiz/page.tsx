@@ -262,18 +262,10 @@ export default function QuizPage() {
         return;
       }
 
-      // Если следующего инфо-экрана нет, закрываем текущий и переходим к следующему вопросу
-      setPendingInfoScreen(null);
-      
-      if (currentQuestionIndex < allQuestions.length - 1) {
-        const newIndex = currentQuestionIndex + 1;
-        setCurrentQuestionIndex(newIndex);
-        saveProgress(answers, newIndex, currentInfoScreenIndex);
-      } else {
-        // Это последний вопрос - НЕ отправляем автоматически, показываем кнопку "Получить план"
-        console.log('✅ Это последний вопрос, кнопка "Получить план" должна быть видна');
-        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-      }
+      // Если следующего инфо-экрана нет - это последний инфо-экран (want_improve)
+      // На последнем инфо-экране будет кнопка "Получить план"
+      console.log('✅ Это последний инфо-экран, кнопка "Получить план" должна быть видна');
+      saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
       return;
     }
 
@@ -312,8 +304,17 @@ export default function QuizPage() {
     // Проверяем, не последний ли это вопрос
     const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
     if (isLastQuestion) {
-      // Это последний вопрос - НЕ отправляем автоматически, показываем кнопку "Получить план"
-      console.log('✅ Это последний вопрос, кнопка "Получить план" должна быть видна');
+      // Это последний вопрос - проверяем, есть ли инфо-экраны после него
+      const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+      if (infoScreen) {
+        // Есть инфо-экран после последнего вопроса - показываем его
+        console.log('📱 После последнего вопроса показываем инфо-экран:', infoScreen.id);
+        setPendingInfoScreen(infoScreen);
+        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        return;
+      }
+      // Нет инфо-экранов - это действительно конец, кнопка "Получить план" уже на последнем вопросе
+      console.log('✅ Это последний вопрос без инфо-экранов, кнопка "Получить план" должна быть видна');
       saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
       return;
     }
@@ -987,69 +988,115 @@ export default function QuizPage() {
           )}
 
           {/* Кнопки действий */}
-          {isTinderScreen ? (
-            // Tinder-кнопки: Нет и Да
-            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-              <button
-                onClick={handleNext}
-                style={{
-                  flex: 1,
-                  height: '64px',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  color: '#0A5F59',
-                  border: '2px solid rgba(10, 95, 89, 0.3)',
-                  borderRadius: '32px',
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 600,
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                }}
-              >
-                ❌ Нет
-              </button>
-              <button
-                onClick={handleNext}
-                style={{
-                  flex: 1,
-                  height: '64px',
-                  background: '#0A5F59',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '32px',
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 600,
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                }}
-              >
-                ✅ Да
-              </button>
-            </div>
-          ) : (
+          {(() => {
+            // Проверяем, является ли это последним инфо-экраном (want_improve)
+            const isLastInfoScreen = screen.id === 'want_improve';
+            const nextInfoScreen = INFO_SCREENS.find(s => s.showAfterQuestionCode === screen.id);
+            const isActuallyLast = !nextInfoScreen && isTinderScreen;
+
+            // Если это последний инфо-экран, показываем кнопку "Получить план"
+            if (isLastInfoScreen || isActuallyLast) {
+              return (
+                <button
+                  onClick={async () => {
+                    console.log('🚀 Нажата кнопка "Получить план" на последнем инфо-экране');
+                    try {
+                      await submitAnswers();
+                    } catch (err) {
+                      console.error('❌ Ошибка при отправке ответов:', err);
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  style={{
+                    width: '100%',
+                    height: '64px',
+                    background: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '32px',
+                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 600,
+                    fontSize: '18px',
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                    opacity: isSubmitting ? 0.7 : 1,
+                    marginTop: '20px',
+                  }}
+                >
+                  {isSubmitting ? 'Отправка...' : 'Получить план →'}
+                </button>
+              );
+            }
+
+            // Tinder-кнопки для других Tinder-экранов
+            if (isTinderScreen) {
+              return (
+                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                  <button
+                    onClick={handleNext}
+                    style={{
+                      flex: 1,
+                      height: '64px',
+                      background: 'rgba(255, 255, 255, 0.8)',
+                      color: '#0A5F59',
+                      border: '2px solid rgba(10, 95, 89, 0.3)',
+                      borderRadius: '32px',
+                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 600,
+                      fontSize: '18px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    }}
+                  >
+                    ❌ Нет
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    style={{
+                      flex: 1,
+                      height: '64px',
+                      background: '#0A5F59',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '32px',
+                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 600,
+                      fontSize: '18px',
+                      cursor: 'pointer',
+                      boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                    }}
+                  >
+                    ✅ Да
+                  </button>
+                </div>
+              );
+            }
+
             // Обычная кнопка "Продолжить"
-            screen.ctaText && (
-              <button
-                onClick={handleNext}
-                style={{
-                  width: '100%',
-                  height: '64px',
-                  background: '#0A5F59',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '32px',
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 500,
-                  fontSize: '19px',
-                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                  cursor: 'pointer',
-                }}
-              >
-                {screen.ctaText} →
-              </button>
-            )
-          )}
+            return (
+              screen.ctaText ? (
+                <button
+                  onClick={handleNext}
+                  style={{
+                    width: '100%',
+                    height: '64px',
+                    background: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '32px',
+                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 500,
+                    fontSize: '19px',
+                    boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                    cursor: 'pointer',
+                    marginTop: '20px',
+                  }}
+                >
+                  {screen.ctaText} →
+                </button>
+              ) : null
+            );
+          })()}
         </div>
       </div>
     );
@@ -1152,8 +1199,16 @@ export default function QuizPage() {
                     console.log('📊 Это последний вопрос?', isLastQuestion);
                     handleAnswer(currentQuestion.id, option.value);
                     if (isLastQuestion) {
-                      // На последнем вопросе не переходим автоматически, кнопка появится после выбора
-                      console.log('✅ Ответ на последний вопрос сохранён, должна появиться кнопка "Получить план"');
+                      // На последнем вопросе проверяем, есть ли инфо-экраны после него
+                      const infoScreenAfter = getInfoScreenAfterQuestion(currentQuestion.code);
+                      if (infoScreenAfter) {
+                        // Есть инфо-экраны - переходим к ним через handleNext
+                        console.log('📱 После последнего вопроса есть инфо-экраны, переходим к ним');
+                        setTimeout(handleNext, 300);
+                      } else {
+                        // Нет инфо-экранов - показываем кнопку "Получить план"
+                        console.log('✅ Это действительно последний экран, должна появиться кнопка "Получить план"');
+                      }
                       return;
                     }
                     setTimeout(handleNext, 300);
@@ -1176,14 +1231,13 @@ export default function QuizPage() {
                 </button>
               );
             })}
-            {/* Показываем кнопку "Получить план" на последнем вопросе */}
-            {currentQuestionIndex === allQuestions.length - 1 && answers[currentQuestion.id] && (
+            {/* Кнопка "Получить план" показывается только если это последний вопрос И нет инфо-экранов после него */}
+            {currentQuestionIndex === allQuestions.length - 1 && 
+             answers[currentQuestion.id] && 
+             !getInfoScreenAfterQuestion(currentQuestion.code) && (
               <button
                 onClick={async () => {
-                  console.log('🚀 Нажата кнопка "Получить план", отправляем ответы...');
-                  console.log('📋 Ответы:', answers);
-                  console.log('📋 Текущий вопрос:', currentQuestion);
-                  console.log('📋 Индекс вопроса:', currentQuestionIndex, 'из', allQuestions.length);
+                  console.log('🚀 Нажата кнопка "Получить план" на последнем вопросе');
                   try {
                     await submitAnswers();
                   } catch (err) {
@@ -1245,8 +1299,9 @@ export default function QuizPage() {
                 </button>
               );
             })}
-            {/* Проверяем, последний ли это вопрос */}
-            {currentQuestionIndex === allQuestions.length - 1 ? (
+            {/* Кнопка "Получить план" показывается только если это последний вопрос И нет инфо-экранов после него */}
+            {currentQuestionIndex === allQuestions.length - 1 && 
+             !getInfoScreenAfterQuestion(currentQuestion.code) ? (
               <button
                 onClick={submitAnswers}
                 disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting}
@@ -1265,7 +1320,7 @@ export default function QuizPage() {
                   transition: 'all 0.2s',
                 }}
               >
-                Получить план →
+                {isSubmitting ? 'Отправка...' : 'Получить план →'}
               </button>
             ) : (
               <button

@@ -1,5 +1,5 @@
 // Информационные экраны между вопросами анкеты
-// Порядок экранов согласно требованиям пользователя
+// Порядок экранов согласно требованиям пользователя (41 экран)
 
 export interface InfoScreen {
   id: string;
@@ -8,7 +8,7 @@ export interface InfoScreen {
   image?: string;
   showAfterQuestionCode?: string; // Код вопроса, после которого показать экран
   ctaText?: string;
-  type?: 'default' | 'testimonials' | 'tinder' | 'comparison' | 'products'; // Тип экрана для специального рендеринга
+  type?: 'default' | 'testimonials' | 'tinder' | 'comparison' | 'products' | 'transformation'; // Тип экрана для специального рендеринга
   content?: any; // Дополнительные данные для кастомного рендеринга
 }
 
@@ -88,7 +88,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     showAfterQuestionCode: 'testimonials',
     ctaText: 'Продолжить',
   },
-  // Вопросы: Возраст, Пол
+  // Вопросы: Возраст (age), Пол (gender)
   
   // 8) Узнаем особенности вашей кожи
   {
@@ -98,11 +98,10 @@ export const INFO_SCREENS: InfoScreen[] = [
     showAfterQuestionCode: 'gender',
     ctaText: 'Продолжить',
   },
-  
-  // 9) Тип кожи - это вопрос в БД
-  // 10) Что вас больше всего беспокоит - это вопрос в БД (multi_choice)
-  // 11) Чувствительность кожи (скопировать с картинки - слайдер) - вопрос в БД
-  // 12) Меняется ли состояние кожи в зависимости от сезона? - вопрос в БД
+  // 9) Тип кожи - это вопрос в БД (skin_type)
+  // 10) Что вас больше всего беспокоит - это вопрос в БД (skin_concerns)
+  // 11) Чувствительность кожи (skin_sensitivity) - вопрос в БД
+  // 12) Меняется ли состояние кожи в зависимости от сезона? - вопрос в БД (seasonal_changes)
   
   // 13) SkinIQ делает уход за кожей простым и понятным
   {
@@ -122,11 +121,10 @@ export const INFO_SCREENS: InfoScreen[] = [
     showAfterQuestionCode: 'simple_care',
     ctaText: 'Продолжить',
   },
-  
-  // 15) Есть ли у вас диагнозы? - вопрос в БД
-  // 16) Беременность/кормление (только для женщин) - вопрос в БД с условием
-  // 17) Аллергические реакции - вопрос в БД
-  // 18) Исключить ингредиенты (можно пропустить) - вопрос в БД (multi_choice)
+  // 15) Есть ли у вас диагнозы? - вопрос в БД (medical_diagnoses)
+  // 16) Беременность/кормление (только для женщин) - вопрос в БД (pregnancy_breastfeeding)
+  // 17) Аллергические реакции - вопрос в БД (allergies)
+  // 18) Исключить ингредиенты (можно пропустить) - вопрос в БД (avoid_ingredients)
   
   // 19) SkinIQ заботится о вашем здоровье
   {
@@ -146,10 +144,9 @@ export const INFO_SCREENS: InfoScreen[] = [
     showAfterQuestionCode: 'health_trust',
     ctaText: 'Продолжить',
   },
-  
-  // 21) Ретинол - вопрос в БД (если Да, показывается доп. вопрос о реакции)
-  // 22) Рецептурные кремы - вопрос в БД
-  // 23) Пероральные препараты - вопрос в БД
+  // 21) Ретинол - вопрос в БД (retinoid_usage) - если Да, показывается доп. вопрос (retinoid_reaction)
+  // 22) Рецептурные кремы - вопрос в БД (prescription_topical)
+  // 23) Пероральные препараты - вопрос в БД (oral_medications)
   
   // 24) SkinIQ использует ИИ
   {
@@ -174,11 +171,10 @@ export const INFO_SCREENS: InfoScreen[] = [
     showAfterQuestionCode: 'ai_showcase',
     ctaText: 'Продолжить',
   },
-  
-  // 26) Декоративная косметика - вопрос в БД
-  // 27) Солнцезащитный крем - вопрос в БД
-  // 28) Время на солнце - вопрос в БД
-  // 29) Привычки (multi_choice) - вопрос в БД
+  // 26) Декоративная косметика - вопрос в БД (makeup_frequency)
+  // 27) Солнцезащитный крем - вопрос в БД (spf_frequency)
+  // 28) Время на солнце - вопрос в БД (sun_exposure)
+  // 29) Привычки (multi_choice) - вопрос в БД (lifestyle_habits)
   
   // 30) Больше никакой путаницы
   {
@@ -198,10 +194,9 @@ export const INFO_SCREENS: InfoScreen[] = [
     showAfterQuestionCode: 'ai_comparison',
     ctaText: 'Продолжить',
   },
-  
-  // 32) Тип ухода - вопрос в БД
-  // 33) Количество шагов - вопрос в БД
-  // 34) Бюджет - вопрос в БД
+  // 32) Тип ухода - вопрос в БД (care_type)
+  // 33) Количество шагов - вопрос в БД (care_steps)
+  // 34) Бюджет - вопрос в БД (budget)
   
   // 35) Не нужно бояться ошибок
   {
@@ -229,7 +224,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     image: '/illustrations/mirror_concern.jpg',
     type: 'tinder',
     showAfterQuestionCode: 'motivation_focus',
-    ctaText: '', // Кнопки будут отдельными
+    ctaText: '', // Кнопки будут отдельными (Нет/Да)
   },
   
   // 38) Вы узнаёте себя в этом? (Tinder-экран 2)
@@ -239,8 +234,8 @@ export const INFO_SCREENS: InfoScreen[] = [
     subtitle: '«Я хочу заботиться о своей коже, но не знаю, какие средства выбрать»',
     image: '/illustrations/products_confusion.jpg',
     type: 'tinder',
-    showAfterQuestionCode: 'recognize_yourself_1',
-    ctaText: '',
+    showAfterQuestionCode: 'recognize_yourself_1', // После предыдущего инфо-экрана
+    ctaText: '', // Кнопки будут отдельными (Нет/Да)
   },
   
   // 39) SkinIQ создан для людей, как вы!
@@ -258,18 +253,24 @@ export const INFO_SCREENS: InfoScreen[] = [
     title: 'Посмотрите, как меняется ваша кожа!',
     subtitle: 'Отслеживайте прогресс с помощью фото-анализа',
     image: '/illustrations/skin_transformation.jpg',
+    type: 'transformation',
     showAfterQuestionCode: 'created_for_you',
     ctaText: 'Продолжить',
+    content: {
+      from: 'Сейчас',
+      to: 'Ваша цель',
+      indicator: 'Здоровье кожи',
+    },
   },
   
-  // 41) Хотите улучшить состояние кожи?
+  // 41) Хотите улучшить состояние кожи? (Tinder-экран)
   {
     id: 'want_improve',
     title: 'Хотите улучшить состояние кожи?',
     image: '/illustrations/improve_skin.jpg',
     type: 'tinder',
     showAfterQuestionCode: 'skin_transformation',
-    ctaText: '',
+    ctaText: '', // Кнопки будут отдельными (❌ Нет / ✅ Да)
   },
 ];
 
