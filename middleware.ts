@@ -34,25 +34,34 @@ const publicRoutes = [
   '/logs', // Страница логов
 ];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Rate limiting для критичных endpoints
   for (const [route, limits] of Object.entries(RATE_LIMITS)) {
     if (pathname.startsWith(route)) {
       const identifier = getIdentifier(request);
-      const result = rateLimit(identifier, limits);
+      
+      // Определяем тип лимитера
+      let limiterType: 'plan' | 'answers' | 'recommendations' | 'admin' = 'plan';
+      if (route.includes('plan/generate')) limiterType = 'plan';
+      else if (route.includes('questionnaire/answers')) limiterType = 'answers';
+      else if (route.includes('recommendations')) limiterType = 'recommendations';
+      else if (route.includes('admin/login')) limiterType = 'admin';
+      
+      const result = await rateLimit(identifier, limits, limiterType);
       
       if (!result.success) {
+        const retryAfter = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
         return NextResponse.json(
           { 
             error: 'Too many requests. Please try again later.',
-            retryAfter: Math.ceil((result.resetAt - Date.now()) / 1000),
+            retryAfter,
           },
           { 
             status: 429,
             headers: {
-              'Retry-After': String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+              'Retry-After': String(retryAfter),
               'X-RateLimit-Limit': String(limits.maxRequests),
               'X-RateLimit-Remaining': String(result.remaining),
               'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
