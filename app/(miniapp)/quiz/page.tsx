@@ -243,7 +243,37 @@ export default function QuizPage() {
   };
 
   const handleNext = () => {
-    if (!questionnaire) return;
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+
+    // Если мы на начальных информационных экранах, переходим к следующему или к вопросам
+    // НЕ требуем анкету для перехода между начальными инфо-экранами
+    if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
+      const newIndex = currentInfoScreenIndex + 1;
+      console.log('➡️ Переход к следующему начальному инфо-экрану:', newIndex + 1, 'из', initialInfoScreens.length);
+      setCurrentInfoScreenIndex(newIndex);
+      saveProgress(answers, currentQuestionIndex, newIndex);
+      return;
+    }
+
+    if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
+      // Переходим к первому вопросу - здесь уже нужна анкета
+      if (!questionnaire) {
+        console.warn('⚠️ Анкета еще не загружена, не можем перейти к вопросам');
+        return;
+      }
+      console.log('➡️ Переход к первому вопросу');
+      const newInfoIndex = initialInfoScreens.length;
+      setCurrentInfoScreenIndex(newInfoIndex);
+      setCurrentQuestionIndex(0);
+      saveProgress(answers, 0, newInfoIndex);
+      return;
+    }
+
+    // Далее работаем с вопросами - нужна анкета
+    if (!questionnaire) {
+      console.warn('⚠️ Анкета еще не загружена');
+      return;
+    }
 
     const allQuestions = [
       ...questionnaire.groups.flatMap((g) => g.questions),
@@ -266,25 +296,6 @@ export default function QuizPage() {
       // На последнем инфо-экране будет кнопка "Получить план"
       console.log('✅ Это последний инфо-экран, кнопка "Получить план" должна быть видна');
       saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-      return;
-    }
-
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
-
-    // Если мы на начальных информационных экранах, переходим к следующему или к вопросам
-    if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
-      const newIndex = currentInfoScreenIndex + 1;
-      setCurrentInfoScreenIndex(newIndex);
-      saveProgress(answers, currentQuestionIndex, newIndex);
-      return;
-    }
-
-    if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
-      // Переходим к первому вопросу
-      const newInfoIndex = initialInfoScreens.length;
-      setCurrentInfoScreenIndex(newInfoIndex);
-      setCurrentQuestionIndex(0);
-      saveProgress(answers, 0, newInfoIndex);
       return;
     }
 
