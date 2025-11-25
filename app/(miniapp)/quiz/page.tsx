@@ -36,7 +36,7 @@ interface Questionnaire {
 
 export default function QuizPage() {
   const router = useRouter();
-  const { initialize, isAvailable, initData } = useTelegram();
+  const { initialize, initData } = useTelegram();
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,14 +95,12 @@ export default function QuizPage() {
       if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
           const telegramInitData = window.Telegram.WebApp.initData;
-          console.log('🔐 Автоматическая авторизация через Telegram...');
           const authResult = await api.authTelegram(telegramInitData);
           if (authResult.token) {
             token = authResult.token;
-            console.log('✅ Авторизованы через Telegram');
           }
         } catch (err) {
-          console.error('❌ Ошибка автоматической авторизации:', err);
+          console.error('Auth error:', err);
         }
       }
 
@@ -217,12 +215,8 @@ export default function QuizPage() {
   };
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
-    console.log('💾 Сохраняем ответ:', { questionId, value });
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
-    console.log('✅ Ответы обновлены:', newAnswers);
-    
-    // Сохраняем в localStorage
     saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
     
     // Сохраняем в БД для синхронизации между устройствами
@@ -235,9 +229,8 @@ export default function QuizPage() {
           isArray ? undefined : (value as string),
           isArray ? (value as string[]) : undefined
         );
-        console.log('✅ Прогресс сохранён на сервере');
       } catch (err) {
-        console.warn('⚠️ Не удалось сохранить прогресс на сервере:', err);
+        // Прогресс сохранен локально, ошибка не критична
       }
     }
   };
@@ -246,22 +239,15 @@ export default function QuizPage() {
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
 
     // Если мы на начальных информационных экранах, переходим к следующему или к вопросам
-    // НЕ требуем анкету для перехода между начальными инфо-экранами
     if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
-      console.log('➡️ Переход к следующему начальному инфо-экрану:', newIndex + 1, 'из', initialInfoScreens.length);
       setCurrentInfoScreenIndex(newIndex);
       saveProgress(answers, currentQuestionIndex, newIndex);
       return;
     }
 
     if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
-      // Переходим к первому вопросу - здесь уже нужна анкета
-      if (!questionnaire) {
-        console.warn('⚠️ Анкета еще не загружена, не можем перейти к вопросам');
-        return;
-      }
-      console.log('➡️ Переход к первому вопросу');
+      if (!questionnaire) return;
       const newInfoIndex = initialInfoScreens.length;
       setCurrentInfoScreenIndex(newInfoIndex);
       setCurrentQuestionIndex(0);
@@ -269,11 +255,7 @@ export default function QuizPage() {
       return;
     }
 
-    // Далее работаем с вопросами - нужна анкета
-    if (!questionnaire) {
-      console.warn('⚠️ Анкета еще не загружена');
-      return;
-    }
+    if (!questionnaire) return;
 
     const allQuestions = [
       ...questionnaire.groups.flatMap((g) => g.questions),
@@ -285,16 +267,10 @@ export default function QuizPage() {
       // Проверяем, есть ли следующий инфо-экран, который должен быть показан после текущего
       const nextInfoScreen = INFO_SCREENS.find(screen => screen.showAfterQuestionCode === pendingInfoScreen.id);
       if (nextInfoScreen) {
-        // Показываем следующий инфо-экран в цепочке
-        console.log('📱 Показываем следующий инфо-экран в цепочке:', nextInfoScreen.id);
         setPendingInfoScreen(nextInfoScreen);
         saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
-
-      // Если следующего инфо-экрана нет - это последний инфо-экран (want_improve)
-      // На последнем инфо-экране будет кнопка "Получить план"
-      console.log('✅ Это последний инфо-экран, кнопка "Получить план" должна быть видна');
       saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
       return;
     }
@@ -304,8 +280,6 @@ export default function QuizPage() {
     if (currentQuestion) {
       const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
       if (infoScreen) {
-        // Показываем информационный экран перед следующим вопросом
-        console.log('📱 Показываем информационный экран после вопроса', currentQuestion.code);
         setPendingInfoScreen(infoScreen);
         saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
@@ -318,14 +292,10 @@ export default function QuizPage() {
       // Это последний вопрос - проверяем, есть ли инфо-экраны после него
       const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
       if (infoScreen) {
-        // Есть инфо-экран после последнего вопроса - показываем его
-        console.log('📱 После последнего вопроса показываем инфо-экран:', infoScreen.id);
         setPendingInfoScreen(infoScreen);
         saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
-      // Нет инфо-экранов - это действительно конец, кнопка "Получить план" уже на последнем вопросе
-      console.log('✅ Это последний вопрос без инфо-экранов, кнопка "Получить план" должна быть видна');
       saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
       return;
     }
@@ -333,7 +303,6 @@ export default function QuizPage() {
     // Переходим к следующему вопросу
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
-      console.log('➡️ Переход к вопросу', newIndex + 1, 'из', allQuestions.length);
       setCurrentQuestionIndex(newIndex);
       saveProgress(answers, newIndex, currentInfoScreenIndex);
     }
@@ -375,29 +344,12 @@ export default function QuizPage() {
   };
 
   const submitAnswers = async () => {
-    console.log('🚀 submitAnswers вызвана!');
-    console.log('📊 Состояние:', { 
-      hasQuestionnaire: !!questionnaire, 
-      answersCount: Object.keys(answers).length,
-      isSubmitting,
-      questionnaireId: questionnaire?.id 
-    });
-    
     if (!questionnaire) {
-      console.error('❌ Нет анкеты для отправки ответов');
       setError('Анкета не загружена. Пожалуйста, обновите страницу.');
       return;
     }
 
-    if (isSubmitting) {
-      console.warn('⚠️ Уже идет отправка, пропускаем');
-      return;
-    }
-
-    console.log('📤 Начинаем отправку ответов...');
-    console.log('📋 Анкета ID:', questionnaire.id);
-    console.log('📝 Количество ответов:', Object.keys(answers).length);
-    console.log('📊 Ответы:', answers);
+    if (isSubmitting) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -410,11 +362,9 @@ export default function QuizPage() {
       if (!token && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
           const telegramInitData = window.Telegram.WebApp.initData;
-          console.log('🔐 Попытка авторизации перед отправкой ответов...');
           const authResult = await api.authTelegram(telegramInitData);
           if (authResult.token) {
             token = authResult.token;
-            console.log('✅ Авторизованы через Telegram перед отправкой ответов');
           } else {
             setError('Не удалось получить токен авторизации. Пожалуйста, обновите страницу.');
             setIsSubmitting(false);
@@ -437,19 +387,17 @@ export default function QuizPage() {
       // Собираем ответы из state, если они пустые - пытаемся загрузить из localStorage
       let answersToSubmit = answers;
       if (Object.keys(answersToSubmit).length === 0) {
-        console.warn('⚠️ Объект answers пуст, пытаемся загрузить из localStorage');
         try {
           const savedProgressStr = localStorage.getItem('quiz_progress');
           if (savedProgressStr) {
             const savedProgress = JSON.parse(savedProgressStr);
             if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
-              console.log('📦 Найдены сохраненные ответы в localStorage, используем их');
               answersToSubmit = savedProgress.answers;
               setAnswers(savedProgress.answers);
             }
           }
         } catch (e) {
-          console.warn('⚠️ Не удалось загрузить ответы из localStorage:', e);
+          // Игнорируем ошибки парсинга
         }
       }
 
@@ -462,108 +410,46 @@ export default function QuizPage() {
         };
       });
 
-      console.log('📤 Отправляем ответы на сервер...');
-      console.log('📋 Массив ответов:', answerArray);
-      console.log('📊 Количество ответов:', answerArray.length);
-      
-      // Даже если массив пуст, отправляем - возможно, ответы уже сохранены через saveQuizProgress
-      if (answerArray.length === 0) {
-        console.warn('⚠️ Массив ответов пуст, но продолжаем отправку (возможно, ответы уже сохранены на сервере)');
-      }
-      
-      const result = await api.submitAnswers(questionnaire.id, answerArray);
-      console.log('✅ Ответы успешно отправлены:', result);
-      
-      // Очищаем сохранённый прогресс после успешной отправки
+      await api.submitAnswers(questionnaire.id, answerArray);
       clearProgress();
-      console.log('🧹 Прогресс очищен');
-      
-      // Небольшая задержка для показа лоадера перед перенаправлением
-      console.log('⏳ Ждем 1 секунду перед редиректом...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Перенаправление на страницу плана после успешного завершения
-      console.log('🚀 Перенаправляем на /plan');
-      console.log('🌐 URL для редиректа:', typeof window !== 'undefined' ? window.location.origin + '/plan' : '/plan');
-      
-      // Проверяем доступность плана перед редиректом
-      try {
-        console.log('🔍 Проверяем доступность плана перед редиректом...');
-        const testResponse = await fetch('/api/debug/test-plan', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (testResponse.ok) {
-          const testData = await testResponse.json();
-          console.log('✅ Проверка плана успешна:', testData);
-        } else {
-          const testError = await testResponse.json();
-          console.warn('⚠️ Проблема с генерацией плана:', testError);
-        }
-      } catch (testErr) {
-        console.warn('⚠️ Не удалось проверить план:', testErr);
-      }
-      
-      // Используем window.location для более надежного редиректа
+      // Редирект на страницу плана
       if (typeof window !== 'undefined') {
-        const planUrl = '/plan';
-        console.log('🔗 Выполняем редирект на:', planUrl);
-        console.log('📍 Текущий URL:', window.location.href);
-        
-        // Небольшая задержка для завершения всех операций, затем редирект
         setTimeout(() => {
-          console.log('⏰ Выполняем редирект на /plan...');
           try {
-            // Используем window.location.replace для гарантированного редиректа
-            window.location.replace(planUrl);
-            console.log('✅ Редирект выполнен через window.location.replace');
-          } catch (redirectErr) {
-            console.error('❌ Ошибка при редиректе через replace, пробуем href:', redirectErr);
+            window.location.replace('/plan');
+          } catch {
             try {
-              window.location.href = planUrl;
-            } catch (hrefErr) {
-              console.error('❌ Ошибка при редиректе через href, пробуем router:', hrefErr);
-              router.push(planUrl);
+              window.location.href = '/plan';
+            } catch {
+              router.push('/plan');
             }
           }
-        }, 1000); // Задержка 1 секунда
+        }, 1000);
       } else {
         router.push('/plan');
       }
     } catch (err: any) {
-      console.error('❌ Error submitting answers:', err);
-      console.error('❌ Error details:', {
-        message: err?.message,
-        stack: err?.stack,
-        response: err?.response,
-      });
-      
+      console.error('Error submitting answers:', err);
       setIsSubmitting(false);
       
-      // Если ошибка авторизации, пытаемся обновить токен
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
-        console.log('🔄 Попытка повторной авторизации...');
         if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
           try {
             const telegramInitData = window.Telegram.WebApp.initData;
             const authResult = await api.authTelegram(telegramInitData);
             if (authResult.token) {
-              console.log('✅ Авторизация обновлена, повторяем отправку...');
-              // Повторяем отправку после обновления токена
               setTimeout(() => submitAnswers(), 500);
               return;
             }
-          } catch (authErr) {
-            console.error('❌ Error re-authenticating:', authErr);
+          } catch {
+            // Игнорируем ошибки повторной авторизации
           }
         }
         setError('Ошибка авторизации. Пожалуйста, обновите страницу и попробуйте снова.');
       } else {
-        const errorMessage = err?.message || err?.error || 'Ошибка сохранения ответов. Попробуйте еще раз.';
-        console.error('❌ Setting error message:', errorMessage);
-        setError(errorMessage);
+        setError(err?.message || err?.error || 'Ошибка сохранения ответов. Попробуйте еще раз.');
       }
     }
   };
@@ -741,7 +627,6 @@ export default function QuizPage() {
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
   const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
-  const infoScreensBetweenQuestions = INFO_SCREENS.filter(screen => screen.showAfterQuestionCode);
 
   // Определяем, показываем ли мы начальный инфо-экран
   const isShowingInitialInfoScreen = currentInfoScreenIndex < initialInfoScreens.length;
@@ -1115,16 +1000,9 @@ export default function QuizPage() {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('🚀 Нажата кнопка "Получить план" на последнем инфо-экране:', screen.id);
-                    console.log('📊 Состояние:', { isSubmitting, answersCount: Object.keys(answers).length });
-                    
-                    if (isSubmitting) {
-                      console.warn('⚠️ Уже идет отправка, игнорируем клик');
-                      return;
-                    }
-                    
+                    if (isSubmitting) return;
                     submitAnswers().catch((err) => {
-                      console.error('❌ Ошибка при отправке ответов:', err);
+                      console.error('Error submitting answers:', err);
                       setError(err?.message || 'Ошибка отправки ответов');
                       setIsSubmitting(false);
                     });
@@ -1151,108 +1029,43 @@ export default function QuizPage() {
               );
             }
 
-            // Tinder-кнопки для других Tinder-экранов
-            // Если это последний tinder-экран (want_improve), то кнопки вызывают submitAnswers
+            // Tinder-кнопки
             if (isTinderScreen) {
               const isWantImproveScreen = screen.id === 'want_improve';
               
-              // Для экрана want_improve обе кнопки всегда вызывают submitAnswers
-              const shouldSubmit = isWantImproveScreen;
-              
-              console.log('🎯 Tinder screen rendered:', {
-                screenId: screen.id,
-                isWantImproveScreen,
-                shouldSubmit,
-                isSubmitting,
-                answersCount: Object.keys(answers).length,
-              });
-              
-              // Обработчик клика для кнопок
-              const handleButtonClick = async (buttonType: 'yes' | 'no') => {
-                console.log(`🚀 [${screen.id}] Нажата кнопка "${buttonType === 'yes' ? 'Да' : 'Нет'}"`);
-                console.log('📊 Состояние перед обработкой:', {
-                  screenId: screen.id,
-                  isWantImproveScreen,
-                  shouldSubmit,
-                  isSubmitting,
-                  hasQuestionnaire: !!questionnaire,
-                  answersCount: Object.keys(answers).length,
-                });
-                
-                // Явно проверяем, что это последний экран
-                if (isSubmitting) {
-                  console.warn('⚠️ Уже идет отправка, игнорируем клик');
-                  return;
+              // Общий обработчик для кнопок want_improve
+              const handleWantImproveClick = async () => {
+                if (isSubmitting || !questionnaire) return;
+                setIsSubmitting(true);
+                try {
+                  await submitAnswers();
+                } catch (err: any) {
+                  console.error('Error submitting answers:', err);
+                  setError(err?.message || 'Ошибка отправки ответов');
+                  setIsSubmitting(false);
                 }
-                
+              };
+              
+              // Обработчик для других tinder-экранов
+              const handleButtonClick = async () => {
+                if (isSubmitting) return;
                 if (!questionnaire) {
-                  console.error('❌ Нет анкеты для отправки ответов');
                   setError('Анкета не загружена. Пожалуйста, обновите страницу.');
                   return;
                 }
-                
-                // На последнем экране обе кнопки вызывают submitAnswers
-                if (isWantImproveScreen) {
-                  console.log('✅ Это последний экран (want_improve), вызываем submitAnswers()');
-                  console.log('📊 Данные для отправки:', {
-                    questionnaireId: questionnaire?.id,
-                    answersCount: Object.keys(answers).length,
-                    answersKeys: Object.keys(answers),
-                  });
-                  
-                  // Проверяем, что есть ответы (предупреждение, но не блокируем)
-                  if (Object.keys(answers).length === 0) {
-                    console.warn('⚠️ Нет ответов в state, но продолжаем (возможно, ответы уже сохранены на сервере)');
-                    // Не блокируем - возможно, ответы уже сохранены через saveQuizProgress
-                  }
-                  
-                  console.log('🚀 Вызываем submitAnswers()...');
-                  console.trace('Stack trace перед вызовом submitAnswers');
-                  
-                  // Вызываем submitAnswers напрямую и явно обрабатываем результат
-                  try {
-                    await submitAnswers();
-                    console.log('✅ submitAnswers завершена успешно');
-                  } catch (err: any) {
-                    console.error('❌ Ошибка при отправке ответов:', err);
-                    console.error('❌ Полная ошибка:', {
-                      message: err?.message,
-                      stack: err?.stack,
-                      response: err?.response,
-                      error: err,
-                    });
-                    setError(err?.message || 'Ошибка отправки ответов');
-                    setIsSubmitting(false);
-                  }
-                } else {
-                  console.log('➡️ Это не последний экран, переходим дальше через handleNext()');
-                  handleNext();
-                }
+                handleNext();
               };
               
               return (
                 <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                   <button
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log('🔴 Нажата кнопка "Нет" на экране', screen.id);
-                      
-                      // Для экрана want_improve обе кнопки вызывают submitAnswers
                       if (isWantImproveScreen) {
-                        console.log('✅ Это экран want_improve, вызываем submitAnswers()');
-                        if (!isSubmitting && questionnaire) {
-                          setIsSubmitting(true);
-                          try {
-                            await submitAnswers();
-                          } catch (err: any) {
-                            console.error('❌ Ошибка:', err);
-                            setError(err?.message || 'Ошибка отправки ответов');
-                            setIsSubmitting(false);
-                          }
-                        }
+                        handleWantImproveClick();
                       } else {
-                        handleButtonClick('no');
+                        handleButtonClick();
                       }
                     }}
                     disabled={isSubmitting}
@@ -1274,26 +1087,13 @@ export default function QuizPage() {
                     {isSubmitting ? 'Отправка...' : '❌ Нет'}
                   </button>
                   <button
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log('🟢 Нажата кнопка "Да" на экране', screen.id);
-                      
-                      // Для экрана want_improve обе кнопки вызывают submitAnswers
                       if (isWantImproveScreen) {
-                        console.log('✅ Это экран want_improve, вызываем submitAnswers()');
-                        if (!isSubmitting && questionnaire) {
-                          setIsSubmitting(true);
-                          try {
-                            await submitAnswers();
-                          } catch (err: any) {
-                            console.error('❌ Ошибка:', err);
-                            setError(err?.message || 'Ошибка отправки ответов');
-                            setIsSubmitting(false);
-                          }
-                        }
+                        handleWantImproveClick();
                       } else {
-                        handleButtonClick('yes');
+                        handleButtonClick();
                       }
                     }}
                     disabled={isSubmitting}
@@ -1414,12 +1214,6 @@ export default function QuizPage() {
 
         <div style={{ marginBottom: '16px', color: '#0A5F59', fontSize: '14px' }}>
           Вопрос {currentQuestionIndex + 1} из {allQuestions.length}
-          {process.env.NODE_ENV === 'development' && (
-            <div style={{ fontSize: '10px', color: '#999', marginTop: '4px' }}>
-              Debug: Question ID: {currentQuestion.id}, Code: {currentQuestion.code}, Type: {currentQuestion.type}
-              {currentQuestionIndex === allQuestions.length - 1 && ' (ПОСЛЕДНИЙ ВОПРОС)'}
-            </div>
-          )}
         </div>
 
         <h2 style={{ 
@@ -1441,19 +1235,11 @@ export default function QuizPage() {
                 <button
                   key={option.id}
                   onClick={() => {
-                    console.log('📝 Выбран ответ на вопрос', currentQuestion.id, 'вариант:', option.value);
-                    console.log('📊 Это последний вопрос?', isLastQuestion);
                     handleAnswer(currentQuestion.id, option.value);
                     if (isLastQuestion) {
-                      // На последнем вопросе проверяем, есть ли инфо-экраны после него
                       const infoScreenAfter = getInfoScreenAfterQuestion(currentQuestion.code);
                       if (infoScreenAfter) {
-                        // Есть инфо-экраны - переходим к ним через handleNext
-                        console.log('📱 После последнего вопроса есть инфо-экраны, переходим к ним');
                         setTimeout(handleNext, 300);
-                      } else {
-                        // Нет инфо-экранов - показываем кнопку "Получить план"
-                        console.log('✅ Это действительно последний экран, должна появиться кнопка "Получить план"');
                       }
                       return;
                     }
@@ -1482,13 +1268,10 @@ export default function QuizPage() {
              answers[currentQuestion.id] && 
              !getInfoScreenAfterQuestion(currentQuestion.code) && (
               <button
-                onClick={async () => {
-                  console.log('🚀 Нажата кнопка "Получить план" на последнем вопросе');
-                  try {
-                    await submitAnswers();
-                  } catch (err) {
-                    console.error('❌ Ошибка при отправке ответов:', err);
-                  }
+                onClick={() => {
+                  submitAnswers().catch((err) => {
+                    console.error('Error submitting answers:', err);
+                  });
                 }}
                 disabled={isSubmitting}
                 style={{
