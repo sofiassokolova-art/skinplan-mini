@@ -61,11 +61,42 @@ export default function QuizPage() {
   } | null>(null);
 
   useEffect(() => {
-    initialize();
-    
-    // Автоматическая авторизация через Telegram при загрузке
-    const autoAuth = async () => {
-      // Проверяем наличие токена
+    // Ждем готовности Telegram WebApp
+    const waitForTelegram = (): Promise<void> => {
+      return new Promise((resolve) => {
+        if (typeof window === 'undefined') {
+          resolve();
+          return;
+        }
+
+        // Если уже доступен
+        if (window.Telegram?.WebApp?.initData) {
+          resolve();
+          return;
+        }
+
+        // Ждем максимум 2 секунды
+        let attempts = 0;
+        const maxAttempts = 20; // 20 * 100ms = 2 секунды
+
+        const checkInterval = setInterval(() => {
+          attempts++;
+          if (window.Telegram?.WebApp?.initData || attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 100);
+      });
+    };
+
+    const init = async () => {
+      // Инициализируем Telegram WebApp
+      initialize();
+      
+      // Ждем готовности Telegram WebApp
+      await waitForTelegram();
+      
+      // Автоматическая авторизация через Telegram
       let token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       
       // Если токена нет, пытаемся авторизоваться через Telegram
@@ -82,22 +113,30 @@ export default function QuizPage() {
           console.error('❌ Ошибка автоматической авторизации:', err);
         }
       }
-      
+
+      // Загружаем анкету (публичный маршрут, не требует авторизации)
+      await loadQuestionnaire();
+
+      // Загружаем прогресс с сервера (требует авторизации)
       if (token) {
-        // Загружаем прогресс из БД после успешной авторизации
-        loadSavedProgressFromServer();
+        try {
+          await loadSavedProgressFromServer();
+        } catch (err) {
+          console.warn('Не удалось загрузить прогресс с сервера:', err);
+          // Fallback на localStorage
+          loadSavedProgress();
+        }
+      } else {
+        // Если токена нет, загружаем только из localStorage
+        loadSavedProgress();
       }
     };
     
-    const init = async () => {
-      await autoAuth();
-      await loadQuestionnaire();
-      // После загрузки анкеты загружаем прогресс
-      // Сначала с сервера, потом из localStorage как fallback
-      await loadSavedProgressFromServer();
-    };
-    
-    init();
+    init().catch((err) => {
+      console.error('Ошибка инициализации:', err);
+      setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
+      setLoading(false);
+    });
   }, []);
 
   // Загружаем сохранённый прогресс из localStorage (fallback)
@@ -171,8 +210,15 @@ export default function QuizPage() {
     try {
       const data = await api.getActiveQuestionnaire();
       setQuestionnaire(data as Questionnaire);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка загрузки анкеты');
+      setError(null); // Очищаем ошибки при успешной загрузке
+    } catch (err: any) {
+      console.error('Ошибка загрузки анкеты:', err);
+      // Если ошибка авторизации, не показываем её как критическую
+      if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
+        // Анкета публичная, эта ошибка не должна возникать
+        console.warn('Неожиданная ошибка авторизации при загрузке анкеты');
+      }
+      setError(err?.message || 'Ошибка загрузки анкеты');
     } finally {
       setLoading(false);
     }
@@ -371,12 +417,47 @@ export default function QuizPage() {
     );
   }
 
-  if (error) {
+  if (error && !questionnaire) {
     return (
-      <div style={{ padding: '20px' }}>
-        <h1>Ошибка</h1>
-        <p>{error}</p>
-        <button onClick={() => router.push('/')}>Вернуться на главную</button>
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.56)',
+          backdropFilter: 'blur(28px)',
+          borderRadius: '24px',
+          padding: '24px',
+          maxWidth: '400px',
+          textAlign: 'center',
+        }}>
+          <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка</h1>
+          <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              window.location.reload();
+            }}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          >
+            Обновить страницу
+          </button>
+        </div>
       </div>
     );
   }
