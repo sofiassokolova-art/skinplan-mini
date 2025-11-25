@@ -213,23 +213,79 @@ export default function PlanPage() {
         alignItems: 'center',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
       }}>
-        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка загрузки</h1>
-        <p style={{ color: '#475467', marginBottom: '24px' }}>{error || 'План не найден'}</p>
-        <button
-          onClick={() => router.push('/quiz')}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-          }}
-        >
-          Пройти анкету заново
-        </button>
+        <h1 style={{ color: '#0A5F59', marginBottom: '16px', fontSize: '24px' }}>Ошибка загрузки плана</h1>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          borderRadius: '16px',
+          padding: '24px',
+          maxWidth: '400px',
+          marginBottom: '24px',
+        }}>
+          <p style={{ color: '#475467', marginBottom: '16px', fontSize: '16px' }}>
+            {error || 'Не удалось загрузить план ухода за кожей.'}
+          </p>
+          <p style={{ color: '#6B7280', fontSize: '14px', marginBottom: '0' }}>
+            Возможные причины:
+            <br />• Профиль не был создан
+            <br />• Ошибка на сервере
+            <br />• Проблемы с подключением
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button
+            onClick={() => {
+              console.log('🔄 Перезагружаем план...');
+              loadPlan();
+            }}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          >
+            Попробовать снова
+          </button>
+          <button
+            onClick={() => {
+              console.log('⬅️ Возвращаемся к анкете...');
+              router.push('/quiz');
+            }}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(10, 95, 89, 0.1)',
+              color: '#0A5F59',
+              border: '2px solid #0A5F59',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          >
+            Вернуться к анкете
+          </button>
+        </div>
+        {process.env.NODE_ENV === 'development' && error && (
+          <details style={{ marginTop: '24px', textAlign: 'left', maxWidth: '600px' }}>
+            <summary style={{ cursor: 'pointer', color: '#6B7280', fontSize: '12px' }}>
+              Детали ошибки (только для разработки)
+            </summary>
+            <pre style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.05)',
+              padding: '12px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              overflow: 'auto',
+              marginTop: '8px',
+            }}>
+              {error}
+            </pre>
+          </details>
+        )}
       </div>
     );
   }
