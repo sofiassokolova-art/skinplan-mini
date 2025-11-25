@@ -1059,11 +1059,55 @@ export default function QuizPage() {
             }
 
             // Tinder-кнопки для других Tinder-экранов
-            // Если это последний tinder-экран (want_improve), то кнопка "Да" вызывает submitAnswers
+            // Если это последний tinder-экран (want_improve), то кнопки вызывают submitAnswers
             if (isTinderScreen) {
               const isWantImproveScreen = screen.id === 'want_improve';
-              const nextInfoAfterThis = INFO_SCREENS.find(s => s.showAfterQuestionCode === screen.id);
-              const isLastTinderScreen = isWantImproveScreen && !nextInfoAfterThis;
+              
+              // Для экрана want_improve обе кнопки всегда вызывают submitAnswers
+              const shouldSubmit = isWantImproveScreen;
+              
+              console.log('🎯 Tinder screen rendered:', {
+                screenId: screen.id,
+                isWantImproveScreen,
+                shouldSubmit,
+                isSubmitting,
+                answersCount: Object.keys(answers).length,
+              });
+              
+              // Обработчик клика для кнопок
+              const handleButtonClick = (buttonType: 'yes' | 'no') => {
+                console.log(`🚀 [${screen.id}] Нажата кнопка "${buttonType === 'yes' ? 'Да' : 'Нет'}"`);
+                console.log('📊 Состояние перед обработкой:', {
+                  shouldSubmit,
+                  isSubmitting,
+                  hasQuestionnaire: !!questionnaire,
+                  answersCount: Object.keys(answers).length,
+                });
+                
+                if (isSubmitting) {
+                  console.warn('⚠️ Уже идет отправка, игнорируем клик');
+                  return;
+                }
+                
+                if (!questionnaire) {
+                  console.error('❌ Нет анкеты для отправки ответов');
+                  setError('Анкета не загружена. Пожалуйста, обновите страницу.');
+                  return;
+                }
+                
+                if (shouldSubmit) {
+                  console.log('✅ Это последний экран (want_improve), вызываем submitAnswers()');
+                  // Вызываем submitAnswers напрямую
+                  submitAnswers().catch((err) => {
+                    console.error('❌ Ошибка при отправке ответов:', err);
+                    setError(err?.message || 'Ошибка отправки ответов');
+                    setIsSubmitting(false);
+                  });
+                } else {
+                  console.log('➡️ Это не последний экран, переходим дальше через handleNext()');
+                  handleNext();
+                }
+              };
               
               return (
                 <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
@@ -1071,17 +1115,7 @@ export default function QuizPage() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (isLastTinderScreen) {
-                        // На последнем экране кнопка "Нет" тоже вызывает submitAnswers
-                        console.log('🚀 Нажата кнопка "Нет" на последнем экране, отправляем ответы');
-                        submitAnswers().catch((err) => {
-                          console.error('❌ Ошибка при отправке ответов:', err);
-                          setError(err?.message || 'Ошибка отправки ответов');
-                          setIsSubmitting(false);
-                        });
-                      } else {
-                        handleNext();
-                      }
+                      handleButtonClick('no');
                     }}
                     disabled={isSubmitting}
                     style={{
@@ -1099,23 +1133,13 @@ export default function QuizPage() {
                       opacity: isSubmitting ? 0.7 : 1,
                     }}
                   >
-                    ❌ Нет
+                    {isSubmitting ? 'Отправка...' : '❌ Нет'}
                   </button>
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (isLastTinderScreen) {
-                        // На последнем экране кнопка "Да" вызывает submitAnswers
-                        console.log('🚀 Нажата кнопка "Да" на последнем экране, отправляем ответы');
-                        submitAnswers().catch((err) => {
-                          console.error('❌ Ошибка при отправке ответов:', err);
-                          setError(err?.message || 'Ошибка отправки ответов');
-                          setIsSubmitting(false);
-                        });
-                      } else {
-                        handleNext();
-                      }
+                      handleButtonClick('yes');
                     }}
                     disabled={isSubmitting}
                     style={{
