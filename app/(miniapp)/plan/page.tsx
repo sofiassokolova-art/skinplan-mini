@@ -6,6 +6,30 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Регистрируем компоненты Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 interface PlanDay {
   day: number;
@@ -45,7 +69,22 @@ interface GeneratedPlan {
       pores: number;
       hydration: number;
       pigmentation: number;
+      wrinkles: number;
     }>;
+    chartConfig: {
+      type: string;
+      data: {
+        labels: string[];
+        datasets: Array<{
+          label: string;
+          data: number[];
+          borderColor: string;
+          backgroundColor: string;
+          tension: number;
+        }>;
+      };
+      options: any;
+    };
   };
   products: Array<{
     id: number;
@@ -55,7 +94,9 @@ interface GeneratedPlan {
     price: number;
     available: string;
     imageUrl?: string;
+    ingredients?: string[];
   }>;
+  warnings?: string[];
 }
 
 const STEP_LABELS: Record<string, string> = {
@@ -403,6 +444,105 @@ export default function PlanPage() {
             }}></div>
           </div>
         </div>
+
+        {/* Предупреждения об аллергиях и исключениях */}
+        {plan.warnings && plan.warnings.length > 0 && (
+          <div style={{
+            backgroundColor: 'rgba(254, 243, 199, 0.8)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '16px',
+            padding: '16px',
+            marginBottom: '20px',
+            border: '1px solid rgba(251, 191, 36, 0.3)',
+          }}>
+            {plan.warnings.map((warning, idx) => (
+              <div key={idx} style={{
+                fontSize: '14px',
+                color: '#92400E',
+                marginBottom: idx < plan.warnings!.length - 1 ? '8px' : '0',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+              }}>
+                <span>⚠️</span>
+                <span>{warning}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Инфографика - График прогресса */}
+        {plan.infographic?.chartConfig && (
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '20px',
+            padding: '20px',
+            marginBottom: '24px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+          }}>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#0A5F59',
+              marginBottom: '16px',
+              textAlign: 'center',
+            }}>
+              Прогресс улучшения кожи
+            </div>
+            <div style={{ height: '300px', position: 'relative' }}>
+              <Line 
+                data={plan.infographic.chartConfig.data} 
+                options={{
+                  ...plan.infographic.chartConfig.options,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    ...plan.infographic.chartConfig.options.plugins,
+                    legend: {
+                      ...plan.infographic.chartConfig.options.plugins?.legend,
+                      labels: {
+                        color: '#475467',
+                        font: {
+                          size: 12,
+                          family: "'Manrope', sans-serif",
+                        },
+                      },
+                    },
+                  },
+                  scales: {
+                    ...plan.infographic.chartConfig.options.scales,
+                    x: {
+                      ...plan.infographic.chartConfig.options.scales?.x,
+                      ticks: {
+                        color: '#475467',
+                        font: {
+                          size: 12,
+                          family: "'Manrope', sans-serif",
+                        },
+                      },
+                      grid: {
+                        color: 'rgba(10, 95, 89, 0.1)',
+                      },
+                    },
+                    y: {
+                      ...plan.infographic.chartConfig.options.scales?.y,
+                      ticks: {
+                        color: '#475467',
+                        font: {
+                          size: 12,
+                          family: "'Manrope', sans-serif",
+                        },
+                      },
+                      grid: {
+                        color: 'rgba(10, 95, 89, 0.1)',
+                      },
+                    },
+                  },
+                }} 
+              />
+            </div>
+          </div>
+        )}
 
         {/* Инфографика - Иконки улучшений */}
         <div style={{

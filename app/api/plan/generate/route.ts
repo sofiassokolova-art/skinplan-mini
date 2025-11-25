@@ -1,13 +1,10 @@
 // app/api/plan/generate/route.ts
-// Генерация 28-дневного плана ухода за кожей
+// Генерация 28-дневного плана ухода за кожей (улучшенная версия по методике)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
 
 export const runtime = 'nodejs';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 interface PlanDay {
   day: number;
@@ -47,7 +44,13 @@ interface GeneratedPlan {
       pores: number;
       hydration: number;
       pigmentation: number;
+      wrinkles: number;
     }>;
+    chartConfig: {
+      type: string;
+      data: any;
+      options: any;
+    };
   };
   products: Array<{
     id: number;
@@ -57,7 +60,46 @@ interface GeneratedPlan {
     price: number;
     available: string;
     imageUrl?: string;
+    ingredients?: string[];
   }>;
+  warnings?: string[]; // Предупреждения об аллергиях и исключениях
+}
+
+// Вспомогательная функция: определение бюджетного сегмента
+function getBudgetTier(price: number | null | undefined): 'бюджетный' | 'средний' | 'премиум' {
+  if (!price || price < 2000) return 'бюджетный';
+  if (price < 5000) return 'средний';
+  return 'премиум';
+}
+
+// Вспомогательная функция: проверка, содержит ли продукт исключенные ингредиенты
+function containsExcludedIngredients(
+  productIngredients: string[] | null | undefined,
+  excludedIngredients: string[]
+): boolean {
+  if (!productIngredients || productIngredients.length === 0) return false;
+  if (!excludedIngredients || excludedIngredients.length === 0) return false;
+  
+  const productIngredientsLower = productIngredients.map(ing => ing.toLowerCase());
+  const excludedLower = excludedIngredients.map(ex => ex.toLowerCase());
+  
+  return excludedLower.some(excluded => 
+    productIngredientsLower.some(ing => ing.includes(excluded) || excluded.includes(ing))
+  );
+}
+
+// Вспомогательная функция: содержит ли продукт ретинол
+function containsRetinol(productIngredients: string[] | null | undefined): boolean {
+  if (!productIngredients || productIngredients.length === 0) return false;
+  const ingredientsLower = productIngredients.map(ing => ing.toLowerCase());
+  return ingredientsLower.some(ing => 
+    ing.includes('ретинол') || 
+    ing.includes('retinol') || 
+    ing.includes('адапален') ||
+    ing.includes('adapalene') ||
+    ing.includes('третиноин') ||
+    ing.includes('tretinoin')
+  );
 }
 
 /**
@@ -110,10 +152,25 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     }
   });
 
-  // Определяем основной фокус
+  // Шаг 1: Классификация профиля (улучшенная логика)
   const goals = Array.isArray(answers.skin_goals) ? answers.skin_goals : [];
   const concerns = Array.isArray(answers.skin_concerns) ? answers.skin_concerns : [];
   
+  const profileClassification = {
+    focus: goals.filter((g: string) => 
+      ['Акне и высыпания', 'Сократить видимость пор', 'Выровнять пигментацию', 'Морщины и мелкие линии'].includes(g)
+    ),
+    skinType: profile.skinType || 'normal',
+    concerns: concerns,
+    ageGroup: profile.ageGroup || '25-34',
+    exclude: Array.isArray(answers.exclude_ingredients) ? answers.exclude_ingredients : [],
+    budget: answers.budget || 'средний',
+    pregnant: profile.hasPregnancy || false,
+    stepsPreference: answers.care_steps || 'средний',
+    allergies: Array.isArray(answers.allergies) ? answers.allergies : [],
+  };
+
+  // Определяем основной фокус (приоритет по частоте упоминаний)
   let primaryFocus = 'general';
   if (goals.includes('Акне и высыпания') || concerns.includes('Акне')) {
     primaryFocus = 'acne';
@@ -127,180 +184,57 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     primaryFocus = 'wrinkles';
   }
 
-  // Получаем рекомендации
-  console.log(`🔍 Looking for RecommendationSession for user ${userId}, profile ${profile.id}...`);
-  let recommendations = await prisma.recommendationSession.findFirst({
-    where: {
-      userId,
-      profileId: profile.id,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  // Если рекомендаций нет, создаем их на лету
-  if (!recommendations) {
-    console.log(`⚠️ No RecommendationSession found for user ${userId}, creating recommendations...`);
-    console.log(`   Profile ID: ${profile.id}`);
-    
-    // Получаем все активные правила
-    const rules = await prisma.recommendationRule.findMany({
-      where: { isActive: true },
-      orderBy: { priority: 'desc' },
-    });
-
-    // Находим подходящее правило
-    let matchedRule: any = null;
-    
-    for (const rule of rules) {
-      const conditions = rule.conditionsJson as any;
-      let matches = true;
-
-      for (const [key, condition] of Object.entries(conditions)) {
-        const profileValue = (profile as any)[key];
-
-        if (Array.isArray(condition)) {
-          if (!condition.includes(profileValue)) {
-            matches = false;
-            break;
-          }
-        } else if (typeof condition === 'object' && condition !== null) {
-          const conditionObj = condition as Record<string, unknown>;
-          if (typeof profileValue === 'number') {
-            if ('gte' in conditionObj && typeof conditionObj.gte === 'number') {
-              const gteValue = conditionObj.gte as number;
-              if (profileValue < gteValue) {
-                matches = false;
-                break;
-              }
-            }
-            if ('lte' in conditionObj && typeof conditionObj.lte === 'number') {
-              const lteValue = conditionObj.lte as number;
-              if (profileValue > lteValue) {
-                matches = false;
-                break;
-              }
-            }
-          }
-        } else if (condition !== profileValue) {
-          matches = false;
-          break;
-        }
-      }
-
-      if (matches) {
-        matchedRule = rule;
-        break;
-      }
-    }
-
-    if (matchedRule) {
-      const stepsJson = matchedRule.stepsJson as any;
-      const productIds: number[] = [];
-
-      // Собираем продукты
-      for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
-        const where: any = { status: 'published' };
-        const step = stepConfig as any;
-
-        if (step.category && Array.isArray(step.category) && step.category.length > 0) {
-          where.category = { in: step.category };
-        }
-        if (step.skin_types && Array.isArray(step.skin_types) && step.skin_types.length > 0) {
-          where.skinTypes = { hasSome: step.skin_types };
-        }
-        if (step.concerns && Array.isArray(step.concerns) && step.concerns.length > 0) {
-          where.concerns = { hasSome: step.concerns };
-        }
-        if (step.is_non_comedogenic === true) {
-          where.isNonComedogenic = true;
-        }
-        if (step.is_fragrance_free === true) {
-          where.isFragranceFree = true;
-        }
-
-        const products = await prisma.product.findMany({
-          where,
-          take: step.max_items || 3,
-          orderBy: { createdAt: 'desc' },
-        });
-
-        productIds.push(...products.map(p => p.id));
-      }
-
-      // Создаем RecommendationSession
-      recommendations = await prisma.recommendationSession.create({
-        data: {
-          userId,
-          profileId: profile.id,
-          ruleId: matchedRule.id,
-          products: productIds,
-        },
-      });
-
-      console.log(`✅ RecommendationSession created on-the-fly with ${productIds.length} products`);
-    } else {
-      // Если нет правил, создаем базовую сессию с любыми продуктами
-      console.warn(`⚠️ No matching rule found, creating fallback recommendation session...`);
-      
-      // Получаем любые опубликованные продукты для базового плана
-      const fallbackProducts = await prisma.product.findMany({
-        where: { status: 'published' },
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        include: { brand: true },
-      });
-
-      if (fallbackProducts.length === 0) {
-        throw new Error('No products found in database. Please add products through the admin panel.');
-      }
-
-      const fallbackProductIds = fallbackProducts.map(p => p.id);
-      
-      // Создаем RecommendationSession с базовыми продуктами
-      recommendations = await prisma.recommendationSession.create({
-        data: {
-          userId,
-          profileId: profile.id,
-          ruleId: null, // Нет правила
-          products: fallbackProductIds,
-        },
-      });
-
-      console.log(`✅ Fallback RecommendationSession created with ${fallbackProductIds.length} products`);
-    }
-  }
-
-  // Получаем продукты из сессии
-  const productIds = Array.isArray(recommendations.products) 
-    ? recommendations.products as number[]
-    : [];
-
-  if (productIds.length === 0) {
-    console.warn(`⚠️ No products in RecommendationSession, fetching any published products...`);
-  }
-
-  let products = await prisma.product.findMany({
-    where: {
-      id: { in: productIds.length > 0 ? productIds : undefined },
-      status: 'published',
-    },
-    include: {
-      brand: true,
-    },
-    take: productIds.length > 0 ? undefined : 10, // Если нет ID, берем первые 10
-  });
-
-  // Если продуктов нет вообще, выбрасываем ошибку
-  if (products.length === 0) {
-    console.error(`❌ No products found in database (productIds: ${productIds.length}, published products: 0)`);
-    throw new Error('No products available. Please add products through the admin panel.');
-  }
+  // Шаг 2: Фильтрация продуктов
+  console.log(`🔍 Filtering products for focus: ${primaryFocus}, skinType: ${profileClassification.skinType}, budget: ${profileClassification.budget}`);
   
-  console.log(`✅ Found ${products.length} products for plan generation`);
+  // Получаем все опубликованные продукты
+  let allProducts = await prisma.product.findMany({
+    where: { status: 'published' },
+    include: { brand: true },
+  });
+
+  // Фильтруем продукты по критериям
+  const filteredProducts = allProducts.filter(product => {
+    // Проверка типа кожи
+    const skinTypeMatches = !product.skinTypes || 
+      product.skinTypes.length === 0 || 
+      product.skinTypes.includes(profileClassification.skinType);
+
+    // Проверка бюджета (если указан)
+    const budgetMatches = !profileClassification.budget || 
+      profileClassification.budget === 'любой' ||
+      !product.price ||
+      getBudgetTier(product.price) === profileClassification.budget;
+
+    // Проверка исключенных ингредиентов
+    const productIngredients = product.concerns || []; // Используем concerns как ингредиенты (можно добавить отдельное поле)
+    const noExcludedIngredients = !containsExcludedIngredients(
+      productIngredients,
+      profileClassification.exclude
+    );
+
+    // Проверка беременности (исключаем ретинол)
+    const safeForPregnancy = !profileClassification.pregnant || 
+      !containsRetinol(productIngredients);
+
+    return skinTypeMatches && budgetMatches && noExcludedIngredients && safeForPregnancy;
+  });
+
+  // Сортируем продукты по релевантности (приоритет основному фокусу)
+  const sortedProducts = filteredProducts.sort((a, b) => {
+    const aMatchesFocus = a.concerns?.includes(primaryFocus) ? 1 : 0;
+    const bMatchesFocus = b.concerns?.includes(primaryFocus) ? 1 : 0;
+    return bMatchesFocus - aMatchesFocus;
+  });
+
+  // Ограничиваем количество продуктов (3 утро + 3 вечер = максимум 6)
+  const selectedProducts = sortedProducts.slice(0, 6);
+  
+  console.log(`✅ Selected ${selectedProducts.length} products after filtering`);
 
   // Группируем продукты по шагам
-  const productsByStep: Record<string, typeof products> = {};
-  products.forEach((product) => {
+  const productsByStep: Record<string, typeof selectedProducts> = {};
+  selectedProducts.forEach((product) => {
     const step = product.step || 'other';
     if (!productsByStep[step]) {
       productsByStep[step] = [];
@@ -309,21 +243,16 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   });
 
   // Определяем базовые шаги на основе предпочтений
-  const stepsPreference = typeof answers.care_steps === 'string' 
-    ? answers.care_steps 
-    : Array.isArray(answers.care_steps) 
-      ? answers.care_steps[0] 
-      : 'средний';
   let maxSteps = 3;
-  if (stepsPreference && typeof stepsPreference === 'string') {
-    if (stepsPreference.includes('Минимум')) maxSteps = 2;
-    else if (stepsPreference.includes('Средний')) maxSteps = 4;
-    else if (stepsPreference.includes('Максимум')) maxSteps = 5;
+  if (profileClassification.stepsPreference && typeof profileClassification.stepsPreference === 'string') {
+    if (profileClassification.stepsPreference.includes('Минимум')) maxSteps = 2;
+    else if (profileClassification.stepsPreference.includes('Средний')) maxSteps = 4;
+    else if (profileClassification.stepsPreference.includes('Максимум')) maxSteps = 5;
   }
 
   const baseSteps = ['cleanser', 'toner', 'treatment', 'moisturizer', 'spf'].slice(0, maxSteps);
   
-  // Генерируем план на 4 недели
+  // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
   
   for (let weekNum = 1; weekNum <= 4; weekNum++) {
@@ -332,9 +261,9 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     for (let dayNum = 1; dayNum <= 7; dayNum++) {
       const day = (weekNum - 1) * 7 + dayNum;
       
-      // Постепенное введение продуктов
-      const morningSteps = baseSteps.slice(0, 2 + Math.floor((weekNum - 1) / 2));
-      const eveningSteps = baseSteps.slice(0, 3 + Math.floor((weekNum - 1) / 2));
+      // Постепенное введение продуктов (неделя 1: базовое, неделя 2+: активы)
+      const morningSteps = baseSteps.slice(0, Math.min(2 + Math.floor((weekNum - 1) / 2), baseSteps.length));
+      const eveningSteps = baseSteps.slice(0, Math.min(3 + Math.floor((weekNum - 1) / 2), baseSteps.length));
       
       // Убираем SPF из вечернего ухода
       const eveningStepsFiltered = eveningSteps.filter(s => s !== 'spf');
@@ -343,6 +272,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       const dayProducts: Record<string, any> = {};
       [...morningSteps, ...eveningStepsFiltered].forEach((step) => {
         if (productsByStep[step] && productsByStep[step].length > 0) {
+          // Выбираем первый продукт для каждого шага (можно добавить ротацию)
           dayProducts[step] = {
             id: productsByStep[step][0].id,
             name: productsByStep[step][0].name,
@@ -374,26 +304,110 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     });
   }
 
-  // Генерируем инфографику прогресса
-  const infographic = {
-    progress: [
-      { week: 1, acne: 25, pores: 20, hydration: 30, pigmentation: 15 },
-      { week: 2, acne: 45, pores: 40, hydration: 55, pigmentation: 30 },
-      { week: 3, acne: 70, pores: 65, hydration: 80, pigmentation: 55 },
-      { week: 4, acne: 90, pores: 85, hydration: 95, pigmentation: 80 },
-    ],
+  // Шаг 4: Генерация инфографики (динамическая на основе проблем)
+  const progressMetrics: Record<string, number[]> = {
+    acne: [25, 45, 70, 90],
+    pores: [20, 40, 65, 85],
+    hydration: [30, 55, 80, 95],
+    pigmentation: [15, 30, 55, 80],
+    wrinkles: [10, 25, 50, 75],
+  };
+
+  // Определяем актуальные метрики на основе проблем
+  const activeMetrics: string[] = [];
+  if (primaryFocus === 'acne') activeMetrics.push('acne');
+  if (primaryFocus === 'pores') activeMetrics.push('pores');
+  if (concerns.includes('Сухость')) activeMetrics.push('hydration');
+  if (primaryFocus === 'pigmentation') activeMetrics.push('pigmentation');
+  if (primaryFocus === 'wrinkles') activeMetrics.push('wrinkles');
+
+  // Если нет активных метрик, используем общие
+  if (activeMetrics.length === 0) {
+    activeMetrics.push('hydration', 'pores');
+  }
+
+  const infographicProgress = [1, 2, 3, 4].map(week => ({
+    week,
+    acne: primaryFocus === 'acne' ? progressMetrics.acne[week - 1] : 0,
+    pores: primaryFocus === 'pores' ? progressMetrics.pores[week - 1] : 0,
+    hydration: concerns.includes('Сухость') ? progressMetrics.hydration[week - 1] : 50,
+    pigmentation: primaryFocus === 'pigmentation' ? progressMetrics.pigmentation[week - 1] : 0,
+    wrinkles: primaryFocus === 'wrinkles' ? progressMetrics.wrinkles[week - 1] : 0,
+  }));
+
+  // Конфигурация графика для Chart.js
+  const chartConfig = {
+    type: 'line',
+    data: {
+      labels: ['Неделя 1', 'Неделя 2', 'Неделя 3', 'Неделя 4'],
+      datasets: activeMetrics.map((metric, idx) => ({
+        label: {
+          acne: 'Акне',
+          pores: 'Поры',
+          hydration: 'Увлажнение',
+          pigmentation: 'Пигментация',
+          wrinkles: 'Морщины',
+        }[metric] || metric,
+        data: infographicProgress.map(p => (p as any)[metric]),
+        borderColor: [
+          '#0A5F59', // Зеленый
+          '#0891B2', // Синий
+          '#7C3AED', // Фиолетовый
+          '#EC4899', // Розовый
+          '#F59E0B', // Оранжевый
+        ][idx % 5],
+        backgroundColor: 'transparent',
+        tension: 0.4,
+      })),
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            callback: function(value: any) {
+              return value + '%';
+            },
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+        },
+      },
+    },
   };
 
   // Форматируем продукты для карусели
-  const formattedProducts = products.map((p) => ({
+  const formattedProducts = selectedProducts.map((p) => ({
     id: p.id,
     name: p.name,
     brand: p.brand.name,
     category: p.category,
-    price: 0, // TODO: добавить поле price в схему Product
-    available: 'Apteka.ru, Ozon', // TODO: добавить поле available в схему Product
+    price: p.price || 0,
+    available: (p.marketLinks as any)?.ozon ? 'Ozon' : 
+               (p.marketLinks as any)?.wb ? 'Wildberries' :
+               (p.marketLinks as any)?.apteka ? 'Apteka.ru' :
+               'Доступно в аптеках',
     imageUrl: p.imageUrl || undefined,
+    ingredients: p.concerns || [], // Используем concerns как ингредиенты (можно добавить отдельное поле)
   }));
+
+  // Генерируем предупреждения об аллергиях и исключениях
+  const warnings: string[] = [];
+  if (profileClassification.pregnant) {
+    warnings.push('⚠️ Во время беременности исключены продукты с ретинолом');
+  }
+  if (profileClassification.exclude.length > 0) {
+    warnings.push(`⚠️ Исключены ингредиенты: ${profileClassification.exclude.join(', ')}`);
+  }
+  if (profileClassification.allergies.length > 0) {
+    warnings.push(`⚠️ Учитываются аллергии: ${profileClassification.allergies.join(', ')}`);
+  }
 
   return {
     profile: {
@@ -403,8 +417,12 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       ageGroup: profile.ageGroup || '25-34',
     },
     weeks,
-    infographic,
+    infographic: {
+      progress: infographicProgress,
+      chartConfig,
+    },
     products: formattedProducts,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
 
@@ -442,6 +460,7 @@ export async function GET(request: NextRequest) {
       weeksCount: plan.weeks?.length || 0,
       productsCount: plan.products?.length || 0,
       profile: plan.profile?.skinType || 'unknown',
+      warnings: plan.warnings?.length || 0,
     });
 
     return NextResponse.json(plan);
@@ -453,4 +472,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
