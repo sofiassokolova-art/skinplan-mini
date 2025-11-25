@@ -18,6 +18,8 @@ const publicRoutes = [
   '/api/profile/current', // Использует initData напрямую
   '/api/telegram/webhook', // Webhook от Telegram
   '/admin/login',
+  '/admin/set-webhook', // Страница установки webhook
+  '/admin/webhook-status', // Страница статуса webhook
   '/api/debug', // Отладочные endpoints
   '/debug', // Отладочные страницы
   '/logs', // Страница логов
