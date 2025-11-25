@@ -215,12 +215,12 @@ export default function DebugPage() {
                 try {
                   setAuthStatus('Попытка авторизации...');
                   if (initData) {
-                    const authResult = await api.authTelegram(initData);
-                    if (authResult.token) {
-                      setAuthStatus('✅ Авторизован');
+                    try {
+                      await api.authTelegram(initData);
+                      setAuthStatus('✅ Пользователь идентифицирован');
                       window.location.reload();
-                    } else {
-                      setAuthStatus('❌ Не удалось получить токен');
+                    } catch (err: any) {
+                      setAuthStatus(`❌ Ошибка: ${err?.message || 'Неизвестная ошибка'}`);
                     }
                   } else {
                     setAuthStatus('❌ initData не доступен');
