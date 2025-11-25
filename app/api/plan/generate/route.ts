@@ -198,8 +198,12 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
   // Фильтруем продукты по критериям
   const filteredProducts = allProducts.filter(product => {
-    // Проверка типа кожи
-    const skinTypeMatches = !product.skinTypes || 
+    // SPF универсален для всех типов кожи - пропускаем проверку типа кожи
+    const isSPF = product.step === 'spf' || product.category === 'spf';
+    
+    // Проверка типа кожи (кроме SPF)
+    const skinTypeMatches = isSPF || 
+      !product.skinTypes || 
       product.skinTypes.length === 0 || 
       product.skinTypes.includes(profileClassification.skinType);
 
@@ -247,6 +251,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   });
 
   // Определяем базовые шаги на основе предпочтений
+  // Умывание (cleanser) и SPF обязательны для всех
   let maxSteps = 3;
   if (profileClassification.stepsPreference && typeof profileClassification.stepsPreference === 'string') {
     if (profileClassification.stepsPreference.includes('Минимум')) maxSteps = 2;
@@ -254,7 +259,13 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     else if (profileClassification.stepsPreference.includes('Максимум')) maxSteps = 5;
   }
 
+  // Базовые шаги: умывание всегда первое, SPF всегда в утреннем уходе
   const baseSteps = ['cleanser', 'toner', 'treatment', 'moisturizer', 'spf'].slice(0, maxSteps);
+  
+  // Убеждаемся, что SPF всегда включен в утренний уход (если есть в базовых шагах или добавляем отдельно)
+  if (!baseSteps.includes('spf')) {
+    baseSteps.push('spf'); // Добавляем SPF, если его нет
+  }
   
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
@@ -266,10 +277,14 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       const day = (weekNum - 1) * 7 + dayNum;
       
       // Постепенное введение продуктов (неделя 1: базовое, неделя 2+: активы)
-      const morningSteps = baseSteps.slice(0, Math.min(2 + Math.floor((weekNum - 1) / 2), baseSteps.length));
-      const eveningSteps = baseSteps.slice(0, Math.min(3 + Math.floor((weekNum - 1) / 2), baseSteps.length));
+      // Умывание (cleanser) и SPF всегда в утреннем уходе с первой недели
+      const baseStepsWithoutSPF = baseSteps.filter(s => s !== 'spf');
+      const morningStepsCount = Math.min(2 + Math.floor((weekNum - 1) / 2), baseStepsWithoutSPF.length);
+      const morningSteps = ['cleanser', ...baseStepsWithoutSPF.slice(0, morningStepsCount - 1), 'spf'].filter((v, i, a) => a.indexOf(v) === i);
+      const eveningStepsCount = Math.min(3 + Math.floor((weekNum - 1) / 2), baseStepsWithoutSPF.length);
+      const eveningSteps = ['cleanser', ...baseStepsWithoutSPF.slice(0, eveningStepsCount - 1)].filter((v, i, a) => a.indexOf(v) === i);
       
-      // Убираем SPF из вечернего ухода
+      // Убираем SPF из вечернего ухода (он только утром)
       const eveningStepsFiltered = eveningSteps.filter(s => s !== 'spf');
       
       // Собираем продукты для дня
