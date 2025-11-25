@@ -1127,15 +1127,18 @@ export default function QuizPage() {
               });
               
               // Обработчик клика для кнопок
-              const handleButtonClick = (buttonType: 'yes' | 'no') => {
+              const handleButtonClick = async (buttonType: 'yes' | 'no') => {
                 console.log(`🚀 [${screen.id}] Нажата кнопка "${buttonType === 'yes' ? 'Да' : 'Нет'}"`);
                 console.log('📊 Состояние перед обработкой:', {
+                  screenId: screen.id,
+                  isWantImproveScreen,
                   shouldSubmit,
                   isSubmitting,
                   hasQuestionnaire: !!questionnaire,
                   answersCount: Object.keys(answers).length,
                 });
                 
+                // Явно проверяем, что это последний экран
                 if (isSubmitting) {
                   console.warn('⚠️ Уже идет отправка, игнорируем клик');
                   return;
@@ -1147,12 +1150,13 @@ export default function QuizPage() {
                   return;
                 }
                 
-                if (shouldSubmit) {
+                // На последнем экране обе кнопки вызывают submitAnswers
+                if (isWantImproveScreen) {
                   console.log('✅ Это последний экран (want_improve), вызываем submitAnswers()');
                   console.log('📊 Данные для отправки:', {
                     questionnaireId: questionnaire?.id,
                     answersCount: Object.keys(answers).length,
-                    answers: answers,
+                    answersKeys: Object.keys(answers),
                   });
                   
                   // Проверяем, что есть ответы
@@ -1163,18 +1167,23 @@ export default function QuizPage() {
                   }
                   
                   console.log('🚀 Вызываем submitAnswers()...');
+                  console.trace('Stack trace перед вызовом submitAnswers');
                   
-                  // Вызываем submitAnswers напрямую
-                  submitAnswers().catch((err) => {
+                  // Вызываем submitAnswers напрямую и явно обрабатываем результат
+                  try {
+                    await submitAnswers();
+                    console.log('✅ submitAnswers завершена успешно');
+                  } catch (err: any) {
                     console.error('❌ Ошибка при отправке ответов:', err);
                     console.error('❌ Полная ошибка:', {
                       message: err?.message,
                       stack: err?.stack,
                       response: err?.response,
+                      error: err,
                     });
                     setError(err?.message || 'Ошибка отправки ответов');
                     setIsSubmitting(false);
-                  });
+                  }
                 } else {
                   console.log('➡️ Это не последний экран, переходим дальше через handleNext()');
                   handleNext();
