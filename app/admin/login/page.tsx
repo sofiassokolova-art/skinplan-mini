@@ -55,8 +55,11 @@ export default function AdminLogin() {
         
         if (response.status === 401 || response.status === 403) {
           setError(data.error || 'Неверное секретное слово. Доступ запрещен.');
+        } else if (response.status === 429) {
+          const retryAfter = data.retryAfter || 15;
+          setError(`Слишком много попыток. Подождите ${retryAfter} минут(ы) и попробуйте снова.`);
         } else if (response.status === 500) {
-          setError(data.error || 'Ошибка сервера. Проверьте настройки на Vercel.');
+          setError(data.error || 'Ошибка сервера. Проверьте настройки ADMIN_SECRET на Vercel.');
         } else {
           setError(data.error || `Ошибка входа (${response.status})`);
         }
