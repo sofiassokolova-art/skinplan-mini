@@ -370,17 +370,26 @@ export async function GET(request: NextRequest) {
 
     for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
       const products = await getProductsForStep(stepConfig);
-      steps[stepName] = products.map(p => ({
-        id: p.id,
-        name: p.name,
-        brand: p.brand.name,
-        line: p.line,
-        category: p.category,
-        step: p.step,
-        description: p.descriptionUser,
-        marketLinks: p.marketLinks,
-        imageUrl: p.imageUrl,
-      }));
+      if (products.length > 0) {
+        // Нормализуем step: serum, treatment, essence -> serum для совместимости с главной страницей
+        const normalizedStep = stepName === 'treatment' || stepName === 'essence' ? 'serum' : stepName;
+        
+        if (!steps[normalizedStep]) {
+          steps[normalizedStep] = [];
+        }
+        
+        steps[normalizedStep].push(...products.map(p => ({
+          id: p.id,
+          name: p.name,
+          brand: p.brand.name,
+          line: p.line,
+          category: p.category,
+          step: p.step, // Сохраняем оригинальный step продукта
+          description: p.descriptionUser,
+          marketLinks: p.marketLinks,
+          imageUrl: p.imageUrl,
+        })));
+      }
     }
 
     // Сохраняем сессию рекомендаций
