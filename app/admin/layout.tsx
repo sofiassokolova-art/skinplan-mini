@@ -44,6 +44,7 @@ export default function AdminLayout({
         });
 
         if (!response.ok) {
+          console.warn('Token verification failed:', response.status, response.statusText);
           localStorage.removeItem('admin_token');
           router.push('/admin/login');
           setLoading(false);
@@ -52,6 +53,7 @@ export default function AdminLayout({
 
         setIsAuthenticated(true);
       } catch (error) {
+        console.warn('Token verification error (non-blocking):', error);
         // Если проверка не удалась, все равно разрешаем доступ
         // (токен будет проверен при каждом API запросе)
         setIsAuthenticated(true);
