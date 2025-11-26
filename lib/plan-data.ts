@@ -6,7 +6,6 @@ import { validateTelegramInitData } from './telegram';
 import { prisma } from './db';
 import { calculateSkinAxes } from './skin-analysis-engine';
 import { getUserIdFromInitData } from './get-user-from-initdata';
-import { generate28DayPlan } from '@/app/api/plan/generate/route';
 
 interface PlanData {
   user: {
@@ -80,12 +79,46 @@ export async function getUserPlanData(): Promise<PlanData> {
     throw new Error('Skin profile not found');
   }
 
-  // Генерируем план напрямую
-  const planData = await generate28DayPlan(user.id);
+  // Вызываем API endpoint для генерации плана (Server Component может делать fetch)
+  const baseUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  
+  const planResponse = await fetch(`${baseUrl}/api/plan/generate`, {
+    method: 'GET',
+    headers: {
+      'X-Telegram-Init-Data': initData,
+    },
+    cache: 'no-store',
+  });
+
+  if (!planResponse.ok) {
+    throw new Error(`Failed to generate plan: ${planResponse.statusText}`);
+  }
+
+  const planData = await planResponse.json();
   const plan = planData;
 
-  // Вычисляем skin scores
-  const scores = calculateSkinAxes(profile);
+  // Вычисляем skin scores - используем поля из профиля
+  const questionnaireAnswers = {
+    skinType: profile.skinType || 'normal',
+    age: profile.ageGroup || '25-34',
+    ageGroup: profile.ageGroup || '25-34',
+    concerns: [], // concerns хранятся в ответах пользователя, не в профиле
+    diagnoses: [],
+    allergies: [],
+    seasonChange: undefined,
+    habits: [],
+    retinolReaction: undefined,
+    pregnant: profile.hasPregnancy || false,
+    spfFrequency: undefined,
+    sunExposure: undefined,
+    sensitivityLevel: profile.sensitivityLevel || 'low',
+    acneLevel: profile.acneLevel || 0,
+    pigmentationRisk: profile.pigmentationRisk || undefined,
+  };
+  
+  const scores = calculateSkinAxes(questionnaireAnswers);
 
   // Получаем прогресс из localStorage (через API)
   // TODO: Сохранять прогресс в БД
