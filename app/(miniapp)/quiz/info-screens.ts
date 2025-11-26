@@ -180,7 +180,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'ai_comparison',
     title: 'Больше никакой путаницы — AI SkinIQ подберёт уход быстро и точно ✨',
-    subtitle: 'Традиционный подбор ухода:\n❌ Долгие поиски советов в интернете\n❌ Сложно понять, что подойдёт именно вам\n\nSkinIQ с AI:\n✅ Фотоанализ и точный подбор средств\n✅ Рекомендации за пару секунд',
+    subtitle: 'Традиционный подбор ухода:\n❌ Долгие поиски советов в интернете\n❌ Сложно понять, что подойдёт именно вам\n\nSkinIQ с AI:\n✅ Точный подбор средств на основе анкеты\n✅ Рекомендации за пару секунд',
     type: 'comparison',
     showAfterQuestionCode: 'lifestyle_habits',
     ctaText: 'Продолжить',
@@ -251,7 +251,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'skin_transformation',
     title: 'Посмотрите, как меняется ваша кожа!',
-    subtitle: 'Отслеживайте прогресс с помощью фото-анализа',
+    subtitle: 'Отслеживайте прогресс и улучшайте состояние кожи',
     image: '/illustrations/skin_transformation.jpg',
     type: 'transformation',
     showAfterQuestionCode: 'created_for_you',

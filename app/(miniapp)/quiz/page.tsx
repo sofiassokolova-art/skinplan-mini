@@ -51,6 +51,7 @@ export default function QuizPage() {
     questionIndex: number;
     infoScreenIndex: number;
   } | null>(null);
+  const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
 
   useEffect(() => {
     // Ждем готовности Telegram WebApp
@@ -87,6 +88,21 @@ export default function QuizPage() {
       
       // Ждем готовности Telegram WebApp
       await waitForTelegram();
+
+      // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        try {
+          const profile = await api.getCurrentProfile();
+          if (profile && (profile as any).id) {
+            // Профиль существует - это повторное прохождение, пропускаем все info screens
+            setIsRetakingQuiz(true);
+            console.log('✅ Повторное прохождение анкеты - профиль уже существует, пропускаем info screens');
+          }
+        } catch (err: any) {
+          // Профиля нет - это первое прохождение, показываем info screens как обычно
+          console.log('ℹ️ Первое прохождение анкеты - профиля еще нет');
+        }
+      }
 
       // Загружаем анкету (публичный маршрут)
       await loadQuestionnaire();
@@ -243,6 +259,16 @@ export default function QuizPage() {
   const handleNext = () => {
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
 
+    // При повторном прохождении пропускаем все начальные info screens
+    if (isRetakingQuiz && currentInfoScreenIndex < initialInfoScreens.length) {
+      if (!questionnaire) return;
+      const newInfoIndex = initialInfoScreens.length;
+      setCurrentInfoScreenIndex(newInfoIndex);
+      setCurrentQuestionIndex(0);
+      saveProgress(answers, 0, newInfoIndex);
+      return;
+    }
+
     // Если мы на начальных информационных экранах, переходим к следующему или к вопросам
     if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
@@ -268,7 +294,8 @@ export default function QuizPage() {
     ];
 
     // Если показывается информационный экран между вопросами, проверяем, есть ли следующий инфо-экран в цепочке
-    if (pendingInfoScreen) {
+    // При повторном прохождении пропускаем все info screens
+    if (pendingInfoScreen && !isRetakingQuiz) {
       // Проверяем, есть ли следующий инфо-экран, который должен быть показан после текущего
       const nextInfoScreen = INFO_SCREENS.find(screen => screen.showAfterQuestionCode === pendingInfoScreen.id);
       if (nextInfoScreen) {
@@ -295,8 +322,9 @@ export default function QuizPage() {
     }
 
     // Проверяем, нужно ли показать информационный экран после текущего вопроса
+    // При повторном прохождении пропускаем все info screens
     const currentQuestion = allQuestions[currentQuestionIndex];
-    if (currentQuestion) {
+    if (currentQuestion && !isRetakingQuiz) {
       const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
       if (infoScreen) {
         setPendingInfoScreen(infoScreen);
@@ -309,11 +337,14 @@ export default function QuizPage() {
     const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
     if (isLastQuestion) {
       // Это последний вопрос - проверяем, есть ли инфо-экраны после него
-      const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
-      if (infoScreen) {
-        setPendingInfoScreen(infoScreen);
-        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-        return;
+      // При повторном прохождении пропускаем info screens
+      if (!isRetakingQuiz) {
+        const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+        if (infoScreen) {
+          setPendingInfoScreen(infoScreen);
+          saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+          return;
+        }
       }
       saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
       return;
@@ -672,7 +703,8 @@ export default function QuizPage() {
   const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
 
   // Определяем, показываем ли мы начальный инфо-экран
-  const isShowingInitialInfoScreen = currentInfoScreenIndex < initialInfoScreens.length;
+  // При повторном прохождении пропускаем все info screens
+  const isShowingInitialInfoScreen = !isRetakingQuiz && currentInfoScreenIndex < initialInfoScreens.length;
   const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
@@ -1229,13 +1261,30 @@ export default function QuizPage() {
   };
 
   // Если показывается информационный экран между вопросами
-  if (pendingInfoScreen) {
+  // При повторном прохождении пропускаем все info screens
+  if (pendingInfoScreen && !isRetakingQuiz) {
     return renderInfoScreen(pendingInfoScreen);
   }
 
   // Если мы на начальном информационном экране
-  if (isShowingInitialInfoScreen && currentInitialInfoScreen) {
+  // При повторном прохождении пропускаем все info screens
+  if (isShowingInitialInfoScreen && currentInitialInfoScreen && !isRetakingQuiz) {
     return renderInfoScreen(currentInitialInfoScreen);
+  }
+  
+  // При повторном прохождении сразу переходим к вопросам
+  if (isRetakingQuiz && questionnaire && currentInfoScreenIndex < initialInfoScreens.length) {
+    const allQuestions = [
+      ...questionnaire.groups.flatMap((g) => g.questions),
+      ...questionnaire.questions,
+    ];
+    if (allQuestions.length > 0) {
+      // Переходим сразу к первому вопросу
+      if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreens.length) {
+        setCurrentInfoScreenIndex(initialInfoScreens.length);
+        // Продолжаем рендер, показывая вопрос
+      }
+    }
   }
 
   if (!currentQuestion) {
@@ -1317,9 +1366,12 @@ export default function QuizPage() {
                   onClick={() => {
                     handleAnswer(currentQuestion.id, option.value);
                     if (isLastQuestion) {
-                      const infoScreenAfter = getInfoScreenAfterQuestion(currentQuestion.code);
-                      if (infoScreenAfter) {
-                        setTimeout(handleNext, 300);
+                      // При повторном прохождении пропускаем info screens
+                      if (!isRetakingQuiz) {
+                        const infoScreenAfter = getInfoScreenAfterQuestion(currentQuestion.code);
+                        if (infoScreenAfter) {
+                          setTimeout(handleNext, 300);
+                        }
                       }
                       return;
                     }
@@ -1344,9 +1396,10 @@ export default function QuizPage() {
               );
             })}
             {/* Кнопка "Получить план" показывается только если это последний вопрос И нет инфо-экранов после него */}
+            {/* При повторном прохождении всегда показываем кнопку (пропускаем info screens) */}
             {currentQuestionIndex === allQuestions.length - 1 && 
              answers[currentQuestion.id] && 
-             !getInfoScreenAfterQuestion(currentQuestion.code) && (
+             (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) && (
               <button
                 onClick={() => {
                   submitAnswers().catch((err) => {
@@ -1410,7 +1463,7 @@ export default function QuizPage() {
             })}
             {/* Кнопка "Получить план" показывается только если это последний вопрос И нет инфо-экранов после него */}
             {currentQuestionIndex === allQuestions.length - 1 && 
-             !getInfoScreenAfterQuestion(currentQuestion.code) ? (
+             (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) ? (
               <button
                 onClick={submitAnswers}
                 disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting}
