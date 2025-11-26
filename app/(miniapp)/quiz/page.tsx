@@ -179,8 +179,15 @@ export default function QuizPage() {
         
         if (data?.progress?.answers && Object.keys(data.progress.answers).length > 0) {
           console.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
+          console.log('📝 Ответы:', data.progress.answers);
           // Заполняем форму предыдущими ответами
           setAnswers(data.progress.answers);
+          // Устанавливаем индекс вопроса, если он есть (для перехода к нужному вопросу)
+          if (data.progress.questionIndex !== undefined && data.progress.questionIndex >= 0) {
+            setCurrentQuestionIndex(data.progress.questionIndex);
+          }
+        } else {
+          console.log('⚠️ Нет сохраненных ответов для предзаполнения');
         }
       }
     } catch (err: any) {
