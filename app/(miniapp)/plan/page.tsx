@@ -137,7 +137,14 @@ export default function PlanPage() {
       const data = await api.getWishlist() as { items?: Array<{ product: { id: number } }> } | { items: Array<{ product: { id: number } }> };
       // Обрабатываем разные форматы ответа
       const items = (data as any).items || [];
-      const productIds = new Set(items.map((item: any) => item.product?.id || item.productId).filter(Boolean));
+      const productIds = new Set<number>(
+        items
+          .map((item: any) => {
+            const id = item.product?.id || item.productId;
+            return typeof id === 'number' ? id : null;
+          })
+          .filter((id: any): id is number => typeof id === 'number')
+      );
       setWishlistProductIds(productIds);
     } catch (err) {
       // Игнорируем ошибки загрузки wishlist (может быть 401, если не авторизован)
