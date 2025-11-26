@@ -34,10 +34,17 @@ async function request<T>(
     // Для 401 ошибок добавляем более информативное сообщение
     if (response.status === 401) {
       if (!initData) {
-        throw new Error('Откройте приложение через Telegram Mini App');
+        throw new Error('Откройте приложение через Telegram Mini App для добавления в избранное');
       } else {
-        throw new Error('Ошибка авторизации. Обновите страницу');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Ошибка авторизации. Попробуйте обновить страницу');
       }
+    }
+    
+    // Для 400 ошибок (Bad Request)
+    if (response.status === 400) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Некорректный запрос. Проверьте данные и попробуйте снова.');
     }
     
     // Для 429 (rate limit) добавляем информацию о времени ожидания

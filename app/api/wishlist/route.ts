@@ -8,7 +8,9 @@ import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 // GET - получение списка избранного
 export async function GET(request: NextRequest) {
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    // Проверяем initData в заголовках (регистр не важен)
+    const initData = request.headers.get('x-telegram-init-data') || 
+                     request.headers.get('X-Telegram-Init-Data');
 
     // Если нет initData - возвращаем пустой список (без ошибки)
     if (!initData) {
@@ -80,12 +82,16 @@ export async function GET(request: NextRequest) {
 // POST - добавление в избранное
 export async function POST(request: NextRequest) {
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    // Проверяем initData в заголовках (регистр не важен)
+    const initData = request.headers.get('x-telegram-init-data') || 
+                     request.headers.get('X-Telegram-Init-Data');
 
     // Для добавления в wishlist нужна авторизация
     if (!initData) {
+      console.log('⚠️ No initData in wishlist POST request');
+      console.log('   Headers:', Object.fromEntries(request.headers.entries()));
       return NextResponse.json(
-        { error: 'Missing Telegram initData' },
+        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
         { status: 401 }
       );
     }
@@ -99,18 +105,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { productId } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const productId = body.productId;
 
     if (!productId) {
+      console.error('❌ Missing productId in wishlist POST:', body);
       return NextResponse.json(
-        { error: 'Missing productId' },
+        { error: 'Missing productId in request body' },
+        { status: 400 }
+      );
+    }
+
+    // Приводим productId к числу
+    const productIdNum = typeof productId === 'string' ? parseInt(productId, 10) : productId;
+    
+    if (isNaN(productIdNum) || productIdNum <= 0) {
+      console.error('❌ Invalid productId:', productId);
+      return NextResponse.json(
+        { error: 'Invalid productId: must be a positive number' },
         { status: 400 }
       );
     }
 
     // Проверяем, существует ли продукт
     const product = await prisma.product.findUnique({
-      where: { id: productId },
+      where: { id: productIdNum },
     });
 
     if (!product) {
@@ -125,13 +144,13 @@ export async function POST(request: NextRequest) {
       where: {
         userId_productId: {
           userId,
-          productId,
+          productId: productIdNum,
         },
       },
       update: {},
       create: {
         userId,
-        productId,
+        productId: productIdNum,
       },
       include: {
         product: {
@@ -154,9 +173,24 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error adding to wishlist:', error);
+    console.error('❌ Error adding to wishlist:', error);
+    console.error('   Error stack:', error.stack);
+    console.error('   Error message:', error.message);
+    
+    // Если это ошибка Prisma (например, нарушение уникальности) - это нормально
+    if (error.code === 'P2002') {
+      // Уже есть в wishlist - возвращаем успех
+      return NextResponse.json({
+        success: true,
+        message: 'Product already in wishlist',
+      });
+    }
+    
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { 
+        error: error.message || 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      },
       { status: 500 }
     );
   }
@@ -165,7 +199,9 @@ export async function POST(request: NextRequest) {
 // DELETE - удаление из избранного
 export async function DELETE(request: NextRequest) {
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    // Проверяем initData в заголовках (регистр не важен)
+    const initData = request.headers.get('x-telegram-init-data') || 
+                     request.headers.get('X-Telegram-Init-Data');
 
     // Для удаления из wishlist нужна авторизация
     if (!initData) {
@@ -194,10 +230,18 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const productIdNum = parseInt(productId, 10);
+    if (isNaN(productIdNum) || productIdNum <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid productId: must be a positive number' },
+        { status: 400 }
+      );
+    }
+
     await prisma.wishlist.deleteMany({
       where: {
         userId,
-        productId: parseInt(productId),
+        productId: productIdNum,
       },
     });
 
