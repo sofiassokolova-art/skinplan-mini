@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       products: products.map((p) => ({
         id: p.id,
         name: p.name,
-        slug: p.slug,
+        slug: (p as any).slug || null,
         price: p.price,
         volume: p.volume,
         descriptionUser: p.descriptionUser,
@@ -62,10 +62,10 @@ export async function GET(request: NextRequest) {
         category: p.category,
         skinTypes: p.skinTypes,
         concerns: p.concerns,
-        activeIngredients: p.activeIngredients,
-        published: p.published,
-        isHero: p.isHero,
-        priority: p.priority,
+        activeIngredients: (p as any).activeIngredients || [],
+        published: (p as any).published !== undefined ? (p as any).published : true,
+        isHero: (p as any).isHero || false,
+        priority: (p as any).priority || 0,
         brand: p.brand,
       })),
     });
