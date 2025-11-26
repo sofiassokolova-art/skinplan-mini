@@ -149,7 +149,7 @@ export default function CartPage() {
         </p>
       </div>
 
-      {error && (
+      {error && !error.includes('Unauthorized') && (
         <div
           style={{
             backgroundColor: 'rgba(239, 68, 68, 0.1)',
