@@ -257,7 +257,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   }
   
   // Если есть продукты из RecommendationSession, используем их
-  // Иначе получаем все опубликованные продукты и фильтруем
+  // Иначе получаем все опубликованные продукты
   let allProducts: any[];
   if (recommendationProducts.length > 0) {
     console.log('✅ Using products from RecommendationSession');
