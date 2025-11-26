@@ -50,22 +50,22 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      products: products.map((p) => ({
+      products: products.map((p: any) => ({
         id: p.id,
         name: p.name,
-        slug: (p as any).slug || null,
-        price: p.price,
-        volume: p.volume,
-        descriptionUser: p.descriptionUser,
-        imageUrl: p.imageUrl,
+        slug: p.slug || null,
+        price: p.price || null,
+        volume: p.volume || null,
+        descriptionUser: p.descriptionUser || null,
+        imageUrl: p.imageUrl || null,
         step: p.step,
         category: p.category,
-        skinTypes: p.skinTypes,
-        concerns: p.concerns,
-        activeIngredients: (p as any).activeIngredients || [],
-        published: (p as any).published !== undefined ? (p as any).published : true,
-        isHero: (p as any).isHero || false,
-        priority: (p as any).priority || 0,
+        skinTypes: p.skinTypes || [],
+        concerns: p.concerns || [],
+        activeIngredients: p.activeIngredients || [],
+        published: p.published !== undefined ? p.published : true,
+        isHero: p.isHero || false,
+        priority: p.priority || 0,
         brand: p.brand,
       })),
     });
