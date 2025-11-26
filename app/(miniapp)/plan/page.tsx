@@ -883,14 +883,14 @@ export default function PlanPage() {
         </div>
       )}
 
-      {/* Кнопка "Анализ фото" */}
+      {/* Кнопка "Перепройти анкету" */}
       <div style={{
         padding: '20px',
         textAlign: 'center',
         marginTop: '32px',
       }}>
         <button
-          onClick={() => router.push('/photo')}
+          onClick={() => router.push('/quiz')}
           style={{
             padding: '16px 32px',
             borderRadius: '16px',
@@ -903,7 +903,7 @@ export default function PlanPage() {
             boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
           }}
         >
-          📸 Анализ фото
+          🔄 Перепройти анкету
         </button>
       </div>
     </div>

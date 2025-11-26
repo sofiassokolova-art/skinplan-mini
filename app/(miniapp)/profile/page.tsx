@@ -212,7 +212,6 @@ export default function PersonalCabinet() {
     ? Math.floor((new Date().getTime() - new Date(skinProfile.createdAt).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
   const completedDays = planInfo.currentDay || 0;
-  const photosCount = 0; // Заглушка - можно добавить позже
 
   return (
     <div style={{
@@ -362,9 +361,9 @@ export default function PersonalCabinet() {
           )}
         </Link>
 
-        {/* Прогресс фото */}
+        {/* Кнопка перепройти анкету */}
         <Link
-          href="/profile/photos"
+          href="/quiz"
           style={{
             display: 'block',
             backgroundColor: 'white',
@@ -377,46 +376,16 @@ export default function PersonalCabinet() {
             color: 'inherit',
           }}
         >
-          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1F2937', marginBottom: '4px' }}>
-            Фото-прогресс
-          </h3>
-          <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '16px' }}>
-            {photosCount > 0 ? `${photosCount} фото • Последнее 14 янв` : 'Загрузите первое фото'}
-          </p>
-          <div style={{ display: 'flex', gap: '12px', overflowX: 'auto' }}>
-            {photosCount > 0 ? (
-              <>
-                <div style={{ width: '80px', height: '80px', backgroundColor: '#E5E7EB', border: '2px dashed #9CA3AF', borderRadius: '12px' }} />
-                <div style={{ width: '80px', height: '80px', backgroundColor: '#E5E7EB', border: '2px dashed #9CA3AF', borderRadius: '12px' }} />
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  background: 'linear-gradient(to bottom right, #9333EA 0%, #EC4899 100%)',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: '24px',
-                }}>
-                  +
-                </div>
-              </>
-            ) : (
-              <div style={{
-                width: '100%',
-                height: '128px',
-                backgroundColor: '#F9FAFB',
-                border: '2px dashed #D1D5DB',
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#6B7280',
-              }}>
-                Загрузить фото
-              </div>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1F2937', marginBottom: '4px' }}>
+                Перепройти анкету
+              </h3>
+              <p style={{ fontSize: '14px', color: '#6B7280' }}>
+                Обновить данные о вашей коже для новых рекомендаций
+              </p>
+            </div>
+            <div style={{ fontSize: '32px' }}>🔄</div>
           </div>
         </Link>
 

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     if (!ADMIN_SECRET) {
       console.error('❌ ADMIN_SECRET не настроен в переменных окружения');
       return NextResponse.json(
-        { error: 'Секретное слово не настроено на сервере' },
+        { error: 'Секретное слово не настроено на сервере. Проверьте переменные окружения.' },
         { status: 500 }
       );
     }
@@ -40,10 +40,22 @@ export async function POST(request: NextRequest) {
       .update(ADMIN_SECRET.trim())
       .digest('hex');
 
+    // Логирование для отладки (только в development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Admin login attempt:', {
+        secretWordLength: secretWord.trim().length,
+        adminSecretLength: ADMIN_SECRET.trim().length,
+        hashesMatch: secretHash === expectedHash,
+      });
+    }
+
     if (secretHash !== expectedHash) {
-      console.warn('⚠️ Неверная попытка входа в админ-панель');
+      console.warn('⚠️ Неверная попытка входа в админ-панель', {
+        timestamp: new Date().toISOString(),
+        providedLength: secretWord.trim().length,
+      });
       return NextResponse.json(
-        { error: 'Неверное секретное слово' },
+        { error: 'Неверное секретное слово. Проверьте правильность ввода.' },
         { status: 401 }
       );
     }

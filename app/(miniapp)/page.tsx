@@ -751,22 +751,40 @@ export default function HomePage() {
         }}>
           Время заботиться о своей коже
         </div>
-        <button
-          onClick={() => router.push('/plan')}
-          style={{
-            marginTop: '16px',
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-          }}
-        >
-          📅 28-дневный план →
-        </button>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => router.push('/plan')}
+            style={{
+              marginTop: '16px',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          >
+            📅 28-дневный план →
+          </button>
+          <button
+            onClick={() => router.push('/quiz')}
+            style={{
+              marginTop: '16px',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(10, 95, 89, 0.1)',
+              color: '#0A5F59',
+              border: '2px solid #0A5F59',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          >
+            🔄 Перепройти анкету
+          </button>
+        </div>
         {recommendations?.profile_summary && (
           <div style={{
             fontSize: '16px',
