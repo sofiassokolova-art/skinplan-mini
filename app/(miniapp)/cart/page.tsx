@@ -43,38 +43,17 @@ export default function CartPage() {
       setLoading(true);
       setError(null);
       
-      // Проверяем, что приложение открыто через Telegram Mini App
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-        console.log('⚠️ Telegram Mini App не доступен - показываем пустое состояние');
-        setWishlist([]);
-        setError(null);
-        setLoading(false);
-        return;
-      }
-      
+      // Загружаем wishlist без обязательной проверки авторизации
+      // API вернет пустой список, если нет авторизации
       const data = await api.getWishlist() as { items?: WishlistItemData[] };
       // Обрабатываем разные форматы ответа
       const items = data.items || (data as any).wishlist || [];
       setWishlist(Array.isArray(items) ? items : []);
     } catch (err: any) {
       console.error('Error loading wishlist:', err);
-      const errorMessage = err?.message || 'Не удалось загрузить избранное';
-      const errorStr = String(errorMessage).toLowerCase();
-      
-      // Для ошибок авторизации просто показываем пустое состояние (пользователь не авторизован через Telegram)
-      if (errorStr.includes('401') || 
-          errorStr.includes('unauthorized') || 
-          errorStr.includes('initdata') ||
-          errorStr.includes('откройте приложение') ||
-          errorStr.includes('telegram mini app')) {
-        console.log('⚠️ Пользователь не авторизован - показываем пустое состояние');
-        setWishlist([]);
-        setError(null); // Не показываем ошибку, показываем пустое состояние
-      } else {
-        // Только для реальных ошибок показываем сообщение
-        setError(errorMessage);
-        toast.error(errorMessage);
-      }
+      // Любые ошибки обрабатываем как пустое состояние
+      setWishlist([]);
+      setError(null);
     } finally {
       setLoading(false);
     }

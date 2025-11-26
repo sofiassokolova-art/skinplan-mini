@@ -10,20 +10,18 @@ export async function GET(request: NextRequest) {
   try {
     const initData = request.headers.get('x-telegram-init-data');
 
+    // Если нет initData - возвращаем пустой список (без ошибки)
     if (!initData) {
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
+      console.log('⚠️ No initData provided for wishlist - returning empty list');
+      return NextResponse.json({ items: [] });
     }
 
     const userId = await getUserIdFromInitData(initData);
     
+    // Если не удалось получить userId - возвращаем пустой список (без ошибки)
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
+      console.log('⚠️ Could not get userId from initData - returning empty list');
+      return NextResponse.json({ items: [] });
     }
 
     // Получаем все продукты из избранного
@@ -84,6 +82,7 @@ export async function POST(request: NextRequest) {
   try {
     const initData = request.headers.get('x-telegram-init-data');
 
+    // Для добавления в wishlist нужна авторизация
     if (!initData) {
       return NextResponse.json(
         { error: 'Missing Telegram initData' },
@@ -168,6 +167,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const initData = request.headers.get('x-telegram-init-data');
 
+    // Для удаления из wishlist нужна авторизация
     if (!initData) {
       return NextResponse.json(
         { error: 'Missing Telegram initData' },
