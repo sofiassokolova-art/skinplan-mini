@@ -6,6 +6,7 @@ import { validateTelegramInitData } from './telegram';
 import { prisma } from './db';
 import { calculateSkinAxes } from './skin-analysis-engine';
 import { getUserIdFromInitData } from './get-user-from-initdata';
+import { generate28DayPlan } from '@/app/api/plan/generate/route';
 
 interface PlanData {
   user: {
@@ -43,30 +44,26 @@ interface PlanData {
  * Получает все данные для страницы плана за один запрос
  */
 export async function getUserPlanData(): Promise<PlanData> {
-  const cookieStore = await cookies();
-  const initData = cookieStore.get('telegram_init_data')?.value || 
-    (typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null);
+  // Получаем initData из headers (Telegram Mini App передает его так)
+  const headersList = await headers();
+  const initData = headersList.get('x-telegram-init-data') || 
+                   headersList.get('X-Telegram-Init-Data') ||
+                   null;
 
   if (!initData) {
-    throw new Error('Не авторизован');
+    throw new Error('Не авторизован. Откройте приложение через Telegram Mini App.');
   }
 
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) {
-    throw new Error('Bot token not configured');
+  // Получаем userId из initData
+  const userId = await getUserIdFromInitData(initData);
+  
+  if (!userId) {
+    throw new Error('Не удалось определить пользователя');
   }
-
-  // Валидируем initData
-  const validation = validateTelegramInitData(initData, botToken);
-  if (!validation.valid || !validation.data?.user) {
-    throw new Error('Invalid initData');
-  }
-
-  const { user: tgUser } = validation.data;
 
   // Получаем пользователя из БД
   const user = await prisma.user.findUnique({
-    where: { telegramId: tgUser.id.toString() },
+    where: { id: userId },
   });
 
   if (!user) {
@@ -83,9 +80,9 @@ export async function getUserPlanData(): Promise<PlanData> {
     throw new Error('Skin profile not found');
   }
 
-  // Получаем план (генерируем или берем из кэша)
-  const planResponse = await generatePlan({ userId: user.id });
-  const plan = planResponse.plan;
+  // Генерируем план напрямую
+  const planData = await generate28DayPlan(user.id);
+  const plan = planData;
 
   // Вычисляем skin scores
   const scores = calculateSkinAxes(profile);

@@ -125,7 +125,7 @@ function containsRetinol(productIngredients: string[] | null | undefined): boole
 /**
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
  */
-async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
+export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   console.log(`📊 Generating plan for user ${userId}...`);
   
   // Получаем профиль кожи

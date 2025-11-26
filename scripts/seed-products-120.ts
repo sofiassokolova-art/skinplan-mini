@@ -139,23 +139,40 @@ async function main() {
         status: 'published',
       };
 
-      // Используем upsert вместо findUnique + update/create
-      const existing = await prisma.product.findUnique({
-        where: { slug },
-        select: { id: true },
-      });
-
-      if (existing) {
-        await prisma.product.update({
-          where: { id: existing.id },
-          data: productData,
+      // Используем upsert для более надежной работы
+      try {
+        const result = await prisma.product.upsert({
+          where: { slug },
+          update: productData,
+          create: productData,
         });
-        updated++;
-      } else {
-        await prisma.product.create({
-          data: productData,
+        
+        // Определяем, создан ли новый продукт или обновлен существующий
+        const wasExisting = await prisma.product.findUnique({
+          where: { slug },
+          select: { createdAt: true, updatedAt: true },
         });
-        created++;
+        
+        if (wasExisting && wasExisting.createdAt.getTime() === wasExisting.updatedAt.getTime()) {
+          created++;
+        } else {
+          updated++;
+        }
+      } catch (upsertError: any) {
+        // Если upsert не сработал из-за уникального ограничения, пробуем создать
+        if (upsertError.code === 'P2002') {
+          try {
+            await prisma.product.update({
+              where: { slug },
+              data: productData,
+            });
+            updated++;
+          } catch (updateError) {
+            console.error(`  ❌ Failed to update product "${p.name}":`, updateError);
+          }
+        } else {
+          throw upsertError;
+        }
       }
     } catch (error: any) {
       console.error(`  ❌ Error processing product "${p.name}":`, error.message);
