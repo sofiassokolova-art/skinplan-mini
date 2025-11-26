@@ -89,8 +89,11 @@ export default function QuizPage() {
       // Ждем готовности Telegram WebApp
       await waitForTelegram();
 
+      // Сначала загружаем анкету (публичный маршрут)
+      await loadQuestionnaire();
+
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && questionnaire) {
         try {
           const profile = await api.getCurrentProfile();
           if (profile && (profile as any).id) {
@@ -98,7 +101,7 @@ export default function QuizPage() {
             setIsRetakingQuiz(true);
             console.log('✅ Повторное прохождение анкеты - профиль уже существует, пропускаем info screens');
             
-            // Загружаем предыдущие ответы для повторного прохождения
+            // Загружаем предыдущие ответы для повторного прохождения (после загрузки анкеты)
             await loadPreviousAnswers();
           }
         } catch (err: any) {
@@ -106,9 +109,6 @@ export default function QuizPage() {
           console.log('ℹ️ Первое прохождение анкеты - профиля еще нет');
         }
       }
-
-      // Загружаем анкету (публичный маршрут)
-      await loadQuestionnaire();
 
       // Загружаем прогресс с сервера (только если Telegram WebApp доступен)
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {

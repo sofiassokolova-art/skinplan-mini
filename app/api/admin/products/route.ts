@@ -10,16 +10,24 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 // Проверка авторизации админа
 async function verifyAdmin(request: NextRequest): Promise<boolean> {
   try {
-    const token = request.cookies.get('admin_token')?.value || 
-                  request.headers.get('authorization')?.replace('Bearer ', '');
+    const cookieToken = request.cookies.get('admin_token')?.value;
+    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
+    const token = cookieToken || headerToken;
     
     if (!token) {
+      console.log('❌ No admin token found in request');
       return false;
     }
 
-    jwt.verify(token, JWT_SECRET);
-    return true;
+    try {
+      jwt.verify(token, JWT_SECRET);
+      return true;
+    } catch (verifyError) {
+      console.log('❌ Token verification failed:', verifyError);
+      return false;
+    }
   } catch (err) {
+    console.error('❌ Error in verifyAdmin:', err);
     return false;
   }
 }

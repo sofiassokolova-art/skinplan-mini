@@ -41,12 +41,19 @@ export default function CartPage() {
   const loadWishlist = async () => {
     try {
       setLoading(true);
-      const data = await api.getWishlist() as { items: WishlistItemData[] };
-      setWishlist(data.items || []);
+      setError(null);
+      const data = await api.getWishlist() as { items?: WishlistItemData[] };
+      // Обрабатываем разные форматы ответа
+      const items = data.items || (data as any).wishlist || [];
+      setWishlist(Array.isArray(items) ? items : []);
     } catch (err: any) {
       console.error('Error loading wishlist:', err);
-      setError('Ошибка загрузки избранного');
-      toast.error('Не удалось загрузить избранное');
+      const errorMessage = err?.message || 'Не удалось загрузить избранное';
+      setError(errorMessage);
+      // Не показываем toast для 401 ошибок (пользователь не авторизован)
+      if (!errorMessage.includes('401') && !errorMessage.includes('Unauthorized')) {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

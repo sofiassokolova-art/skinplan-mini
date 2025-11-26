@@ -134,11 +134,13 @@ export default function PlanPage() {
 
   const loadWishlist = async () => {
     try {
-      const data = await api.getWishlist() as { items: Array<{ product: { id: number } }> };
-      const productIds = new Set(data.items?.map(item => item.product.id) || []);
+      const data = await api.getWishlist() as { items?: Array<{ product: { id: number } }> } | { items: Array<{ product: { id: number } }> };
+      // Обрабатываем разные форматы ответа
+      const items = (data as any).items || [];
+      const productIds = new Set(items.map((item: any) => item.product?.id || item.productId).filter(Boolean));
       setWishlistProductIds(productIds);
     } catch (err) {
-      // Игнорируем ошибки загрузки wishlist
+      // Игнорируем ошибки загрузки wishlist (может быть 401, если не авторизован)
       console.warn('Could not load wishlist:', err);
     }
   };
@@ -154,12 +156,15 @@ export default function PlanPage() {
           newSet.delete(productId);
           return newSet;
         });
+        // Toast уведомление будет показано через api.ts
       } else {
         await api.addToWishlist(productId);
         setWishlistProductIds((prev) => new Set(prev).add(productId));
+        // Toast уведомление будет показано через api.ts
       }
     } catch (err: any) {
       console.error('Error toggling wishlist:', err);
+      // Ошибка уже обработана в api.ts через toast
     }
   };
 

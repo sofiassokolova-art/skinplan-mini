@@ -111,13 +111,25 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    return NextResponse.json({
+    // Создаем ответ с токеном
+    const response = NextResponse.json({
       token,
       admin: {
         id: admin.id,
         role: admin.role,
       },
     });
+
+    // Устанавливаем токен в cookies для автоматической передачи
+    response.cookies.set('admin_token', token, {
+      httpOnly: false, // Нужен доступ из JS для отправки в заголовках
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 дней
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Admin login error:', error);
     return NextResponse.json(
