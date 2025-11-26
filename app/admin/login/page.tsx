@@ -33,14 +33,30 @@ export default function AdminLogin() {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secretWord }),
+        body: JSON.stringify({ secretWord: secretWord.trim() }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('Failed to parse response:', parseError);
+        setError(`Ошибка сервера: ${response.status} ${response.statusText}`);
+        setLoading(false);
+        return;
+      }
 
       if (!response.ok) {
+        console.error('Login error:', {
+          status: response.status,
+          error: data.error,
+          statusText: response.statusText,
+        });
+        
         if (response.status === 401 || response.status === 403) {
-          setError('Неверное секретное слово. Доступ запрещен.');
+          setError(data.error || 'Неверное секретное слово. Доступ запрещен.');
+        } else if (response.status === 500) {
+          setError(data.error || 'Ошибка сервера. Проверьте настройки на Vercel.');
         } else {
           setError(data.error || `Ошибка входа (${response.status})`);
         }

@@ -11,20 +11,39 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Логируем входящий запрос (для отладки)
+    console.log('🔐 Admin login request received', {
+      timestamp: new Date().toISOString(),
+      hasBody: !!request.body,
+      adminSecretSet: !!ADMIN_SECRET && ADMIN_SECRET !== '',
+      adminSecretLength: ADMIN_SECRET ? ADMIN_SECRET.length : 0,
+    });
+
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError);
+      return NextResponse.json(
+        { error: 'Неверный формат запроса' },
+        { status: 400 }
+      );
+    }
+
     const { secretWord } = body;
 
     if (!secretWord) {
+      console.warn('⚠️ Secret word not provided in request');
       return NextResponse.json(
         { error: 'Требуется секретное слово' },
         { status: 400 }
       );
     }
 
-    if (!ADMIN_SECRET) {
+    if (!ADMIN_SECRET || ADMIN_SECRET === '') {
       console.error('❌ ADMIN_SECRET не настроен в переменных окружения');
       return NextResponse.json(
-        { error: 'Секретное слово не настроено на сервере. Проверьте переменные окружения.' },
+        { error: 'Секретное слово не настроено на сервере. Проверьте переменные окружения на Vercel.' },
         { status: 500 }
       );
     }
@@ -40,14 +59,13 @@ export async function POST(request: NextRequest) {
       .update(ADMIN_SECRET.trim())
       .digest('hex');
 
-    // Логирование для отладки (только в development)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Admin login attempt:', {
-        secretWordLength: secretWord.trim().length,
-        adminSecretLength: ADMIN_SECRET.trim().length,
-        hashesMatch: secretHash === expectedHash,
-      });
-    }
+    // Логирование для отладки
+    console.log('🔍 Admin login attempt:', {
+      secretWordLength: secretWord.trim().length,
+      adminSecretLength: ADMIN_SECRET.trim().length,
+      hashesMatch: secretHash === expectedHash,
+      environment: process.env.NODE_ENV || 'unknown',
+    });
 
     if (secretHash !== expectedHash) {
       console.warn('⚠️ Неверная попытка входа в админ-панель', {
