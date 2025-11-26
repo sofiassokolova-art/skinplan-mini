@@ -129,7 +129,39 @@ export default function PlanPage() {
     }
     
     loadPlan(0);
+    loadWishlist();
   }, []);
+
+  const loadWishlist = async () => {
+    try {
+      const data = await api.getWishlist() as { items: Array<{ product: { id: number } }> };
+      const productIds = new Set(data.items?.map(item => item.product.id) || []);
+      setWishlistProductIds(productIds);
+    } catch (err) {
+      // Игнорируем ошибки загрузки wishlist
+      console.warn('Could not load wishlist:', err);
+    }
+  };
+
+  const toggleWishlist = async (productId: number) => {
+    try {
+      const isInWishlist = wishlistProductIds.has(productId);
+      
+      if (isInWishlist) {
+        await api.removeFromWishlist(productId);
+        setWishlistProductIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(productId);
+          return newSet;
+        });
+      } else {
+        await api.addToWishlist(productId);
+        setWishlistProductIds((prev) => new Set(prev).add(productId));
+      }
+    } catch (err: any) {
+      console.error('Error toggling wishlist:', err);
+    }
+  };
 
   const loadPlan = async (retryCount = 0) => {
     try {
