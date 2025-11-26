@@ -230,6 +230,32 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // Шаг 2: Фильтрация продуктов
   console.log(`🔍 Filtering products for focus: ${primaryFocus}, skinType: ${profileClassification.skinType}, budget: ${profileClassification.budget}`);
   
+  // ВАЖНО: Сначала пытаемся получить продукты из RecommendationSession
+  // Это гарантирует, что план использует те же продукты, что и главная страница
+  let recommendationProducts: any[] = [];
+  const existingSession = await prisma.recommendationSession.findFirst({
+    where: {
+      userId,
+      profileId: profile.id,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (existingSession && existingSession.products && Array.isArray(existingSession.products)) {
+    console.log('✅ Using products from RecommendationSession for plan generation');
+    const productIds = existingSession.products as number[];
+    recommendationProducts = await prisma.product.findMany({
+      where: {
+        id: { in: productIds },
+        status: 'published',
+      },
+      include: { brand: true },
+    });
+    console.log(`📦 Found ${recommendationProducts.length} products from RecommendationSession`);
+  } else {
+    console.log('⚠️ No RecommendationSession found, will generate products from scratch');
+  }
+  
   // Если есть продукты из RecommendationSession, используем их
   // Иначе получаем все опубликованные продукты и фильтруем
   let allProducts: any[];
