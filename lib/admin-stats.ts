@@ -245,12 +245,12 @@ export async function getMetricsStats(): Promise<MetricsStats> {
   const feedbackEntries = await prisma.wishlistFeedback.findMany({
     select: { feedback: true },
   });
-  const ratings = feedbackEntries.map(f => {
+  const ratings: number[] = feedbackEntries.map(f => {
     if (f.feedback === 'bought_love') return 5;
     if (f.feedback === 'bought_ok') return 3;
     if (f.feedback === 'bought_bad') return 1;
     return 0;
-  }).filter(r => r > 0);
+  }).filter(r => r > 0) as number[];
   
   const avgFeedbackRating = ratings.length > 0
     ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10

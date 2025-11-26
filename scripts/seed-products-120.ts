@@ -110,48 +110,57 @@ async function main() {
   let updated = 0;
 
   for (const p of products) {
-    const brandId = brandMap.get(p.brand);
-    if (!brandId) {
-      console.error(`  ❌ Brand not found: ${p.brand}`);
+    try {
+      const brandId = brandMap.get(p.brand);
+      if (!brandId) {
+        console.error(`  ❌ Brand not found: ${p.brand}`);
+        continue;
+      }
+
+      const slug = createSlug(p.name);
+      
+      const productData: any = {
+        name: p.name,
+        slug,
+        brandId,
+        price: p.price,
+        volume: p.volume || null,
+        description: null,
+        imageUrl: `/products/${slug}.jpg`, // Потом зальёшь фото
+        skinTypes: p.skinTypes || ['normal'],
+        concerns: p.concerns || [],
+        activeIngredients: p.activeIngredients || [],
+        avoidIf: p.avoidIf || [],
+        step: p.step,
+        category: p.step, // Для обратной совместимости
+        isHero: p.priority > 90,
+        priority: p.priority || 0,
+        published: true,
+        status: 'published',
+      };
+
+      // Используем upsert вместо findUnique + update/create
+      const existing = await prisma.product.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+
+      if (existing) {
+        await prisma.product.update({
+          where: { id: existing.id },
+          data: productData,
+        });
+        updated++;
+      } else {
+        await prisma.product.create({
+          data: productData,
+        });
+        created++;
+      }
+    } catch (error: any) {
+      console.error(`  ❌ Error processing product "${p.name}":`, error.message);
+      // Продолжаем обработку следующих продуктов
       continue;
-    }
-
-    const slug = createSlug(p.name);
-    const existing = await prisma.product.findUnique({
-      where: { slug },
-    });
-
-    const productData = {
-      name: p.name,
-      slug,
-      brandId,
-      price: p.price,
-      volume: p.volume || null,
-      description: null,
-      imageUrl: `/products/${slug}.jpg`, // Потом зальёшь фото
-      skinTypes: p.skinTypes || ['normal'],
-      concerns: p.concerns || [],
-      activeIngredients: p.activeIngredients || [],
-      avoidIf: p.avoidIf || [],
-      step: p.step,
-      category: p.step, // Для обратной совместимости
-      isHero: p.priority > 90,
-      priority: p.priority || 0,
-      published: true,
-      status: 'published',
-    };
-
-    if (existing) {
-      await prisma.product.update({
-        where: { id: existing.id },
-        data: productData,
-      });
-      updated++;
-    } else {
-      await prisma.product.create({
-        data: productData,
-      });
-      created++;
     }
   }
 
