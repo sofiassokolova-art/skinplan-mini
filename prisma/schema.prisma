@@ -15,40 +15,40 @@ datasource db {
 // ============================================
 
 model User {
-  id          String    @id @default(cuid())
-  telegramId  String    @unique @map("telegram_id")
-  username    String?
-  firstName   String?   @map("first_name")
-  lastName    String?   @map("last_name")
-  language    String    @default("ru")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id         String   @id @default(cuid())
+  telegramId String   @unique @map("telegram_id")
+  username   String?
+  firstName  String?  @map("first_name")
+  lastName   String?  @map("last_name")
+  language   String   @default("ru")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
-  skinProfiles        SkinProfile[]
-  userAnswers         UserAnswer[]
+  skinProfiles           SkinProfile[]
+  userAnswers            UserAnswer[]
   recommendationSessions RecommendationSession[]
 
   @@map("users")
 }
 
 model SkinProfile {
-  id                String   @id @default(cuid())
-  userId            String   @map("user_id")
-  version           Int      @default(1) // Версия логики расчета
-  skinType          String?  @map("skin_type") // dry / oily / combo / normal / sensitive
-  sensitivityLevel  String?  @map("sensitivity_level") // low / medium / high
-  dehydrationLevel  Int?     @map("dehydration_level") // 0-5
-  acneLevel         Int?     @map("acne_level") // 0-5
-  rosaceaRisk       String?  @map("rosacea_risk") // none / low / medium / high
-  pigmentationRisk  String?  @map("pigmentation_risk") // none / low / medium / high
-  ageGroup          String?  @map("age_group") // 18_25 / 26_30 / 31_40 / 41_50 / 50_plus
-  hasPregnancy      Boolean? @default(false) @map("has_pregnancy")
-  medicalMarkers    Json?    @map("medical_markers") // JSON для дополнительных маркеров
-  notes             String?  // Текстовое резюме для отображения
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  version          Int      @default(1) // Версия логики расчета
+  skinType         String?  @map("skin_type") // dry / oily / combo / normal / sensitive
+  sensitivityLevel String?  @map("sensitivity_level") // low / medium / high
+  dehydrationLevel Int?     @map("dehydration_level") // 0-5
+  acneLevel        Int?     @map("acne_level") // 0-5
+  rosaceaRisk      String?  @map("rosacea_risk") // none / low / medium / high
+  pigmentationRisk String?  @map("pigmentation_risk") // none / low / medium / high
+  ageGroup         String?  @map("age_group") // 18_25 / 26_30 / 31_40 / 41_50 / 50_plus
+  hasPregnancy     Boolean? @default(false) @map("has_pregnancy")
+  medicalMarkers   Json?    @map("medical_markers") // JSON для дополнительных маркеров
+  notes            String? // Текстовое резюме для отображения
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   recommendationSessions RecommendationSession[]
 
   @@unique([userId, version])
@@ -62,7 +62,7 @@ model SkinProfile {
 
 model Questionnaire {
   id        Int      @id @default(autoincrement())
-  name      String   // "Базовая анкета v1"
+  name      String // "Базовая анкета v1"
   version   Int      @default(1)
   isActive  Boolean  @default(false) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
@@ -76,34 +76,34 @@ model Questionnaire {
 }
 
 model QuestionGroup {
-  id             Int        @id @default(autoincrement())
-  questionnaireId Int       @map("questionnaire_id")
-  title          String
-  position       Int
-  createdAt      DateTime   @default(now()) @map("created_at")
+  id              Int      @id @default(autoincrement())
+  questionnaireId Int      @map("questionnaire_id")
+  title           String
+  position        Int
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  questionnaire  Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
-  questions      Question[]
+  questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  questions     Question[]
 
   @@index([questionnaireId])
   @@map("question_groups")
 }
 
 model Question {
-  id             Int            @id @default(autoincrement())
-  questionnaireId Int           @map("questionnaire_id")
-  groupId        Int?           @map("group_id")
-  code           String         // OILINESS, SENSITIVITY, etc.
-  text           String
-  type           String         // single_choice / multi_choice / scale / free_text
-  position       Int
-  isRequired     Boolean        @default(true) @map("is_required")
-  createdAt      DateTime       @default(now()) @map("created_at")
+  id              Int      @id @default(autoincrement())
+  questionnaireId Int      @map("questionnaire_id")
+  groupId         Int?     @map("group_id")
+  code            String // OILINESS, SENSITIVITY, etc.
+  text            String
+  type            String // single_choice / multi_choice / scale / free_text
+  position        Int
+  isRequired      Boolean  @default(true) @map("is_required")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  questionnaire  Questionnaire  @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
-  group          QuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  answerOptions  AnswerOption[]
-  userAnswers    UserAnswer[]
+  questionnaire Questionnaire  @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  group         QuestionGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  answerOptions AnswerOption[]
+  userAnswers   UserAnswer[]
 
   @@index([questionnaireId])
   @@index([groupId])
@@ -111,31 +111,31 @@ model Question {
 }
 
 model AnswerOption {
-  id         Int      @id @default(autoincrement())
-  questionId Int      @map("question_id")
-  value      String   // VERY_OILY, HIGH, etc.
-  label      String   // Текст для пользователя
+  id         Int    @id @default(autoincrement())
+  questionId Int    @map("question_id")
+  value      String // VERY_OILY, HIGH, etc.
+  label      String // Текст для пользователя
   position   Int
-  scoreJson  Json?    @map("score_json") // { "oiliness": 3, "sensitivity": 1 }
+  scoreJson  Json?  @map("score_json") // { "oiliness": 3, "sensitivity": 1 }
 
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([questionId])
   @@map("answer_options")
 }
 
 model UserAnswer {
-  id             Int       @id @default(autoincrement())
-  userId         String    @map("user_id")
+  id              Int      @id @default(autoincrement())
+  userId          String   @map("user_id")
   questionnaireId Int      @map("questionnaire_id")
-  questionId     Int       @map("question_id")
-  answerValue    String?   @map("answer_value") // Для single/scale
-  answerValues   Json?     @map("answer_values") // Для multi - JSON массив
-  createdAt      DateTime  @default(now()) @map("created_at")
+  questionId      Int      @map("question_id")
+  answerValue     String?  @map("answer_value") // Для single/scale
+  answerValues    Json?    @map("answer_values") // Для multi - JSON массив
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  questionnaire  Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
-  question       Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  question      Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([questionnaireId])
@@ -148,43 +148,69 @@ model UserAnswer {
 // ============================================
 
 model Brand {
-  id        Int       @id @default(autoincrement())
-  name      String
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String?  @unique
+  logoUrl   String?  @map("logo_url")
   country   String?
-  isActive  Boolean   @default(true) @map("is_active")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  products  Product[]
+  products Product[]
 
   @@map("brands")
 }
 
 model Product {
-  id              Int      @id @default(autoincrement())
-  brandId         Int      @map("brand_id")
-  name            String
-  line            String?  // Линейка продукта
-  category        String   // cleanser / toner / cream / spf / serum / mask
-  step            String   // cleansing / toning / treatment / moisturizer / spf
-  skinTypes       String[] @map("skin_types") // [dry, oily, combo, sensitive]
-  concerns        String[] // [acne, rosacea, dehydration, pigmentation, aging]
-  isFragranceFree Boolean  @default(false) @map("is_fragrance_free")
-  isNonComedogenic Boolean @default(false) @map("is_non_comedogenic")
-  priceSegment    String?  @map("price_segment") // mass / mid / premium
-  price           Float?   // Цена в рублях
-  descriptionUser String?  @map("description_user") // Текст для карточки
-  marketLinks     Json?    @map("market_links") // JSON: { "ozon": "...", "wb": "..." }
-  status          String   @default("draft") // draft / published
-  imageUrl        String?  @map("image_url") // Для будущего хранения изображений
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id      Int    @id @default(autoincrement())
+  brandId Int    @map("brand_id")
+  name    String
+  slug    String? @unique
+  brand   Brand  @relation(fields: [brandId], references: [id])
 
-  brand           Brand    @relation(fields: [brandId], references: [id])
+  // Основные данные
+  price           Int? // в рублях (950 → 950 ₽) - новое поле, может быть null для обратной совместимости
+  volume          String? // "30 мл", "50 мл"
+  description     String? // полное описание
+  descriptionUser String?  @map("description_user") // краткое для карточки
+  imageUrl        String?  @map("image_url") // главное фото
+  gallery         String[] @default([]) // массив ссылок на доп. фото
+  link            String? // ссылка на аптеку/Ozon/Wildberries
+
+  // Старые поля (для обратной совместимости)
+  line        String? // Линейка продукта
+  category    String // cleanser / toner / cream / spf / serum / mask
+  step        String // cleanser | toner | serum | moisturizer | spf | mask | treatment
+  marketLinks Json?   @map("market_links") // JSON: { "ozon": "...", "wb": "..." }
+
+  // Фильтры и теги
+  skinTypes         String[] @default([]) @map("skin_types") // [dry, oily, combo, sensitive, normal]
+  concerns          String[] @default([]) // [acne, pigmentation, barrier, dehydration, wrinkles, pores, redness, rosacea]
+  activeIngredients String[] @default([]) @map("active_ingredients") // ["азелаиновая кислота", "ниацинамид 10%", "ретинол 0.3%"]
+  avoidIf           String[] @default([]) @map("avoid_if") // [pregnant, breastfeeding, retinol_allergy, aha_bha_allergy]
+
+  // Для рекомендаций
+  isHero   Boolean @default(false) @map("is_hero") // топ-рекомендация для профиля
+  priority Int     @default(0) // чем выше — тем выше в выдаче
+
+  // Дополнительные фильтры (для обратной совместимости)
+  isFragranceFree  Boolean @default(false) @map("is_fragrance_free")
+  isNonComedogenic Boolean @default(false) @map("is_non_comedogenic")
+  priceSegment     String? @map("price_segment") // mass / mid / premium
+
+  // Статус
+  published Boolean @default(true) // новое поле для статуса
+  status    String  @default("draft") // draft / published (старое поле, для обратной совместимости)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([brandId])
   @@index([status])
+  @@index([published])
   @@index([step])
+  @@index([isHero, priority])
   @@map("products")
 }
 
@@ -193,14 +219,14 @@ model Product {
 // ============================================
 
 model RecommendationRule {
-  id            Int       @id @default(autoincrement())
-  name          String    // "Жирная кожа + акне 18–30"
+  id             Int      @id @default(autoincrement())
+  name           String // "Жирная кожа + акне 18–30"
   conditionsJson Json     @map("conditions_json") // JSON-логика условий
-  stepsJson     Json      @map("steps_json") // Описание шагов рутины
-  priority      Int       @default(0) // Приоритет при пересечении правил
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  stepsJson      Json     @map("steps_json") // Описание шагов рутины
+  priority       Int      @default(0) // Приоритет при пересечении правил
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   recommendationSessions RecommendationSession[]
 
@@ -209,16 +235,16 @@ model RecommendationRule {
 }
 
 model RecommendationSession {
-  id             Int       @id @default(autoincrement())
-  userId         String    @map("user_id")
-  profileId      String    @map("profile_id")
-  ruleId         Int?      @map("rule_id")
-  products       Json      // Массив product_id, которые показали
-  createdAt      DateTime  @default(now()) @map("created_at")
+  id        Int      @id @default(autoincrement())
+  userId    String   @map("user_id")
+  profileId String   @map("profile_id")
+  ruleId    Int?     @map("rule_id")
+  products  Json // Массив product_id, которые показали
+  createdAt DateTime @default(now()) @map("created_at")
 
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  profile        SkinProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  rule           RecommendationRule? @relation(fields: [ruleId], references: [id])
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile SkinProfile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  rule    RecommendationRule? @relation(fields: [ruleId], references: [id])
 
   @@index([userId])
   @@index([profileId])
@@ -230,14 +256,14 @@ model RecommendationSession {
 // ============================================
 
 model Admin {
-  id              Int       @id @default(autoincrement())
-  email           String?   @unique
-  telegramId      String?   @unique @map("telegram_id")
+  id               Int      @id @default(autoincrement())
+  email            String?  @unique
+  telegramId       String?  @unique @map("telegram_id")
   telegramUsername String?  @unique @map("telegram_username")
-  passwordHash    String?   @map("password_hash")
-  role            String    @default("editor") // admin / editor
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  passwordHash     String?  @map("password_hash")
+  role             String   @default("editor") // admin / editor
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("admins")
 }

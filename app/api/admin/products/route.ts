@@ -1,5 +1,5 @@
 // app/api/admin/products/route.ts
-// API для управления продуктами (CRUD)
+// API для управления продуктами (список и создание)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
@@ -7,47 +7,72 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-function verifyAdminToken(request: NextRequest): { valid: boolean; adminId?: string } {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                request.cookies.get('admin_token')?.value;
-
-  if (!token) {
-    return { valid: false };
-  }
-
+// Проверка авторизации админа
+async function verifyAdmin(request: NextRequest): Promise<boolean> {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { adminId: string; role?: string };
-    if (decoded.role !== 'admin') {
-      return { valid: false };
+    const token = request.cookies.get('admin_token')?.value || 
+                  request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return false;
     }
-    return { valid: true, adminId: decoded.adminId };
-  } catch {
-    return { valid: false };
+
+    jwt.verify(token, JWT_SECRET);
+    return true;
+  } catch (err) {
+    return false;
   }
 }
 
-// GET - список всех продуктов
+// GET - список продуктов
 export async function GET(request: NextRequest) {
-  const auth = verifyAdminToken(request);
-  if (!auth.valid) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    const isAdmin = await verifyAdmin(request);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const products = await prisma.product.findMany({
       include: {
-        brand: true,
+        brand: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    return NextResponse.json(products);
-  } catch (error) {
+    return NextResponse.json({
+      products: products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        price: p.price,
+        volume: p.volume,
+        descriptionUser: p.descriptionUser,
+        imageUrl: p.imageUrl,
+        step: p.step,
+        category: p.category,
+        skinTypes: p.skinTypes,
+        concerns: p.concerns,
+        activeIngredients: p.activeIngredients,
+        published: p.published,
+        isHero: p.isHero,
+        priority: p.priority,
+        brand: p.brand,
+      })),
+    });
+  } catch (error: any) {
     console.error('Error fetching products:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
@@ -55,32 +80,46 @@ export async function GET(request: NextRequest) {
 
 // POST - создание продукта
 export async function POST(request: NextRequest) {
-  const auth = verifyAdminToken(request);
-  if (!auth.valid) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
-    const data = await request.json();
+    const isAdmin = await verifyAdmin(request);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
     const {
-      name,
       brandId,
-      line,
-      category,
-      step,
+      name,
+      slug,
+      price,
+      volume,
+      description,
       descriptionUser,
       imageUrl,
-      marketLinks,
+      step,
+      category,
       skinTypes,
       concerns,
-      isNonComedogenic,
-      isFragranceFree,
-      status,
-    } = data;
+      activeIngredients,
+      avoidIf,
+      isHero,
+      priority,
+      published,
+    } = body;
+
+    if (!brandId || !name || !step || !category) {
+      return NextResponse.json(
+        { error: 'Missing required fields: brandId, name, step, category' },
+        { status: 400 }
+      );
+    }
 
     // Проверяем существование бренда
     const brand = await prisma.brand.findUnique({
-      where: { id: brandId },
+      where: { id: parseInt(brandId) },
     });
 
     if (!brand) {
@@ -90,34 +129,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Генерируем slug, если не указан
+    let finalSlug = slug;
+    if (!finalSlug) {
+      finalSlug = `${brand.name.toLowerCase().replace(/\s+/g, '-')}-${name.toLowerCase().replace(/\s+/g, '-')}`;
+    }
+
     const product = await prisma.product.create({
       data: {
+        brandId: parseInt(brandId),
         name,
-        brandId,
-        line,
-        category,
+        slug: finalSlug,
+        price: price ? parseInt(price) : null,
+        volume: volume || null,
+        description: description || null,
+        descriptionUser: descriptionUser || null,
+        imageUrl: imageUrl || null,
         step,
-        descriptionUser,
-        imageUrl,
-        marketLinks: marketLinks || {},
+        category,
         skinTypes: skinTypes || [],
         concerns: concerns || [],
-        isNonComedogenic: isNonComedogenic || false,
-        isFragranceFree: isFragranceFree || false,
-        status: status || 'draft',
+        activeIngredients: activeIngredients || [],
+        avoidIf: avoidIf || [],
+        isHero: isHero || false,
+        priority: priority ? parseInt(priority) : 0,
+        published: published !== false,
+        status: published !== false ? 'published' : 'draft',
       },
       include: {
-        brand: true,
+        brand: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
-    return NextResponse.json(product);
-  } catch (error) {
+    return NextResponse.json({ product }, { status: 201 });
+  } catch (error: any) {
     console.error('Error creating product:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
 }
-

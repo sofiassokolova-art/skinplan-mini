@@ -21,6 +21,7 @@
     "seed:questionnaire-full": "tsx scripts/seed-questionnaire-full.ts",
     "seed:questionnaire-v2": "tsx scripts/seed-questionnaire-v2.ts",
     "seed:products": "tsx scripts/seed-products.ts",
+    "seed:products-full": "tsx scripts/seed-products-full.ts",
     "seed:rules": "tsx scripts/seed-rules.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:admin-telegram": "tsx scripts/seed-admin-telegram.ts",

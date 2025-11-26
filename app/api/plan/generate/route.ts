@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCachedPlan, setCachedPlan } from '@/lib/cache';
+import { calculateSkinAxes, getDermatologistRecommendations, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 
 export const runtime = 'nodejs';
 
@@ -39,6 +40,19 @@ interface GeneratedPlan {
     concerns: string[];
     ageGroup: string;
   };
+  skinScores?: Array<{
+    axis: string;
+    value: number;
+    level: string;
+    title: string;
+    description: string;
+    color: string;
+  }>;
+  dermatologistRecommendations?: {
+    heroActives: string[];
+    mustHave: any[];
+    avoid: string[];
+  };
   weeks: PlanWeek[];
   infographic: {
     progress: Array<{
@@ -48,6 +62,9 @@ interface GeneratedPlan {
       hydration: number;
       pigmentation: number;
       wrinkles: number;
+      inflammation?: number;
+      photoaging?: number;
+      oiliness?: number;
     }>;
     chartConfig: {
       type: string;
@@ -154,6 +171,29 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       answers[code] = JSON.parse(JSON.stringify(answer.answerValues));
     }
   });
+
+  // Дерматологический анализ - рассчитываем 6 осей кожи
+  const questionnaireAnswers: QuestionnaireAnswers = {
+    skinType: profile.skinType || 'normal',
+    age: profile.ageGroup || answers.age || '25-34',
+    concerns: Array.isArray(answers.skin_concerns) ? answers.skin_concerns : [],
+    diagnoses: Array.isArray(answers.diagnoses) ? answers.diagnoses : [],
+    allergies: Array.isArray(answers.allergies) ? answers.allergies : [],
+    seasonChange: answers.season_change || answers.seasonChange,
+    habits: Array.isArray(answers.habits) ? answers.habits : [],
+    retinolReaction: answers.retinol_reaction || answers.retinolReaction,
+    pregnant: profile.hasPregnancy || false,
+    spfFrequency: answers.spf_frequency || answers.spfFrequency,
+    sunExposure: answers.sun_exposure || answers.sunExposure,
+    sensitivityLevel: profile.sensitivityLevel || 'low',
+    acneLevel: profile.acneLevel || 0,
+    ...answers, // дополнительные поля
+  };
+  
+  const skinScores = calculateSkinAxes(questionnaireAnswers);
+  const dermatologistRecs = getDermatologistRecommendations(skinScores, questionnaireAnswers);
+  
+  console.log('📊 Skin analysis scores:', skinScores.map(s => `${s.title}: ${s.value} (${s.level})`).join(', '));
 
   // Шаг 1: Классификация профиля (улучшенная логика)
   const goals = Array.isArray(answers.skin_goals) ? answers.skin_goals : [];
@@ -425,61 +465,93 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     });
   }
 
-  // Шаг 4: Генерация инфографики (динамическая на основе проблем)
-  const progressMetrics: Record<string, number[]> = {
-    acne: [25, 45, 70, 90],
-    pores: [20, 40, 65, 85],
-    hydration: [30, 55, 80, 95],
-    pigmentation: [15, 30, 55, 80],
-    wrinkles: [10, 25, 50, 75],
-  };
+  // Шаг 4: Генерация инфографики (динамическая на основе дерматологических осей)
+  // Используем дерматологические skin scores для инфографики
+  const inflammationScore = skinScores.find(s => s.axis === 'inflammation')?.value || 0;
+  const pigmentationScore = skinScores.find(s => s.axis === 'pigmentation')?.value || 0;
+  const hydrationScore = skinScores.find(s => s.axis === 'hydration')?.value || 0;
+  const photoagingScore = skinScores.find(s => s.axis === 'photoaging')?.value || 0;
+  const oilinessScore = skinScores.find(s => s.axis === 'oiliness')?.value || 50;
 
-  // Определяем актуальные метрики на основе проблем
+  // Прогресс по неделям на основе дерматологических осей
+  const infographicProgress = [1, 2, 3, 4].map(week => {
+    // Рассчитываем улучшение: от текущего значения к целевому (улучшение на 20-30% за неделю)
+    const weekProgress = (week / 4) * 0.25; // 25% улучшения к концу 4 недели
+    
+    // Для воспаления: уменьшаем (inverse progress)
+    const inflammationTarget = Math.max(0, inflammationScore - (inflammationScore * weekProgress));
+    
+    // Для пигментации: уменьшаем
+    const pigmentationTarget = Math.max(0, pigmentationScore - (pigmentationScore * weekProgress));
+    
+    // Для обезвоженности: уменьшаем (hydration score = уровень обезвоженности)
+    const hydrationTarget = Math.max(0, hydrationScore - (hydrationScore * weekProgress));
+    
+    // Для фотостарения: уменьшаем
+    const photoagingTarget = Math.max(0, photoagingScore - (photoagingScore * weekProgress));
+    
+    // Для жирности: нормализуем к 50 (нейтральное значение)
+    const oilinessTarget = oilinessScore > 50 
+      ? Math.max(50, oilinessScore - ((oilinessScore - 50) * weekProgress))
+      : Math.min(50, oilinessScore + ((50 - oilinessScore) * weekProgress));
+    
+    return {
+      week,
+      // Конвертируем в проценты улучшения (100 - текущее значение = уровень улучшения)
+      inflammation: Math.round(100 - inflammationTarget),
+      pigmentation: Math.round(100 - pigmentationTarget),
+      hydration: Math.round(100 - hydrationTarget),
+      photoaging: Math.round(100 - photoagingTarget),
+      oiliness: Math.round(oilinessTarget),
+      // Для обратной совместимости со старым форматом
+      acne: Math.round(100 - inflammationTarget),
+      pores: oilinessScore > 70 ? Math.round(100 - (oilinessScore - 50) * weekProgress) : 0,
+      wrinkles: Math.round(100 - photoagingTarget),
+    };
+  });
+
+  // Определяем активные метрики для графика на основе skin scores
   const activeMetrics: string[] = [];
-  if (primaryFocus === 'acne') activeMetrics.push('acne');
-  if (primaryFocus === 'pores') activeMetrics.push('pores');
-  if (concerns.includes('Сухость')) activeMetrics.push('hydration');
-  if (primaryFocus === 'pigmentation') activeMetrics.push('pigmentation');
-  if (primaryFocus === 'wrinkles') activeMetrics.push('wrinkles');
-
-  // Если нет активных метрик, используем общие
+  if (inflammationScore > 40) activeMetrics.push('inflammation');
+  if (pigmentationScore > 40) activeMetrics.push('pigmentation');
+  if (hydrationScore > 40) activeMetrics.push('hydration');
+  if (photoagingScore > 40) activeMetrics.push('photoaging');
+  if (Math.abs(oilinessScore - 50) > 20) activeMetrics.push('oiliness');
+  
+  // Если нет активных метрик, используем основные
   if (activeMetrics.length === 0) {
-    activeMetrics.push('hydration', 'pores');
+    activeMetrics.push('inflammation', 'hydration');
   }
 
-  const infographicProgress = [1, 2, 3, 4].map(week => ({
-    week,
-    acne: primaryFocus === 'acne' ? progressMetrics.acne[week - 1] : 0,
-    pores: primaryFocus === 'pores' ? progressMetrics.pores[week - 1] : 0,
-    hydration: concerns.includes('Сухость') ? progressMetrics.hydration[week - 1] : 50,
-    pigmentation: primaryFocus === 'pigmentation' ? progressMetrics.pigmentation[week - 1] : 0,
-    wrinkles: primaryFocus === 'wrinkles' ? progressMetrics.wrinkles[week - 1] : 0,
-  }));
-
-  // Конфигурация графика для Chart.js
+  // Конфигурация графика для Chart.js (обновленная с дерматологическими осями)
   const chartConfig = {
-    type: 'line',
+    type: 'line' as const,
     data: {
       labels: ['Неделя 1', 'Неделя 2', 'Неделя 3', 'Неделя 4'],
-      datasets: activeMetrics.map((metric, idx) => ({
-        label: {
-          acne: 'Акне',
-          pores: 'Поры',
-          hydration: 'Увлажнение',
-          pigmentation: 'Пигментация',
-          wrinkles: 'Морщины',
-        }[metric] || metric,
-        data: infographicProgress.map(p => (p as any)[metric]),
-        borderColor: [
-          '#0A5F59', // Зеленый
-          '#0891B2', // Синий
-          '#7C3AED', // Фиолетовый
-          '#EC4899', // Розовый
-          '#F59E0B', // Оранжевый
-        ][idx % 5],
-        backgroundColor: 'transparent',
-        tension: 0.4,
-      })),
+      datasets: activeMetrics.map((metric, idx) => {
+        const score = skinScores.find(s => {
+          if (metric === 'inflammation') return s.axis === 'inflammation';
+          if (metric === 'pigmentation') return s.axis === 'pigmentation';
+          if (metric === 'hydration') return s.axis === 'hydration';
+          if (metric === 'photoaging') return s.axis === 'photoaging';
+          if (metric === 'oiliness') return s.axis === 'oiliness';
+          return false;
+        });
+        
+        return {
+          label: score?.title || metric,
+          data: infographicProgress.map(p => (p as any)[metric] || 0),
+          borderColor: score?.color || [
+            '#EF4444', // Красный (воспаление)
+            '#8B5CF6', // Фиолетовый (пигментация)
+            '#3B82F6', // Синий (увлажнение)
+            '#EC4899', // Розовый (фотостарение)
+            '#10B981', // Зеленый (жирность)
+          ][idx % 5],
+          backgroundColor: 'transparent',
+          tension: 0.4,
+        };
+      }),
     },
     options: {
       responsive: true,
@@ -538,6 +610,19 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       primaryFocus,
       concerns: concerns.slice(0, 3),
       ageGroup: profile.ageGroup || '25-34',
+    },
+    skinScores: skinScores.map(s => ({
+      axis: s.axis,
+      value: s.value,
+      level: s.level,
+      title: s.title,
+      description: s.description,
+      color: s.color,
+    })),
+    dermatologistRecommendations: {
+      heroActives: dermatologistRecs.heroActives,
+      mustHave: dermatologistRecs.mustHave,
+      avoid: dermatologistRecs.avoid,
     },
     weeks,
     infographic: {
