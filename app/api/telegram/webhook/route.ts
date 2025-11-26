@@ -3,6 +3,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { prisma } from '@/lib/db';
+import { getUserIdFromTelegramId } from '@/lib/get-user-from-telegram-id';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 // Секретный токен опционален - используется только если установлен в переменных окружения
@@ -36,8 +38,41 @@ interface TelegramUpdate {
   };
 }
 
+// Сохранение сообщения в БД
+async function saveBotMessage(
+  userId: string,
+  telegramId: string,
+  chatId: string,
+  direction: 'incoming' | 'outgoing',
+  messageType: 'text' | 'command' | 'callback' | 'photo' | 'document',
+  content?: string,
+  rawData?: any
+) {
+  try {
+    await prisma.botMessage.create({
+      data: {
+        userId,
+        telegramId,
+        chatId,
+        direction,
+        messageType,
+        content: content || null,
+        rawData: rawData || null,
+      },
+    });
+  } catch (error) {
+    console.error('Error saving bot message:', error);
+    // Не блокируем выполнение, если не удалось сохранить сообщение
+  }
+}
+
 // Отправка сообщения через Telegram Bot API
-async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
+async function sendMessage(
+  chatId: number,
+  text: string,
+  replyMarkup?: any,
+  userId?: string
+) {
   if (!TELEGRAM_BOT_TOKEN) {
     console.error('TELEGRAM_BOT_TOKEN not configured');
     throw new Error('TELEGRAM_BOT_TOKEN not configured');
@@ -62,6 +97,20 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
     }
 
     const result = await response.json();
+    
+    // Сохраняем исходящее сообщение в БД
+    if (userId && result.ok && result.result) {
+      await saveBotMessage(
+        userId,
+        result.result.message_id.toString(),
+        chatId.toString(),
+        'outgoing',
+        'text',
+        text,
+        result
+      );
+    }
+    
     console.log('Message sent successfully:', result.ok);
     return result;
   } catch (error) {
@@ -91,10 +140,43 @@ export async function POST(request: NextRequest) {
       fromUsername: update.message?.from?.username,
     });
 
+    // Сохраняем входящее сообщение в БД
+    if (update.message && !update.message.from.is_bot) {
+      const telegramId = update.message.from.id;
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
+
+      if (userId) {
+        const messageType = update.message.text?.startsWith('/') ? 'command' : 'text';
+        await saveBotMessage(
+          userId,
+          update.message.message_id.toString(),
+          update.message.chat.id.toString(),
+          'incoming',
+          messageType,
+          update.message.text || undefined,
+          update.message
+        );
+      }
+    }
+
     // Обработка команды /start
     if (update.message?.text && (update.message.text === '/start' || update.message.text.startsWith('/start'))) {
       const chatId = update.message.chat.id;
       const firstName = update.message.from.first_name || 'друг';
+      const telegramId = update.message.from.id;
+      
+      // Получаем userId для сохранения исходящего сообщения
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
 
       console.log(`📨 Processing /start command from user ${firstName} (chatId: ${chatId})`);
       console.log(`🌐 Mini App URL: ${MINI_APP_URL}`);
@@ -133,7 +215,7 @@ export async function POST(request: NextRequest) {
         console.log(`📝 Message text length: ${welcomeText.length}`);
         console.log(`🔘 Reply markup:`, JSON.stringify(replyMarkup));
         
-        const result = await sendMessage(chatId, welcomeText, replyMarkup);
+        const result = await sendMessage(chatId, welcomeText, replyMarkup, userId || undefined);
         
         console.log(`✅ Welcome message sent successfully to chat ${chatId}:`, {
           ok: result.ok,
@@ -162,6 +244,13 @@ export async function POST(request: NextRequest) {
     // Обработка других команд (можно расширить)
     else if (update.message?.text === '/help') {
       const chatId = update.message.chat.id;
+      const telegramId = update.message.from.id;
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
       const helpText = `📖 <b>Помощь по SkinIQ</b>
 
 <b>Команды:</b>
@@ -172,7 +261,7 @@ export async function POST(request: NextRequest) {
 Нажмите на кнопку "Открыть SkinIQ" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями SkinIQ!`;
 
       try {
-        await sendMessage(chatId, helpText);
+        await sendMessage(chatId, helpText, undefined, userId || undefined);
         console.log(`✅ Help message sent to chat ${chatId}`);
       } catch (error: any) {
         console.error(`❌ Failed to send help message:`, error);

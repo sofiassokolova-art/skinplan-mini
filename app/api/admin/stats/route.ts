@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getMetricsStats } from '@/lib/admin-stats';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -133,6 +134,12 @@ export async function GET(request: NextRequest) {
       replacements: replacementsCount,
     });
 
+    // Получаем расширенные метрики
+    const metrics = await getMetricsStats().catch(err => {
+      console.error('❌ Error fetching metrics:', err);
+      return null;
+    });
+
     return NextResponse.json({
       stats: {
         users: usersCount,
@@ -140,7 +147,20 @@ export async function GET(request: NextRequest) {
         plans: plansCount,
         badFeedback: badFeedbackCount,
         replacements: replacementsCount,
+        // Расширенные метрики (если доступны)
+        ...(metrics && {
+          churnRate: metrics.churnRate,
+          avgLTV: metrics.avgLTV,
+          newUsersLast7Days: metrics.newUsersLast7Days,
+          newUsersLast30Days: metrics.newUsersLast30Days,
+          activeUsersLast7Days: metrics.activeUsersLast7Days,
+          activeUsersLast30Days: metrics.activeUsersLast30Days,
+          totalWishlistItems: metrics.totalWishlistItems,
+          totalProductFeedback: metrics.totalProductFeedback,
+          avgFeedbackRating: metrics.avgFeedbackRating,
+        }),
       },
+      topProducts: metrics?.topProducts || [],
       recentFeedback: recentFeedback.map((f) => ({
         id: f.id,
         user: {

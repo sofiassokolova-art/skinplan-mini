@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import MetricsDashboard from '@/components/MetricsDashboard';
 
 interface Stats {
   users: number;
@@ -12,6 +13,24 @@ interface Stats {
   plans: number;
   badFeedback: number;
   replacements: number;
+  churnRate?: number;
+  avgLTV?: number;
+  newUsersLast7Days?: number;
+  newUsersLast30Days?: number;
+  activeUsersLast7Days?: number;
+  activeUsersLast30Days?: number;
+  totalWishlistItems?: number;
+  totalProductFeedback?: number;
+  avgFeedbackRating?: number;
+}
+
+interface TopProduct {
+  id: number;
+  name: string;
+  brand: string;
+  wishlistCount: number;
+  feedbackCount: number;
+  avgRating: number;
 }
 
 interface Feedback {
@@ -37,6 +56,7 @@ export default function AdminDashboard() {
     replacements: 0,
   });
   const [recentFeedback, setRecentFeedback] = useState<Feedback[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,8 +73,9 @@ export default function AdminDashboard() {
 
         if (response.ok) {
           const data = await response.json();
-          setStats(data.stats);
+          setStats(data.stats || {});
           setRecentFeedback(data.recentFeedback || []);
+          setTopProducts(data.topProducts || []);
         }
       } catch (error) {
         console.error('Error loading stats:', error);
@@ -69,9 +90,31 @@ export default function AdminDashboard() {
     return <div className="text-center py-12">Загрузка...</div>;
   }
 
+  // Формируем данные для дашборда метрик
+  const metricsData = {
+    users: stats.users,
+    products: stats.products,
+    plans: stats.plans,
+    badFeedback: stats.badFeedback,
+    replacements: stats.replacements,
+    churnRate: stats.churnRate || 0,
+    avgLTV: stats.avgLTV || 0,
+    topProducts: topProducts,
+    newUsersLast7Days: stats.newUsersLast7Days || 0,
+    newUsersLast30Days: stats.newUsersLast30Days || 0,
+    activeUsersLast7Days: stats.activeUsersLast7Days || 0,
+    activeUsersLast30Days: stats.activeUsersLast30Days || 0,
+    totalWishlistItems: stats.totalWishlistItems || 0,
+    totalProductFeedback: stats.totalProductFeedback || 0,
+    avgFeedbackRating: stats.avgFeedbackRating || 0,
+  };
+
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold mb-8">Админ-панель SkinIQ</h1>
+      
+      {/* Дашборд метрик */}
+      <MetricsDashboard data={metricsData} />
       
       {/* Ключевые метрики */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10">
@@ -107,6 +150,9 @@ export default function AdminDashboard() {
         </Link>
         <Link href="/admin/users" className="bg-white border-2 border-blue-600 text-blue-600 p-8 rounded-3xl text-center font-bold text-xl hover:bg-blue-50 transition">
           Пользователи и планы
+        </Link>
+        <Link href="/admin/broadcasts" className="bg-white border-2 border-orange-600 text-orange-600 p-8 rounded-3xl text-center font-bold text-xl hover:bg-orange-50 transition">
+          Рассылки
         </Link>
       </div>
 

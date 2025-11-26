@@ -31,6 +31,7 @@ model User {
   wishlist               Wishlist[]
   wishlistFeedbacks      WishlistFeedback[]
   productReplacements    ProductReplacement[]
+  botMessages            BotMessage[]
 
   @@map("users")
 }
@@ -348,4 +349,47 @@ model ProductReplacement {
   @@index([oldProductId])
   @@index([newProductId])
   @@map("product_replacements")
+}
+
+// ============================================
+// ТЕЛЕГРАМ БОТ - ДИАЛОГИ И РАССЫЛКИ
+// ============================================
+
+model BotMessage {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  telegramId   String   @map("telegram_id") // ID сообщения в Telegram
+  chatId       String   @map("chat_id") // ID чата
+  direction    String   // 'incoming' | 'outgoing'
+  messageType  String   @map("message_type") // 'text' | 'command' | 'callback' | 'photo' | 'document'
+  content      String?  // Текст сообщения
+  rawData      Json?    @map("raw_data") // Полные данные от Telegram API
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([chatId])
+  @@index([createdAt])
+  @@index([direction])
+  @@map("bot_messages")
+}
+
+model BroadcastMessage {
+  id          String   @id @default(cuid())
+  title       String   // Название рассылки
+  message     String   // Текст сообщения
+  filtersJson Json     @map("filters_json") // JSON с фильтрами: { skinType: 'oily', ageGroup: '18_25', ... }
+  status      String   @default("draft") // 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled'
+  scheduledAt DateTime? @map("scheduled_at") // Когда отправить
+  sentCount   Int      @default(0) @map("sent_count") // Сколько отправлено
+  failedCount Int      @default(0) @map("failed_count") // Сколько не удалось отправить
+  totalCount  Int      @default(0) @map("total_count") // Всего получателей
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  sentAt      DateTime? @map("sent_at") // Когда завершена отправка
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("broadcast_messages")
 }
