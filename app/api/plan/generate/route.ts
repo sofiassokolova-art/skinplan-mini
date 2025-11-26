@@ -270,8 +270,12 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     });
   }
 
-  // Фильтруем продукты по критериям
-  const filteredProducts = allProducts.filter(product => {
+  // Если используем продукты из RecommendationSession, пропускаем фильтрацию
+  // (они уже прошли фильтрацию при создании сессии)
+  // Иначе фильтруем продукты по критериям
+  const filteredProducts = recommendationProducts.length > 0 
+    ? allProducts // Используем продукты из RecommendationSession без дополнительной фильтрации
+    : allProducts.filter(product => {
     // SPF универсален для всех типов кожи - пропускаем проверку типа кожи
     const isSPF = product.step === 'spf' || product.category === 'spf';
     
