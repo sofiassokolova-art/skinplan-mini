@@ -53,7 +53,7 @@ function generateWhyBetter(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const initData = request.headers.get('x-telegram-init-data');
@@ -74,7 +74,8 @@ export async function GET(
       );
     }
 
-    const productId = parseInt(params.productId);
+    const { productId: productIdParam } = await params;
+    const productId = parseInt(productIdParam);
     
     if (isNaN(productId)) {
       return NextResponse.json(
