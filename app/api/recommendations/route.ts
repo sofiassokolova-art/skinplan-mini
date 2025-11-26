@@ -193,6 +193,57 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // ПРОВЕРЯЕМ: если в сессии нет базовых продуктов, добавляем их
+      const requiredSteps = ['cleanser', 'moisturizer', 'spf'];
+      const missingSteps: string[] = [];
+      
+      for (const requiredStep of requiredSteps) {
+        if (!steps[requiredStep] || steps[requiredStep].length === 0) {
+          missingSteps.push(requiredStep);
+        }
+      }
+
+      // Если не хватает базовых продуктов, добавляем их
+      if (missingSteps.length > 0) {
+        console.log(`⚠️ Missing required steps in session: ${missingSteps.join(', ')}, adding fallback products...`);
+        
+        for (const missingStep of missingSteps) {
+          const fallbackProducts = await prisma.product.findMany({
+            where: {
+              status: 'published',
+              step: missingStep,
+              // SPF универсален, для остальных учитываем тип кожи
+              ...(missingStep !== 'spf' && profile.skinType ? {
+                skinTypes: { has: profile.skinType },
+              } : {}),
+            },
+            include: {
+              brand: true,
+            },
+            take: 1,
+            orderBy: {
+              createdAt: 'desc',
+            },
+          });
+
+          if (fallbackProducts.length > 0) {
+            const product = fallbackProducts[0];
+            steps[missingStep] = [{
+              id: product.id,
+              name: product.name,
+              brand: product.brand.name,
+              line: product.line,
+              category: product.category,
+              step: product.step,
+              description: product.descriptionUser,
+              marketLinks: product.marketLinks,
+              imageUrl: product.imageUrl,
+            }];
+            console.log(`✅ Added fallback ${missingStep}: ${product.name}`);
+          }
+        }
+      }
+
       const response = {
         profile_summary: {
           skinType: profile.skinType,

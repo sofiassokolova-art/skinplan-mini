@@ -268,15 +268,52 @@ export async function POST(request: NextRequest) {
         // Если правило не найдено, создаем fallback сессию с базовыми продуктами
         console.warn(`⚠️ No matching rule found for profile ${profile.id}, creating fallback session...`);
         
-        const fallbackProducts = await prisma.product.findMany({
-          where: { status: 'published' },
-          take: 5,
-          orderBy: { createdAt: 'desc' },
-        });
-
-        if (fallbackProducts.length > 0) {
-          const fallbackProductIds = fallbackProducts.map(p => p.id);
+        const fallbackProductIds: number[] = [];
+        
+        // ГАРАНТИРУЕМ наличие базовых шагов: cleanser, moisturizer, spf
+        const requiredSteps = ['cleanser', 'moisturizer', 'spf'];
+        
+        for (const step of requiredSteps) {
+          const products = await prisma.product.findMany({
+            where: {
+              status: 'published',
+              step: step,
+              // SPF универсален, для остальных учитываем тип кожи
+              ...(step !== 'spf' && profile.skinType ? {
+                skinTypes: { has: profile.skinType },
+              } : {}),
+            },
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+          });
           
+          if (products.length > 0) {
+            fallbackProductIds.push(products[0].id);
+            console.log(`✅ Added fallback ${step}: ${products[0].name}`);
+          }
+        }
+        
+        // Добавляем дополнительные продукты (toner, serum) если есть
+        const optionalSteps = ['toner', 'serum'];
+        for (const step of optionalSteps) {
+          const products = await prisma.product.findMany({
+            where: {
+              status: 'published',
+              step: step,
+              ...(profile.skinType ? {
+                skinTypes: { has: profile.skinType },
+              } : {}),
+            },
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+          });
+          
+          if (products.length > 0 && !fallbackProductIds.includes(products[0].id)) {
+            fallbackProductIds.push(products[0].id);
+          }
+        }
+
+        if (fallbackProductIds.length > 0) {
           await prisma.recommendationSession.create({
             data: {
               userId,
