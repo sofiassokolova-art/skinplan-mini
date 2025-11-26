@@ -86,8 +86,8 @@ export async function GET(request: NextRequest) {
         console.error('❌ Error counting products:', err);
         return 0;
       }),
-      prisma.recommendationSession.count().catch(err => {
-        console.error('❌ Error counting sessions:', err);
+      prisma.skinProfile.count().catch(err => {
+        console.error('❌ Error counting skin profiles:', err);
         return 0;
       }),
       prisma.wishlistFeedback.count({ where: { feedback: 'bought_bad' } }).catch(err => {

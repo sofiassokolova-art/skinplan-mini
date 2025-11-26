@@ -58,14 +58,17 @@ export default function ProductsAdmin() {
       }
 
       if (!response.ok) {
-        throw new Error('Ошибка загрузки продуктов');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Ошибка загрузки продуктов (${response.status})`);
       }
 
       const data = await response.json();
+      console.log('📦 Products loaded:', data.products?.length || 0);
       setProducts(data.products || []);
     } catch (err: any) {
-      console.error('Ошибка загрузки продуктов:', err);
+      console.error('❌ Ошибка загрузки продуктов:', err);
       setError(err.message || 'Ошибка загрузки продуктов');
+      setProducts([]); // Устанавливаем пустой массив при ошибке
     } finally {
       setLoading(false);
     }
@@ -154,6 +157,7 @@ export default function ProductsAdmin() {
       )}
 
       {/* Products Grid */}
+      {!error && (
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
@@ -336,8 +340,9 @@ export default function ProductsAdmin() {
           </div>
         ))}
       </div>
+      )}
 
-      {filteredProducts.length === 0 && (
+      {!error && filteredProducts.length === 0 && (
         <div style={{
           textAlign: 'center',
           padding: '48px',
