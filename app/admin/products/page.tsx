@@ -237,7 +237,7 @@ export default function ProductsAdmin() {
                 gap: '8px',
                 marginBottom: '16px',
               }}>
-                {product.skinTypes.slice(0, 3).map((type) => (
+                {(product.skinTypes || []).slice(0, 3).map((type) => (
                   <span
                     key={type}
                     style={{
