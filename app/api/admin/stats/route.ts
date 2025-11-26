@@ -3,11 +3,36 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Проверка авторизации админа
+async function verifyAdmin(request: NextRequest): Promise<boolean> {
+  try {
+    const token = request.cookies.get('admin_token')?.value || 
+                  request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return false;
+    }
+
+    jwt.verify(token, JWT_SECRET);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // Проверка авторизации (через middleware или здесь)
-    // Пока пропускаем для упрощения
+    const isAdmin = await verifyAdmin(request);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     const [
       usersCount,

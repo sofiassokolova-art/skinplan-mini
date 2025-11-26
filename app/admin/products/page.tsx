@@ -43,9 +43,11 @@ export default function ProductsAdmin() {
   const loadProducts = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/admin/products', {
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
@@ -277,7 +279,7 @@ export default function ProductsAdmin() {
               {/* Actions */}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <Link
-                  href={`/admin/products/${product.id}/edit`}
+                  href={`/admin/products/${product.id}`}
                   style={{
                     flex: 1,
                     backgroundColor: '#3B82F6',
@@ -297,8 +299,12 @@ export default function ProductsAdmin() {
                     if (!confirm('Вы уверены, что хотите удалить этот продукт?')) return;
                     
                     try {
+                      const token = localStorage.getItem('admin_token');
                       const response = await fetch(`/api/admin/products/${product.id}`, {
                         method: 'DELETE',
+                        headers: {
+                          ...(token && { Authorization: `Bearer ${token}` }),
+                        },
                         credentials: 'include',
                       });
                       
