@@ -230,11 +230,19 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // Шаг 2: Фильтрация продуктов
   console.log(`🔍 Filtering products for focus: ${primaryFocus}, skinType: ${profileClassification.skinType}, budget: ${profileClassification.budget}`);
   
-  // Получаем все опубликованные продукты
-  let allProducts = await prisma.product.findMany({
-    where: { status: 'published' },
-    include: { brand: true },
-  });
+  // Если есть продукты из RecommendationSession, используем их
+  // Иначе получаем все опубликованные продукты и фильтруем
+  let allProducts: any[];
+  if (recommendationProducts.length > 0) {
+    console.log('✅ Using products from RecommendationSession');
+    allProducts = recommendationProducts;
+  } else {
+    console.log('⚠️ No RecommendationSession products, fetching all published products');
+    allProducts = await prisma.product.findMany({
+      where: { status: 'published' },
+      include: { brand: true },
+    });
+  }
 
   // Фильтруем продукты по критериям
   const filteredProducts = allProducts.filter(product => {
@@ -275,10 +283,13 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     return bMatchesFocus - aMatchesFocus;
   });
 
-  // Ограничиваем количество продуктов (3 утро + 3 вечер = максимум 6)
-  const selectedProducts = sortedProducts.slice(0, 6);
+  // Если есть продукты из RecommendationSession, используем их все (не ограничиваем)
+  // Иначе ограничиваем количество продуктов (3 утро + 3 вечер = максимум 6)
+  const selectedProducts = recommendationProducts.length > 0 
+    ? sortedProducts // Используем все продукты из RecommendationSession
+    : sortedProducts.slice(0, 6); // Ограничиваем только если генерируем с нуля
   
-  console.log(`✅ Selected ${selectedProducts.length} products after filtering`);
+  console.log(`✅ Selected ${selectedProducts.length} products ${recommendationProducts.length > 0 ? 'from RecommendationSession' : 'after filtering'}`);
 
   // Группируем продукты по шагам
   const productsByStep: Record<string, typeof selectedProducts> = {};
