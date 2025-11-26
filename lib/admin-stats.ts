@@ -137,7 +137,7 @@ async function getTopProducts(limit: number = 10) {
   });
 
   // Получаем детали продуктов
-  const productIds = productsWithWishlist.map(p => p.productId);
+  const productIds = topWishlist.map(p => p.productId);
   const products = await prisma.product.findMany({
     where: {
       id: { in: productIds },
@@ -147,7 +147,18 @@ async function getTopProducts(limit: number = 10) {
     },
   });
 
-  // Формируем результат
+  // Получаем детали продуктов (только топ)
+  const productIds = topWishlist.map(p => p.productId);
+  const products = await prisma.product.findMany({
+    where: {
+      id: { in: productIds },
+    },
+    include: {
+      brand: true,
+    },
+  });
+
+  // Формируем мапу для быстрого доступа к количеству отзывов
   const feedbackMap = new Map(
     productsWithFeedback.map(f => [f.productId, f._count.id])
   );
