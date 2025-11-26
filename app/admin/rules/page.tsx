@@ -24,11 +24,8 @@ export default function AdminRules() {
 
   const loadRules = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/admin/rules', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {

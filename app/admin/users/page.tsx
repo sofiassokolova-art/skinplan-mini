@@ -40,11 +40,9 @@ export default function UsersAdmin() {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('admin_token');
       const response = await fetch(`/api/admin/users?page=${page}&limit=50`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });

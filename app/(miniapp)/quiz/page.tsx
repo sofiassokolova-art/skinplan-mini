@@ -91,18 +91,16 @@ export default function QuizPage() {
 
       // Сначала загружаем анкету (публичный маршрут)
       await loadQuestionnaire();
-
+      
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && questionnaire) {
+      // isRetakingQuiz будет установлен в отдельном useEffect после загрузки questionnaire
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
           const profile = await api.getCurrentProfile();
           if (profile && (profile as any).id) {
             // Профиль существует - это повторное прохождение, пропускаем все info screens
             setIsRetakingQuiz(true);
             console.log('✅ Повторное прохождение анкеты - профиль уже существует, пропускаем info screens');
-            
-            // Загружаем предыдущие ответы для повторного прохождения (после загрузки анкеты)
-            await loadPreviousAnswers();
           }
         } catch (err: any) {
           // Профиля нет - это первое прохождение, показываем info screens как обычно
@@ -135,6 +133,17 @@ export default function QuizPage() {
     });
   }, []);
 
+  // Загружаем предыдущие ответы при повторном прохождении анкеты
+  // Этот useEffect срабатывает после того, как questionnaire загружен и isRetakingQuiz установлен
+  useEffect(() => {
+    if (isRetakingQuiz && questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      console.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
+      loadPreviousAnswers(questionnaire).catch((err) => {
+        console.warn('⚠️ Ошибка загрузки предыдущих ответов:', err);
+      });
+    }
+  }, [isRetakingQuiz, questionnaire]);
+
   // Загружаем сохранённый прогресс из localStorage (fallback)
   const loadSavedProgress = () => {
     if (typeof window === 'undefined') return;
@@ -155,8 +164,12 @@ export default function QuizPage() {
   };
 
   // Загружаем предыдущие ответы для повторного прохождения анкеты
-  const loadPreviousAnswers = async () => {
-    if (!questionnaire) return;
+  const loadPreviousAnswers = async (quizData?: Questionnaire) => {
+    const quiz = quizData || questionnaire;
+    if (!quiz) {
+      console.warn('⚠️ Cannot load previous answers: questionnaire not loaded');
+      return;
+    }
     
     try {
       // Загружаем с параметром retaking=true, чтобы получить ответы даже при наличии профиля
@@ -263,6 +276,7 @@ export default function QuizPage() {
       const data = await api.getActiveQuestionnaire();
       setQuestionnaire(data as Questionnaire);
       setError(null); // Очищаем ошибки при успешной загрузке
+      return data as Questionnaire; // Возвращаем загруженную анкету
     } catch (err: any) {
       console.error('Ошибка загрузки анкеты:', err);
       // Если ошибка авторизации, не показываем её как критическую
@@ -271,6 +285,7 @@ export default function QuizPage() {
         console.warn('Неожиданная ошибка авторизации при загрузке анкеты');
       }
       setError(err?.message || 'Ошибка загрузки анкеты');
+      return null;
     } finally {
       setLoading(false);
     }
