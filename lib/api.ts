@@ -32,8 +32,12 @@ async function request<T>(
     const errorMessage = error.error || `HTTP ${response.status}`;
     
     // Для 401 ошибок добавляем более информативное сообщение
-    if (response.status === 401 && !initData) {
-      throw new Error('Missing Telegram initData. Please open the app through Telegram Mini App.');
+    if (response.status === 401) {
+      if (!initData) {
+        throw new Error('Откройте приложение через Telegram Mini App');
+      } else {
+        throw new Error('Ошибка авторизации. Обновите страницу');
+      }
     }
     
     // Для 429 (rate limit) добавляем информацию о времени ожидания

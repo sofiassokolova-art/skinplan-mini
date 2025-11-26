@@ -49,9 +49,14 @@ export default function CartPage() {
     } catch (err: any) {
       console.error('Error loading wishlist:', err);
       const errorMessage = err?.message || 'Не удалось загрузить избранное';
-      setError(errorMessage);
-      // Не показываем toast для 401 ошибок (пользователь не авторизован)
-      if (!errorMessage.includes('401') && !errorMessage.includes('Unauthorized')) {
+      
+      // Для ошибок авторизации просто показываем пустое состояние (пользователь не авторизован через Telegram)
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('initData')) {
+        console.log('⚠️ Пользователь не авторизован - показываем пустое состояние');
+        setWishlist([]);
+        setError(null); // Не показываем ошибку, показываем пустое состояние
+      } else {
+        setError(errorMessage);
         toast.error(errorMessage);
       }
     } finally {
