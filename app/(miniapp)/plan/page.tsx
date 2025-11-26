@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -154,6 +155,12 @@ export default function PlanPage() {
 
   const toggleWishlist = async (productId: number) => {
     try {
+      // Проверяем доступность Telegram Mini App
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        toast.error('Откройте приложение через Telegram Mini App');
+        return;
+      }
+
       const isInWishlist = wishlistProductIds.has(productId);
       
       if (isInWishlist) {
@@ -163,15 +170,25 @@ export default function PlanPage() {
           newSet.delete(productId);
           return newSet;
         });
-        // Toast уведомление будет показано через api.ts
+        toast.success('Удалено из избранного');
       } else {
         await api.addToWishlist(productId);
         setWishlistProductIds((prev) => new Set(prev).add(productId));
-        // Toast уведомление будет показано через api.ts
+        toast.success('Добавлено в избранное');
       }
+      
+      // Перезагружаем wishlist для синхронизации
+      await loadWishlist();
     } catch (err: any) {
       console.error('Error toggling wishlist:', err);
-      // Ошибка уже обработана в api.ts через toast
+      const errorMessage = err?.message || 'Не удалось изменить избранное';
+      
+      // Проверяем тип ошибки
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('initData')) {
+        toast.error('Откройте приложение через Telegram Mini App');
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
 
