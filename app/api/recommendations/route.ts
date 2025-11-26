@@ -176,7 +176,12 @@ export async function GET(request: NextRequest) {
       // Группируем продукты по шагам
       const steps: Record<string, any[]> = {};
       for (const product of products) {
-        const step = product.step || 'other';
+        // Нормализуем step: serum, treatment, essence -> serum для совместимости
+        let step = product.step || 'other';
+        if (step === 'treatment' || step === 'essence') {
+          step = 'serum'; // Объединяем treatment и essence в serum для главной страницы
+        }
+        
         if (!steps[step]) {
           steps[step] = [];
         }
@@ -186,7 +191,7 @@ export async function GET(request: NextRequest) {
           brand: product.brand.name,
           line: product.line,
           category: product.category,
-          step: product.step,
+          step: product.step, // Сохраняем оригинальный step
           description: product.descriptionUser,
           marketLinks: product.marketLinks,
           imageUrl: product.imageUrl,

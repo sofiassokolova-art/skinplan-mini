@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
           where: { id: existingProfile.id },
           data: {
             ...profileDataForPrisma,
+            version: existingProfile.version + 1, // Инкрементируем версию при обновлении профиля
             updatedAt: new Date(),
           },
         })
@@ -163,6 +164,19 @@ export async function POST(request: NextRequest) {
             ...profileDataForPrisma,
           },
         });
+    
+    // Очищаем кэш плана и рекомендаций при обновлении профиля
+    if (existingProfile) {
+      console.log(`🔄 Profile updated, clearing cache for userId: ${userId}, old version: ${existingProfile.version}, new version: ${profile.version}`);
+      try {
+        const { invalidateCache } = await import('@/lib/cache');
+        // Очищаем кэш для старой версии
+        await invalidateCache(userId, existingProfile.version);
+        console.log('✅ Cache cleared for old profile version');
+      } catch (cacheError) {
+        console.warn('⚠️ Failed to clear cache:', cacheError);
+      }
+    }
 
     // Автоматически создаем рекомендации после создания профиля
     // Импортируем логику из recommendations/route.ts

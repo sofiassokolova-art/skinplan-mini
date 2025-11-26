@@ -304,11 +304,13 @@ export default function HomePage() {
         });
       }
       
-      if (data?.steps?.treatment) {
+      // Проверяем treatment, serum, или essence для утреннего актива
+      if (data?.steps?.treatment || data?.steps?.serum || data?.steps?.essence) {
+        const activeProduct = data.steps.treatment?.[0] || data.steps.serum?.[0] || data.steps.essence?.[0];
         morning.push({
           id: 'morning-active',
           title: 'Актив',
-          subtitle: data.steps.treatment[0]?.name || 'Активное средство',
+          subtitle: activeProduct?.name || 'Активное средство',
           icon: ICONS.serum,
           howto: {
             steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
