@@ -58,8 +58,10 @@ export default function FeedbackModal({
   const loadAlternatives = async () => {
     setLoadingAlternatives(true);
     try {
-      const response = await api.getProductAlternatives(product.id);
-      setAlternatives(response.alternatives || []);
+      const response = await api.getProductAlternatives(product.id) as {
+        alternatives?: Alternative[];
+      };
+      setAlternatives(response?.alternatives || []);
     } catch (err: any) {
       console.error('Error loading alternatives:', err);
       toast.error('Не удалось загрузить альтернативы');
