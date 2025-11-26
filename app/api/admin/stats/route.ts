@@ -34,6 +34,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Логируем для отладки
+    console.log('📊 Fetching admin stats...');
+    
     const [
       usersCount,
       productsCount,
@@ -42,7 +45,10 @@ export async function GET(request: NextRequest) {
       replacementsCount,
       recentFeedback,
     ] = await Promise.all([
-      prisma.user.count(),
+      prisma.user.count().then(count => {
+        console.log('👥 Users count:', count);
+        return count;
+      }),
       prisma.product.count({ where: { published: true } }),
       prisma.recommendationSession.count(),
       prisma.wishlistFeedback.count({ where: { feedback: 'bought_bad' } }),
@@ -70,6 +76,15 @@ export async function GET(request: NextRequest) {
         },
       }),
     ]);
+
+    // Логируем результаты
+    console.log('📊 Stats fetched:', {
+      users: usersCount,
+      products: productsCount,
+      plans: plansCount,
+      badFeedback: badFeedbackCount,
+      replacements: replacementsCount,
+    });
 
     return NextResponse.json({
       stats: {
