@@ -97,6 +97,9 @@ export default function QuizPage() {
             // Профиль существует - это повторное прохождение, пропускаем все info screens
             setIsRetakingQuiz(true);
             console.log('✅ Повторное прохождение анкеты - профиль уже существует, пропускаем info screens');
+            
+            // Загружаем предыдущие ответы для повторного прохождения
+            await loadPreviousAnswers();
           }
         } catch (err: any) {
           // Профиля нет - это первое прохождение, показываем info screens как обычно
@@ -148,6 +151,40 @@ export default function QuizPage() {
       } catch (err) {
         console.error('Error loading saved progress:', err);
       }
+    }
+  };
+
+  // Загружаем предыдущие ответы для повторного прохождения анкеты
+  const loadPreviousAnswers = async () => {
+    if (!questionnaire) return;
+    
+    try {
+      // Загружаем с параметром retaking=true, чтобы получить ответы даже при наличии профиля
+      const response = await fetch(`/api/questionnaire/progress?retaking=true`, {
+        headers: {
+          'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+            ? window.Telegram.WebApp.initData
+            : '',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json() as {
+          progress?: {
+            answers: Record<number, string | string[]>;
+            questionIndex: number;
+            infoScreenIndex: number;
+          } | null;
+        };
+        
+        if (data?.progress?.answers && Object.keys(data.progress.answers).length > 0) {
+          console.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
+          // Заполняем форму предыдущими ответами
+          setAnswers(data.progress.answers);
+        }
+      }
+    } catch (err: any) {
+      console.warn('⚠️ Не удалось загрузить предыдущие ответы:', err);
     }
   };
 
@@ -1365,17 +1402,17 @@ export default function QuizPage() {
                   key={option.id}
                   onClick={() => {
                     handleAnswer(currentQuestion.id, option.value);
-                    if (isLastQuestion) {
-                      // При повторном прохождении пропускаем info screens
-                      if (!isRetakingQuiz) {
+                    // При повторном прохождении не делаем автопереход, только при первом прохождении
+                    if (!isRetakingQuiz) {
+                      if (isLastQuestion) {
                         const infoScreenAfter = getInfoScreenAfterQuestion(currentQuestion.code);
                         if (infoScreenAfter) {
                           setTimeout(handleNext, 300);
                         }
+                      } else {
+                        setTimeout(handleNext, 300);
                       }
-                      return;
                     }
-                    setTimeout(handleNext, 300);
                   }}
                   style={{
                     padding: '16px',

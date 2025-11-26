@@ -104,4 +104,52 @@ export const api = {
       }),
     });
   },
+
+  // Отзывы о плане
+  async submitPlanFeedback(rating: number, feedback?: string) {
+    return request('/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ rating, feedback }),
+    });
+  },
+
+  async getLastPlanFeedback() {
+    return request('/feedback');
+  },
+
+  // Избранное (Wishlist)
+  async getWishlist() {
+    return request('/wishlist');
+  },
+
+  async addToWishlist(productId: number) {
+    return request('/wishlist', {
+      method: 'POST',
+      body: JSON.stringify({ productId }),
+    });
+  },
+
+  async removeFromWishlist(productId: number) {
+    return request(`/wishlist?productId=${productId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async submitWishlistFeedback(productId: number, feedback: string) {
+    return request('/wishlist/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ productId, feedback }),
+    });
+  },
+
+  async getProductAlternatives(productId: number) {
+    return request(`/products/alternatives/${productId}`);
+  },
+
+  async replaceProductInPlan(oldProductId: number, newProductId: number) {
+    return request('/plan/replace-product', {
+      method: 'POST',
+      body: JSON.stringify({ oldProductId, newProductId }),
+    });
+  },
 };

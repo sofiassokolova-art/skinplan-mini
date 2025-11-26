@@ -26,14 +26,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // ВАЖНО: Если у пользователя уже есть профиль кожи (анкета завершена), не возвращаем прогресс
+    // Проверяем наличие профиля, но разрешаем загрузку ответов для повторного прохождения
+    // Если есть параметр ?retaking=true, возвращаем предыдущие ответы даже при наличии профиля
+    const retaking = request.nextUrl.searchParams.get('retaking') === 'true';
     const existingProfile = await prisma.skinProfile.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
 
-    if (existingProfile) {
-      // Анкета завершена, прогресс не нужен
+    if (existingProfile && !retaking) {
+      // Анкета завершена, прогресс не нужен (если не повторное прохождение)
       return NextResponse.json({
         progress: null,
       });

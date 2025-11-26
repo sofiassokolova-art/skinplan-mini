@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
+import PlanFeedbackPopup from '@/components/PlanFeedbackPopup';
 
 interface RoutineItem {
   id: string;
@@ -62,6 +63,7 @@ export default function HomePage() {
     questionIndex: number;
     infoScreenIndex: number;
   } | null>(null);
+  const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
 
   // Проверка незавершённой анкеты (объявляем до использования)
   const checkIncompleteQuiz = async (): Promise<boolean> => {
@@ -246,10 +248,85 @@ export default function HomePage() {
 
       // Загружаем рекомендации (initData передается автоматически в запросе)
       await loadRecommendations();
+
+      // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
+      await checkFeedbackPopup();
     };
 
     initAndLoad();
   }, [router]);
+
+  // Проверка, нужно ли показывать поп-ап с отзывом (раз в неделю)
+  const checkFeedbackPopup = async () => {
+    if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+      return;
+    }
+
+    try {
+      // Проверяем последний отзыв пользователя
+      const response = await api.getLastPlanFeedback() as {
+        lastFeedback?: {
+          id: string;
+          rating: number;
+          feedback: string | null;
+          createdAt: string;
+        } | null;
+      };
+
+      const lastFeedback = response?.lastFeedback;
+      const now = new Date();
+
+      if (!lastFeedback) {
+        // Если отзывов еще не было, показываем поп-ап через неделю после первого захода
+        const firstVisit = localStorage.getItem('first_visit_date');
+        if (!firstVisit) {
+          // Первый заход - сохраняем дату, но не показываем поп-ап
+          localStorage.setItem('first_visit_date', now.toISOString());
+          return;
+        }
+        
+        const firstVisitDate = new Date(firstVisit);
+        const daysSinceFirstVisit = Math.floor((now.getTime() - firstVisitDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Показываем поп-ап через 7 дней после первого захода
+        if (daysSinceFirstVisit >= 7) {
+          // Проверяем, не закрывал ли пользователь поп-ап сегодня
+          const closedToday = localStorage.getItem('feedback_popup_closed');
+          if (closedToday) {
+            const closedDate = new Date(closedToday);
+            const sameDay = closedDate.toDateString() === now.toDateString();
+            if (!sameDay) {
+              setShowFeedbackPopup(true);
+            }
+          } else {
+            setShowFeedbackPopup(true);
+          }
+        }
+      } else {
+        // Проверяем, прошла ли неделя с последнего отзыва
+        const lastFeedbackDate = new Date(lastFeedback.createdAt);
+        const daysSinceLastFeedback = Math.floor((now.getTime() - lastFeedbackDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Показываем поп-ап, если прошло 7 или более дней
+        if (daysSinceLastFeedback >= 7) {
+          // Проверяем, не закрывал ли пользователь поп-ап сегодня
+          const closedToday = localStorage.getItem('feedback_popup_closed');
+          if (closedToday) {
+            const closedDate = new Date(closedToday);
+            const sameDay = closedDate.toDateString() === now.toDateString();
+            if (!sameDay) {
+              setShowFeedbackPopup(true);
+            }
+          } else {
+            setShowFeedbackPopup(true);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ Error checking feedback popup:', err);
+      // Не показываем поп-ап при ошибке
+    }
+  };
 
   const resumeQuiz = () => {
     router.push('/quiz');
@@ -262,6 +339,15 @@ export default function HomePage() {
     setShowResumeScreen(false);
     setSavedProgress(null);
     router.push('/quiz');
+  };
+
+  // Функция для формирования полного названия продукта с брендом
+  const getProductFullName = (product?: { name: string; brand?: string }): string => {
+    if (!product) return '';
+    if (product.brand) {
+      return `${product.name}, ${product.brand}`;
+    }
+    return product.name;
   };
 
   const loadRecommendations = async () => {
@@ -278,7 +364,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-cleanser',
           title: 'Очищение',
-          subtitle: data.steps.cleanser[0]?.name || 'Очищающее средство',
+          subtitle: getProductFullName(data.steps.cleanser[0]) || 'Очищающее средство',
           icon: ICONS.cleanser,
           howto: {
             steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
@@ -293,7 +379,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-toner',
           title: 'Тонер',
-          subtitle: data.steps.toner[0]?.name || 'Тоник',
+          subtitle: getProductFullName(data.steps.toner[0]) || 'Тоник',
           icon: ICONS.toner,
           howto: {
             steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
@@ -310,7 +396,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-active',
           title: 'Актив',
-          subtitle: activeProduct?.name || 'Активное средство',
+          subtitle: getProductFullName(activeProduct) || 'Активное средство',
           icon: ICONS.serum,
           howto: {
             steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
@@ -325,7 +411,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-cream',
           title: 'Крем',
-          subtitle: data.steps.moisturizer[0]?.name || 'Увлажняющий крем',
+          subtitle: getProductFullName(data.steps.moisturizer[0]) || 'Увлажняющий крем',
           icon: ICONS.cream,
           howto: {
             steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
@@ -340,7 +426,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-spf',
           title: 'SPF-защита',
-          subtitle: data.steps.spf[0]?.name || 'SPF 50',
+          subtitle: getProductFullName(data.steps.spf[0]) || 'SPF 50',
           icon: ICONS.spf,
           howto: {
             steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
@@ -356,7 +442,7 @@ export default function HomePage() {
         evening.push({
           id: 'evening-cleanser',
           title: 'Очищение',
-          subtitle: data.steps.cleanser[0]?.name || 'Двойное очищение',
+          subtitle: getProductFullName(data.steps.cleanser[0]) || 'Двойное очищение',
           icon: ICONS.cleanser,
           howto: {
             steps: ['1) Масло: сухими руками распределить, эмульгировать водой', '2) Гель: умыть 30–40 сек, смыть'],
@@ -368,10 +454,11 @@ export default function HomePage() {
       }
       
       if (data?.steps?.treatment || data?.steps?.acid) {
+        const acidProduct = data.steps?.treatment?.[0] || data.steps?.acid?.[0];
         evening.push({
           id: 'evening-acid',
           title: 'Кислоты (по расписанию)',
-          subtitle: data.steps?.treatment?.[0]?.name || data.steps?.acid?.[0]?.name || 'AHA/BHA/PHА пилинг',
+          subtitle: getProductFullName(acidProduct) || 'AHA/BHA/PHА пилинг',
           icon: ICONS.acid,
           howto: {
             steps: ['Нанести тонким слоем на Т‑зону', 'Выдержать 5–10 минут (по переносимости)', 'Смыть/нейтрализовать, далее крем'],
@@ -383,10 +470,11 @@ export default function HomePage() {
       }
       
       if (data?.steps?.treatment || data?.steps?.serum) {
+        const serumProduct = data.steps?.treatment?.[0] || data.steps?.serum?.[0];
         evening.push({
           id: 'evening-serum',
           title: 'Сыворотка',
-          subtitle: data.steps?.treatment?.[0]?.name || data.steps?.serum?.[0]?.name || 'Пептидная / успокаивающая',
+          subtitle: getProductFullName(serumProduct) || 'Пептидная / успокаивающая',
           icon: ICONS.serum,
           howto: {
             steps: ['3–6 капель', 'Равномерно нанести, дать впитаться 1 мин'],
@@ -401,7 +489,7 @@ export default function HomePage() {
         evening.push({
           id: 'evening-cream',
           title: 'Крем',
-          subtitle: data.steps.moisturizer[0]?.name || 'Питательный крем',
+          subtitle: getProductFullName(data.steps.moisturizer[0]) || 'Питательный крем',
           icon: ICONS.cream,
           howto: {
             steps: ['Горох крема', 'Распределить, не втирая сильно'],
@@ -1031,6 +1119,19 @@ export default function HomePage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Поп-ап для оценки плана */}
+      {showFeedbackPopup && (
+        <PlanFeedbackPopup
+          onClose={() => {
+            setShowFeedbackPopup(false);
+            // Сохраняем дату закрытия, чтобы не показывать снова сегодня
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('feedback_popup_closed', new Date().toISOString());
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -104,16 +104,28 @@ export default function AdminLayout({
                   Продукты
                 </a>
                 <a
-                  href="/admin/questionnaire"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Анкета
-                </a>
-                <a
                   href="/admin/rules"
                   className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                 >
                   Правила
+                </a>
+                <a
+                  href="/admin/users"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Пользователи
+                </a>
+                <a
+                  href="/admin/feedback"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Отзывы
+                </a>
+                <a
+                  href="/admin/replacements"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Замены
                 </a>
               </div>
             </div>

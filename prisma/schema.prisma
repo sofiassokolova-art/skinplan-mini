@@ -27,6 +27,10 @@ model User {
   skinProfiles           SkinProfile[]
   userAnswers            UserAnswer[]
   recommendationSessions RecommendationSession[]
+  planFeedbacks          PlanFeedback[]
+  wishlist               Wishlist[]
+  wishlistFeedbacks      WishlistFeedback[]
+  productReplacements    ProductReplacement[]
 
   @@map("users")
 }
@@ -211,6 +215,12 @@ model Product {
   @@index([published])
   @@index([step])
   @@index([isHero, priority])
+  
+  wishlist            Wishlist[]
+  wishlistFeedbacks   WishlistFeedback[]
+  oldProductReplacements ProductReplacement[] @relation("OldProduct")
+  newProductReplacements ProductReplacement[] @relation("NewProduct")
+
   @@map("products")
 }
 
@@ -266,4 +276,76 @@ model Admin {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("admins")
+}
+
+// ============================================
+// ОТЗЫВЫ И ОЦЕНКИ ПЛАНА
+// ============================================
+
+model PlanFeedback {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  rating    Int      // 1-5 звезд
+  feedback  String?  // Опциональная обратная связь
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("plan_feedback")
+}
+
+// ============================================
+// ИЗБРАННОЕ И ОБРАТНАЯ СВЯЗЬ
+// ============================================
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  productId Int      @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@map("wishlist")
+}
+
+model WishlistFeedback {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  productId Int      @map("product_id")
+  feedback  String   // 'not_bought' | 'bought_love' | 'bought_ok' | 'bought_bad'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@map("wishlist_feedback")
+}
+
+model ProductReplacement {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  oldProductId Int      @map("old_product_id")
+  newProductId Int      @map("new_product_id")
+  reason       String   // 'feedback_bad' | 'out_of_stock' | 'manual'
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oldProduct  Product @relation("OldProduct", fields: [oldProductId], references: [id], onDelete: Cascade)
+  newProduct  Product @relation("NewProduct", fields: [newProductId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([oldProductId])
+  @@index([newProductId])
+  @@map("product_replacements")
 }

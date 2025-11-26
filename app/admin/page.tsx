@@ -6,26 +6,54 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+interface Stats {
+  users: number;
+  products: number;
+  plans: number;
+  badFeedback: number;
+  replacements: number;
+}
+
+interface Feedback {
+  id: string;
+  user: {
+    firstName: string | null;
+    lastName: string | null;
+  };
+  product: {
+    name: string;
+    brand: string;
+  };
+  feedback: string;
+  createdAt: string;
+}
+
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     users: 0,
     products: 0,
-    questionnaires: 0,
-    rules: 0,
+    plans: 0,
+    badFeedback: 0,
+    replacements: 0,
   });
+  const [recentFeedback, setRecentFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Загружаем статистику
     const loadStats = async () => {
       try {
-        // TODO: Добавить API для статистики
-        setStats({
-          users: 0,
-          products: 5,
-          questionnaires: 1,
-          rules: 4,
+        const token = localStorage.getItem('admin_token');
+        const response = await fetch('/api/admin/stats', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
+
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data.stats);
+          setRecentFeedback(data.recentFeedback || []);
+        }
       } catch (error) {
         console.error('Error loading stats:', error);
       } finally {
@@ -40,148 +68,84 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="px-4 py-6 sm:px-0">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Панель управления</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Управление продуктами, анкетой и правилами рекомендаций
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">U</span>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Пользователи
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats.users}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-8">Админ-панель SkinIQ</h1>
+      
+      {/* Ключевые метрики */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10">
+        <div className="bg-gradient-to-br from-purple-600 to-pink-600 text-white p-6 rounded-3xl">
+          <div className="text-4xl font-bold">{stats.users.toLocaleString()}</div>
+          <div>Пользователей</div>
         </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">P</span>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Продукты
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats.products}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
+        <div className="bg-emerald-600 text-white p-6 rounded-3xl">
+          <div className="text-4xl font-bold">{stats.plans}</div>
+          <div>Активных планов</div>
         </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">Q</span>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Анкеты
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats.questionnaires}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
+        <div className="bg-blue-600 text-white p-6 rounded-3xl">
+          <div className="text-4xl font-bold">{stats.products}</div>
+          <div>Продуктов в базе</div>
         </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">R</span>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Правила
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats.rules}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
+        <div className="bg-red-600 text-white p-6 rounded-3xl">
+          <div className="text-4xl font-bold">{stats.badFeedback}</div>
+          <div>Плохих отзывов</div>
+        </div>
+        <div className="bg-orange-600 text-white p-6 rounded-3xl">
+          <div className="text-4xl font-bold">{stats.replacements}</div>
+          <div>Замен продуктов</div>
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <Link
-          href="/admin/products"
-          className="block bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow"
-        >
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Управление продуктами
-            </h3>
-            <p className="text-sm text-gray-500">
-              Добавление, редактирование и удаление продуктов
-            </p>
-          </div>
+      {/* Быстрые действия */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <Link href="/admin/products" className="bg-white border-2 border-purple-600 text-purple-600 p-8 rounded-3xl text-center font-bold text-xl hover:bg-purple-50 transition">
+          Управление продуктами
         </Link>
+        <Link href="/admin/rules" className="bg-white border-2 border-emerald-600 text-emerald-600 p-8 rounded-3xl text-center font-bold text-xl hover:bg-emerald-50 transition">
+          Правила рекомендаций
+        </Link>
+        <Link href="/admin/users" className="bg-white border-2 border-blue-600 text-blue-600 p-8 rounded-3xl text-center font-bold text-xl hover:bg-blue-50 transition">
+          Пользователи и планы
+        </Link>
+      </div>
 
-        <Link
-          href="/admin/questionnaire"
-          className="block bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow"
-        >
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Управление анкетой
-            </h3>
-            <p className="text-sm text-gray-500">
-              Редактирование вопросов и вариантов ответов
-            </p>
+      {/* Последние отзывы */}
+      <div className="bg-white rounded-3xl p-6 shadow-lg">
+        <h2 className="text-xl font-bold mb-4">Последняя обратная связь</h2>
+        {recentFeedback.length === 0 ? (
+          <p className="text-gray-500">Пока нет отзывов</p>
+        ) : (
+          <div className="space-y-3">
+            {recentFeedback.map((f) => (
+              <div key={f.id} className="flex items-center justify-between py-3 border-b">
+                <div>
+                  <span className="font-medium">
+                    {f.user.firstName || ''} {f.user.lastName || ''}
+                  </span>
+                  <span className="text-gray-500">
+                    {' → '}
+                    {f.product.brand} {f.product.name}
+                  </span>
+                </div>
+                <span
+                  className={`px-4 py-2 rounded-full text-white text-sm font-bold ${
+                    f.feedback === 'bought_love'
+                      ? 'bg-pink-500'
+                      : f.feedback === 'bought_ok'
+                      ? 'bg-blue-500'
+                      : 'bg-gray-700'
+                  }`}
+                >
+                  {f.feedback === 'bought_love'
+                    ? 'Love'
+                    : f.feedback === 'bought_ok'
+                    ? 'OK'
+                    : 'Bad'}
+                </span>
+              </div>
+            ))}
           </div>
-        </Link>
-
-        <Link
-          href="/admin/rules"
-          className="block bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow"
-        >
-          <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Правила рекомендаций
-            </h3>
-            <p className="text-sm text-gray-500">
-              Настройка правил подбора продуктов
-            </p>
-          </div>
-        </Link>
+        )}
       </div>
     </div>
   );
 }
-
