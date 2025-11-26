@@ -42,6 +42,16 @@ export default function CartPage() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Проверяем, что приложение открыто через Telegram Mini App
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        console.log('⚠️ Telegram Mini App не доступен - показываем пустое состояние');
+        setWishlist([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+      
       const data = await api.getWishlist() as { items?: WishlistItemData[] };
       // Обрабатываем разные форматы ответа
       const items = data.items || (data as any).wishlist || [];
@@ -49,13 +59,19 @@ export default function CartPage() {
     } catch (err: any) {
       console.error('Error loading wishlist:', err);
       const errorMessage = err?.message || 'Не удалось загрузить избранное';
+      const errorStr = String(errorMessage).toLowerCase();
       
       // Для ошибок авторизации просто показываем пустое состояние (пользователь не авторизован через Telegram)
-      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('initData')) {
+      if (errorStr.includes('401') || 
+          errorStr.includes('unauthorized') || 
+          errorStr.includes('initdata') ||
+          errorStr.includes('откройте приложение') ||
+          errorStr.includes('telegram mini app')) {
         console.log('⚠️ Пользователь не авторизован - показываем пустое состояние');
         setWishlist([]);
         setError(null); // Не показываем ошибку, показываем пустое состояние
       } else {
+        // Только для реальных ошибок показываем сообщение
         setError(errorMessage);
         toast.error(errorMessage);
       }
@@ -149,19 +165,7 @@ export default function CartPage() {
         </p>
       </div>
 
-      {error && !error.includes('Unauthorized') && (
-        <div
-          style={{
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            color: '#991B1B',
-            padding: '16px',
-            borderRadius: '16px',
-            marginBottom: '24px',
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {/* Ошибки не показываем, так как они обрабатываются в loadWishlist */}
 
       {wishlist.length === 0 ? (
         // Пустое состояние
