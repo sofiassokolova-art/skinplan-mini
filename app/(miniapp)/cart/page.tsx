@@ -1,118 +1,253 @@
 // app/(miniapp)/cart/page.tsx
-// Страница корзины (заглушка)
+// Страница избранного (wishlist)
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import Link from 'next/link';
+import { api } from '@/lib/api';
+import WishlistItem from '@/components/WishlistItem';
+import toast from 'react-hot-toast';
+
+interface WishlistItemData {
+  id: string;
+  product: {
+    id: number;
+    name: string;
+    brand: {
+      id: number;
+      name: string;
+    };
+    price: number | null;
+    imageUrl: string | null;
+    link: string | null;
+    marketLinks: any;
+  };
+  feedback: string;
+  createdAt: string;
+}
 
 export default function CartPage() {
   const router = useRouter();
+  const [wishlist, setWishlist] = useState<WishlistItemData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadWishlist();
+  }, []);
+
+  const loadWishlist = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getWishlist() as { items: WishlistItemData[] };
+      setWishlist(data.items || []);
+    } catch (err: any) {
+      console.error('Error loading wishlist:', err);
+      setError('Ошибка загрузки избранного');
+      toast.error('Не удалось загрузить избранное');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemove = async (productId: number) => {
+    try {
+      await api.removeFromWishlist(productId);
+      setWishlist((prev) => prev.filter((item) => item.product.id !== productId));
+      toast.success('Продукт удалён из избранного');
+    } catch (err: any) {
+      console.error('Error removing from wishlist:', err);
+      toast.error('Ошибка удаления продукта');
+    }
+  };
+
+  const handleBuyAll = () => {
+    // Открываем все ссылки в новых вкладках
+    const links: string[] = [];
+    
+    wishlist.forEach((item) => {
+      const marketLinks = item.product.marketLinks as any || {};
+      if (marketLinks.ozon) links.push(marketLinks.ozon);
+      if (marketLinks.wildberries) links.push(marketLinks.wildberries);
+      if (marketLinks.apteka) links.push(marketLinks.apteka);
+      if (item.product.link && !marketLinks.ozon && !marketLinks.wildberries && !marketLinks.apteka) {
+        links.push(item.product.link);
+      }
+    });
+
+    // Открываем уникальные ссылки
+    const uniqueLinks = [...new Set(links)];
+    uniqueLinks.forEach((link) => {
+      window.open(link, '_blank');
+    });
+
+    if (uniqueLinks.length === 0) {
+      toast.error('Ссылки на покупку не найдены');
+    } else {
+      toast.success(`Открыто ${uniqueLinks.length} ссылок`);
+    }
+  };
+
+  const minPrice = wishlist.reduce((sum, item) => {
+    return sum + (item.product.price || 0);
+  }, 0);
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+          padding: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div style={{ fontSize: '18px', color: '#475467' }}>Загрузка...</div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '420px',
-        backgroundColor: 'rgba(255, 255, 255, 0.56)',
-        backdropFilter: 'blur(28px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '32px',
-        padding: '40px 28px',
-        textAlign: 'center',
-        boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
-      }}>
-        {/* Иконка корзины */}
-        <div style={{
-          fontSize: '64px',
-          marginBottom: '24px',
-        }}>
-          🛍️
-        </div>
-
-        {/* Заголовок */}
-        <h1 style={{
-          fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontWeight: 700,
-          fontSize: '28px',
-          lineHeight: '34px',
-          color: '#0A5F59',
-          margin: '0 0 12px 0',
-        }}>
-          Корзина
-        </h1>
-
-        {/* Описание */}
-        <p style={{
-          fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontWeight: 400,
-          fontSize: '16px',
-          lineHeight: '1.5',
-          color: '#475467',
-          margin: '0 0 32px 0',
-        }}>
-          Здесь будут отображаться товары из вашего плана ухода, которые вы хотите приобрести.
-        </p>
-
-        {/* Информация о функционале */}
-        <div style={{
-          backgroundColor: 'rgba(10, 95, 89, 0.08)',
-          borderRadius: '16px',
-          padding: '20px',
-          marginBottom: '24px',
-        }}>
-          <p style={{
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '14px',
-            lineHeight: '1.5',
-            color: '#0A5F59',
-            margin: '0',
-          }}>
-            Функция корзины находится в разработке. Скоро здесь можно будет добавлять товары из плана и оформлять заказ.
-          </p>
-        </div>
-
-        {/* Кнопка "Вернуться к плану" */}
-        <button
-          onClick={() => router.push('/plan')}
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        padding: '20px',
+        paddingBottom: wishlist.length > 0 ? '140px' : '120px',
+      }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: '24px' }}>
+        <h1
           style={{
-            width: '100%',
-            padding: '16px 24px',
-            borderRadius: '16px',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: '600',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            transition: 'all 0.2s ease',
-            boxShadow: '0 4px 12px rgba(10, 95, 89, 0.2)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#084b46';
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(10, 95, 89, 0.3)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#0A5F59';
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(10, 95, 89, 0.2)';
+            fontSize: '32px',
+            fontWeight: 'bold',
+            color: '#0A5F59',
+            marginBottom: '8px',
           }}
         >
-          Вернуться к плану
-        </button>
+          Ваши выбранные средства
+        </h1>
+        <p style={{ fontSize: '16px', color: '#475467' }}>
+          Мы подобрали их специально под вашу кожу
+        </p>
       </div>
+
+      {error && (
+        <div
+          style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            color: '#991B1B',
+            padding: '16px',
+            borderRadius: '16px',
+            marginBottom: '24px',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {wishlist.length === 0 ? (
+        // Пустое состояние
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            marginTop: '40px',
+          }}
+        >
+          <div style={{ fontSize: '64px', marginBottom: '24px' }}>🛍️</div>
+          <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0A5F59', marginBottom: '12px' }}>
+            Вы ещё ничего не добавили
+          </h3>
+          <p style={{ fontSize: '16px', color: '#475467', marginBottom: '32px' }}>
+            Нажмите 🛍️ в плане — средства появятся здесь
+          </p>
+          <Link
+            href="/plan"
+            style={{
+              display: 'inline-block',
+              backgroundColor: '#8B5CF6',
+              color: 'white',
+              padding: '16px 32px',
+              borderRadius: '16px',
+              textDecoration: 'none',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+            }}
+          >
+            Открыть план ухода
+          </Link>
+        </div>
+      ) : (
+        <>
+          {/* Список средств */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {wishlist.map((item) => (
+              <WishlistItem
+                key={item.id}
+                item={item}
+                onRemove={handleRemove}
+              />
+            ))}
+          </div>
+
+          {/* Кнопка "Купить всё" */}
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(28px)',
+              borderTop: '1px solid rgba(10, 95, 89, 0.1)',
+              padding: '20px',
+              boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.1)',
+              zIndex: 1000,
+            }}
+          >
+            <div style={{ maxWidth: '420px', margin: '0 auto' }}>
+              <button
+                onClick={handleBuyAll}
+                style={{
+                  width: '100%',
+                  padding: '20px',
+                  borderRadius: '24px',
+                  border: 'none',
+                  background: 'linear-gradient(to right, #8B5CF6, #EC4899)',
+                  color: 'white',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
+                  marginBottom: '12px',
+                }}
+              >
+                Купить всё в один клик ({wishlist.length} товара{wishlist.length > 1 ? '' : ''} • от {minPrice} ₽)
+              </button>
+              <p
+                style={{
+                  textAlign: 'center',
+                  fontSize: '14px',
+                  color: '#475467',
+                  margin: 0,
+                }}
+              >
+                Откроем лучшие цены в аптеках и маркетплейсах
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
-

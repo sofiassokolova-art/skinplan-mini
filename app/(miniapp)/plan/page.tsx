@@ -116,6 +116,7 @@ export default function PlanPage() {
   const [completedDays, setCompletedDays] = useState<Set<number>>(new Set());
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set([1]));
   const [error, setError] = useState<string | null>(null);
+  const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     console.log('📄 Plan page mounted, loading plan...');
@@ -830,55 +831,91 @@ export default function PlanPage() {
             paddingBottom: '8px',
             scrollSnapType: 'x mandatory',
           }}>
-            {plan.products.map((product) => (
-              <div
-                key={product.id}
-                style={{
-                  minWidth: '200px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.56)',
-                  backdropFilter: 'blur(28px)',
-                  borderRadius: '16px',
-                  padding: '16px',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  scrollSnapAlign: 'start',
-                }}
-              >
-                {product.imageUrl && (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
+            {plan.products.map((product) => {
+              const isInWishlist = wishlistProductIds.has(product.id);
+              return (
+                <div
+                  key={product.id}
+                  style={{
+                    minWidth: '200px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.56)',
+                    backdropFilter: 'blur(28px)',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    scrollSnapAlign: 'start',
+                    position: 'relative',
+                  }}
+                >
+                  {product.imageUrl && (
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      style={{
+                        width: '100%',
+                        height: '150px',
+                        objectFit: 'cover',
+                        borderRadius: '12px',
+                        marginBottom: '12px',
+                      }}
+                    />
+                  )}
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#475467',
+                    marginBottom: '4px',
+                  }}>
+                    {product.brand}
+                  </div>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    color: '#0A5F59',
+                    marginBottom: '8px',
+                  }}>
+                    {product.name}
+                  </div>
+                  {product.price && (
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#0A5F59',
+                      fontWeight: '600',
+                      marginBottom: '8px',
+                    }}>
+                      {product.price} ₽
+                    </div>
+                  )}
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#475467',
+                    marginBottom: '12px',
+                  }}>
+                    {product.available}
+                  </div>
+                  
+                  {/* Кнопка добавления в избранное */}
+                  <button
+                    onClick={() => toggleWishlist(product.id)}
                     style={{
-                      width: '100%',
-                      height: '150px',
-                      objectFit: 'cover',
+                      width: '48px',
+                      height: '48px',
                       borderRadius: '12px',
-                      marginBottom: '12px',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      backgroundColor: isInWishlist ? '#8B5CF6' : 'rgba(10, 95, 89, 0.1)',
+                      color: isInWishlist ? 'white' : '#0A5F59',
+                      fontSize: '24px',
+                      transition: 'all 0.2s',
                     }}
-                  />
-                )}
-                <div style={{
-                  fontSize: '12px',
-                  color: '#475467',
-                  marginBottom: '4px',
-                }}>
-                  {product.brand}
+                  >
+                    {isInWishlist ? '✓' : '🛍️'}
+                  </button>
                 </div>
-                <div style={{
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  color: '#0A5F59',
-                  marginBottom: '8px',
-                }}>
-                  {product.name}
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: '#475467',
-                }}>
-                  {product.available}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
