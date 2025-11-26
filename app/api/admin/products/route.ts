@@ -16,14 +16,17 @@ async function verifyAdmin(request: NextRequest): Promise<boolean> {
     
     if (!token) {
       console.log('❌ No admin token found in request');
+      console.log('   Cookie token:', cookieToken ? 'present' : 'missing');
+      console.log('   Header token:', headerToken ? 'present' : 'missing');
       return false;
     }
 
     try {
-      jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
+      console.log('✅ Admin token verified successfully:', { adminId: (decoded as any).adminId });
       return true;
-    } catch (verifyError) {
-      console.log('❌ Token verification failed:', verifyError);
+    } catch (verifyError: any) {
+      console.log('❌ Token verification failed:', verifyError.message);
       return false;
     }
   } catch (err) {
