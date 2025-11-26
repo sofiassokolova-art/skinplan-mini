@@ -36,23 +36,58 @@ export async function GET(request: NextRequest) {
 
     // Логируем для отладки
     console.log('📊 Fetching admin stats...');
+    console.log('🔗 DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    console.log('🔗 DATABASE_URL starts with postgresql:', process.env.DATABASE_URL?.startsWith('postgresql'));
+    
+    // Проверяем подключение к БД перед запросами
+    try {
+      await prisma.$connect();
+      console.log('✅ Prisma connected successfully');
+    } catch (connectError) {
+      console.error('❌ Prisma connection error:', connectError);
+      throw connectError;
+    }
+    
+    // Выполняем запросы последовательно для лучшей диагностики
+    let usersCount = 0;
+    try {
+      usersCount = await prisma.user.count();
+      console.log('👥 Users count:', usersCount);
+      
+      // Дополнительная проверка - получаем первого пользователя
+      const firstUser = await prisma.user.findFirst();
+      console.log('👤 First user exists:', !!firstUser);
+      if (firstUser) {
+        console.log('👤 First user telegramId:', firstUser.telegramId);
+      }
+    } catch (userError) {
+      console.error('❌ Error counting users:', userError);
+      throw userError;
+    }
     
     const [
-      usersCount,
       productsCount,
       plansCount,
       badFeedbackCount,
       replacementsCount,
       recentFeedback,
     ] = await Promise.all([
-      prisma.user.count().then(count => {
-        console.log('👥 Users count:', count);
-        return count;
+      prisma.product.count({ where: { published: true } }).catch(err => {
+        console.error('❌ Error counting products:', err);
+        return 0;
       }),
-      prisma.product.count({ where: { published: true } }),
-      prisma.recommendationSession.count(),
-      prisma.wishlistFeedback.count({ where: { feedback: 'bought_bad' } }),
-      prisma.productReplacement.count(),
+      prisma.recommendationSession.count().catch(err => {
+        console.error('❌ Error counting sessions:', err);
+        return 0;
+      }),
+      prisma.wishlistFeedback.count({ where: { feedback: 'bought_bad' } }).catch(err => {
+        console.error('❌ Error counting bad feedback:', err);
+        return 0;
+      }),
+      prisma.productReplacement.count().catch(err => {
+        console.error('❌ Error counting replacements:', err);
+        return 0;
+      }),
       prisma.wishlistFeedback.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
@@ -74,6 +109,9 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+      }).catch(err => {
+        console.error('❌ Error fetching recent feedback:', err);
+        return [];
       }),
     ]);
 
