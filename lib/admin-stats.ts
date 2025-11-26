@@ -136,17 +136,6 @@ async function getTopProducts(limit: number = 10) {
     },
   });
 
-  // Получаем детали продуктов
-  const productIds = topWishlist.map(p => p.productId);
-  const products = await prisma.product.findMany({
-    where: {
-      id: { in: productIds },
-    },
-    include: {
-      brand: true,
-    },
-  });
-
   // Получаем детали продуктов (только топ)
   const productIds = topWishlist.map(p => p.productId);
   const products = await prisma.product.findMany({
