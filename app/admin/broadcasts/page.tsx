@@ -132,7 +132,7 @@ export default function BroadcastsPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-16">
           {broadcasts.map((broadcast) => (
             <div
               key={broadcast.id}
