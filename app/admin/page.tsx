@@ -148,7 +148,7 @@ export default function AdminDashboard() {
   return (
     <div className="p-6 md:p-10">
       {/* Заголовок */}
-      <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-12">
+      <h1 className="text-4xl md:text-5xl font-black text-white/90 mb-12">
         SkinIQ Admin • {currentDate}
       </h1>
 
@@ -166,7 +166,7 @@ export default function AdminDashboard() {
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
             }}
           >
-            <div className="text-white/60 text-sm font-medium mb-2">{m.label}</div>
+            <div className="text-gray-400 text-sm font-medium mb-2">{m.label}</div>
             <div className={`text-5xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
               {m.value}
             </div>
@@ -190,7 +190,7 @@ export default function AdminDashboard() {
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
         }}
       >
-        <h2 className="text-2xl font-bold text-white mb-6">Рост пользователей за 30 дней</h2>
+        <h2 className="text-2xl font-bold text-gray-200 mb-6">Рост пользователей за 30 дней</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={userGrowth}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -234,10 +234,10 @@ export default function AdminDashboard() {
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
         }}
       >
-        <h2 className="text-2xl font-bold text-white mb-6">Последние действия</h2>
+        <h2 className="text-2xl font-bold text-gray-200 mb-6">Последние действия</h2>
         <div className="space-y-4">
           {recentFeedback.length === 0 ? (
-            <p className="text-white/60 text-center py-8">Нет отзывов</p>
+            <p className="text-gray-400 text-center py-8">Нет отзывов</p>
           ) : (
             recentFeedback.slice(0, 10).map((f) => (
               <div
@@ -255,7 +255,7 @@ export default function AdminDashboard() {
                     <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
                       {(f.user.firstName?.[0] || f.user.lastName?.[0] || '?').toUpperCase()}
                     </div>
-                    <span className="text-white font-medium">
+                    <span className="text-gray-200 font-medium">
                       {f.user.firstName || ''} {f.user.lastName || ''}
                     </span>
                   </div>
@@ -270,12 +270,12 @@ export default function AdminDashboard() {
                     )}>
                       {f.feedback === 'bought_love' ? 'Love' : f.feedback === 'bought_ok' ? 'OK' : 'Bad'}
                     </span>
-                    <span className="text-white/40 text-xs">
+                    <span className="text-gray-500 text-xs">
                       {new Date(f.createdAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 </div>
-                <p className="text-white/80 text-sm ml-[52px]">
+                <p className="text-gray-300 text-sm ml-[52px]">
                   {f.product.brand} {f.product.name}
                 </p>
               </div>

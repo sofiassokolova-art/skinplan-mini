@@ -64,13 +64,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #000000 !important;
-  color: #ffffff !important;
+  color: #d1d5db !important; /* Светло-серый вместо белого */
 }
 
-/* Все тексты в админке белые по умолчанию */
+/* Все тексты в админке светло-серые по умолчанию */
 .admin-layout,
 .admin-layout * {
-  color: #ffffff !important;
+  color: #d1d5db !important; /* Светло-серый для комфорта */
 }
 
 /* Исключения для градиентов и специальных цветов */
@@ -103,7 +103,17 @@ body {
 .admin-layout .text-pink-300,
 .admin-layout .text-blue-300,
 .admin-layout .text-red-300,
-.admin-layout [class*="text-"] {
+.admin-layout .text-yellow-400,
+.admin-layout .text-blue-400,
+.admin-layout .text-white,
+.admin-layout [class*="text-white"],
+.admin-layout [class*="text-gray"],
+.admin-layout [class*="text-emerald"],
+.admin-layout [class*="text-red"],
+.admin-layout [class*="text-purple"],
+.admin-layout [class*="text-pink"],
+.admin-layout [class*="text-blue"],
+.admin-layout [class*="text-yellow"] {
   color: inherit !important;
 }
 

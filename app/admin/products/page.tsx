@@ -330,7 +330,7 @@ export default function ProductsAdmin() {
       <div className={cn(glassCard, 'p-4')}>
         <div className="flex items-center gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={20} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
               placeholder="Поиск по названию, бренду, категории..."
