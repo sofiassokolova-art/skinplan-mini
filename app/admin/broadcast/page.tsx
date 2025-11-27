@@ -222,7 +222,7 @@ export default function BroadcastAdmin() {
   }, [filters.skinTypes, filters.concerns, filters.planDay, filters.lastActive, filters.hasPurchases]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <div>
         <h1 className="text-4xl font-bold text-white mb-2">Новая рассылка</h1>
         <p className="text-white/60">Персонализированные сообщения пользователям</p>
@@ -256,7 +256,7 @@ export default function BroadcastAdmin() {
       {/* 1. Фильтры пользователей */}
       {!filters.sendToAll && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-6">
         <div className={cn(glassCard, 'p-6')}>
           <h3 className="text-xl font-bold text-white mb-4">Тип кожи</h3>
           <div className="space-y-2">
