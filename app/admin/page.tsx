@@ -102,47 +102,80 @@ export default function AdminDashboard() {
     );
   }
 
-  return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Дашборд</h1>
-          <p className="text-white/60">Обзор системы SkinIQ</p>
-        </div>
-        <button
-          onClick={loadStats}
-          className="px-6 py-3 bg-black/80 backdrop-blur-xl border border-white/20 text-white rounded-xl hover:bg-black/90 hover:border-white/30 transition-all duration-300"
-        >
-          Обновить
-        </button>
-      </div>
+  // Форматируем дату
+  const currentDate = new Date().toLocaleDateString('ru-RU', { 
+    day: 'numeric', 
+    month: 'long', 
+    year: 'numeric' 
+  });
 
-      {/* Метрики */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {metricCards.map((card) => {
-          const Icon = card.icon;
-          const value = stats[card.key as keyof Stats] || 0;
-          
-          return (
-            <div
-              key={card.key}
-              className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:bg-black/50 hover:border-white/20 transition-all duration-300 shadow-lg shadow-purple-500/10"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className={cn('p-3 rounded-xl bg-gradient-to-r', card.color)}>
-                  <Icon className="text-white" size={24} />
-                </div>
-                <span className="text-3xl font-bold text-white">{value.toLocaleString()}</span>
-              </div>
-              <p className="text-white/60 text-sm">{card.label}</p>
+  // Подготовка данных для метрик с изменениями
+  const metricsData = [
+    { 
+      label: 'Всего пользователей', 
+      value: stats.users || 0, 
+      change: stats.newUsersLast30Days ? `+${Math.round((stats.newUsersLast30Days / Math.max(stats.users - stats.newUsersLast30Days, 1)) * 100)}%` : null,
+      color: 'from-purple-600 to-purple-400'
+    },
+    { 
+      label: 'Активных планов', 
+      value: stats.plans || 0, 
+      change: null,
+      color: 'from-pink-600 to-rose-400'
+    },
+    { 
+      label: 'Продуктов в базе', 
+      value: stats.products || 0, 
+      change: stats.products === 120 ? 'new' : null,
+      color: 'from-emerald-600 to-teal-400'
+    },
+    { 
+      label: 'Плохих отзывов (Bad)', 
+      value: stats.badFeedback || 0, 
+      change: null,
+      color: 'from-red-600 to-orange-500'
+    },
+    { 
+      label: 'Замен продуктов', 
+      value: stats.replacements || 0, 
+      change: null,
+      color: 'from-blue-600 to-cyan-400'
+    },
+    { 
+      label: 'Доход партнёрки', 
+      value: stats.revenue ? `₽ ${stats.revenue.toLocaleString('ru-RU')}` : '₽ 0', 
+      change: null,
+      color: 'from-amber-600 to-yellow-400'
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#000000] p-6 md:p-10">
+      {/* Заголовок */}
+      <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-12">
+        SkinIQ Admin • {currentDate}
+      </h1>
+
+      {/* 6 больших метрик */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
+        {metricsData.map((m, i) => (
+          <div key={i} className="glass glass-hover rounded-3xl p-8">
+            <div className="text-white/60 text-sm font-medium mb-2">{m.label}</div>
+            <div className={`text-5xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
+              {m.value}
             </div>
-          );
-        })}
+            {m.change && (
+              <div className={`text-sm font-medium mt-4 ${m.change.startsWith('+') || m.change === 'new' ? 'text-emerald-400' : 'text-red-400'}`}>
+                {m.change === 'new' ? '✓ Новый сид' : m.change + ' за 28 дней'}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* График роста пользователей */}
-      <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg shadow-purple-500/10">
-        <h2 className="text-xl font-bold text-white mb-6">Рост пользователей</h2>
+      <div className="glass rounded-3xl p-8 mb-12">
+        <h2 className="text-2xl font-bold text-white mb-6">Рост пользователей за 30 дней</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={userGrowth}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -175,9 +208,9 @@ export default function AdminDashboard() {
         </ResponsiveContainer>
       </div>
 
-      {/* Последние отзывы */}
-      <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg shadow-purple-500/10">
-        <h2 className="text-xl font-bold text-white mb-6">Последние отзывы</h2>
+      {/* Последние действия (отзывы) */}
+      <div className="glass rounded-3xl p-8">
+        <h2 className="text-2xl font-bold text-white mb-6">Последние действия</h2>
         <div className="space-y-4">
           {recentFeedback.length === 0 ? (
             <p className="text-white/60 text-center py-8">Нет отзывов</p>
@@ -185,28 +218,35 @@ export default function AdminDashboard() {
             recentFeedback.slice(0, 10).map((f) => (
               <div
                 key={f.id}
-                className="p-4 bg-black/30 backdrop-blur-xl border border-white/10 rounded-xl hover:bg-black/40 hover:border-white/20 transition-colors"
+                className="p-4 glass-hover rounded-xl mb-3"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">
-                    {f.user.firstName || ''} {f.user.lastName || ''}
-                  </span>
-                  <span className={cn(
-                    'px-3 py-1 rounded-full text-xs font-medium',
-                    f.feedback === 'bought_love' 
-                      ? 'bg-pink-500/20 text-pink-300'
-                      : f.feedback === 'bought_ok'
-                      ? 'bg-blue-500/20 text-blue-300'
-                      : 'bg-red-500/20 text-red-300'
-                  )}>
-                    {f.feedback === 'bought_love' ? 'Love' : f.feedback === 'bought_ok' ? 'OK' : 'Bad'}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                      {(f.user.firstName?.[0] || f.user.lastName?.[0] || '?').toUpperCase()}
+                    </div>
+                    <span className="text-white font-medium">
+                      {f.user.firstName || ''} {f.user.lastName || ''}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={cn(
+                      'px-3 py-1 rounded-full text-xs font-medium',
+                      f.feedback === 'bought_love' 
+                        ? 'bg-pink-500/20 text-pink-300'
+                        : f.feedback === 'bought_ok'
+                        ? 'bg-blue-500/20 text-blue-300'
+                        : 'bg-red-500/20 text-red-300'
+                    )}>
+                      {f.feedback === 'bought_love' ? 'Love' : f.feedback === 'bought_ok' ? 'OK' : 'Bad'}
+                    </span>
+                    <span className="text-white/40 text-xs">
+                      {new Date(f.createdAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
                 </div>
-                <p className="text-white/80 text-sm mb-1">
+                <p className="text-white/80 text-sm ml-13">
                   {f.product.brand} {f.product.name}
-                </p>
-                <p className="text-white/40 text-xs">
-                  {new Date(f.createdAt).toLocaleDateString('ru-RU')}
                 </p>
               </div>
             ))

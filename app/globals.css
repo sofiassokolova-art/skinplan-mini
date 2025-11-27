@@ -5,6 +5,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Шрифты для админки 2025 */
+html {
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+
+.font-metrics {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Glassmorphism стили */
+.glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.glass-hover {
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 16px 48px rgba(139, 92, 246, 0.25);
+  transform: translateY(-8px);
+}
+
+/* Заголовки */
+h1, h2, h3 {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* Неон-текст */
+.neon-purple {
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+}
+
+.neon-pink {
+  text-shadow: 0 0 20px rgba(236, 72, 153, 0.6);
+}
+
 :root {
   --color-primary: #0A5F59;
   --color-secondary: #475467;
