@@ -161,8 +161,8 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">{children}</div>
+      <main className="flex-1 overflow-auto bg-[#000000]">
+        {children}
       </main>
     </div>
   );

@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { Users, Package, FileText, MessageSquare, RefreshCw, TrendingUp } from 'lucide-react';
-import { cn, glassCard, glassCardHover } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Stats {
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#000000] p-6 md:p-10">
+    <div className="p-6 md:p-10">
       {/* Заголовок */}
       <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-12">
         SkinIQ Admin • {currentDate}
