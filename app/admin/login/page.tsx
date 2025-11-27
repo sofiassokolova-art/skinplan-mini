@@ -62,7 +62,14 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Ошибка авторизации');
+        const errorMessage = data.error || 'Ошибка авторизации';
+        
+        // Красивое сообщение если не в whitelist
+        if (errorMessage.includes('whitelist') || errorMessage.includes('Unauthorized')) {
+          setError('Вы не в списке администраторов. Обратитесь к владельцу для добавления в whitelist.');
+        } else {
+          setError(errorMessage);
+        }
         setLoading(false);
         return;
       }
@@ -104,12 +111,13 @@ export default function AdminLogin() {
         <div className="space-y-4">
           <div className="p-4 bg-white/5 rounded-xl border border-white/10">
             <p className="text-white/80 text-sm mb-2">
-              Для входа в админ-панель необходимо:
+              Для входа в админ-панель:
             </p>
-            <ul className="text-white/60 text-sm space-y-1 list-disc list-inside">
-              <li>Открыть эту страницу через Telegram бота</li>
-              <li>Быть в whitelist администраторов</li>
-            </ul>
+            <ol className="text-white/60 text-sm space-y-2 list-decimal list-inside">
+              <li>Напишите боту @skiniq_bot команду <code className="bg-white/10 px-1 rounded">/admin</code></li>
+              <li>Нажмите кнопку "Открыть админку" в ответе бота</li>
+              <li>Или убедитесь, что вы в whitelist администраторов</li>
+            </ol>
           </div>
 
           <button

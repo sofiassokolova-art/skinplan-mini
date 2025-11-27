@@ -290,7 +290,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, processed: 'start_command' });
     }
 
-    // Обработка других команд (можно расширить)
+    // Обработка команды /admin
+    else if (update.message?.text === '/admin') {
+      const chatId = update.message.chat.id;
+      const telegramId = update.message.from.id;
+      
+      // Проверяем, есть ли пользователь в whitelist
+      const isAdmin = await prisma.adminWhitelist.findFirst({
+        where: {
+          OR: [
+            { telegramId: telegramId.toString() },
+            { phoneNumber: update.message.from.id.toString() },
+          ],
+          isActive: true,
+        },
+      });
+
+      if (!isAdmin) {
+        const errorText = `❌ <b>Доступ запрещён</b>\n\nВы не в списке администраторов.`;
+        try {
+          await sendMessage(chatId, errorText);
+        } catch (error: any) {
+          console.error(`❌ Failed to send admin error message:`, error);
+        }
+        return NextResponse.json({ ok: true, processed: 'admin_command_denied' });
+      }
+
+      const adminText = `🔐 <b>Вход в админ-панель</b>\n\nНажмите на кнопку ниже, чтобы открыть админ-панель:`;
+
+      const replyMarkup = {
+        inline_keyboard: [
+          [
+            {
+              text: '🚀 Открыть админку',
+              web_app: { url: MINI_APP_URL + '/admin' },
+            },
+          ],
+        ],
+      };
+
+      try {
+        await sendMessage(chatId, adminText, replyMarkup);
+        console.log(`✅ Admin command processed for chat ${chatId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to send admin message:`, error);
+      }
+      
+      return NextResponse.json({ ok: true, processed: 'admin_command' });
+    }
+
+    // Обработка команды /help
     else if (update.message?.text === '/help') {
       const chatId = update.message.chat.id;
       const telegramId = update.message.from.id;

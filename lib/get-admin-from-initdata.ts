@@ -53,27 +53,14 @@ export async function getAdminFromInitData(
     return { valid: false, error: 'Not in admin whitelist' };
   }
 
-  // Создаем или обновляем запись админа
-  const admin = await prisma.admin.upsert({
-    where: { telegramId: user.id.toString() },
-    update: {
-      telegramUsername: user.username,
-      updatedAt: new Date(),
-    },
-    create: {
-      telegramId: user.id.toString(),
-      telegramUsername: user.username,
-      role: whitelistEntry.role || 'admin',
-    },
-  });
-
+  // Возвращаем данные из whitelist
   return {
     valid: true,
     admin: {
-      id: admin.id.toString(),
-      telegramId: admin.telegramId || user.id.toString(),
-      phoneNumber: whitelistEntry.phoneNumber,
-      role: admin.role,
+      id: whitelistEntry.id.toString(),
+      telegramId: whitelistEntry.telegramId || user.id.toString(),
+      phoneNumber: whitelistEntry.phoneNumber || '',
+      role: whitelistEntry.role || 'admin',
     },
   };
 }
