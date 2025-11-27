@@ -157,6 +157,43 @@ export default function SupportAdmin() {
     router.push(`/admin/users?userId=${userId}`);
   };
 
+  const handleStatusChange = async (newStatus: string) => {
+    if (!selectedChat) return;
+    
+    if (newStatus === 'closed' && !confirm('Вы уверены, что хотите закрыть это обращение? При новом сообщении от пользователя будет создано новое обращение.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch('/api/admin/support/status', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          chatId: selectedChat.id,
+          status: newStatus,
+        }),
+      });
+
+      if (response.ok) {
+        // Обновляем статус в текущем чате
+        setSelectedChat({ ...selectedChat, status: newStatus });
+        // Обновляем список чатов
+        await loadChats();
+      } else {
+        const error = await response.json();
+        alert('Ошибка изменения статуса: ' + (error.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Ошибка изменения статуса');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
