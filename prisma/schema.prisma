@@ -286,7 +286,7 @@ model Admin {
 
 model AdminWhitelist {
   id          Int      @id @default(autoincrement())
-  phoneNumber String   @unique @map("phone_number") // +79124483696
+  phoneNumber String?  @unique @map("phone_number") // +79124483696 (опционально)
   telegramId  String?  @unique @map("telegram_id") // Опционально для связи
   name        String?  // Имя админа для удобства
   role        String   @default("admin") // admin / editor

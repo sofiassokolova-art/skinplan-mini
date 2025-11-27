@@ -43,6 +43,7 @@ async function main() {
         name,
         role: 'admin',
         isActive: true,
+        phoneNumber: null, // Опциональное поле
       },
     });
 
