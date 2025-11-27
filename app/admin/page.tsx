@@ -153,7 +153,7 @@ export default function AdminDashboard() {
       </h1>
 
       {/* 6 больших метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">
         {metricsData.map((m, i) => (
           <div 
             key={i} 
@@ -173,36 +173,29 @@ export default function AdminDashboard() {
       </div>
 
       {/* График роста пользователей */}
-      <div 
-        className="glass rounded-3xl p-8 mb-12"
-        style={{
-          background: 'rgba(255, 255, 255, 0.06)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-        }}
-      >
+      <div className="glass rounded-3xl p-8 mb-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Рост пользователей за 30 дней</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={userGrowth}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 
               dataKey="date" 
-              stroke="rgba(255,255,255,0.6)"
-              style={{ fontSize: '12px' }}
+              stroke="#6b7280"
+              tick={{ fill: '#6b7280', fontSize: '12px' }}
             />
             <YAxis 
-              stroke="rgba(255,255,255,0.6)"
-              style={{ fontSize: '12px' }}
+              stroke="#6b7280"
+              tick={{ fill: '#6b7280', fontSize: '12px' }}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(0,0,0,0.8)',
-                border: '1px solid rgba(255,255,255,0.2)',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e7eb',
                 borderRadius: '12px',
-                color: '#fff',
+                color: '#111827',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
               }}
+              labelStyle={{ color: '#111827', fontWeight: 'bold' }}
             />
             <Line
               type="monotone"
@@ -217,16 +210,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Последние действия (отзывы) */}
-      <div 
-        className="glass rounded-3xl p-8"
-        style={{
-          background: 'rgba(255, 255, 255, 0.06)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-        }}
-      >
+      <div className="glass rounded-3xl p-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Последние действия</h2>
         <div className="space-y-4">
           {recentFeedback.length === 0 ? (
@@ -235,13 +219,7 @@ export default function AdminDashboard() {
             recentFeedback.slice(0, 10).map((f) => (
               <div
                 key={f.id}
-                className="p-4 glass-hover rounded-xl mb-3"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                }}
+                className="p-4 glass-hover rounded-xl mb-3 bg-gray-50"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
