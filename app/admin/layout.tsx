@@ -152,11 +152,8 @@ export default function AdminLayout({
       <main 
         className={cn(
           'overflow-auto min-h-screen p-6 md:p-8 pt-8 md:pt-10',
+          sidebarOpen ? 'ml-64' : 'ml-20'
         )}
-        style={{
-          marginLeft: sidebarOpen ? '256px' : '80px',
-          width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)'
-        }}
       >
         <div className="max-w-7xl mx-auto w-full">
           {children}
