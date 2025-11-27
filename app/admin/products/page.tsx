@@ -302,8 +302,8 @@ export default function ProductsAdmin() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Продукты</h1>
-          <p className="text-white/60">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Продукты</h1>
+          <p className="text-gray-600">
             Всего: {products.length} {table.getFilteredRowModel().rows.length !== products.length && `(отфильтровано: ${table.getFilteredRowModel().rows.length})`}
           </p>
           </div>
@@ -336,7 +336,7 @@ export default function ProductsAdmin() {
               placeholder="Поиск по названию, бренду, категории..."
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
             />
           </div>
         </div>
@@ -346,19 +346,19 @@ export default function ProductsAdmin() {
       <div className={cn(glassCard, 'overflow-hidden')}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-white/5 border-b border-white/10">
+            <thead className="bg-gray-50 border-b border-gray-200">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="px-4 py-3 text-left text-sm font-medium text-white/80"
+                      className="px-4 py-3 text-left text-sm font-medium text-gray-700"
                     >
                       {header.isPlaceholder ? null : (
                         <div
                           className={cn(
                             'flex items-center gap-2',
-                            header.column.getCanSort() && 'cursor-pointer select-none hover:text-white'
+                            header.column.getCanSort() && 'cursor-pointer select-none hover:text-gray-900'
                           )}
                           onClick={header.column.getToggleSortingHandler()}
                         >
@@ -377,7 +377,7 @@ export default function ProductsAdmin() {
             <tbody>
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="px-4 py-8 text-center text-white/60">
+                  <td colSpan={columns.length} className="px-4 py-8 text-center text-gray-500">
                     Продукты не найдены
                   </td>
                 </tr>
@@ -385,7 +385,7 @@ export default function ProductsAdmin() {
                 table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3">
@@ -400,22 +400,22 @@ export default function ProductsAdmin() {
         </div>
 
         {/* Пагинация */}
-        <div className="px-4 py-4 border-t border-white/10 flex items-center justify-between">
-          <div className="text-white/60 text-sm">
+        <div className="px-4 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="text-gray-600 text-sm">
             Страница {table.getState().pagination.pageIndex + 1} из {table.getPageCount()}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Назад
             </button>
             <button
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Вперед
             </button>
