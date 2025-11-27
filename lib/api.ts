@@ -18,8 +18,12 @@ async function request<T>(
   };
 
   // Добавляем initData в заголовки для идентификации пользователя (только если доступен)
+  // Используем оба варианта для совместимости
   if (initData) {
     headers['X-Telegram-Init-Data'] = initData;
+    headers['x-telegram-init-data'] = initData;
+  } else {
+    console.warn('⚠️ initData not available in Telegram WebApp');
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {

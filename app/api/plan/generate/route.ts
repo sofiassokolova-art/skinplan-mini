@@ -680,7 +680,15 @@ export async function GET(request: NextRequest) {
   
   try {
     // Получаем initData из заголовков
-    const initData = request.headers.get('x-telegram-init-data');
+    // Получаем initData из заголовков (пробуем оба варианта)
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
+    
+    if (!initData) {
+      console.error('⚠️ Missing initData in headers for plan generation:', {
+        availableHeaders: Array.from(request.headers.keys()),
+      });
+    }
 
     if (!initData) {
       console.error('❌ No initData provided');

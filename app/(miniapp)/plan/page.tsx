@@ -1,180 +1,399 @@
 // app/(miniapp)/plan/page.tsx
-// Страница 28-дневного плана ухода за кожей - Server Component
+// Страница 28-дневного плана ухода за кожей - Client Component
+// (используем Client Component, чтобы получить initData из window.Telegram)
 
-import { getUserPlanData, getProductsByIds } from '@/lib/plan-data';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 import { PlanPageClient } from './plan-client';
-import { notFound } from 'next/navigation';
 
-export default async function PlanPage() {
-  try {
-    // 1. Получаем всё нужное за один запрос (Server Component!)
-    const { 
-      user, 
-      profile,           // SkinProfile + scores (6 осей)
-      plan,              // 4 недели × 7 дней × утро/вечер
-      progress,          // { currentDay: 12, completedDays: [1,2,3...] }
-      wishlist 
-    } = await getUserPlanData();
+interface PlanData {
+  user: {
+    id: string;
+    telegramId: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+  profile: {
+    id: string;
+    skinType: string;
+    skinTypeRu: string;
+    primaryConcernRu: string;
+    sensitivityLevel: string | null;
+    acneLevel: number | null;
+    scores: any[];
+  };
+  plan: {
+    weeks: Array<{
+      week: number;
+      days: Array<{
+        morning: number[];
+        evening: number[];
+      }>;
+    }>;
+  };
+  progress: {
+    currentDay: number;
+    completedDays: number[];
+  };
+  wishlist: number[];
+  currentDay: number;
+  currentWeek: number;
+  todayProducts: Array<{
+    id: number;
+    name: string;
+    brand: { name: string };
+    price: number;
+    volume: string | null;
+    imageUrl: string | null;
+    step: string;
+    firstIntroducedDay: number;
+  }>;
+  todayMorning: number[];
+  todayEvening: number[];
+}
 
-    const currentDayGlobal = progress?.currentDay || 1;
-    const currentWeek = Math.floor((currentDayGlobal - 1) / 7) + 1;
-    const dayInWeek = ((currentDayGlobal - 1) % 7) || 1;
+export default function PlanPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [planData, setPlanData] = useState<PlanData | null>(null);
 
-    // Получаем текущий день из плана
-    const currentWeekData = plan.weeks.find(w => w.week === currentWeek);
-    const currentDayData = currentWeekData?.days[dayInWeek - 1];
+  useEffect(() => {
+    loadPlan();
+  }, []);
 
-    const todayMorning = currentDayData?.morning || [];
-    const todayEvening = currentDayData?.evening || [];
+  const loadPlan = async (retryCount = 0) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // Получаем уникальные ID продуктов для текущего дня
-    const todayProductIds = [...new Set([...todayMorning, ...todayEvening])].filter((id): id is number => typeof id === 'number');
-    const products = await getProductsByIds(todayProductIds);
+      // Проверяем, что приложение открыто через Telegram
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        setError('telegram_required');
+        setLoading(false);
+        return;
+      }
 
-    // Передаем все данные в Client Component для интерактивности
+      // Загружаем план через API с retry-логикой
+      let plan;
+      try {
+        plan = await api.getPlan() as any;
+      } catch (planError: any) {
+        // Если профиль не найден и это первая/вторая попытка - ждем и повторяем
+        if (retryCount < 3 && (
+          planError?.message?.includes('No skin profile') ||
+          planError?.message?.includes('Skin profile not found') ||
+          planError?.message?.includes('404')
+        )) {
+          console.log(`⏳ Профиль еще не создан, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return loadPlan(retryCount + 1);
+        }
+        throw planError;
+      }
+      
+      if (!plan || !plan.weeks || plan.weeks.length === 0) {
+        if (retryCount < 3) {
+          console.log(`⏳ План пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return loadPlan(retryCount + 1);
+        }
+        setError('no_profile');
+        setLoading(false);
+        return;
+      }
+
+      // Получаем профиль для scores и другой информации
+      let profile;
+      try {
+        profile = await api.getCurrentProfile() as any;
+      } catch (profileError: any) {
+        // Если профиль не найден и это первая/вторая попытка - ждем и повторяем
+        if (retryCount < 3 && (
+          profileError?.message?.includes('No profile') ||
+          profileError?.message?.includes('404')
+        )) {
+          console.log(`⏳ Профиль еще не создан, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return loadPlan(retryCount + 1);
+        }
+        setError('no_profile');
+        setLoading(false);
+        return;
+      }
+      
+      if (!profile) {
+        if (retryCount < 3) {
+          console.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return loadPlan(retryCount + 1);
+        }
+        setError('no_profile');
+        setLoading(false);
+        return;
+      }
+
+      // Получаем wishlist
+      let wishlist: number[] = [];
+      try {
+        const wishlistData = await api.getWishlist() as any;
+        wishlist = (wishlistData.items || []).map((item: any) => 
+          item.product?.id || item.productId
+        ).filter((id: any): id is number => typeof id === 'number');
+      } catch (err) {
+        console.warn('Could not load wishlist:', err);
+      }
+
+      // Обрабатываем данные для передачи в компонент
+      const currentDayGlobal = 1; // TODO: получить из progress
+      const currentWeek = 1;
+      const currentWeekData = plan.weeks[0];
+      const currentDayData = currentWeekData?.days[0];
+
+      const todayMorning = currentDayData?.morning || [];
+      const todayEvening = currentDayData?.evening || [];
+
+      // Получаем продукты для текущего дня
+      const todayProductIds = [...new Set([...todayMorning, ...todayEvening])].filter((id): id is number => typeof id === 'number');
+      
+      // Преобразуем продукты из плана
+      const todayProducts = (plan.products || []).filter((p: any) => todayProductIds.includes(p.id)).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        brand: { name: p.brand || 'Unknown' },
+        price: p.price || 0,
+        volume: p.volume || null,
+        imageUrl: p.imageUrl || null,
+        step: p.category || p.step || 'moisturizer',
+        firstIntroducedDay: 1,
+      }));
+
+      // Преобразуем scores из плана
+      const scores = plan.skinScores || [];
+
+      setPlanData({
+        user: {
+          id: profile.id || '',
+          telegramId: '',
+          firstName: profile.firstName || null,
+          lastName: profile.lastName || null,
+        },
+        profile: {
+          id: profile.id || '',
+          skinType: profile.skinType || 'normal',
+          skinTypeRu: profile.skinTypeRu || 'Нормальная',
+          primaryConcernRu: profile.primaryConcernRu || 'Уход',
+          sensitivityLevel: profile.sensitivityLevel || null,
+          acneLevel: profile.acneLevel || null,
+          scores,
+        },
+        plan: {
+          weeks: plan.weeks.map((week: any) => ({
+            week: week.week,
+            days: week.days.map((day: any) => {
+              // Преобразуем morning/evening в массив ID продуктов
+              const morningIds = Array.isArray(day.morning) 
+                ? day.morning.map((stepOrId: any) => {
+                    if (typeof stepOrId === 'string' && day.products?.[stepOrId]?.id) {
+                      return day.products[stepOrId].id;
+                    }
+                    return typeof stepOrId === 'number' ? stepOrId : null;
+                  }).filter((id: any): id is number => id !== null)
+                : [];
+              
+              const eveningIds = Array.isArray(day.evening)
+                ? day.evening.map((stepOrId: any) => {
+                    if (typeof stepOrId === 'string' && day.products?.[stepOrId]?.id) {
+                      return day.products[stepOrId].id;
+                    }
+                    return typeof stepOrId === 'number' ? stepOrId : null;
+                  }).filter((id: any): id is number => id !== null)
+                : [];
+
+              return {
+                morning: morningIds,
+                evening: eveningIds,
+              };
+            }),
+          })),
+        },
+        progress: {
+          currentDay: 1,
+          completedDays: [],
+        },
+        wishlist,
+        currentDay: currentDayGlobal,
+        currentWeek,
+        todayProducts,
+        todayMorning,
+        todayEvening,
+      });
+
+      setLoading(false);
+    } catch (err: any) {
+      console.error('❌ Error loading plan:', err);
+      setError(err?.message || 'Ошибка загрузки плана');
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <PlanPageClient
-        user={user}
-        profile={profile}
-        plan={plan}
-        progress={progress}
-        wishlist={wishlist}
-        currentDay={currentDayGlobal}
-        currentWeek={currentWeek}
-        todayProducts={products}
-        todayMorning={todayMorning}
-        todayEvening={todayEvening}
-      />
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '16px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(10, 95, 89, 0.2)',
+          borderTop: '4px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }}></div>
+        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
     );
-  } catch (error: any) {
-    console.error('❌ Error loading plan page:', error);
-    console.error('   Error message:', error?.message);
-    console.error('   Error stack:', error?.stack);
-    
-    // Более понятная обработка ошибок
-    if (error?.message?.includes('not found') || error?.message?.includes('не найден')) {
-      notFound();
-    }
-    
-    // Если это ошибка авторизации - показываем сообщение
-    if (error?.message?.includes('Не авторизован') || 
-        error?.message?.includes('Не удалось определить пользователя') ||
-        error?.message?.includes('initData')) {
-      return (
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            borderRadius: '24px',
-            padding: '32px',
-            maxWidth: '500px',
-            width: '100%',
-            textAlign: 'center',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-          }}>
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: '#0A5F59',
-              marginBottom: '12px',
-            }}>
-              Откройте через Telegram
-            </h2>
-            <p style={{
-              color: '#475467',
-              marginBottom: '24px',
-              lineHeight: '1.6',
-            }}>
-              Для просмотра плана необходимо открыть приложение через Telegram Mini App.
-            </p>
-            <a
-              href="/"
-              style={{
-                display: 'inline-block',
-                padding: '12px 24px',
-                borderRadius: '12px',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                textDecoration: 'none',
-                fontSize: '16px',
-                fontWeight: '600',
-                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-              }}
-            >
-              На главную
-            </a>
-          </div>
-        </div>
-      );
-    }
-    
-    // Если это ошибка отсутствия профиля - показываем сообщение
-    if (error?.message?.includes('Skin profile not found') ||
-        error?.message?.includes('User not found')) {
-      // Возвращаем компонент с сообщением об ошибке вместо throw
-      return (
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            borderRadius: '24px',
-            padding: '32px',
-            maxWidth: '500px',
-            width: '100%',
-            textAlign: 'center',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-          }}>
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              color: '#0A5F59',
-              marginBottom: '12px',
-            }}>
-              Профиль не найден
-            </h2>
-            <p style={{
-              color: '#475467',
-              marginBottom: '24px',
-              lineHeight: '1.6',
-            }}>
-              Для просмотра плана необходимо сначала пройти анкету.
-            </p>
-            <a
-              href="/quiz"
-              style={{
-                display: 'inline-block',
-                padding: '12px 24px',
-                borderRadius: '12px',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                textDecoration: 'none',
-                fontSize: '16px',
-                fontWeight: '600',
-                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-              }}
-            >
-              Пройти анкету
-            </a>
-          </div>
-        </div>
-      );
-    }
-    
-    // Для остальных ошибок - показываем общую страницу ошибки
-    throw error;
   }
+
+  if (error === 'telegram_required') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '24px',
+          padding: '32px',
+          maxWidth: '500px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        }}>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#0A5F59',
+            marginBottom: '12px',
+          }}>
+            Откройте через Telegram
+          </h2>
+          <p style={{
+            color: '#475467',
+            marginBottom: '24px',
+            lineHeight: '1.6',
+          }}>
+            Для просмотра плана необходимо открыть приложение через Telegram Mini App.
+          </p>
+          <a
+            href="/"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              textDecoration: 'none',
+              fontSize: '16px',
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+            }}
+          >
+            На главную
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (error === 'no_profile' || !planData) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '24px',
+          padding: '32px',
+          maxWidth: '500px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        }}>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#0A5F59',
+            marginBottom: '12px',
+          }}>
+            Профиль не найден
+          </h2>
+          <p style={{
+            color: '#475467',
+            marginBottom: '24px',
+            lineHeight: '1.6',
+          }}>
+            Для просмотра плана необходимо сначала пройти анкету.
+          </p>
+          <a
+            href="/quiz"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              textDecoration: 'none',
+              fontSize: '16px',
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+            }}
+          >
+            Пройти анкету
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <PlanPageClient
+      user={planData.user}
+      profile={planData.profile}
+      plan={planData.plan}
+      progress={planData.progress}
+      wishlist={planData.wishlist}
+      currentDay={planData.currentDay}
+      currentWeek={planData.currentWeek}
+      todayProducts={planData.todayProducts}
+      todayMorning={planData.todayMorning}
+      todayEvening={planData.todayEvening}
+    />
+  );
 }
