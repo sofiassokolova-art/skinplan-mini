@@ -45,6 +45,14 @@ export default function AdminLogin() {
     try {
       // Получаем initData из Telegram WebApp
       const initData = window.Telegram?.WebApp?.initData;
+      const userData = window.Telegram?.WebApp?.initDataUnsafe?.user;
+
+      // Временно логируем telegramId для отладки (можно удалить после добавления в whitelist)
+      if (userData?.id) {
+        console.log('🔍 Ваш Telegram ID:', userData.id);
+        console.log('💡 Скопируйте этот ID и запустите:');
+        console.log(`   npx tsx scripts/add-admin.ts ${userData.id} "София"`);
+      }
 
       if (!initData) {
         setError('Telegram WebApp не доступен. Откройте эту страницу через Telegram бота.');
@@ -103,8 +111,22 @@ export default function AdminLogin() {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm">
-            {error}
+          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm space-y-2">
+            <p>{error}</p>
+            {window.Telegram?.WebApp?.initDataUnsafe?.user?.id && (
+              <div className="mt-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                <p className="text-white/80 text-xs mb-2">Ваш Telegram ID (для добавления в whitelist):</p>
+                <code className="text-white font-mono text-sm bg-white/10 px-2 py-1 rounded block">
+                  {window.Telegram.WebApp.initDataUnsafe.user.id}
+                </code>
+                <p className="text-white/60 text-xs mt-2">
+                  Скопируйте этот ID и запустите:<br/>
+                  <code className="bg-white/10 px-1 rounded text-xs">
+                    npx tsx scripts/add-admin.ts {window.Telegram.WebApp.initDataUnsafe.user.id} "София"
+                  </code>
+                </p>
+              </div>
+            )}
           </div>
         )}
 
