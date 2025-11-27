@@ -71,28 +71,41 @@ export default function BroadcastsPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('admin_token');
+      
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+      
       const response = await fetch('/api/admin/broadcasts', {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
       });
 
       if (response.status === 401) {
+        // Токен невалиден - перенаправляем на логин
+        localStorage.removeItem('admin_token');
         router.push('/admin/login');
         return;
       }
 
-      if (response.ok) {
-        const data = await response.json();
-        setBroadcasts(data.broadcasts || []);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Error loading broadcasts:', errorData);
+        if (response.status === 403 || response.status === 401) {
+          router.push('/admin/login');
+        }
+        return;
       }
+
+      const data = await response.json();
+      setBroadcasts(data.broadcasts || []);
     } catch (error) {
       console.error('Error loading broadcasts:', error);
+      // При сетевой ошибке не перенаправляем, просто показываем ошибку
     } finally {
       setLoading(false);
     }
