@@ -15,15 +15,21 @@ async function verifyAdmin(request: NextRequest): Promise<boolean> {
     const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
     const token = cookieToken || headerToken;
     
-    if (!token) return false;
+    if (!token) {
+      console.log('❌ No token found in broadcasts API');
+      return false;
+    }
     
     try {
       jwt.verify(token, JWT_SECRET);
+      console.log('✅ Token verified in broadcasts API');
       return true;
-    } catch {
+    } catch (verifyError) {
+      console.error('❌ Token verification failed in broadcasts API:', verifyError);
       return false;
     }
-  } catch {
+  } catch (err) {
+    console.error('❌ Error in verifyAdmin broadcasts:', err);
     return false;
   }
 }

@@ -34,8 +34,38 @@ export default function BroadcastsPage() {
   });
 
   useEffect(() => {
-    loadBroadcasts();
-  }, []);
+    const checkAuthAndLoad = async () => {
+      const token = localStorage.getItem('admin_token');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+      
+      // Проверяем валидность токена через API
+      try {
+        const authResponse = await fetch('/api/admin/auth', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
+        });
+        
+        if (authResponse.ok) {
+          const authData = await authResponse.json();
+          if (authData.valid) {
+            loadBroadcasts();
+          } else {
+            router.push('/admin/login');
+          }
+        } else {
+          router.push('/admin/login');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        router.push('/admin/login');
+      }
+    };
+    
+    checkAuthAndLoad();
+  }, [router]);
 
   const loadBroadcasts = async () => {
     try {
@@ -57,6 +87,9 @@ export default function BroadcastsPage() {
       if (response.ok) {
         const data = await response.json();
         setBroadcasts(data.broadcasts || []);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error loading broadcasts:', errorData);
       }
     } catch (error) {
       console.error('Error loading broadcasts:', error);
