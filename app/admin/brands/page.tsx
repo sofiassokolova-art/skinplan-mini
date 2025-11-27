@@ -260,7 +260,7 @@ export default function BrandsAdmin() {
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               onFocus={(e) => e.target.select()}
-              className="flex-1 pl-4 pr-4 py-2 bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0"
+              className="flex-1 pl-6 pr-4 py-2 bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0"
             />
           </div>
         </div>
