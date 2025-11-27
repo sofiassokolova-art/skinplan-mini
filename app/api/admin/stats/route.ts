@@ -156,6 +156,33 @@ export async function GET(request: NextRequest) {
       })
       .catch(() => 0);
 
+    // Получаем данные роста пользователей за последние 30 дней
+    const userGrowthData = [];
+    const now = new Date();
+    
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      // Считаем количество пользователей, созданных до этой даты (накопительный итог)
+      const usersUpToDate = await prisma.user.count({
+        where: {
+          createdAt: {
+            lt: nextDate,
+          },
+        },
+      }).catch(() => 0);
+      
+      userGrowthData.push({
+        date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+        users: usersUpToDate,
+      });
+    }
+
     return NextResponse.json({
       stats: {
         users: usersCount,
@@ -177,6 +204,7 @@ export async function GET(request: NextRequest) {
           avgFeedbackRating: metrics.avgFeedbackRating,
         }),
       },
+      userGrowth: userGrowthData,
       topProducts: metrics?.topProducts || [],
       recentFeedback: recentFeedback.map((f) => ({
         id: f.id,

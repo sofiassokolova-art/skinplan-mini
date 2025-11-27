@@ -75,17 +75,13 @@ export default function AdminDashboard() {
         setStats(data.stats || {});
         setRecentFeedback(data.recentFeedback || []);
         
-        // Генерируем данные для графика (за последние 7 дней)
-        const growthData = [];
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          growthData.push({
-            date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
-            users: Math.floor(Math.random() * 50) + (data.stats?.users || 0) - 25,
-          });
+        // Используем реальные данные роста пользователей из API
+        if (data.userGrowth && Array.isArray(data.userGrowth)) {
+          setUserGrowth(data.userGrowth);
+        } else {
+          // Fallback если данных нет
+          setUserGrowth([]);
         }
-        setUserGrowth(growthData);
       }
     } catch (error) {
       console.error('Error loading stats:', error);
