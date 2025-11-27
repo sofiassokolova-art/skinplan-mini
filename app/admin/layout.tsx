@@ -104,6 +104,7 @@ export default function AdminLayout({
           'admin-sidebar transition-all duration-300 relative z-10',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
+        style={{ backgroundColor: 'rgba(243, 244, 246, 0.95)' }}
       >
         <div className="p-6 border-b border-gray-200/50 flex items-center justify-between">
           {sidebarOpen && (

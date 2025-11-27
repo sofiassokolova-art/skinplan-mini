@@ -51,7 +51,7 @@ export default function BroadcastsPage() {
         if (authResponse.ok) {
           const authData = await authResponse.json();
           if (authData.valid) {
-            loadBroadcasts();
+    loadBroadcasts();
           } else {
             router.push('/admin/login');
           }

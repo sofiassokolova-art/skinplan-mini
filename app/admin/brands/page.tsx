@@ -251,7 +251,7 @@ export default function BrandsAdmin() {
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
         <div className="flex items-center gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={20} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={18} />
             <input
               type="text"
               placeholder="Поиск по названию бренда..."

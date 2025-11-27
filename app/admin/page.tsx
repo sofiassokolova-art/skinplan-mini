@@ -153,7 +153,8 @@ export default function AdminDashboard() {
       </h1>
       
       {/* 6 больших метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
+        {/* Увеличиваем расстояние между карточками */}
         {metricsData.map((m, i) => (
           <div 
             key={i} 
