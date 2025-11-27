@@ -256,7 +256,7 @@ export default function BroadcastAdmin() {
       {/* 1. Фильтры пользователей */}
       {!filters.sendToAll && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-5xl">
         <div className={cn(glassCard, 'p-6')}>
           <h3 className="text-xl font-bold text-white mb-4">Тип кожи</h3>
           <div className="space-y-2">
