@@ -36,21 +36,16 @@ export default function BroadcastsPage() {
       setLoading(true);
       const token = localStorage.getItem('admin_token');
       
-      if (!token) {
-        router.push('/admin/login');
-        return;
-      }
-      
       const response = await fetch('/api/admin/broadcasts', {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
 
       if (response.status === 401) {
-        router.push('/admin/login');
+        // Layout сам обработает редирект
         return;
       }
 
