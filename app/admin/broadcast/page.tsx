@@ -1,12 +1,12 @@
 // app/admin/broadcast/page.tsx
-// Страница создания рассылок
+// Страница создания рассылок - премиум верстка 2025
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Send, RefreshCw, AlertCircle, Image as ImageIcon, Plus, X } from 'lucide-react';
-import { cn, glassCard } from '@/lib/utils';
+import { Send, RefreshCw, AlertCircle, Image as ImageIcon, Plus, X, ChevronDown, Save } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Filters {
   sendToAll?: boolean;
@@ -38,6 +38,12 @@ const CONCERNS = [
   { value: 'wrinkles', label: 'Морщины' },
   { value: 'pores', label: 'Поры' },
   { value: 'redness', label: 'Покраснения' },
+];
+
+const TEMPLATES = [
+  { label: 'Скидка 20%', text: 'Привет, {name}! Специально для тебя скидка 20% на {product} → {link}' },
+  { label: 'Напоминание SPF', text: 'Привет, {name}! Не забудь использовать SPF каждый день! {link}' },
+  { label: 'План обновлён', text: 'Привет, {name}! Твой план ухода обновлён. Посмотри изменения → {link}' },
 ];
 
 export default function BroadcastAdmin() {
@@ -212,6 +218,10 @@ export default function BroadcastAdmin() {
     setButtons(updated);
   };
 
+  const applyTemplate = (templateText: string) => {
+    setMessage(templateText);
+  };
+
   // Автоматически подсчитываем при изменении фильтров (кроме sendToAll)
   useEffect(() => {
     if (!filters.sendToAll) {
@@ -222,250 +232,288 @@ export default function BroadcastAdmin() {
   }, [filters.skinTypes, filters.concerns, filters.planDay, filters.lastActive, filters.hasPurchases]);
 
   return (
-    <div className="space-y-12">
-      <div>
-        <h1 className="text-4xl font-bold text-white mb-2">Новая рассылка</h1>
-        <p className="text-white/60">Персонализированные сообщения пользователям</p>
-      </div>
-
-      {error && (
-        <div className={cn(glassCard, 'p-4 bg-red-500/20 border-red-500/50 flex items-center gap-2')}>
-          <AlertCircle className="text-red-400" size={20} />
-          <p className="text-red-200">{error}</p>
-        </div>
-      )}
-
-      {/* Опция "Всем пользователям" */}
-      <div className={cn(glassCard, 'p-6')}>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={filters.sendToAll || false}
-            onChange={(e) => {
-              setFilters({ ...filters, sendToAll: e.target.checked });
-              if (e.target.checked) {
-                setUserCount(null);
-              }
-            }}
-            className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-          />
-          <span className="text-white font-bold text-lg">Рассылать всем пользователям</span>
-        </label>
-      </div>
-
-      {/* 1. Фильтры пользователей */}
-      {!filters.sendToAll && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-5xl">
-        <div className={cn(glassCard, 'p-6')}>
-          <h3 className="text-xl font-bold text-white mb-4">Тип кожи</h3>
-          <div className="space-y-2">
-            {SKIN_TYPES.map((type) => (
-              <label key={type.value} className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.skinTypes.includes(type.value)}
-                  onChange={() => toggleFilter('skinTypes', type.value)}
-                  className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                />
-                <span className="text-white/80">{type.label}</span>
-              </label>
-            ))}
+    <div className="w-full max-w-5xl mx-auto pb-24">
+      {/* Основная карточка-контейнер */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 lg:p-12">
+        {/* Шапка */}
+        <div className="flex items-start justify-between mb-12">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Новая рассылка</h1>
+            <p className="text-gray-600">Персонализированные сообщения пользователям</p>
           </div>
-        </div>
-
-        <div className={cn(glassCard, 'p-6')}>
-          <h3 className="text-xl font-bold text-white mb-4">Проблемы</h3>
-          <div className="space-y-2">
-            {CONCERNS.map((concern) => (
-              <label key={concern.value} className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.concerns.includes(concern.value)}
-                  onChange={() => toggleFilter('concerns', concern.value)}
-                  className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                />
-                <span className="text-white/80">{concern.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className={cn(glassCard, 'p-6')}>
-          <h3 className="text-xl font-bold text-white mb-4">Дополнительно</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-white/60 mb-2">День плана</label>
-              <select
-                value={filters.planDay || ''}
-                onChange={(e) => setFilters({ ...filters, planDay: e.target.value || undefined })}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-white/40"
-              >
-                <option value="">Все</option>
-                <option value="1-7">1–7 дней</option>
-                <option value="8-14">8–14 дней</option>
-                <option value="15-28">15–28 дней</option>
-                <option value="29+">29+ дней</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm text-white/60 mb-2">Последняя активность</label>
-              <select
-                value={filters.lastActive || ''}
-                onChange={(e) => setFilters({ ...filters, lastActive: e.target.value || undefined })}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-white/40"
-              >
-                <option value="">Все</option>
-                <option value="<7">Менее 7 дней</option>
-                <option value="7-30">7–30 дней</option>
-                <option value="30+">30+ дней</option>
-              </select>
-            </div>
-
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={filters.hasPurchases || false}
-                onChange={(e) => setFilters({ ...filters, hasPurchases: e.target.checked || undefined })}
-                className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-              />
-              <span className="text-white/80">Только с покупками по партнёрке</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Превью количества */}
-          <div className={cn(glassCard, 'p-6 flex items-center justify-between')}>
-        <div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent">
-            Найдено пользователей: {userCount !== null ? userCount.toLocaleString('ru-RU') : '—'}
-          </span>
-        </div>
-        <button
-          onClick={handleCount}
-          disabled={countLoading}
-          className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={countLoading ? 'animate-spin' : ''} size={20} />
-          Обновить
-        </button>
-      </div>
-        </>
-      )}
-
-      {/* 3. Текст сообщения */}
-      <div className={cn(glassCard, 'p-6')}>
-        <h3 className="text-xl font-bold text-white mb-4">Текст сообщения</h3>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Привет, {name}! У тебя жирная кожа и акне? Специально для тебя скидка 20% на Effaclar Duo(+) → {link}"
-          rows={8}
-          className="w-full px-4 py-3 bg-[#050505] border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20 resize-none"
-        />
-        <div className="text-sm text-white/40 mt-4">
-          Поддерживаются переменные: <code className="bg-white/10 px-2 py-1 rounded">&#123;name&#125;</code>,{' '}
-          <code className="bg-white/10 px-2 py-1 rounded">&#123;skinType&#125;</code>,{' '}
-          <code className="bg-white/10 px-2 py-1 rounded">&#123;concern&#125;</code>,{' '}
-          <code className="bg-white/10 px-2 py-1 rounded">&#123;link&#125;</code>
-        </div>
-      </div>
-
-      {/* 4. Фото */}
-      <div className={cn(glassCard, 'p-6')}>
-        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <ImageIcon size={20} />
-          Фото (опционально)
-        </h3>
-        <input
-          type="url"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://example.com/image.jpg"
-          className="w-full px-4 py-3 bg-[#050505] border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20"
-        />
-        {imageUrl && (
-          <div className="mt-4">
-            <img src={imageUrl} alt="Preview" className="max-w-md rounded-xl border border-white/10" />
-            <button
-              type="button"
-              onClick={() => setImageUrl('')}
-              className="mt-2 text-red-400 hover:text-red-300 text-sm flex items-center gap-1"
-            >
-              <X size={16} />
-              Удалить фото
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 5. Кнопки */}
-      <div className={cn(glassCard, 'p-6')}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-white">Кнопки с диплинками (опционально)</h3>
-          <button
-            type="button"
-            onClick={addButton}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium flex items-center gap-2 transition-colors"
-          >
-            <Plus size={18} />
-            Добавить кнопку
+          <button className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2">
+            <Save size={16} />
+            Сохранить как шаблон
           </button>
         </div>
-        {buttons.length === 0 && (
-          <p className="text-white/40 text-sm">Кнопки не добавлены</p>
+
+        {error && (
+          <div className="mb-12 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2">
+            <AlertCircle className="text-red-600" size={20} />
+            <p className="text-red-700 text-sm">{error}</p>
+          </div>
         )}
-        <div className="space-y-3">
-          {buttons.map((button, index) => (
-            <div key={index} className="flex gap-3 items-start">
-              <div className="flex-1 space-y-2">
-                <input
-                  type="text"
-                  value={button.text}
-                  onChange={(e) => updateButton(index, 'text', e.target.value)}
-                  placeholder="Текст кнопки"
-                  className="w-full px-4 py-2 bg-[#050505] border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20"
-                />
-                <input
-                  type="url"
-                  value={button.url}
-                  onChange={(e) => updateButton(index, 'url', e.target.value)}
-                  placeholder="https://t.me/skiniq_bot?start=..."
-                  className="w-full px-4 py-2 bg-[#050505] border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20"
-                />
+
+        {/* Чекбокс "Рассылать всем" */}
+        <div className="bg-gray-50 rounded-2xl border border-gray-200 p-6 mb-12">
+          <label className="flex items-center gap-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={filters.sendToAll || false}
+              onChange={(e) => {
+                setFilters({ ...filters, sendToAll: e.target.checked });
+                if (e.target.checked) {
+                  setUserCount(null);
+                }
+              }}
+              className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
+            />
+            <span className="text-gray-900 font-semibold text-lg">Рассылать всем пользователям</span>
+          </label>
+        </div>
+
+        {/* Фильтры пользователей */}
+        {!filters.sendToAll && (
+          <>
+            {/* Три колонки фильтров */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              {/* Тип кожи */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Тип кожи</h3>
+                <div className="space-y-4">
+                  {SKIN_TYPES.map((type) => (
+                    <label key={type.value} className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={filters.skinTypes.includes(type.value)}
+                        onChange={() => toggleFilter('skinTypes', type.value)}
+                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
+                      />
+                      <span className="text-gray-700 group-hover:text-gray-900">{type.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
+
+              {/* Проблемы */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Проблемы</h3>
+                <div className="space-y-4">
+                  {CONCERNS.map((concern) => (
+                    <label key={concern.value} className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={filters.concerns.includes(concern.value)}
+                        onChange={() => toggleFilter('concerns', concern.value)}
+                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
+                      />
+                      <span className="text-gray-700 group-hover:text-gray-900">{concern.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Дополнительно */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Дополнительно</h3>
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">День плана</label>
+                    <div className="relative">
+                      <select
+                        value={filters.planDay || ''}
+                        onChange={(e) => setFilters({ ...filters, planDay: e.target.value || undefined })}
+                        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
+                      >
+                        <option value="">Все</option>
+                        <option value="1-7">1–7 дней</option>
+                        <option value="8-14">8–14 дней</option>
+                        <option value="15-28">15–28 дней</option>
+                        <option value="29+">29+ дней</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Последняя активность</label>
+                    <div className="relative">
+                      <select
+                        value={filters.lastActive || ''}
+                        onChange={(e) => setFilters({ ...filters, lastActive: e.target.value || undefined })}
+                        className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
+                      >
+                        <option value="">Все</option>
+                        <option value="<7">Менее 7 дней</option>
+                        <option value="7-30">7–30 дней</option>
+                        <option value="30+">30+ дней</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={filters.hasPurchases || false}
+                      onChange={(e) => setFilters({ ...filters, hasPurchases: e.target.checked || undefined })}
+                      className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
+                    />
+                    <span className="text-gray-700 group-hover:text-gray-900">Только с покупками по партнёрке</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Блок "Найдено пользователей" */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-gray-600 block mb-2">Найдено пользователей:</span>
+                  <span className="text-4xl font-bold text-gray-900">
+                    {userCount !== null ? userCount.toLocaleString('ru-RU') : '—'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleCount}
+                  disabled={countLoading}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <RefreshCw className={countLoading ? 'animate-spin' : ''} size={18} />
+                  Обновить
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Текстовое поле */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+          <div className="flex items-start justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900">Текст сообщения</h3>
+            <div className="flex flex-wrap gap-2">
+              {TEMPLATES.map((template, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => applyTemplate(template.text)}
+                  className="px-3 py-1.5 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors"
+                >
+                  {template.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Привет, {name}! У тебя жирная кожа и акне? Специально для тебя скидка 20% на Effaclar Duo(+) → {link}"
+            className="w-full min-h-[200px] px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+          />
+          <div className="mt-4 text-sm text-gray-500">
+            Поддерживаются переменные:{' '}
+            <code className="bg-gray-100 px-2 py-1 rounded text-gray-700">&#123;name&#125;</code>,{' '}
+            <code className="bg-gray-100 px-2 py-1 rounded text-gray-700">&#123;skinType&#125;</code>,{' '}
+            <code className="bg-gray-100 px-2 py-1 rounded text-gray-700">&#123;concern&#125;</code>,{' '}
+            <code className="bg-gray-100 px-2 py-1 rounded text-gray-700">&#123;link&#125;</code>
+          </div>
+        </div>
+
+        {/* Фото */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <ImageIcon size={20} className="text-gray-600" />
+            Фото (опционально)
+          </h3>
+          <input
+            type="url"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="https://example.com/image.jpg"
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          {imageUrl && (
+            <div className="mt-4">
+              <img src={imageUrl} alt="Preview" className="max-w-md rounded-lg border border-gray-200" />
               <button
                 type="button"
-                onClick={() => removeButton(index)}
-                className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-colors"
+                onClick={() => setImageUrl('')}
+                className="mt-2 text-red-600 hover:text-red-700 text-sm flex items-center gap-1"
               >
-                <X size={20} />
+                <X size={16} />
+                Удалить фото
               </button>
             </div>
-          ))}
+          )}
+        </div>
+
+        {/* Кнопки */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900">Кнопки с диплинками (опционально)</h3>
+            <button
+              type="button"
+              onClick={addButton}
+              className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 transition-colors flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Добавить кнопку
+            </button>
+          </div>
+          {buttons.length === 0 && (
+            <p className="text-gray-400 text-sm">Кнопки не добавлены</p>
+          )}
+          <div className="space-y-4">
+            {buttons.map((button, index) => (
+              <div key={index} className="flex gap-3 items-start">
+                <div className="flex-1 space-y-3">
+                  <input
+                    type="text"
+                    value={button.text}
+                    onChange={(e) => updateButton(index, 'text', e.target.value)}
+                    placeholder="Текст кнопки"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <input
+                    type="url"
+                    value={button.url}
+                    onChange={(e) => updateButton(index, 'url', e.target.value)}
+                    placeholder="https://t.me/skiniq_bot?start=..."
+                    className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeButton(index)}
+                  className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* 6. Кнопки действий */}
-      <div className="flex gap-6 mt-6">
-        <button
-          onClick={handleTestSend}
-          disabled={loading || !message.trim()}
-          className="flex-1 px-12 py-5 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-2xl font-bold text-xl hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          <Send size={24} />
-          Тестовая рассылка мне
-        </button>
-        <button
-          onClick={handleSend}
-          disabled={loading || !message.trim() || (!filters.sendToAll && (!userCount || userCount === 0))}
-          className="flex-1 px-12 py-5 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] text-white rounded-2xl font-bold text-xl hover:shadow-[0_8px_32px_rgba(236,72,153,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          <Send size={24} />
-          Запустить рассылку
-        </button>
+      {/* Нижняя фиксированная панель */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-6 px-6 md:px-8 shadow-lg z-50" style={{ marginLeft: '256px' }}>
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+          <button
+            onClick={handleTestSend}
+            disabled={loading || !message.trim()}
+            className="px-6 py-3 border-2 border-indigo-600 text-indigo-600 rounded-lg font-semibold hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Send size={18} />
+            Тестовая рассылка мне
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={loading || !message.trim() || (!filters.sendToAll && (!userCount || userCount === 0))}
+            className="px-8 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Send size={18} />
+            Запустить рассылку
+          </button>
+        </div>
       </div>
     </div>
   );
