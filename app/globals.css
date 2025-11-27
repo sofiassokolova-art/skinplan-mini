@@ -176,8 +176,8 @@ body {
   background: rgba(243, 244, 246, 0.95) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border-right: 1px solid rgba(229, 231, 235, 0.5) !important;
-  box-shadow: 2px 0 12px 0 rgba(0, 0, 0, 0.02) !important;
+  border-right: none !important;
+  box-shadow: none !important;
   color: #111827 !important;
 }
 
