@@ -42,17 +42,30 @@ export async function getAdminFromInitData(
   // Логируем для отладки
   console.log('🔍 Проверка whitelist для:', {
     telegramId: telegramIdStr,
+    telegramIdType: typeof user.id,
+    telegramIdStr: telegramIdStr,
     username: user.username,
     firstName: user.first_name,
   });
 
-  // Проверяем whitelist по telegramId и phoneNumber
+  // Проверяем whitelist по telegramId (как строке)
+  // Также пробуем найти все записи для отладки
+  const allAdmins = await prisma.adminWhitelist.findMany({
+    where: { isActive: true },
+  });
+  console.log('🔍 Все активные админы в whitelist:', allAdmins.map(a => ({
+    id: a.id,
+    telegramId: a.telegramId,
+    phoneNumber: a.phoneNumber,
+    name: a.name,
+  })));
+
   const whitelistEntry = await prisma.adminWhitelist.findFirst({
     where: {
       OR: [
         { telegramId: telegramIdStr },
-        // Также проверяем по phone_number если он есть в initData
-        // (но phone_number обычно не приходит в initData, так что это для будущего)
+        // Также проверяем числовое сравнение на всякий случай
+        { telegramId: String(user.id) },
       ],
       isActive: true,
     },
@@ -60,6 +73,7 @@ export async function getAdminFromInitData(
 
   console.log('🔍 Результат поиска в whitelist:', {
     found: !!whitelistEntry,
+    searchedFor: telegramIdStr,
     entry: whitelistEntry ? {
       id: whitelistEntry.id,
       telegramId: whitelistEntry.telegramId,
