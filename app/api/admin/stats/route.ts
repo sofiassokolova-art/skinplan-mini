@@ -16,20 +16,17 @@ async function verifyAdmin(request: NextRequest): Promise<boolean> {
     const token = cookieToken || headerToken;
     
     if (!token) {
-      console.log('❌ No admin token found in request');
       return false;
     }
 
     try {
       jwt.verify(token, JWT_SECRET);
-      console.log('✅ Admin token verified successfully');
       return true;
     } catch (verifyError) {
-      console.log('❌ Token verification failed:', verifyError);
       return false;
     }
   } catch (err) {
-    console.error('❌ Error in verifyAdmin:', err);
+    console.error('Error in verifyAdmin:', err);
     return false;
   }
 }
@@ -44,34 +41,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Логируем для отладки
-    console.log('📊 Fetching admin stats...');
-    console.log('🔗 DATABASE_URL exists:', !!process.env.DATABASE_URL);
-    console.log('🔗 DATABASE_URL starts with postgresql:', process.env.DATABASE_URL?.startsWith('postgresql'));
-    
     // Проверяем подключение к БД перед запросами
     try {
       await prisma.$connect();
-      console.log('✅ Prisma connected successfully');
     } catch (connectError) {
-      console.error('❌ Prisma connection error:', connectError);
+      console.error('Database connection error:', connectError);
       throw connectError;
     }
     
-    // Выполняем запросы последовательно для лучшей диагностики
+    // Выполняем запросы последовательно
     let usersCount = 0;
     try {
       usersCount = await prisma.user.count();
-      console.log('👥 Users count:', usersCount);
-      
-      // Дополнительная проверка - получаем первого пользователя
-      const firstUser = await prisma.user.findFirst();
-      console.log('👤 First user exists:', !!firstUser);
-      if (firstUser) {
-        console.log('👤 First user telegramId:', firstUser.telegramId);
-      }
     } catch (userError) {
-      console.error('❌ Error counting users:', userError);
+      console.error('Error counting users:', userError);
       throw userError;
     }
     
@@ -125,14 +108,6 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Логируем результаты
-    console.log('📊 Stats fetched:', {
-      users: usersCount,
-      products: productsCount,
-      plans: plansCount,
-      badFeedback: badFeedbackCount,
-      replacements: replacementsCount,
-    });
 
     // Получаем расширенные метрики
     const metrics = await getMetricsStats().catch(err => {
@@ -156,30 +131,61 @@ export async function GET(request: NextRequest) {
       })
       .catch(() => 0);
 
-    // Получаем данные роста пользователей за последние 30 дней
-    const userGrowthData = [];
+    // Получаем данные роста пользователей за последние 30 дней (оптимизированно - один запрос)
     const now = new Date();
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 30);
+    startDate.setHours(0, 0, 0, 0);
     
+    // Получаем всех пользователей за последние 30 дней
+    const usersInPeriod = await prisma.user.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+        },
+      },
+      select: {
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    }).catch(() => []);
+    
+    // Получаем общее количество пользователей до периода
+    const usersBeforePeriod = await prisma.user.count({
+      where: {
+        createdAt: {
+          lt: startDate,
+        },
+      },
+    }).catch(() => 0);
+    
+    // Группируем по датам и считаем накопительный итог
+    const userGrowthData = [];
+    const usersByDate = new Map<string, number>();
+    
+    // Считаем новых пользователей по дням
+    usersInPeriod.forEach(user => {
+      const dateKey = user.createdAt.toISOString().split('T')[0];
+      usersByDate.set(dateKey, (usersByDate.get(dateKey) || 0) + 1);
+    });
+    
+    // Формируем данные для графика (30 дней)
+    let cumulativeUsers = usersBeforePeriod;
     for (let i = 29; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
+      const dateKey = date.toISOString().split('T')[0];
       
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-      
-      // Считаем количество пользователей, созданных до этой даты (накопительный итог)
-      const usersUpToDate = await prisma.user.count({
-        where: {
-          createdAt: {
-            lt: nextDate,
-          },
-        },
-      }).catch(() => 0);
+      // Добавляем пользователей, созданных в этот день
+      const newUsersToday = usersByDate.get(dateKey) || 0;
+      cumulativeUsers += newUsersToday;
       
       userGrowthData.push({
         date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
-        users: usersUpToDate,
+        users: cumulativeUsers,
       });
     }
 

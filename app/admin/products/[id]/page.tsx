@@ -209,143 +209,146 @@ export default function EditProductPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-6 space-y-10">
-      <h1 className="text-3xl font-bold">Редактировать продукт</h1>
+    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-6 md:p-10 space-y-10">
+      <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-8">Редактировать продукт</h1>
 
       {/* === ОСНОВНЫЕ ДАННЫЕ === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white rounded-3xl p-6 shadow">
-        <div>
-          <label className="block text-sm font-medium mb-2">Название продукта *</label>
-          <input
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Бренд *</label>
-          <select
-            required
-            value={form.brandId}
-            onChange={(e) => setForm({ ...form, brandId: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border"
-          >
-            <option value="">Выберите бренд</option>
-            {brands.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">Цена (₽) *</label>
-          <input
-            type="number"
-            required
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Объём / вес</label>
-          <input
-            placeholder="30 мл"
-            value={form.volume}
-            onChange={(e) => setForm({ ...form, volume: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border"
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-2">
-            Гиперссылка на покупку (Ozon, WB, аптека)
-          </label>
-          <input
-            placeholder="https://..."
-            value={form.link}
-            onChange={(e) => setForm({ ...form, link: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border"
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-2">
-            Описание (для карточки в приложении)
-          </label>
-          <textarea
-            rows={3}
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border"
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-2">
-            Полный состав (через запятую или с новой строки)
-          </label>
-          <textarea
-            rows={4}
-            value={form.composition}
-            onChange={(e) => setForm({ ...form, composition: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border text-sm"
-            placeholder="Aqua, Niacinamide, Zinc PCA..."
-          />
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-sm font-medium mb-2">Фото продукта</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) =>
-              setForm({ ...form, imageFile: e.target.files?.[0] || null })
-            }
-          />
-          {(form.imageFile || form.imageUrl) && (
-            <img
-              src={
-                form.imageFile
-                  ? URL.createObjectURL(form.imageFile)
-                  : form.imageUrl
-              }
-              alt="preview"
-              className="mt-4 w-64 rounded-2xl shadow-lg"
+      <div className="glass rounded-3xl p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-white/80">Название продукта *</label>
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20"
             />
-          )}
-          {!form.imageFile && !form.imageUrl && (
-            <div className="mt-4">
-              <label className="block text-sm font-medium mb-2">
-                Или введите URL изображения
-              </label>
-              <input
-                type="url"
-                placeholder="https://..."
-                value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border"
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-white/80">Бренд *</label>
+            <select
+              required
+              value={form.brandId}
+              onChange={(e) => setForm({ ...form, brandId: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-white/20"
+            >
+              <option value="" className="bg-black text-white">Выберите бренд</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id} className="bg-black text-white">
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2 text-white/80">Цена (₽) *</label>
+            <input
+              type="number"
+              required
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-white/80">Объём / вес</label>
+            <input
+              placeholder="30 мл"
+              value={form.volume}
+              onChange={(e) => setForm({ ...form, volume: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2 text-white/80">
+              Гиперссылка на покупку (Ozon, WB, аптека)
+            </label>
+            <input
+              placeholder="https://..."
+              value={form.link}
+              onChange={(e) => setForm({ ...form, link: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2 text-white/80">
+              Описание (для карточки в приложении)
+            </label>
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2 text-white/80">
+              Полный состав (через запятую или с новой строки)
+            </label>
+            <textarea
+              rows={4}
+              value={form.composition}
+              onChange={(e) => setForm({ ...form, composition: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20 text-sm"
+              placeholder="Aqua, Niacinamide, Zinc PCA..."
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2 text-white/80">Фото продукта</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) =>
+                setForm({ ...form, imageFile: e.target.files?.[0] || null })
+              }
+              className="text-white/80 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20"
+            />
+            {(form.imageFile || form.imageUrl) && (
+              <img
+                src={
+                  form.imageFile
+                    ? URL.createObjectURL(form.imageFile)
+                    : form.imageUrl
+                }
+                alt="preview"
+                className="mt-4 w-64 rounded-2xl shadow-lg"
               />
-            </div>
-          )}
+            )}
+            {!form.imageFile && !form.imageUrl && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium mb-2 text-white/80">
+                  Или введите URL изображения
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={form.imageUrl}
+                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* === КЛЮЧЕВЫЕ ФИЛЬТРЫ (это то, что решает попадание в план) === */}
-      <div className="bg-purple-50 rounded-3xl p-6">
-        <h3 className="text-xl font-bold mb-6 text-purple-800">
+      <div className="glass rounded-3xl p-8">
+        <h3 className="text-2xl font-bold mb-6 text-white">
           Фильтры для рекомендаций (обязательно!)
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <label className="block font-medium mb-3">Тип кожи (можно несколько)</label>
+            <label className="block font-medium mb-3 text-white/80">Тип кожи (можно несколько)</label>
             <div className="space-y-2">
               {SKIN_TYPES.map((t) => (
-                <label key={t.value} className="flex items-center gap-3">
+                <label key={t.value} className="flex items-center gap-3 text-white/80">
                   <input
                     type="checkbox"
                     checked={form.skinTypes.includes(t.value)}
@@ -357,6 +360,7 @@ export default function EditProductPage() {
                           : prev.skinTypes.filter((x) => x !== t.value),
                       }));
                     }}
+                    className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
                   />
                   <span>{t.label}</span>
                 </label>
@@ -365,10 +369,10 @@ export default function EditProductPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-3">Проблемы кожи</label>
+            <label className="block font-medium mb-3 text-white/80">Проблемы кожи</label>
             <div className="space-y-2">
               {CONCERNS.map((c) => (
-                <label key={c.value} className="flex items-center gap-3">
+                <label key={c.value} className="flex items-center gap-3 text-white/80">
                   <input
                     type="checkbox"
                     checked={form.concerns.includes(c.value)}
@@ -380,6 +384,7 @@ export default function EditProductPage() {
                           : prev.concerns.filter((x) => x !== c.value),
                       }));
                     }}
+                    className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
                   />
                   <span>{c.label}</span>
                 </label>
@@ -388,16 +393,16 @@ export default function EditProductPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-3">Шаг ухода *</label>
+            <label className="block font-medium mb-3 text-white/80">Шаг ухода *</label>
             <select
               required
               value={form.step}
               onChange={(e) => setForm({ ...form, step: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl border"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-white/20"
             >
-              <option value="">Выберите шаг</option>
+              <option value="" className="bg-black text-white">Выберите шаг</option>
               {STEPS.map((s) => (
-                <option key={s.value} value={s.value}>
+                <option key={s.value} value={s.value} className="bg-black text-white">
                   {s.label}
                 </option>
               ))}
@@ -405,7 +410,7 @@ export default function EditProductPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-3">
+            <label className="block font-medium mb-3 text-white/80">
               Активные ингредиенты (через запятую)
             </label>
             <input
@@ -413,16 +418,16 @@ export default function EditProductPage() {
               onChange={(e) =>
                 setForm({ ...form, activeIngredients: e.target.value })
               }
-              className="w-full px-4 py-3 rounded-xl border"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20"
               placeholder="ниацинамид 10%, азелаиновая кислота 15%, ретинол 0.3%"
             />
           </div>
 
           <div className="md:col-span-2 space-y-4">
             <div>
-              <label className="block font-medium mb-3">Избегать при</label>
+              <label className="block font-medium mb-3 text-white/80">Избегать при</label>
               <div className="flex gap-8">
-                <label className="flex items-center gap-3">
+                <label className="flex items-center gap-3 text-white/80">
                   <input
                     type="checkbox"
                     checked={form.avoidIf.includes('pregnant')}
@@ -434,10 +439,11 @@ export default function EditProductPage() {
                           : prev.avoidIf.filter((x) => x !== 'pregnant'),
                       }))
                     }
+                    className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
                   />
                   Беременность / ГВ
                 </label>
-                <label className="flex items-center gap-3">
+                <label className="flex items-center gap-3 text-white/80">
                   <input
                     type="checkbox"
                     checked={form.avoidIf.includes('retinol_allergy')}
@@ -449,6 +455,7 @@ export default function EditProductPage() {
                           : prev.avoidIf.filter((x) => x !== 'retinol_allergy'),
                       }))
                     }
+                    className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
                   />
                   Аллергия на ретинол / кислоты
                 </label>
@@ -456,19 +463,20 @@ export default function EditProductPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3 text-white/80">
                 <input
                   type="checkbox"
                   checked={form.isHero}
                   onChange={(e) => setForm({ ...form, isHero: e.target.checked })}
+                  className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
                 />
-                <span className="font-medium text-purple-700">
+                <span className="font-medium text-white">
                   Герой-рекомендация (выделяется в плане)
                 </span>
               </label>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Приоритет (1–100)</label>
+                <label className="block text-sm font-medium mb-2 text-white/80">Приоритет (1–100)</label>
                 <div className="flex items-center gap-4">
                   <input
                     type="range"
@@ -480,7 +488,7 @@ export default function EditProductPage() {
                     }
                     className="w-64"
                   />
-                  <span className="font-bold text-purple-600 text-xl">{form.priority}</span>
+                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 text-xl">{form.priority}</span>
                 </div>
               </div>
             </div>
@@ -499,7 +507,7 @@ export default function EditProductPage() {
       <button
           type="button"
         onClick={() => router.back()}
-          className="px-8 py-5 border-2 border-gray-300 rounded-2xl"
+          className="px-8 py-5 border-2 border-white/20 text-white rounded-2xl hover:bg-white/5 transition-colors"
       >
           Отмена
       </button>
