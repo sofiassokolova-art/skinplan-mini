@@ -101,11 +101,12 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          'admin-sidebar border-r border-gray-200 transition-all duration-300 relative z-10 bg-white',
+          'admin-sidebar border-r border-gray-200 transition-all duration-300 relative z-10',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
+        style={{ backgroundColor: '#f3f4f6' }}
       >
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between" style={{ backgroundColor: '#f3f4f6' }}>
           {sidebarOpen && (
             <h1 className="text-xl font-bold text-gray-900">
               SkinIQ Admin

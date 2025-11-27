@@ -164,21 +164,21 @@ export default function SupportAdmin() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-white/60">Загрузка...</div>
+        <div className="text-gray-600">Загрузка...</div>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 h-[calc(100vh-4rem)] bg-[#000000]">
+    <div className="grid grid-cols-1 lg:grid-cols-4 h-[calc(100vh-4rem)] bg-gray-100">
       {/* Левая колонка — список чатов */}
-      <div className={cn(glassCard, 'border-r border-white/10 overflow-y-auto', selectedChat && 'hidden lg:block')}>
-        <div className="p-4 border-b border-white/10">
-          <h2 className="text-xl font-bold text-white">Чаты поддержки</h2>
-          <p className="text-sm text-white/60 mt-1">{chats.length} активных</p>
+      <div className={cn(glassCard, 'border-r border-gray-200 overflow-y-auto bg-white', selectedChat && 'hidden lg:block')}>
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">Чаты поддержки</h2>
+          <p className="text-sm text-gray-600 mt-1">{chats.length} активных</p>
         </div>
         {chats.length === 0 ? (
-          <div className="p-8 text-center text-white/40">
+          <div className="p-8 text-center text-gray-400">
             <p>Нет активных чатов</p>
           </div>
         ) : (
@@ -187,8 +187,8 @@ export default function SupportAdmin() {
               key={chat.id}
               onClick={() => setSelectedChat(chat)}
               className={cn(
-                'p-4 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/5',
-                selectedChat?.id === chat.id && 'bg-white/10'
+                'p-4 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-200',
+                selectedChat?.id === chat.id && 'bg-gray-100'
               )}
             >
               <div className="flex items-center gap-3">
@@ -196,11 +196,11 @@ export default function SupportAdmin() {
                   {chat.user.firstName?.[0]?.toUpperCase() || chat.user.username?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-white truncate">
+                  <div className="font-bold text-gray-900 truncate">
                     {chat.user.firstName || chat.user.username || 'Аноним'}
                   </div>
-                  <div className="text-sm text-white/60 truncate">{chat.lastMessage || 'Нет сообщений'}</div>
-                  <div className="text-xs text-white/40 mt-1">
+                  <div className="text-sm text-gray-600 truncate">{chat.lastMessage || 'Нет сообщений'}</div>
+                  <div className="text-xs text-gray-400 mt-1">
                     {formatTime(chat.updatedAt)}
                   </div>
                 </div>
@@ -216,16 +216,16 @@ export default function SupportAdmin() {
       </div>
 
       {/* Правая часть — выбранный чат */}
-      <div className={cn('flex flex-col bg-[#050505]', selectedChat ? 'lg:col-span-3' : 'lg:col-span-4')}>
+      <div className={cn('flex flex-col bg-white', selectedChat ? 'lg:col-span-3' : 'lg:col-span-4')}>
         {selectedChat ? (
           <>
             {/* Хедер чата */}
-            <div className={cn(glassCard, 'p-4 border-b border-white/10 flex items-center justify-between')}>
+            <div className={cn(glassCard, 'p-4 border-b border-gray-200 flex items-center justify-between bg-white')}>
               <div className="flex items-center gap-4 flex-1">
                 {/* Кнопка "Назад" для мобильных */}
                 <button
                   onClick={() => setSelectedChat(null)}
-                  className="lg:hidden px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                  className="lg:hidden px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   ←
                 </button>
@@ -233,15 +233,15 @@ export default function SupportAdmin() {
                   {selectedChat.user.firstName?.[0]?.toUpperCase() || selectedChat.user.username?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-xl text-white">
+                  <div className="font-bold text-xl text-gray-900">
                     {selectedChat.user.firstName || selectedChat.user.username || 'Аноним'}
                     {selectedChat.user.lastName && ` ${selectedChat.user.lastName}`}
                   </div>
-                  <div className="text-sm text-white/60">
+                  <div className="text-sm text-gray-600">
                     @{selectedChat.user.username || 'нет username'} • ID: {selectedChat.user.telegramId}
                   </div>
                   {selectedChat.user.profile && (
-                    <div className="text-xs text-white/50 mt-1">
+                    <div className="text-xs text-gray-500 mt-1">
                       {selectedChat.user.profile.skinType && (
                         <span className="mr-2">Тип кожи: {selectedChat.user.profile.skinType}</span>
                       )}
@@ -255,14 +255,14 @@ export default function SupportAdmin() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => openUserProfile(selectedChat.user.id)}
-                  className="px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all"
+                  className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
                 >
                   Профиль →
                 </button>
                 {/* Кнопка "Назад к списку" для десктопа */}
                 <button
                   onClick={() => setSelectedChat(null)}
-                  className="hidden lg:block px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors"
+                  className="hidden lg:block px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors"
                   title="Назад к списку чатов"
                 >
                   ← Назад
@@ -271,9 +271,9 @@ export default function SupportAdmin() {
             </div>
 
             {/* Сообщения */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
               {messages.length === 0 ? (
-                <div className="text-center text-white/40 py-12">
+                <div className="text-center text-gray-400 py-12">
                   <p>Нет сообщений</p>
                 </div>
               ) : (
@@ -284,12 +284,12 @@ export default function SupportAdmin() {
                         'inline-block max-w-lg p-4 rounded-2xl',
                         msg.isAdmin
                           ? 'bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white'
-                          : cn(glassCard, 'text-white')
+                          : 'bg-white border border-gray-200 text-gray-900'
                       )}
                     >
                       {msg.text}
                     </div>
-                    <div className="text-xs text-white/40 mt-1 px-2">
+                    <div className="text-xs text-gray-400 mt-1 px-2">
                       {formatTime(msg.createdAt)}
                     </div>
                   </div>
@@ -299,7 +299,7 @@ export default function SupportAdmin() {
             </div>
 
             {/* Поле ввода */}
-            <div className={cn(glassCard, 'p-4 border-t border-white/10')}>
+            <div className={cn(glassCard, 'p-4 border-t border-gray-200 bg-white')}>
               <div className="flex gap-4">
                 <textarea
                   value={replyText}
@@ -312,12 +312,12 @@ export default function SupportAdmin() {
                     }
                   }}
                   rows={3}
-                  className="flex-1 px-4 py-3 bg-[#050505] border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20 resize-none"
+                  className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 resize-none"
                 />
                 <button
                   onClick={sendReply}
                   disabled={sending || !replyText.trim()}
-                  className="px-8 py-4 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-8 py-4 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <Send size={20} />
                   Отправить
@@ -326,19 +326,19 @@ export default function SupportAdmin() {
               <div className="flex gap-4 mt-4">
                 <button
                   onClick={() => sendTemplate('Спасибо за обращение! Ваш план уже обновлён')}
-                  className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                  className="text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 >
                   Спасибо, план обновлён
                 </button>
                 <button
                   onClick={() => sendTemplate('Скидка 15% на ваш следующий заказ → https://t.me/skiniq_bot')}
-                  className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                  className="text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 >
                   Скидка 15%
                 </button>
                 <button
                   onClick={() => sendTemplate('Проверьте ваш план ухода, он был обновлён с учётом ваших потребностей')}
-                  className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                  className="text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 >
                   План обновлён
                 </button>
@@ -346,7 +346,7 @@ export default function SupportAdmin() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-white/40">
+          <div className="flex-1 flex items-center justify-center text-gray-400">
             <div className="text-center">
               <User size={64} className="mx-auto mb-4 opacity-20" />
               <p>Выберите чат</p>

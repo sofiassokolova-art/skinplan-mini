@@ -127,89 +127,89 @@ export default function BroadcastsPage() {
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-white/60">Загрузка...</div>;
+    return <div className="text-center py-12 text-gray-600">Загрузка...</div>;
   }
 
   return (
     <div className="p-6 md:p-10 space-y-6">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Рассылки</h1>
+        <h1 className="text-4xl font-black text-gray-900">Рассылки</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all"
+          className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
         >
           {showForm ? 'Отменить' : '+ Создать рассылку'}
         </button>
       </div>
 
       {showForm && (
-        <div className="glass rounded-3xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Новая рассылка</h2>
+        <div className="glass rounded-3xl p-8 mb-8 bg-white">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Новая рассылка</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2 text-white/80">Название</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Название</label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2 text-white/80">Сообщение</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Сообщение</label>
               <textarea
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
                 rows={5}
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-white/80">Тип кожи (опционально)</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700">Тип кожи (опционально)</label>
                 <select
                   value={formData.skinType}
                   onChange={(e) => setFormData({ ...formData, skinType: e.target.value })}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/20"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-gray-400"
                 >
-                  <option value="" className="bg-black text-white">Все</option>
-                  <option value="dry" className="bg-black text-white">Сухая</option>
-                  <option value="oily" className="bg-black text-white">Жирная</option>
-                  <option value="combo" className="bg-black text-white">Комбинированная</option>
-                  <option value="normal" className="bg-black text-white">Нормальная</option>
-                  <option value="sensitive" className="bg-black text-white">Чувствительная</option>
+                  <option value="">Все</option>
+                  <option value="dry">Сухая</option>
+                  <option value="oily">Жирная</option>
+                  <option value="combo">Комбинированная</option>
+                  <option value="normal">Нормальная</option>
+                  <option value="sensitive">Чувствительная</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2 text-white/80">Возрастная группа (опционально)</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700">Возрастная группа (опционально)</label>
                 <select
                   value={formData.ageGroup}
                   onChange={(e) => setFormData({ ...formData, ageGroup: e.target.value })}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/20"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-gray-400"
                 >
-                  <option value="" className="bg-black text-white">Все</option>
-                  <option value="18_25" className="bg-black text-white">18-25</option>
-                  <option value="26_30" className="bg-black text-white">26-30</option>
-                  <option value="31_40" className="bg-black text-white">31-40</option>
-                  <option value="41_50" className="bg-black text-white">41-50</option>
-                  <option value="50_plus" className="bg-black text-white">50+</option>
+                  <option value="">Все</option>
+                  <option value="18_25">18-25</option>
+                  <option value="26_30">26-30</option>
+                  <option value="31_40">31-40</option>
+                  <option value="41_50">41-50</option>
+                  <option value="50_plus">50+</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2 text-white/80">Запланировать на (опционально)</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Запланировать на (опционально)</label>
               <input
                 type="datetime-local"
                 value={formData.scheduledAt}
                 onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/20"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-gray-400"
               />
             </div>
             <button
               type="submit"
-              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(16,185,129,0.5)] transition-all"
+              className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
             >
               Создать
             </button>
@@ -219,7 +219,7 @@ export default function BroadcastsPage() {
 
       <div className="space-y-4">
         {broadcasts.length === 0 ? (
-          <div className="glass rounded-3xl p-8 text-center text-white/60">
+          <div className="glass rounded-3xl p-8 text-center text-gray-600 bg-white">
             Пока нет рассылок
           </div>
         ) : (
