@@ -64,17 +64,67 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Все тексты в админке белые по умолчанию */
+.admin-layout,
+.admin-layout * {
+  color: #ffffff !important;
+}
+
+/* Исключения для градиентов и специальных цветов */
+.admin-layout .bg-clip-text,
+.admin-layout .text-transparent,
+.admin-layout .text-emerald-400,
+.admin-layout .text-red-400,
+.admin-layout .text-purple-400,
+.admin-layout .text-pink-400 {
+  color: inherit !important;
 }
 
 /* Стили для админ-панели */
 .admin-layout {
   background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.admin-layout * {
+  color: #ffffff !important;
+}
+
+/* Исключения для градиентов и специальных цветов */
+.admin-layout .bg-clip-text,
+.admin-layout .text-transparent,
+.admin-layout .text-emerald-400,
+.admin-layout .text-red-400,
+.admin-layout .text-purple-400,
+.admin-layout .text-pink-400,
+.admin-layout .text-pink-300,
+.admin-layout .text-blue-300,
+.admin-layout .text-red-300,
+.admin-layout [class*="text-"] {
+  color: inherit !important;
 }
 
 .admin-sidebar {
   background: rgba(0, 0, 0, 0.4) !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
+  color: #ffffff !important;
+}
+
+.admin-sidebar * {
+  color: #ffffff !important;
+}
+
+/* Все страницы админки */
+[class*="admin"] {
+  color: #ffffff !important;
+}
+
+[class*="admin"] * {
+  color: #ffffff !important;
 }
 
 * {

@@ -161,8 +161,10 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto" style={{ backgroundColor: '#000000' }}>
-        {children}
+      <main className="flex-1 overflow-auto" style={{ backgroundColor: '#000000', color: '#ffffff' }}>
+        <div style={{ color: '#ffffff' }}>
+          {children}
+        </div>
       </main>
     </div>
   );
