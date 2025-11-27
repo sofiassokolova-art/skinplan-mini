@@ -146,18 +146,18 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="p-6 md:p-10">
+    <div className="pl-0 pr-6 md:pr-10 pt-0 pb-6 md:pb-10">
       {/* Заголовок */}
       <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-14">
         SkinIQ Admin • {currentDate}
       </h1>
       
       {/* 6 больших метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 md:gap-12 xl:gap-20 mb-16 max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10 md:gap-16 xl:gap-24 mb-16 max-w-4xl">
         {metricsData.map((m, i) => (
           <div 
             key={i} 
-            className="glass rounded-3xl p-4"
+            className="glass rounded-3xl p-3"
           >
             <div className="text-gray-600 text-sm font-medium mb-2">{m.label}</div>
             <div className={`text-3xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
