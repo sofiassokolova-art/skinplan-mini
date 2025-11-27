@@ -102,7 +102,7 @@ export default function BroadcastsPage() {
       }
 
       const data = await response.json();
-      setBroadcasts(data.broadcasts || []);
+        setBroadcasts(data.broadcasts || []);
     } catch (error) {
       console.error('Error loading broadcasts:', error);
       // При сетевой ошибке не перенаправляем, просто показываем ошибку

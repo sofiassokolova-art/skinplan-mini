@@ -299,7 +299,7 @@ export default function RulesAdmin() {
         {rules.map((rule) => (
           <div
             key={rule.id}
-            className={cn(glassCard, glassCardHover, 'p-6')}
+            className={cn(glassCard, 'p-6')}
           >
             <div className="flex items-start justify-between mb-4">
               <div>

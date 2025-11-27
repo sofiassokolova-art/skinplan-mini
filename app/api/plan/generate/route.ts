@@ -250,7 +250,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         published: true as any,
         brand: {
           isActive: true, // Только активные бренды
-        },
+      },
       } as any,
       include: { brand: true },
     });
@@ -500,7 +500,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
           step: 'cleanser', // Исправлено: было 'cleansing', должно быть 'cleanser'
           brand: {
             isActive: true, // Только активные бренды
-          },
+        },
         } as any,
         include: { brand: true },
         orderBy: { createdAt: 'desc' },

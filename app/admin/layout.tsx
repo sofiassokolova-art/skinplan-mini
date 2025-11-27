@@ -40,16 +40,16 @@ export default function AdminLayout({
 
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem('admin_token');
         const response = await fetch('/api/admin/auth', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: 'include',
         });
 
         if (response.ok) {
-          const data = await response.json();
-          if (data.valid) {
-            setIsAuthenticated(true);
+        const data = await response.json();
+        if (data.valid) {
+          setIsAuthenticated(true);
           } else {
             // Не перенаправляем сразу, даем странице возможность проверить сама
             setIsAuthenticated(false);
@@ -118,7 +118,7 @@ export default function AdminLayout({
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-        </div>
+              </div>
 
         <nav className="p-4 space-y-2" style={{ backgroundColor: 'transparent' }}>
           {menuItems.map((item) => {
