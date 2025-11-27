@@ -1,10 +1,25 @@
 // app/admin/layout.tsx
-// Layout для админ-панели
+// Layout для админ-панели с glassmorphism стилем
 
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { 
+  LayoutDashboard, 
+  Users, 
+  Package, 
+  FileText, 
+  Settings, 
+  BarChart3,
+  MessageSquare,
+  Send,
+  LogOut,
+  Menu,
+  X
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function AdminLayout({
   children,
@@ -15,85 +30,70 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [authChecked, setAuthChecked] = useState(false); // Флаг, что проверка уже была
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Проверяем, находимся ли мы на странице входа
   const isLoginPage = pathname === '/admin/login';
 
   useEffect(() => {
-    // Если это страница входа, не проверяем авторизацию
     if (isLoginPage) {
       setLoading(false);
       return;
     }
 
-    // Проверяем авторизацию только один раз при первой загрузке
-    if (authChecked) {
-      return;
-    }
-
-    // Проверка авторизации админа
     const checkAuth = async () => {
-      const token = localStorage.getItem('admin_token');
-      
-      // Если нет токена, сразу редирект
-      if (!token) {
-        router.push('/admin/login');
-        setLoading(false);
-        setAuthChecked(true);
-        return;
-      }
-
-      // Проверяем токен на сервере только один раз
       try {
-        const response = await fetch('/api/admin/verify', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const token = localStorage.getItem('admin_token');
+        const response = await fetch('/api/admin/auth', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: 'include',
         });
 
-        if (!response.ok) {
-          console.warn('Token verification failed:', response.status, response.statusText);
-          localStorage.removeItem('admin_token');
-          setLoading(false);
-          setAuthChecked(true);
-          router.push('/admin/login');
-          return;
-        }
-
-        const data = await response.json();
-        if (data.valid) {
-          setIsAuthenticated(true);
-          setLoading(false);
-          setAuthChecked(true);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.valid) {
+            setIsAuthenticated(true);
+          } else {
+            router.push('/admin/login');
+          }
         } else {
-          localStorage.removeItem('admin_token');
-          setLoading(false);
-          setAuthChecked(true);
           router.push('/admin/login');
         }
       } catch (error) {
-        console.error('Token verification error:', error);
-        // Если проверка не удалась из-за сетевой ошибки, разрешаем доступ
-        // (токен будет проверен при каждом API запросе)
-        setIsAuthenticated(true);
+        console.error('Auth check error:', error);
+        router.push('/admin/login');
+      } finally {
         setLoading(false);
-        setAuthChecked(true);
       }
     };
-    checkAuth();
-  }, [router, isLoginPage, authChecked]); // Убрали pathname из зависимостей - проверяем только один раз
 
-  // На странице входа показываем children без проверки авторизации
+    checkAuth();
+  }, [router, isLoginPage]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    router.push('/admin/login');
+  };
+
+  const menuItems = [
+    { href: '/admin', label: 'Дашборд', icon: LayoutDashboard },
+    { href: '/admin/users', label: 'Пользователи', icon: Users },
+    { href: '/admin/products', label: 'Продукты', icon: Package },
+    { href: '/admin/brands', label: 'Бренды', icon: Package },
+    { href: '/admin/rules', label: 'Правила', icon: FileText },
+    { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare },
+    { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
+    { href: '/admin/broadcast', label: 'Рассылки', icon: Send },
+    { href: '/admin/analytics', label: 'Аналитика', icon: BarChart3 },
+  ];
+
   if (isLoginPage) {
     return <>{children}</>;
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Загрузка...</div>
+      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
+        <div className="text-white/60">Загрузка...</div>
       </div>
     );
   }
@@ -103,71 +103,67 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">SkinIQ Admin</h1>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <a
-                  href="/admin"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Дашборд
-                </a>
-                <a
-                  href="/admin/products"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Продукты
-                </a>
-                <a
-                  href="/admin/rules"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Правила
-                </a>
-                <a
-                  href="/admin/users"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Пользователи
-                </a>
-                <a
-                  href="/admin/feedback"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Отзывы
-                </a>
-                <a
-                  href="/admin/replacements"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Замены
-                </a>
-              </div>
-            </div>
-            <div className="flex items-center">
-              <button
-                onClick={() => {
-                  localStorage.removeItem('admin_token');
-                  router.push('/admin/login');
-                }}
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
-              >
-                Выйти
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#000000] flex">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'bg-[#050505] border-r border-white/10 transition-all duration-300',
+          sidebarOpen ? 'w-64' : 'w-20'
+        )}
+      >
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+          {sidebarOpen && (
+            <h1 className="text-xl font-bold bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent">
+              SkinIQ Admin
+            </h1>
+          )}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="text-white/60 hover:text-white transition-colors"
+          >
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
-      </nav>
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {children}
+
+        <nav className="p-4 space-y-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || 
+              (item.href !== '/admin' && pathname.startsWith(item.href));
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+                  isActive
+                    ? 'bg-white/10 border border-white/20 text-white'
+                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                )}
+              >
+                <Icon size={20} />
+                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="absolute bottom-4 left-4 right-4">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/60 hover:bg-white/5 hover:text-white transition-all"
+          >
+            <LogOut size={20} />
+            {sidebarOpen && <span>Выйти</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto">
+        <div className="p-8">{children}</div>
       </main>
     </div>
   );
 }
-

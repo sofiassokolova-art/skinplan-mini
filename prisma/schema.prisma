@@ -21,8 +21,10 @@ model User {
   firstName  String?  @map("first_name")
   lastName   String?  @map("last_name")
   language   String   @default("ru")
+  tags       String[] @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
+  lastActive DateTime? @map("last_active") // Обновляется при активности
 
   skinProfiles           SkinProfile[]
   userAnswers            UserAnswer[]
@@ -32,6 +34,8 @@ model User {
   wishlistFeedbacks      WishlistFeedback[]
   productReplacements    ProductReplacement[]
   botMessages            BotMessage[]
+  broadcastLogs          BroadcastLog[]
+  supportChats           SupportChat[]
 
   @@map("users")
 }
@@ -177,8 +181,9 @@ model Product {
   // Основные данные
   price           Int? // в рублях (950 → 950 ₽) - новое поле, может быть null для обратной совместимости
   volume          String? // "30 мл", "50 мл"
-  description     String? // полное описание
-  descriptionUser String?  @map("description_user") // краткое для карточки
+  description     String? // описание для карточки в приложении
+  descriptionUser String?  @map("description_user") // краткое для карточки (обратная совместимость)
+  composition     String? // полный состав продукта
   imageUrl        String?  @map("image_url") // главное фото
   gallery         String[] @default([]) // массив ссылок на доп. фото
   link            String? // ссылка на аптеку/Ozon/Wildberries
@@ -277,6 +282,19 @@ model Admin {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("admins")
+}
+
+model AdminWhitelist {
+  id          Int      @id @default(autoincrement())
+  phoneNumber String   @unique @map("phone_number") // +79124483696
+  telegramId  String?  @unique @map("telegram_id") // Опционально для связи
+  name        String?  // Имя админа для удобства
+  role        String   @default("admin") // admin / editor
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_whitelist")
 }
 
 // ============================================
@@ -389,7 +407,60 @@ model BroadcastMessage {
   updatedAt   DateTime @updatedAt @map("updated_at")
   sentAt      DateTime? @map("sent_at") // Когда завершена отправка
 
+  logs BroadcastLog[]
+
   @@index([status])
   @@index([scheduledAt])
   @@map("broadcast_messages")
+}
+
+model SupportChat {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unread      Int      @default(0) // Непрочитанные сообщения от пользователя
+  unreadAdmin Int      @default(0) @map("unread_admin") // Непрочитанные сообщения от админа (для пользователя)
+  lastMessage String?  @map("last_message")
+  status      String   @default("active") // active / closed / archived
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  messages SupportMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([updatedAt])
+  @@map("support_chats")
+}
+
+model SupportMessage {
+  id         String      @id @default(cuid())
+  chatId     String      @map("chat_id")
+  chat       SupportChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  text       String
+  isAdmin    Boolean     @default(false) @map("is_admin")
+  attachments Json?      // Для фото, файлов
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@index([chatId])
+  @@index([createdAt])
+  @@map("support_messages")
+}
+
+model BroadcastLog {
+  id              String   @id @default(cuid())
+  broadcastId     String   @map("broadcast_id")
+  userId          String   @map("user_id")
+  telegramId      String   @map("telegram_id")
+  status          String   // 'sent' | 'failed' | 'blocked'
+  errorMessage    String?  @map("error_message")
+  sentAt          DateTime @default(now()) @map("sent_at")
+
+  broadcast BroadcastMessage @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([broadcastId])
+  @@index([userId])
+  @@index([status])
+  @@map("broadcast_logs")
 }

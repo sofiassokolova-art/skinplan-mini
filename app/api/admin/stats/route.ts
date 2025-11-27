@@ -140,6 +140,22 @@ export async function GET(request: NextRequest) {
       return null;
     });
 
+    // Вычисляем примерный доход (сумма цен всех продуктов в вишлистах)
+    const revenue = await prisma.wishlist
+      .findMany({
+        include: {
+          product: {
+            select: {
+              price: true,
+            },
+          },
+        },
+      })
+      .then((wishlists) => {
+        return wishlists.reduce((sum, w) => sum + (w.product.price || 0), 0);
+      })
+      .catch(() => 0);
+
     return NextResponse.json({
       stats: {
         users: usersCount,
@@ -147,6 +163,7 @@ export async function GET(request: NextRequest) {
         plans: plansCount,
         badFeedback: badFeedbackCount,
         replacements: replacementsCount,
+        revenue,
         // Расширенные метрики (если доступны)
         ...(metrics && {
           churnRate: metrics.churnRate,

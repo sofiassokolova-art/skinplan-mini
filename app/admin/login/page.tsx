@@ -1,103 +1,103 @@
 // app/admin/login/page.tsx
-// Страница входа в админ-панель по секретному слову
+// Страница входа в админ-панель через Telegram
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp: {
+        initData: string;
+        initDataUnsafe: {
+          user?: {
+            id: number;
+            first_name: string;
+            last_name?: string;
+            username?: string;
+          };
+        };
+        ready: () => void;
+        expand: () => void;
+      };
+    };
+  }
+}
+
 export default function AdminLogin() {
   const router = useRouter();
-  const [secretWord, setSecretWord] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-
-    // Проверяем, есть ли уже токен И он валидный
+    
+    // Проверяем, есть ли уже токен
     const checkExistingToken = async () => {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-      if (token) {
-        try {
-          const response = await fetch('/api/admin/verify', {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            credentials: 'include',
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.valid) {
-              router.push('/admin');
-              return;
-            }
+      try {
+        const response = await fetch('/api/admin/auth', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.valid) {
+            router.push('/admin');
+            return;
           }
-          // Если токен не валидный, удаляем его
-          localStorage.removeItem('admin_token');
-        } catch (error) {
-          console.error('Error checking token:', error);
-          // В случае ошибки оставляем пользователя на странице логина
         }
+      } catch (error) {
+        console.error('Error checking token:', error);
       }
     };
     
     checkExistingToken();
   }, [router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const handleTelegramLogin = async () => {
     setLoading(true);
+    setError('');
 
     try {
-      const response = await fetch('/api/admin/login', {
+      // Получаем initData из Telegram WebApp
+      const initData = window.Telegram?.WebApp?.initData;
+
+      if (!initData) {
+        setError('Telegram WebApp не доступен. Откройте эту страницу через Telegram бота.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secretWord: secretWord.trim() }),
+        credentials: 'include',
+        body: JSON.stringify({ initData }),
       });
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (parseError) {
-        console.error('Failed to parse response:', parseError);
-        setError(`Ошибка сервера: ${response.status} ${response.statusText}`);
-        setLoading(false);
-        return;
-      }
+      const data = await response.json();
 
       if (!response.ok) {
-        console.error('Login error:', {
-          status: response.status,
-          error: data.error,
-          statusText: response.statusText,
-        });
-        
-        if (response.status === 401 || response.status === 403) {
-          setError(data.error || 'Неверное секретное слово. Доступ запрещен.');
-        } else if (response.status === 429) {
-          const retryAfter = data.retryAfter || 15;
-          setError(`Слишком много попыток. Подождите ${retryAfter} минут(ы) и попробуйте снова.`);
-        } else if (response.status === 500) {
-          setError(data.error || 'Ошибка сервера. Проверьте настройки ADMIN_SECRET на Vercel.');
-        } else {
-          setError(data.error || `Ошибка входа (${response.status})`);
-        }
+        setError(data.error || 'Ошибка авторизации');
         setLoading(false);
         return;
       }
 
-      // Сохраняем токен
-      localStorage.setItem('admin_token', data.token);
-      
+      // Сохраняем токен в localStorage для удобства
+      if (data.token) {
+        localStorage.setItem('admin_token', data.token);
+      }
+
       // Перенаправляем в админ-панель
       router.push('/admin');
+      router.refresh();
     } catch (err) {
       console.error('Error during login:', err);
       setError('Ошибка соединения. Проверьте подключение к интернету.');
+    } finally {
       setLoading(false);
     }
   };
@@ -107,154 +107,50 @@ export default function AdminLogin() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      padding: '20px',
-    }}>
-      <div style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: '24px',
-        padding: '32px',
-        maxWidth: '500px',
-        width: '100%',
-        textAlign: 'center',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-      }}>
-        <h2 style={{
-          fontSize: '28px',
-          fontWeight: 'bold',
-          color: '#0A5F59',
-          marginBottom: '8px',
-        }}>
-          Вход в админ-панель
-        </h2>
-        <p style={{
-          color: '#475467',
-          marginBottom: '24px',
-        }}>
-          Введите секретное слово для доступа
-        </p>
+    <div className="min-h-screen bg-[#000000] flex items-center justify-center p-4">
+      <div className="bg-white/6 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-[0_8px_32px_rgba(139,92,246,0.3)]">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">SkinIQ Admin</h1>
+          <p className="text-white/60">Вход через Telegram</p>
+        </div>
 
         {error && (
-          <div style={{
-            backgroundColor: '#FEE2E2',
-            border: '1px solid #FCA5A5',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '24px',
-          }}>
-            <div style={{
-              color: '#DC2626',
-              fontWeight: '600',
-              marginBottom: '4px',
-            }}>
-              ❌ Ошибка
-            </div>
-            <div style={{ color: '#991B1B', fontSize: '14px' }}>
-              {error}
-            </div>
+          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm">
+            {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '24px' }}>
-            <input
-              type="password"
-              value={secretWord}
-              onChange={(e) => setSecretWord(e.target.value)}
-              placeholder="Секретное слово"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '16px',
-                borderRadius: '12px',
-                border: '1px solid rgba(10, 95, 89, 0.2)',
-                fontSize: '16px',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                backgroundColor: 'white',
-                color: '#0A5F59',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#0A5F59';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(10, 95, 89, 0.2)';
-              }}
-              autoFocus
-            />
+        <div className="space-y-4">
+          <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+            <p className="text-white/80 text-sm mb-2">
+              Для входа в админ-панель необходимо:
+            </p>
+            <ul className="text-white/60 text-sm space-y-1 list-disc list-inside">
+              <li>Открыть эту страницу через Telegram бота</li>
+              <li>Быть в whitelist администраторов</li>
+            </ul>
           </div>
 
           <button
-            type="submit"
-            disabled={loading || !secretWord.trim()}
-            style={{
-              width: '100%',
-              padding: '16px',
-              borderRadius: '12px',
-              backgroundColor: loading || !secretWord.trim() ? 'rgba(10, 95, 89, 0.5)' : '#0A5F59',
-              color: 'white',
-              border: 'none',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: loading || !secretWord.trim() ? 'not-allowed' : 'pointer',
-              transition: 'background-color 0.2s',
-              boxShadow: loading || !secretWord.trim() ? 'none' : '0 4px 12px rgba(10, 95, 89, 0.3)',
-            }}
+            onClick={handleTelegramLogin}
+            disabled={loading || !window.Telegram?.WebApp?.initData}
+            className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300"
           >
             {loading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid rgba(255, 255, 255, 0.3)',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                  animation: 'spin 0.6s linear infinite',
-                }}></div>
-                <span>Вход...</span>
-              </div>
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                Вход...
+              </span>
             ) : (
-              'Войти'
+              'Войти через Telegram'
             )}
           </button>
-        </form>
 
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-
-        <div style={{
-          marginTop: '24px',
-          padding: '16px',
-          backgroundColor: '#EFF6FF',
-          borderRadius: '12px',
-          border: '1px solid #BFDBFE',
-        }}>
-          <div style={{
-            color: '#1E40AF',
-            fontWeight: '600',
-            marginBottom: '8px',
-            fontSize: '14px',
-          }}>
-            🔒 Безопасность
-          </div>
-          <div style={{
-            color: '#1E3A8A',
-            fontSize: '13px',
-            lineHeight: '1.6',
-          }}>
-            Секретное слово требуется для доступа к админ-панели. 
-            Оно хранится в переменных окружения и известно только администраторам.
-          </div>
+          {!window.Telegram?.WebApp?.initData && (
+            <p className="text-white/40 text-xs text-center">
+              Telegram WebApp не доступен. Откройте через бота.
+            </p>
+          )}
         </div>
       </div>
     </div>

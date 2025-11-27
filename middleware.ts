@@ -87,6 +87,30 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
+    // Для админских роутов проверяем admin_token
+    if (pathname.startsWith('/api/admin/')) {
+      const adminToken = request.headers.get('authorization')?.replace('Bearer ', '') ||
+                        request.cookies.get('admin_token')?.value;
+
+      if (!adminToken) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+
+      try {
+        jwt.verify(adminToken, JWT_SECRET);
+        return NextResponse.next();
+      } catch (error) {
+        return NextResponse.json(
+          { error: 'Invalid token' },
+          { status: 401 }
+        );
+      }
+    }
+
+    // Для остальных API маршрутов проверяем auth_token
     const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
                   request.cookies.get('auth_token')?.value;
 

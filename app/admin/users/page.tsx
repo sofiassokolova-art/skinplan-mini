@@ -1,10 +1,23 @@
 // app/admin/users/page.tsx
-// Страница управления пользователями
+// Страница управления пользователями с TanStack Table
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  flexRender,
+  ColumnDef,
+  SortingState,
+  ColumnFiltersState,
+} from '@tanstack/react-table';
+import { Search, User, Check, X } from 'lucide-react';
+import { cn, glassCard } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -14,13 +27,11 @@ interface User {
   lastName: string | null;
   language: string;
   createdAt: string;
-  updatedAt: string;
   hasProfile: boolean;
   hasPlan: boolean;
   profileCount: number;
   planCount: number;
   feedbackCount: number;
-  latestProfile: any | null;
 }
 
 export default function UsersAdmin() {
@@ -28,24 +39,32 @@ export default function UsersAdmin() {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 20,
+  });
 
   useEffect(() => {
     loadUsers();
-  }, [page]);
+  }, [pagination.pageIndex]);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await fetch(`/api/admin/users?page=${page}&limit=50`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(
+        `/api/admin/users?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          credentials: 'include',
+        }
+      );
 
       if (response.status === 401) {
         router.push('/admin/login');
@@ -58,251 +77,269 @@ export default function UsersAdmin() {
 
       const data = await response.json();
       setUsers(data.users || []);
-      setTotalPages(data.pagination?.totalPages || 1);
+      // TODO: Сохранить total для пагинации
     } catch (err: any) {
       console.error('Ошибка загрузки пользователей:', err);
       setError(err.message || 'Ошибка загрузки пользователей');
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredUsers = users.filter((u) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      (u.firstName?.toLowerCase().includes(query)) ||
-      (u.lastName?.toLowerCase().includes(query)) ||
-      (u.username?.toLowerCase().includes(query)) ||
-      (u.telegramId?.includes(query))
-    );
+  const columns = useMemo<ColumnDef<User>[]>(
+    () => [
+      {
+        accessorKey: 'telegramId',
+        header: 'Telegram ID',
+        cell: ({ row }) => {
+          const telegramId = row.getValue('telegramId') as string;
+          return (
+            <span className="font-mono text-white/80 text-sm">{telegramId}</span>
+          );
+        },
+      },
+      {
+        accessorKey: 'firstName',
+        header: 'Пользователь',
+        cell: ({ row }) => {
+          const user = row.original;
+          const name = user.firstName || user.lastName
+            ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+            : user.username || 'Без имени';
+          return (
+            <div>
+              <div className="font-medium text-white">{name}</div>
+              {user.username && (
+                <div className="text-sm text-white/60">@{user.username}</div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'hasProfile',
+        header: 'Профиль',
+        cell: ({ row }) => {
+          const hasProfile = row.getValue('hasProfile') as boolean;
+          const profileCount = row.original.profileCount;
+          return (
+            <div className="flex items-center gap-2">
+              {hasProfile ? (
+                <>
+                  <Check className="text-green-400" size={16} />
+                  <span className="text-green-400 text-sm">Есть ({profileCount})</span>
+                </>
+              ) : (
+                <>
+                  <X className="text-white/40" size={16} />
+                  <span className="text-white/40 text-sm">Нет</span>
+                </>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'hasPlan',
+        header: 'План',
+        cell: ({ row }) => {
+          const hasPlan = row.getValue('hasPlan') as boolean;
+          const planCount = row.original.planCount;
+          return (
+            <div className="flex items-center gap-2">
+              {hasPlan ? (
+                <>
+                  <Check className="text-blue-400" size={16} />
+                  <span className="text-blue-400 text-sm">Есть ({planCount})</span>
+                </>
+              ) : (
+                <>
+                  <X className="text-white/40" size={16} />
+                  <span className="text-white/40 text-sm">Нет</span>
+                </>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'feedbackCount',
+        header: 'Отзывы',
+        cell: ({ row }) => {
+          const count = row.getValue('feedbackCount') as number;
+          return (
+            <span className={cn(
+              'px-2 py-1 rounded text-sm',
+              count > 0 ? 'bg-yellow-500/20 text-yellow-300' : 'text-white/40'
+            )}>
+              {count}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Дата регистрации',
+        cell: ({ row }) => {
+          const date = new Date(row.getValue('createdAt'));
+          return (
+            <span className="text-white/80 text-sm">
+              {date.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+              })}
+            </span>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable({
+    data: users,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+      pagination,
+    },
+    manualPagination: true, // Серверная пагинация
+    pageCount: -1, // Неизвестно количество страниц
   });
 
-  if (loading && users.length === 0) {
+  if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-      }}>
-        <div>Загрузка...</div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-white/60">Загрузка...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px',
-      }}>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '4px' }}>
-            Пользователи ({filteredUsers.length})
-          </h1>
-          <p style={{ color: '#6B7280' }}>Управление пользователями системы</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Пользователи</h1>
+          <p className="text-white/60">
+            Всего: {table.getFilteredRowModel().rows.length}
+          </p>
         </div>
-      </div>
-
-      {/* Search */}
-      <div style={{ marginBottom: '24px' }}>
-        <input
-          type="text"
-          placeholder="Поиск по имени, username или Telegram ID..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            borderRadius: '12px',
-            border: '1px solid #D1D5DB',
-            fontSize: '16px',
-          }}
-        />
       </div>
 
       {error && (
-        <div style={{
-          backgroundColor: '#FEE2E2',
-          color: '#991B1B',
-          padding: '16px',
-          borderRadius: '12px',
-          marginBottom: '24px',
-        }}>
-          {error}
+        <div className={cn(glassCard, 'p-4 bg-red-500/20 border-red-500/50')}>
+          <p className="text-red-200">{error}</p>
         </div>
       )}
 
-      {/* Users Table */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        border: '1px solid #E5E7EB',
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '14px', fontWeight: 600, color: '#374151' }}>Пользователь</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '14px', fontWeight: 600, color: '#374151' }}>Telegram ID</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '14px', fontWeight: 600, color: '#374151' }}>Профиль</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '14px', fontWeight: 600, color: '#374151' }}>План</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '14px', fontWeight: 600, color: '#374151' }}>Отзывы</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '14px', fontWeight: 600, color: '#374151' }}>Дата регистрации</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                <td style={{ padding: '12px 16px' }}>
-                  <div>
-                    <div style={{ fontWeight: 500, color: '#1F2937' }}>
-                      {user.firstName || user.lastName
-                        ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                        : user.username || 'Без имени'}
-                    </div>
-                    {user.username && (
-                      <div style={{ fontSize: '12px', color: '#6B7280' }}>@{user.username}</div>
-                    )}
-                  </div>
-                </td>
-                <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280', fontFamily: 'monospace' }}>
-                  {user.telegramId}
-                </td>
-                <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                  {user.hasProfile ? (
-                    <span style={{
-                      fontSize: '12px',
-                      backgroundColor: '#D1FAE5',
-                      color: '#065F46',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      fontWeight: 600,
-                    }}>
-                      ✓ Есть ({user.profileCount})
-                    </span>
-                  ) : (
-                    <span style={{
-                      fontSize: '12px',
-                      backgroundColor: '#FEE2E2',
-                      color: '#991B1B',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                    }}>
-                      Нет
-                    </span>
-                  )}
-                </td>
-                <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                  {user.hasPlan ? (
-                    <span style={{
-                      fontSize: '12px',
-                      backgroundColor: '#DBEAFE',
-                      color: '#1E40AF',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      fontWeight: 600,
-                    }}>
-                      ✓ Есть ({user.planCount})
-                    </span>
-                  ) : (
-                    <span style={{
-                      fontSize: '12px',
-                      backgroundColor: '#FEE2E2',
-                      color: '#991B1B',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                    }}>
-                      Нет
-                    </span>
-                  )}
-                </td>
-                <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                  {user.feedbackCount > 0 ? (
-                    <span style={{
-                      fontSize: '12px',
-                      backgroundColor: '#FEF3C7',
-                      color: '#92400E',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      fontWeight: 600,
-                    }}>
-                      {user.feedbackCount}
-                    </span>
-                  ) : (
-                    <span style={{ color: '#9CA3AF' }}>0</span>
-                  )}
-                </td>
-                <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6B7280' }}>
-                  {new Date(user.createdAt).toLocaleDateString('ru-RU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                  })}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Поиск */}
+      <div className={cn(glassCard, 'p-4')}>
+        <div className="flex items-center gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={20} />
+            <input
+              type="text"
+              placeholder="Поиск по имени, username или Telegram ID..."
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20"
+            />
+          </div>
+        </div>
       </div>
 
-      {filteredUsers.length === 0 && (
-        <div style={{
-          textAlign: 'center',
-          padding: '48px',
-          color: '#6B7280',
-        }}>
-          {searchQuery ? 'Пользователи не найдены' : 'Пользователи не найдены'}
+      {/* Таблица */}
+      <div className={cn(glassCard, 'overflow-hidden')}>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-white/5 border-b border-white/10">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 text-left text-sm font-medium text-white/80"
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={cn(
+                            'flex items-center gap-2',
+                            header.column.getCanSort() && 'cursor-pointer select-none hover:text-white'
+                          )}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {{
+                            asc: ' ↑',
+                            desc: ' ↓',
+                          }[header.column.getIsSorted() as string] ?? null}
+                        </div>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-4 py-8 text-center text-white/60">
+                    Пользователи не найдены
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '8px',
-          marginTop: '24px',
-        }}>
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: '1px solid #D1D5DB',
-              backgroundColor: page === 1 ? '#F3F4F6' : 'white',
-              cursor: page === 1 ? 'not-allowed' : 'pointer',
-              opacity: page === 1 ? 0.5 : 1,
-            }}
-          >
-            ← Назад
-          </button>
-          <span style={{ padding: '8px 16px' }}>
-            Страница {page} из {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: '1px solid #D1D5DB',
-              backgroundColor: page === totalPages ? '#F3F4F6' : 'white',
-              cursor: page === totalPages ? 'not-allowed' : 'pointer',
-              opacity: page === totalPages ? 0.5 : 1,
-            }}
-          >
-            Вперёд →
-          </button>
+        {/* Пагинация */}
+        <div className="px-4 py-4 border-t border-white/10 flex items-center justify-between">
+          <div className="text-white/60 text-sm">
+            Страница {pagination.pageIndex + 1}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Назад
+            </button>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Вперед
+            </button>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

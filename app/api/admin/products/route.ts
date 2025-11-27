@@ -46,6 +46,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Проверяем подключение к БД
+    try {
+      await prisma.$connect();
+      console.log('✅ Database connected for products');
+    } catch (dbError: any) {
+      console.error('❌ Database connection error:', dbError);
+      return NextResponse.json(
+        { error: 'Database connection failed', details: dbError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log('📦 Fetching products...');
     const products = await prisma.product.findMany({
       include: {
         brand: {
@@ -60,6 +73,8 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    console.log(`✅ Found ${products.length} products`);
+
     return NextResponse.json({
       products: products.map((p: any) => ({
         id: p.id,
@@ -67,13 +82,17 @@ export async function GET(request: NextRequest) {
         slug: p.slug || null,
         price: p.price || null,
         volume: p.volume || null,
+        description: p.description || null,
         descriptionUser: p.descriptionUser || null,
+        composition: p.composition || null,
+        link: p.link || null,
         imageUrl: p.imageUrl || null,
         step: p.step,
         category: p.category,
         skinTypes: p.skinTypes || [],
         concerns: p.concerns || [],
         activeIngredients: p.activeIngredients || [],
+        avoidIf: p.avoidIf || [],
         published: p.published !== undefined ? p.published : true,
         isHero: p.isHero || false,
         priority: p.priority || 0,
@@ -109,6 +128,8 @@ export async function POST(request: NextRequest) {
       volume,
       description,
       descriptionUser,
+      composition,
+      link,
       imageUrl,
       step,
       category,
@@ -121,9 +142,9 @@ export async function POST(request: NextRequest) {
       published,
     } = body;
 
-    if (!brandId || !name || !step || !category) {
+    if (!brandId || !name || !step) {
       return NextResponse.json(
-        { error: 'Missing required fields: brandId, name, step, category' },
+        { error: 'Missing required fields: brandId, name, step' },
         { status: 400 }
       );
     }
@@ -150,14 +171,16 @@ export async function POST(request: NextRequest) {
       data: {
         brandId: parseInt(brandId),
         name,
-        slug: finalSlug,
+        ...(finalSlug && { slug: finalSlug }),
         price: price ? parseInt(price) : null,
         volume: volume || null,
         description: description || null,
         descriptionUser: descriptionUser || null,
+        composition: composition || null,
+        link: link || null,
         imageUrl: imageUrl || null,
         step,
-        category,
+        category: category || step, // Используем step как category если category не указан
         skinTypes: skinTypes || [],
         concerns: concerns || [],
         activeIngredients: activeIngredients || [],

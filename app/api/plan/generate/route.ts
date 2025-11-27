@@ -247,9 +247,15 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     recommendationProducts = await prisma.product.findMany({
       where: {
         id: { in: productIds },
-        status: 'published',
+        published: true,
       },
       include: { brand: true },
+    });
+    
+    // Сортируем в памяти
+    recommendationProducts.sort((a: any, b: any) => {
+      if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
+      return b.priority - a.priority;
     });
     console.log(`📦 Found ${recommendationProducts.length} products from RecommendationSession`);
   } else {
@@ -265,8 +271,15 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   } else {
     console.log('⚠️ No RecommendationSession products, fetching all published products');
     allProducts = await prisma.product.findMany({
-      where: { status: 'published' },
+      where: { published: true },
       include: { brand: true },
+    });
+    
+    // Сортируем в памяти
+    allProducts.sort((a: any, b: any) => {
+      if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
+      if (a.priority !== b.priority) return b.priority - a.priority;
+      return b.createdAt.getTime() - a.createdAt.getTime();
     });
   }
 
@@ -306,11 +319,22 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     return skinTypeMatches && budgetMatches && noExcludedIngredients && safeForPregnancy;
   });
 
-  // Сортируем продукты по релевантности (приоритет основному фокусу)
+  // Сортируем продукты по релевантности (приоритет основному фокусу, затем isHero и priority)
   const sortedProducts = filteredProducts.sort((a, b) => {
+    // 1. Соответствие основному фокусу
     const aMatchesFocus = a.concerns?.includes(primaryFocus) ? 1 : 0;
     const bMatchesFocus = b.concerns?.includes(primaryFocus) ? 1 : 0;
-    return bMatchesFocus - aMatchesFocus;
+    if (bMatchesFocus !== aMatchesFocus) return bMatchesFocus - aMatchesFocus;
+    
+    // 2. Hero продукты
+    const aIsHero = (a as any).isHero ? 1 : 0;
+    const bIsHero = (b as any).isHero ? 1 : 0;
+    if (bIsHero !== aIsHero) return bIsHero - aIsHero;
+    
+    // 3. Приоритет
+    const aPriority = (a as any).priority || 0;
+    const bPriority = (b as any).priority || 0;
+    return bPriority - aPriority;
   });
 
   // Если есть продукты из RecommendationSession, используем их все (не ограничиваем)
@@ -338,7 +362,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   if (!productsByStep['cleanser'] || productsByStep['cleanser'].length === 0) {
     console.log('⚠️ No cleanser products found, searching for fallback...');
     const whereCleanser: any = {
-      status: 'published',
+      published: true,
       step: 'cleansing',
     };
     
@@ -366,7 +390,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       // Если даже с фильтром не нашли, берем любой очищающий продукт
       const anyCleanser = await prisma.product.findFirst({
         where: {
-          status: 'published',
+          published: true,
           step: 'cleansing',
         },
         include: { brand: true },
@@ -388,7 +412,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     console.log('⚠️ No SPF products found, searching for fallback...');
     const fallbackSPF = await prisma.product.findFirst({
       where: {
-        status: 'published',
+        published: true,
         OR: [
           { step: 'spf' },
           { category: 'spf' },

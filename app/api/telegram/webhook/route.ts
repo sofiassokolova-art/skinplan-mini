@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       fromUsername: update.message?.from?.username,
     });
 
-    // Сохраняем входящее сообщение в БД
+    // Сохраняем входящее сообщение в БД и создаем чат поддержки
     if (update.message && !update.message.from.is_bot) {
       const telegramId = update.message.from.id;
       const userId = await getUserIdFromTelegramId(telegramId, {
@@ -161,6 +161,55 @@ export async function POST(request: NextRequest) {
           update.message.text || undefined,
           update.message
         );
+
+        // Если это не команда, создаем/обновляем чат поддержки
+        if (messageType === 'text' && update.message.text) {
+          try {
+            // Ищем существующий активный чат
+            let chat = await prisma.supportChat.findFirst({
+              where: {
+                userId,
+                status: { in: ['active', 'open'] },
+              },
+            });
+
+            // Если чата нет, создаем новый
+            if (!chat) {
+              chat = await prisma.supportChat.create({
+                data: {
+                  userId,
+                  lastMessage: update.message.text,
+                  unread: 0,
+                  status: 'active',
+                },
+              });
+            }
+
+            // Сохраняем сообщение в SupportMessage
+            await prisma.supportMessage.create({
+              data: {
+                chatId: chat.id,
+                text: update.message.text,
+                isAdmin: false,
+              },
+            });
+
+            // Обновляем чат
+            await prisma.supportChat.update({
+              where: { id: chat.id },
+              data: {
+                lastMessage: update.message.text,
+                unread: { increment: 1 }, // Увеличиваем счетчик непрочитанных для админа
+                updatedAt: new Date(),
+              },
+            });
+
+            console.log(`✅ Support chat created/updated for user ${userId}`);
+          } catch (error) {
+            console.error('Error creating support chat:', error);
+            // Не блокируем выполнение, если не удалось создать чат
+          }
+        }
       }
     }
 

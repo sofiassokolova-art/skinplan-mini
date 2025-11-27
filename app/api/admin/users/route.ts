@@ -40,10 +40,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Проверяем подключение к БД
+    try {
+      await prisma.$connect();
+      console.log('✅ Database connected');
+    } catch (dbError: any) {
+      console.error('❌ Database connection error:', dbError);
+      return NextResponse.json(
+        { error: 'Database connection failed', details: dbError.message },
+        { status: 500 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
+
+    console.log(`📊 Fetching users: page=${page}, limit=${limit}`);
 
     // Получаем пользователей с их профилями и планами
     const [users, total] = await Promise.all([
@@ -71,6 +85,8 @@ export async function GET(request: NextRequest) {
       }),
       prisma.user.count(),
     ]);
+
+    console.log(`✅ Found ${users.length} users (total: ${total})`);
 
     return NextResponse.json({
       users: users.map((user) => ({

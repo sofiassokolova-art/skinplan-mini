@@ -64,11 +64,16 @@ function matchesRule(profile: any, rule: Rule): boolean {
  */
 async function getProductsForStep(step: RuleStep) {
   const where: any = {
-    status: 'published',
+    published: true, // Используем published вместо status
   };
 
   if (step.category && step.category.length > 0) {
     where.category = { in: step.category };
+  }
+
+  // Также проверяем step
+  if (step.category && step.category.length > 0) {
+    where.step = { in: step.category };
   }
 
   // SPF универсален для всех типов кожи - не фильтруем по типу кожи
@@ -95,13 +100,17 @@ async function getProductsForStep(step: RuleStep) {
     include: {
       brand: true,
     },
-    take: step.max_items || 3,
-    orderBy: {
-      createdAt: 'desc',
-    },
+    take: (step.max_items || 3) * 2, // Берем больше для сортировки
   });
 
-  return products;
+  // Сортируем в памяти по приоритету и isHero
+  const sorted = products.sort((a: any, b: any) => {
+    if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
+    if (a.priority !== b.priority) return b.priority - a.priority;
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  return sorted.slice(0, step.max_items || 3);
 }
 
 export async function GET(request: NextRequest) {
@@ -166,7 +175,7 @@ export async function GET(request: NextRequest) {
       const products = await prisma.product.findMany({
         where: {
           id: { in: productIds },
-          status: 'published',
+          published: true,
         },
         include: {
           brand: true,
@@ -215,7 +224,7 @@ export async function GET(request: NextRequest) {
         for (const missingStep of missingSteps) {
           const fallbackProducts = await prisma.product.findMany({
             where: {
-              status: 'published',
+              published: true,
               step: missingStep,
               // SPF универсален, для остальных учитываем тип кожи
               ...(missingStep !== 'spf' && profile.skinType ? {
@@ -225,14 +234,20 @@ export async function GET(request: NextRequest) {
             include: {
               brand: true,
             },
-            take: 1,
-            orderBy: {
-              createdAt: 'desc',
-            },
+            take: 3, // Берем больше для сортировки
           });
+          
+          // Сортируем в памяти
+          fallbackProducts.sort((a: any, b: any) => {
+            if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
+            if (a.priority !== b.priority) return b.priority - a.priority;
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          });
+          
+          const sortedFallback = fallbackProducts.slice(0, 1);
 
-          if (fallbackProducts.length > 0) {
-            const product = fallbackProducts[0];
+          if (sortedFallback.length > 0) {
+            const product = sortedFallback[0];
             steps[missingStep] = [{
               id: product.id,
               name: product.name,
@@ -298,7 +313,7 @@ export async function GET(request: NextRequest) {
       for (const step of steps) {
         const products = await prisma.product.findMany({
           where: {
-            status: 'published',
+            published: true,
             step: step === 'spf' ? 'spf' : step,
             ...(profile.skinType && {
               skinTypes: { has: profile.skinType },
@@ -307,14 +322,20 @@ export async function GET(request: NextRequest) {
           include: {
             brand: true,
           },
-          take: 1,
-          orderBy: {
-            createdAt: 'desc',
-          },
+          take: 3,
         });
         
-        if (products.length > 0) {
-          fallbackSteps[step] = products.map(p => ({
+        // Сортируем в памяти
+        products.sort((a: any, b: any) => {
+          if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
+          if (a.priority !== b.priority) return b.priority - a.priority;
+          return b.createdAt.getTime() - a.createdAt.getTime();
+        });
+        
+        const sortedProducts = products.slice(0, 1);
+        
+        if (sortedProducts.length > 0) {
+          fallbackSteps[step] = sortedProducts.map((p: any) => ({
             id: p.id,
             name: p.name,
             brand: p.brand.name,

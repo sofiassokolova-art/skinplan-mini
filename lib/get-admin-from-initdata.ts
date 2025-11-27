@@ -1,70 +1,79 @@
 // lib/get-admin-from-initdata.ts
-// Утилита для проверки, является ли пользователь админом по Telegram данным
+// Утилита для получения админа из Telegram initData с проверкой whitelist
 
 import { validateTelegramInitData } from './telegram';
 import { prisma } from './db';
 
-/**
- * Проверяет, является ли пользователь админом по Telegram initData
- * Возвращает данные админа или null
- */
-export async function getAdminFromInitData(initData: string | null): Promise<{
-  id: number;
+interface AdminUser {
+  id: string;
   telegramId: string;
-  telegramUsername?: string | null;
+  phoneNumber: string;
   role: string;
-} | null> {
+}
+
+/**
+ * Извлекает данные админа из initData и проверяет whitelist
+ * Возвращает данные админа если он в whitelist
+ */
+export async function getAdminFromInitData(
+  initData: string | null
+): Promise<{ valid: boolean; admin?: AdminUser; error?: string }> {
   if (!initData) {
-    return null;
+    return { valid: false, error: 'No initData provided' };
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     console.error('Bot token not configured');
-    return null;
+    return { valid: false, error: 'Bot token not configured' };
   }
 
   // Валидируем данные Telegram
   const validation = validateTelegramInitData(initData, botToken);
-  
+
   if (!validation.valid || !validation.data?.user) {
     console.error('Invalid initData:', validation.error);
-    return null;
+    return { valid: false, error: validation.error || 'Invalid initData' };
   }
 
   const { user } = validation.data;
-  
-  // Ищем админа по telegramId или telegramUsername
-  const admin = await prisma.admin.findFirst({
+
+  // Проверяем whitelist по telegramId
+  const whitelistEntry = await prisma.adminWhitelist.findFirst({
     where: {
       OR: [
         { telegramId: user.id.toString() },
-        { telegramUsername: user.username || undefined },
+        // Также можно проверить по phone_number если он есть в initData
       ],
+      isActive: true,
     },
   });
 
-  if (!admin) {
-    console.log(`User ${user.id} (${user.username}) is not in admin whitelist`);
-    return null;
+  if (!whitelistEntry) {
+    return { valid: false, error: 'Not in admin whitelist' };
   }
 
-  // Обновляем данные админа из Telegram (если изменились)
-  if (admin.telegramId !== user.id.toString() || admin.telegramUsername !== user.username) {
-    await prisma.admin.update({
-      where: { id: admin.id },
-      data: {
-        telegramId: user.id.toString(),
-        telegramUsername: user.username || null,
-      },
-    });
-  }
+  // Создаем или обновляем запись админа
+  const admin = await prisma.admin.upsert({
+    where: { telegramId: user.id.toString() },
+    update: {
+      telegramUsername: user.username,
+      updatedAt: new Date(),
+    },
+    create: {
+      telegramId: user.id.toString(),
+      telegramUsername: user.username,
+      role: whitelistEntry.role || 'admin',
+    },
+  });
 
   return {
-    id: admin.id,
-    telegramId: admin.telegramId || user.id.toString(),
-    telegramUsername: admin.telegramUsername,
-    role: admin.role,
+    valid: true,
+    admin: {
+      id: admin.id.toString(),
+      telegramId: admin.telegramId || user.id.toString(),
+      phoneNumber: whitelistEntry.phoneNumber,
+      role: admin.role,
+    },
   };
 }
-

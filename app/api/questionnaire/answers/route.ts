@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
 
         // Собираем ID продуктов из всех шагов
         for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
-          const where: any = { status: 'published' };
+          const where: any = { published: true };
           const step = stepConfig as any;
 
           if (step.category && Array.isArray(step.category) && step.category.length > 0) {
@@ -267,11 +267,19 @@ export async function POST(request: NextRequest) {
 
           const products = await prisma.product.findMany({
             where,
-            take: step.max_items || 3,
-            orderBy: { createdAt: 'desc' },
+            take: (step.max_items || 3) * 2,
           });
+          
+          // Сортируем в памяти
+          products.sort((a: any, b: any) => {
+            if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
+            if (a.priority !== b.priority) return b.priority - a.priority;
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          });
+          
+          const sortedProducts = products.slice(0, step.max_items || 3);
 
-          productIds.push(...products.map(p => p.id));
+          productIds.push(...sortedProducts.map(p => p.id));
         }
 
         // Создаем RecommendationSession
@@ -297,7 +305,7 @@ export async function POST(request: NextRequest) {
         for (const step of requiredSteps) {
           const products = await prisma.product.findMany({
             where: {
-              status: 'published',
+              published: true,
               step: step,
               // SPF универсален, для остальных учитываем тип кожи
               ...(step !== 'spf' && profile.skinType ? {
@@ -319,7 +327,7 @@ export async function POST(request: NextRequest) {
         for (const step of optionalSteps) {
           const products = await prisma.product.findMany({
             where: {
-              status: 'published',
+              published: true,
               step: step,
               ...(profile.skinType ? {
                 skinTypes: { has: profile.skinType },

@@ -34,17 +34,31 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Проверяем подключение к БД
+    try {
+      await prisma.$connect();
+      console.log('✅ Database connected for rules');
+    } catch (dbError: any) {
+      console.error('❌ Database connection error:', dbError);
+      return NextResponse.json(
+        { error: 'Database connection failed', details: dbError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log('📋 Fetching recommendation rules...');
     const rules = await prisma.recommendationRule.findMany({
       orderBy: {
         priority: 'desc',
       },
     });
 
+    console.log(`✅ Found ${rules.length} rules`);
     return NextResponse.json(rules);
-  } catch (error) {
-    console.error('Error fetching rules:', error);
+  } catch (error: any) {
+    console.error('❌ Error fetching rules:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }

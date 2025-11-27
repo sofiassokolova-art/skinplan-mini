@@ -1,0 +1,334 @@
+// app/admin/support/page.tsx
+// Страница поддержки с чатами
+
+'use client';
+
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Send, User, Clock, AlertCircle } from 'lucide-react';
+import { cn, glassCard } from '@/lib/utils';
+// Простая функция форматирования времени
+const formatTime = (date: string | Date) => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+};
+
+interface Chat {
+  id: string;
+  user: {
+    id: string;
+    firstName: string | null;
+    username: string | null;
+    telegramId: string;
+  };
+  lastMessage: string | null;
+  unread: number;
+  updatedAt: string;
+  status: string;
+}
+
+interface Message {
+  id: string;
+  text: string;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
+export default function SupportAdmin() {
+  const router = useRouter();
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [replyText, setReplyText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      router.push('/admin/login');
+      return;
+    }
+    loadChats();
+  }, [router]);
+
+  useEffect(() => {
+    if (selectedChat) {
+      loadMessages(selectedChat.id);
+      // Polling для обновления сообщений каждые 2 секунды
+      const interval = setInterval(() => {
+        loadMessages(selectedChat.id);
+        loadChats(); // Обновляем список чатов для счетчиков
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedChat]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const loadChats = async () => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch('/api/admin/support/chats', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+      });
+
+      if (response.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setChats(data.chats || []);
+        
+        // Автоматически выбираем первый чат, если ничего не выбрано
+        if (!selectedChat && data.chats && data.chats.length > 0) {
+          setSelectedChat(data.chats[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading chats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMessages = async (chatId: string) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/support/messages?chatId=${chatId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
+
+  const sendReply = async () => {
+    if (!replyText.trim() || !selectedChat || sending) return;
+
+    setSending(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch('/api/admin/support/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          chatId: selectedChat.id,
+          text: replyText,
+        }),
+      });
+
+      if (response.ok) {
+        setReplyText('');
+        await loadMessages(selectedChat.id);
+        await loadChats();
+      } else {
+        alert('Ошибка отправки сообщения');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Ошибка отправки сообщения');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const sendTemplate = (template: string) => {
+    setReplyText(template);
+  };
+
+  const openUserProfile = (userId: string) => {
+    router.push(`/admin/users?userId=${userId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-white/60">Загрузка...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-4 h-[calc(100vh-4rem)] bg-[#000000]">
+      {/* Левая колонка — список чатов */}
+      <div className={cn(glassCard, 'border-r border-white/10 overflow-y-auto')}>
+        <div className="p-4 border-b border-white/10">
+          <h2 className="text-xl font-bold text-white">Чаты поддержки</h2>
+          <p className="text-sm text-white/60 mt-1">{chats.length} активных</p>
+        </div>
+        {chats.length === 0 ? (
+          <div className="p-8 text-center text-white/40">
+            <p>Нет активных чатов</p>
+          </div>
+        ) : (
+          chats.map((chat) => (
+            <div
+              key={chat.id}
+              onClick={() => setSelectedChat(chat)}
+              className={cn(
+                'p-4 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/5',
+                selectedChat?.id === chat.id && 'bg-white/10'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] flex items-center justify-center text-white font-bold">
+                  {chat.user.firstName?.[0]?.toUpperCase() || chat.user.username?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-white truncate">
+                    {chat.user.firstName || chat.user.username || 'Аноним'}
+                  </div>
+                  <div className="text-sm text-white/60 truncate">{chat.lastMessage || 'Нет сообщений'}</div>
+                  <div className="text-xs text-white/40 mt-1">
+                    {formatTime(chat.updatedAt)}
+                  </div>
+                </div>
+                {chat.unread > 0 && (
+                  <div className="px-2 py-1 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] text-white text-xs font-bold rounded-full min-w-[24px] text-center">
+                    {chat.unread}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Правая часть — выбранный чат */}
+      <div className="lg:col-span-3 flex flex-col bg-[#050505]">
+        {selectedChat ? (
+          <>
+            {/* Хедер чата */}
+            <div className={cn(glassCard, 'p-4 border-b border-white/10 flex items-center justify-between')}>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] flex items-center justify-center text-white font-bold text-2xl">
+                  {selectedChat.user.firstName?.[0]?.toUpperCase() || selectedChat.user.username?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div>
+                  <div className="font-bold text-xl text-white">
+                    {selectedChat.user.firstName || selectedChat.user.username || 'Аноним'}
+                  </div>
+                  <div className="text-sm text-white/60">
+                    @{selectedChat.user.username || 'нет username'} • ID: {selectedChat.user.telegramId}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => openUserProfile(selectedChat.user.id)}
+                className="px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all"
+              >
+                Профиль →
+              </button>
+            </div>
+
+            {/* Сообщения */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {messages.length === 0 ? (
+                <div className="text-center text-white/40 py-12">
+                  <p>Нет сообщений</p>
+                </div>
+              ) : (
+                messages.map((msg) => (
+                  <div key={msg.id} className={msg.isAdmin ? 'text-right' : 'text-left'}>
+                    <div
+                      className={cn(
+                        'inline-block max-w-lg p-4 rounded-2xl',
+                        msg.isAdmin
+                          ? 'bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white'
+                          : cn(glassCard, 'text-white')
+                      )}
+                    >
+                      {msg.text}
+                    </div>
+                    <div className="text-xs text-white/40 mt-1 px-2">
+                      {formatTime(msg.createdAt)}
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Поле ввода */}
+            <div className={cn(glassCard, 'p-4 border-t border-white/10')}>
+              <div className="flex gap-4">
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Напишите ответ..."
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendReply();
+                    }
+                  }}
+                  rows={3}
+                  className="flex-1 px-4 py-3 bg-[#050505] border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/20 resize-none"
+                />
+                <button
+                  onClick={sendReply}
+                  disabled={sending || !replyText.trim()}
+                  className="px-8 py-4 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <Send size={20} />
+                  Отправить
+                </button>
+              </div>
+              <div className="flex gap-4 mt-4">
+                <button
+                  onClick={() => sendTemplate('Спасибо за обращение! Ваш план уже обновлён')}
+                  className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                >
+                  Спасибо, план обновлён
+                </button>
+                <button
+                  onClick={() => sendTemplate('Скидка 15% на ваш следующий заказ → https://t.me/skiniq_bot')}
+                  className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                >
+                  Скидка 15%
+                </button>
+                <button
+                  onClick={() => sendTemplate('Проверьте ваш план ухода, он был обновлён с учётом ваших потребностей')}
+                  className="text-sm px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                >
+                  План обновлён
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-white/40">
+            <div className="text-center">
+              <User size={64} className="mx-auto mb-4 opacity-20" />
+              <p>Выберите чат</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
