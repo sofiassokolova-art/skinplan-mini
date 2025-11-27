@@ -41,25 +41,26 @@ export default function AdminLayout({
 
     const checkAuth = async () => {
       try {
-      const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('admin_token');
         const response = await fetch('/api/admin/auth', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: 'include',
         });
 
         if (response.ok) {
-        const data = await response.json();
-        if (data.valid) {
-          setIsAuthenticated(true);
+          const data = await response.json();
+          if (data.valid) {
+            setIsAuthenticated(true);
           } else {
-            router.push('/admin/login');
+            // Не перенаправляем сразу, даем странице возможность проверить сама
+            setIsAuthenticated(false);
           }
         } else {
-          router.push('/admin/login');
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        router.push('/admin/login');
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
@@ -92,9 +93,10 @@ export default function AdminLayout({
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  // Не блокируем рендер, если не авторизован - пусть страница сама решает
+  // if (!isAuthenticated) {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-gray-100 flex admin-layout">
