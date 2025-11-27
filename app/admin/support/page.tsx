@@ -5,7 +5,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Send, User, Clock, AlertCircle } from 'lucide-react';
+import { Send, User, Clock, AlertCircle, X } from 'lucide-react';
 import { cn, glassCard } from '@/lib/utils';
 // Простая функция форматирования времени
 const formatTime = (date: string | Date) => {
@@ -86,11 +86,7 @@ export default function SupportAdmin() {
       if (response.ok) {
         const data = await response.json();
         setChats(data.chats || []);
-        
-        // Автоматически выбираем первый чат, если ничего не выбрано
-        if (!selectedChat && data.chats && data.chats.length > 0) {
-          setSelectedChat(data.chats[0]);
-        }
+        // Не выбираем автоматически первый чат - показываем общий список
       }
     } catch (error) {
       console.error('Error loading chats:', error);
@@ -196,8 +192,25 @@ export default function SupportAdmin() {
                   {chat.user.firstName?.[0]?.toUpperCase() || chat.user.username?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-gray-900 truncate">
-                    {chat.user.firstName || chat.user.username || 'Аноним'}
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="font-bold text-gray-900 truncate">
+                      {chat.user.firstName || chat.user.username || 'Аноним'}
+                    </div>
+                    {/* Статус обращения */}
+                    <div className={cn(
+                      'px-2 py-0.5 rounded-full text-xs font-medium',
+                      chat.status === 'closed' 
+                        ? 'bg-gray-200 text-gray-700'
+                        : chat.status === 'in_progress'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                    )}>
+                      {chat.status === 'closed' 
+                        ? 'Закрыто'
+                        : chat.status === 'in_progress'
+                        ? 'В работе'
+                        : 'Ждет ответа'}
+                    </div>
                   </div>
                   <div className="text-sm text-gray-600 truncate">{chat.lastMessage || 'Нет сообщений'}</div>
                   <div className="text-xs text-gray-400 mt-1">
@@ -253,6 +266,16 @@ export default function SupportAdmin() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* Селектор статуса */}
+                <select
+                  value={selectedChat.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-gray-900 font-medium focus:outline-none focus:border-gray-400"
+                >
+                  <option value="active">Ждет ответа</option>
+                  <option value="in_progress">В работе</option>
+                  <option value="closed">Закрыто</option>
+                </select>
                 <button
                   onClick={() => openUserProfile(selectedChat.user.id)}
                   className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all"

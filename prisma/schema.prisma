@@ -415,15 +415,16 @@ model BroadcastMessage {
 }
 
 model SupportChat {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  unread      Int      @default(0) // Непрочитанные сообщения от пользователя
-  unreadAdmin Int      @default(0) @map("unread_admin") // Непрочитанные сообщения от админа (для пользователя)
-  lastMessage String?  @map("last_message")
-  status      String   @default("active") // active / closed / archived
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unread        Int      @default(0) // Непрочитанные сообщения от пользователя
+  unreadAdmin   Int      @default(0) @map("unread_admin") // Непрочитанные сообщения от админа (для пользователя)
+  lastMessage   String?  @map("last_message")
+  status        String   @default("active") // active / closed / archived
+  autoReplySent Boolean  @default(false) @map("auto_reply_sent") // Был ли отправлен автоответ для этого обращения
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   messages SupportMessage[]
 

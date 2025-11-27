@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     const chats = await prisma.supportChat.findMany({
       where: {
-        status: { in: ['active', 'open'] },
+        status: { in: ['active', 'open', 'in_progress'] }, // Показываем активные и в работе обращения
       },
       include: {
         user: {

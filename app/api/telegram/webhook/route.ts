@@ -181,6 +181,7 @@ export async function POST(request: NextRequest) {
                   lastMessage: update.message.text,
                   unread: 0,
                   status: 'active',
+                  autoReplySent: false, // Новое обращение - автоответ еще не отправлен
                 },
               });
             }
@@ -206,29 +207,30 @@ export async function POST(request: NextRequest) {
 
             console.log(`✅ Support chat created/updated for user ${userId}`);
 
-            // Отправляем автоответ
-            try {
-              const now = new Date();
-              // Получаем время в МСК
-              const moscowTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Moscow" }));
-              const hour = moscowTime.getHours();
-              const day = moscowTime.getDay(); // 0 = воскресенье, 6 = суббота
-              const isWeekend = day === 0 || day === 6;
+            // Отправляем автоответ ТОЛЬКО если он еще не был отправлен для этого обращения
+            if (!chat.autoReplySent) {
+              try {
+                const now = new Date();
+                // Получаем время в МСК
+                const moscowTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Moscow" }));
+                const hour = moscowTime.getHours();
+                const day = moscowTime.getDay(); // 0 = воскресенье, 6 = суббота
+                const isWeekend = day === 0 || day === 6;
 
-              let autoReplyText = '';
+                let autoReplyText = '';
 
-              if (hour < 9 || hour >= 18 || isWeekend) {
-                // Нерабочее время
-                autoReplyText = `Привет! Сейчас за пределами рабочего времени
+                if (hour < 9 || hour >= 18 || isWeekend) {
+                  // Нерабочее время
+                  autoReplyText = `Привет! Сейчас за пределами рабочего времени
 
 Поддержка работает с 9:00 до 18:00 по МСК в будние дни.
 
 Ваше сообщение сохранено — ответим сразу, как только выйдем онлайн (ближайшее время — завтра с 9 утра).
 
 Хорошего вечера/выходных!`;
-              } else {
-                // Рабочее время
-                autoReplyText = `Привет! Это поддержка SkinIQ
+                } else {
+                  // Рабочее время
+                  autoReplyText = `Привет! Это поддержка SkinIQ
 
 Сейчас мы онлайн и скоро ответим
 
@@ -237,31 +239,42 @@ export async function POST(request: NextRequest) {
 По вечерам и выходным отвечаем чуть медленнее, но обязательно читаем все сообщения и вернёмся к вам в рабочее время.
 
 Спасибо за терпение!`;
+                }
+
+                // Отправляем автоответ
+                const autoReplyResult = await sendMessage(
+                  update.message.chat.id,
+                  autoReplyText,
+                  undefined,
+                  userId
+                );
+
+                // Сохраняем автоответ в SupportMessage и помечаем, что автоответ отправлен
+                if (autoReplyResult.ok && autoReplyResult.result) {
+                  await prisma.supportMessage.create({
+                    data: {
+                      chatId: chat.id,
+                      text: autoReplyText,
+                      isAdmin: true,
+                    },
+                  });
+
+                  // Помечаем, что автоответ отправлен
+                  await prisma.supportChat.update({
+                    where: { id: chat.id },
+                    data: {
+                      autoReplySent: true,
+                    },
+                  });
+                }
+
+                console.log(`✅ Auto-reply sent to user ${userId}`);
+              } catch (autoReplyError) {
+                console.error('Error sending auto-reply:', autoReplyError);
+                // Не блокируем выполнение, если автоответ не отправился
               }
-
-              // Отправляем автоответ
-              const autoReplyResult = await sendMessage(
-                update.message.chat.id,
-                autoReplyText,
-                undefined,
-                userId
-              );
-
-              // Сохраняем автоответ в SupportMessage
-              if (autoReplyResult.ok && autoReplyResult.result) {
-                await prisma.supportMessage.create({
-                  data: {
-                    chatId: chat.id,
-                    text: autoReplyText,
-                    isAdmin: true,
-                  },
-                });
-              }
-
-              console.log(`✅ Auto-reply sent to user ${userId}`);
-            } catch (autoReplyError) {
-              console.error('Error sending auto-reply:', autoReplyError);
-              // Не блокируем выполнение, если автоответ не отправился
+            } else {
+              console.log(`ℹ️ Auto-reply already sent for chat ${chat.id}, skipping`);
             }
           } catch (error) {
             console.error('Error creating support chat:', error);
