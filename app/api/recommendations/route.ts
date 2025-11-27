@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
       const products = await prisma.product.findMany({
         where: {
           id: { in: productIds },
-          published: true,
+          published: true as any,
         },
         include: {
           brand: true,
@@ -228,8 +228,11 @@ export async function GET(request: NextRequest) {
         for (const missingStep of missingSteps) {
           const fallbackProducts = await prisma.product.findMany({
             where: {
-              published: true,
+              published: true as any,
               step: missingStep,
+              brand: {
+                isActive: true, // Только активные бренды
+              },
               // SPF универсален, для остальных учитываем тип кожи
               ...(missingStep !== 'spf' && profile.skinType ? {
                 skinTypes: { has: profile.skinType },
@@ -252,10 +255,11 @@ export async function GET(request: NextRequest) {
 
           if (sortedFallback.length > 0) {
             const product = sortedFallback[0];
+            const productBrand = (product as any).brand;
             steps[missingStep] = [{
               id: product.id,
               name: product.name,
-              brand: product.brand.name,
+              brand: productBrand?.name || 'Unknown',
               line: product.line,
               category: product.category,
               step: product.step,
@@ -317,8 +321,11 @@ export async function GET(request: NextRequest) {
       for (const step of steps) {
         const products = await prisma.product.findMany({
           where: {
-            published: true,
+            published: true as any,
             step: step === 'spf' ? 'spf' : step,
+            brand: {
+              isActive: true, // Только активные бренды
+            },
             ...(profile.skinType && {
               skinTypes: { has: profile.skinType },
             }),
