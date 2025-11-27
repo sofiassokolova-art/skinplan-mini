@@ -245,7 +245,7 @@ export default function AdminDashboard() {
                     </span>
                   </div>
                 </div>
-                <p className="text-white/80 text-sm ml-13">
+                <p className="text-white/80 text-sm ml-[52px]">
                   {f.product.brand} {f.product.name}
                 </p>
               </div>
