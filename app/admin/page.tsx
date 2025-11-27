@@ -153,14 +153,14 @@ export default function AdminDashboard() {
       </h1>
       
       {/* 6 больших метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10 mb-10">
         {metricsData.map((m, i) => (
           <div 
             key={i} 
-            className="glass rounded-3xl p-6"
+            className="glass rounded-3xl p-5"
           >
             <div className="text-gray-600 text-sm font-medium mb-2">{m.label}</div>
-            <div className={`text-4xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
+            <div className={`text-3xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
               {m.value}
         </div>
             {m.change && (
