@@ -1,5 +1,5 @@
 // app/admin/layout.tsx
-// Layout для админ-панели в премиальном SaaS-стиле 2025
+// Layout для админ-панели с glassmorphism стилем
 
 'use client';
 
@@ -15,8 +15,7 @@ import {
   MessageSquare,
   Send,
   Menu,
-  X,
-  User
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +29,6 @@ export default function AdminLayout({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [adminInfo, setAdminInfo] = useState<{ telegramId?: string; role?: string } | null>(null);
 
   const isLoginPage = pathname === '/admin/login';
 
@@ -42,18 +40,18 @@ export default function AdminLayout({
 
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem('admin_token');
         const response = await fetch('/api/admin/auth', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: 'include',
         });
 
         if (response.ok) {
-          const data = await response.json();
-          if (data.valid) {
-            setIsAuthenticated(true);
-            setAdminInfo(data.admin || {});
+        const data = await response.json();
+        if (data.valid) {
+          setIsAuthenticated(true);
           } else {
+            // Не перенаправляем сразу, даем странице возможность проверить сама
             setIsAuthenticated(false);
           }
         } else {
@@ -78,7 +76,7 @@ export default function AdminLayout({
     { href: '/admin/rules', label: 'Правила', icon: FileText },
     { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare },
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
-    { href: '/admin/broadcasts', label: 'Рассылки', icon: Send },
+    { href: '/admin/broadcast', label: 'Рассылки', icon: Send },
   ];
 
   if (isLoginPage) {
@@ -87,102 +85,75 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center">
-        <div className="text-[#64748b]">Загрузка...</div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-600">Загрузка...</div>
       </div>
     );
   }
 
+  // Не блокируем рендер, если не авторизован - пусть страница сама решает
+  // if (!isAuthenticated) {
+  //   return null;
+  // }
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f8f9fa]">
-      {/* Sidebar - 280px фиксированная ширина */}
+    <div className="min-h-screen flex admin-layout" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)' }}>
+      {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 bottom-0 z-10 flex flex-col transition-all duration-300',
-          sidebarOpen ? 'w-[280px]' : 'w-0 overflow-hidden'
+          'admin-sidebar transition-all duration-300 fixed left-0 top-0 bottom-0 z-10 flex flex-col',
+          sidebarOpen ? 'w-64' : 'w-20'
         )}
-        style={{
-          backgroundColor: '#ffffff',
-          boxShadow: '2px 0 24px rgba(0, 0, 0, 0.04)'
+        style={{ 
+          backgroundColor: 'rgba(243, 244, 246, 0.95)',
+          height: '100vh'
         }}
       >
-        {/* Логотип и название */}
-        <div className="p-6 border-b border-[#e2e8f0] flex items-center gap-3 flex-shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] flex items-center justify-center text-white font-bold text-lg">
-            SQ
-          </div>
-          <div>
-            <div className="font-bold text-[#1e1e1e] text-lg">SkinIQ</div>
-            <div className="text-xs text-[#64748b]">Admin Panel</div>
-          </div>
+        <div className="p-6 border-b border-gray-200/50 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: 'transparent' }}>
+          {sidebarOpen && (
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+              SkinIQ Admin
+            </h1>
+          )}
           <button
-            onClick={() => setSidebarOpen(false)}
-            className="ml-auto text-[#64748b] hover:text-[#1e1e1e] hover:bg-[#f8f9fa] rounded-lg p-1.5 transition-colors"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-lg p-2 transition-all duration-200"
           >
-            <X size={18} />
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-        </div>
+              </div>
 
-        {/* Навигация */}
-        <nav className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href || 
-                (item.href !== '/admin' && pathname.startsWith(item.href));
-              
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative group',
-                    isActive
-                      ? 'bg-[#f5f3ff] text-[#8b5cf6] font-semibold'
-                      : 'text-[#64748b] hover:text-[#1e1e1e] hover:bg-[#f8f9fa]'
-                  )}
-                >
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#8b5cf6] rounded-r-full" />
-                  )}
-                  <Icon size={20} className={isActive ? 'text-[#8b5cf6]' : ''} />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto" style={{ backgroundColor: 'transparent' }}>
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || 
+              (item.href !== '/admin' && pathname.startsWith(item.href));
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+                  isActive
+                    ? 'bg-black text-white shadow-lg shadow-black/10'
+                    : 'text-gray-700 hover:bg-gray-100/50 hover:text-gray-900'
+                )}
+              >
+                <Icon size={20} />
+                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
-
-        {/* Аватар админа */}
-        <div className="p-4 border-t border-[#e2e8f0] flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] flex items-center justify-center text-white font-semibold">
-              <User size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-[#1e1e1e] text-sm truncate">Администратор</div>
-              <div className="text-xs text-[#64748b] truncate">{adminInfo?.telegramId || 'Admin'}</div>
-            </div>
-          </div>
-        </div>
       </aside>
 
-      {/* Кнопка открытия меню (когда закрыто) */}
-      {!sidebarOpen && (
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="fixed left-4 top-4 z-20 w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-[#64748b] hover:text-[#1e1e1e] transition-colors"
-        >
-          <Menu size={20} />
-        </button>
-      )}
-
-      {/* Main Content - отступ слева 280px */}
+      {/* Main Content */}
       <main className={cn(
-        'flex-1 overflow-auto bg-[#f8f9fa] transition-all duration-300',
-        sidebarOpen ? 'ml-[280px]' : 'ml-0'
+        'flex-1 overflow-auto min-h-screen p-6 md:p-8',
+        sidebarOpen ? 'ml-64' : 'ml-20'
       )}>
-        <div className="w-full">
+        <div className="max-w-7xl mx-auto">
           {children}
         </div>
       </main>
