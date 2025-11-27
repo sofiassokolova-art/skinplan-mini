@@ -89,7 +89,8 @@ export async function middleware(request: NextRequest) {
     }
 
     // Для админских роутов проверяем admin_token
-    if (pathname.startsWith('/api/admin/')) {
+    // НО: /api/admin/auth (GET и POST) - публичные, они сами проверяют токен
+    if (pathname.startsWith('/api/admin/') && !pathname.startsWith('/api/admin/auth')) {
       const adminToken = request.headers.get('authorization')?.replace('Bearer ', '') ||
                         request.cookies.get('admin_token')?.value;
 
