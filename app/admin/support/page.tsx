@@ -48,38 +48,8 @@ export default function SupportAdmin() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const checkAuthAndLoad = async () => {
-      const token = localStorage.getItem('admin_token');
-      if (!token) {
-        router.push('/admin/login');
-        return;
-      }
-      
-      // Проверяем валидность токена через API
-      try {
-        const response = await fetch('/api/admin/auth', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          credentials: 'include',
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.valid) {
-            loadChats();
-          } else {
-            router.push('/admin/login');
-          }
-        } else {
-          router.push('/admin/login');
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        router.push('/admin/login');
-      }
-    };
-    
-    checkAuthAndLoad();
-  }, [router]);
+    loadChats();
+  }, []);
 
   useEffect(() => {
     if (selectedChat) {
