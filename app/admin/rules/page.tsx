@@ -24,9 +24,18 @@ export default function AdminRules() {
 
   const loadRules = async () => {
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/admin/rules', {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
         credentials: 'include',
       });
+
+      if (response.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
 
       if (!response.ok) {
         throw new Error('Failed to load');

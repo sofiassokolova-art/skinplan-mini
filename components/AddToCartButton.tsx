@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 interface AddToCartButtonProps {
   productId: number;
   isActive: boolean;
-  onToggle?: (productId: number, newState: boolean) => void;
+  onToggle?: (productId: number) => void;
 }
 
 export function AddToCartButton({ productId, isActive, onToggle }: AddToCartButtonProps) {
@@ -35,7 +35,7 @@ export function AddToCartButton({ productId, isActive, onToggle }: AddToCartButt
       }
       
       setActive(newState);
-      onToggle?.(productId, newState);
+      onToggle?.(productId);
     } catch (err: any) {
       console.error('Error toggling wishlist:', err);
       toast.error(err?.message || 'Ошибка при изменении избранного');

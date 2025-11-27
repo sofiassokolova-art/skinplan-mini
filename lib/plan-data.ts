@@ -163,12 +163,36 @@ export async function getUserPlanData(): Promise<PlanData> {
       scores,
     },
     plan: {
-      weeks: plan.weeks.map((week: any) => ({
+      weeks: (plan.weeks || []).map((week: any) => ({
         week: week.week,
-        days: week.days.map((day: any) => ({
-          morning: day.morning || [],
-          evening: day.evening || [],
-        })),
+        days: (week.days || []).map((day: any) => {
+          // morning/evening могут быть массивами строк (шагов) или ID продуктов
+          // products - объект { step: { id, name, brand, step } }
+          const morningProductIds = Array.isArray(day.morning) 
+            ? day.morning.map((stepOrId: any) => {
+                // Если это строка (шаг), ищем продукт в day.products
+                if (typeof stepOrId === 'string' && day.products?.[stepOrId]?.id) {
+                  return day.products[stepOrId].id;
+                }
+                // Если уже ID
+                return typeof stepOrId === 'number' ? stepOrId : stepOrId;
+              }).filter((id: any) => id)
+            : [];
+          
+          const eveningProductIds = Array.isArray(day.evening)
+            ? day.evening.map((stepOrId: any) => {
+                if (typeof stepOrId === 'string' && day.products?.[stepOrId]?.id) {
+                  return day.products[stepOrId].id;
+                }
+                return typeof stepOrId === 'number' ? stepOrId : stepOrId;
+              }).filter((id: any) => id)
+            : [];
+
+          return {
+            morning: morningProductIds,
+            evening: eveningProductIds,
+          };
+        }),
       })),
     },
     progress,

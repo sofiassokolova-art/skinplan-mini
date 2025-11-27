@@ -89,6 +89,7 @@ export default function NewProductPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({
           ...form,
           price: form.price ? Number(form.price) : null,

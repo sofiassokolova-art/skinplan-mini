@@ -16,12 +16,35 @@ export default function AdminLogin() {
   useEffect(() => {
     setMounted(true);
 
-    // Проверяем, есть ли уже токен
-    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-    if (token) {
-      router.push('/admin');
-      return;
-    }
+    // Проверяем, есть ли уже токен И он валидный
+    const checkExistingToken = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+      if (token) {
+        try {
+          const response = await fetch('/api/admin/verify', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: 'include',
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.valid) {
+              router.push('/admin');
+              return;
+            }
+          }
+          // Если токен не валидный, удаляем его
+          localStorage.removeItem('admin_token');
+        } catch (error) {
+          console.error('Error checking token:', error);
+          // В случае ошибки оставляем пользователя на странице логина
+        }
+      }
+    };
+    
+    checkExistingToken();
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {

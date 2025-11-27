@@ -29,40 +29,50 @@ export default function AdminLayout({
     // Проверка авторизации админа
     const checkAuth = async () => {
       const token = localStorage.getItem('admin_token');
+      
+      // Если нет токена, сразу редирект
       if (!token) {
         router.push('/admin/login');
         setLoading(false);
         return;
       }
 
-      // Проверяем токен на сервере (опционально)
+      // Проверяем токен на сервере
       try {
         const response = await fetch('/api/admin/verify', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          credentials: 'include', // Важно: отправляем cookies
         });
 
         if (!response.ok) {
           console.warn('Token verification failed:', response.status, response.statusText);
           localStorage.removeItem('admin_token');
-          router.push('/admin/login');
           setLoading(false);
+          router.push('/admin/login');
           return;
         }
 
-        setIsAuthenticated(true);
+        const data = await response.json();
+        if (data.valid) {
+          setIsAuthenticated(true);
+          setLoading(false);
+        } else {
+          localStorage.removeItem('admin_token');
+          setLoading(false);
+          router.push('/admin/login');
+        }
       } catch (error) {
-        console.warn('Token verification error (non-blocking):', error);
-        // Если проверка не удалась, все равно разрешаем доступ
+        console.error('Token verification error:', error);
+        // Если проверка не удалась из-за сетевой ошибки, разрешаем доступ
         // (токен будет проверен при каждом API запросе)
         setIsAuthenticated(true);
-      } finally {
         setLoading(false);
       }
     };
     checkAuth();
-  }, [router, isLoginPage]);
+  }, [router, pathname]); // Добавляем pathname в зависимости, чтобы проверка происходила при смене страницы
 
   // На странице входа показываем children без проверки авторизации
   if (isLoginPage) {
