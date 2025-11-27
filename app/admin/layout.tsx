@@ -97,28 +97,27 @@ export default function AdminLayout({
   // }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex admin-layout">
+    <div className="min-h-screen flex admin-layout" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)' }}>
       {/* Sidebar */}
       <aside
         className={cn(
-          'admin-sidebar border-r border-gray-200 transition-all duration-300 relative z-10',
+          'admin-sidebar transition-all duration-300 relative z-10',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
-        style={{ backgroundColor: '#f3f4f6' }}
       >
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between" style={{ backgroundColor: '#f3f4f6' }}>
+        <div className="p-6 border-b border-gray-200/50 flex items-center justify-between">
           {sidebarOpen && (
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">
               SkinIQ Admin
             </h1>
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-600 hover:text-gray-900 transition-colors"
+            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-lg p-2 transition-all duration-200"
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-              </div>
+        </div>
 
         <nav className="p-4 space-y-2">
           {menuItems.map((item) => {
@@ -133,8 +132,8 @@ export default function AdminLayout({
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
                   isActive
-                    ? 'bg-gray-100 border border-gray-300 text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-black text-white shadow-lg shadow-black/10'
+                    : 'text-gray-700 hover:bg-gray-100/50 hover:text-gray-900'
                 )}
               >
                 <Icon size={20} />
@@ -146,8 +145,10 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-gray-100 min-h-screen">
-        {children}
+      <main className="flex-1 overflow-auto min-h-screen p-6 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {children}
+        </div>
       </main>
     </div>
   );

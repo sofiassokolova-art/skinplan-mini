@@ -9,8 +9,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Glassmorphism стили для карточек
-export const glassCard = 'bg-white border border-gray-200 rounded-2xl shadow-sm';
-export const glassCardHover = 'hover:bg-gray-50 hover:border-gray-300 hover:shadow-md hover:-translate-y-1 transition-all duration-300';
+export const glassCard = 'glass rounded-2xl';
+export const glassCardHover = 'glass glass-hover';
+export const glassCardDark = 'glass-dark rounded-2xl';
+export const glassCardGray = 'glass-gray rounded-2xl';
 
 // Неон стили
 export const neonPurple = 'text-[#8B5CF6]';

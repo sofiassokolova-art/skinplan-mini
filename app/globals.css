@@ -14,21 +14,76 @@ html {
   font-family: 'Space Grotesk', sans-serif;
 }
 
-/* Glassmorphism стили - светлая тема */
+/* Glassmorphism стили - бело-черно-серый */
 .glass {
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.08),
+    0 4px 16px 0 rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.glass:hover,
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.12),
+    0 6px 20px 0 rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.6) !important;
+  transform: translateY(-2px) !important;
 }
 
 .glass-hover {
-  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.glass-hover:hover {
-  background: #f9fafb !important;
-  border-color: #d1d5db !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+/* Темные glass карточки */
+.glass-dark {
+  background: rgba(17, 24, 39, 0.7) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.2),
+    0 4px 16px 0 rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.glass-dark:hover {
+  background: rgba(17, 24, 39, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.3),
+    0 6px 20px 0 rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.15) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Серые glass карточки */
+.glass-gray {
+  background: rgba(243, 244, 246, 0.8) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.06),
+    0 4px 16px 0 rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4) !important;
+}
+
+.glass-gray:hover {
+  background: rgba(243, 244, 246, 0.95) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.1),
+    0 6px 20px 0 rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5) !important;
   transform: translateY(-2px) !important;
 }
 
@@ -61,7 +116,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f3f4f6 !important; /* Светло-серый фон */
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%) !important;
+  background-attachment: fixed !important;
   color: #111827 !important; /* Черный текст */
 }
 
@@ -113,13 +169,76 @@ body {
 }
 
 .admin-sidebar {
-  background: #ffffff !important;
-  border-right: 1px solid #e5e7eb !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.04) !important;
   color: #111827 !important;
 }
 
 .admin-sidebar * {
   color: #111827 !important;
+}
+
+/* Улучшенные кнопки */
+.btn-primary {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+  box-shadow: 
+    0 4px 12px 0 rgba(0, 0, 0, 0.15),
+    0 2px 4px 0 rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn-primary:hover {
+  background: #1a1a1a !important;
+  box-shadow: 
+    0 6px 16px 0 rgba(0, 0, 0, 0.2),
+    0 3px 6px 0 rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-primary:active {
+  transform: translateY(0) !important;
+  box-shadow: 
+    0 2px 8px 0 rgba(0, 0, 0, 0.12),
+    0 1px 2px 0 rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Улучшенные инпуты */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="datetime-local"],
+textarea,
+select {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 
+    0 2px 8px 0 rgba(0, 0, 0, 0.04),
+    inset 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="datetime-local"]:focus,
+textarea:focus,
+select:focus {
+  background: rgba(255, 255, 255, 1) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 
+    0 4px 12px 0 rgba(0, 0, 0, 0.08),
+    0 2px 4px 0 rgba(0, 0, 0, 0.04),
+    inset 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+  outline: none !important;
 }
 
 * {
