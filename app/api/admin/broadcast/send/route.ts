@@ -206,6 +206,12 @@ export async function POST(request: NextRequest) {
       const cookieToken = request.cookies.get('admin_token')?.value;
       const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
       const token = cookieToken || headerToken;
+      if (!token) {
+        return NextResponse.json(
+          { error: 'Token not found' },
+          { status: 401 }
+        );
+      }
       const decoded = jwt.decode(token) as any;
       
       // Находим админа по telegramId из whitelist
