@@ -39,41 +39,84 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Получаем уникальные бренды из продуктов (только те, что используются)
-    const brandsWithProducts = await prisma.brand.findMany({
-      where: {
-        products: {
-          some: {
-            published: true,
-          },
-        },
-      },
-      include: {
-        _count: {
-          select: {
-            products: {
-              where: {
-                published: true,
-              },
-            },
-          },
-        },
-      },
+    // Получаем все бренды
+    const allBrands = await prisma.brand.findMany({
       orderBy: { name: 'asc' },
     });
 
     // Форматируем ответ
-    const brands = brandsWithProducts.map((brand) => ({
+    const brands = allBrands.map((brand) => ({
       id: brand.id,
       name: brand.name,
       slug: brand.slug,
       isActive: brand.isActive,
-      productCount: brand._count.products,
     }));
 
     return NextResponse.json({ brands });
   } catch (error) {
     console.error('Error fetching brands:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - создание нового бренда
+export async function POST(request: NextRequest) {
+  try {
+    const isAdmin = await verifyAdmin(request);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { name } = body;
+
+    if (!name || !name.trim()) {
+      return NextResponse.json(
+        { error: 'Name is required' },
+        { status: 400 }
+      );
+    }
+
+    // Создаем slug из названия
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    // Проверяем, не существует ли уже такой бренд
+    const existing = await prisma.brand.findFirst({
+      where: {
+        OR: [
+          { name: name.trim() },
+          { slug },
+        ],
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Brand already exists' },
+        { status: 400 }
+      );
+    }
+
+    const brand = await prisma.brand.create({
+      data: {
+        name: name.trim(),
+        slug,
+        isActive: true,
+      },
+    });
+
+    return NextResponse.json({ brand });
+  } catch (error) {
+    console.error('Error creating brand:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
