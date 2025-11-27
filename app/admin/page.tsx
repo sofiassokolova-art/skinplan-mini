@@ -148,19 +148,19 @@ export default function AdminDashboard() {
   return (
     <div className="p-6 md:p-10">
       {/* Заголовок */}
-      <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-12">
+      <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-14">
         SkinIQ Admin • {currentDate}
       </h1>
       
       {/* 6 больших метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12" style={{ gap: '2rem' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-10">
         {metricsData.map((m, i) => (
           <div 
             key={i} 
-            className="glass rounded-3xl p-8"
+            className="glass rounded-3xl p-6"
           >
             <div className="text-gray-600 text-sm font-medium mb-2">{m.label}</div>
-            <div className={`text-5xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
+            <div className={`text-4xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
               {m.value}
         </div>
             {m.change && (
@@ -173,7 +173,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* График роста пользователей */}
-      <div className="glass rounded-3xl p-8 mb-12">
+      <div className="glass rounded-3xl p-8 mb-10">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Рост пользователей за 30 дней</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={userGrowth}>

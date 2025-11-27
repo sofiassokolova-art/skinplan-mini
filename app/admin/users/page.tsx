@@ -4,7 +4,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useReactTable,
   getCoreRowModel,
@@ -36,6 +36,7 @@ interface User {
 
 export default function UsersAdmin() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +50,27 @@ export default function UsersAdmin() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userPlan, setUserPlan] = useState<any | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(false);
+
+  // Обработка параметра userId из URL
+  useEffect(() => {
+    const userIdFromUrl = searchParams.get('userId');
+    if (userIdFromUrl && !loading && users.length > 0) {
+      // Ищем пользователя в текущем списке
+      const user = users.find(u => u.id === userIdFromUrl);
+      if (user) {
+        // Если пользователь найден, открываем его план
+        handleViewPlan(userIdFromUrl);
+      } else {
+        // Если пользователь не найден в текущем списке, 
+        // попробуем открыть план напрямую (может быть на другой странице)
+        handleViewPlan(userIdFromUrl);
+      }
+      // Убираем параметр из URL
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('userId');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [searchParams, users, loading]);
 
   useEffect(() => {
     loadUsers();
@@ -89,6 +111,7 @@ export default function UsersAdmin() {
       setLoading(false);
     }
   };
+
 
   const columns = useMemo<ColumnDef<User>[]>(
     () => [
@@ -205,10 +228,10 @@ export default function UsersAdmin() {
     return (
             <button
               onClick={() => handleViewPlan(user.id)}
-              disabled={!user.hasPlan}
+              disabled={!user.hasProfile}
               className={cn(
                 'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-                user.hasPlan
+                user.hasProfile
                   ? 'bg-black text-white hover:bg-gray-800'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               )}
@@ -243,8 +266,14 @@ export default function UsersAdmin() {
         setUserPlan(data.plan);
       } else {
         const error = await response.json();
-        alert(error.error || 'Не удалось загрузить план');
-        setSelectedUserId(null);
+        const errorMessage = error.error || 'Не удалось загрузить план';
+        // Если план не найден, это не критическая ошибка - просто закрываем модальное окно
+        if (response.status === 404 && errorMessage.includes('not found')) {
+          alert('План пользователя не найден. Возможно, пользователь еще не сгенерировал план ухода.');
+        } else {
+          alert(errorMessage);
+        }
+        // Не закрываем модальное окно сразу, чтобы пользователь мог увидеть информацию
       }
     } catch (err: any) {
       console.error('Error loading plan:', err);
@@ -304,15 +333,17 @@ export default function UsersAdmin() {
       {/* Поиск */}
       <div className={cn(glassCard, 'p-4')}>
         <div className="flex items-center gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10" size={18} />
+          <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-300">
+            <div className="flex items-center justify-center px-4 py-2 bg-white">
+              <Search className="text-gray-500" size={18} />
+            </div>
             <input
               type="text"
               placeholder="Поиск по имени, username или Telegram ID..."
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               onFocus={(e) => e.target.select()}
-              className="w-full pl-12 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
+              className="flex-1 pr-4 py-2 bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0"
             />
           </div>
         </div>

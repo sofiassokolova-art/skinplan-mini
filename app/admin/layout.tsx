@@ -101,12 +101,12 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          'admin-sidebar transition-all duration-300 relative z-10',
+          'admin-sidebar transition-all duration-300 relative z-10 h-screen flex flex-col',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
         style={{ backgroundColor: 'rgba(243, 244, 246, 0.95)' }}
       >
-        <div className="p-6 border-b border-gray-200/50 flex items-center justify-between" style={{ backgroundColor: 'transparent' }}>
+        <div className="p-6 border-b border-gray-200/50 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: 'transparent' }}>
           {sidebarOpen && (
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">
               SkinIQ Admin
@@ -120,7 +120,7 @@ export default function AdminLayout({
           </button>
               </div>
 
-        <nav className="p-4 space-y-2" style={{ backgroundColor: 'transparent' }}>
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto" style={{ backgroundColor: 'transparent' }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || 

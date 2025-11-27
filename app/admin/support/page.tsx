@@ -305,11 +305,11 @@ export default function SupportAdmin() {
       </div>
 
       {/* Правая часть — выбранный чат */}
-      <div className={cn('flex flex-col bg-white', selectedChat ? 'lg:col-span-3' : 'lg:col-span-4')}>
+      <div className={cn('flex flex-col bg-white h-full', selectedChat ? 'lg:col-span-3' : 'lg:col-span-4')}>
         {selectedChat ? (
           <>
             {/* Хедер чата */}
-            <div className={cn(glassCard, 'p-4 border-b border-gray-200 flex items-center justify-between bg-white')}>
+            <div className={cn(glassCard, 'p-4 border-b border-gray-200 flex items-center justify-between bg-white flex-shrink-0')}>
               <div className="flex items-center gap-4 flex-1">
                 {/* Кнопка "Назад" для мобильных */}
                 <button
@@ -384,7 +384,7 @@ export default function SupportAdmin() {
             </div>
 
             {/* Сообщения */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 min-h-0">
               {messages.length === 0 ? (
                 <div className="text-center text-gray-400 py-12">
                   <p>Нет сообщений</p>
@@ -412,7 +412,7 @@ export default function SupportAdmin() {
             </div>
 
             {/* Поле ввода */}
-            <div className={cn(glassCard, 'p-4 border-t border-gray-200 bg-white')}>
+            <div className={cn(glassCard, 'p-4 border-t border-gray-200 bg-white flex-shrink-0')}>
               <div className="flex gap-4">
                 <textarea
                   value={replyText}
