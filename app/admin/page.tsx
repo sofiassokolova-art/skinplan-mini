@@ -159,7 +159,17 @@ export default function AdminDashboard() {
       {/* 6 больших метрик */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
         {metricsData.map((m, i) => (
-          <div key={i} className="glass glass-hover rounded-3xl p-8">
+          <div 
+            key={i} 
+            className="glass glass-hover rounded-3xl p-8"
+            style={{
+              background: 'rgba(255, 255, 255, 0.06)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            }}
+          >
             <div className="text-white/60 text-sm font-medium mb-2">{m.label}</div>
             <div className={`text-5xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
               {m.value}
@@ -174,7 +184,16 @@ export default function AdminDashboard() {
       </div>
 
       {/* График роста пользователей */}
-      <div className="glass rounded-3xl p-8 mb-12">
+      <div 
+        className="glass rounded-3xl p-8 mb-12"
+        style={{
+          background: 'rgba(255, 255, 255, 0.06)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+        }}
+      >
         <h2 className="text-2xl font-bold text-white mb-6">Рост пользователей за 30 дней</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={userGrowth}>
@@ -209,7 +228,16 @@ export default function AdminDashboard() {
       </div>
 
       {/* Последние действия (отзывы) */}
-      <div className="glass rounded-3xl p-8">
+      <div 
+        className="glass rounded-3xl p-8"
+        style={{
+          background: 'rgba(255, 255, 255, 0.06)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+        }}
+      >
         <h2 className="text-2xl font-bold text-white mb-6">Последние действия</h2>
         <div className="space-y-4">
           {recentFeedback.length === 0 ? (
@@ -219,6 +247,12 @@ export default function AdminDashboard() {
               <div
                 key={f.id}
                 className="p-4 glass-hover rounded-xl mb-3"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                }}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
