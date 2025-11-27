@@ -47,7 +47,9 @@ export default async function PlanPage() {
       />
     );
   } catch (error: any) {
-    console.error('Error loading plan page:', error);
+    console.error('❌ Error loading plan page:', error);
+    console.error('   Error message:', error?.message);
+    console.error('   Error stack:', error?.stack);
     
     // Более понятная обработка ошибок
     if (error?.message?.includes('not found') || error?.message?.includes('не найден')) {
@@ -56,7 +58,8 @@ export default async function PlanPage() {
     
     // Если это ошибка авторизации - показываем сообщение
     if (error?.message?.includes('Не авторизован') || 
-        error?.message?.includes('Не удалось определить пользователя')) {
+        error?.message?.includes('Не удалось определить пользователя') ||
+        error?.message?.includes('initData')) {
       return (
         <div style={{
           minHeight: '100vh',
@@ -91,6 +94,22 @@ export default async function PlanPage() {
             }}>
               Для просмотра плана необходимо открыть приложение через Telegram Mini App.
             </p>
+            <a
+              href="/"
+              style={{
+                display: 'inline-block',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                textDecoration: 'none',
+                fontSize: '16px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+              }}
+            >
+              На главную
+            </a>
           </div>
         </div>
       );
