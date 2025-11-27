@@ -155,7 +155,7 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main 
-        className="overflow-auto min-h-screen pr-6 md:pr-8 pt-8 md:pt-10 pb-6 md:pb-8 bg-transparent"
+        className="overflow-auto min-h-screen pr-8 md:pr-12 pt-8 md:pt-10 pb-6 md:pb-8 bg-transparent"
         style={{
           marginLeft: sidebarOpen ? '256px' : '80px',
           width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)'

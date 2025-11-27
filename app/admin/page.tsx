@@ -45,10 +45,16 @@ export default function AdminDashboard() {
   const [recentFeedback, setRecentFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [userGrowth, setUserGrowth] = useState<{ date: string; users: number }[]>([]);
+  const [growthPeriod, setGrowthPeriod] = useState<'day' | 'week' | 'month'>('month');
+  const [growthLoading, setGrowthLoading] = useState(false);
 
   useEffect(() => {
     loadStats();
   }, []);
+
+  useEffect(() => {
+    loadUserGrowth();
+  }, [growthPeriod]);
 
   const loadStats = async () => {
     try {
@@ -65,7 +71,28 @@ export default function AdminDashboard() {
         const data = await response.json();
         setStats(data.stats || {});
         setRecentFeedback(data.recentFeedback || []);
-        
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserGrowth = async () => {
+    setGrowthLoading(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/stats?period=${growthPeriod}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
         if (data.userGrowth && Array.isArray(data.userGrowth)) {
           setUserGrowth(data.userGrowth);
         } else {
@@ -73,9 +100,9 @@ export default function AdminDashboard() {
         }
       }
     } catch (error) {
-      console.error('Error loading stats:', error);
+      console.error('Error loading user growth:', error);
     } finally {
-      setLoading(false);
+      setGrowthLoading(false);
     }
   };
 
@@ -168,40 +195,87 @@ export default function AdminDashboard() {
 
       {/* Блок графика */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Рост пользователей за 30 дней</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Рост пользователей</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {growthPeriod === 'day' && 'За последние 24 часа'}
+              {growthPeriod === 'week' && 'За последние 7 дней'}
+              {growthPeriod === 'month' && 'За последние 30 дней'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setGrowthPeriod('day')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                growthPeriod === 'day'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              День
+            </button>
+            <button
+              onClick={() => setGrowthPeriod('week')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                growthPeriod === 'week'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Неделя
+            </button>
+            <button
+              onClick={() => setGrowthPeriod('month')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                growthPeriod === 'month'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Месяц
+            </button>
+          </div>
+        </div>
         <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={userGrowth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis 
-                dataKey="date" 
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: '12px' }}
-              />
-              <YAxis 
-                stroke="#6b7280"
-                tick={{ fill: '#6b7280', fontSize: '12px' }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '12px',
-                  color: '#111827',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                }}
-                labelStyle={{ color: '#111827', fontWeight: 'bold' }}
-              />
-              <Line
-                type="monotone"
-                dataKey="users"
-                stroke="#8B5CF6"
-                strokeWidth={2}
-                dot={{ fill: '#8B5CF6', r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {growthLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-500">Загрузка данных...</div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={userGrowth}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#6b7280"
+                  tick={{ fill: '#6b7280', fontSize: '12px' }}
+                />
+                <YAxis 
+                  stroke="#6b7280"
+                  tick={{ fill: '#6b7280', fontSize: '12px' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    color: '#111827',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                  labelStyle={{ color: '#111827', fontWeight: 'bold' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="users"
+                  stroke="#8B5CF6"
+                  strokeWidth={2}
+                  dot={{ fill: '#8B5CF6', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 

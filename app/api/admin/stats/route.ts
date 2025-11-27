@@ -131,13 +131,35 @@ export async function GET(request: NextRequest) {
       })
       .catch(() => 0);
 
-    // Получаем данные роста пользователей за последние 30 дней (оптимизированно - один запрос)
-    const now = new Date();
-    const startDate = new Date(now);
-    startDate.setDate(startDate.getDate() - 30);
-    startDate.setHours(0, 0, 0, 0);
+    // Получаем параметр периода из query string
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'month'; // day, week, month
     
-    // Получаем всех пользователей за последние 30 дней
+    // Получаем данные роста пользователей за выбранный период
+    const now = new Date();
+    let startDate: Date;
+    let dateFormat: 'day' | 'week' | 'month' = 'month';
+    
+    if (period === 'day') {
+      // Для дня: последние 24 часа
+      startDate = new Date(now);
+      startDate.setHours(startDate.getHours() - 24);
+      dateFormat = 'day';
+    } else if (period === 'week') {
+      // Для недели: последние 7 дней
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+      dateFormat = 'week';
+    } else {
+      // Для месяца: последние 30 дней
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+      dateFormat = 'month';
+    }
+    
+    // Получаем всех пользователей за период
     const usersInPeriod = await prisma.user.findMany({
       where: {
         createdAt: {
@@ -161,32 +183,84 @@ export async function GET(request: NextRequest) {
       },
     }).catch(() => 0);
     
-    // Группируем по датам и считаем накопительный итог
+    // Группируем по датам/часам и считаем накопительный итог
     const userGrowthData = [];
-    const usersByDate = new Map<string, number>();
+    const usersByKey = new Map<string, number>();
     
-    // Считаем новых пользователей по дням
+    // Считаем новых пользователей по периодам
     usersInPeriod.forEach(user => {
-      const dateKey = user.createdAt.toISOString().split('T')[0];
-      usersByDate.set(dateKey, (usersByDate.get(dateKey) || 0) + 1);
+      let key: string;
+      if (dateFormat === 'day') {
+        // Группируем по часам: "YYYY-MM-DD HH:00"
+        const date = new Date(user.createdAt);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hour = String(date.getHours()).padStart(2, '0');
+        key = `${year}-${month}-${day} ${hour}:00`;
+      } else {
+        // Группируем по дням: "YYYY-MM-DD"
+        const date = new Date(user.createdAt);
+        date.setHours(0, 0, 0, 0);
+        key = date.toISOString().split('T')[0];
+      }
+      usersByKey.set(key, (usersByKey.get(key) || 0) + 1);
     });
     
-    // Формируем данные для графика (30 дней)
+    // Формируем данные для графика
     let cumulativeUsers = usersBeforePeriod;
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      const dateKey = date.toISOString().split('T')[0];
-      
-      // Добавляем пользователей, созданных в этот день
-      const newUsersToday = usersByDate.get(dateKey) || 0;
-      cumulativeUsers += newUsersToday;
-      
-      userGrowthData.push({
-        date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
-        users: cumulativeUsers,
-      });
+    
+    if (dateFormat === 'day') {
+      // Для дня показываем последние 24 часа по часам
+      for (let i = 23; i >= 0; i--) {
+        const date = new Date(now);
+        date.setHours(date.getHours() - i, 0, 0, 0);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hour = String(date.getHours()).padStart(2, '0');
+        const key = `${year}-${month}-${day} ${hour}:00`;
+        
+        const newUsersInHour = usersByKey.get(key) || 0;
+        cumulativeUsers += newUsersInHour;
+        
+        userGrowthData.push({
+          date: `${hour}:00`,
+          users: cumulativeUsers,
+        });
+      }
+    } else if (dateFormat === 'week') {
+      // Для недели показываем по дням (7 дней)
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        const key = date.toISOString().split('T')[0];
+        
+        const newUsersToday = usersByKey.get(key) || 0;
+        cumulativeUsers += newUsersToday;
+        
+        userGrowthData.push({
+          date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+          users: cumulativeUsers,
+        });
+      }
+    } else {
+      // Для месяца показываем по дням (30 дней)
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        const key = date.toISOString().split('T')[0];
+        
+        const newUsersToday = usersByKey.get(key) || 0;
+        cumulativeUsers += newUsersToday;
+        
+        userGrowthData.push({
+          date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+          users: cumulativeUsers,
+        });
+      }
     }
 
     return NextResponse.json({
