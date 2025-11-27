@@ -105,37 +105,14 @@ export async function getUserPlanData(): Promise<PlanData> {
     createdAt: profile.createdAt,
   });
 
-  // Вызываем API endpoint для генерации плана (Server Component может делать fetch)
-  // Используем абсолютный URL только в продакшене, иначе относительный
-  const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-  
+  // Генерируем план напрямую через функцию, без fetch к API
+  let plan;
   try {
-    const planResponse = await fetch(`${baseUrl}/api/plan/generate`, {
-      method: 'GET',
-      headers: {
-        'X-Telegram-Init-Data': initData,
-      },
-      cache: 'no-store',
-    });
-
-    if (!planResponse.ok) {
-      const errorText = await planResponse.text();
-      console.error('Plan generation failed:', planResponse.status, errorText);
-      throw new Error(`Failed to generate plan: ${planResponse.status} ${planResponse.statusText}`);
-    }
-
-    const planData = await planResponse.json();
-    const plan = planData;
-  } catch (fetchError: any) {
-    console.error('Error fetching plan:', fetchError);
-    // Если это ошибка сети или профиль не найден в API - пробрасываем дальше
-    if (fetchError.message?.includes('Skin profile not found') || 
-        fetchError.message?.includes('No skin profile')) {
-      throw new Error('Skin profile not found. Please complete the questionnaire first.');
-    }
-    throw fetchError;
+    const { generate28DayPlan } = await import('@/lib/plan-generator');
+    plan = await generate28DayPlan(user.id);
+  } catch (planError: any) {
+    console.error('❌ Error generating plan:', planError);
+    throw new Error(`Failed to generate plan: ${planError?.message || 'Unknown error'}`);
   }
 
   // Вычисляем skin scores - используем поля из профиля

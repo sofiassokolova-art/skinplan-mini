@@ -54,9 +54,50 @@ export default async function PlanPage() {
       notFound();
     }
     
-    // Если это ошибка авторизации или отсутствия профиля - редирект на главную
+    // Если это ошибка авторизации - показываем сообщение
     if (error?.message?.includes('Не авторизован') || 
-        error?.message?.includes('Skin profile not found') ||
+        error?.message?.includes('Не удалось определить пользователя')) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            borderRadius: '24px',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          }}>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: '#0A5F59',
+              marginBottom: '12px',
+            }}>
+              Откройте через Telegram
+            </h2>
+            <p style={{
+              color: '#475467',
+              marginBottom: '24px',
+              lineHeight: '1.6',
+            }}>
+              Для просмотра плана необходимо открыть приложение через Telegram Mini App.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Если это ошибка отсутствия профиля - показываем сообщение
+    if (error?.message?.includes('Skin profile not found') ||
         error?.message?.includes('User not found')) {
       // Возвращаем компонент с сообщением об ошибке вместо throw
       return (
