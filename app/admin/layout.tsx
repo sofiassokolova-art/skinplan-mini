@@ -101,10 +101,12 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          'admin-sidebar transition-all duration-300 relative z-10 h-screen flex flex-col',
+          'admin-sidebar transition-all duration-300 relative z-10 flex flex-col h-screen',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
-        style={{ backgroundColor: 'rgba(243, 244, 246, 0.95)' }}
+        style={{ 
+          backgroundColor: 'rgba(243, 244, 246, 0.95)'
+        }}
       >
         <div className="p-6 border-b border-gray-200/50 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: 'transparent' }}>
           {sidebarOpen && (

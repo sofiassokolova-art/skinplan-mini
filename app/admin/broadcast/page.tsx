@@ -47,36 +47,7 @@ export default function BroadcastAdmin() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Проверка авторизации
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('admin_token');
-        if (!token) {
-          router.push('/admin/login');
-          return;
-        }
-        
-        const response = await fetch('/api/admin/auth', {
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
-          },
-          credentials: 'include',
-        });
-
-        if (response.status === 401 || !response.ok) {
-          router.push('/admin/login');
-          return;
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        router.push('/admin/login');
-      }
-    };
-    
-    checkAuth();
-  }, [router]);
+  // Проверка авторизации выполняется в layout.tsx
 
   const handleCount = async () => {
     setCountLoading(true);

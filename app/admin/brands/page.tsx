@@ -250,15 +250,17 @@ export default function BrandsAdmin() {
       {/* Поиск */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
         <div className="flex items-center gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10" size={18} />
+          <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-300">
+            <div className="flex items-center justify-center px-4 py-2 bg-white">
+              <Search className="text-gray-500" size={18} />
+            </div>
             <input
               type="text"
               placeholder="Поиск по названию бренда..."
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               onFocus={(e) => e.target.select()}
-              className="w-full pl-12 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
+              className="flex-1 pl-2 pr-4 py-2 bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0"
             />
           </div>
         </div>
