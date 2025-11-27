@@ -22,6 +22,7 @@ async function request<T>(
   if (initData) {
     headers['X-Telegram-Init-Data'] = initData;
     headers['x-telegram-init-data'] = initData;
+    console.log('✅ initData добавлен в заголовки, длина:', initData.length);
   } else {
     console.warn('⚠️ initData not available in Telegram WebApp');
   }
@@ -37,11 +38,18 @@ async function request<T>(
     
     // Для 401 ошибок добавляем более информативное сообщение
     if (response.status === 401) {
+      const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
+      console.error('❌ 401 Unauthorized:', {
+        endpoint,
+        hasInitData: !!initData,
+        error: errorData.error,
+        headers: Object.keys(headers),
+      });
+      
       if (!initData) {
-        throw new Error('Откройте приложение через Telegram Mini App для добавления в избранное');
+        throw new Error('Откройте приложение через Telegram Mini App. initData не доступен.');
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Ошибка авторизации. Попробуйте обновить страницу');
+        throw new Error(errorData.error || 'Ошибка авторизации. Попробуйте обновить страницу.');
       }
     }
     
