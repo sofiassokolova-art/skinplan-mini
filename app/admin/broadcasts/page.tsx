@@ -111,7 +111,7 @@ export default function BroadcastsPage() {
           className="px-6 py-3 bg-[#8b5cf6] text-white rounded-xl font-semibold hover:bg-[#7c3aed] transition-colors flex items-center gap-2 shadow-lg shadow-[#8b5cf6]/20"
         >
           <Send size={20} />
-          Отправить новую рассылку
+          + Новая рассылка
         </Link>
       </div>
 

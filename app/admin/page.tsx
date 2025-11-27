@@ -153,7 +153,7 @@ export default function AdminDashboard() {
       </h1>
       
       {/* 6 больших метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-12 mb-10">
         {metricsData.map((m, i) => (
           <div 
             key={i} 

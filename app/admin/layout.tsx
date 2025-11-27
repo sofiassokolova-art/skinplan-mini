@@ -76,7 +76,7 @@ export default function AdminLayout({
     { href: '/admin/rules', label: 'Правила', icon: FileText },
     { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare },
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
-    { href: '/admin/broadcast', label: 'Рассылки', icon: Send },
+    { href: '/admin/broadcasts', label: 'Рассылки', icon: Send },
   ];
 
   if (isLoginPage) {
@@ -97,7 +97,7 @@ export default function AdminLayout({
   // }
 
   return (
-    <div className="min-h-screen flex admin-layout" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)' }}>
+    <div className="min-h-screen admin-layout" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)' }}>
       {/* Sidebar */}
       <aside
         className={cn(
@@ -151,9 +151,12 @@ export default function AdminLayout({
       {/* Main Content */}
       <main 
         className={cn(
-          'flex-1 overflow-auto min-h-screen p-6 md:p-8 pt-8 md:pt-10 w-full',
-          sidebarOpen ? 'ml-64' : 'ml-20'
+          'overflow-auto min-h-screen p-6 md:p-8 pt-8 md:pt-10',
         )}
+        style={{
+          marginLeft: sidebarOpen ? '256px' : '80px',
+          width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)'
+        }}
       >
         <div className="max-w-7xl mx-auto w-full">
           {children}
