@@ -37,16 +37,36 @@ export async function getAdminFromInitData(
   }
 
   const { user } = validation.data;
+  const telegramIdStr = user.id.toString();
 
-  // Проверяем whitelist по telegramId
+  // Логируем для отладки
+  console.log('🔍 Проверка whitelist для:', {
+    telegramId: telegramIdStr,
+    username: user.username,
+    firstName: user.first_name,
+  });
+
+  // Проверяем whitelist по telegramId и phoneNumber
   const whitelistEntry = await prisma.adminWhitelist.findFirst({
     where: {
       OR: [
-        { telegramId: user.id.toString() },
-        // Также можно проверить по phone_number если он есть в initData
+        { telegramId: telegramIdStr },
+        // Также проверяем по phone_number если он есть в initData
+        // (но phone_number обычно не приходит в initData, так что это для будущего)
       ],
       isActive: true,
     },
+  });
+
+  console.log('🔍 Результат поиска в whitelist:', {
+    found: !!whitelistEntry,
+    entry: whitelistEntry ? {
+      id: whitelistEntry.id,
+      telegramId: whitelistEntry.telegramId,
+      phoneNumber: whitelistEntry.phoneNumber,
+      name: whitelistEntry.name,
+      isActive: whitelistEntry.isActive,
+    } : null,
   });
 
   if (!whitelistEntry) {
