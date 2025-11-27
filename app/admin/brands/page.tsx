@@ -16,13 +16,14 @@ import {
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table';
-import { Search } from 'lucide-react';
+import { Search, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Brand {
   id: number;
   name: string;
   slug?: string;
+  isActive?: boolean;
   productCount?: number;
 }
 
@@ -70,6 +71,56 @@ export default function BrandsAdmin() {
     }
   };
 
+  const handleToggleActive = async (id: number, newActive: boolean) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/brands/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ isActive: newActive }),
+      });
+
+      if (response.ok) {
+        await loadBrands();
+      } else {
+        alert('Ошибка обновления бренда');
+      }
+    } catch (err) {
+      console.error('Ошибка обновления бренда:', err);
+      alert('Ошибка обновления бренда');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Вы уверены, что хотите деактивировать этот бренд? Все его продукты перестанут показываться в рекомендациях.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/brands/${id}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        await loadBrands();
+      } else {
+        alert('Ошибка удаления бренда');
+      }
+    } catch (err) {
+      console.error('Ошибка удаления бренда:', err);
+      alert('Ошибка удаления бренда');
+    }
+  };
+
   const columns = useMemo<ColumnDef<Brand>[]>(
     () => [
       {
@@ -96,6 +147,57 @@ export default function BrandsAdmin() {
             <span className="text-gray-700 font-medium">
               {count || 0}
             </span>
+          );
+        },
+      },
+      {
+        accessorKey: 'isActive',
+        header: 'Статус',
+        cell: ({ row }) => {
+          const isActive = row.getValue('isActive') as boolean | undefined;
+          return (
+            <div className="flex items-center gap-2">
+              {isActive ? (
+                <>
+                  <Eye className="text-green-600" size={16} />
+                  <span className="text-green-600 text-sm">Активен</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="text-gray-400" size={16} />
+                  <span className="text-gray-400 text-sm">Неактивен</span>
+                </>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'actions',
+        header: 'Действия',
+        cell: ({ row }) => {
+          const brand = row.original;
+          return (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleToggleActive(brand.id, !brand.isActive)}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                title={brand.isActive ? 'Деактивировать' : 'Активировать'}
+              >
+                {brand.isActive ? (
+                  <EyeOff className="text-gray-700" size={16} />
+                ) : (
+                  <Eye className="text-gray-700" size={16} />
+                )}
+              </button>
+              <button
+                onClick={() => handleDelete(brand.id)}
+                className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                title="Удалить (деактивировать)"
+              >
+                <Trash2 className="text-red-600" size={16} />
+              </button>
+            </div>
           );
         },
       },

@@ -95,7 +95,12 @@ async function getProductsForStep(step: RuleStep) {
   }
 
   const products = await prisma.product.findMany({
-    where,
+    where: {
+      ...where,
+      brand: {
+        isActive: true, // Только активные бренды
+      },
+    },
     include: {
       brand: true,
     },

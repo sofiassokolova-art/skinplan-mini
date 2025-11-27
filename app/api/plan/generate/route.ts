@@ -248,6 +248,9 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       where: {
         id: { in: productIds },
         published: true,
+        brand: {
+          isActive: true, // Только активные бренды
+        },
       },
       include: { brand: true },
     });
@@ -271,7 +274,12 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   } else {
     console.log('⚠️ No RecommendationSession products, fetching all published products');
     allProducts = await prisma.product.findMany({
-      where: { published: true },
+      where: {
+        published: true,
+        brand: {
+          isActive: true, // Только активные бренды
+        },
+      },
       include: { brand: true },
     });
     
@@ -339,9 +347,84 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
   // Если есть продукты из RecommendationSession, используем их все (не ограничиваем)
   // Иначе ограничиваем количество продуктов (3 утро + 3 вечер = максимум 6)
-  const selectedProducts = recommendationProducts.length > 0 
+  let selectedProducts = recommendationProducts.length > 0 
     ? sortedProducts // Используем все продукты из RecommendationSession
     : sortedProducts.slice(0, 6); // Ограничиваем только если генерируем с нуля
+  
+  // Автозамена продуктов с неактивными брендами
+  // Проверяем, перепроходил ли пользователь анкету (если нет - не заменяем)
+  const latestProfile = await prisma.skinProfile.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+  });
+  
+  const hasRecentProfile = latestProfile && 
+    new Date().getTime() - new Date(latestProfile.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000; // 7 дней
+  
+  if (hasRecentProfile) {
+    // Пользователь недавно проходил анкету - делаем автозамену
+    const replacedProducts = await Promise.all(
+      selectedProducts.map(async (product: any) => {
+        // Проверяем, активен ли бренд
+        if (product.brand && !product.brand.isActive) {
+          console.log(`⚠️ Product ${product.name} has inactive brand ${product.brand.name}, searching for replacement...`);
+          
+          // Ищем похожий продукт с активным брендом
+          const replacement = await prisma.product.findFirst({
+            where: {
+              published: true,
+              step: product.step,
+              id: { not: product.id },
+              brand: {
+                isActive: true,
+              },
+              // Похожие критерии
+              skinTypes: product.skinTypes ? { hasSome: product.skinTypes } : undefined,
+              concerns: product.concerns ? { hasSome: product.concerns } : undefined,
+            },
+            include: { brand: true },
+            orderBy: [
+              { isHero: 'desc' },
+              { priority: 'desc' },
+            ],
+          });
+          
+          if (replacement) {
+            console.log(`✅ Replaced ${product.name} with ${replacement.name}`);
+            return replacement;
+          } else {
+            // Если не нашли похожий, ищем любой продукт того же шага
+            const anyReplacement = await prisma.product.findFirst({
+              where: {
+                published: true,
+                step: product.step,
+                id: { not: product.id },
+                brand: {
+                  isActive: true,
+                },
+              },
+              include: { brand: true },
+              orderBy: [
+                { isHero: 'desc' },
+                { priority: 'desc' },
+              ],
+            });
+            
+            if (anyReplacement) {
+              console.log(`✅ Replaced ${product.name} with any available ${anyReplacement.name}`);
+              return anyReplacement;
+            }
+          }
+        }
+        return product;
+      })
+    );
+    
+    selectedProducts = replacedProducts;
+  } else {
+    // Пользователь не перепроходил анкету - оставляем продукты как есть
+    console.log('ℹ️ User has not retaken questionnaire recently, keeping existing products even if brand is inactive');
+  }
   
   console.log(`✅ Selected ${selectedProducts.length} products ${recommendationProducts.length > 0 ? 'from RecommendationSession' : 'after filtering'}`);
 
@@ -375,7 +458,12 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     }
     
     const fallbackCleanser = await prisma.product.findFirst({
-      where: whereCleanser,
+      where: {
+        ...whereCleanser,
+        brand: {
+          isActive: true, // Только активные бренды
+        },
+      },
       include: { brand: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -392,6 +480,9 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         where: {
           published: true,
           step: 'cleanser', // Исправлено: было 'cleansing', должно быть 'cleanser'
+          brand: {
+            isActive: true, // Только активные бренды
+          },
         },
         include: { brand: true },
         orderBy: { createdAt: 'desc' },
@@ -417,6 +508,9 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
           { step: 'spf' },
           { category: 'spf' },
         ],
+        brand: {
+          isActive: true, // Только активные бренды
+        },
         // SPF универсален - не фильтруем по типу кожи
       },
       include: { brand: true },

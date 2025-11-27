@@ -67,12 +67,86 @@ export async function GET(request: NextRequest) {
       id: brand.id,
       name: brand.name,
       slug: brand.slug,
+      isActive: brand.isActive,
       productCount: brand._count.products,
     }));
 
     return NextResponse.json({ brands });
   } catch (error) {
     console.error('Error fetching brands:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT - обновление бренда (активность)
+export async function PUT(request: NextRequest) {
+  try {
+    const isAdmin = await verifyAdmin(request);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { id, isActive } = body;
+
+    if (!id || typeof isActive !== 'boolean') {
+      return NextResponse.json(
+        { error: 'id and isActive are required' },
+        { status: 400 }
+      );
+    }
+
+    const brand = await prisma.brand.update({
+      where: { id: parseInt(id) },
+      data: { isActive },
+    });
+
+    return NextResponse.json({ brand });
+  } catch (error) {
+    console.error('Error updating brand:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - удаление бренда (soft delete через isActive = false)
+export async function DELETE(request: NextRequest) {
+  try {
+    const isAdmin = await verifyAdmin(request);
+    if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'id is required' },
+        { status: 400 }
+      );
+    }
+
+    // Soft delete - делаем неактивным
+    const brand = await prisma.brand.update({
+      where: { id: parseInt(id) },
+      data: { isActive: false },
+    });
+
+    return NextResponse.json({ brand });
+  } catch (error) {
+    console.error('Error deleting brand:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
