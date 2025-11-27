@@ -135,14 +135,14 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="w-full">
+    <div className="w-full pt-6">
       {/* Заголовок */}
       <h1 className="text-4xl font-black text-gray-900 mb-10">
         SkinIQ Admin • {currentDate}
       </h1>
       
       {/* Сетка из 6 метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-12 mb-12">
         {metricsData.map((m, i) => (
           <div 
             key={i} 

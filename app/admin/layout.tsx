@@ -156,7 +156,7 @@ export default function AdminLayout({
           width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)'
         }}
       >
-        <div className="max-w-7xl mx-auto w-full">
+        <div className="max-w-7xl mx-auto w-full bg-transparent">
           {children}
         </div>
       </main>
