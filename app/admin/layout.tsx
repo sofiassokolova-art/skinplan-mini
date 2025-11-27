@@ -15,6 +15,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false); // Флаг, что проверка уже была
 
   // Проверяем, находимся ли мы на странице входа
   const isLoginPage = pathname === '/admin/login';
@@ -26,6 +27,11 @@ export default function AdminLayout({
       return;
     }
 
+    // Проверяем авторизацию только один раз при первой загрузке
+    if (authChecked) {
+      return;
+    }
+
     // Проверка авторизации админа
     const checkAuth = async () => {
       const token = localStorage.getItem('admin_token');
@@ -34,22 +40,24 @@ export default function AdminLayout({
       if (!token) {
         router.push('/admin/login');
         setLoading(false);
+        setAuthChecked(true);
         return;
       }
 
-      // Проверяем токен на сервере
+      // Проверяем токен на сервере только один раз
       try {
         const response = await fetch('/api/admin/verify', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          credentials: 'include', // Важно: отправляем cookies
+          credentials: 'include',
         });
 
         if (!response.ok) {
           console.warn('Token verification failed:', response.status, response.statusText);
           localStorage.removeItem('admin_token');
           setLoading(false);
+          setAuthChecked(true);
           router.push('/admin/login');
           return;
         }
@@ -58,9 +66,11 @@ export default function AdminLayout({
         if (data.valid) {
           setIsAuthenticated(true);
           setLoading(false);
+          setAuthChecked(true);
         } else {
           localStorage.removeItem('admin_token');
           setLoading(false);
+          setAuthChecked(true);
           router.push('/admin/login');
         }
       } catch (error) {
@@ -69,10 +79,11 @@ export default function AdminLayout({
         // (токен будет проверен при каждом API запросе)
         setIsAuthenticated(true);
         setLoading(false);
+        setAuthChecked(true);
       }
     };
     checkAuth();
-  }, [router, pathname]); // Добавляем pathname в зависимости, чтобы проверка происходила при смене страницы
+  }, [router, isLoginPage, authChecked]); // Убрали pathname из зависимостей - проверяем только один раз
 
   // На странице входа показываем children без проверки авторизации
   if (isLoginPage) {
