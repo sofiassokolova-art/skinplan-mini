@@ -146,7 +146,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="p-6 md:p-10" style={{ backgroundColor: '#000000' }}>
+    <div className="p-6 md:p-10">
       {/* Заголовок */}
       <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-12">
         SkinIQ Admin • {currentDate}
