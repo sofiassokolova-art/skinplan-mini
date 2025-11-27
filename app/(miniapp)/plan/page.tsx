@@ -48,9 +48,73 @@ export default async function PlanPage() {
     );
   } catch (error: any) {
     console.error('Error loading plan page:', error);
+    
+    // Более понятная обработка ошибок
     if (error?.message?.includes('not found') || error?.message?.includes('не найден')) {
       notFound();
     }
+    
+    // Если это ошибка авторизации или отсутствия профиля - редирект на главную
+    if (error?.message?.includes('Не авторизован') || 
+        error?.message?.includes('Skin profile not found') ||
+        error?.message?.includes('User not found')) {
+      // Возвращаем компонент с сообщением об ошибке вместо throw
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            borderRadius: '24px',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          }}>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: '#0A5F59',
+              marginBottom: '12px',
+            }}>
+              Профиль не найден
+            </h2>
+            <p style={{
+              color: '#475467',
+              marginBottom: '24px',
+              lineHeight: '1.6',
+            }}>
+              Для просмотра плана необходимо сначала пройти анкету.
+            </p>
+            <a
+              href="/quiz"
+              style={{
+                display: 'inline-block',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                textDecoration: 'none',
+                fontSize: '16px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+              }}
+            >
+              Пройти анкету
+            </a>
+          </div>
+        </div>
+      );
+    }
+    
+    // Для остальных ошибок - показываем общую страницу ошибки
     throw error;
   }
 }

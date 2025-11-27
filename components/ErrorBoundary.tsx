@@ -27,6 +27,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     console.error('Error caught by ErrorBoundary:', error, errorInfo);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Component stack:', errorInfo.componentStack);
+    console.error('Current URL:', typeof window !== 'undefined' ? window.location.href : 'N/A');
     
     // Отправка в Sentry (будет добавлено позже)
     // Sentry.captureException(error, { contexts: { react: errorInfo } });
@@ -116,7 +120,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 На главную
               </button>
             </div>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {(process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_SHOW_ERROR_DETAILS === 'true') && this.state.error && (
               <details style={{
                 marginTop: '24px',
                 textAlign: 'left',
@@ -141,6 +145,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   overflow: 'auto',
                   marginTop: '8px',
                   color: '#991B1B',
+                  maxHeight: '300px',
                 }}>
                   {this.state.error.toString()}
                   {'\n\n'}
