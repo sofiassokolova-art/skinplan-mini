@@ -91,10 +91,15 @@ export default function AdminLayout({
     );
   }
 
-  // Не блокируем рендер, если не авторизован - пусть страница сама решает
-  // if (!isAuthenticated) {
-  //   return null;
-  // }
+  // Блокируем доступ, если не авторизован
+  if (!isAuthenticated) {
+    router.push('/admin/login');
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-600">Перенаправление на страницу входа...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen admin-layout relative" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)' }}>
