@@ -68,12 +68,11 @@ async function getProductsForStep(step: RuleStep) {
   };
 
   if (step.category && step.category.length > 0) {
-    where.category = { in: step.category };
-  }
-
-  // Также проверяем step
-  if (step.category && step.category.length > 0) {
-    where.step = { in: step.category };
+    // Проверяем и category, и step (они могут совпадать)
+    where.OR = [
+      { category: { in: step.category } },
+      { step: { in: step.category } },
+    ];
   }
 
   // SPF универсален для всех типов кожи - не фильтруем по типу кожи

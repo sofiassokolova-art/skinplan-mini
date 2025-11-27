@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Проверяем продукты
     const products = await prisma.product.findMany({
-      where: { status: 'published' },
+      where: { published: true },
       take: 10,
     });
 

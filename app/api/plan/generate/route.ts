@@ -363,7 +363,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     console.log('⚠️ No cleanser products found, searching for fallback...');
     const whereCleanser: any = {
       published: true,
-      step: 'cleansing',
+      step: 'cleanser', // Исправлено: было 'cleansing', должно быть 'cleanser'
     };
     
     // Очищение должно быть доступно, но если есть тип кожи - предпочтем его
@@ -391,7 +391,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       const anyCleanser = await prisma.product.findFirst({
         where: {
           published: true,
-          step: 'cleansing',
+          step: 'cleanser', // Исправлено: было 'cleansing', должно быть 'cleanser'
         },
         include: { brand: true },
         orderBy: { createdAt: 'desc' },
