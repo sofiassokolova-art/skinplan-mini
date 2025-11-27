@@ -138,6 +138,10 @@ export default function SupportAdmin() {
         setReplyText('');
         await loadMessages(selectedChat.id);
         await loadChats();
+        // Прокручиваем вниз только после отправки нового сообщения
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       } else {
         alert('Ошибка отправки сообщения');
       }
@@ -313,6 +317,15 @@ export default function SupportAdmin() {
                   <option value="in_progress">В работе</option>
                   <option value="closed">Закрыто</option>
                 </select>
+                {selectedChat.status !== 'closed' && (
+                  <button
+                    onClick={() => handleStatusChange('closed')}
+                    className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all flex items-center gap-2"
+                  >
+                    <X size={16} />
+                    Закрыть
+                  </button>
+                )}
                 <button
                   onClick={() => openUserProfile(selectedChat.user.id)}
                   className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
