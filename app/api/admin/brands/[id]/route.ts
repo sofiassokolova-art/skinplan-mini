@@ -29,8 +29,9 @@ async function verifyAdmin(request: NextRequest): Promise<boolean> {
 // PUT - обновление бренда
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const isAdmin = await verifyAdmin(request);
     if (!isAdmin) {
@@ -41,18 +42,18 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { isActive } = body;
+    const { isActive, name, slug, logoUrl, country } = body;
 
-    if (typeof isActive !== 'boolean') {
-      return NextResponse.json(
-        { error: 'isActive is required and must be boolean' },
-        { status: 400 }
-      );
-    }
+    const updateData: any = {};
+    if (typeof isActive === 'boolean') updateData.isActive = isActive;
+    if (name) updateData.name = name;
+    if (slug) updateData.slug = slug;
+    if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
+    if (country) updateData.country = country;
 
     const brand = await prisma.brand.update({
       where: { id: parseInt(params.id) },
-      data: { isActive },
+      data: updateData,
     });
 
     return NextResponse.json({ brand });
@@ -68,8 +69,9 @@ export async function PUT(
 // DELETE - удаление бренда (soft delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const isAdmin = await verifyAdmin(request);
     if (!isAdmin) {
