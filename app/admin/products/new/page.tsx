@@ -446,7 +446,7 @@ export default function NewProductPage() {
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-5 rounded-2xl font-bold text-xl disabled:opacity-50"
+          className="flex-1 bg-black text-white py-5 rounded-2xl font-bold text-xl disabled:opacity-50 hover:bg-gray-800"
         >
           {loading ? 'Сохраняем...' : 'Добавить продукт'}
         </button>

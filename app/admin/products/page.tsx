@@ -123,11 +123,11 @@ export default function ProductsAdmin() {
         cell: ({ row }) => {
           const imageUrl = row.getValue('imageUrl') as string | undefined;
           return (
-            <div className="w-16 h-16 rounded-lg overflow-hidden bg-white/5">
+            <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
               {imageUrl ? (
                 <img src={imageUrl} alt="" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/40 text-xs">
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
                   Нет фото
                 </div>
               )}
@@ -142,8 +142,8 @@ export default function ProductsAdmin() {
           const product = row.original;
           return (
             <div>
-              <div className="font-medium text-white">{product.name}</div>
-              <div className="text-sm text-white/60">{product.brand.name}</div>
+              <div className="font-medium text-gray-900">{product.name}</div>
+              <div className="text-sm text-gray-600">{product.brand.name}</div>
             </div>
           );
         },
@@ -154,9 +154,9 @@ export default function ProductsAdmin() {
         cell: ({ row }) => {
           const price = row.getValue('price') as number | undefined;
           return price ? (
-            <span className="text-white font-medium">{price.toLocaleString()} ₽</span>
+            <span className="text-gray-900 font-medium">{price.toLocaleString()} ₽</span>
           ) : (
-            <span className="text-white/40">—</span>
+            <span className="text-gray-400">—</span>
           );
         },
       },
@@ -175,7 +175,7 @@ export default function ProductsAdmin() {
             mask: 'Маска',
           };
           return (
-            <span className="text-white/80 text-sm">{stepLabels[step] || step}</span>
+            <span className="text-gray-700 text-sm">{stepLabels[step] || step}</span>
           );
         },
       },
@@ -189,13 +189,13 @@ export default function ProductsAdmin() {
               {skinTypes.slice(0, 2).map((type) => (
                 <span
                   key={type}
-                  className="px-2 py-1 bg-white/10 rounded text-xs text-white/80"
+                  className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-700"
                 >
                   {type}
                 </span>
               ))}
               {skinTypes.length > 2 && (
-                <span className="text-white/40 text-xs">+{skinTypes.length - 2}</span>
+                <span className="text-gray-500 text-xs">+{skinTypes.length - 2}</span>
               )}
             </div>
           );
@@ -210,13 +210,13 @@ export default function ProductsAdmin() {
             <div className="flex items-center gap-2">
               {published ? (
                 <>
-                  <Eye className="text-green-400" size={16} />
-                  <span className="text-green-400 text-sm">Опубликован</span>
+                  <Eye className="text-green-600" size={16} />
+                  <span className="text-green-600 text-sm">Опубликован</span>
                 </>
               ) : (
                 <>
-                  <EyeOff className="text-white/40" size={16} />
-                  <span className="text-white/40 text-sm">Черновик</span>
+                  <EyeOff className="text-gray-400" size={16} />
+                  <span className="text-gray-400 text-sm">Черновик</span>
                 </>
               )}
             </div>
@@ -231,9 +231,9 @@ export default function ProductsAdmin() {
           const isHero = row.original.isHero;
           return (
             <div className="flex items-center gap-2">
-              <span className="text-white/80">{priority}</span>
+              <span className="text-gray-700">{priority}</span>
               {isHero && (
-                <span className="px-2 py-1 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] rounded text-xs text-white font-medium">
+                <span className="px-2 py-1 bg-gray-800 text-white rounded text-xs font-medium">
                   Hero
                 </span>
               )}
@@ -250,15 +250,15 @@ export default function ProductsAdmin() {
             <div className="flex items-center gap-2">
               <Link
                 href={`/admin/products/${product.id}`}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
-                <Edit className="text-white/80" size={16} />
+                <Edit className="text-gray-700" size={16} />
               </Link>
               <button
                 onClick={() => handleDelete(product.id)}
-                className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors"
+                className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
               >
-                <Trash2 className="text-red-400" size={16} />
+                <Trash2 className="text-red-600" size={16} />
                 </button>
             </div>
           );
@@ -310,7 +310,7 @@ export default function ProductsAdmin() {
         <Link
           href="/admin/products/new"
           className={cn(
-            'px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-2xl font-bold',
+            'px-6 py-3 bg-black text-white rounded-2xl font-bold hover:bg-gray-800',
             'hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300',
             'flex items-center gap-2'
           )}

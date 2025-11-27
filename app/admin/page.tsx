@@ -93,7 +93,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-white/60">Загрузка...</div>
+        <div className="text-gray-600">Загрузка...</div>
       </div>
     );
   }
@@ -148,7 +148,7 @@ export default function AdminDashboard() {
   return (
     <div className="p-6 md:p-10">
       {/* Заголовок */}
-      <h1 className="text-4xl md:text-5xl font-black text-white/90 mb-12">
+      <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-12">
         SkinIQ Admin • {currentDate}
       </h1>
 
@@ -158,20 +158,13 @@ export default function AdminDashboard() {
           <div 
             key={i} 
             className="glass glass-hover rounded-3xl p-8"
-            style={{
-              background: 'rgba(255, 255, 255, 0.06)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-            }}
           >
-            <div className="text-gray-400 text-sm font-medium mb-2">{m.label}</div>
+            <div className="text-gray-600 text-sm font-medium mb-2">{m.label}</div>
             <div className={`text-5xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
               {m.value}
             </div>
             {m.change && (
-              <div className={`text-sm font-medium mt-4 ${m.change.startsWith('+') || m.change === 'new' ? 'text-emerald-400' : 'text-red-400'}`}>
+              <div className={`text-sm font-medium mt-4 ${m.change.startsWith('+') || m.change === 'new' ? 'text-emerald-600' : 'text-red-600'}`}>
                 {m.change === 'new' ? '✓ Новый сид' : m.change + ' за 28 дней'}
               </div>
             )}
@@ -190,7 +183,7 @@ export default function AdminDashboard() {
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
         }}
       >
-        <h2 className="text-2xl font-bold text-gray-200 mb-6">Рост пользователей за 30 дней</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Рост пользователей за 30 дней</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={userGrowth}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -234,10 +227,10 @@ export default function AdminDashboard() {
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
         }}
       >
-        <h2 className="text-2xl font-bold text-gray-200 mb-6">Последние действия</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Последние действия</h2>
         <div className="space-y-4">
           {recentFeedback.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">Нет отзывов</p>
+            <p className="text-gray-500 text-center py-8">Нет отзывов</p>
           ) : (
             recentFeedback.slice(0, 10).map((f) => (
               <div
@@ -252,10 +245,10 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold">
                       {(f.user.firstName?.[0] || f.user.lastName?.[0] || '?').toUpperCase()}
                     </div>
-                    <span className="text-gray-200 font-medium">
+                    <span className="text-gray-900 font-medium">
                       {f.user.firstName || ''} {f.user.lastName || ''}
                     </span>
                   </div>
@@ -263,10 +256,10 @@ export default function AdminDashboard() {
                     <span className={cn(
                       'px-3 py-1 rounded-full text-xs font-medium',
                       f.feedback === 'bought_love' 
-                        ? 'bg-pink-500/20 text-pink-300'
+                        ? 'bg-pink-100 text-pink-700'
                         : f.feedback === 'bought_ok'
-                        ? 'bg-blue-500/20 text-blue-300'
-                        : 'bg-red-500/20 text-red-300'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-red-100 text-red-700'
                     )}>
                       {f.feedback === 'bought_love' ? 'Love' : f.feedback === 'bought_ok' ? 'OK' : 'Bad'}
                     </span>
@@ -275,7 +268,7 @@ export default function AdminDashboard() {
                     </span>
                   </div>
                 </div>
-                <p className="text-gray-300 text-sm ml-[52px]">
+                <p className="text-gray-700 text-sm ml-[52px]">
                   {f.product.brand} {f.product.name}
                 </p>
               </div>

@@ -1,20 +1,29 @@
 // app/admin/brands/page.tsx
-// Страница управления брендами
+// Страница управления брендами (таблица как продукты)
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2 } from 'lucide-react';
-import { cn, glassCard, glassCardHover } from '@/lib/utils';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  flexRender,
+  ColumnDef,
+  SortingState,
+  ColumnFiltersState,
+} from '@tanstack/react-table';
+import { Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Brand {
   id: number;
   name: string;
   slug?: string;
-  logoUrl?: string;
-  country?: string;
-  isActive: boolean;
+  productCount?: number;
 }
 
 export default function BrandsAdmin() {
@@ -22,6 +31,9 @@ export default function BrandsAdmin() {
   const [loading, setLoading] = useState(true);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
 
   useEffect(() => {
     loadBrands();
@@ -58,10 +70,60 @@ export default function BrandsAdmin() {
     }
   };
 
+  const columns = useMemo<ColumnDef<Brand>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: 'Название',
+        cell: ({ row }) => {
+          const brand = row.original;
+          return (
+            <div>
+              <div className="font-medium text-gray-900">{brand.name}</div>
+              {brand.slug && (
+                <div className="text-sm text-gray-500">{brand.slug}</div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: 'productCount',
+        header: 'Продуктов',
+        cell: ({ row }) => {
+          const count = row.getValue('productCount') as number | undefined;
+          return (
+            <span className="text-gray-700 font-medium">
+              {count || 0}
+            </span>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable({
+    data: brands,
+    columns,
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-white/60">Загрузка...</div>
+        <div className="text-gray-600">Загрузка...</div>
       </div>
     );
   }
@@ -70,71 +132,115 @@ export default function BrandsAdmin() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Бренды</h1>
-          <p className="text-white/60">Всего: {brands.length}</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Бренды</h1>
+          <p className="text-gray-600">
+            Всего: {table.getFilteredRowModel().rows.length}
+          </p>
         </div>
-        <button
-          className={cn(
-            'px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-2xl font-bold',
-            'hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300',
-            'flex items-center gap-2'
-          )}
-        >
-          <Plus size={20} />
-          Добавить бренд
-        </button>
       </div>
 
       {error && (
-        <div className={cn(glassCard, 'p-4 bg-red-500/20 border-red-500/50')}>
-          <p className="text-red-200">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700">{error}</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {brands.map((brand) => (
-          <div
-            key={brand.id}
-            className={cn(glassCard, glassCardHover, 'p-6')}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-xl font-bold text-white mb-1">{brand.name}</h3>
-                {brand.country && (
-                  <p className="text-white/60 text-sm">{brand.country}</p>
-                )}
-              </div>
-              {brand.isActive ? (
-                <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs">
-                  Активен
-                </span>
-              ) : (
-                <span className="px-2 py-1 bg-white/10 text-white/40 rounded text-xs">
-                  Неактивен
-                </span>
-              )}
-            </div>
-            {brand.logoUrl && (
-              <div className="mb-4">
-                <img
-                  src={brand.logoUrl}
-                  alt={brand.name}
-                  className="h-16 object-contain"
-                />
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <button className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
-                <Edit className="text-white/80" size={16} />
-              </button>
-              <button className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors">
-                <Trash2 className="text-red-400" size={16} />
-              </button>
-            </div>
+      {/* Поиск */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Поиск по названию бренда..."
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+            />
           </div>
-        ))}
+        </div>
+      </div>
+
+      {/* Таблица */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 text-left text-sm font-medium text-gray-700"
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={cn(
+                            'flex items-center gap-2',
+                            header.column.getCanSort() && 'cursor-pointer select-none hover:text-gray-900'
+                          )}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {{
+                            asc: ' ↑',
+                            desc: ' ↓',
+                          }[header.column.getIsSorted() as string] ?? null}
+                        </div>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-4 py-8 text-center text-gray-500">
+                    Бренды не найдены
+                  </td>
+                </tr>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-4 py-3">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Пагинация */}
+        <div className="px-4 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="text-gray-600 text-sm">
+            Страница {table.getState().pagination.pageIndex + 1} из {table.getPageCount()}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Назад
+            </button>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Вперед
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-

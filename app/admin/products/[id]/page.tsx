@@ -210,7 +210,7 @@ export default function EditProductPage() {
 
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto p-6 md:p-10 space-y-10">
-      <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-8">Редактировать продукт</h1>
+      <h1 className="text-4xl font-black text-gray-900 mb-8">Редактировать продукт</h1>
 
       {/* === ОСНОВНЫЕ ДАННЫЕ === */}
       <div className="glass rounded-3xl p-8">
@@ -500,7 +500,7 @@ export default function EditProductPage() {
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-5 rounded-2xl font-bold text-xl disabled:opacity-50"
+          className="flex-1 bg-black text-white py-5 rounded-2xl font-bold text-xl disabled:opacity-50 hover:bg-gray-800"
         >
           {loading ? 'Сохраняем...' : 'Сохранить изменения'}
         </button>

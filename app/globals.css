@@ -14,24 +14,22 @@ html {
   font-family: 'Space Grotesk', sans-serif;
 }
 
-/* Glassmorphism стили */
+/* Glassmorphism стили - светлая тема */
 .glass {
-  background: rgba(255, 255, 255, 0.06) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
 }
 
 .glass-hover {
-  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
+  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
 }
 
 .glass-hover:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.25) !important;
-  box-shadow: 0 16px 48px rgba(139, 92, 246, 0.25) !important;
-  transform: translateY(-8px) !important;
+  background: #f9fafb !important;
+  border-color: #d1d5db !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  transform: translateY(-2px) !important;
 }
 
 /* Заголовки */
@@ -63,14 +61,15 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #000000 !important;
-  color: #d1d5db !important; /* Светло-серый вместо белого */
+  background-color: #f3f4f6 !important; /* Светло-серый фон */
+  color: #111827 !important; /* Черный текст */
 }
 
-/* Все тексты в админке светло-серые по умолчанию */
+/* Все тексты в админке черные по умолчанию */
 .admin-layout,
 .admin-layout * {
-  color: #d1d5db !important; /* Светло-серый для комфорта */
+  color: #111827 !important; /* Черный текст */
+  background-color: #f3f4f6 !important; /* Светло-серый фон */
 }
 
 /* Исключения для градиентов и специальных цветов */
@@ -83,72 +82,44 @@ body {
   color: inherit !important;
 }
 
-/* Стили для админ-панели */
+/* Стили для админ-панели - светлая тема */
 .admin-layout {
-  background-color: #000000 !important;
-  color: #ffffff !important;
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }
 
 .admin-layout * {
-  color: #ffffff !important;
+  color: #111827 !important;
 }
 
-/* Исключения для градиентов и специальных цветов */
+/* Исключения для специальных цветов */
 .admin-layout .bg-clip-text,
 .admin-layout .text-transparent,
-.admin-layout .text-emerald-400,
-.admin-layout .text-red-400,
-.admin-layout .text-purple-400,
-.admin-layout .text-pink-400,
-.admin-layout .text-pink-300,
-.admin-layout .text-blue-300,
-.admin-layout .text-red-300,
-.admin-layout .text-yellow-400,
-.admin-layout .text-blue-400,
-.admin-layout .text-white,
-.admin-layout [class*="text-white"],
-.admin-layout [class*="text-gray"],
+.admin-layout .text-emerald-600,
+.admin-layout .text-red-600,
+.admin-layout .text-purple-600,
+.admin-layout .text-pink-600,
+.admin-layout .text-blue-600,
+.admin-layout .text-yellow-600,
 .admin-layout [class*="text-emerald"],
 .admin-layout [class*="text-red"],
 .admin-layout [class*="text-purple"],
 .admin-layout [class*="text-pink"],
 .admin-layout [class*="text-blue"],
-.admin-layout [class*="text-yellow"] {
+.admin-layout [class*="text-yellow"],
+.admin-layout [class*="text-green"],
+.admin-layout [class*="text-gray"] {
   color: inherit !important;
 }
 
 .admin-sidebar {
-  background: rgba(0, 0, 0, 0.4) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  color: #ffffff !important;
+  background: #ffffff !important;
+  border-right: 1px solid #e5e7eb !important;
+  color: #111827 !important;
 }
 
 .admin-sidebar * {
-  color: #ffffff !important;
-}
-
-/* Все страницы админки */
-[class*="admin"] {
-  color: #ffffff !important;
-  background-color: #000000 !important;
-}
-
-[class*="admin"] * {
-  color: #ffffff !important;
-}
-
-/* Принудительно убираем белые фоны в админке */
-.admin-layout [class*="bg-white"]:not([class*="bg-white/"]):not([class*="bg-white/5"]):not([class*="bg-white/10"]):not([class*="bg-white/20"]):not([class*="bg-white/6"]):not([class*="bg-white/8"]) {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-/* Убираем серые фоны */
-.admin-layout [class*="bg-gray"]:not([class*="bg-gray-900"]) {
-  background-color: transparent !important;
+  color: #111827 !important;
 }
 
 * {

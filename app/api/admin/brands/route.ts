@@ -39,14 +39,36 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const brands = await prisma.brand.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
+    // Получаем уникальные бренды из продуктов (только те, что используются)
+    const brandsWithProducts = await prisma.brand.findMany({
+      where: {
+        products: {
+          some: {
+            published: true,
+          },
+        },
       },
+      include: {
+        _count: {
+          select: {
+            products: {
+              where: {
+                published: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
     });
+
+    // Форматируем ответ
+    const brands = brandsWithProducts.map((brand) => ({
+      id: brand.id,
+      name: brand.name,
+      slug: brand.slug,
+      productCount: brand._count.products,
+    }));
 
     return NextResponse.json({ brands });
   } catch (error) {

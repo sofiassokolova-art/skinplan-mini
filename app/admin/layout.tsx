@@ -92,8 +92,8 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#000000] flex items-center justify-center">
-        <div className="text-white/60">Загрузка...</div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-600">Загрузка...</div>
       </div>
     );
   }
@@ -103,23 +103,23 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#000000] flex admin-layout">
+    <div className="min-h-screen bg-gray-100 flex admin-layout">
       {/* Sidebar */}
       <aside
         className={cn(
-          'admin-sidebar border-r border-white/10 transition-all duration-300 relative z-10',
+          'admin-sidebar border-r border-gray-200 transition-all duration-300 relative z-10 bg-white',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
       >
-        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           {sidebarOpen && (
-            <h1 className="text-xl font-bold bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold text-gray-900">
               SkinIQ Admin
             </h1>
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-white/60 hover:text-white transition-colors"
+            className="text-gray-600 hover:text-gray-900 transition-colors"
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -138,8 +138,8 @@ export default function AdminLayout({
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
                   isActive
-                    ? 'bg-white/10 border border-white/20 text-white shadow-lg shadow-purple-500/20'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                    ? 'bg-gray-100 border border-gray-300 text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 )}
               >
                 <Icon size={20} />
@@ -152,7 +152,7 @@ export default function AdminLayout({
         <div className="absolute bottom-4 left-4 right-4">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/60 hover:bg-white/5 hover:text-white transition-all"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all"
           >
             <LogOut size={20} />
             {sidebarOpen && <span>Выйти</span>}
@@ -161,10 +161,8 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto" style={{ backgroundColor: '#000000', color: '#ffffff' }}>
-        <div style={{ color: '#ffffff' }}>
-          {children}
-        </div>
+      <main className="flex-1 overflow-auto bg-gray-100">
+        {children}
       </main>
     </div>
   );
