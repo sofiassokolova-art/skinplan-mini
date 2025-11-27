@@ -76,31 +76,71 @@ function renderMessage(template: string, user: any, profile: any): string {
 }
 
 // Отправка сообщения через Telegram Bot API
-async function sendTelegramMessage(telegramId: string, text: string): Promise<{ success: boolean; error?: string }> {
+async function sendTelegramMessage(
+  telegramId: string, 
+  text: string, 
+  imageUrl?: string, 
+  buttons?: Array<{ text: string; url: string }>
+): Promise<{ success: boolean; error?: string }> {
   if (!TELEGRAM_BOT_TOKEN) {
     return { success: false, error: 'TELEGRAM_BOT_TOKEN not configured' };
   }
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: telegramId,
-        text,
-        parse_mode: 'HTML',
-      }),
-    });
+    // Формируем кнопки для inline keyboard
+    const replyMarkup = buttons && buttons.length > 0 ? {
+      inline_keyboard: [buttons.map(btn => ({
+        text: btn.text,
+        url: btn.url
+      }))]
+    } : undefined;
 
-    const data = await response.json();
+    // Если есть фото, отправляем фото с подписью
+    if (imageUrl) {
+      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: telegramId,
+          photo: imageUrl,
+          caption: text,
+          parse_mode: 'HTML',
+          ...(replyMarkup && { reply_markup: replyMarkup }),
+        }),
+      });
 
-    if (!response.ok || !data.ok) {
-      return { success: false, error: data.description || 'Unknown error' };
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        return { success: false, error: data.description || 'Unknown error' };
+      }
+
+      return { success: true };
+    } else {
+      // Отправляем обычное текстовое сообщение
+      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: telegramId,
+          text,
+          parse_mode: 'HTML',
+          ...(replyMarkup && { reply_markup: replyMarkup }),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        return { success: false, error: data.description || 'Unknown error' };
+      }
+
+      return { success: true };
     }
-
-    return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Network error' };
   }
@@ -190,7 +230,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { filters, message, test } = body;
+    const { filters, message, test, imageUrl, buttons } = body;
 
     if (!message || !message.trim()) {
       return NextResponse.json(
@@ -212,28 +252,26 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         );
       }
-      const decoded = jwt.decode(token) as any;
-      
-      // Находим админа по telegramId из whitelist
-      const adminWhitelist = await prisma.adminWhitelist.findFirst({
-        where: { isActive: true },
-      });
-      
-      if (!adminWhitelist?.telegramId) {
+      let decoded: any;
+      try {
+        decoded = jwt.verify(token, JWT_SECRET) as any;
+      } catch (error) {
         return NextResponse.json(
-          { error: 'Admin not found for test' },
-          { status: 404 }
+          { error: 'Invalid token' },
+          { status: 401 }
         );
       }
       
-      const adminTelegramId = adminWhitelist.telegramId;
+      // Получаем telegramId из токена админа
+      const adminTelegramId = decoded.telegramId;
       if (!adminTelegramId) {
         return NextResponse.json(
-          { error: 'Admin telegramId not found' },
+          { error: 'Admin telegramId not found in token' },
           { status: 404 }
         );
       }
       
+      // Ищем пользователя по telegramId
       users = await prisma.user.findMany({
         where: { telegramId: adminTelegramId },
         include: {
@@ -243,8 +281,35 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+      
+      // Если пользователь не найден, создаем временного для теста
+      if (users.length === 0) {
+        users = [{
+          id: 'test-admin',
+          telegramId: adminTelegramId,
+          firstName: decoded.adminId || 'Админ',
+          lastName: null,
+          username: null,
+          language: 'ru',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          skinProfiles: [],
+        }];
+      }
     } else {
-      users = await getUsersByFilters(filters);
+      // Если sendToAll, получаем всех пользователей
+      if (filters?.sendToAll) {
+        users = await prisma.user.findMany({
+          include: {
+            skinProfiles: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        });
+      } else {
+        users = await getUsersByFilters(filters);
+      }
     }
 
     if (users.length === 0) {
@@ -271,7 +336,7 @@ export async function POST(request: NextRequest) {
       const profile = user.skinProfiles[0] || null;
       const renderedMessage = renderMessage(message, user, profile);
       
-      const result = await sendTelegramMessage(user.telegramId, renderedMessage);
+      const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageUrl, buttons);
       
       await prisma.broadcastLog.create({
         data: {
@@ -317,7 +382,7 @@ export async function POST(request: NextRequest) {
           const profile = user.skinProfiles[0] || null;
           const renderedMessage = renderMessage(message, user, profile);
           
-          const result = await sendTelegramMessage(user.telegramId, renderedMessage);
+          const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageUrl, buttons);
           
           await prisma.broadcastLog.create({
             data: {

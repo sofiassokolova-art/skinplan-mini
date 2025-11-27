@@ -101,11 +101,12 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          'admin-sidebar transition-all duration-300 relative z-10 flex flex-col h-screen',
+          'admin-sidebar transition-all duration-300 fixed left-0 top-0 bottom-0 z-10 flex flex-col',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
         style={{ 
-          backgroundColor: 'rgba(243, 244, 246, 0.95)'
+          backgroundColor: 'rgba(243, 244, 246, 0.95)',
+          height: '100vh'
         }}
       >
         <div className="p-6 border-b border-gray-200/50 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: 'transparent' }}>
@@ -148,7 +149,10 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto min-h-screen p-6 md:p-8">
+      <main className={cn(
+        'flex-1 overflow-auto min-h-screen p-6 md:p-8',
+        sidebarOpen ? 'ml-64' : 'ml-20'
+      )}>
         <div className="max-w-7xl mx-auto">
           {children}
         </div>

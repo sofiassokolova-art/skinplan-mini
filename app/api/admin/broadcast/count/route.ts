@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const filters = body.filters || {};
 
+    // Если выбрано "всем пользователям", возвращаем общее количество
+    if (filters.sendToAll) {
+      const totalCount = await prisma.user.count();
+      return NextResponse.json({ count: totalCount });
+    }
+
     const where: any = {};
 
     // Фильтр по типу кожи и проблемам (из последнего профиля)
