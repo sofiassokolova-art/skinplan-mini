@@ -1200,23 +1200,60 @@ export default function QuizPage() {
               const isWantImproveScreen = screen.id === 'want_improve';
               
               // Общий обработчик для кнопок want_improve
-              const handleWantImproveClick = async () => {
-                console.log('🔘 handleWantImproveClick вызван');
+              const handleWantImproveClick = async (answer: 'yes' | 'no') => {
+                console.log('🔘 handleWantImproveClick вызван с ответом:', answer);
+                
                 if (isSubmitting) {
                   console.warn('⚠️ Уже отправляется');
                   return;
                 }
+                
                 if (!questionnaire) {
                   console.error('❌ Анкета не загружена');
                   setError('Анкета не загружена. Пожалуйста, обновите страницу.');
                   return;
                 }
+                
+                // Проверяем наличие initData перед отправкой
+                const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+                const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
+                
+                console.log('📱 Проверка Telegram перед отправкой:', {
+                  hasWindow: typeof window !== 'undefined',
+                  hasTelegram: isInTelegram,
+                  hasInitData: !!initData,
+                  initDataLength: initData?.length || 0,
+                });
+                
+                if (!isInTelegram || !initData) {
+                  console.error('❌ Telegram WebApp или initData недоступен');
+                  setError('Пожалуйста, откройте приложение через Telegram Mini App и обновите страницу.');
+                  return;
+                }
+                
                 console.log('🚀 Запуск submitAnswers...');
+                setIsSubmitting(true);
+                setError(null);
+                
                 try {
                   await submitAnswers();
                 } catch (err: any) {
                   console.error('❌ Ошибка в handleWantImproveClick:', err);
-                  setError(err?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
+                  console.error('   Error message:', err?.message);
+                  console.error('   Error stack:', err?.stack);
+                  
+                  let errorMessage = 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.';
+                  
+                  if (err?.message?.includes('Unauthorized') || 
+                      err?.message?.includes('401') || 
+                      err?.message?.includes('initData') ||
+                      err?.message?.includes('авторизации')) {
+                    errorMessage = 'Ошибка авторизации. Пожалуйста, обновите страницу и убедитесь, что приложение открыто через Telegram Mini App.';
+                  } else if (err?.message) {
+                    errorMessage = err.message;
+                  }
+                  
+                  setError(errorMessage);
                   setIsSubmitting(false);
                 }
               };
@@ -1238,7 +1275,7 @@ export default function QuizPage() {
                       e.preventDefault();
                       e.stopPropagation();
                       if (isWantImproveScreen) {
-                        handleWantImproveClick();
+                        handleWantImproveClick('no');
                       } else {
                         handleButtonClick();
                       }
@@ -1266,7 +1303,7 @@ export default function QuizPage() {
                       e.preventDefault();
                       e.stopPropagation();
                       if (isWantImproveScreen) {
-                        handleWantImproveClick();
+                        handleWantImproveClick('yes');
                       } else {
                         handleButtonClick();
                       }

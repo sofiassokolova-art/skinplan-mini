@@ -16,15 +16,22 @@ interface AnswerInput {
 
 export async function POST(request: NextRequest) {
   try {
-    // Получаем initData из заголовков
-    const initData = request.headers.get('x-telegram-init-data');
+    // Получаем initData из заголовков (пробуем оба варианта регистра)
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
+      console.error('⚠️ Missing initData in headers for questionnaire answers:', {
+        availableHeaders: Array.from(request.headers.keys()),
+        userAgent: request.headers.get('user-agent'),
+      });
       return NextResponse.json(
         { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
         { status: 401 }
       );
     }
+    
+    console.log('✅ initData получен, длина:', initData.length);
 
     // Получаем userId из initData (автоматически создает/обновляет пользователя)
     const userId = await getUserIdFromInitData(initData);
