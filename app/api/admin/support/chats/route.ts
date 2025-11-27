@@ -45,8 +45,20 @@ export async function GET(request: NextRequest) {
             lastName: true,
             username: true,
             telegramId: true,
-            profile: true, // Добавляем профиль для отображения типа кожи и проблем
             createdAt: true,
+            skinProfiles: {
+              orderBy: { createdAt: 'desc' },
+              take: 1, // Берем последний профиль
+              select: {
+                skinType: true,
+                sensitivityLevel: true,
+                acneLevel: true,
+                pigmentationRisk: true,
+                rosaceaRisk: true,
+                ageGroup: true,
+                hasPregnancy: true,
+              },
+            },
           },
         },
         messages: {
@@ -59,14 +71,33 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const formattedChats = chats.map((chat) => ({
-      id: chat.id,
-      user: chat.user,
-      lastMessage: chat.messages[0]?.text || chat.lastMessage,
-      unread: chat.unread,
-      updatedAt: chat.updatedAt.toISOString(),
-      status: chat.status,
-    }));
+    const formattedChats = chats.map((chat) => {
+      const latestProfile = chat.user.skinProfiles[0];
+      // Формируем объект profile для совместимости с фронтендом
+      const profile = latestProfile ? {
+        skinType: latestProfile.skinType,
+        concerns: [
+          latestProfile.acneLevel && latestProfile.acneLevel > 0 ? 'acne' : null,
+          latestProfile.pigmentationRisk && latestProfile.pigmentationRisk !== 'none' ? 'pigmentation' : null,
+          latestProfile.rosaceaRisk && latestProfile.rosaceaRisk !== 'none' ? 'redness' : null,
+        ].filter(Boolean),
+        sensitivityLevel: latestProfile.sensitivityLevel,
+        ageGroup: latestProfile.ageGroup,
+        hasPregnancy: latestProfile.hasPregnancy,
+      } : null;
+
+      return {
+        id: chat.id,
+        user: {
+          ...chat.user,
+          profile, // Добавляем сформированный profile
+        },
+        lastMessage: chat.messages[0]?.text || chat.lastMessage,
+        unread: chat.unread,
+        updatedAt: chat.updatedAt.toISOString(),
+        status: chat.status,
+      };
+    });
 
     return NextResponse.json({ chats: formattedChats });
   } catch (error: any) {
