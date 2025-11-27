@@ -24,6 +24,25 @@ export async function POST(request: NextRequest) {
     const result = await getAdminFromInitData(initData);
 
     if (!result.valid || !result.admin) {
+      // Логируем telegramId для отладки (чтобы можно было добавить в whitelist)
+      try {
+        const botToken = process.env.TELEGRAM_BOT_TOKEN;
+        if (botToken) {
+          const { validateTelegramInitData } = await import('@/lib/telegram');
+          const validation = validateTelegramInitData(initData, botToken);
+          if (validation.valid && validation.data?.user) {
+            console.log('🔍 Попытка входа от пользователя:');
+            console.log('   Telegram ID:', validation.data.user.id);
+            console.log('   Username:', validation.data.user.username || 'нет');
+            console.log('   Имя:', validation.data.user.first_name);
+            console.log('💡 Чтобы добавить в whitelist, запустите:');
+            console.log(`   npx tsx scripts/add-admin.ts ${validation.data.user.id} "${validation.data.user.first_name}"`);
+          }
+        }
+      } catch (e) {
+        // Игнорируем ошибки логирования
+      }
+      
       return NextResponse.json(
         { error: result.error || 'Unauthorized' },
         { status: 401 }
