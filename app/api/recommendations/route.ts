@@ -330,7 +330,6 @@ export async function GET(request: NextRequest) {
               skinTypes: { has: profile.skinType },
             }),
           } as any,
-          },
           include: {
             brand: true,
           },
