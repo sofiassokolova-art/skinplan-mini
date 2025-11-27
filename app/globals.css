@@ -173,11 +173,11 @@ body {
 }
 
 .admin-sidebar {
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(243, 244, 246, 0.95) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border-right: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.04) !important;
+  border-right: 1px solid rgba(229, 231, 235, 0.5) !important;
+  box-shadow: 2px 0 12px 0 rgba(0, 0, 0, 0.02) !important;
   color: #111827 !important;
 }
 
