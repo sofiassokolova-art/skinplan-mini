@@ -20,22 +20,28 @@ export default function MiniappLayout({
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    // Инициализация Telegram
-    initialize();
+    try {
+      // Инициализация Telegram
+      initialize();
 
-    // Авторизация через Telegram
-    const authorize = async () => {
-      if (initData && !isAuthorized) {
-        try {
-          await api.authTelegram(initData);
-          setIsAuthorized(true);
-        } catch (error) {
-          console.error('Auth error:', error);
+      // Авторизация через Telegram
+      const authorize = async () => {
+        if (initData && !isAuthorized) {
+          try {
+            await api.authTelegram(initData);
+            setIsAuthorized(true);
+          } catch (error) {
+            console.error('Auth error:', error);
+            // Не блокируем приложение при ошибке авторизации
+          }
         }
-      }
-    };
+      };
 
-    authorize();
+      authorize();
+    } catch (error) {
+      console.error('Layout initialization error:', error);
+      // Не блокируем приложение при ошибке инициализации
+    }
   }, [initData, isAuthorized, initialize]);
 
   // Скрываем навигацию на определенных страницах

@@ -69,35 +69,74 @@ export async function getUserPlanData(): Promise<PlanData> {
     throw new Error('User not found');
   }
 
-  // Получаем профиль кожи
+  // Получаем профиль кожи - используем самый последний
   const profile = await prisma.skinProfile.findFirst({
     where: { userId: user.id },
     orderBy: { createdAt: 'desc' },
   });
 
   if (!profile) {
-    throw new Error('Skin profile not found');
+    // Логируем для отладки
+    console.error('⚠️ Profile not found for user:', {
+      userId: user.id,
+      telegramId: user.telegramId,
+      userFirstName: user.firstName,
+      userLastName: user.lastName,
+    });
+    
+    // Проверяем, есть ли вообще профили в БД
+    const allProfilesCount = await prisma.skinProfile.count();
+    console.error('📊 Total profiles in DB:', allProfilesCount);
+    
+    // Проверяем, есть ли профили для этого пользователя (любые)
+    const allUserProfiles = await prisma.skinProfile.findMany({
+      where: { userId: user.id },
+      select: { id: true, createdAt: true, version: true },
+    });
+    console.error('📊 Profiles for this user:', allUserProfiles.length, allUserProfiles);
+    
+    throw new Error('Skin profile not found. Please complete the questionnaire first.');
   }
 
-  // Вызываем API endpoint для генерации плана (Server Component может делать fetch)
-  const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-  
-  const planResponse = await fetch(`${baseUrl}/api/plan/generate`, {
-    method: 'GET',
-    headers: {
-      'X-Telegram-Init-Data': initData,
-    },
-    cache: 'no-store',
+  console.log('✅ Profile found:', {
+    profileId: profile.id,
+    userId: profile.userId,
+    version: profile.version,
+    createdAt: profile.createdAt,
   });
 
-  if (!planResponse.ok) {
-    throw new Error(`Failed to generate plan: ${planResponse.statusText}`);
-  }
+  // Вызываем API endpoint для генерации плана (Server Component может делать fetch)
+  // Используем абсолютный URL только в продакшене, иначе относительный
+  const baseUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+  
+  try {
+    const planResponse = await fetch(`${baseUrl}/api/plan/generate`, {
+      method: 'GET',
+      headers: {
+        'X-Telegram-Init-Data': initData,
+      },
+      cache: 'no-store',
+    });
 
-  const planData = await planResponse.json();
-  const plan = planData;
+    if (!planResponse.ok) {
+      const errorText = await planResponse.text();
+      console.error('Plan generation failed:', planResponse.status, errorText);
+      throw new Error(`Failed to generate plan: ${planResponse.status} ${planResponse.statusText}`);
+    }
+
+    const planData = await planResponse.json();
+    const plan = planData;
+  } catch (fetchError: any) {
+    console.error('Error fetching plan:', fetchError);
+    // Если это ошибка сети или профиль не найден в API - пробрасываем дальше
+    if (fetchError.message?.includes('Skin profile not found') || 
+        fetchError.message?.includes('No skin profile')) {
+      throw new Error('Skin profile not found. Please complete the questionnaire first.');
+    }
+    throw fetchError;
+  }
 
   // Вычисляем skin scores - используем поля из профиля
   const questionnaireAnswers = {
