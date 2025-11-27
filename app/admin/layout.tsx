@@ -103,11 +103,11 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#000000] flex">
+    <div className="min-h-screen bg-[#000000] flex admin-layout">
       {/* Sidebar */}
       <aside
         className={cn(
-          'bg-black/40 backdrop-blur-xl border-r border-white/10 transition-all duration-300',
+          'admin-sidebar border-r border-white/10 transition-all duration-300 relative z-10',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
       >
@@ -161,7 +161,7 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-[#000000]">
+      <main className="flex-1 overflow-auto" style={{ backgroundColor: '#000000' }}>
         {children}
       </main>
     </div>
