@@ -97,7 +97,7 @@ export default function AdminLayout({
   // }
 
   return (
-    <div className="min-h-screen admin-layout" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)' }}>
+    <div className="min-h-screen admin-layout relative" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)' }}>
       {/* Sidebar */}
       <aside
         className={cn(
@@ -150,10 +150,11 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main 
-        className={cn(
-          'overflow-auto min-h-screen p-6 md:p-8 pt-8 md:pt-10',
-          sidebarOpen ? 'ml-64' : 'ml-20'
-        )}
+        className="overflow-auto min-h-screen p-6 md:p-8 pt-8 md:pt-10"
+        style={{
+          marginLeft: sidebarOpen ? '256px' : '80px',
+          width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)'
+        }}
       >
         <div className="max-w-7xl mx-auto w-full">
           {children}
