@@ -312,7 +312,7 @@ export default function UsersAdmin() {
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               onFocus={(e) => e.target.select()}
-              className="w-full pl-11 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
+              className="w-full pl-12 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
             />
           </div>
         </div>
