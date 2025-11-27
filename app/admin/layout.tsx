@@ -12,7 +12,6 @@ import {
   Package, 
   FileText, 
   Settings, 
-  BarChart3,
   MessageSquare,
   Send,
   Menu,
@@ -78,7 +77,6 @@ export default function AdminLayout({
     { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare },
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
     { href: '/admin/broadcast', label: 'Рассылки', icon: Send },
-    { href: '/admin/analytics', label: 'Аналитика', icon: BarChart3 },
   ];
 
   if (isLoginPage) {
