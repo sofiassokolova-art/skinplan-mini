@@ -149,11 +149,13 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className={cn(
-        'flex-1 overflow-auto min-h-screen p-6 md:p-8 pt-8 md:pt-10',
-        sidebarOpen ? 'ml-64' : 'ml-20'
-      )}>
-        <div className="max-w-7xl mx-auto">
+      <main 
+        className={cn(
+          'flex-1 overflow-auto min-h-screen p-6 md:p-8 pt-8 md:pt-10 w-full',
+          sidebarOpen ? 'ml-64' : 'ml-20'
+        )}
+      >
+        <div className="max-w-7xl mx-auto w-full">
           {children}
         </div>
       </main>
