@@ -34,9 +34,6 @@ export async function GET(request: NextRequest) {
     }
 
     const chats = await prisma.supportChat.findMany({
-      where: {
-        status: { in: ['active', 'open', 'in_progress'] }, // Показываем активные и в работе обращения
-      },
       include: {
         user: {
           select: {
@@ -63,7 +60,6 @@ export async function GET(request: NextRequest) {
         },
         messages: {
           orderBy: { createdAt: 'desc' },
-          take: 1,
         },
       },
       orderBy: {
@@ -71,7 +67,25 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const formattedChats = chats.map((chat) => {
+    // Автоматически определяем статус для каждого чата на основе сообщений
+    const chatsWithAutoStatus = chats.map((chat) => {
+      // Если статус закрыт, оставляем как есть
+      if (chat.status === 'closed') {
+        return { ...chat, autoStatus: 'closed' };
+      }
+
+      // Проверяем, есть ли ответы оператора (не автоответ)
+      const hasAdminReply = chat.messages.some((msg) => 
+        msg.isAdmin && 
+        !msg.text.includes('Привет! Это поддержка SkinIQ') && 
+        !msg.text.includes('за пределами рабочего времени')
+      );
+
+      const autoStatus = hasAdminReply ? 'in_progress' : 'active';
+      return { ...chat, autoStatus };
+    });
+
+    const formattedChats = chatsWithAutoStatus.map((chat) => {
       const latestProfile = chat.user.skinProfiles[0];
       // Формируем объект profile для совместимости с фронтендом
       const profile = latestProfile ? {
@@ -86,6 +100,9 @@ export async function GET(request: NextRequest) {
         hasPregnancy: latestProfile.hasPregnancy,
       } : null;
 
+      // Используем автоматически определенный статус
+      const displayStatus = chat.status === 'closed' ? 'closed' : chat.autoStatus;
+
       return {
         id: chat.id,
         user: {
@@ -95,8 +112,24 @@ export async function GET(request: NextRequest) {
         lastMessage: chat.messages[0]?.text || chat.lastMessage,
         unread: chat.unread,
         updatedAt: chat.updatedAt.toISOString(),
-        status: chat.status,
+        status: displayStatus, // Используем автоматически определенный статус
       };
+    });
+
+    // Сортируем: в работе, ждет ответа, закрыто
+    formattedChats.sort((a, b) => {
+      const statusOrder: Record<string, number> = {
+        'in_progress': 0,
+        'active': 1,
+        'closed': 2,
+      };
+      const orderA = statusOrder[a.status] ?? 3;
+      const orderB = statusOrder[b.status] ?? 3;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      // Если статус одинаковый, сортируем по дате обновления
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
     return NextResponse.json({ chats: formattedChats });

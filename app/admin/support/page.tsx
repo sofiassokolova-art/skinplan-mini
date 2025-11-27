@@ -63,9 +63,7 @@ export default function SupportAdmin() {
     }
   }, [selectedChat]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // Убрано автолистание - пользователь сам управляет прокруткой
 
   const loadChats = async () => {
     try {
@@ -108,7 +106,24 @@ export default function SupportAdmin() {
 
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages || []);
+        const messagesList = data.messages || [];
+        setMessages(messagesList);
+        
+        // Автоматически определяем статус на основе сообщений
+        if (selectedChat && selectedChat.status !== 'closed') {
+          // Проверяем, есть ли ответы оператора (не автоответ)
+          const hasAdminReply = messagesList.some((msg: Message) => 
+            msg.isAdmin && !msg.text.includes('Привет! Это поддержка SkinIQ') && !msg.text.includes('за пределами рабочего времени')
+          );
+          
+          // Обновляем статус в selectedChat
+          const newStatus = hasAdminReply ? 'in_progress' : 'active';
+          if (selectedChat.status !== newStatus) {
+            setSelectedChat({ ...selectedChat, status: newStatus });
+            // Обновляем статус в БД
+            updateChatStatus(selectedChat.id, newStatus);
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -161,10 +176,30 @@ export default function SupportAdmin() {
     router.push(`/admin/users?userId=${userId}`);
   };
 
-  const handleStatusChange = async (newStatus: string) => {
+  const updateChatStatus = async (chatId: string, status: string) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      await fetch('/api/admin/support/status', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          chatId,
+          status,
+        }),
+      });
+    } catch (error) {
+      console.error('Error updating chat status:', error);
+    }
+  };
+
+  const handleCloseChat = async () => {
     if (!selectedChat) return;
     
-    if (newStatus === 'closed' && !confirm('Вы уверены, что хотите закрыть это обращение? При новом сообщении от пользователя будет создано новое обращение.')) {
+    if (!confirm('Вы уверены, что хотите закрыть это обращение? При новом сообщении от пользователя будет создано новое обращение.')) {
       return;
     }
 
@@ -179,22 +214,22 @@ export default function SupportAdmin() {
         credentials: 'include',
         body: JSON.stringify({
           chatId: selectedChat.id,
-          status: newStatus,
+          status: 'closed',
         }),
       });
 
       if (response.ok) {
         // Обновляем статус в текущем чате
-        setSelectedChat({ ...selectedChat, status: newStatus });
+        setSelectedChat({ ...selectedChat, status: 'closed' });
         // Обновляем список чатов
         await loadChats();
       } else {
         const error = await response.json();
-        alert('Ошибка изменения статуса: ' + (error.error || 'Unknown error'));
+        alert('Ошибка закрытия обращения: ' + (error.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Ошибка изменения статуса');
+      console.error('Error closing chat:', error);
+      alert('Ошибка закрытия обращения');
     }
   };
 
@@ -307,19 +342,24 @@ export default function SupportAdmin() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {/* Селектор статуса */}
-                <select
-                  value={selectedChat.status}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-gray-900 font-medium focus:outline-none focus:border-gray-400"
-                >
-                  <option value="active">Ждет ответа</option>
-                  <option value="in_progress">В работе</option>
-                  <option value="closed">Закрыто</option>
-                </select>
+                {/* Статус отображается автоматически */}
+                <div className={cn(
+                  'px-4 py-2 rounded-xl text-sm font-medium',
+                  selectedChat.status === 'closed' 
+                    ? 'bg-gray-200 text-gray-700'
+                    : selectedChat.status === 'in_progress'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                )}>
+                  {selectedChat.status === 'closed' 
+                    ? 'Закрыто'
+                    : selectedChat.status === 'in_progress'
+                    ? 'В работе'
+                    : 'Ждет ответа'}
+                </div>
                 {selectedChat.status !== 'closed' && (
                   <button
-                    onClick={() => handleStatusChange('closed')}
+                    onClick={handleCloseChat}
                     className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all flex items-center gap-2"
                   >
                     <X size={16} />
