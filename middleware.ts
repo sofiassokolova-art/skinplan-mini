@@ -27,6 +27,7 @@ const publicRoutes = [
   '/api/profile/current', // Использует initData напрямую
   '/api/telegram/webhook', // Webhook от Telegram
   '/api/admin/login', // Публичный endpoint для входа в админку (не требует JWT)
+  '/api/admin/auth', // Публичный endpoint для авторизации через Telegram initData (не требует JWT)
   '/api/admin/verify', // Проверка токена админа (проверяет токен сам, не требует предварительной авторизации)
   '/admin/login',
   '/admin/set-webhook', // Страница установки webhook
