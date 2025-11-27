@@ -319,49 +319,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Создаем запись о рассылке
-    const broadcast = await prisma.broadcastMessage.create({
-      data: {
-        title: test ? 'Тестовая рассылка' : `Рассылка ${new Date().toLocaleDateString('ru-RU')}`,
-        message,
-        filtersJson: filters || {},
-        status: test ? 'completed' : 'sending',
-        totalCount: users.length,
-      },
-    });
-
-    // Если тестовая - отправляем сразу и возвращаем
+    // Если тестовая - отправляем сразу и возвращаем (без сохранения в БД)
     if (test) {
       const user = users[0];
       const profile = user.skinProfiles[0] || null;
       const renderedMessage = renderMessage(message, user, profile);
       
       const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageUrl, buttons);
-      
-      await prisma.broadcastLog.create({
-        data: {
-          broadcastId: broadcast.id,
-          userId: user.id,
-          telegramId: user.telegramId,
-          status: result.success ? 'sent' : 'failed',
-          errorMessage: result.error || null,
-        },
-      });
-
-      await prisma.broadcastMessage.update({
-        where: { id: broadcast.id },
-        data: {
-          sentCount: result.success ? 1 : 0,
-          failedCount: result.success ? 0 : 1,
-        },
-      });
 
       return NextResponse.json({
-        success: true,
-        broadcastId: broadcast.id,
+        success: result.success,
         test: true,
+        message: result.success ? 'Тестовая рассылка отправлена' : result.error || 'Ошибка отправки',
       });
     }
+
+    // Создаем запись о рассылке только для реальных рассылок
+    const broadcast = await prisma.broadcastMessage.create({
+      data: {
+        title: `Рассылка ${new Date().toLocaleDateString('ru-RU')}`,
+        message,
+        filtersJson: filters || {},
+        status: 'sending',
+        totalCount: users.length,
+      },
+    });
 
     // Для реальной рассылки запускаем асинхронно
     // В реальном приложении лучше использовать очередь (Bull, BullMQ)
