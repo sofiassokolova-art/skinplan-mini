@@ -120,26 +120,26 @@ async function sendTelegramMessage(
       return { success: true };
     } else {
       // Отправляем обычное текстовое сообщение
-      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chat_id: telegramId,
-          text,
-          parse_mode: 'HTML',
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: telegramId,
+        text,
+        parse_mode: 'HTML',
           ...(replyMarkup && { reply_markup: replyMarkup }),
-        }),
-      });
+      }),
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (!response.ok || !data.ok) {
-        return { success: false, error: data.description || 'Unknown error' };
-      }
+    if (!response.ok || !data.ok) {
+      return { success: false, error: data.description || 'Unknown error' };
+    }
 
-      return { success: true };
+    return { success: true };
     }
   } catch (error: any) {
     return { success: false, error: error.message || 'Network error' };
@@ -300,15 +300,15 @@ export async function POST(request: NextRequest) {
       // Если sendToAll, получаем всех пользователей
       if (filters?.sendToAll) {
         users = await prisma.user.findMany({
-          include: {
-            skinProfiles: {
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-            },
+        include: {
+          skinProfiles: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
           },
-        });
-      } else {
-        users = await getUsersByFilters(filters);
+        },
+      });
+    } else {
+      users = await getUsersByFilters(filters);
       }
     }
 

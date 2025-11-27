@@ -257,101 +257,101 @@ export default function BroadcastAdmin() {
       {!filters.sendToAll && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className={cn(glassCard, 'p-6')}>
-              <h3 className="text-xl font-bold text-white mb-4">Тип кожи</h3>
-              <div className="space-y-2">
-                {SKIN_TYPES.map((type) => (
-                  <label key={type.value} className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.skinTypes.includes(type.value)}
-                      onChange={() => toggleFilter('skinTypes', type.value)}
-                      className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                    />
-                    <span className="text-white/80">{type.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className={cn(glassCard, 'p-6')}>
-              <h3 className="text-xl font-bold text-white mb-4">Проблемы</h3>
-              <div className="space-y-2">
-                {CONCERNS.map((concern) => (
-                  <label key={concern.value} className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={filters.concerns.includes(concern.value)}
-                      onChange={() => toggleFilter('concerns', concern.value)}
-                      className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                    />
-                    <span className="text-white/80">{concern.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className={cn(glassCard, 'p-6')}>
-              <h3 className="text-xl font-bold text-white mb-4">Дополнительно</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-white/60 mb-2">День плана</label>
-                  <select
-                    value={filters.planDay || ''}
-                    onChange={(e) => setFilters({ ...filters, planDay: e.target.value || undefined })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-white/40"
-                  >
-                    <option value="">Все</option>
-                    <option value="1-7">1–7 дней</option>
-                    <option value="8-14">8–14 дней</option>
-                    <option value="15-28">15–28 дней</option>
-                    <option value="29+">29+ дней</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-white/60 mb-2">Последняя активность</label>
-                  <select
-                    value={filters.lastActive || ''}
-                    onChange={(e) => setFilters({ ...filters, lastActive: e.target.value || undefined })}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-white/40"
-                  >
-                    <option value="">Все</option>
-                    <option value="<7">Менее 7 дней</option>
-                    <option value="7-30">7–30 дней</option>
-                    <option value="30+">30+ дней</option>
-                  </select>
-                </div>
-
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.hasPurchases || false}
-                    onChange={(e) => setFilters({ ...filters, hasPurchases: e.target.checked || undefined })}
-                    className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                  />
-                  <span className="text-white/80">Только с покупками по партнёрке</span>
-                </label>
-              </div>
-            </div>
+        <div className={cn(glassCard, 'p-6')}>
+          <h3 className="text-xl font-bold text-white mb-4">Тип кожи</h3>
+          <div className="space-y-2">
+            {SKIN_TYPES.map((type) => (
+              <label key={type.value} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.skinTypes.includes(type.value)}
+                  onChange={() => toggleFilter('skinTypes', type.value)}
+                  className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
+                />
+                <span className="text-white/80">{type.label}</span>
+              </label>
+            ))}
           </div>
+        </div>
 
-          {/* 2. Превью количества */}
-          <div className={cn(glassCard, 'p-6 flex items-center justify-between mb-6')}>
+        <div className={cn(glassCard, 'p-6')}>
+          <h3 className="text-xl font-bold text-white mb-4">Проблемы</h3>
+          <div className="space-y-2">
+            {CONCERNS.map((concern) => (
+              <label key={concern.value} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.concerns.includes(concern.value)}
+                  onChange={() => toggleFilter('concerns', concern.value)}
+                  className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
+                />
+                <span className="text-white/80">{concern.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className={cn(glassCard, 'p-6')}>
+          <h3 className="text-xl font-bold text-white mb-4">Дополнительно</h3>
+          <div className="space-y-4">
             <div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent">
-                Найдено пользователей: {userCount !== null ? userCount.toLocaleString('ru-RU') : '—'}
-              </span>
+              <label className="block text-sm text-white/60 mb-2">День плана</label>
+              <select
+                value={filters.planDay || ''}
+                onChange={(e) => setFilters({ ...filters, planDay: e.target.value || undefined })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-white/40"
+              >
+                <option value="">Все</option>
+                <option value="1-7">1–7 дней</option>
+                <option value="8-14">8–14 дней</option>
+                <option value="15-28">15–28 дней</option>
+                <option value="29+">29+ дней</option>
+              </select>
             </div>
-            <button
-              onClick={handleCount}
-              disabled={countLoading}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={countLoading ? 'animate-spin' : ''} size={20} />
-              Обновить
-            </button>
+
+            <div>
+              <label className="block text-sm text-white/60 mb-2">Последняя активность</label>
+              <select
+                value={filters.lastActive || ''}
+                onChange={(e) => setFilters({ ...filters, lastActive: e.target.value || undefined })}
+                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-white/40"
+              >
+                <option value="">Все</option>
+                <option value="<7">Менее 7 дней</option>
+                <option value="7-30">7–30 дней</option>
+                <option value="30+">30+ дней</option>
+              </select>
+            </div>
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.hasPurchases || false}
+                onChange={(e) => setFilters({ ...filters, hasPurchases: e.target.checked || undefined })}
+                className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
+              />
+              <span className="text-white/80">Только с покупками по партнёрке</span>
+            </label>
           </div>
+        </div>
+      </div>
+
+      {/* 2. Превью количества */}
+          <div className={cn(glassCard, 'p-6 flex items-center justify-between mb-6')}>
+        <div>
+          <span className="text-2xl font-bold bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent">
+            Найдено пользователей: {userCount !== null ? userCount.toLocaleString('ru-RU') : '—'}
+          </span>
+        </div>
+        <button
+          onClick={handleCount}
+          disabled={countLoading}
+          className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-bold flex items-center gap-2 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={countLoading ? 'animate-spin' : ''} size={20} />
+          Обновить
+        </button>
+      </div>
         </>
       )}
 
