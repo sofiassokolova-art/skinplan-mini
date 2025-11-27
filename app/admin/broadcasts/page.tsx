@@ -120,11 +120,16 @@ export default function BroadcastsPage() {
       if (formData.skinType) filtersJson.skinType = formData.skinType;
       if (formData.ageGroup) filtersJson.ageGroup = formData.ageGroup;
 
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+
       const response = await fetch('/api/admin/broadcasts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({
