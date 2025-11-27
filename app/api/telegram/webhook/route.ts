@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
           update.message
         );
 
-        // Если это не команда, создаем/обновляем чат поддержки
+        // Если это не команда, создаем/обновляем чат поддержки и отправляем автоответ
         if (messageType === 'text' && update.message.text) {
           try {
             // Ищем существующий активный чат
@@ -205,6 +205,64 @@ export async function POST(request: NextRequest) {
             });
 
             console.log(`✅ Support chat created/updated for user ${userId}`);
+
+            // Отправляем автоответ
+            try {
+              const now = new Date();
+              // Получаем время в МСК
+              const moscowTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Moscow" }));
+              const hour = moscowTime.getHours();
+              const day = moscowTime.getDay(); // 0 = воскресенье, 6 = суббота
+              const isWeekend = day === 0 || day === 6;
+
+              let autoReplyText = '';
+
+              if (hour < 9 || hour >= 18 || isWeekend) {
+                // Нерабочее время
+                autoReplyText = `Привет! Сейчас за пределами рабочего времени
+
+Поддержка работает с 9:00 до 18:00 по МСК в будние дни.
+
+Ваше сообщение сохранено — ответим сразу, как только выйдем онлайн (ближайшее время — завтра с 9 утра).
+
+Хорошего вечера/выходных!`;
+              } else {
+                // Рабочее время
+                autoReplyText = `Привет! Это поддержка SkinIQ
+
+Сейчас мы онлайн и скоро ответим
+
+Работаем с 9:00 до 18:00 по МСК в будние дни.
+
+По вечерам и выходным отвечаем чуть медленнее, но обязательно читаем все сообщения и вернёмся к вам в рабочее время.
+
+Спасибо за терпение!`;
+              }
+
+              // Отправляем автоответ
+              const autoReplyResult = await sendMessage(
+                update.message.chat.id,
+                autoReplyText,
+                undefined,
+                userId
+              );
+
+              // Сохраняем автоответ в SupportMessage
+              if (autoReplyResult.ok && autoReplyResult.result) {
+                await prisma.supportMessage.create({
+                  data: {
+                    chatId: chat.id,
+                    text: autoReplyText,
+                    isAdmin: true,
+                  },
+                });
+              }
+
+              console.log(`✅ Auto-reply sent to user ${userId}`);
+            } catch (autoReplyError) {
+              console.error('Error sending auto-reply:', autoReplyError);
+              // Не блокируем выполнение, если автоответ не отправился
+            }
           } catch (error) {
             console.error('Error creating support chat:', error);
             // Не блокируем выполнение, если не удалось создать чат

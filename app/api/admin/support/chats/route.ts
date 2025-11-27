@@ -42,8 +42,11 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             firstName: true,
+            lastName: true,
             username: true,
             telegramId: true,
+            profile: true, // Добавляем профиль для отображения типа кожи и проблем
+            createdAt: true,
           },
         },
         messages: {

@@ -18,8 +18,11 @@ interface Chat {
   user: {
     id: string;
     firstName: string | null;
+    lastName: string | null;
     username: string | null;
     telegramId: string;
+    profile?: any; // JSON с типом кожи, проблемами и т.д.
+    createdAt: string;
   };
   lastMessage: string | null;
   unread: number;
@@ -174,7 +177,7 @@ export default function SupportAdmin() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 h-[calc(100vh-4rem)] bg-[#000000]">
       {/* Левая колонка — список чатов */}
-      <div className={cn(glassCard, 'border-r border-white/10 overflow-y-auto')}>
+      <div className={cn(glassCard, 'border-r border-white/10 overflow-y-auto', selectedChat && 'hidden lg:block')}>
         <div className="p-4 border-b border-white/10">
           <h2 className="text-xl font-bold text-white">Чаты поддержки</h2>
           <p className="text-sm text-white/60 mt-1">{chats.length} активных</p>
@@ -218,30 +221,58 @@ export default function SupportAdmin() {
       </div>
 
       {/* Правая часть — выбранный чат */}
-      <div className="lg:col-span-3 flex flex-col bg-[#050505]">
+      <div className={cn('flex flex-col bg-[#050505]', selectedChat ? 'lg:col-span-3' : 'lg:col-span-4')}>
         {selectedChat ? (
           <>
             {/* Хедер чата */}
             <div className={cn(glassCard, 'p-4 border-b border-white/10 flex items-center justify-between')}>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-1">
+                {/* Кнопка "Назад" для мобильных */}
+                <button
+                  onClick={() => setSelectedChat(null)}
+                  className="lg:hidden px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                >
+                  ←
+                </button>
                 <div className="w-16 h-16 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] flex items-center justify-center text-white font-bold text-2xl">
                   {selectedChat.user.firstName?.[0]?.toUpperCase() || selectedChat.user.username?.[0]?.toUpperCase() || '?'}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="font-bold text-xl text-white">
                     {selectedChat.user.firstName || selectedChat.user.username || 'Аноним'}
+                    {selectedChat.user.lastName && ` ${selectedChat.user.lastName}`}
                   </div>
                   <div className="text-sm text-white/60">
                     @{selectedChat.user.username || 'нет username'} • ID: {selectedChat.user.telegramId}
                   </div>
+                  {selectedChat.user.profile && (
+                    <div className="text-xs text-white/50 mt-1">
+                      {selectedChat.user.profile.skinType && (
+                        <span className="mr-2">Тип кожи: {selectedChat.user.profile.skinType}</span>
+                      )}
+                      {selectedChat.user.profile.concerns && Array.isArray(selectedChat.user.profile.concerns) && selectedChat.user.profile.concerns.length > 0 && (
+                        <span>Проблемы: {selectedChat.user.profile.concerns.join(', ')}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              <button
-                onClick={() => openUserProfile(selectedChat.user.id)}
-                className="px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all"
-              >
-                Профиль →
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => openUserProfile(selectedChat.user.id)}
+                  className="px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all"
+                >
+                  Профиль →
+                </button>
+                {/* Кнопка "Назад к списку" для десктопа */}
+                <button
+                  onClick={() => setSelectedChat(null)}
+                  className="hidden lg:block px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors"
+                  title="Назад к списку чатов"
+                >
+                  ← Назад
+                </button>
+              </div>
             </div>
 
             {/* Сообщения */}
