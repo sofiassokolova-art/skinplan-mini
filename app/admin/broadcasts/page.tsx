@@ -1,10 +1,12 @@
 // app/admin/broadcasts/page.tsx
-// Страница управления рассылками
+// Главная страница со списком рассылок
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Send, Calendar, Users as UsersIcon, CheckCircle, XCircle, Clock } from 'lucide-react';
+import Link from 'next/link';
 
 interface Broadcast {
   id: string;
@@ -24,48 +26,10 @@ export default function BroadcastsPage() {
   const router = useRouter();
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    message: '',
-    skinType: '',
-    ageGroup: '',
-    scheduledAt: '',
-  });
 
   useEffect(() => {
-    const checkAuthAndLoad = async () => {
-      const token = localStorage.getItem('admin_token');
-      if (!token) {
-        router.push('/admin/login');
-        return;
-      }
-      
-      // Проверяем валидность токена через API
-      try {
-        const authResponse = await fetch('/api/admin/auth', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          credentials: 'include',
-        });
-        
-        if (authResponse.ok) {
-          const authData = await authResponse.json();
-          if (authData.valid) {
     loadBroadcasts();
-          } else {
-            router.push('/admin/login');
-          }
-        } else {
-          router.push('/admin/login');
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        router.push('/admin/login');
-      }
-    };
-    
-    checkAuthAndLoad();
-  }, [router]);
+  }, []);
 
   const loadBroadcasts = async () => {
     try {
@@ -86,240 +50,144 @@ export default function BroadcastsPage() {
       });
 
       if (response.status === 401) {
-        // Токен невалиден - перенаправляем на логин
-        localStorage.removeItem('admin_token');
         router.push('/admin/login');
         return;
       }
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Error loading broadcasts:', errorData);
-        if (response.status === 403 || response.status === 401) {
-          router.push('/admin/login');
-        }
-        return;
+        throw new Error('Ошибка загрузки рассылок');
       }
 
       const data = await response.json();
-        setBroadcasts(data.broadcasts || []);
+      setBroadcasts(data.broadcasts || []);
     } catch (error) {
       console.error('Error loading broadcasts:', error);
-      // При сетевой ошибке не перенаправляем, просто показываем ошибку
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const token = localStorage.getItem('admin_token');
-      const filtersJson: any = {};
-      if (formData.skinType) filtersJson.skinType = formData.skinType;
-      if (formData.ageGroup) filtersJson.ageGroup = formData.ageGroup;
-
-      if (!token) {
-        router.push('/admin/login');
-        return;
-      }
-
-      const response = await fetch('/api/admin/broadcasts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          title: formData.title,
-          message: formData.message,
-          filtersJson,
-          scheduledAt: formData.scheduledAt || null,
-        }),
-      });
-
-      if (response.ok) {
-        setShowForm(false);
-        setFormData({ title: '', message: '', skinType: '', ageGroup: '', scheduledAt: '' });
-        loadBroadcasts();
-      }
-    } catch (error) {
-      console.error('Error creating broadcast:', error);
-      alert('Ошибка при создании рассылки');
-    }
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  const handleSend = async (id: string) => {
-    if (!confirm('Отправить рассылку сейчас?')) return;
-
-    try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/admin/broadcasts/${id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        loadBroadcasts();
-        alert('Рассылка отправлена!');
-      } else {
-        alert('Ошибка при отправке рассылки');
-      }
-    } catch (error) {
-      console.error('Error sending broadcast:', error);
-      alert('Ошибка при отправке рассылки');
-    }
+  const getStatusBadge = (status: string) => {
+    const statusMap: Record<string, { label: string; color: string; bgColor: string }> = {
+      draft: { label: 'Черновик', color: 'text-[#64748b]', bgColor: 'bg-[#f1f5f9]' },
+      scheduled: { label: 'Запланировано', color: 'text-[#f59e0b]', bgColor: 'bg-[#fef3c7]' },
+      sending: { label: 'Отправляется', color: 'text-[#3b82f6]', bgColor: 'bg-[#dbeafe]' },
+      completed: { label: 'Отправлено', color: 'text-[#16a34a]', bgColor: 'bg-[#dcfce7]' },
+    };
+    
+    const statusInfo = statusMap[status] || statusMap.draft;
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.bgColor} ${statusInfo.color}`}>
+        {statusInfo.label}
+      </span>
+    );
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-600">Загрузка...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-[#64748b]">Загрузка...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 md:p-10 space-y-6">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-4xl font-black text-gray-900">Рассылки</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
+    <div className="p-10">
+      {/* Заголовок и кнопка */}
+      <div className="flex items-center justify-between mb-10">
+        <div>
+          <h1 className="text-[40px] font-bold text-[#1e1e1e] mb-2">Рассылки</h1>
+          <p className="text-[#64748b]">Управление рассылками пользователям</p>
+        </div>
+        <Link
+          href="/admin/broadcast"
+          className="px-6 py-3 bg-[#8b5cf6] text-white rounded-xl font-semibold hover:bg-[#7c3aed] transition-colors flex items-center gap-2 shadow-lg shadow-[#8b5cf6]/20"
         >
-          {showForm ? 'Отменить' : '+ Создать рассылку'}
-        </button>
+          <Send size={20} />
+          Отправить новую рассылку
+        </Link>
       </div>
 
-      {showForm && (
-        <div className="glass rounded-3xl p-8 mb-8 bg-white">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Новая рассылка</h2>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">Название</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">Сообщение</label>
-              <textarea
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
-                rows={5}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700">Тип кожи (опционально)</label>
-                <select
-                  value={formData.skinType}
-                  onChange={(e) => setFormData({ ...formData, skinType: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-gray-400"
-                >
-                  <option value="">Все</option>
-                  <option value="dry">Сухая</option>
-                  <option value="oily">Жирная</option>
-                  <option value="combo">Комбинированная</option>
-                  <option value="normal">Нормальная</option>
-                  <option value="sensitive">Чувствительная</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700">Возрастная группа (опционально)</label>
-                <select
-                  value={formData.ageGroup}
-                  onChange={(e) => setFormData({ ...formData, ageGroup: e.target.value })}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-gray-400"
-                >
-                  <option value="">Все</option>
-                  <option value="18_25">18-25</option>
-                  <option value="26_30">26-30</option>
-                  <option value="31_40">31-40</option>
-                  <option value="41_50">41-50</option>
-                  <option value="50_plus">50+</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">Запланировать на (опционально)</label>
-              <input
-                type="datetime-local"
-                value={formData.scheduledAt}
-                onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-gray-400"
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
-            >
-              Создать
-            </button>
-          </form>
+      {/* Список рассылок */}
+      {broadcasts.length === 0 ? (
+        <div 
+          className="bg-white rounded-[20px] border border-[#e2e8f0] p-12 text-center"
+          style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)' }}
+        >
+          <Send size={48} className="mx-auto mb-4 text-[#64748b]" />
+          <p className="text-[#64748b] text-lg mb-6">Пока нет рассылок</p>
+          <Link
+            href="/admin/broadcast"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#8b5cf6] text-white rounded-xl font-semibold hover:bg-[#7c3aed] transition-colors"
+          >
+            <Send size={18} />
+            Создать первую рассылку
+          </Link>
         </div>
-      )}
-
-      <div className="space-y-4">
-        {broadcasts.length === 0 ? (
-          <div className="glass rounded-3xl p-8 text-center text-gray-600 bg-white">
-            Пока нет рассылок
-          </div>
-        ) : (
-          broadcasts.map((broadcast) => (
-            <div key={broadcast.id} className="glass rounded-3xl p-6">
-              <div className="flex items-start justify-between">
+      ) : (
+        <div className="space-y-4">
+          {broadcasts.map((broadcast) => (
+            <div
+              key={broadcast.id}
+              className="bg-white rounded-[20px] border border-[#e2e8f0] p-6 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] transition-all duration-300"
+              style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)' }}
+            >
+              <div className="flex items-start justify-between gap-6">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-white mb-2">{broadcast.title}</h3>
-                  <p className="text-white/80 mb-4 whitespace-pre-wrap">{broadcast.message}</p>
+                  <div className="flex items-center gap-3 mb-3">
+                    <h3 className="text-xl font-bold text-[#1e1e1e]">{broadcast.title}</h3>
+                    {getStatusBadge(broadcast.status)}
+                  </div>
                   
-                  <div className="flex gap-4 text-sm text-white/60">
-                    <span>
-                      Статус: <span className={`font-bold ${
-                        broadcast.status === 'completed' ? 'text-emerald-400' :
-                        broadcast.status === 'sending' ? 'text-blue-400' :
-                        broadcast.status === 'scheduled' ? 'text-yellow-400' :
-                        'text-white/60'
-                      }`}>
-                        {broadcast.status === 'draft' ? 'Черновик' :
-                         broadcast.status === 'scheduled' ? 'Запланировано' :
-                         broadcast.status === 'sending' ? 'Отправляется' :
-                         broadcast.status === 'completed' ? 'Отправлено' :
-                         broadcast.status}
-                      </span>
-                    </span>
-                    {broadcast.totalCount > 0 && (
+                  <p className="text-[#64748b] text-sm mb-4 line-clamp-2">{broadcast.message}</p>
+                  
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-2 text-[#64748b]">
+                      <UsersIcon size={16} />
+                      <span className="font-semibold text-[#1e1e1e]">{broadcast.totalCount || 0}</span>
+                      <span>пользователей</span>
+                    </div>
+                    
+                    {broadcast.status === 'completed' && (
                       <>
-                        <span>Получателей: {broadcast.totalCount}</span>
-                        <span>Отправлено: {broadcast.sentCount}</span>
-                        <span>Ошибок: {broadcast.failedCount}</span>
+                        <div className="flex items-center gap-2 text-[#16a34a]">
+                          <CheckCircle size={16} />
+                          <span className="font-semibold">{broadcast.sentCount}</span>
+                          <span>отправлено</span>
+                        </div>
+                        {broadcast.failedCount > 0 && (
+                          <div className="flex items-center gap-2 text-[#dc2626]">
+                            <XCircle size={16} />
+                            <span className="font-semibold">{broadcast.failedCount}</span>
+                            <span>ошибок</span>
+                          </div>
+                        )}
                       </>
                     )}
+                    
+                    <div className="flex items-center gap-2 text-[#64748b]">
+                      <Calendar size={16} />
+                      <span>{formatDate(broadcast.sentAt || broadcast.createdAt)}</span>
+                    </div>
                   </div>
                 </div>
-                
-                {broadcast.status === 'draft' && (
-                  <button
-                    onClick={() => handleSend(broadcast.id)}
-                    className="px-4 py-2 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all"
-                  >
-                    Отправить
-                  </button>
-                )}
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-

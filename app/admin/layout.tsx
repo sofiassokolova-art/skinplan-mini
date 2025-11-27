@@ -78,7 +78,7 @@ export default function AdminLayout({
     { href: '/admin/rules', label: 'Правила', icon: FileText },
     { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare },
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
-    { href: '/admin/broadcast', label: 'Рассылки', icon: Send },
+    { href: '/admin/broadcasts', label: 'Рассылки', icon: Send },
   ];
 
   if (isLoginPage) {
