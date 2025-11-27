@@ -106,14 +106,14 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Дашборд</h1>
-          <p className="text-white/60">Обзор системы SkinIQ</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Дашборд</h1>
+          <p className="text-gray-600">Обзор системы SkinIQ</p>
         </div>
         <button
           onClick={loadStats}
           className={cn(
             glassCard,
-            'px-6 py-3 text-white/80 hover:text-white transition-colors'
+            'px-6 py-3 text-gray-700 hover:text-gray-900 transition-colors bg-white'
           )}
         >
           Обновить
@@ -137,11 +137,11 @@ export default function AdminDashboard() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div className={cn('p-3 rounded-xl bg-gradient-to-r', card.color)}>
-                  <Icon className="text-white" size={24} />
+                  <Icon className="text-gray-700" size={24} />
                 </div>
-                <span className="text-3xl font-bold text-white">{value.toLocaleString()}</span>
+                <span className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</span>
               </div>
-              <p className="text-white/60 text-sm">{card.label}</p>
+              <p className="text-gray-600 text-sm">{card.label}</p>
             </div>
           );
         })}
@@ -209,10 +209,10 @@ export default function AdminDashboard() {
                     {f.feedback === 'bought_love' ? 'Love' : f.feedback === 'bought_ok' ? 'OK' : 'Bad'}
                   </span>
                 </div>
-                <p className="text-white/80 text-sm mb-1">
+                <p className="text-gray-700 text-sm mb-1">
                   {f.product.brand} {f.product.name}
                 </p>
-                <p className="text-white/40 text-xs">
+                <p className="text-gray-500 text-xs">
                   {new Date(f.createdAt).toLocaleDateString('ru-RU')}
                 </p>
               </div>
