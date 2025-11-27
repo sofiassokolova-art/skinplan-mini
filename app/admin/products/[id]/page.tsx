@@ -496,14 +496,14 @@ export default function EditProductPage() {
         >
           {loading ? 'Сохраняем...' : 'Сохранить изменения'}
         </button>
-        <button
+      <button
           type="button"
-          onClick={() => router.back()}
+        onClick={() => router.back()}
           className="px-8 py-5 border-2 border-gray-300 rounded-2xl"
-        >
+      >
           Отмена
-        </button>
-      </div>
+      </button>
+    </div>
     </form>
   );
 }

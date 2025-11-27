@@ -109,7 +109,7 @@ export default function FeedbackAdmin() {
           { key: 'bad', label: 'Bad', icon: ThumbsDown, count: stats.bad, color: 'text-red-400' },
         ].map((tab) => {
           const Icon = tab.icon;
-          return (
+                return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
@@ -127,11 +127,11 @@ export default function FeedbackAdmin() {
                 activeTab === tab.key ? 'bg-white/10' : 'bg-white/5'
               )}>
                 {tab.count}
-              </span>
+                      </span>
             </button>
-          );
-        })}
-      </div>
+                );
+              })}
+            </div>
 
       {/* Список отзывов */}
       <div className={cn(glassCard, 'p-6')}>
@@ -142,12 +142,12 @@ export default function FeedbackAdmin() {
             </div>
           ) : (
             filteredFeedback.map((f) => (
-              <div
+                <div
                 key={f.id}
                 className="p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
-              >
+                >
                 <div className="flex items-start justify-between mb-3">
-                  <div>
+                    <div>
                     <div className="font-medium text-white mb-1">
                       {f.user.firstName || ''} {f.user.lastName || ''}
                     </div>
@@ -178,7 +178,7 @@ export default function FeedbackAdmin() {
                     minute: '2-digit',
                   })}
                 </div>
-              </div>
+            </div>
             ))
           )}
         </div>

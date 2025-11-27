@@ -92,27 +92,27 @@ export default function ProductsAdmin() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить этот продукт?')) return;
-
-    try {
-      const token = localStorage.getItem('admin_token');
+                    if (!confirm('Вы уверены, что хотите удалить этот продукт?')) return;
+                    
+                    try {
+                      const token = localStorage.getItem('admin_token');
       const response = await fetch(`/api/admin/products/${id}`, {
-        method: 'DELETE',
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        await loadProducts();
-      } else {
-        alert('Ошибка удаления продукта');
-      }
-    } catch (err) {
-      console.error('Ошибка удаления:', err);
-      alert('Ошибка удаления продукта');
-    }
+                        method: 'DELETE',
+                        headers: {
+                          ...(token && { Authorization: `Bearer ${token}` }),
+                        },
+                        credentials: 'include',
+                      });
+                      
+                      if (response.ok) {
+                        await loadProducts();
+                      } else {
+                        alert('Ошибка удаления продукта');
+                      }
+                    } catch (err) {
+                      console.error('Ошибка удаления:', err);
+                      alert('Ошибка удаления продукта');
+                    }
   };
 
   const columns = useMemo<ColumnDef<Product>[]>(
@@ -259,7 +259,7 @@ export default function ProductsAdmin() {
                 className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors"
               >
                 <Trash2 className="text-red-400" size={16} />
-              </button>
+                </button>
             </div>
           );
         },
@@ -306,7 +306,7 @@ export default function ProductsAdmin() {
           <p className="text-white/60">
             Всего: {products.length} {table.getFilteredRowModel().rows.length !== products.length && `(отфильтровано: ${table.getFilteredRowModel().rows.length})`}
           </p>
-        </div>
+          </div>
         <Link
           href="/admin/products/new"
           className={cn(
@@ -323,7 +323,7 @@ export default function ProductsAdmin() {
       {error && (
         <div className={cn(glassCard, 'p-4 bg-red-500/20 border-red-500/50')}>
           <p className="text-red-200">{error}</p>
-        </div>
+      </div>
       )}
 
       {/* Поиск и фильтры */}

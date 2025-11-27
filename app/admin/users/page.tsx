@@ -58,11 +58,11 @@ export default function UsersAdmin() {
       const response = await fetch(
         `/api/admin/users?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}`,
         {
-          headers: {
-            'Content-Type': 'application/json',
+        headers: {
+          'Content-Type': 'application/json',
             ...(token && { Authorization: `Bearer ${token}` }),
-          },
-          credentials: 'include',
+        },
+        credentials: 'include',
         }
       );
 
@@ -183,7 +183,7 @@ export default function UsersAdmin() {
         header: 'Дата регистрации',
         cell: ({ row }) => {
           const date = new Date(row.getValue('createdAt'));
-          return (
+    return (
             <span className="text-white/80 text-sm">
               {date.toLocaleDateString('ru-RU', {
                 day: '2-digit',
@@ -289,16 +289,16 @@ export default function UsersAdmin() {
                       )}
                     </th>
                   ))}
-                </tr>
+            </tr>
               ))}
-            </thead>
-            <tbody>
+          </thead>
+          <tbody>
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length} className="px-4 py-8 text-center text-white/60">
                     Пользователи не найдены
-                  </td>
-                </tr>
+                </td>
+              </tr>
               ) : (
                 table.getRowModel().rows.map((row) => (
                   <tr
@@ -313,30 +313,30 @@ export default function UsersAdmin() {
                   </tr>
                 ))
               )}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </table>
+      </div>
 
         {/* Пагинация */}
         <div className="px-4 py-4 border-t border-white/10 flex items-center justify-between">
           <div className="text-white/60 text-sm">
             Страница {pagination.pageIndex + 1}
-          </div>
+        </div>
           <div className="flex items-center gap-2">
-            <button
+          <button
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
               className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Назад
-            </button>
-            <button
+          </button>
+          <button
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
               className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
+          >
               Вперед
-            </button>
+          </button>
           </div>
         </div>
       </div>

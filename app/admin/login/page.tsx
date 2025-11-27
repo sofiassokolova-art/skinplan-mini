@@ -145,7 +145,7 @@ export default function AdminLogin() {
           <button
             onClick={handleTelegramLogin}
             disabled={loading || !window.Telegram?.WebApp?.initData}
-            className="w-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300"
+            className="w-full bg-black/80 backdrop-blur-xl border border-white/20 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/90 hover:border-white/30 hover:shadow-[0_8px_32px_rgba(139,92,246,0.3)] transition-all duration-300"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

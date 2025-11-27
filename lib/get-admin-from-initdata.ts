@@ -42,7 +42,7 @@ export async function getAdminFromInitData(
     hasUser: !!validation.data?.user,
     error: validation.error,
   });
-
+  
   if (!validation.valid || !validation.data?.user) {
     console.error('❌ Invalid initData:', validation.error);
     return { valid: false, error: validation.error || 'Invalid initData' };
@@ -51,7 +51,7 @@ export async function getAdminFromInitData(
 
   const { user } = validation.data;
   const telegramIdStr = user.id.toString();
-
+  
   // Логируем для отладки
   console.log('🔍 Проверка whitelist для:', {
     telegramId: telegramIdStr,

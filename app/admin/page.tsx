@@ -67,7 +67,7 @@ export default function AdminDashboard() {
           'Content-Type': 'application/json',
           ...(token && { Authorization: `Bearer ${token}` }),
         },
-        credentials: 'include',
+        credentials: 'include', // Важно для передачи cookies
       });
 
       if (response.ok) {
@@ -106,15 +106,12 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Дашборд</h1>
-          <p className="text-gray-600">Обзор системы SkinIQ</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Дашборд</h1>
+          <p className="text-white/60">Обзор системы SkinIQ</p>
         </div>
         <button
           onClick={loadStats}
-          className={cn(
-            glassCard,
-            'px-6 py-3 text-gray-700 hover:text-gray-900 transition-colors bg-white'
-          )}
+          className="px-6 py-3 bg-black/80 backdrop-blur-xl border border-white/20 text-white rounded-xl hover:bg-black/90 hover:border-white/30 transition-all duration-300"
         >
           Обновить
         </button>
@@ -129,26 +126,22 @@ export default function AdminDashboard() {
           return (
             <div
               key={card.key}
-              className={cn(
-                glassCard,
-                glassCardHover,
-                'p-6'
-              )}
+              className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:bg-black/50 hover:border-white/20 transition-all duration-300 shadow-lg shadow-purple-500/10"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className={cn('p-3 rounded-xl bg-gradient-to-r', card.color)}>
-                  <Icon className="text-gray-700" size={24} />
+                  <Icon className="text-white" size={24} />
                 </div>
-                <span className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</span>
+                <span className="text-3xl font-bold text-white">{value.toLocaleString()}</span>
               </div>
-              <p className="text-gray-600 text-sm">{card.label}</p>
+              <p className="text-white/60 text-sm">{card.label}</p>
             </div>
           );
         })}
       </div>
 
       {/* График роста пользователей */}
-      <div className={cn(glassCard, 'p-6')}>
+      <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg shadow-purple-500/10">
         <h2 className="text-xl font-bold text-white mb-6">Рост пользователей</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={userGrowth}>
@@ -183,7 +176,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Последние отзывы */}
-      <div className={cn(glassCard, 'p-6')}>
+      <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-lg shadow-purple-500/10">
         <h2 className="text-xl font-bold text-white mb-6">Последние отзывы</h2>
         <div className="space-y-4">
           {recentFeedback.length === 0 ? (
@@ -192,7 +185,7 @@ export default function AdminDashboard() {
             recentFeedback.slice(0, 10).map((f) => (
               <div
                 key={f.id}
-                className="p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
+                className="p-4 bg-black/30 backdrop-blur-xl border border-white/10 rounded-xl hover:bg-black/40 hover:border-white/20 transition-colors"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-white font-medium">
@@ -209,10 +202,10 @@ export default function AdminDashboard() {
                     {f.feedback === 'bought_love' ? 'Love' : f.feedback === 'bought_ok' ? 'OK' : 'Bad'}
                   </span>
                 </div>
-                <p className="text-gray-700 text-sm mb-1">
+                <p className="text-white/80 text-sm mb-1">
                   {f.product.brand} {f.product.name}
                 </p>
-                <p className="text-gray-500 text-xs">
+                <p className="text-white/40 text-xs">
                   {new Date(f.createdAt).toLocaleDateString('ru-RU')}
                 </p>
               </div>

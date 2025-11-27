@@ -236,7 +236,7 @@ export default function RulesAdmin() {
                 </button>
                 <button className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors">
                   <Trash2 className="text-red-400" size={16} />
-                </button>
+              </button>
               </div>
             </div>
             <div className="p-4 bg-white/5 rounded-xl">

@@ -91,10 +91,18 @@ export async function middleware(request: NextRequest) {
     // Для админских роутов проверяем admin_token
     // НО: /api/admin/auth (GET и POST) - публичные, они сами проверяют токен
     if (pathname.startsWith('/api/admin/') && !pathname.startsWith('/api/admin/auth')) {
-      const adminToken = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                        request.cookies.get('admin_token')?.value;
+      // Проверяем токен из cookies ИЛИ из Authorization header
+      const cookieToken = request.cookies.get('admin_token')?.value;
+      const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
+      const adminToken = cookieToken || headerToken;
+
+      console.log('🔐 Middleware check for', pathname);
+      console.log('   Cookie token exists:', !!cookieToken);
+      console.log('   Header token exists:', !!headerToken);
+      console.log('   Final token exists:', !!adminToken);
 
       if (!adminToken) {
+        console.log('❌ No admin token found');
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }
@@ -103,8 +111,10 @@ export async function middleware(request: NextRequest) {
 
       try {
         jwt.verify(adminToken, JWT_SECRET);
+        console.log('✅ Admin token verified in middleware');
         return NextResponse.next();
       } catch (error) {
+        console.log('❌ Admin token verification failed:', error);
         return NextResponse.json(
           { error: 'Invalid token' },
           { status: 401 }
