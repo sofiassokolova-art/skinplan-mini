@@ -153,7 +153,7 @@ export default function AdminDashboard() {
       </h1>
       
       {/* 6 больших метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-16 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-16 mb-16">
         {metricsData.map((m, i) => (
           <div 
             key={i} 
@@ -173,7 +173,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* График роста пользователей */}
-      <div className="glass rounded-3xl p-8 mb-10">
+      <div className="glass rounded-3xl p-8 mb-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Рост пользователей за 30 дней</h2>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={userGrowth}>

@@ -327,7 +327,7 @@ export default function ProductsAdmin() {
       )}
 
       {/* Поиск и фильтры */}
-      <div className={cn(glassCard, 'p-4')}>
+      <div className={cn(glassCard, 'p-4 mb-12')}>
         <div className="flex items-center gap-4">
           <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-300">
             <div className="flex items-center justify-center px-4 py-2 bg-white">

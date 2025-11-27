@@ -236,7 +236,7 @@ export default function BroadcastAdmin() {
       )}
 
       {/* Опция "Всем пользователям" */}
-      <div className={cn(glassCard, 'p-6 mb-6')}>
+      <div className={cn(glassCard, 'p-6')}>
         <label className="flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -256,7 +256,7 @@ export default function BroadcastAdmin() {
       {/* 1. Фильтры пользователей */}
       {!filters.sendToAll && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
         <div className={cn(glassCard, 'p-6')}>
           <h3 className="text-xl font-bold text-white mb-4">Тип кожи</h3>
           <div className="space-y-2">
@@ -337,7 +337,7 @@ export default function BroadcastAdmin() {
       </div>
 
       {/* 2. Превью количества */}
-          <div className={cn(glassCard, 'p-6 flex items-center justify-between mb-6')}>
+          <div className={cn(glassCard, 'p-6 flex items-center justify-between')}>
         <div>
           <span className="text-2xl font-bold bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] bg-clip-text text-transparent">
             Найдено пользователей: {userCount !== null ? userCount.toLocaleString('ru-RU') : '—'}

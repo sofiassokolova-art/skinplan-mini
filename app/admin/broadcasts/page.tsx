@@ -101,7 +101,7 @@ export default function BroadcastsPage() {
   return (
     <div className="p-10">
       {/* Заголовок и кнопка */}
-      <div className="flex items-center justify-between mb-10">
+      <div className="flex items-center justify-between mb-16">
         <div>
           <h1 className="text-[40px] font-bold text-[#1e1e1e] mb-2">Рассылки</h1>
           <p className="text-[#64748b]">Управление рассылками пользователям</p>
