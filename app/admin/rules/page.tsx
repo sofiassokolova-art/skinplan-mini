@@ -25,8 +25,11 @@ export default function RulesAdmin() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
+  const [creatingRule, setCreatingRule] = useState(false);
   const [jsonMode, setJsonMode] = useState(true);
   const [jsonText, setJsonText] = useState('');
+  const [newRuleName, setNewRuleName] = useState('');
+  const [newRulePriority, setNewRulePriority] = useState(0);
 
   useEffect(() => {
     loadRules();
@@ -70,39 +73,83 @@ export default function RulesAdmin() {
   };
 
   const handleSave = async () => {
-    if (!editingRule) return;
+    if (!editingRule && !creatingRule) return;
 
     try {
       const parsed = JSON.parse(jsonText);
       const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/admin/rules/${editingRule.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          conditionsJson: parsed.conditions,
-          stepsJson: parsed.steps,
-        }),
-      });
+      
+      if (creatingRule) {
+        // Создание нового правила
+        const response = await fetch('/api/admin/rules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: newRuleName,
+            conditionsJson: parsed.conditions || {},
+            stepsJson: parsed.steps || {},
+            priority: newRulePriority,
+            isActive: true,
+          }),
+        });
 
-      if (response.ok) {
-        setEditingRule(null);
-        await loadRules();
-      } else {
-        alert('Ошибка сохранения правила');
+        if (response.ok) {
+          setCreatingRule(false);
+          setNewRuleName('');
+          setNewRulePriority(0);
+          setJsonText('');
+          await loadRules();
+        } else {
+          const errorData = await response.json();
+          alert('Ошибка создания правила: ' + (errorData.error || 'Unknown error'));
+        }
+      } else if (editingRule) {
+        // Редактирование существующего правила
+        const response = await fetch(`/api/admin/rules/${editingRule.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            conditionsJson: parsed.conditions,
+            stepsJson: parsed.steps,
+          }),
+        });
+
+        if (response.ok) {
+          setEditingRule(null);
+          await loadRules();
+        } else {
+          alert('Ошибка сохранения правила');
+        }
       }
     } catch (err) {
-      alert('Неверный JSON формат');
+      alert('Неверный JSON формат: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
+  };
+
+  const handleCreateNew = () => {
+    setCreatingRule(true);
+    setEditingRule(null);
+    setNewRuleName('');
+    setNewRulePriority(0);
+    setJsonText(JSON.stringify({
+      conditions: {},
+      steps: {},
+    }, null, 2));
+    setJsonMode(true);
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-white/60">Загрузка...</div>
+        <div className="text-gray-600">Загрузка...</div>
       </div>
     );
   }
@@ -111,13 +158,14 @@ export default function RulesAdmin() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Правила рекомендаций</h1>
-          <p className="text-white/60">Всего: {rules.length}</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Правила рекомендаций</h1>
+          <p className="text-gray-600">Всего: {rules.length}</p>
         </div>
         <button
+          onClick={handleCreateNew}
           className={cn(
-            'px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-2xl font-bold',
-            'hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300',
+            'px-6 py-3 bg-black text-white rounded-2xl font-bold hover:bg-gray-800',
+            'transition-all duration-300',
             'flex items-center gap-2'
           )}
         >
@@ -127,24 +175,56 @@ export default function RulesAdmin() {
       </div>
 
       {error && (
-        <div className={cn(glassCard, 'p-4 bg-red-500/20 border-red-500/50')}>
-          <p className="text-red-200">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700">{error}</p>
         </div>
       )}
 
-      {/* Модалка редактирования */}
-      {editingRule && (
+      {/* Модалка редактирования/создания */}
+      {(editingRule || creatingRule) && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={cn(glassCard, 'p-6 max-w-4xl w-full max-h-[90vh] overflow-auto')}>
+          <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-auto shadow-xl border border-gray-200">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Редактирование правила</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {creatingRule ? 'Создание нового правила' : 'Редактирование правила'}
+              </h2>
               <button
-                onClick={() => setEditingRule(null)}
-                className="text-white/60 hover:text-white"
+                onClick={() => {
+                  setEditingRule(null);
+                  setCreatingRule(false);
+                  setNewRuleName('');
+                  setNewRulePriority(0);
+                  setJsonText('');
+                }}
+                className="text-gray-600 hover:text-gray-900"
               >
                 ✕
               </button>
             </div>
+
+            {creatingRule && (
+              <div className="mb-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">Название правила *</label>
+                  <input
+                    type="text"
+                    value={newRuleName}
+                    onChange={(e) => setNewRuleName(e.target.value)}
+                    placeholder="Например: Базовое правило для жирной кожи"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">Приоритет (чем выше, тем важнее)</label>
+                  <input
+                    type="number"
+                    value={newRulePriority}
+                    onChange={(e) => setNewRulePriority(parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-gray-400"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="mb-4 flex gap-2">
               <button
@@ -152,8 +232,8 @@ export default function RulesAdmin() {
                 className={cn(
                   'px-4 py-2 rounded-lg transition-colors flex items-center gap-2',
                   jsonMode
-                    ? 'bg-white/20 text-white'
-                    : 'bg-white/10 text-white/60 hover:text-white'
+                    ? 'bg-gray-200 text-gray-900'
+                    : 'bg-gray-100 text-gray-600 hover:text-gray-900'
                 )}
               >
                 <Code size={16} />
@@ -164,8 +244,8 @@ export default function RulesAdmin() {
                 className={cn(
                   'px-4 py-2 rounded-lg transition-colors flex items-center gap-2',
                   !jsonMode
-                    ? 'bg-white/20 text-white'
-                    : 'bg-white/10 text-white/60 hover:text-white'
+                    ? 'bg-gray-200 text-gray-900'
+                    : 'bg-gray-100 text-gray-600 hover:text-gray-900'
                 )}
               >
                 <Eye size={16} />
@@ -177,13 +257,14 @@ export default function RulesAdmin() {
               <textarea
                 value={jsonText}
                 onChange={(e) => setJsonText(e.target.value)}
-                className="w-full h-96 p-4 bg-[#050505] border border-white/10 rounded-xl text-white font-mono text-sm focus:outline-none focus:border-white/20"
+                className="w-full h-96 p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-mono text-sm focus:outline-none focus:border-gray-400"
                 spellCheck={false}
+                placeholder='{"conditions": {}, "steps": {}}'
               />
             ) : (
-              <div className="p-4 bg-white/5 rounded-xl">
-                <pre className="text-white/80 text-sm whitespace-pre-wrap">
-                  {JSON.stringify({ conditions: editingRule.conditionsJson, steps: editingRule.stepsJson }, null, 2)}
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <pre className="text-gray-700 text-sm whitespace-pre-wrap">
+                  {creatingRule ? jsonText : JSON.stringify({ conditions: editingRule?.conditionsJson, steps: editingRule?.stepsJson }, null, 2)}
                 </pre>
               </div>
             )}
@@ -191,13 +272,20 @@ export default function RulesAdmin() {
             <div className="flex gap-4 mt-6">
               <button
                 onClick={handleSave}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] text-white rounded-xl font-bold hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all"
+                disabled={creatingRule && !newRuleName.trim()}
+                className="flex-1 px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Сохранить
+                {creatingRule ? 'Создать правило' : 'Сохранить'}
               </button>
               <button
-                onClick={() => setEditingRule(null)}
-                className="px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors"
+                onClick={() => {
+                  setEditingRule(null);
+                  setCreatingRule(false);
+                  setNewRuleName('');
+                  setNewRulePriority(0);
+                  setJsonText('');
+                }}
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
               >
                 Отмена
               </button>
@@ -215,14 +303,14 @@ export default function RulesAdmin() {
           >
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">{rule.name}</h3>
-                <div className="flex items-center gap-4 text-sm text-white/60">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{rule.name}</h3>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
                   <span>Приоритет: {rule.priority}</span>
                   <span>
                     {rule.isActive ? (
-                      <span className="text-green-400">Активно</span>
+                      <span className="text-green-600">Активно</span>
                     ) : (
-                      <span className="text-white/40">Неактивно</span>
+                      <span className="text-gray-400">Неактивно</span>
                     )}
                   </span>
                 </div>
@@ -230,18 +318,18 @@ export default function RulesAdmin() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleEdit(rule)}
-                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
-                  <Edit className="text-white/80" size={16} />
+                  <Edit className="text-gray-700" size={16} />
                 </button>
-                <button className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg transition-colors">
-                  <Trash2 className="text-red-400" size={16} />
+                <button className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors">
+                  <Trash2 className="text-red-600" size={16} />
               </button>
               </div>
             </div>
-            <div className="p-4 bg-white/5 rounded-xl">
-              <div className="text-xs text-white/40 mb-2">Условия:</div>
-              <pre className="text-white/60 text-xs font-mono overflow-x-auto">
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="text-xs text-gray-500 mb-2">Условия:</div>
+              <pre className="text-gray-700 text-xs font-mono overflow-x-auto">
                 {JSON.stringify(rule.conditionsJson, null, 2).substring(0, 200)}...
               </pre>
             </div>

@@ -34,11 +34,42 @@ export default function BroadcastsPage() {
   });
 
   useEffect(() => {
-    loadBroadcasts();
-  }, []);
+    const checkAuthAndLoad = async () => {
+      const token = localStorage.getItem('admin_token');
+      if (!token) {
+        router.push('/admin/login');
+        return;
+      }
+      
+      // Проверяем валидность токена через API
+      try {
+        const response = await fetch('/api/admin/auth', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.valid) {
+            loadBroadcasts();
+          } else {
+            router.push('/admin/login');
+          }
+        } else {
+          router.push('/admin/login');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        router.push('/admin/login');
+      }
+    };
+    
+    checkAuthAndLoad();
+  }, [router]);
 
   const loadBroadcasts = async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/admin/broadcasts', {
         headers: {
@@ -47,6 +78,11 @@ export default function BroadcastsPage() {
         },
         credentials: 'include',
       });
+
+      if (response.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();

@@ -147,7 +147,7 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-gray-100">
+      <main className="flex-1 overflow-auto bg-gray-100 min-h-screen">
         {children}
       </main>
     </div>
