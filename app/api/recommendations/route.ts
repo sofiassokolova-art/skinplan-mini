@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
         where: {
           id: { in: productIds },
           published: true as any,
-        },
+        } as any,
         include: {
           brand: true,
         },
@@ -237,7 +237,7 @@ export async function GET(request: NextRequest) {
               ...(missingStep !== 'spf' && profile.skinType ? {
                 skinTypes: { has: profile.skinType },
               } : {}),
-            },
+            } as any,
             include: {
               brand: true,
             },
@@ -329,6 +329,7 @@ export async function GET(request: NextRequest) {
             ...(profile.skinType && {
               skinTypes: { has: profile.skinType },
             }),
+          } as any,
           },
           include: {
             brand: true,

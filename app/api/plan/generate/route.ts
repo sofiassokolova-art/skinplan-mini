@@ -251,7 +251,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         brand: {
           isActive: true, // Только активные бренды
         },
-      },
+      } as any,
       include: { brand: true },
     });
     
@@ -279,7 +279,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         brand: {
           isActive: true, // Только активные бренды
         },
-      },
+      } as any,
       include: { brand: true },
     });
     
@@ -386,7 +386,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
               ...(product.concerns && product.concerns.length > 0 ? {
                 concerns: { hasSome: product.concerns },
               } : {}),
-            },
+            } as any,
             include: { brand: true },
             take: 10,
           });
@@ -412,7 +412,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
                 brand: {
                   isActive: true,
                 },
-              },
+              } as any,
               include: { brand: true },
               take: 10,
             });
@@ -481,7 +481,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         brand: {
           isActive: true, // Только активные бренды
         },
-      },
+      } as any,
       include: { brand: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -501,7 +501,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
           brand: {
             isActive: true, // Только активные бренды
           },
-        },
+        } as any,
         include: { brand: true },
         orderBy: { createdAt: 'desc' },
       });
@@ -530,7 +530,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
           isActive: true, // Только активные бренды
         },
         // SPF универсален - не фильтруем по типу кожи
-      },
+      } as any,
       include: { brand: true },
       orderBy: { createdAt: 'desc' },
     });
