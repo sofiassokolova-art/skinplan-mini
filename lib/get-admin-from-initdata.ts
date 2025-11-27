@@ -29,14 +29,14 @@ export async function getAdminFromInitData(
 
   // Валидируем данные Telegram
   const validation = validateTelegramInitData(initData, botToken);
-
+  
   if (!validation.valid || !validation.data?.user) {
     return { valid: false, error: validation.error || 'Invalid initData' };
   }
 
   const { user } = validation.data;
   const telegramIdStr = user.id.toString();
-
+  
   // Проверяем whitelist по telegramId
   const whitelistEntry = await prisma.adminWhitelist.findFirst({
     where: {

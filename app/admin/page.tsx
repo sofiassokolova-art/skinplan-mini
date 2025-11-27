@@ -59,21 +59,21 @@ export default function AdminDashboard() {
     loadStats();
   }, []);
 
-  const loadStats = async () => {
-    try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch('/api/admin/stats', {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
+    const loadStats = async () => {
+      try {
+        const token = localStorage.getItem('admin_token');
+        const response = await fetch('/api/admin/stats', {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
         credentials: 'include', // Важно для передачи cookies
-      });
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats || {});
-        setRecentFeedback(data.recentFeedback || []);
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data.stats || {});
+          setRecentFeedback(data.recentFeedback || []);
         
         // Используем реальные данные роста пользователей из API
         if (data.userGrowth && Array.isArray(data.userGrowth)) {
@@ -82,13 +82,13 @@ export default function AdminDashboard() {
           // Fallback если данных нет
           setUserGrowth([]);
         }
+        }
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   if (loading) {
     return (
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
       <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-12">
         SkinIQ Admin • {currentDate}
       </h1>
-
+      
       {/* 6 больших метрик */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">
         {metricsData.map((m, i) => (
@@ -162,13 +162,13 @@ export default function AdminDashboard() {
             <div className="text-gray-600 text-sm font-medium mb-2">{m.label}</div>
             <div className={`text-5xl font-black font-metrics bg-clip-text text-transparent bg-gradient-to-r ${m.color}`}>
               {m.value}
-            </div>
+        </div>
             {m.change && (
               <div className={`text-sm font-medium mt-4 ${m.change.startsWith('+') || m.change === 'new' ? 'text-emerald-600' : 'text-red-600'}`}>
                 {m.change === 'new' ? '✓ Новый сид' : m.change + ' за 28 дней'}
-              </div>
+        </div>
             )}
-          </div>
+        </div>
         ))}
       </div>
 
@@ -213,9 +213,9 @@ export default function AdminDashboard() {
       <div className="glass rounded-3xl p-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Последние действия</h2>
         <div className="space-y-4">
-          {recentFeedback.length === 0 ? (
+        {recentFeedback.length === 0 ? (
             <p className="text-gray-500 text-center py-8">Нет отзывов</p>
-          ) : (
+        ) : (
             recentFeedback.slice(0, 10).map((f) => (
               <div
                 key={f.id}
@@ -227,8 +227,8 @@ export default function AdminDashboard() {
                       {(f.user.firstName?.[0] || f.user.lastName?.[0] || '?').toUpperCase()}
                     </div>
                     <span className="text-gray-900 font-medium">
-                      {f.user.firstName || ''} {f.user.lastName || ''}
-                    </span>
+                    {f.user.firstName || ''} {f.user.lastName || ''}
+                  </span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={cn(
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
                     </span>
                     <span className="text-gray-500 text-xs">
                       {new Date(f.createdAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                  </span>
                   </div>
                 </div>
                 <p className="text-gray-700 text-sm ml-[52px]">
@@ -252,7 +252,7 @@ export default function AdminDashboard() {
               </div>
             ))
           )}
-        </div>
+          </div>
       </div>
     </div>
   );

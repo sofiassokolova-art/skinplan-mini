@@ -15,23 +15,23 @@ export default function AdminLogin() {
 
   useEffect(() => {
     setMounted(true);
-    
+
     // Проверяем, есть ли уже токен
     const checkExistingToken = async () => {
-      try {
+        try {
         const response = await fetch('/api/admin/auth', {
-          credentials: 'include',
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.valid) {
-            router.push('/admin');
-            return;
+            credentials: 'include',
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.valid) {
+              router.push('/admin');
+              return;
+            }
           }
-        }
-      } catch (error) {
-        console.error('Error checking token:', error);
+        } catch (error) {
+          console.error('Error checking token:', error);
       }
     };
     
@@ -84,9 +84,9 @@ export default function AdminLogin() {
 
       // Сохраняем токен в localStorage для удобства
       if (data.token) {
-        localStorage.setItem('admin_token', data.token);
+      localStorage.setItem('admin_token', data.token);
       }
-
+      
       // Перенаправляем в админ-панель
       router.push('/admin');
       router.refresh();
@@ -125,7 +125,7 @@ export default function AdminLogin() {
                     npx tsx scripts/add-admin.ts {window.Telegram.WebApp.initDataUnsafe.user.id} "София"
                   </code>
                 </p>
-              </div>
+            </div>
             )}
           </div>
         )}

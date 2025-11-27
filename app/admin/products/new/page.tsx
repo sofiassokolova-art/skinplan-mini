@@ -160,52 +160,52 @@ export default function NewProductPage() {
 
       {/* === ОСНОВНЫЕ ДАННЫЕ === */}
       <div className="glass rounded-3xl p-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
             <label className="block text-sm font-medium mb-2 text-gray-300">Название продукта *</label>
-            <input
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <input
+            required
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20"
-            />
-          </div>
-          <div>
+          />
+        </div>
+        <div>
             <label className="block text-sm font-medium mb-2 text-gray-300">Бренд *</label>
-            <select
-              required
-              value={form.brandId}
-              onChange={(e) => setForm({ ...form, brandId: e.target.value })}
+          <select
+            required
+            value={form.brandId}
+            onChange={(e) => setForm({ ...form, brandId: e.target.value })}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-200 focus:outline-none focus:border-white/20"
-            >
+          >
               <option value="" className="bg-[#0a0a0a] text-gray-200">Выберите бренд</option>
-              {brands.map((b) => (
+            {brands.map((b) => (
                 <option key={b.id} value={b.id} className="bg-[#0a0a0a] text-gray-200">
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </div>
+                {b.name}
+              </option>
+            ))}
+          </select>
+      </div>
 
-          <div>
+        <div>
             <label className="block text-sm font-medium mb-2 text-gray-300">Цена (₽) *</label>
-            <input
-              type="number"
+          <input
+            type="number"
               required
-              value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
+            value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20"
-            />
-          </div>
-          <div>
+          />
+        </div>
+        <div>
             <label className="block text-sm font-medium mb-2 text-gray-300">Объём / вес</label>
-            <input
-              placeholder="30 мл"
-              value={form.volume}
-              onChange={(e) => setForm({ ...form, volume: e.target.value })}
+          <input
+            placeholder="30 мл"
+            value={form.volume}
+            onChange={(e) => setForm({ ...form, volume: e.target.value })}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20"
-            />
-          </div>
+          />
+        </div>
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-2 text-gray-300">
@@ -217,32 +217,32 @@ export default function NewProductPage() {
               onChange={(e) => setForm({ ...form, link: e.target.value })}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20"
             />
-          </div>
+      </div>
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-2 text-gray-300">
               Описание (для карточки в приложении)
             </label>
-            <textarea
+        <textarea
               rows={3}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20"
-            />
-          </div>
+        />
+      </div>
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-2 text-gray-300">
               Полный состав (через запятую или с новой строки)
             </label>
-            <textarea
+        <textarea
               rows={4}
               value={form.composition}
               onChange={(e) => setForm({ ...form, composition: e.target.value })}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20 text-sm"
               placeholder="Aqua, Niacinamide, Zinc PCA..."
-            />
-          </div>
+        />
+      </div>
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium mb-2 text-gray-300">Фото продукта</label>
@@ -270,11 +270,11 @@ export default function NewProductPage() {
                 <label className="block text-sm font-medium mb-2 text-gray-300">
                   Или введите URL изображения
                 </label>
-                <input
-                  type="url"
+        <input
+          type="url"
                   placeholder="https://..."
-                  value={form.imageUrl}
-                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+          value={form.imageUrl}
+          onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-white/20"
                 />
               </div>
@@ -290,55 +290,55 @@ export default function NewProductPage() {
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
+        <div>
             <label className="block font-medium mb-3 text-gray-300">Тип кожи (можно несколько)</label>
             <div className="space-y-2">
               {SKIN_TYPES.map((t) => (
                 <label key={t.value} className="flex items-center gap-3 text-gray-300">
-                  <input
-                    type="checkbox"
+                <input
+                  type="checkbox"
                     checked={form.skinTypes.includes(t.value)}
-                    onChange={(e) => {
-                      setForm((prev) => ({
-                        ...prev,
+                  onChange={(e) => {
+                    setForm((prev) => ({
+                      ...prev,
                         skinTypes: e.target.checked
                           ? [...prev.skinTypes, t.value]
                           : prev.skinTypes.filter((x) => x !== t.value),
-                      }));
-                    }}
+                    }));
+                  }}
                     className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                  />
+                />
                   <span>{t.label}</span>
-                </label>
-              ))}
-            </div>
+              </label>
+            ))}
           </div>
+        </div>
 
-          <div>
+        <div>
             <label className="block font-medium mb-3 text-white/80">Проблемы кожи</label>
             <div className="space-y-2">
-              {CONCERNS.map((c) => (
+            {CONCERNS.map((c) => (
                 <label key={c.value} className="flex items-center gap-3 text-white/80">
-                  <input
-                    type="checkbox"
-                    checked={form.concerns.includes(c.value)}
-                    onChange={(e) => {
-                      setForm((prev) => ({
-                        ...prev,
+                <input
+                  type="checkbox"
+                  checked={form.concerns.includes(c.value)}
+                  onChange={(e) => {
+                    setForm((prev) => ({
+                      ...prev,
                         concerns: e.target.checked
-                          ? [...prev.concerns, c.value]
-                          : prev.concerns.filter((x) => x !== c.value),
-                      }));
-                    }}
+                        ? [...prev.concerns, c.value]
+                        : prev.concerns.filter((x) => x !== c.value),
+                    }));
+                  }}
                     className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                  />
-                  <span>{c.label}</span>
-                </label>
-              ))}
-            </div>
+                />
+                <span>{c.label}</span>
+              </label>
+            ))}
           </div>
+        </div>
 
-          <div>
+        <div>
             <label className="block font-medium mb-3 text-white/80">Шаг ухода *</label>
             <select
               required
@@ -357,83 +357,83 @@ export default function NewProductPage() {
 
           <div>
             <label className="block font-medium mb-3 text-white/80">
-              Активные ингредиенты (через запятую)
-            </label>
-            <input
-              value={form.activeIngredients}
-              onChange={(e) =>
-                setForm({ ...form, activeIngredients: e.target.value })
-              }
+            Активные ингредиенты (через запятую)
+          </label>
+          <input
+            value={form.activeIngredients}
+            onChange={(e) =>
+              setForm({ ...form, activeIngredients: e.target.value })
+            }
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-white/20"
               placeholder="ниацинамид 10%, азелаиновая кислота 15%, ретинол 0.3%"
-            />
-          </div>
+          />
+        </div>
 
           <div className="md:col-span-2 space-y-4">
-            <div>
+        <div>
               <label className="block font-medium mb-3 text-gray-300">Избегать при</label>
               <div className="flex gap-8">
                 <label className="flex items-center gap-3 text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={form.avoidIf.includes('pregnant')}
+              <input
+                type="checkbox"
+                checked={form.avoidIf.includes('pregnant')}
                     onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        avoidIf: e.target.checked
-                          ? [...prev.avoidIf, 'pregnant']
-                          : prev.avoidIf.filter((x) => x !== 'pregnant'),
+                  setForm((prev) => ({
+                    ...prev,
+                    avoidIf: e.target.checked
+                      ? [...prev.avoidIf, 'pregnant']
+                      : prev.avoidIf.filter((x) => x !== 'pregnant'),
                       }))
                     }
                     className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                  />
-                  Беременность / ГВ
-                </label>
+              />
+              Беременность / ГВ
+            </label>
                 <label className="flex items-center gap-3 text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={form.avoidIf.includes('retinol_allergy')}
+              <input
+                type="checkbox"
+                checked={form.avoidIf.includes('retinol_allergy')}
                     onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        avoidIf: e.target.checked
-                          ? [...prev.avoidIf, 'retinol_allergy']
-                          : prev.avoidIf.filter((x) => x !== 'retinol_allergy'),
+                  setForm((prev) => ({
+                    ...prev,
+                    avoidIf: e.target.checked
+                      ? [...prev.avoidIf, 'retinol_allergy']
+                      : prev.avoidIf.filter((x) => x !== 'retinol_allergy'),
                       }))
                     }
                     className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                  />
+              />
                   Аллергия на ретинол / кислоты
-                </label>
-              </div>
-            </div>
+            </label>
+          </div>
+        </div>
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-3 text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={form.isHero}
-                  onChange={(e) => setForm({ ...form, isHero: e.target.checked })}
+            <input
+              type="checkbox"
+              checked={form.isHero}
+              onChange={(e) => setForm({ ...form, isHero: e.target.checked })}
                   className="w-5 h-5 rounded border-white/20 bg-white/10 checked:bg-[#8B5CF6]"
-                />
+            />
                 <span className="font-medium text-gray-300">
-                  Герой-рекомендация (выделяется в плане)
-                </span>
-              </label>
+              Герой-рекомендация (выделяется в плане)
+            </span>
+          </label>
 
-              <div>
+          <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Приоритет (1–100)</label>
                 <div className="flex items-center gap-4">
-                  <input
-                    type="range"
+              <input
+                type="range"
                     min="1"
-                    max="100"
-                    value={form.priority}
-                    onChange={(e) =>
-                      setForm({ ...form, priority: Number(e.target.value) })
-                    }
+                max="100"
+                value={form.priority}
+                onChange={(e) =>
+                  setForm({ ...form, priority: Number(e.target.value) })
+                }
                     className="w-64"
-                  />
+              />
                   <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 text-xl">{form.priority}</span>
                 </div>
               </div>

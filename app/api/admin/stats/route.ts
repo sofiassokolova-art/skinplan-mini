@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-
+    
     // Проверяем подключение к БД перед запросами
     try {
       await prisma.$connect();

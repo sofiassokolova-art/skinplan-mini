@@ -15,7 +15,6 @@ import {
   BarChart3,
   MessageSquare,
   Send,
-  LogOut,
   Menu,
   X
 } from 'lucide-react';
@@ -42,16 +41,16 @@ export default function AdminLayout({
 
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem('admin_token');
         const response = await fetch('/api/admin/auth', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: 'include',
         });
 
         if (response.ok) {
-          const data = await response.json();
-          if (data.valid) {
-            setIsAuthenticated(true);
+        const data = await response.json();
+        if (data.valid) {
+          setIsAuthenticated(true);
           } else {
             router.push('/admin/login');
           }
@@ -68,11 +67,6 @@ export default function AdminLayout({
 
     checkAuth();
   }, [router, isLoginPage]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    router.push('/admin/login');
-  };
 
   const menuItems = [
     { href: '/admin', label: 'Дашборд', icon: LayoutDashboard },
@@ -123,7 +117,7 @@ export default function AdminLayout({
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-        </div>
+              </div>
 
         <nav className="p-4 space-y-2">
           {menuItems.map((item) => {
@@ -148,16 +142,6 @@ export default function AdminLayout({
             );
           })}
         </nav>
-
-        <div className="absolute bottom-4 left-4 right-4">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all"
-          >
-            <LogOut size={20} />
-            {sidebarOpen && <span>Выйти</span>}
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
