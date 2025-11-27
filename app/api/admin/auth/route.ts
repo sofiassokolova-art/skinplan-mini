@@ -13,7 +13,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { initData } = body;
 
+    console.log('🔐 POST /api/admin/auth - начало обработки');
+    console.log('   initData присутствует:', !!initData);
+    console.log('   initData длина:', initData?.length || 0);
+
     if (!initData) {
+      console.log('❌ initData отсутствует');
       return NextResponse.json(
         { error: 'initData is required' },
         { status: 400 }
@@ -21,7 +26,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем whitelist и получаем админа
+    console.log('🔍 Вызываем getAdminFromInitData...');
     const result = await getAdminFromInitData(initData);
+    console.log('🔍 Результат getAdminFromInitData:', {
+      valid: result.valid,
+      hasAdmin: !!result.admin,
+      error: result.error,
+    });
 
     if (!result.valid || !result.admin) {
       // Логируем telegramId для отладки (чтобы можно было добавить в whitelist)

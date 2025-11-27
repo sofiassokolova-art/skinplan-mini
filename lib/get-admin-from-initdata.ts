@@ -18,23 +18,36 @@ interface AdminUser {
 export async function getAdminFromInitData(
   initData: string | null
 ): Promise<{ valid: boolean; admin?: AdminUser; error?: string }> {
+  console.log('📥 getAdminFromInitData вызвана');
+  console.log('   initData присутствует:', !!initData);
+  
   if (!initData) {
+    console.log('❌ initData отсутствует');
     return { valid: false, error: 'No initData provided' };
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
-    console.error('Bot token not configured');
+    console.error('❌ Bot token not configured');
     return { valid: false, error: 'Bot token not configured' };
   }
+  console.log('✅ Bot token найден');
 
   // Валидируем данные Telegram
+  console.log('🔍 Валидация initData...');
   const validation = validateTelegramInitData(initData, botToken);
+  console.log('🔍 Результат валидации:', {
+    valid: validation.valid,
+    hasData: !!validation.data,
+    hasUser: !!validation.data?.user,
+    error: validation.error,
+  });
 
   if (!validation.valid || !validation.data?.user) {
-    console.error('Invalid initData:', validation.error);
+    console.error('❌ Invalid initData:', validation.error);
     return { valid: false, error: validation.error || 'Invalid initData' };
   }
+  console.log('✅ initData валиден, user найден');
 
   const { user } = validation.data;
   const telegramIdStr = user.id.toString();
