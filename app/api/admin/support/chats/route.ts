@@ -75,10 +75,12 @@ export async function GET(request: NextRequest) {
       }
 
       // Проверяем, есть ли ответы оператора (не автоответ)
+      // Автоответ содержит "Привет! Это поддержка SkinIQ" или "за пределами рабочего времени"
       const hasAdminReply = chat.messages.some((msg) => 
         msg.isAdmin && 
         !msg.text.includes('Привет! Это поддержка SkinIQ') && 
-        !msg.text.includes('за пределами рабочего времени')
+        !msg.text.includes('за пределами рабочего времени') &&
+        !msg.text.includes('Поддержка работает с 9:00 до 18:00')
       );
 
       const autoStatus = hasAdminReply ? 'in_progress' : 'active';
