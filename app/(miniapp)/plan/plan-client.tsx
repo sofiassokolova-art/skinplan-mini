@@ -172,12 +172,6 @@ export function PlanPageClient({
     }
   };
 
-  // Прогноз через 28 дней (данные из плана или вычисленные)
-  const forecast = {
-    inflammation: -52,
-    hydration: +47,
-    pigmentation: -38,
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F5FFFC] to-[#E8FBF7] pb-24">
@@ -192,7 +186,13 @@ export function PlanPageClient({
       <div className="px-4 -mt-8 relative z-10">
         {/* Инфографика состояния кожи */}
         <div className="mb-8">
-          <SkinInfographic scores={profile.scores} />
+          <SkinInfographic 
+            scores={profile.scores} 
+            skinType={profile.skinType}
+            skinTypeRu={profile.skinTypeRu}
+            sensitivityLevel={profile.sensitivityLevel}
+            acneLevel={profile.acneLevel}
+          />
         </div>
 
         {/* Календарь — переключаемые недели */}
@@ -324,27 +324,6 @@ export function PlanPageClient({
           </button>
         </div>
 
-        {/* Прогноз через 28 дней */}
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-3xl p-6 text-center mb-6">
-          <h3 className="text-xl font-bold mb-4">Что будет через 28 дней</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl p-4">
-              <div className="text-3xl font-bold text-red-600">{forecast.inflammation}%</div>
-              <div className="text-sm text-gray-600">воспалений</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4">
-              <div className="text-3xl font-bold text-blue-600">{forecast.hydration}%</div>
-              <div className="text-sm text-gray-600">увлажнённости</div>
-            </div>
-            <div className="bg-white rounded-2xl p-4">
-              <div className="text-3xl font-bold text-emerald-600">{forecast.pigmentation}%</div>
-              <div className="text-sm text-gray-600">пигментации</div>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 mt-4">
-            На основе 34 000+ пользователей с похожим профилем
-          </p>
-        </div>
 
         {/* Нижняя навигация */}
         <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t px-4 py-3 z-50">

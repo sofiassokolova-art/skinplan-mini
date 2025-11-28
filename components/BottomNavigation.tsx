@@ -23,7 +23,7 @@ export default function BottomNavigation() {
   const navItems = [
     { path: '/', label: 'Главная', icon: 'home' },
     { path: '/plan', label: 'План', icon: 'plan' },
-    { path: '/cart', label: 'Корзина', icon: 'cart' },
+    { path: '/cart', label: 'Избранное', icon: 'wishlist' },
     { path: '/profile', label: 'Профиль', icon: 'profile' },
   ];
 
@@ -134,20 +134,18 @@ export default function BottomNavigation() {
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
             )}
-            {item.icon === 'cart' && (
+            {item.icon === 'wishlist' && (
               <svg 
                 viewBox="0 0 24 24" 
                 width="24" 
                 height="24" 
-                fill="none" 
+                fill={active ? '#0A5F59' : 'none'} 
                 stroke={active ? '#0A5F59' : '#94A3B8'} 
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
               >
-                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <path d="M16 10a4 4 0 0 1-8 0" />
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
             )}
             {item.icon === 'profile' && (
