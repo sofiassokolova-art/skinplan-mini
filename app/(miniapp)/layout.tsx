@@ -4,7 +4,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
@@ -16,6 +16,7 @@ export default function MiniappLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
 
@@ -47,8 +48,11 @@ export default function MiniappLayout({
   // Скрываем навигацию на определенных страницах
   const hideNav = pathname === '/quiz' || pathname.startsWith('/quiz/');
   
+  // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
+  const isResumeScreen = searchParams?.get('resume') === 'true';
+  
   // Скрываем логотип на главной странице (там он уже есть) и на странице незавершенной анкеты
-  const showLogo = pathname !== '/';
+  const showLogo = pathname !== '/' && !isResumeScreen;
 
   return (
     <>

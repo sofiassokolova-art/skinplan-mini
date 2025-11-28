@@ -920,6 +920,19 @@ export default function QuizPage() {
     const totalQuestions = allQuestions.length;
     const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
+    // Устанавливаем query параметр для скрытия навигации в layout
+    useEffect(() => {
+      if (showResumeScreen) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('resume', 'true');
+        window.history.replaceState({}, '', url.toString());
+      } else {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('resume');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }, [showResumeScreen]);
+
     return (
       <div style={{ 
         padding: '20px',
