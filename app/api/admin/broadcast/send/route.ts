@@ -457,10 +457,10 @@ export async function POST(request: NextRequest) {
     
     // Запускаем отправку в фоне (не ждем завершения)
     (async () => {
-      const MESSAGES_PER_SECOND = 30;
-      const DELAY_MS = 1000 / MESSAGES_PER_SECOND; // ~33ms между сообщениями
-      const RANDOM_DELAY_MIN = 800;
-      const RANDOM_DELAY_MAX = 1500;
+      // Telegram Bot API позволяет до 30 сообщений в секунду
+      // Используем небольшую задержку для безопасности (50-100ms)
+      const RANDOM_DELAY_MIN = 50;
+      const RANDOM_DELAY_MAX = 100;
 
       let sentCount = 0;
       let failedCount = 0;
