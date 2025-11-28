@@ -281,7 +281,7 @@ export default function BroadcastAdmin() {
   }, [filters.skinTypes, filters.concerns, filters.planDay, filters.lastActive, filters.hasPurchases]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto pb-24">
+    <div className="w-full max-w-5xl mx-auto pb-32">
       {/* Основная карточка-контейнер */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 lg:p-12">
         {/* Шапка */}
@@ -530,7 +530,7 @@ export default function BroadcastAdmin() {
         </div>
 
         {/* Кнопки */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-gray-900">Кнопки с диплинками (опционально)</h3>
             <button
