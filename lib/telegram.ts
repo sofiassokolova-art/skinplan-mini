@@ -25,18 +25,52 @@ export function validateTelegramInitData(
   botToken: string
 ): { valid: boolean; data?: TelegramInitData; error?: string } {
   try {
-    // Парсим initData
-    const urlParams = new URLSearchParams(initDataRaw);
-    const hash = urlParams.get('hash');
-    urlParams.delete('hash');
+    // Проверяем, что initData не пустой
+    if (!initDataRaw || !initDataRaw.trim()) {
+      return { valid: false, error: 'Empty initData' };
+    }
 
+    // Парсим initData (может быть уже URL-encoded или нет)
+    let urlParams: URLSearchParams;
+    try {
+      // Пробуем парсить как есть
+      urlParams = new URLSearchParams(initDataRaw);
+    } catch (e) {
+      // Если не получается, пробуем декодировать
+      try {
+        urlParams = new URLSearchParams(decodeURIComponent(initDataRaw));
+      } catch (e2) {
+        return { valid: false, error: 'Invalid initData format' };
+      }
+    }
+
+    const hash = urlParams.get('hash');
     if (!hash) {
       return { valid: false, error: 'Missing hash' };
     }
 
     // Сортируем параметры и создаем строку для проверки
-    const dataCheckString = Array.from(urlParams.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
+    // Важно: для проверки hash нужно использовать оригинальные значения из initDataRaw
+    // (как они пришли от Telegram, без декодирования)
+    // Парсим initDataRaw вручную, чтобы сохранить оригинальные URL-encoded значения
+    const pairs: Array<[string, string]> = [];
+    const parts = initDataRaw.split('&');
+    for (const part of parts) {
+      const equalIndex = part.indexOf('=');
+      if (equalIndex === -1) continue;
+      
+      const key = part.substring(0, equalIndex);
+      const value = part.substring(equalIndex + 1);
+      
+      if (key && key !== 'hash') {
+        pairs.push([key, value]);
+      }
+    }
+
+    // Сортируем по ключу и создаем строку для проверки
+    // Используем оригинальные значения (URL-encoded)
+    pairs.sort(([a], [b]) => a.localeCompare(b));
+    const dataCheckString = pairs
       .map(([key, value]) => `${key}=${value}`)
       .join('\n');
 
@@ -54,6 +88,13 @@ export function validateTelegramInitData(
 
     // Проверяем подпись
     if (calculatedHash !== hash) {
+      console.error('Hash validation failed:', {
+        calculatedHash,
+        receivedHash: hash,
+        dataCheckStringLength: dataCheckString.length,
+        botTokenLength: botToken.length,
+        hasBotToken: !!botToken,
+      });
       return { valid: false, error: 'Invalid hash' };
     }
 

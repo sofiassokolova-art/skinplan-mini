@@ -78,18 +78,18 @@ export default function PlanPage() {
       }
 
       // Ждем готовности initData (может быть не сразу доступен)
-      let initData = window.Telegram?.WebApp?.initData;
+      let initData: string | undefined = window.Telegram?.WebApp?.initData || undefined;
       if (!initData) {
         // Ждем максимум 2 секунды для инициализации
-        await new Promise((resolve) => {
+        await new Promise<void>((resolve) => {
           let attempts = 0;
           const maxAttempts = 20; // 20 * 100ms = 2 секунды
           const checkInterval = setInterval(() => {
             attempts++;
-            initData = window.Telegram?.WebApp?.initData;
+            initData = window.Telegram?.WebApp?.initData || undefined;
             if (initData || attempts >= maxAttempts) {
               clearInterval(checkInterval);
-              resolve(undefined);
+              resolve();
             }
           }, 100);
         });

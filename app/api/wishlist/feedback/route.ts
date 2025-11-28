@@ -7,7 +7,9 @@ import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 
 export async function POST(request: NextRequest) {
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    // Пробуем оба варианта заголовка (регистронезависимо)
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
       return NextResponse.json(

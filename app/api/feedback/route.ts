@@ -8,7 +8,9 @@ import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 // POST - сохранение отзыва
 export async function POST(request: NextRequest) {
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    // Пробуем оба варианта заголовка (регистронезависимо)
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
       return NextResponse.json(
@@ -65,7 +67,9 @@ export async function POST(request: NextRequest) {
 // GET - получение последнего отзыва (для проверки, показывать ли поп-ап)
 export async function GET(request: NextRequest) {
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    // Пробуем оба варианта заголовка (регистронезависимо)
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
       return NextResponse.json(

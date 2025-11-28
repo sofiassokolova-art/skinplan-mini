@@ -120,7 +120,9 @@ async function getProductsForStep(step: RuleStep) {
 export async function GET(request: NextRequest) {
   try {
     // Получаем initData из заголовков
-    const initData = request.headers.get('x-telegram-init-data');
+    // Пробуем оба варианта заголовка (регистронезависимо)
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
       return NextResponse.json(

@@ -56,7 +56,9 @@ export async function GET(
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    // Пробуем оба варианта заголовка (регистронезависимо)
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
       return NextResponse.json(

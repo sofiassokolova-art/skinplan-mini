@@ -38,10 +38,12 @@ async function request<T>(
 
   // Добавляем initData в заголовки для идентификации пользователя (только если доступен)
   // Используем оба варианта для совместимости
+  // Важно: передаем initData как есть, без дополнительного кодирования
   if (initData) {
+    // Передаем initData без изменений (он уже в правильном формате от Telegram)
     headers['X-Telegram-Init-Data'] = initData;
     headers['x-telegram-init-data'] = initData;
-    console.log('✅ initData добавлен в заголовки, длина:', initData.length);
+    console.log('✅ initData добавлен в заголовки, длина:', initData.length, 'endpoint:', endpoint);
   } else {
     console.warn('⚠️ initData not available in Telegram WebApp for endpoint:', endpoint);
   }
