@@ -63,15 +63,15 @@ export default function AnalyticsAdmin() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-8">
       <div>
-        <h1 className="text-4xl font-bold text-white mb-2">Аналитика</h1>
-        <p className="text-white/60">Детальная статистика системы</p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Аналитика</h1>
+        <p className="text-gray-600">Детальная статистика системы</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* График распределения */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Распределение данных</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
@@ -92,7 +92,7 @@ export default function AnalyticsAdmin() {
         </div>
 
         {/* Круговая диаграмма */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Соотношение</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>

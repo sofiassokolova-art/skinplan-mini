@@ -88,10 +88,10 @@ export default function FeedbackAdmin() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-8">
       <div>
-        <h1 className="text-4xl font-bold text-white mb-2">Отзывы</h1>
-        <p className="text-white/60">Обратная связь от пользователей</p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Отзывы</h1>
+        <p className="text-gray-600">Обратная связь от пользователей</p>
       </div>
 
       {error && (
@@ -101,7 +101,7 @@ export default function FeedbackAdmin() {
       )}
 
       {/* Вкладки */}
-      <div className="flex gap-4 border-b border-white/10">
+      <div className="flex gap-4 border-b border-gray-200">
         {[
           { key: 'all', label: 'Все', icon: null, count: stats.all },
           { key: 'love', label: 'Love', icon: Heart, count: stats.love, color: 'text-pink-400' },
@@ -116,15 +116,15 @@ export default function FeedbackAdmin() {
               className={cn(
                 'px-6 py-3 border-b-2 transition-colors flex items-center gap-2',
                 activeTab === tab.key
-                  ? 'border-[#8B5CF6] text-white'
-                  : 'border-transparent text-white/60 hover:text-white'
+                  ? 'border-[#8B5CF6] text-gray-900'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
               )}
             >
               {Icon && <Icon className={tab.color} size={20} />}
               <span className="font-medium">{tab.label}</span>
               <span className={cn(
                 'px-2 py-1 rounded text-xs',
-                activeTab === tab.key ? 'bg-white/10' : 'bg-white/5'
+                activeTab === tab.key ? 'bg-gray-100' : 'bg-gray-50'
               )}>
                 {tab.count}
                       </span>
@@ -134,7 +134,7 @@ export default function FeedbackAdmin() {
             </div>
 
       {/* Список отзывов */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="space-y-4">
           {filteredFeedback.length === 0 ? (
             <div className="text-center py-12 text-white/60">

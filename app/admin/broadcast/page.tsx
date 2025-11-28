@@ -347,9 +347,9 @@ export default function BroadcastAdmin() {
   }, [filters.skinTypes, filters.concerns, filters.planDay, filters.lastActive, filters.hasPurchases]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto pb-32">
+    <div className="w-full max-w-5xl mx-auto pb-32 pt-8">
       {/* Основная карточка-контейнер */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 lg:p-12">
+      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 lg:p-12">
         {/* Шапка */}
         <div className="flex items-start justify-between mb-12">
       <div>
@@ -393,7 +393,7 @@ export default function BroadcastAdmin() {
             {/* Три колонки фильтров */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
               {/* Тип кожи */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+              <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8">
                 <h3 className="text-xl font-bold text-gray-900 mb-6">Тип кожи</h3>
                 <div className="space-y-4">
             {SKIN_TYPES.map((type) => (
@@ -411,7 +411,7 @@ export default function BroadcastAdmin() {
         </div>
 
               {/* Проблемы */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+              <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8">
                 <h3 className="text-xl font-bold text-gray-900 mb-6">Проблемы</h3>
                 <div className="space-y-4">
             {CONCERNS.map((concern) => (
@@ -429,7 +429,7 @@ export default function BroadcastAdmin() {
         </div>
 
               {/* Дополнительно */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+              <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8">
                 <h3 className="text-xl font-bold text-gray-900 mb-6">Дополнительно</h3>
                 <div className="space-y-6">
             <div>
@@ -481,7 +481,7 @@ export default function BroadcastAdmin() {
       </div>
 
             {/* Блок "Найдено пользователей" */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+            <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
               <div className="flex items-center justify-between">
         <div>
                   <span className="text-sm text-gray-600 block mb-2">Найдено пользователей:</span>
@@ -503,7 +503,7 @@ export default function BroadcastAdmin() {
         )}
 
         {/* Текстовое поле */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+        <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
           <div className="flex items-start justify-between mb-6">
             <h3 className="text-xl font-bold text-gray-900">Текст сообщения</h3>
             <div className="flex flex-wrap gap-2">
@@ -596,7 +596,7 @@ export default function BroadcastAdmin() {
         </div>
 
         {/* Планирование */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+        <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Clock size={20} className="text-gray-600" />
@@ -658,7 +658,7 @@ export default function BroadcastAdmin() {
         </div>
 
         {/* Кнопки */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-8">
+        <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 mb-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-gray-900">Кнопки с диплинками (опционально)</h3>
             <button
