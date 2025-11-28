@@ -105,10 +105,10 @@ export default function PersonalCabinet() {
           id: dbUser.id || user?.id?.toString() || '',
           telegramId: dbUser.telegramId || user?.id?.toString() || '',
           username: dbUser.username || user?.username,
-          firstName: dbUser.firstName || user?.first_name || null,
-          lastName: dbUser.lastName || user?.last_name || null,
+          firstName: dbUser.firstName || user?.first_name || undefined,
+          lastName: dbUser.lastName || user?.last_name || undefined,
           language: dbUser.language || user?.language_code,
-          phoneNumber: dbUser.phoneNumber || null,
+          phoneNumber: dbUser.phoneNumber || undefined,
         };
         setUserProfile(profile);
         setNameValue([dbUser.firstName || user?.first_name, dbUser.lastName || user?.last_name].filter(Boolean).join(' ') || '');
@@ -119,10 +119,10 @@ export default function PersonalCabinet() {
           id: user.id.toString(),
           telegramId: user.id.toString(),
           username: user.username,
-          firstName: user.first_name || null,
-          lastName: user.last_name || null,
+          firstName: user.first_name || undefined,
+          lastName: user.last_name || undefined,
           language: user.language_code,
-          phoneNumber: null,
+          phoneNumber: undefined,
         };
         setUserProfile(profile);
         setNameValue([user.first_name, user.last_name].filter(Boolean).join(' ') || '');
