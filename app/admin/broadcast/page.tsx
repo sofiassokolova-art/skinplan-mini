@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Send, RefreshCw, AlertCircle, Image as ImageIcon, Plus, X, ChevronDown, Save, Clock } from 'lucide-react';
+import { Send, RefreshCw, AlertCircle, Image as ImageIcon, Plus, X, ChevronDown, Save, Clock, Construction } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Filters {
@@ -62,8 +62,7 @@ export default function BroadcastAdmin() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [buttons, setButtons] = useState<Button[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [scheduleEnabled, setScheduleEnabled] = useState(false);
-  const [scheduledDateTime, setScheduledDateTime] = useState('');
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   const handleCount = async () => {
     setCountLoading(true);
@@ -184,14 +183,6 @@ export default function BroadcastAdmin() {
         formData.append('buttons', JSON.stringify(buttons));
       }
       formData.append('test', 'false');
-      
-      // Добавляем запланированное время, если включено
-      if (scheduleEnabled && scheduledDateTime) {
-        const scheduledAtUTC = convertMoscowToUTC(scheduledDateTime);
-        if (scheduledAtUTC) {
-          formData.append('scheduledAt', scheduledAtUTC.toISOString());
-        }
-      }
 
       const response = await fetch('/api/admin/broadcast/send', {
         method: 'POST',
@@ -213,24 +204,7 @@ export default function BroadcastAdmin() {
       }
 
       const data = await response.json();
-      if (scheduleEnabled && scheduledDateTime) {
-        const scheduledAtUTC = convertMoscowToUTC(scheduledDateTime);
-        if (scheduledAtUTC) {
-          const moscowTime = scheduledAtUTC.toLocaleString('ru-RU', { 
-            timeZone: 'Europe/Moscow',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-          alert(`✅ Рассылка запланирована на ${moscowTime} МСК! ID: ${data.broadcastId}`);
-        } else {
-          alert(`✅ Рассылка запущена! ID: ${data.broadcastId}`);
-        }
-      } else {
-        alert(`✅ Рассылка запущена! ID: ${data.broadcastId}`);
-      }
+      alert(`✅ Рассылка запущена! ID: ${data.broadcastId}`);
       router.push('/admin/broadcasts');
     } catch (err: any) {
       setError(err.message || 'Ошибка отправки');
@@ -300,43 +274,6 @@ export default function BroadcastAdmin() {
     setImagePreview(null);
   };
 
-  // Функция для получения текущей даты/времени в МСК в формате для input datetime-local
-  const getMoscowDateTimeLocal = (): string => {
-    const now = new Date();
-    // МСК = UTC+3
-    const moscowOffset = 3 * 60; // минуты
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const moscowTime = new Date(utc + (moscowOffset * 60000));
-    
-    // Форматируем для input datetime-local (YYYY-MM-DDTHH:mm)
-    const year = moscowTime.getFullYear();
-    const month = String(moscowTime.getMonth() + 1).padStart(2, '0');
-    const day = String(moscowTime.getDate()).padStart(2, '0');
-    const hours = String(moscowTime.getHours()).padStart(2, '0');
-    const minutes = String(moscowTime.getMinutes()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  // Конвертируем локальное время МСК в UTC для сохранения в БД
-  const convertMoscowToUTC = (moscowDateTimeLocal: string): Date | null => {
-    if (!moscowDateTimeLocal) return null;
-    
-    // Парсим локальное время МСК (YYYY-MM-DDTHH:mm)
-    const [datePart, timePart] = moscowDateTimeLocal.split('T');
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hours, minutes] = timePart.split(':').map(Number);
-    
-    // Создаем строку в формате ISO для МСК (UTC+3)
-    // Формат: YYYY-MM-DDTHH:mm:ss+03:00
-    const moscowISOString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+03:00`;
-    
-    // Парсим строку с timezone offset - JavaScript автоматически конвертирует в UTC
-    const moscowDate = new Date(moscowISOString);
-    
-    return moscowDate;
-  };
-
   // Автоматически подсчитываем при изменении фильтров (кроме sendToAll)
   useEffect(() => {
     if (!filters.sendToAll) {
@@ -356,10 +293,19 @@ export default function BroadcastAdmin() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Новая рассылка</h1>
             <p className="text-gray-600">Персонализированные сообщения пользователям</p>
           </div>
-          <button className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2">
-            <Save size={16} />
-            Сохранить как шаблон
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setShowScheduleModal(true)}
+              className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Clock size={16} />
+              Планирование
+            </button>
+            <button className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2">
+              <Save size={16} />
+              Сохранить как шаблон
+            </button>
+          </div>
       </div>
 
       {error && (
@@ -534,7 +480,7 @@ export default function BroadcastAdmin() {
         </div>
 
         {/* Фото */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+        <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
           <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
             <ImageIcon size={20} className="text-gray-600" />
             Фото (опционально)
@@ -595,67 +541,6 @@ export default function BroadcastAdmin() {
           </div>
         </div>
 
-        {/* Планирование */}
-        <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Clock size={20} className="text-gray-600" />
-              Планирование рассылки (опционально)
-            </h3>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={scheduleEnabled}
-                onChange={(e) => {
-                  setScheduleEnabled(e.target.checked);
-                  if (e.target.checked && !scheduledDateTime) {
-                    // Устанавливаем время на час вперед по умолчанию
-                    const defaultTime = new Date();
-                    defaultTime.setHours(defaultTime.getHours() + 1);
-                    const moscowTime = getMoscowDateTimeLocal();
-                    const [datePart, timePart] = moscowTime.split('T');
-                    const [hours, minutes] = timePart.split(':').map(Number);
-                    const nextHour = (hours + 1) % 24;
-                    setScheduledDateTime(`${datePart}T${String(nextHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
-                  }
-                }}
-                className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-              />
-              <span className="text-gray-700 font-medium">Запланировать отправку</span>
-            </label>
-          </div>
-          
-          {scheduleEnabled && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Дата и время отправки (МСК)
-                </label>
-                <input
-                  type="datetime-local"
-                  value={scheduledDateTime}
-                  onChange={(e) => setScheduledDateTime(e.target.value)}
-                  min={getMoscowDateTimeLocal()}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                  Время указывается по московскому времени (МСК, UTC+3)
-                </p>
-                {scheduledDateTime && (() => {
-                  const scheduledAtUTC = convertMoscowToUTC(scheduledDateTime);
-                  if (scheduledAtUTC && scheduledAtUTC < new Date()) {
-                    return (
-                      <p className="mt-2 text-sm text-red-600">
-                        ⚠️ Выбранное время уже прошло. Выберите будущее время.
-                      </p>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Кнопки */}
         <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 mb-8">
@@ -704,6 +589,31 @@ export default function BroadcastAdmin() {
           </div>
         </div>
       </div>
+
+      {/* Модалка "В разработке" для планирования */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl border border-gray-200">
+            <div className="flex items-center justify-center mb-6">
+              <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                <Construction className="text-indigo-600" size={32} />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 text-center mb-4">
+              Планирование рассылок
+            </h2>
+            <p className="text-gray-600 text-center mb-6">
+              Функционал планирования рассылок на определенное время находится в разработке.
+            </p>
+            <button
+              onClick={() => setShowScheduleModal(false)}
+              className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors"
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Нижняя фиксированная панель */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-6 px-6 md:px-8 shadow-lg z-50" style={{ marginLeft: '256px' }}>
