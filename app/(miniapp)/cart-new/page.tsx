@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 
 // Отключаем статическую генерацию для этой страницы
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface CartItem {
   id: string;
@@ -300,23 +301,6 @@ function CartPageContent() {
 }
 
 export default function CartPage() {
-  return (
-    <Suspense fallback={
-      <div
-        style={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-          padding: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div style={{ fontSize: '18px', color: '#475467' }}>Загрузка...</div>
-      </div>
-    }>
-      <CartPageContent />
-    </Suspense>
-  );
+  return <CartPageContent />;
 }
 

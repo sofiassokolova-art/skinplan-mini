@@ -3,13 +3,13 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 
-export default function MiniappLayout({
+function LayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -94,5 +94,17 @@ export default function MiniappLayout({
       {children}
       {!hideNav && <BottomNavigation />}
     </>
+  );
+}
+
+export default function MiniappLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={<>{children}</>}>
+      <LayoutContent>{children}</LayoutContent>
+    </Suspense>
   );
 }
