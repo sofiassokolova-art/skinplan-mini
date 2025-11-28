@@ -127,6 +127,24 @@ export default function CartPage() {
         paddingBottom: wishlist.length > 0 ? '140px' : '120px',
       }}
     >
+      {/* Логотип */}
+      <div style={{
+        padding: '20px',
+        textAlign: 'center',
+        marginTop: '-20px',
+        marginLeft: '-20px',
+        marginRight: '-20px',
+      }}>
+        <img
+          src="/skiniq-logo.png"
+          alt="SkinIQ"
+          style={{
+            height: '140px',
+            marginTop: '8px',
+            marginBottom: '8px',
+          }}
+        />
+      </div>
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <h1
