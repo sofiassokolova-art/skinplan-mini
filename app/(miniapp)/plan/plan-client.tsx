@@ -176,7 +176,11 @@ export function PlanPageClient({
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F5FFFC] to-[#E8FBF7] pb-24">
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      paddingBottom: '120px',
+    }}>
       {/* Шапка с прогрессом и инфографикой */}
       <ProgressHeader 
         currentDay={currentDay}
@@ -185,9 +189,9 @@ export function PlanPageClient({
         primaryConcernRu={profile.primaryConcernRu}
       />
 
-      <div className="px-4 -mt-8 relative z-10">
+      <div style={{ padding: '20px', marginTop: '-32px', position: 'relative', zIndex: 10 }}>
         {/* Инфографика состояния кожи */}
-        <div className="mb-8">
+        <div style={{ marginBottom: '32px' }}>
           <SkinInfographic 
             scores={profile.scores} 
             skinType={profile.skinType}
@@ -198,7 +202,7 @@ export function PlanPageClient({
         </div>
 
         {/* Календарь — переключаемые недели */}
-        <div className="mb-8">
+        <div style={{ marginBottom: '32px' }}>
           <WeekCalendar 
             weeks={plan.weeks}
             currentWeek={selectedWeek}
@@ -208,30 +212,55 @@ export function PlanPageClient({
         </div>
 
         {/* Текущий день — утро/вечер */}
-        <div className="bg-white rounded-3xl shadow-2xl p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-6">
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(28px)',
+          borderRadius: '24px',
+          padding: '24px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(10, 95, 89, 0.1)',
+        }}>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            marginBottom: '24px',
+            color: '#0A5F59',
+          }}>
             День {currentDay} • Неделя {currentWeek}
           </h2>
 
           {/* Табы утро/вечер */}
-          <div className="flex gap-6 border-b mb-6">
+          <div style={{ display: 'flex', gap: '24px', borderBottom: '2px solid #E5E7EB', marginBottom: '24px' }}>
             <button
               onClick={() => setActiveTab('morning')}
-              className={`pb-3 font-bold transition-all ${
-                activeTab === 'morning'
-                  ? 'border-b-4 border-purple-600 text-purple-600'
-                  : 'text-gray-500'
-              }`}
+              style={{
+                paddingBottom: '12px',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: activeTab === 'morning' ? '#9333EA' : '#6B7280',
+                borderBottom: activeTab === 'morning' ? '4px solid #9333EA' : '4px solid transparent',
+                transition: 'all 0.2s',
+              }}
             >
               Утро
             </button>
             <button
               onClick={() => setActiveTab('evening')}
-              className={`pb-3 font-bold transition-all ${
-                activeTab === 'evening'
-                  ? 'border-b-4 border-purple-600 text-purple-600'
-                  : 'text-gray-500'
-              }`}
+              style={{
+                paddingBottom: '12px',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: activeTab === 'evening' ? '#9333EA' : '#6B7280',
+                borderBottom: activeTab === 'evening' ? '4px solid #9333EA' : '4px solid transparent',
+                transition: 'all 0.2s',
+              }}
             >
               Вечер
             </button>
@@ -239,7 +268,7 @@ export function PlanPageClient({
 
           {/* Утро */}
           {activeTab === 'morning' && (
-            <div className="space-y-5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {todayMorning.map((productId, index) => {
                 const product = todayProducts.find(p => p.id === productId);
                 if (!product) return null;
@@ -249,10 +278,10 @@ export function PlanPageClient({
 
                 return (
                   <DayRoutine key={product.id} product={product} stepNumber={index + 1} isNew={isNew}>
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex-1">
-                        <p className="font-bold text-lg">{product.name}</p>
-                        <p className="text-sm text-gray-600">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px' }}>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontWeight: 'bold', fontSize: '18px', color: '#0A5F59', marginBottom: '4px' }}>{product.name}</p>
+                        <p style={{ fontSize: '14px', color: '#6B7280' }}>
                           {product.brand.name} • {product.price} ₽
                         </p>
                       </div>
@@ -267,7 +296,25 @@ export function PlanPageClient({
                     {/* Кнопка замены */}
                     <button
                       onClick={() => openReplaceModal(product)}
-                      className="mt-4 w-full text-red-600 border border-red-300 py-3 rounded-2xl text-sm font-medium hover:bg-red-50"
+                      style={{
+                        marginTop: '16px',
+                        width: '100%',
+                        color: '#DC2626',
+                        border: '1px solid #FCA5A5',
+                        padding: '12px',
+                        borderRadius: '16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FEE2E2';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                     >
                       Не подошло — заменить
                     </button>
@@ -279,7 +326,7 @@ export function PlanPageClient({
 
           {/* Вечер */}
           {activeTab === 'evening' && (
-            <div className="space-y-5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {todayEvening.map((productId, index) => {
                 const product = todayProducts.find(p => p.id === productId);
                 if (!product) return null;
@@ -289,10 +336,10 @@ export function PlanPageClient({
 
                 return (
                   <DayRoutine key={product.id} product={product} stepNumber={index + 1} isNew={isNew}>
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex-1">
-                        <p className="font-bold text-lg">{product.name}</p>
-                        <p className="text-sm text-gray-600">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px' }}>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontWeight: 'bold', fontSize: '18px', color: '#0A5F59', marginBottom: '4px' }}>{product.name}</p>
+                        <p style={{ fontSize: '14px', color: '#6B7280' }}>
                           {product.brand.name} • {product.price} ₽
                         </p>
                       </div>
@@ -307,7 +354,25 @@ export function PlanPageClient({
                     {/* Кнопка замены */}
                     <button
                       onClick={() => openReplaceModal(product)}
-                      className="mt-4 w-full text-red-600 border border-red-300 py-3 rounded-2xl text-sm font-medium hover:bg-red-50"
+                      style={{
+                        marginTop: '16px',
+                        width: '100%',
+                        color: '#DC2626',
+                        border: '1px solid #FCA5A5',
+                        padding: '12px',
+                        borderRadius: '16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#FEE2E2';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                     >
                       Не подошло — заменить
                     </button>
@@ -320,7 +385,26 @@ export function PlanPageClient({
           {/* Кнопка завершения дня */}
           <button
             onClick={completeCurrentDay}
-            className="mt-8 w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-6 rounded-3xl font-bold text-xl shadow-lg hover:shadow-xl transition-all"
+            style={{
+              marginTop: '32px',
+              width: '100%',
+              background: 'linear-gradient(to right, #10B981, #14B8A6)',
+              color: 'white',
+              padding: '24px',
+              borderRadius: '24px',
+              fontWeight: 'bold',
+              fontSize: '20px',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 12px 32px rgba(16, 185, 129, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
+            }}
           >
             День {currentDay} выполнен
           </button>
@@ -334,12 +418,60 @@ export function PlanPageClient({
         />
 
         {/* Нижняя навигация */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t px-4 py-3 z-50">
-          <div className="max-w-md mx-auto flex gap-3">
-            <Link href="/wishlist" className="flex-1 bg-gray-100 py-4 rounded-2xl text-center font-bold hover:bg-gray-200 transition-all">
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(28px)',
+          borderTop: '1px solid rgba(10, 95, 89, 0.1)',
+          padding: '12px 16px',
+          zIndex: 50,
+        }}>
+          <div style={{ maxWidth: '420px', margin: '0 auto', display: 'flex', gap: '12px' }}>
+            <Link 
+              href="/wishlist" 
+              style={{
+                flex: 1,
+                backgroundColor: '#F3F4F6',
+                padding: '16px',
+                borderRadius: '16px',
+                textAlign: 'center',
+                fontWeight: 'bold',
+                color: '#0A5F59',
+                textDecoration: 'none',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#E5E7EB';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#F3F4F6';
+              }}
+            >
               Избранное ({wishlistProductIds.size})
             </Link>
-            <Link href="/profile" className="flex-1 bg-purple-600 text-white py-4 rounded-2xl text-center font-bold hover:bg-purple-700 transition-all">
+            <Link 
+              href="/profile" 
+              style={{
+                flex: 1,
+                backgroundColor: '#9333EA',
+                padding: '16px',
+                borderRadius: '16px',
+                textAlign: 'center',
+                fontWeight: 'bold',
+                color: 'white',
+                textDecoration: 'none',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#7E22CE';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#9333EA';
+              }}
+            >
               Профиль кожи
             </Link>
           </div>
