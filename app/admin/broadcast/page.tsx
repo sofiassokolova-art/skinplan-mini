@@ -301,10 +301,10 @@ export default function BroadcastAdmin() {
               <Clock size={16} />
               Планирование
             </button>
-            <button className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2">
-              <Save size={16} />
-              Сохранить как шаблон
-            </button>
+          <button className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2">
+            <Save size={16} />
+            Сохранить как шаблон
+          </button>
           </div>
       </div>
 
@@ -504,9 +504,9 @@ export default function BroadcastAdmin() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Или введите URL изображения
               </label>
-              <input
-                type="url"
-                value={imageUrl}
+          <input
+            type="url"
+            value={imageUrl}
                 onChange={(e) => {
                   setImageUrl(e.target.value);
                   if (e.target.value) {
@@ -514,31 +514,31 @@ export default function BroadcastAdmin() {
                     setImagePreview(null);
                   }
                 }}
-                placeholder="https://example.com/image.jpg"
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="https://example.com/image.jpg"
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 disabled={!!imageFile}
-              />
+          />
             </div>
             
             {/* Превью */}
             {(imagePreview || imageUrl) && (
-              <div className="mt-4">
+            <div className="mt-4">
                 <img 
                   src={imagePreview || imageUrl} 
                   alt="Preview" 
                   className="max-w-md rounded-lg border border-gray-200" 
                 />
-                <button
-                  type="button"
+              <button
+                type="button"
                   onClick={removeImage}
-                  className="mt-2 text-red-600 hover:text-red-700 text-sm flex items-center gap-1"
-                >
-                  <X size={16} />
-                  Удалить фото
-                </button>
-              </div>
-            )}
-          </div>
+                className="mt-2 text-red-600 hover:text-red-700 text-sm flex items-center gap-1"
+              >
+                <X size={16} />
+                Удалить фото
+              </button>
+            </div>
+          )}
+        </div>
         </div>
 
 

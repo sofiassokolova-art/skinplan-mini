@@ -122,6 +122,17 @@ export const api = {
     return request('/profile/current');
   },
 
+  async getUserProfile() {
+    return request('/profile/user');
+  },
+
+  async updateUserProfile(data: { firstName?: string; lastName?: string; phoneNumber?: string }) {
+    return request('/profile/user', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
   // Рекомендации
   async getRecommendations() {
     return request('/recommendations');

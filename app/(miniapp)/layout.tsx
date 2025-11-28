@@ -56,18 +56,11 @@ export default function MiniappLayout({
 
   return (
     <>
-      {/* Логотип наверху всех экранов (кроме главной) */}
+      {/* Логотип наверху всех экранов (кроме главной) - как на главной странице */}
       {showLogo && (
         <div style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          backgroundColor: 'rgba(245, 255, 252, 0.9)',
-          backdropFilter: 'blur(10px)',
-          padding: '12px 20px',
-          display: 'flex',
-          justifyContent: 'center',
-          borderBottom: '1px solid rgba(10, 95, 89, 0.1)',
+          padding: '20px',
+          textAlign: 'center',
         }}>
           <button
             onClick={() => router.push('/')}
@@ -75,18 +68,17 @@ export default function MiniappLayout({
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              padding: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              padding: 0,
+              display: 'inline-block',
             }}
           >
             <img
               src="/skiniq-logo.png"
               alt="SkinIQ"
               style={{
-                height: '48px',
-                width: 'auto',
+                height: '140px',
+                marginTop: '8px',
+                marginBottom: '8px',
                 transition: 'transform 0.2s',
               }}
               onMouseEnter={(e) => {

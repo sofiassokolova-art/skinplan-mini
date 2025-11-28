@@ -323,7 +323,7 @@ export default function ProductsAdmin() {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-red-700">{error}</p>
-        </div>
+      </div>
       )}
 
       {/* Поиск и фильтры */}

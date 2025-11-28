@@ -143,7 +143,7 @@ export function validateTelegramInitData(
             paramsCount: params.size,
             sortedKeys: sortedKeys.slice(0, 5), // Первые 5 ключей для отладки
           });
-          return { valid: false, error: 'Invalid hash' };
+      return { valid: false, error: 'Invalid hash' };
         }
       }
     }

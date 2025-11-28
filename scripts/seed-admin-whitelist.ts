@@ -49,9 +49,9 @@ async function main() {
         telegramId: adminData.telegramId || undefined,
         name: adminData.name,
         role: adminData.role,
-        isActive: true,
-      },
-    });
+      isActive: true,
+    },
+  });
 
     console.log(`✅ Admin added/updated: ${adminData.name}`, {
       id: admin.id,

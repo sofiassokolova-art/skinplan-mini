@@ -9,6 +9,8 @@ export interface TelegramWebApp {
   close: () => void;
   sendData: (data: string) => void;
   showPopup: (params: { title: string; message: string; buttons?: Array<{ type: string }> }) => void;
+  openLink: (url: string) => void;
+  openTelegramLink: (url: string) => void;
   initData: string;
   initDataUnsafe: {
     user?: {
@@ -17,6 +19,7 @@ export interface TelegramWebApp {
       last_name?: string;
       username?: string;
       language_code?: string;
+      photo_url?: string;
     };
   };
 }

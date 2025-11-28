@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { INFO_SCREENS, getInfoScreenAfterQuestion, type InfoScreen } from './info-screens';
@@ -900,7 +901,7 @@ export default function QuizPage() {
               opt.value?.toLowerCase() === answerValue?.toLowerCase()
             );
             if (matchingOption) {
-              genderValue = matchingOption.value || matchingOption.text || answerValue;
+              genderValue = matchingOption.value || matchingOption.label || answerValue;
             }
           }
           break;
@@ -916,7 +917,7 @@ export default function QuizPage() {
                    genderValue?.toLowerCase() === 'мужской' ||
                    (genderQuestion?.options?.some(opt => 
                      (opt.value?.toLowerCase().includes('мужчин') || 
-                      opt.text?.toLowerCase().includes('мужчин') ||
+                      opt.label?.toLowerCase().includes('мужчин') ||
                       opt.value?.toLowerCase().includes('male')) &&
                      (answers[genderQuestion.id] === opt.value || 
                       answers[genderQuestion.id] === opt.id.toString())
@@ -1788,30 +1789,52 @@ export default function QuizPage() {
             {currentQuestionIndex === allQuestions.length - 1 && 
              answers[currentQuestion.id] && 
              (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) && (
-              <button
-                onClick={() => {
-                  submitAnswers().catch((err) => {
-                    console.error('Error submitting answers:', err);
-                  });
-                }}
-                disabled={isSubmitting}
-                style={{
-                  marginTop: '24px',
-                  padding: '18px',
-                  borderRadius: '16px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
-                  border: 'none',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                  transition: 'all 0.2s',
-                  opacity: isSubmitting ? 0.7 : 1,
-                }}
-              >
-                {isSubmitting ? 'Отправка...' : 'Получить план →'}
-              </button>
+              <div style={{ marginTop: '24px' }}>
+                <button
+                  onClick={() => {
+                    submitAnswers().catch((err) => {
+                      console.error('Error submitting answers:', err);
+                    });
+                  }}
+                  disabled={isSubmitting}
+                  style={{
+                    width: '100%',
+                    padding: '18px',
+                    borderRadius: '16px',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                    transition: 'all 0.2s',
+                    opacity: isSubmitting ? 0.7 : 1,
+                  }}
+                >
+                  {isSubmitting ? 'Отправка...' : 'Получить план →'}
+                </button>
+                {!isRetakingQuiz && (
+                  <p style={{
+                    marginTop: '12px',
+                    fontSize: '11px',
+                    color: '#6B7280',
+                    textAlign: 'center',
+                    lineHeight: '1.4',
+                  }}>
+                    Нажимая «Получить план», вы соглашаетесь с{' '}
+                    <Link
+                      href="/terms"
+                      style={{
+                        color: '#0A5F59',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      пользовательским соглашением
+                    </Link>
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -1852,26 +1875,48 @@ export default function QuizPage() {
             {/* Кнопка "Получить план" показывается только если это последний вопрос И нет инфо-экранов после него */}
             {currentQuestionIndex === allQuestions.length - 1 && 
              (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) ? (
-              <button
-                onClick={submitAnswers}
-                disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting}
-                style={{
-                  marginTop: '24px',
-                  padding: '18px',
-                  borderRadius: '16px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
-                  border: 'none',
-                  cursor: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting) ? 'not-allowed' : 'pointer',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                  opacity: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting) ? 0.5 : 1,
-                  transition: 'all 0.2s',
-                }}
-              >
-                {isSubmitting ? 'Отправка...' : 'Получить план →'}
-              </button>
+              <div style={{ marginTop: '24px' }}>
+                <button
+                  onClick={submitAnswers}
+                  disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting}
+                  style={{
+                    width: '100%',
+                    padding: '18px',
+                    borderRadius: '16px',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    cursor: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting) ? 'not-allowed' : 'pointer',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                    opacity: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0) || isSubmitting) ? 0.5 : 1,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {isSubmitting ? 'Отправка...' : 'Получить план →'}
+                </button>
+                {!isRetakingQuiz && (
+                  <p style={{
+                    marginTop: '12px',
+                    fontSize: '11px',
+                    color: '#6B7280',
+                    textAlign: 'center',
+                    lineHeight: '1.4',
+                  }}>
+                    Нажимая «Получить план», вы соглашаетесь с{' '}
+                    <Link
+                      href="/terms"
+                      style={{
+                        color: '#0A5F59',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      пользовательским соглашением
+                    </Link>
+                  </p>
+                )}
+              </div>
             ) : (
               <button
                 onClick={handleNext}

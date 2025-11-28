@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
       buttons = buttonsStr ? JSON.parse(buttonsStr) : undefined;
     } else {
       // Обрабатываем JSON (для обратной совместимости)
-      const body = await request.json();
+    const body = await request.json();
       filters = body.filters;
       message = body.message;
       test = body.test;
