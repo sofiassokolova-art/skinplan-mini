@@ -9,6 +9,25 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PlanPageClient } from './plan-client';
 
+const TOTAL_PLAN_DAYS = 28;
+
+interface PlanProduct {
+  id: number;
+  name: string;
+  brand: { name: string };
+  price: number;
+  volume: string | null;
+  imageUrl: string | null;
+  step: string;
+  firstIntroducedDay: number;
+}
+
+interface PlanWeekDay {
+  dayNumber?: number;
+  morning: number[];
+  evening: number[];
+}
+
 interface PlanData {
   user: {
     id: string;
@@ -28,31 +47,17 @@ interface PlanData {
   plan: {
     weeks: Array<{
       week: number;
-      days: Array<{
-        morning: number[];
-        evening: number[];
-      }>;
+      days: PlanWeekDay[];
     }>;
   };
+  planProducts: PlanProduct[];
   progress: {
     currentDay: number;
+    currentWeek: number;
     completedDays: number[];
+    totalDays: number;
   };
   wishlist: number[];
-  currentDay: number;
-  currentWeek: number;
-  todayProducts: Array<{
-    id: number;
-    name: string;
-    brand: { name: string };
-    price: number;
-    volume: string | null;
-    imageUrl: string | null;
-    step: string;
-    firstIntroducedDay: number;
-  }>;
-  todayMorning: number[];
-  todayEvening: number[];
 }
 
 export default function PlanPage() {
@@ -174,31 +179,135 @@ export default function PlanPage() {
         console.warn('Could not load wishlist:', err);
       }
 
-      // Обрабатываем данные для передачи в компонент
-      const currentDayGlobal = 1; // TODO: получить из progress
-      const currentWeek = 1;
-      const currentWeekData = plan.weeks[0];
-      const currentDayData = currentWeekData?.days[0];
+      const rawWeeks = Array.isArray(plan.weeks) ? plan.weeks : [];
 
-      const todayMorning = currentDayData?.morning || [];
-      const todayEvening = currentDayData?.evening || [];
+      const productFirstDay: Record<number, number> = {};
+      rawWeeks.forEach((week: any) => {
+        const days = Array.isArray(week.days) ? week.days : [];
+        days.forEach((day: any, index: number) => {
+          const calculatedDay =
+            typeof day?.day === 'number'
+              ? day.day
+              : ((week.week || 1) - 1) * 7 + index + 1;
+          if (day?.products && typeof day.products === 'object') {
+            Object.values(day.products).forEach((product: any) => {
+              if (product?.id && productFirstDay[product.id] === undefined) {
+                productFirstDay[product.id] = calculatedDay;
+              }
+            });
+          }
+        });
+      });
 
-      // Получаем продукты для текущего дня
-      const todayProductIds = [...new Set([...todayMorning, ...todayEvening])].filter((id): id is number => typeof id === 'number');
-      
-      // Преобразуем продукты из плана
-      const todayProducts = (plan.products || []).filter((p: any) => todayProductIds.includes(p.id)).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        brand: { name: p.brand || 'Unknown' },
-        price: p.price || 0,
-        volume: p.volume || null,
-        imageUrl: p.imageUrl || null,
-        step: p.category || p.step || 'moisturizer',
-        firstIntroducedDay: 1,
+      const normalizedWeeks = rawWeeks.map((week: any) => ({
+        week: week.week,
+        days: (Array.isArray(week.days) ? week.days : []).map(
+          (day: any, index: number) => {
+            const dayNumber =
+              typeof day?.day === 'number'
+                ? day.day
+                : ((week.week || 1) - 1) * 7 + index + 1;
+
+            const morningIds = Array.isArray(day?.morning)
+              ? day.morning
+                  .map((stepOrId: any) => {
+                    if (
+                      typeof stepOrId === 'string' &&
+                      day.products?.[stepOrId]?.id
+                    ) {
+                      return day.products[stepOrId].id;
+                    }
+                    return typeof stepOrId === 'number' ? stepOrId : null;
+                  })
+                  .filter((id: any): id is number => id !== null)
+              : [];
+
+            const eveningIds = Array.isArray(day?.evening)
+              ? day.evening
+                  .map((stepOrId: any) => {
+                    if (
+                      typeof stepOrId === 'string' &&
+                      day.products?.[stepOrId]?.id
+                    ) {
+                      return day.products[stepOrId].id;
+                    }
+                    return typeof stepOrId === 'number' ? stepOrId : null;
+                  })
+                  .filter((id: any): id is number => id !== null)
+              : [];
+
+            return {
+              dayNumber,
+              morning: morningIds,
+              evening: eveningIds,
+            };
+          }
+        ),
       }));
 
-      // Преобразуем scores из плана
+      const planLength =
+        normalizedWeeks.reduce(
+          (total, week) => total + (week.days?.length || 0),
+          0
+        ) || TOTAL_PLAN_DAYS;
+
+      const planProducts: PlanProduct[] = (plan.products || []).map(
+        (p: any) => ({
+          id: p.id,
+          name: p.name,
+          brand: { name: p.brand || 'Unknown' },
+          price: p.price || 0,
+          volume: p.volume || null,
+          imageUrl: p.imageUrl || null,
+          step: p.category || p.step || 'moisturizer',
+          firstIntroducedDay: productFirstDay[p.id] || 1,
+        })
+      );
+
+      let progressState = {
+        currentDay: 1,
+        currentWeek: 1,
+        completedDays: [] as number[],
+        totalDays: planLength,
+      };
+
+      try {
+        const progressResponse = (await api.getPlanProgress()) as any;
+        const serverProgress = progressResponse?.progress;
+        if (serverProgress) {
+          const sanitizedCompleted = Array.isArray(serverProgress.completedDays)
+            ? Array.from(
+                new Set(
+                  serverProgress.completedDays
+                    .map((day: any) => Number(day))
+                    .filter((day: number) => Number.isFinite(day))
+                )
+              )
+                .filter((day) => day >= 1 && day <= planLength)
+                .sort((a, b) => a - b)
+            : [];
+
+          const safeCurrentDay = Math.min(
+            Math.max(serverProgress.currentDay ?? 1, 1),
+            planLength
+          );
+
+          const safeCurrentWeek = Math.min(
+            Math.max(Math.ceil(safeCurrentDay / 7), 1),
+            normalizedWeeks.length || 1
+          );
+
+          progressState = {
+            currentDay: safeCurrentDay,
+            currentWeek: safeCurrentWeek,
+            completedDays: sanitizedCompleted,
+            totalDays: planLength,
+          };
+        }
+      } catch (progressError) {
+        console.warn('⚠️ Could not load plan progress:', progressError);
+      }
+
       const scores = plan.skinScores || [];
 
       setPlanData({
@@ -218,45 +327,11 @@ export default function PlanPage() {
           scores,
         },
         plan: {
-          weeks: plan.weeks.map((week: any) => ({
-            week: week.week,
-            days: week.days.map((day: any) => {
-              // Преобразуем morning/evening в массив ID продуктов
-              const morningIds = Array.isArray(day.morning) 
-                ? day.morning.map((stepOrId: any) => {
-                    if (typeof stepOrId === 'string' && day.products?.[stepOrId]?.id) {
-                      return day.products[stepOrId].id;
-                    }
-                    return typeof stepOrId === 'number' ? stepOrId : null;
-                  }).filter((id: any): id is number => id !== null)
-                : [];
-              
-              const eveningIds = Array.isArray(day.evening)
-                ? day.evening.map((stepOrId: any) => {
-                    if (typeof stepOrId === 'string' && day.products?.[stepOrId]?.id) {
-                      return day.products[stepOrId].id;
-                    }
-                    return typeof stepOrId === 'number' ? stepOrId : null;
-                  }).filter((id: any): id is number => id !== null)
-                : [];
-
-              return {
-                morning: morningIds,
-                evening: eveningIds,
-              };
-            }),
-          })),
+          weeks: normalizedWeeks,
         },
-        progress: {
-          currentDay: 1,
-          completedDays: [],
-        },
+        planProducts,
+        progress: progressState,
         wishlist,
-        currentDay: currentDayGlobal,
-        currentWeek,
-        todayProducts,
-        todayMorning,
-        todayEvening,
       });
 
       setLoading(false);
@@ -265,6 +340,23 @@ export default function PlanPage() {
       setError(err?.message || 'Ошибка загрузки плана');
       setLoading(false);
     }
+  };
+
+  const handleProgressUpdate = (nextProgress: {
+    currentDay: number;
+    currentWeek: number;
+    completedDays: number[];
+  }) => {
+    setPlanData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        progress: {
+          ...prev.progress,
+          ...nextProgress,
+        },
+      };
+    });
   };
 
   if (loading) {
@@ -414,13 +506,10 @@ export default function PlanPage() {
       user={planData.user}
       profile={planData.profile}
       plan={planData.plan}
+      planProducts={planData.planProducts}
       progress={planData.progress}
       wishlist={planData.wishlist}
-      currentDay={planData.currentDay}
-      currentWeek={planData.currentWeek}
-      todayProducts={planData.todayProducts}
-      todayMorning={planData.todayMorning}
-      todayEvening={planData.todayEvening}
+      onProgressUpdate={handleProgressUpdate}
     />
   );
 }

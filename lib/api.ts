@@ -143,6 +143,17 @@ export const api = {
     return request('/plan/generate');
   },
 
+  async getPlanProgress() {
+    return request('/plan/progress');
+  },
+
+  async updatePlanProgress(data: { currentDay?: number; completedDays?: number[]; reset?: boolean }) {
+    return request('/plan/progress', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   // Прогресс анкеты
   async getQuizProgress() {
     return request('/questionnaire/progress');
