@@ -422,7 +422,7 @@ export default function QuizPage() {
                 opt.value?.toLowerCase() === answerValue?.toLowerCase()
               );
               if (matchingOption) {
-                genderValue = matchingOption.value || matchingOption.text || answerValue;
+                genderValue = matchingOption.value || matchingOption.label || answerValue;
               }
             }
             break;
@@ -976,7 +976,7 @@ export default function QuizPage() {
                 opt.value?.toLowerCase() === answerValue?.toLowerCase()
               );
               if (matchingOption) {
-                genderValue = matchingOption.value || matchingOption.text || answerValue;
+                genderValue = matchingOption.value || matchingOption.label || answerValue;
               }
             }
             break;
@@ -1644,7 +1644,7 @@ export default function QuizPage() {
                 opt.value?.toLowerCase() === answerValue?.toLowerCase()
               );
               if (matchingOption) {
-                genderValue = matchingOption.value || matchingOption.text || answerValue;
+                genderValue = matchingOption.value || matchingOption.label || answerValue;
               }
             }
             break;
