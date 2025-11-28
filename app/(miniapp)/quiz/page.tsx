@@ -438,7 +438,7 @@ export default function QuizPage() {
                      genderValue?.toLowerCase() === 'мужской' ||
                      (genderQuestion?.options?.some(opt => 
                        (opt.value?.toLowerCase().includes('мужчин') || 
-                        opt.text?.toLowerCase().includes('мужчин') ||
+                        opt.label?.toLowerCase().includes('мужчин') ||
                         opt.value?.toLowerCase().includes('male')) &&
                        (answers[genderQuestion.id] === opt.value || 
                         answers[genderQuestion.id] === opt.id.toString())
@@ -991,7 +991,7 @@ export default function QuizPage() {
                      genderValue?.toLowerCase() === 'мужской' ||
                      (genderQuestion?.options?.some(opt => 
                        (opt.value?.toLowerCase().includes('мужчин') || 
-                        opt.text?.toLowerCase().includes('мужчин') ||
+                        opt.label?.toLowerCase().includes('мужчин') ||
                         opt.value?.toLowerCase().includes('male')) &&
                        (answers[genderQuestion.id] === opt.value || 
                         answers[genderQuestion.id] === opt.id.toString())
@@ -1659,7 +1659,7 @@ export default function QuizPage() {
                      genderValue?.toLowerCase() === 'мужской' ||
                      (genderQuestion?.options?.some(opt => 
                        (opt.value?.toLowerCase().includes('мужчин') || 
-                        opt.text?.toLowerCase().includes('мужчин') ||
+                        opt.label?.toLowerCase().includes('мужчин') ||
                         opt.value?.toLowerCase().includes('male')) &&
                        (answers[genderQuestion.id] === opt.value || 
                         answers[genderQuestion.id] === opt.id.toString())
