@@ -4,10 +4,12 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+
+// Отключаем статическую генерацию для этой страницы
+export const dynamic = 'force-dynamic';
 
 interface CartItem {
   id: string;
@@ -28,7 +30,6 @@ interface CartItem {
 }
 
 function CartPageContent() {
-  const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
