@@ -56,6 +56,8 @@ function LayoutContent({
                    !isResumeScreen && 
                    pathname !== '/plan' && 
                    pathname !== '/wishlist' && 
+                   pathname !== '/cart' &&
+                   pathname !== '/cart-new' &&
                    pathname !== '/profile';
 
   return (
