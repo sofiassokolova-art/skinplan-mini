@@ -1,0 +1,218 @@
+// app/api/cart/route.ts
+// API для работы с корзиной
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+
+// GET - получить корзину пользователя
+export async function GET(request: NextRequest) {
+  try {
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
+
+    if (!initData) {
+      return NextResponse.json(
+        { error: 'Missing Telegram initData' },
+        { status: 401 }
+      );
+    }
+
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Invalid or expired initData' },
+        { status: 401 }
+      );
+    }
+
+    const cartItems = await prisma.cart.findMany({
+      where: { userId },
+      include: {
+        product: {
+          include: {
+            brand: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return NextResponse.json({
+      items: cartItems.map(item => ({
+        id: item.id,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          brand: {
+            id: item.product.brand.id,
+            name: item.product.brand.name,
+          },
+          price: item.product.price,
+          imageUrl: item.product.imageUrl,
+          link: item.product.link,
+          marketLinks: item.product.marketLinks,
+        },
+        quantity: item.quantity,
+        createdAt: item.createdAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    console.error('Error loading cart:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - добавить товар в корзину
+export async function POST(request: NextRequest) {
+  try {
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
+
+    if (!initData) {
+      return NextResponse.json(
+        { error: 'Missing Telegram initData' },
+        { status: 401 }
+      );
+    }
+
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Invalid or expired initData' },
+        { status: 401 }
+      );
+    }
+
+    const { productId, quantity = 1 } = await request.json();
+
+    if (!productId) {
+      return NextResponse.json(
+        { error: 'Missing productId' },
+        { status: 400 }
+      );
+    }
+
+    // Проверяем, существует ли продукт
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    // Добавляем или обновляем количество
+    const cartItem = await prisma.cart.upsert({
+      where: {
+        userId_productId: {
+          userId,
+          productId,
+        },
+      },
+      update: {
+        quantity: {
+          increment: quantity,
+        },
+      },
+      create: {
+        userId,
+        productId,
+        quantity,
+      },
+      include: {
+        product: {
+          include: {
+            brand: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      item: {
+        id: cartItem.id,
+        product: {
+          id: cartItem.product.id,
+          name: cartItem.product.name,
+          brand: {
+            id: cartItem.product.brand.id,
+            name: cartItem.product.brand.name,
+          },
+          price: cartItem.product.price,
+          imageUrl: cartItem.product.imageUrl,
+          link: cartItem.product.link,
+          marketLinks: cartItem.product.marketLinks,
+        },
+        quantity: cartItem.quantity,
+      },
+    });
+  } catch (error) {
+    console.error('Error adding to cart:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - удалить товар из корзины
+export async function DELETE(request: NextRequest) {
+  try {
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
+
+    if (!initData) {
+      return NextResponse.json(
+        { error: 'Missing Telegram initData' },
+        { status: 401 }
+      );
+    }
+
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Invalid or expired initData' },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const productId = searchParams.get('productId');
+
+    if (!productId) {
+      return NextResponse.json(
+        { error: 'Missing productId' },
+        { status: 400 }
+      );
+    }
+
+    await prisma.cart.deleteMany({
+      where: {
+        userId,
+        productId: parseInt(productId),
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error removing from cart:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+

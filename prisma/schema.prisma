@@ -15,15 +15,15 @@ datasource db {
 // ============================================
 
 model User {
-  id         String   @id @default(cuid())
-  telegramId String   @unique @map("telegram_id")
+  id         String    @id @default(cuid())
+  telegramId String    @unique @map("telegram_id")
   username   String?
-  firstName  String?  @map("first_name")
-  lastName   String?  @map("last_name")
-  language   String   @default("ru")
-  tags       String[] @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  firstName  String?   @map("first_name")
+  lastName   String?   @map("last_name")
+  language   String    @default("ru")
+  tags       String[]  @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
   lastActive DateTime? @map("last_active") // Обновляется при активности
 
   skinProfiles           SkinProfile[]
@@ -32,6 +32,7 @@ model User {
   planFeedbacks          PlanFeedback[]
   wishlist               Wishlist[]
   wishlistFeedbacks      WishlistFeedback[]
+  cart                   Cart[]
   productReplacements    ProductReplacement[]
   botMessages            BotMessage[]
   broadcastLogs          BroadcastLog[]
@@ -172,11 +173,11 @@ model Brand {
 }
 
 model Product {
-  id      Int    @id @default(autoincrement())
-  brandId Int    @map("brand_id")
+  id      Int     @id @default(autoincrement())
+  brandId Int     @map("brand_id")
   name    String
   slug    String? @unique
-  brand   Brand  @relation(fields: [brandId], references: [id])
+  brand   Brand   @relation(fields: [brandId], references: [id])
 
   // Основные данные
   price           Int? // в рублях (950 → 950 ₽) - новое поле, может быть null для обратной совместимости
@@ -216,17 +217,17 @@ model Product {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  wishlist               Wishlist[]
+  wishlistFeedbacks      WishlistFeedback[]
+  cart                   Cart[]
+  oldProductReplacements ProductReplacement[] @relation("OldProduct")
+  newProductReplacements ProductReplacement[] @relation("NewProduct")
+
   @@index([brandId])
   @@index([status])
   @@index([published])
   @@index([step])
   @@index([isHero, priority])
-  
-  wishlist            Wishlist[]
-  wishlistFeedbacks   WishlistFeedback[]
-  oldProductReplacements ProductReplacement[] @relation("OldProduct")
-  newProductReplacements ProductReplacement[] @relation("NewProduct")
-
   @@map("products")
 }
 
@@ -288,7 +289,7 @@ model AdminWhitelist {
   id          Int      @id @default(autoincrement())
   phoneNumber String?  @unique @map("phone_number") // +79124483696 (опционально)
   telegramId  String?  @unique @map("telegram_id") // Опционально для связи
-  name        String?  // Имя админа для удобства
+  name        String? // Имя админа для удобства
   role        String   @default("admin") // admin / editor
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -304,8 +305,8 @@ model AdminWhitelist {
 model PlanFeedback {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  rating    Int      // 1-5 звезд
-  feedback  String?  // Опциональная обратная связь
+  rating    Int // 1-5 звезд
+  feedback  String? // Опциональная обратная связь
   createdAt DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -334,11 +335,28 @@ model Wishlist {
   @@map("wishlist")
 }
 
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  productId Int      @map("product_id")
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@map("cart")
+}
+
 model WishlistFeedback {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   productId Int      @map("product_id")
-  feedback  String   // 'not_bought' | 'bought_love' | 'bought_ok' | 'bought_bad'
+  feedback  String // 'not_bought' | 'bought_love' | 'bought_ok' | 'bought_bad'
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -356,12 +374,12 @@ model ProductReplacement {
   userId       String   @map("user_id")
   oldProductId Int      @map("old_product_id")
   newProductId Int      @map("new_product_id")
-  reason       String   // 'feedback_bad' | 'out_of_stock' | 'manual'
+  reason       String // 'feedback_bad' | 'out_of_stock' | 'manual'
   createdAt    DateTime @default(now()) @map("created_at")
 
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  oldProduct  Product @relation("OldProduct", fields: [oldProductId], references: [id], onDelete: Cascade)
-  newProduct  Product @relation("NewProduct", fields: [newProductId], references: [id], onDelete: Cascade)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oldProduct Product @relation("OldProduct", fields: [oldProductId], references: [id], onDelete: Cascade)
+  newProduct Product @relation("NewProduct", fields: [newProductId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([oldProductId])
@@ -374,15 +392,15 @@ model ProductReplacement {
 // ============================================
 
 model BotMessage {
-  id           String   @id @default(cuid())
-  userId       String   @map("user_id")
-  telegramId   String   @map("telegram_id") // ID сообщения в Telegram
-  chatId       String   @map("chat_id") // ID чата
-  direction    String   // 'incoming' | 'outgoing'
-  messageType  String   @map("message_type") // 'text' | 'command' | 'callback' | 'photo' | 'document'
-  content      String?  // Текст сообщения
-  rawData      Json?    @map("raw_data") // Полные данные от Telegram API
-  createdAt    DateTime @default(now()) @map("created_at")
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  telegramId  String   @map("telegram_id") // ID сообщения в Telegram
+  chatId      String   @map("chat_id") // ID чата
+  direction   String // 'incoming' | 'outgoing'
+  messageType String   @map("message_type") // 'text' | 'command' | 'callback' | 'photo' | 'document'
+  content     String? // Текст сообщения
+  rawData     Json?    @map("raw_data") // Полные данные от Telegram API
+  createdAt   DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -394,19 +412,19 @@ model BotMessage {
 }
 
 model BroadcastMessage {
-  id          String   @id @default(cuid())
-  title       String   // Название рассылки
-  message     String   // Текст сообщения
-  filtersJson Json     @map("filters_json") // JSON с фильтрами: { skinType: 'oily', ageGroup: '18_25', ... }
-  buttonsJson Json?    @map("buttons_json") // JSON с кнопками: [{ text: "...", url: "..." }]
-  imageUrl    String?  @map("image_url") // URL изображения (если использовался URL)
-  status      String   @default("draft") // 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled'
+  id          String    @id @default(cuid())
+  title       String // Название рассылки
+  message     String // Текст сообщения
+  filtersJson Json      @map("filters_json") // JSON с фильтрами: { skinType: 'oily', ageGroup: '18_25', ... }
+  buttonsJson Json?     @map("buttons_json") // JSON с кнопками: [{ text: "...", url: "..." }]
+  imageUrl    String?   @map("image_url") // URL изображения (если использовался URL)
+  status      String    @default("draft") // 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled'
   scheduledAt DateTime? @map("scheduled_at") // Когда отправить
-  sentCount   Int      @default(0) @map("sent_count") // Сколько отправлено
-  failedCount Int      @default(0) @map("failed_count") // Сколько не удалось отправить
-  totalCount  Int      @default(0) @map("total_count") // Всего получателей
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  sentCount   Int       @default(0) @map("sent_count") // Сколько отправлено
+  failedCount Int       @default(0) @map("failed_count") // Сколько не удалось отправить
+  totalCount  Int       @default(0) @map("total_count") // Всего получателей
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
   sentAt      DateTime? @map("sent_at") // Когда завершена отправка
 
   logs BroadcastLog[]
@@ -437,13 +455,13 @@ model SupportChat {
 }
 
 model SupportMessage {
-  id         String      @id @default(cuid())
-  chatId     String      @map("chat_id")
-  chat       SupportChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  text       String
-  isAdmin    Boolean     @default(false) @map("is_admin")
-  attachments Json?      // Для фото, файлов
-  createdAt  DateTime    @default(now()) @map("created_at")
+  id          String      @id @default(cuid())
+  chatId      String      @map("chat_id")
+  chat        SupportChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  text        String
+  isAdmin     Boolean     @default(false) @map("is_admin")
+  attachments Json? // Для фото, файлов
+  createdAt   DateTime    @default(now()) @map("created_at")
 
   @@index([chatId])
   @@index([createdAt])
@@ -451,16 +469,16 @@ model SupportMessage {
 }
 
 model BroadcastLog {
-  id              String   @id @default(cuid())
-  broadcastId     String   @map("broadcast_id")
-  userId          String   @map("user_id")
-  telegramId      String   @map("telegram_id")
-  status          String   // 'sent' | 'failed' | 'blocked'
-  errorMessage    String?  @map("error_message")
-  sentAt          DateTime @default(now()) @map("sent_at")
+  id           String   @id @default(cuid())
+  broadcastId  String   @map("broadcast_id")
+  userId       String   @map("user_id")
+  telegramId   String   @map("telegram_id")
+  status       String // 'sent' | 'failed' | 'blocked'
+  errorMessage String?  @map("error_message")
+  sentAt       DateTime @default(now()) @map("sent_at")
 
   broadcast BroadcastMessage @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
-  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([broadcastId])
   @@index([userId])

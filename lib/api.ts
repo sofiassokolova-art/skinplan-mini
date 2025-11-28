@@ -205,4 +205,22 @@ export const api = {
       body: JSON.stringify({ oldProductId, newProductId }),
     });
   },
+
+  // Корзина
+  async getCart() {
+    return request('/cart');
+  },
+
+  async addToCart(productId: number, quantity: number = 1) {
+    return request('/cart', {
+      method: 'POST',
+      body: JSON.stringify({ productId, quantity }),
+    });
+  },
+
+  async removeFromCart(productId: number) {
+    return request(`/cart?productId=${productId}`, {
+      method: 'DELETE',
+    });
+  },
 };

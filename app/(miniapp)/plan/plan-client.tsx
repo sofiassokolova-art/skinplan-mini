@@ -10,7 +10,9 @@ import { WeekCalendar } from '@/components/WeekCalendar';
 import { DayRoutine } from '@/components/DayRoutine';
 import { ProgressHeader } from '@/components/ProgressHeader';
 import { AddToCartButton } from '@/components/AddToCartButton';
+import { AddToCartButtonNew } from '@/components/AddToCartButtonNew';
 import { ReplaceProductModal } from '@/components/ReplaceProductModal';
+import { RecommendedProducts } from '@/components/RecommendedProducts';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -324,6 +326,12 @@ export function PlanPageClient({
           </button>
         </div>
 
+        {/* Рекомендованные средства */}
+        <RecommendedProducts 
+          wishlistProductIds={wishlistProductIds}
+          onToggleWishlist={toggleWishlist}
+          onOpenReplace={openReplaceModal}
+        />
 
         {/* Нижняя навигация */}
         <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t px-4 py-3 z-50">

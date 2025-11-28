@@ -5,11 +5,13 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
 export default function BottomNavigation() {
   const router = useRouter();
   const pathname = usePathname();
   const [scrollY, setScrollY] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
 
   // Track scroll for hide/show effect
   useEffect(() => {
@@ -20,12 +22,32 @@ export default function BottomNavigation() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Load cart count
+  useEffect(() => {
+    const loadCartCount = async () => {
+      try {
+        const data = await api.getCart() as { items?: any[] };
+        setCartCount(data.items?.length || 0);
+      } catch (err) {
+        // Ignore errors
+        setCartCount(0);
+      }
+    };
+    loadCartCount();
+    // Refresh cart count periodically
+    const interval = setInterval(loadCartCount, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const navItems = [
     { path: '/', label: 'Главная', icon: 'home' },
     { path: '/plan', label: 'План', icon: 'plan' },
     { path: '/cart', label: 'Избранное', icon: 'wishlist' },
     { path: '/profile', label: 'Профиль', icon: 'profile' },
   ];
+  
+  // Добавляем кнопку корзины, если есть товары
+  const showCartButton = cartCount > 0;
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -177,6 +199,84 @@ export default function BottomNavigation() {
           </button>
         );
       })}
+      
+      {/* Кнопка корзины (показывается только когда есть товары) */}
+      {showCartButton && (
+        <button
+          onClick={() => {
+            router.push('/cart-new');
+            if (navigator.vibrate) {
+              navigator.vibrate(10);
+            }
+          }}
+          style={{ 
+            color: pathname === '/cart-new' ? '#0A5F59' : '#94A3B8',
+            minWidth: '64px',
+            position: 'relative',
+            background: pathname === '/cart-new' ? 'rgba(10, 95, 89, 0.20)' : 'transparent',
+            border: 'none',
+            borderRadius: '36px',
+            cursor: 'pointer',
+            padding: '8px 12px',
+            transform: pathname === '/cart-new' ? 'scale(1.06)' : 'scale(1)',
+            transition: 'transform 0.2s ease-out, background-color 0.2s ease-out',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            <svg 
+              viewBox="0 0 24 24" 
+              width="24" 
+              height="24" 
+              fill="none" 
+              stroke={pathname === '/cart-new' ? '#0A5F59' : '#94A3B8'} 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+            {cartCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '-8px',
+                  backgroundColor: '#EF4444',
+                  color: 'white',
+                  borderRadius: '10px',
+                  width: '20px',
+                  height: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                }}
+              >
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+          </div>
+          <span 
+            style={{
+              color: pathname === '/cart-new' ? '#0A5F59' : '#94A3B8',
+              fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: pathname === '/cart-new' ? 700 : 500,
+              fontSize: '11px',
+              lineHeight: '1.2',
+            }}
+          >
+            Корзина
+          </span>
+        </button>
+      )}
     </nav>
   );
 }
