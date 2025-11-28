@@ -399,12 +399,33 @@ export default function QuizPage() {
       // Для вопроса про беременность проверяем пол
       // Ищем ответ на вопрос о поле (gender)
       let genderValue: string | undefined;
+      let genderQuestion: Question | undefined;
+      
       for (const q of allQuestionsRaw) {
-        if (q.code === 'gender' && answers[q.id]) {
-          genderValue = Array.isArray(answers[q.id]) 
-            ? (answers[q.id] as string[])[0] 
-            : (answers[q.id] as string);
-          break;
+        if (q.code === 'gender') {
+          genderQuestion = q;
+          if (answers[q.id]) {
+            const answerValue = Array.isArray(answers[q.id]) 
+              ? (answers[q.id] as string[])[0] 
+              : (answers[q.id] as string);
+            
+            // Проверяем, является ли ответ значением опции или ID опции
+            // Сначала проверяем само значение
+            genderValue = answerValue;
+            
+            // Если это не похоже на текст (может быть ID), ищем опцию
+            if (q.options && q.options.length > 0) {
+              const matchingOption = q.options.find(opt => 
+                opt.id.toString() === answerValue || 
+                opt.value === answerValue ||
+                opt.value?.toLowerCase() === answerValue?.toLowerCase()
+              );
+              if (matchingOption) {
+                genderValue = matchingOption.value || matchingOption.text || answerValue;
+              }
+            }
+            break;
+          }
         }
       }
       
@@ -412,7 +433,15 @@ export default function QuizPage() {
       const isMale = genderValue?.toLowerCase().includes('мужчин') || 
                      genderValue?.toLowerCase().includes('male') ||
                      genderValue === 'male' ||
-                     genderValue === 'мужской';
+                     genderValue === 'мужской' ||
+                     genderValue?.toLowerCase() === 'мужской' ||
+                     (genderQuestion?.options?.some(opt => 
+                       (opt.value?.toLowerCase().includes('мужчин') || 
+                        opt.text?.toLowerCase().includes('мужчин') ||
+                        opt.value?.toLowerCase().includes('male')) &&
+                       (answers[genderQuestion.id] === opt.value || 
+                        answers[genderQuestion.id] === opt.id.toString())
+                     ));
       
       return !isMale; // Показываем только если не мужчина
     });
@@ -850,12 +879,32 @@ export default function QuizPage() {
     
     // Или ищем по коду вопроса gender
     let genderValue: string | undefined;
+    let genderQuestion: Question | undefined;
+    
     for (const q of allQuestionsRaw) {
-      if (q.code === 'gender' && answers[q.id]) {
-        genderValue = Array.isArray(answers[q.id]) 
-          ? (answers[q.id] as string[])[0] 
-          : (answers[q.id] as string);
-        break;
+      if (q.code === 'gender') {
+        genderQuestion = q;
+        if (answers[q.id]) {
+          const answerValue = Array.isArray(answers[q.id]) 
+            ? (answers[q.id] as string[])[0] 
+            : (answers[q.id] as string);
+          
+          // Проверяем, является ли ответ значением опции или ID опции
+          genderValue = answerValue;
+          
+          // Если это не похоже на текст (может быть ID), ищем опцию
+          if (q.options && q.options.length > 0) {
+            const matchingOption = q.options.find(opt => 
+              opt.id.toString() === answerValue || 
+              opt.value === answerValue ||
+              opt.value?.toLowerCase() === answerValue?.toLowerCase()
+            );
+            if (matchingOption) {
+              genderValue = matchingOption.value || matchingOption.text || answerValue;
+            }
+          }
+          break;
+        }
       }
     }
     
@@ -863,7 +912,15 @@ export default function QuizPage() {
     const isMale = genderValue?.toLowerCase().includes('мужчин') || 
                    genderValue?.toLowerCase().includes('male') ||
                    genderValue === 'male' ||
-                   genderValue === 'мужской';
+                   genderValue === 'мужской' ||
+                   genderValue?.toLowerCase() === 'мужской' ||
+                   (genderQuestion?.options?.some(opt => 
+                     (opt.value?.toLowerCase().includes('мужчин') || 
+                      opt.text?.toLowerCase().includes('мужчин') ||
+                      opt.value?.toLowerCase().includes('male')) &&
+                     (answers[genderQuestion.id] === opt.value || 
+                      answers[genderQuestion.id] === opt.id.toString())
+                   ));
     
     return !isMale; // Показываем только если не мужчина
   });
@@ -899,19 +956,45 @@ export default function QuizPage() {
       }
       
       let genderValue: string | undefined;
+      let genderQuestion: Question | undefined;
+      
       for (const q of allQuestionsRaw) {
-        if (q.code === 'gender' && answers[q.id]) {
-          genderValue = Array.isArray(answers[q.id]) 
-            ? (answers[q.id] as string[])[0] 
-            : (answers[q.id] as string);
-          break;
+        if (q.code === 'gender') {
+          genderQuestion = q;
+          if (answers[q.id]) {
+            const answerValue = Array.isArray(answers[q.id]) 
+              ? (answers[q.id] as string[])[0] 
+              : (answers[q.id] as string);
+            
+            genderValue = answerValue;
+            
+            if (q.options && q.options.length > 0) {
+              const matchingOption = q.options.find(opt => 
+                opt.id.toString() === answerValue || 
+                opt.value === answerValue ||
+                opt.value?.toLowerCase() === answerValue?.toLowerCase()
+              );
+              if (matchingOption) {
+                genderValue = matchingOption.value || matchingOption.text || answerValue;
+              }
+            }
+            break;
+          }
         }
       }
       
       const isMale = genderValue?.toLowerCase().includes('мужчин') || 
                      genderValue?.toLowerCase().includes('male') ||
                      genderValue === 'male' ||
-                     genderValue === 'мужской';
+                     genderValue === 'мужской' ||
+                     genderValue?.toLowerCase() === 'мужской' ||
+                     (genderQuestion?.options?.some(opt => 
+                       (opt.value?.toLowerCase().includes('мужчин') || 
+                        opt.text?.toLowerCase().includes('мужчин') ||
+                        opt.value?.toLowerCase().includes('male')) &&
+                       (answers[genderQuestion.id] === opt.value || 
+                        answers[genderQuestion.id] === opt.id.toString())
+                     ));
       
       return !isMale;
     });
@@ -1541,19 +1624,45 @@ export default function QuizPage() {
       }
       
       let genderValue: string | undefined;
+      let genderQuestion: Question | undefined;
+      
       for (const q of allQuestionsRaw) {
-        if (q.code === 'gender' && answers[q.id]) {
-          genderValue = Array.isArray(answers[q.id]) 
-            ? (answers[q.id] as string[])[0] 
-            : (answers[q.id] as string);
-          break;
+        if (q.code === 'gender') {
+          genderQuestion = q;
+          if (answers[q.id]) {
+            const answerValue = Array.isArray(answers[q.id]) 
+              ? (answers[q.id] as string[])[0] 
+              : (answers[q.id] as string);
+            
+            genderValue = answerValue;
+            
+            if (q.options && q.options.length > 0) {
+              const matchingOption = q.options.find(opt => 
+                opt.id.toString() === answerValue || 
+                opt.value === answerValue ||
+                opt.value?.toLowerCase() === answerValue?.toLowerCase()
+              );
+              if (matchingOption) {
+                genderValue = matchingOption.value || matchingOption.text || answerValue;
+              }
+            }
+            break;
+          }
         }
       }
       
       const isMale = genderValue?.toLowerCase().includes('мужчин') || 
                      genderValue?.toLowerCase().includes('male') ||
                      genderValue === 'male' ||
-                     genderValue === 'мужской';
+                     genderValue === 'мужской' ||
+                     genderValue?.toLowerCase() === 'мужской' ||
+                     (genderQuestion?.options?.some(opt => 
+                       (opt.value?.toLowerCase().includes('мужчин') || 
+                        opt.text?.toLowerCase().includes('мужчин') ||
+                        opt.value?.toLowerCase().includes('male')) &&
+                       (answers[genderQuestion.id] === opt.value || 
+                        answers[genderQuestion.id] === opt.id.toString())
+                     ));
       
       return !isMale;
     });
