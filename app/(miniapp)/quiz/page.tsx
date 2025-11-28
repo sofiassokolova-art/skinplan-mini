@@ -244,18 +244,46 @@ export default function QuizPage() {
     }
   };
 
-  // Сохраняем прогресс в localStorage
-  const saveProgress = (newAnswers?: Record<number, string | string[]>, newQuestionIndex?: number, newInfoScreenIndex?: number) => {
+  // Сохраняем прогресс в localStorage и на сервер
+  const saveProgress = async (newAnswers?: Record<number, string | string[]>, newQuestionIndex?: number, newInfoScreenIndex?: number) => {
     if (typeof window === 'undefined') return;
     
+    const finalQuestionIndex = newQuestionIndex !== undefined ? newQuestionIndex : currentQuestionIndex;
+    const finalInfoScreenIndex = newInfoScreenIndex !== undefined ? newInfoScreenIndex : currentInfoScreenIndex;
+    const finalAnswers = newAnswers || answers;
+    
     const progress = {
-      answers: newAnswers || answers,
-      questionIndex: newQuestionIndex !== undefined ? newQuestionIndex : currentQuestionIndex,
-      infoScreenIndex: newInfoScreenIndex !== undefined ? newInfoScreenIndex : currentInfoScreenIndex,
+      answers: finalAnswers,
+      questionIndex: finalQuestionIndex,
+      infoScreenIndex: finalInfoScreenIndex,
       timestamp: Date.now(),
     };
     
     localStorage.setItem('quiz_progress', JSON.stringify(progress));
+    
+    // Синхронизируем позицию на сервер (только если Telegram WebApp доступен)
+    if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      try {
+        // Сохраняем позицию через специальный вызов (используем questionId = -1 как маркер)
+        await api.saveQuizProgress(
+          questionnaire.id,
+          -1, // Маркер для метаданных позиции
+          JSON.stringify({
+            questionIndex: finalQuestionIndex,
+            infoScreenIndex: finalInfoScreenIndex,
+            timestamp: Date.now(),
+          }),
+          undefined,
+          finalQuestionIndex,
+          finalInfoScreenIndex
+        );
+      } catch (err: any) {
+        // Если ошибка 401 - это нормально, прогресс сохранен локально
+        if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
+          console.warn('Ошибка сохранения позиции на сервер:', err);
+        }
+      }
+    }
   };
 
   // Очищаем сохранённый прогресс
@@ -294,7 +322,7 @@ export default function QuizPage() {
   const handleAnswer = async (questionId: number, value: string | string[]) => {
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
-    saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
+    await saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
     
     // Сохраняем в БД для синхронизации между устройствами (только если Telegram WebApp доступен)
     if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
@@ -304,7 +332,9 @@ export default function QuizPage() {
           questionnaire.id,
           questionId,
           isArray ? undefined : (value as string),
-          isArray ? (value as string[]) : undefined
+          isArray ? (value as string[]) : undefined,
+          currentQuestionIndex,
+          currentInfoScreenIndex
         );
       } catch (err: any) {
         // Если ошибка 401 - это нормально, прогресс сохранен локально
@@ -315,7 +345,7 @@ export default function QuizPage() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
 
     // При повторном прохождении пропускаем все начальные info screens
@@ -324,7 +354,7 @@ export default function QuizPage() {
       const newInfoIndex = initialInfoScreens.length;
       setCurrentInfoScreenIndex(newInfoIndex);
       setCurrentQuestionIndex(0);
-      saveProgress(answers, 0, newInfoIndex);
+      await saveProgress(answers, 0, newInfoIndex);
       return;
     }
 
@@ -332,7 +362,7 @@ export default function QuizPage() {
     if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
       setCurrentInfoScreenIndex(newIndex);
-      saveProgress(answers, currentQuestionIndex, newIndex);
+      await saveProgress(answers, currentQuestionIndex, newIndex);
       return;
     }
 
@@ -341,7 +371,7 @@ export default function QuizPage() {
       const newInfoIndex = initialInfoScreens.length;
       setCurrentInfoScreenIndex(newInfoIndex);
       setCurrentQuestionIndex(0);
-      saveProgress(answers, 0, newInfoIndex);
+      await saveProgress(answers, 0, newInfoIndex);
       return;
     }
 
@@ -359,7 +389,7 @@ export default function QuizPage() {
       const nextInfoScreen = INFO_SCREENS.find(screen => screen.showAfterQuestionCode === pendingInfoScreen.id);
       if (nextInfoScreen) {
         setPendingInfoScreen(nextInfoScreen);
-        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
       
@@ -369,14 +399,14 @@ export default function QuizPage() {
       // Проверяем, не последний ли это вопрос
       const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
       if (isLastQuestion) {
-        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
       
       // Переходим к следующему вопросу
       const newIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(newIndex);
-      saveProgress(answers, newIndex, currentInfoScreenIndex);
+      await saveProgress(answers, newIndex, currentInfoScreenIndex);
       return;
     }
 
@@ -387,7 +417,7 @@ export default function QuizPage() {
       const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
       if (infoScreen) {
         setPendingInfoScreen(infoScreen);
-        saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
     }
@@ -401,11 +431,11 @@ export default function QuizPage() {
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
         if (infoScreen) {
           setPendingInfoScreen(infoScreen);
-          saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+          await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
           return;
         }
       }
-      saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+      await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
       return;
     }
 
@@ -413,7 +443,7 @@ export default function QuizPage() {
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(newIndex);
-      saveProgress(answers, newIndex, currentInfoScreenIndex);
+      await saveProgress(answers, newIndex, currentInfoScreenIndex);
     }
   };
 

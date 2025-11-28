@@ -71,11 +71,38 @@ export default function PlanPage() {
       setError(null);
 
       // Проверяем, что приложение открыто через Telegram
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp) {
         setError('telegram_required');
         setLoading(false);
         return;
       }
+
+      // Ждем готовности initData (может быть не сразу доступен)
+      let initData = window.Telegram?.WebApp?.initData;
+      if (!initData) {
+        // Ждем максимум 2 секунды для инициализации
+        await new Promise((resolve) => {
+          let attempts = 0;
+          const maxAttempts = 20; // 20 * 100ms = 2 секунды
+          const checkInterval = setInterval(() => {
+            attempts++;
+            initData = window.Telegram?.WebApp?.initData;
+            if (initData || attempts >= maxAttempts) {
+              clearInterval(checkInterval);
+              resolve(undefined);
+            }
+          }, 100);
+        });
+      }
+
+      if (!initData) {
+        console.error('❌ initData not available after waiting');
+        setError('telegram_required');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ initData available, length:', initData.length);
 
       // Загружаем план через API с retry-логикой
       let plan;

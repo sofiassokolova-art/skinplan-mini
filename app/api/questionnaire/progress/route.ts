@@ -92,21 +92,41 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Преобразуем ответы в формат для фронтенда
+    // Преобразуем ответы в формат для фронтенда (исключаем метаданные с questionId = -1)
     const answers: Record<number, string | string[]> = {};
+    let savedQuestionIndex: number | null = null;
+    let savedInfoScreenIndex: number | null = null;
+    
     for (const answer of userAnswers) {
-      if (answer.answerValues) {
+      // Проверяем, является ли это метаданными позиции
+      if (answer.questionId === -1 && answer.answerValue) {
+        try {
+          const positionData = JSON.parse(answer.answerValue);
+          savedQuestionIndex = positionData.questionIndex ?? null;
+          savedInfoScreenIndex = positionData.infoScreenIndex ?? null;
+        } catch (e) {
+          console.warn('Failed to parse position metadata:', e);
+        }
+      } else if (answer.answerValues) {
         answers[answer.questionId] = answer.answerValues as string[];
       } else if (answer.answerValue) {
         answers[answer.questionId] = answer.answerValue;
       }
     }
 
+    // Используем сохраненную позицию, если она есть, иначе вычисляем
+    const finalQuestionIndex = savedQuestionIndex !== null 
+      ? savedQuestionIndex 
+      : lastAnsweredIndex + 1; // Следующий вопрос после последнего отвеченного
+    const finalInfoScreenIndex = savedInfoScreenIndex !== null 
+      ? savedInfoScreenIndex 
+      : 0; // По умолчанию 0
+
     return NextResponse.json({
       progress: {
         answers,
-        questionIndex: lastAnsweredIndex + 1, // Следующий вопрос после последнего отвеченного
-        infoScreenIndex: 0, // Информационные экраны пропускаем, так как они только в начале
+        questionIndex: finalQuestionIndex,
+        infoScreenIndex: finalInfoScreenIndex,
         timestamp: userAnswers[0]?.createdAt.getTime() || Date.now(),
       },
     });
@@ -140,7 +160,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { questionnaireId, questionId, answerValue, answerValues } = await request.json();
+    const { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
 
     if (!questionnaireId || !questionId) {
       return NextResponse.json(
@@ -168,6 +188,35 @@ export async function POST(request: NextRequest) {
         answerValues: answerValues ? (answerValues as any) : null,
       },
     });
+
+    // Сохраняем позицию (questionIndex и infoScreenIndex) в отдельной таблице или в метаданных
+    // Используем таблицу UserAnswer для хранения метаданных о позиции
+    // Сохраняем позицию в специальном ответе с questionId = -1 (или используем отдельную таблицу)
+    // Для простоты сохраняем в JSON поле или создаем отдельную запись
+    if (questionIndex !== undefined || infoScreenIndex !== undefined) {
+      // Удаляем старую запись о позиции (если есть)
+      await prisma.userAnswer.deleteMany({
+        where: {
+          userId,
+          questionnaireId,
+          questionId: -1, // Используем -1 как маркер для метаданных позиции
+        },
+      });
+
+      // Сохраняем позицию в answerValue как JSON строку
+      await prisma.userAnswer.create({
+        data: {
+          userId,
+          questionnaireId,
+          questionId: -1, // Маркер для метаданных
+          answerValue: JSON.stringify({
+            questionIndex: questionIndex ?? null,
+            infoScreenIndex: infoScreenIndex ?? null,
+            timestamp: Date.now(),
+          }),
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,

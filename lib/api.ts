@@ -8,9 +8,28 @@ async function request<T>(
   options: RequestInit = {}
 ): Promise<T> {
   // Получаем initData из Telegram WebApp
-  const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
-    ? window.Telegram.WebApp.initData
-    : null;
+  // Ждем готовности initData, если он еще не доступен
+  let initData: string | null = null;
+  
+  if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+    initData = window.Telegram.WebApp.initData || null;
+    
+    // Если initData еще не готов, ждем немного
+    if (!initData) {
+      await new Promise((resolve) => {
+        let attempts = 0;
+        const maxAttempts = 10; // 10 * 100ms = 1 секунда
+        const checkInterval = setInterval(() => {
+          attempts++;
+          initData = window.Telegram?.WebApp?.initData || null;
+          if (initData || attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            resolve(undefined);
+          }
+        }, 100);
+      });
+    }
+  }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -24,7 +43,7 @@ async function request<T>(
     headers['x-telegram-init-data'] = initData;
     console.log('✅ initData добавлен в заголовки, длина:', initData.length);
   } else {
-    console.warn('⚠️ initData not available in Telegram WebApp');
+    console.warn('⚠️ initData not available in Telegram WebApp for endpoint:', endpoint);
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -116,7 +135,14 @@ export const api = {
     return request('/questionnaire/progress');
   },
 
-  async saveQuizProgress(questionnaireId: number, questionId: number, answerValue?: string, answerValues?: string[]) {
+  async saveQuizProgress(
+    questionnaireId: number, 
+    questionId: number, 
+    answerValue?: string, 
+    answerValues?: string[],
+    questionIndex?: number,
+    infoScreenIndex?: number
+  ) {
     return request('/questionnaire/progress', {
       method: 'POST',
       body: JSON.stringify({
@@ -124,6 +150,8 @@ export const api = {
         questionId,
         answerValue,
         answerValues,
+        questionIndex,
+        infoScreenIndex,
       }),
     });
   },
