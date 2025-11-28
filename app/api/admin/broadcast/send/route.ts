@@ -79,6 +79,7 @@ function renderMessage(template: string, user: any, profile: any): string {
 async function sendTelegramMessage(
   telegramId: string, 
   text: string, 
+  imageBuffer?: Buffer,
   imageUrl?: string, 
   buttons?: Array<{ text: string; url: string }>
 ): Promise<{ success: boolean; error?: string }> {
@@ -95,8 +96,36 @@ async function sendTelegramMessage(
       }))]
     } : undefined;
 
-    // Если есть фото, отправляем фото с подписью
-    if (imageUrl) {
+    // Если есть фото как Buffer (файл), отправляем через multipart/form-data без сжатия
+    if (imageBuffer) {
+      // Используем встроенный FormData (Node.js 18+)
+      const form = new FormData();
+      form.append('chat_id', telegramId);
+      
+      // Создаем Blob из Buffer для FormData
+      const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
+      form.append('photo', blob, 'image.jpg');
+      
+      form.append('caption', text);
+      form.append('parse_mode', 'HTML');
+      if (replyMarkup) {
+        form.append('reply_markup', JSON.stringify(replyMarkup));
+      }
+
+      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        body: form,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        return { success: false, error: data.description || 'Unknown error' };
+      }
+
+      return { success: true };
+    } else if (imageUrl) {
+      // Если есть URL, отправляем через JSON (для обратной совместимости)
       const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
         method: 'POST',
         headers: {
@@ -229,8 +258,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { filters, message, test, imageUrl, buttons } = body;
+    // Обрабатываем FormData или JSON
+    let filters: any;
+    let message: string;
+    let test: boolean;
+    let imageUrl: string | undefined;
+    let imageBuffer: Buffer | undefined;
+    let buttons: Array<{ text: string; url: string }> | undefined;
+
+    const contentType = request.headers.get('content-type') || '';
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Обрабатываем FormData
+      const formData = await request.formData();
+      
+      const filtersStr = formData.get('filters') as string;
+      filters = filtersStr ? JSON.parse(filtersStr) : {};
+      message = formData.get('message') as string;
+      test = formData.get('test') === 'true';
+      
+      const imageFile = formData.get('image') as File | null;
+      if (imageFile) {
+        // Конвертируем File в Buffer
+        const arrayBuffer = await imageFile.arrayBuffer();
+        imageBuffer = Buffer.from(arrayBuffer);
+      } else {
+        const imageUrlStr = formData.get('imageUrl') as string;
+        imageUrl = imageUrlStr || undefined;
+      }
+      
+      const buttonsStr = formData.get('buttons') as string;
+      buttons = buttonsStr ? JSON.parse(buttonsStr) : undefined;
+    } else {
+      // Обрабатываем JSON (для обратной совместимости)
+      const body = await request.json();
+      filters = body.filters;
+      message = body.message;
+      test = body.test;
+      imageUrl = body.imageUrl;
+      buttons = body.buttons;
+    }
 
     if (!message || !message.trim()) {
       return NextResponse.json(
@@ -325,7 +392,7 @@ export async function POST(request: NextRequest) {
       const profile = user.skinProfiles[0] || null;
       const renderedMessage = renderMessage(message, user, profile);
       
-      const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageUrl, buttons);
+      const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageBuffer, imageUrl, buttons);
 
       return NextResponse.json({
         success: result.success,
@@ -364,7 +431,7 @@ export async function POST(request: NextRequest) {
           const profile = user.skinProfiles[0] || null;
           const renderedMessage = renderMessage(message, user, profile);
           
-          const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageUrl, buttons);
+          const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageBuffer, imageUrl, buttons);
           
           await prisma.broadcastLog.create({
             data: {

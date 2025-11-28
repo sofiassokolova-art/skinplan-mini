@@ -54,7 +54,7 @@ export default function BroadcastsPage() {
       }
 
       const data = await response.json();
-      setBroadcasts(data.broadcasts || []);
+        setBroadcasts(data.broadcasts || []);
     } catch (error) {
       console.error('Error loading broadcasts:', error);
     } finally {
@@ -130,8 +130,8 @@ export default function BroadcastsPage() {
             <Send size={18} />
             Создать первую рассылку
           </Link>
-        </div>
-      ) : (
+          </div>
+        ) : (
         <div className="space-y-16">
           {broadcasts.map((broadcast) => (
             <div
@@ -182,7 +182,7 @@ export default function BroadcastsPage() {
             </div>
           ))}
         </div>
-      )}
+        )}
     </div>
   );
 }
