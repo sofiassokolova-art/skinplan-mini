@@ -101,8 +101,18 @@ export function RecommendedProducts({
     );
   }
 
+  // Всегда показываем секцию, даже если нет рекомендаций
   if (recommendedProducts.length === 0) {
-    return null;
+    return (
+      <div className="bg-white/80 backdrop-blur-[28px] rounded-3xl p-6 border border-white/40 shadow-xl mb-6">
+        <h3 className="text-2xl font-bold text-[#0A5F59] mb-6">
+          Рекомендованные средства
+        </h3>
+        <div className="text-center text-gray-500 py-8">
+          Рекомендации загружаются...
+        </div>
+      </div>
+    );
   }
 
   return (
