@@ -272,11 +272,6 @@ export function SkinInfographic({
           <div className="text-xs text-[#475467]">из 10 баллов</div>
         </div>
       </div>
-
-      {/* Подпись с формулой */}
-      <div className="text-xs text-center text-[#6B7280] mt-4 pt-4 border-t border-gray-200">
-        SkinIQ Score = 30% × Увлажнение + 25% × (−Акне) + 20% × (−Поры) + 15% × (−Пигментация) + 10% × (−Морщины)
-      </div>
     </div>
   );
 }
