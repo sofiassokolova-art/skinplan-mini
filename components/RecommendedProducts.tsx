@@ -60,7 +60,7 @@ export function RecommendedProducts({
     try {
       const data = await api.getCart() as any;
       const items = data.items || [];
-      const productIds = new Set(items.map((item: any) => item.product.id));
+      const productIds = new Set<number>(items.map((item: any) => item.product.id as number));
       setCartProductIds(productIds);
     } catch (err) {
       console.error('Error loading cart:', err);
