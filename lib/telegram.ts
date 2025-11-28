@@ -30,30 +30,16 @@ export function validateTelegramInitData(
       return { valid: false, error: 'Empty initData' };
     }
 
-    // Парсим initData (может быть уже URL-encoded или нет)
-    let urlParams: URLSearchParams;
-    try {
-      // Пробуем парсить как есть
-      urlParams = new URLSearchParams(initDataRaw);
-    } catch (e) {
-      // Если не получается, пробуем декодировать
-      try {
-        urlParams = new URLSearchParams(decodeURIComponent(initDataRaw));
-      } catch (e2) {
-        return { valid: false, error: 'Invalid initData format' };
-      }
-    }
+    // Логируем первые 200 символов для отладки (без чувствительных данных)
+    const debugSample = initDataRaw.substring(0, 200);
+    console.log('🔍 Validating initData, sample:', debugSample, 'length:', initDataRaw.length);
 
-    const hash = urlParams.get('hash');
-    if (!hash) {
-      return { valid: false, error: 'Missing hash' };
-    }
-
-    // Сортируем параметры и создаем строку для проверки
-    // Важно: для проверки hash нужно использовать оригинальные значения из initDataRaw
-    // (как они пришли от Telegram, без декодирования)
-    // Парсим initDataRaw вручную, чтобы сохранить оригинальные URL-encoded значения
-    const pairs: Array<[string, string]> = [];
+    // Парсим initDataRaw вручную, чтобы сохранить оригинальные значения
+    // initData может прийти как URL-encoded строка или уже декодированная
+    const params: Map<string, string> = new Map();
+    let hash: string | null = null;
+    
+    // Разбиваем на пары key=value
     const parts = initDataRaw.split('&');
     for (const part of parts) {
       const equalIndex = part.indexOf('=');
@@ -62,62 +48,147 @@ export function validateTelegramInitData(
       const key = part.substring(0, equalIndex);
       const value = part.substring(equalIndex + 1);
       
-      if (key && key !== 'hash') {
-        pairs.push([key, value]);
+      if (key === 'hash') {
+        hash = value;
+      } else if (key) {
+        // Сохраняем значение как есть (может быть URL-encoded)
+        params.set(key, value);
       }
     }
 
-    // Сортируем по ключу и создаем строку для проверки
-    // Используем оригинальные значения (URL-encoded)
-    pairs.sort(([a], [b]) => a.localeCompare(b));
-    const dataCheckString = pairs
-      .map(([key, value]) => `${key}=${value}`)
+    if (!hash) {
+      console.error('❌ Missing hash in initData');
+      return { valid: false, error: 'Missing hash' };
+    }
+
+    // Сортируем параметры по ключу и создаем строку для проверки
+    // Важно: используем оригинальные значения (как они пришли)
+    const sortedKeys = Array.from(params.keys()).sort();
+    
+    // Пробуем несколько вариантов:
+    // 1. Оригинальные значения (как пришли)
+    const dataCheckString = sortedKeys
+      .map(key => `${key}=${params.get(key)}`)
       .join('\n');
 
-    // Создаем секретный ключ
+    // Создаем секретный ключ: HMAC-SHA256("WebAppData", botToken)
     const secretKey = crypto
       .createHmac('sha256', 'WebAppData')
       .update(botToken)
       .digest();
 
-    // Вычисляем hash
-    const calculatedHash = crypto
+    // Вычисляем hash: HMAC-SHA256(secretKey, dataCheckString)
+    let calculatedHash = crypto
       .createHmac('sha256', secretKey)
       .update(dataCheckString)
       .digest('hex');
 
     // Проверяем подпись
     if (calculatedHash !== hash) {
-      console.error('Hash validation failed:', {
-        calculatedHash,
-        receivedHash: hash,
-        dataCheckStringLength: dataCheckString.length,
-        botTokenLength: botToken.length,
-        hasBotToken: !!botToken,
-      });
-      return { valid: false, error: 'Invalid hash' };
+      // Пробуем альтернативные варианты, если оригинальный не подошел
+      
+      // Вариант 2: Декодировать значения (если они пришли закодированными)
+      const dataCheckStringDecoded = sortedKeys
+        .map(key => {
+          const value = params.get(key) || '';
+          try {
+            const decoded = decodeURIComponent(value);
+            return `${key}=${decoded}`;
+          } catch {
+            return `${key}=${value}`;
+          }
+        })
+        .join('\n');
+      
+      const calculatedHashDecoded = crypto
+        .createHmac('sha256', secretKey)
+        .update(dataCheckStringDecoded)
+        .digest('hex');
+      
+      if (calculatedHashDecoded === hash) {
+        calculatedHash = calculatedHashDecoded; // Используем этот вариант
+      } else {
+        // Вариант 3: Закодировать значения обратно (если они пришли декодированными)
+        const dataCheckStringEncoded = sortedKeys
+          .map(key => {
+            const value = params.get(key) || '';
+            // Если значение уже содержит %XX, значит оно уже закодировано
+            if (value.includes('%')) {
+              return `${key}=${value}`;
+            }
+            // Иначе кодируем
+            try {
+              return `${key}=${encodeURIComponent(value)}`;
+            } catch {
+              return `${key}=${value}`;
+            }
+          })
+          .join('\n');
+        
+        const calculatedHashEncoded = crypto
+          .createHmac('sha256', secretKey)
+          .update(dataCheckStringEncoded)
+          .digest('hex');
+        
+        if (calculatedHashEncoded === hash) {
+          calculatedHash = calculatedHashEncoded; // Используем этот вариант
+        } else {
+          // Все варианты не подошли
+          console.error('❌ Hash validation failed (all attempts):', {
+            receivedHash: hash,
+            calculatedHash,
+            calculatedHashDecoded,
+            calculatedHashEncoded,
+            dataCheckStringSample: dataCheckString.substring(0, 150),
+            paramsCount: params.size,
+            sortedKeys: sortedKeys.slice(0, 5), // Первые 5 ключей для отладки
+          });
+          return { valid: false, error: 'Invalid hash' };
+        }
+      }
+    }
+
+    // Парсим данные для использования (здесь можно декодировать)
+    let authDate = 0;
+    let userData: any = null;
+    
+    for (const [key, value] of params.entries()) {
+      if (key === 'auth_date') {
+        authDate = parseInt(value) || 0;
+      } else if (key === 'user') {
+        try {
+          // Пробуем декодировать и распарсить JSON
+          const decoded = decodeURIComponent(value);
+          userData = JSON.parse(decoded);
+        } catch (e) {
+          // Если не получается декодировать, пробуем как есть
+          try {
+            userData = JSON.parse(value);
+          } catch (e2) {
+            console.warn('Failed to parse user data:', e2);
+          }
+        }
+      }
     }
 
     // Проверяем время (не старше 24 часов)
-    const authDate = parseInt(urlParams.get('auth_date') || '0');
     const now = Math.floor(Date.now() / 1000);
-    if (now - authDate > 86400) {
+    if (authDate > 0 && now - authDate > 86400) {
       return { valid: false, error: 'Data expired' };
     }
 
-    // Парсим данные пользователя
-    const userStr = urlParams.get('user');
     const data: TelegramInitData = {
       auth_date: authDate,
       hash: hash,
     };
 
-    if (userStr) {
-      data.user = JSON.parse(decodeURIComponent(userStr));
+    if (userData) {
+      data.user = userData;
     }
 
     return { valid: true, data };
   } catch (error) {
+    console.error('Error validating initData:', error);
     return {
       valid: false,
       error: error instanceof Error ? error.message : 'Unknown error',

@@ -377,10 +377,45 @@ export default function QuizPage() {
 
     if (!questionnaire) return;
 
-    const allQuestions = [
+    // Получаем все вопросы с фильтрацией
+    const allQuestionsRaw = [
       ...questionnaire.groups.flatMap((g) => g.questions),
       ...questionnaire.questions,
     ];
+    
+    // Фильтруем вопросы на основе ответов
+    // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
+    const allQuestions = allQuestionsRaw.filter((question) => {
+      // Проверяем, является ли это вопросом про беременность/кормление
+      const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
+                                  question.code === 'pregnancy' ||
+                                  question.text?.toLowerCase().includes('беременн') ||
+                                  question.text?.toLowerCase().includes('кормлен');
+      
+      if (!isPregnancyQuestion) {
+        return true; // Показываем все остальные вопросы
+      }
+      
+      // Для вопроса про беременность проверяем пол
+      // Ищем ответ на вопрос о поле (gender)
+      let genderValue: string | undefined;
+      for (const q of allQuestionsRaw) {
+        if (q.code === 'gender' && answers[q.id]) {
+          genderValue = Array.isArray(answers[q.id]) 
+            ? (answers[q.id] as string[])[0] 
+            : (answers[q.id] as string);
+          break;
+        }
+      }
+      
+      // Если пол "мужчина" или "male", не показываем вопрос про беременность
+      const isMale = genderValue?.toLowerCase().includes('мужчин') || 
+                     genderValue?.toLowerCase().includes('male') ||
+                     genderValue === 'male' ||
+                     genderValue === 'мужской';
+      
+      return !isMale; // Показываем только если не мужчина
+    });
 
     // Если показывается информационный экран между вопросами, проверяем, есть ли следующий инфо-экран в цепочке
     // При повторном прохождении пропускаем все info screens
@@ -786,11 +821,52 @@ export default function QuizPage() {
     );
   }
 
-  // Получаем все вопросы
-  const allQuestions = [
+  // Получаем все вопросы с фильтрацией
+  const allQuestionsRaw = [
     ...questionnaire.groups.flatMap((g) => g.questions),
     ...questionnaire.questions,
   ];
+  
+  // Фильтруем вопросы на основе ответов
+  // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
+  const allQuestions = allQuestionsRaw.filter((question) => {
+    // Проверяем, является ли это вопросом про беременность/кормление
+    const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
+                                question.code === 'pregnancy' ||
+                                question.text?.toLowerCase().includes('беременн') ||
+                                question.text?.toLowerCase().includes('кормлен');
+    
+    if (!isPregnancyQuestion) {
+      return true; // Показываем все остальные вопросы
+    }
+    
+    // Для вопроса про беременность проверяем пол
+    // Ищем ответ на вопрос о поле (gender)
+    const genderAnswer = Object.values(answers).find((_, idx) => {
+      const questionId = Object.keys(answers)[idx];
+      const q = allQuestionsRaw.find(q => q.id.toString() === questionId);
+      return q?.code === 'gender';
+    });
+    
+    // Или ищем по коду вопроса gender
+    let genderValue: string | undefined;
+    for (const q of allQuestionsRaw) {
+      if (q.code === 'gender' && answers[q.id]) {
+        genderValue = Array.isArray(answers[q.id]) 
+          ? (answers[q.id] as string[])[0] 
+          : (answers[q.id] as string);
+        break;
+      }
+    }
+    
+    // Если пол "мужчина" или "male", не показываем вопрос про беременность
+    const isMale = genderValue?.toLowerCase().includes('мужчин') || 
+                   genderValue?.toLowerCase().includes('male') ||
+                   genderValue === 'male' ||
+                   genderValue === 'мужской';
+    
+    return !isMale; // Показываем только если не мужчина
+  });
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
   const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
@@ -805,10 +881,40 @@ export default function QuizPage() {
 
   // Экран продолжения анкеты
   if (showResumeScreen && savedProgress) {
-    const allQuestions = questionnaire ? [
+    // Получаем все вопросы с фильтрацией
+    const allQuestionsRaw = questionnaire ? [
       ...questionnaire.groups.flatMap((g) => g.questions),
       ...questionnaire.questions,
     ] : [];
+    
+    // Фильтруем вопросы на основе ответов
+    const allQuestions = allQuestionsRaw.filter((question) => {
+      const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
+                                  question.code === 'pregnancy' ||
+                                  question.text?.toLowerCase().includes('беременн') ||
+                                  question.text?.toLowerCase().includes('кормлен');
+      
+      if (!isPregnancyQuestion) {
+        return true;
+      }
+      
+      let genderValue: string | undefined;
+      for (const q of allQuestionsRaw) {
+        if (q.code === 'gender' && answers[q.id]) {
+          genderValue = Array.isArray(answers[q.id]) 
+            ? (answers[q.id] as string[])[0] 
+            : (answers[q.id] as string);
+          break;
+        }
+      }
+      
+      const isMale = genderValue?.toLowerCase().includes('мужчин') || 
+                     genderValue?.toLowerCase().includes('male') ||
+                     genderValue === 'male' ||
+                     genderValue === 'мужской';
+      
+      return !isMale;
+    });
     
     const answeredCount = Object.keys(savedProgress.answers).length;
     const totalQuestions = allQuestions.length;
@@ -1404,10 +1510,40 @@ export default function QuizPage() {
   
   // При повторном прохождении сразу переходим к вопросам
   if (isRetakingQuiz && questionnaire && currentInfoScreenIndex < initialInfoScreens.length) {
-    const allQuestions = [
+    // Получаем все вопросы с фильтрацией
+    const allQuestionsRaw = [
       ...questionnaire.groups.flatMap((g) => g.questions),
       ...questionnaire.questions,
     ];
+    
+    // Фильтруем вопросы на основе ответов
+    const allQuestions = allQuestionsRaw.filter((question) => {
+      const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
+                                  question.code === 'pregnancy' ||
+                                  question.text?.toLowerCase().includes('беременн') ||
+                                  question.text?.toLowerCase().includes('кормлен');
+      
+      if (!isPregnancyQuestion) {
+        return true;
+      }
+      
+      let genderValue: string | undefined;
+      for (const q of allQuestionsRaw) {
+        if (q.code === 'gender' && answers[q.id]) {
+          genderValue = Array.isArray(answers[q.id]) 
+            ? (answers[q.id] as string[])[0] 
+            : (answers[q.id] as string);
+          break;
+        }
+      }
+      
+      const isMale = genderValue?.toLowerCase().includes('мужчин') || 
+                     genderValue?.toLowerCase().includes('male') ||
+                     genderValue === 'male' ||
+                     genderValue === 'мужской';
+      
+      return !isMale;
+    });
     if (allQuestions.length > 0) {
       // Переходим сразу к первому вопросу
       if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreens.length) {
