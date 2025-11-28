@@ -51,8 +51,12 @@ function LayoutContent({
   // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
   const isResumeScreen = searchParams?.get('resume') === 'true';
   
-  // Скрываем логотип на главной странице (там он уже есть) и на странице незавершенной анкеты
-  const showLogo = pathname !== '/' && !isResumeScreen;
+  // Скрываем логотип на главной странице, на странице незавершенной анкеты, и на страницах плана, избранного и профиля (там логотип встроен в страницу)
+  const showLogo = pathname !== '/' && 
+                   !isResumeScreen && 
+                   pathname !== '/plan' && 
+                   pathname !== '/wishlist' && 
+                   pathname !== '/profile';
 
   return (
     <>

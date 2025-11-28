@@ -311,6 +311,22 @@ export default function PersonalCabinet() {
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
       paddingBottom: '120px',
     }}>
+      {/* Логотип */}
+      <div style={{
+        padding: '20px',
+        textAlign: 'center',
+      }}>
+        <img
+          src="/skiniq-logo.png"
+          alt="SkinIQ"
+          style={{
+            height: '140px',
+            marginTop: '8px',
+            marginBottom: '8px',
+          }}
+        />
+      </div>
+
       {/* Шапка с аватаркой и именем */}
       <div style={{
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
