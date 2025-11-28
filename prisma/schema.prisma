@@ -21,6 +21,7 @@ model User {
   firstName  String?   @map("first_name")
   lastName   String?   @map("last_name")
   language   String    @default("ru")
+  phoneNumber String?  @map("phone_number") // Номер телефона пользователя
   tags       String[]  @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
