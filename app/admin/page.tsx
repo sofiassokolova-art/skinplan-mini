@@ -242,6 +242,13 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-center h-full">
               <div className="text-gray-500">Загрузка данных...</div>
             </div>
+          ) : userGrowth.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <TrendingUp className="mx-auto mb-4 text-gray-400" size={48} />
+                <p className="text-gray-500">Нет данных за выбранный период</p>
+              </div>
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={userGrowth}>
