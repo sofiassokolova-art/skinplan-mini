@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -27,7 +27,7 @@ interface CartItem {
   createdAt: string;
 }
 
-export default function CartPage() {
+function CartPageContent() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,6 +295,27 @@ export default function CartPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+          padding: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div style={{ fontSize: '18px', color: '#475467' }}>Загрузка...</div>
+      </div>
+    }>
+      <CartPageContent />
+    </Suspense>
   );
 }
 
