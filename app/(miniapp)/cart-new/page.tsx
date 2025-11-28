@@ -10,7 +10,6 @@ import toast from 'react-hot-toast';
 
 // Отключаем статическую генерацию для этой страницы
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 interface CartItem {
   id: string;
