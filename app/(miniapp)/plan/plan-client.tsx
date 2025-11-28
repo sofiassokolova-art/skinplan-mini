@@ -3,18 +3,28 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { SkinInfographic } from '@/components/SkinInfographic';
 import { WeekCalendar } from '@/components/WeekCalendar';
 import { DayRoutine } from '@/components/DayRoutine';
 import { ProgressHeader } from '@/components/ProgressHeader';
 import { AddToCartButton } from '@/components/AddToCartButton';
-import { AddToCartButtonNew } from '@/components/AddToCartButtonNew';
 import { ReplaceProductModal } from '@/components/ReplaceProductModal';
 import { RecommendedProducts } from '@/components/RecommendedProducts';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+
+interface PlanProduct {
+  id: number;
+  name: string;
+  brand: { name: string };
+  price: number;
+  volume: string | null;
+  imageUrl: string | null;
+  step: string;
+  firstIntroducedDay: number;
+}
 import { useRouter } from 'next/navigation';
 
 interface PlanPageClientProps {
@@ -37,90 +47,149 @@ interface PlanPageClientProps {
     weeks: Array<{
       week: number;
       days: Array<{
+        dayNumber?: number;
         morning: number[];
         evening: number[];
       }>;
     }>;
   };
+  planProducts: PlanProduct[];
   progress: {
     currentDay: number;
+    currentWeek: number;
     completedDays: number[];
+    totalDays: number;
   };
   wishlist: number[];
-  currentDay: number;
-  currentWeek: number;
-  todayProducts: Array<{
-    id: number;
-    name: string;
-    brand: { name: string };
-    price: number;
-    volume: string | null;
-    imageUrl: string | null;
-    step: string;
-    firstIntroducedDay: number;
-  }>;
-  todayMorning: number[];
-  todayEvening: number[];
+  onProgressUpdate?: (progress: {
+    currentDay: number;
+    currentWeek: number;
+    completedDays: number[];
+  }) => void;
 }
 
 export function PlanPageClient({
   user,
   profile,
   plan,
+  planProducts,
   progress,
   wishlist,
-  currentDay,
-  currentWeek,
-  todayProducts,
-  todayMorning,
-  todayEvening,
+  onProgressUpdate,
 }: PlanPageClientProps) {
   const router = useRouter();
-  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const weeks = plan.weeks || [];
   const [activeTab, setActiveTab] = useState<'morning' | 'evening'>('morning');
-  const [replaceProduct, setReplaceProduct] = useState<{ 
-    id: number; 
-    name: string; 
-    brand: { name: string };
-    price: number;
-    imageUrl: string | null;
-  } | null>(null);
-  const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set(wishlist));
-  const [completedDays, setCompletedDays] = useState<Set<number>>(new Set(progress.completedDays));
+  const [selectedWeek, setSelectedWeek] = useState(progress.currentWeek);
+  const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(
+    new Set(wishlist)
+  );
+  const [completedDays, setCompletedDays] = useState<Set<number>>(
+    new Set(progress.completedDays)
+  );
+  const [replaceProduct, setReplaceProduct] = useState<PlanProduct | null>(null);
+  const [isCompletingDay, setIsCompletingDay] = useState(false);
+  const planProductMap = useMemo(() => {
+    const map = new Map<number, PlanProduct>();
+    planProducts.forEach((product) => {
+      map.set(product.id, product);
+    });
+    return map;
+  }, [planProducts]);
 
-  // Получаем данные выбранной недели и дня
-  const selectedWeekData = plan.weeks.find(w => w.week === selectedWeek);
-  const selectedDayData = selectedWeekData?.days[0]; // Показываем первый день недели
-  const selectedDayProductIds = [...new Set([
-    ...(selectedDayData?.morning || []),
-    ...(selectedDayData?.evening || []),
-  ])];
+  useEffect(() => {
+    setSelectedWeek(progress.currentWeek);
+  }, [progress.currentWeek]);
+
+  useEffect(() => {
+    setWishlistProductIds(new Set(wishlist));
+  }, [wishlist]);
+
+  useEffect(() => {
+    setCompletedDays(new Set(progress.completedDays));
+  }, [progress.completedDays]);
+
+  const currentWeekNumber = progress.currentWeek;
+  const currentDayNumber = progress.currentDay;
+  const totalDays = progress.totalDays || 28;
+
+  const selectedWeekData =
+    weeks.find((week) => week.week === selectedWeek) ??
+    weeks.find((week) => week.week === currentWeekNumber) ??
+    weeks[0];
+
+  const isCurrentWeekSelected =
+    selectedWeekData && selectedWeekData.week === currentWeekNumber;
+
+  const selectedDayIndex =
+    selectedWeekData && selectedWeekData.days.length > 0
+      ? Math.min(
+          isCurrentWeekSelected ? Math.max((currentDayNumber - 1) % 7, 0) : 0,
+          selectedWeekData.days.length - 1
+        )
+      : 0;
+
+  const selectedDayData = selectedWeekData?.days[selectedDayIndex];
+  const morningSteps = selectedDayData?.morning ?? [];
+  const eveningSteps = selectedDayData?.evening ?? [];
+  const displayDayNumber =
+    selectedDayData?.dayNumber ??
+    ((selectedWeekData?.week ?? 1) - 1) * 7 + selectedDayIndex + 1;
+  const headingDayNumber = isCurrentWeekSelected ? currentDayNumber : displayDayNumber;
+  const headingWeekNumber = selectedWeekData?.week ?? currentWeekNumber;
+  const canCompleteDay =
+    !!selectedWeekData &&
+    isCurrentWeekSelected &&
+    !isCompletingDay &&
+    currentDayNumber <= totalDays;
 
   const completeCurrentDay = async () => {
-    const newCompleted = new Set(completedDays);
-    newCompleted.add(currentDay);
-    setCompletedDays(newCompleted);
-
-    // Сохраняем в localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('plan_progress', JSON.stringify({
-        currentDay: currentDay + 1,
-        completedDays: Array.from(newCompleted),
-      }));
+    if (!isCurrentWeekSelected) {
+      toast.error('Вернитесь к текущей неделе, чтобы отметить прогресс');
+      return;
     }
+    if (isCompletingDay) return;
+    if (currentDayNumber > totalDays) return;
 
-    toast.success('День завершен! ✨');
-    
-    // Haptic feedback
-    if (typeof window !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(200);
-    }
+    setIsCompletingDay(true);
+    try {
+      const updatedSet = new Set(completedDays);
+      updatedSet.add(currentDayNumber);
+      const updatedArray = Array.from(updatedSet)
+        .filter((day) => day >= 1 && day <= totalDays)
+        .sort((a, b) => a - b);
 
-    // Переход к следующему дню (если не последний)
-    if (currentDay < 28) {
-      setTimeout(() => {
-        router.refresh();
-      }, 1500);
+      const nextDay = Math.min(currentDayNumber + 1, totalDays);
+      await api.updatePlanProgress({
+        currentDay: nextDay,
+        completedDays: updatedArray,
+      });
+
+      setCompletedDays(new Set(updatedArray));
+      onProgressUpdate?.({
+        currentDay: nextDay,
+        currentWeek: Math.min(Math.ceil(nextDay / 7), weeks.length || 1),
+        completedDays: updatedArray,
+      });
+
+      toast.success(
+        nextDay > currentDayNumber ? 'День завершен! ✨' : 'План завершен 🎉'
+      );
+
+      if (typeof window !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(200);
+      }
+
+      if (nextDay !== currentDayNumber) {
+        const nextWeek = Math.min(Math.ceil(nextDay / 7), weeks.length || 1);
+        setSelectedWeek(nextWeek);
+        setActiveTab('morning');
+      }
+    } catch (err: any) {
+      console.error('Error updating progress:', err);
+      toast.error(err?.message || 'Не удалось сохранить прогресс');
+    } finally {
+      setIsCompletingDay(false);
     }
   };
 
@@ -152,13 +221,7 @@ export function PlanPageClient({
     }
   };
 
-  const openReplaceModal = (product: { 
-    id: number; 
-    name: string; 
-    brand: { name: string };
-    price: number;
-    imageUrl: string | null;
-  }) => {
+  const openReplaceModal = (product: PlanProduct) => {
     setReplaceProduct(product);
   };
 
@@ -172,6 +235,89 @@ export function PlanPageClient({
       console.error('Error replacing product:', err);
       toast.error('Не удалось заменить продукт');
     }
+  };
+
+  const renderRoutine = (productIds: number[]) => {
+    if (productIds.length === 0) {
+      return (
+        <div style={{ color: '#6B7280', fontSize: '15px' }}>
+          Нет продуктов для этого блока
+        </div>
+      );
+    }
+
+    return productIds.map((productId, index) => {
+      const product = planProductMap.get(productId);
+      if (!product) return null;
+
+      const isNew = product.firstIntroducedDay === displayDayNumber;
+      const isInWishlist = wishlistProductIds.has(product.id);
+
+      return (
+        <DayRoutine
+          key={`${product.id}-${index}`}
+          product={product}
+          stepNumber={index + 1}
+          isNew={isNew}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: '16px',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <p
+                style={{
+                  fontWeight: 'bold',
+                  fontSize: '18px',
+                  color: '#0A5F59',
+                  marginBottom: '4px',
+                }}
+              >
+                {product.name}
+              </p>
+              <p style={{ fontSize: '14px', color: '#6B7280' }}>
+                {product.brand.name} • {product.price} ₽
+              </p>
+            </div>
+
+            <AddToCartButton
+              productId={product.id}
+              isActive={isInWishlist}
+              onToggle={toggleWishlist}
+            />
+          </div>
+
+          <button
+            onClick={() => openReplaceModal(product)}
+            style={{
+              marginTop: '16px',
+              width: '100%',
+              color: '#DC2626',
+              border: '1px solid #FCA5A5',
+              padding: '12px',
+              borderRadius: '16px',
+              fontSize: '14px',
+              fontWeight: '500',
+              background: 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#FEE2E2';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            Не подошло — заменить
+          </button>
+        </DayRoutine>
+      );
+    });
   };
 
 
@@ -199,8 +345,8 @@ export function PlanPageClient({
 
       {/* Шапка с прогрессом и инфографикой */}
       <ProgressHeader 
-        currentDay={currentDay}
-        totalDays={28}
+        currentDay={progress.currentDay}
+        totalDays={progress.totalDays}
         skinType={profile.skinTypeRu}
         primaryConcernRu={profile.primaryConcernRu}
       />
@@ -223,7 +369,10 @@ export function PlanPageClient({
             weeks={plan.weeks}
             currentWeek={selectedWeek}
             completedDays={Array.from(completedDays)}
-            onWeekChange={setSelectedWeek}
+            onWeekChange={(week) => {
+              setSelectedWeek(week);
+              setActiveTab('morning');
+            }}
           />
         </div>
 
@@ -243,7 +392,7 @@ export function PlanPageClient({
             marginBottom: '24px',
             color: '#0A5F59',
           }}>
-            День {currentDay} • Неделя {currentWeek}
+            День {headingDayNumber} • Неделя {headingWeekNumber}
           </h2>
 
           {/* Табы утро/вечер */}
@@ -285,122 +434,21 @@ export function PlanPageClient({
           {/* Утро */}
           {activeTab === 'morning' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {todayMorning.map((productId, index) => {
-                const product = todayProducts.find(p => p.id === productId);
-                if (!product) return null;
-
-                const isNew = currentDay === product.firstIntroducedDay;
-                const isInWishlist = wishlistProductIds.has(product.id);
-
-                return (
-                  <DayRoutine key={product.id} product={product} stepNumber={index + 1} isNew={isNew}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px' }}>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 'bold', fontSize: '18px', color: '#0A5F59', marginBottom: '4px' }}>{product.name}</p>
-                        <p style={{ fontSize: '14px', color: '#6B7280' }}>
-                          {product.brand.name} • {product.price} ₽
-                        </p>
-                      </div>
-
-                      <AddToCartButton 
-                        productId={product.id}
-                        isActive={isInWishlist}
-                        onToggle={toggleWishlist}
-                      />
-                    </div>
-
-                    {/* Кнопка замены */}
-                    <button
-                      onClick={() => openReplaceModal(product)}
-                      style={{
-                        marginTop: '16px',
-                        width: '100%',
-                        color: '#DC2626',
-                        border: '1px solid #FCA5A5',
-                        padding: '12px',
-                        borderRadius: '16px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#FEE2E2';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      Не подошло — заменить
-                    </button>
-                  </DayRoutine>
-                );
-              })}
+              {renderRoutine(morningSteps)}
             </div>
           )}
 
           {/* Вечер */}
           {activeTab === 'evening' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {todayEvening.map((productId, index) => {
-                const product = todayProducts.find(p => p.id === productId);
-                if (!product) return null;
-
-                const isNew = currentDay === product.firstIntroducedDay;
-                const isInWishlist = wishlistProductIds.has(product.id);
-
-                return (
-                  <DayRoutine key={product.id} product={product} stepNumber={index + 1} isNew={isNew}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px' }}>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontWeight: 'bold', fontSize: '18px', color: '#0A5F59', marginBottom: '4px' }}>{product.name}</p>
-                        <p style={{ fontSize: '14px', color: '#6B7280' }}>
-                          {product.brand.name} • {product.price} ₽
-                        </p>
-                      </div>
-
-                      <AddToCartButton 
-                        productId={product.id}
-                        isActive={isInWishlist}
-                        onToggle={toggleWishlist}
-                      />
-                    </div>
-
-                    {/* Кнопка замены */}
-                    <button
-                      onClick={() => openReplaceModal(product)}
-                      style={{
-                        marginTop: '16px',
-                        width: '100%',
-                        color: '#DC2626',
-                        border: '1px solid #FCA5A5',
-                        padding: '12px',
-                        borderRadius: '16px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#FEE2E2';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      Не подошло — заменить
-                    </button>
-                  </DayRoutine>
-                );
-              })}
+              {renderRoutine(eveningSteps)}
             </div>
           )}
 
           {/* Кнопка завершения дня */}
           <button
             onClick={completeCurrentDay}
+            disabled={!canCompleteDay}
             style={{
               marginTop: '32px',
               width: '100%',
@@ -411,18 +459,27 @@ export function PlanPageClient({
               fontWeight: 'bold',
               fontSize: '20px',
               border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 8px 24px rgba(16, 185, 129, 0.3)',
+              cursor: canCompleteDay ? 'pointer' : 'not-allowed',
+              boxShadow: canCompleteDay
+                ? '0 8px 24px rgba(16, 185, 129, 0.3)'
+                : '0 4px 12px rgba(16, 185, 129, 0.15)',
+              opacity: canCompleteDay ? 1 : 0.6,
               transition: 'all 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 12px 32px rgba(16, 185, 129, 0.4)';
+              if (canCompleteDay) {
+                e.currentTarget.style.boxShadow = '0 12px 32px rgba(16, 185, 129, 0.4)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
+              if (canCompleteDay) {
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
+              }
             }}
           >
-            День {currentDay} выполнен
+            {canCompleteDay
+              ? `День ${headingDayNumber} выполнен`
+              : 'Доступно только для текущего дня'}
           </button>
         </div>
 
