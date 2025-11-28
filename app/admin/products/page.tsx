@@ -18,7 +18,7 @@ import {
   ColumnFiltersState,
 } from '@tanstack/react-table';
 import { Search, Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
-import { cn, glassCard, glassCardHover } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface Product {
   id: number;
@@ -321,13 +321,13 @@ export default function ProductsAdmin() {
       </div>
 
       {error && (
-        <div className={cn(glassCard, 'p-4 bg-red-500/20 border-red-500/50')}>
-          <p className="text-red-200">{error}</p>
-      </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700">{error}</p>
+        </div>
       )}
 
       {/* Поиск и фильтры */}
-      <div className={cn(glassCard, 'p-4 mb-12')}>
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-12">
         <div className="flex items-center gap-4">
           <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-300">
             <div className="flex items-center justify-center px-4 py-2 bg-white">
@@ -346,7 +346,7 @@ export default function ProductsAdmin() {
       </div>
 
       {/* Таблица */}
-      <div className={cn(glassCard, 'overflow-hidden')}>
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">

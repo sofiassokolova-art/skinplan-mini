@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { cn, glassCard } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface Brand {
   id: number;
@@ -138,7 +138,7 @@ export default function NewProductPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
       {/* === ОСНОВНЫЕ ДАННЫЕ === */}
-        <div className={cn(glassCard, 'p-6')}>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Основная информация</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -269,7 +269,7 @@ export default function NewProductPage() {
       </div>
 
         {/* === КЛЮЧЕВЫЕ ФИЛЬТРЫ === */}
-        <div className={cn(glassCard, 'p-6')}>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">
           Фильтры для рекомендаций (обязательно!)
           </h2>

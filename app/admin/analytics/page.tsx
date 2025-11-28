@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { cn, glassCard } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 const COLORS = ['#8B5CF6', '#EC4899', '#6366F1', '#10B981', '#F59E0B'];
 
@@ -71,8 +71,8 @@ export default function AnalyticsAdmin() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* График распределения */}
-        <div className={cn(glassCard, 'p-6')}>
-          <h2 className="text-xl font-bold text-white mb-6">Распределение данных</h2>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Распределение данных</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
@@ -92,8 +92,8 @@ export default function AnalyticsAdmin() {
         </div>
 
         {/* Круговая диаграмма */}
-        <div className={cn(glassCard, 'p-6')}>
-          <h2 className="text-xl font-bold text-white mb-6">Соотношение</h2>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Соотношение</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -124,8 +124,8 @@ export default function AnalyticsAdmin() {
       </div>
 
       {/* Дополнительная статистика */}
-      <div className={cn(glassCard, 'p-6')}>
-        <h2 className="text-xl font-bold text-white mb-6">Детальная статистика</h2>
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-6">Детальная статистика</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="p-4 bg-white/5 rounded-xl">
             <div className="text-white/60 text-sm mb-1">Новые пользователи (7 дней)</div>

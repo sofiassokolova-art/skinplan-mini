@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { cn, glassCard } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface Feedback {
   id: string;
@@ -95,8 +95,8 @@ export default function FeedbackAdmin() {
       </div>
 
       {error && (
-        <div className={cn(glassCard, 'p-4 bg-red-500/20 border-red-500/50')}>
-          <p className="text-red-200">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700">{error}</p>
         </div>
       )}
 
@@ -134,7 +134,7 @@ export default function FeedbackAdmin() {
             </div>
 
       {/* Список отзывов */}
-      <div className={cn(glassCard, 'p-6')}>
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="space-y-4">
           {filteredFeedback.length === 0 ? (
             <div className="text-center py-12 text-white/60">
