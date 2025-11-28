@@ -1784,11 +1784,11 @@ export default function QuizPage() {
                 </button>
               );
             })}
-            {/* Кнопка "Получить план" показывается только если это последний вопрос И нет инфо-экранов после него */}
-            {/* При повторном прохождении всегда показываем кнопку (пропускаем info screens) */}
+            {/* Кнопки навигации */}
             {currentQuestionIndex === allQuestions.length - 1 && 
              answers[currentQuestion.id] && 
-             (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) && (
+             (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) ? (
+              // Последний вопрос - показываем "Получить план"
               <div style={{ marginTop: '24px' }}>
                 <button
                   onClick={() => {
@@ -1835,6 +1835,29 @@ export default function QuizPage() {
                   </p>
                 )}
               </div>
+            ) : (
+              // Не последний вопрос или есть инфо-экраны - показываем "Далее"
+              answers[currentQuestion.id] && (
+                <button
+                  onClick={handleNext}
+                  disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)}
+                  style={{
+                    marginTop: '24px',
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    opacity: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)) ? 0.5 : 1,
+                  }}
+                >
+                  Далее
+                </button>
+              )
             )}
           </div>
         )}
@@ -1872,9 +1895,10 @@ export default function QuizPage() {
                 </button>
               );
             })}
-            {/* Кнопка "Получить план" показывается только если это последний вопрос И нет инфо-экранов после него */}
+            {/* Кнопки навигации */}
             {currentQuestionIndex === allQuestions.length - 1 && 
              (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) ? (
+              // Последний вопрос - показываем "Получить план"
               <div style={{ marginTop: '24px' }}>
                 <button
                   onClick={submitAnswers}
@@ -1918,24 +1942,28 @@ export default function QuizPage() {
                 )}
               </div>
             ) : (
-              <button
-                onClick={handleNext}
-                disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)}
-                style={{
-                  marginTop: '24px',
-                  padding: '16px',
-                  borderRadius: '16px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  opacity: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)) ? 0.5 : 1,
-                }}
-              >
-                Далее
-              </button>
+              // Не последний вопрос или есть инфо-экраны - показываем "Далее"
+              answers[currentQuestion.id] && (
+                <button
+                  onClick={handleNext}
+                  disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)}
+                  style={{
+                    marginTop: '24px',
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    opacity: (!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)) ? 0.5 : 1,
+                  }}
+                >
+                  Далее
+                </button>
+              )
             )}
           </div>
         )}
