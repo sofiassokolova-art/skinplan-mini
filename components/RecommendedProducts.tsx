@@ -45,9 +45,28 @@ export function RecommendedProducts({
   const loadRecommendations = async () => {
     try {
       const data = await api.getRecommendations() as any;
+      console.log('📦 Recommendations data:', data);
+      
       // Рекомендации могут быть в разных форматах
-      const products = data.products || data.recommendations || data || [];
-      setRecommendedProducts(Array.isArray(products) ? products.slice(0, 6) : []);
+      let products: Product[] = [];
+      
+      if (data.products && Array.isArray(data.products)) {
+        // Формат: { products: [...] }
+        products = data.products;
+      } else if (data.recommendations && Array.isArray(data.recommendations)) {
+        // Формат: { recommendations: [...] }
+        products = data.recommendations;
+      } else if (data.steps && typeof data.steps === 'object') {
+        // Формат: { steps: { cleanser: [...], serum: [...], ... } }
+        // Преобразуем объект steps в плоский массив продуктов
+        products = Object.values(data.steps).flat() as Product[];
+      } else if (Array.isArray(data)) {
+        // Формат: [...]
+        products = data;
+      }
+      
+      console.log('✅ Parsed products:', products.length);
+      setRecommendedProducts(products.slice(0, 6));
     } catch (err) {
       console.error('Error loading recommendations:', err);
       setRecommendedProducts([]);

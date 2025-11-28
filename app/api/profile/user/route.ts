@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
         firstName: true,
         lastName: true,
         language: true,
+        phoneNumber: true,
       },
     });
 
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
       firstName: user.firstName,
       lastName: user.lastName,
       language: user.language,
-      phoneNumber: null, // Пока нет поля в БД, можно добавить позже
+      phoneNumber: user.phoneNumber || null,
     });
   } catch (error) {
     console.error('Error fetching user profile:', error);
@@ -91,7 +92,7 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {};
     if (firstName !== undefined) updateData.firstName = firstName || null;
     if (lastName !== undefined) updateData.lastName = lastName || null;
-    // phoneNumber пока не сохраняем, так как нет поля в БД
+    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber || null;
 
     const user = await prisma.user.update({
       where: { id: userId },
@@ -103,6 +104,7 @@ export async function PUT(request: NextRequest) {
         firstName: true,
         lastName: true,
         language: true,
+        phoneNumber: true,
       },
     });
 
@@ -115,6 +117,7 @@ export async function PUT(request: NextRequest) {
         firstName: user.firstName,
         lastName: user.lastName,
         language: user.language,
+        phoneNumber: user.phoneNumber,
       },
     });
   } catch (error) {

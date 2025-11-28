@@ -91,36 +91,42 @@ export default function PersonalCabinet() {
     try {
       setLoading(true);
       
-      // Данные пользователя из Telegram
-      if (user) {
+      // Загружаем данные пользователя из БД (приоритет - данные из БД, так как они могут быть отредактированы)
+      let dbUser: any = null;
+      try {
+        dbUser = await api.getUserProfile() as any;
+      } catch (err) {
+        console.warn('Could not load user profile from DB:', err);
+      }
+
+      // Данные пользователя: сначала из БД, если нет - из Telegram
+      if (dbUser) {
+        const profile: UserProfile = {
+          id: dbUser.id || user?.id?.toString() || '',
+          telegramId: dbUser.telegramId || user?.id?.toString() || '',
+          username: dbUser.username || user?.username,
+          firstName: dbUser.firstName || user?.first_name || null,
+          lastName: dbUser.lastName || user?.last_name || null,
+          language: dbUser.language || user?.language_code,
+          phoneNumber: dbUser.phoneNumber || null,
+        };
+        setUserProfile(profile);
+        setNameValue([dbUser.firstName || user?.first_name, dbUser.lastName || user?.last_name].filter(Boolean).join(' ') || '');
+        setPhoneValue(dbUser.phoneNumber || '');
+      } else if (user) {
+        // Если БД недоступна, используем данные из Telegram
         const profile: UserProfile = {
           id: user.id.toString(),
           telegramId: user.id.toString(),
           username: user.username,
-          firstName: user.first_name,
-          lastName: user.last_name,
+          firstName: user.first_name || null,
+          lastName: user.last_name || null,
           language: user.language_code,
-          phoneNumber: undefined, // Будет загружено из БД
+          phoneNumber: null,
         };
         setUserProfile(profile);
         setNameValue([user.first_name, user.last_name].filter(Boolean).join(' ') || '');
-      }
-
-      // Загружаем данные пользователя из БД (включая телефон)
-      try {
-        const dbUser = await api.getUserProfile() as any;
-        if (dbUser) {
-          setUserProfile(prev => ({
-            ...prev!,
-            phoneNumber: dbUser.phoneNumber || '',
-          }));
-          setPhoneValue(dbUser.phoneNumber || '');
-          if (dbUser.firstName || dbUser.lastName) {
-            setNameValue([dbUser.firstName, dbUser.lastName].filter(Boolean).join(' ') || '');
-          }
-        }
-      } catch (err) {
-        console.warn('Could not load user profile from DB:', err);
+        setPhoneValue('');
       }
 
       // Профиль кожи
