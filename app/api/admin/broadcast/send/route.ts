@@ -273,7 +273,25 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       
       const filtersStr = formData.get('filters') as string;
-      filters = filtersStr ? JSON.parse(filtersStr) : {};
+      if (filtersStr) {
+        try {
+          filters = JSON.parse(filtersStr);
+          // Очищаем от undefined, null и пустых строк
+          filters = Object.fromEntries(
+            Object.entries(filters).filter(([_, value]) => {
+              if (value === undefined || value === null) return false;
+              if (typeof value === 'string' && value.trim() === '') return false;
+              if (Array.isArray(value) && value.length === 0) return false;
+              return true;
+            })
+          );
+        } catch (e) {
+          console.error('Error parsing filters:', e);
+          filters = {};
+        }
+      } else {
+        filters = {};
+      }
       message = formData.get('message') as string;
       test = formData.get('test') === 'true';
       
@@ -402,11 +420,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаем запись о рассылке только для реальных рассылок
+    // Очищаем filters от undefined значений для корректной сериализации в JSON
+    const cleanFilters = filters ? Object.fromEntries(
+      Object.entries(filters).filter(([_, value]) => {
+        if (value === undefined || value === null) return false;
+        if (typeof value === 'string' && value.trim() === '') return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        return true;
+      })
+    ) : {};
+    
+    // Валидируем, что cleanFilters может быть сериализован в JSON
+    try {
+      JSON.stringify(cleanFilters);
+    } catch (e) {
+      console.error('Error serializing filters:', e, cleanFilters);
+      return NextResponse.json(
+        { error: 'Invalid filters format. Cannot serialize to JSON.' },
+        { status: 400 }
+      );
+    }
+    
     const broadcast = await prisma.broadcastMessage.create({
       data: {
         title: `Рассылка ${new Date().toLocaleDateString('ru-RU')}`,
         message,
-        filtersJson: filters || {},
+        filtersJson: cleanFilters as any, // Prisma Json type accepts any serializable object
         status: 'sending',
         totalCount: users.length,
       },
