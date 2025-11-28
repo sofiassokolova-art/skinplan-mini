@@ -398,6 +398,8 @@ model BroadcastMessage {
   title       String   // Название рассылки
   message     String   // Текст сообщения
   filtersJson Json     @map("filters_json") // JSON с фильтрами: { skinType: 'oily', ageGroup: '18_25', ... }
+  buttonsJson Json?    @map("buttons_json") // JSON с кнопками: [{ text: "...", url: "..." }]
+  imageUrl    String?  @map("image_url") // URL изображения (если использовался URL)
   status      String   @default("draft") // 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled'
   scheduledAt DateTime? @map("scheduled_at") // Когда отправить
   sentCount   Int      @default(0) @map("sent_count") // Сколько отправлено

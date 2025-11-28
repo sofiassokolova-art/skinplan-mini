@@ -265,6 +265,7 @@ export async function POST(request: NextRequest) {
     let imageUrl: string | undefined;
     let imageBuffer: Buffer | undefined;
     let buttons: Array<{ text: string; url: string }> | undefined;
+    let scheduledAt: Date | undefined;
 
     const contentType = request.headers.get('content-type') || '';
     
@@ -307,6 +308,19 @@ export async function POST(request: NextRequest) {
       
       const buttonsStr = formData.get('buttons') as string;
       buttons = buttonsStr ? JSON.parse(buttonsStr) : undefined;
+      
+      // Обрабатываем запланированное время
+      const scheduledAtStr = formData.get('scheduledAt') as string;
+      if (scheduledAtStr) {
+        scheduledAt = new Date(scheduledAtStr);
+        // Проверяем, что время в будущем
+        if (scheduledAt <= new Date()) {
+          return NextResponse.json(
+            { error: 'Запланированное время должно быть в будущем' },
+            { status: 400 }
+          );
+        }
+      }
     } else {
       // Обрабатываем JSON (для обратной совместимости)
       const body = await request.json();
@@ -315,6 +329,15 @@ export async function POST(request: NextRequest) {
       test = body.test;
       imageUrl = body.imageUrl;
       buttons = body.buttons;
+      if (body.scheduledAt) {
+        scheduledAt = new Date(body.scheduledAt);
+        if (scheduledAt <= new Date()) {
+          return NextResponse.json(
+            { error: 'Запланированное время должно быть в будущем' },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     if (!message || !message.trim()) {
@@ -441,16 +464,33 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Определяем статус: если есть scheduledAt, то "scheduled", иначе "sending"
+    const broadcastStatus = scheduledAt ? 'scheduled' : 'sending';
+    
     const broadcast = await prisma.broadcastMessage.create({
       data: {
         title: `Рассылка ${new Date().toLocaleDateString('ru-RU')}`,
         message,
         filtersJson: cleanFilters as any, // Prisma Json type accepts any serializable object
-        status: 'sending',
+        buttonsJson: buttons ? (buttons as any) : null,
+        imageUrl: imageUrl || null,
+        status: broadcastStatus,
+        scheduledAt: scheduledAt || null,
         totalCount: users.length,
       },
     });
 
+    // Если рассылка запланирована, не запускаем отправку сразу
+    if (scheduledAt) {
+      return NextResponse.json({
+        success: true,
+        broadcastId: broadcast.id,
+        totalCount: users.length,
+        scheduledAt: scheduledAt.toISOString(),
+        message: `Рассылка запланирована на ${scheduledAt.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} МСК`,
+      });
+    }
+    
     // Для реальной рассылки запускаем асинхронно
     // В реальном приложении лучше использовать очередь (Bull, BullMQ)
     // Здесь делаем простую реализацию с задержками
