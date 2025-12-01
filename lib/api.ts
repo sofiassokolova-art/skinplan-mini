@@ -143,6 +143,18 @@ export const api = {
     return request('/plan/generate');
   },
 
+  // Прогресс плана (28 дней)
+  async getPlanProgress() {
+    return request('/plan/progress');
+  },
+
+  async savePlanProgress(currentDay: number, completedDays: number[]) {
+    return request('/plan/progress', {
+      method: 'POST',
+      body: JSON.stringify({ currentDay, completedDays }),
+    });
+  },
+
   // Прогресс анкеты
   async getQuizProgress() {
     return request('/questionnaire/progress');

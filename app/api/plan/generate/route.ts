@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCachedPlan, setCachedPlan } from '@/lib/cache';
 import { calculateSkinAxes, getDermatologistRecommendations, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
+import { isStepAllowedForProfile, type StepCategory } from '@/lib/step-category-rules';
+import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
 
 export const runtime = 'nodejs';
 
@@ -122,6 +124,41 @@ function containsRetinol(productIngredients: string[] | null | undefined): boole
   );
 }
 
+const CLEANER_FALLBACK_STEP: StepCategory = 'cleanser_gentle';
+const SPF_FALLBACK_STEP: StepCategory = 'spf_50_face';
+
+const isCleanserStep = (step: StepCategory) => step.startsWith('cleanser');
+const isSPFStep = (step: StepCategory) => step.startsWith('spf');
+
+const dedupeSteps = (steps: StepCategory[]): StepCategory[] => {
+  const seen = new Set<StepCategory>();
+  return steps.filter((step) => {
+    if (seen.has(step)) return false;
+    seen.add(step);
+    return true;
+  });
+};
+
+function ensureStepPresence(
+  steps: StepCategory[],
+  predicate: (step: StepCategory) => boolean,
+  fallback: StepCategory
+): StepCategory[] {
+  if (steps.some(predicate)) return steps;
+  return [fallback, ...steps];
+}
+
+function getFallbackStep(step: string): StepCategory | undefined {
+  // Маппинг старых значений step на новые StepCategory
+  if (step.startsWith('cleanser')) return 'cleanser_gentle';
+  if (step.startsWith('toner')) return 'toner_hydrating';
+  if (step.startsWith('serum')) return 'serum_hydrating';
+  if (step.startsWith('treatment')) return 'treatment_antiage';
+  if (step.startsWith('moisturizer')) return 'moisturizer_light';
+  if (step.startsWith('spf') || step === 'spf') return 'spf_50_face';
+  return undefined;
+}
+
 /**
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
  */
@@ -199,6 +236,20 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   const goals = Array.isArray(answers.skin_goals) ? answers.skin_goals : [];
   const concerns = Array.isArray(answers.skin_concerns) ? answers.skin_concerns : [];
   
+  const medicalMarkers = (profile.medicalMarkers as Record<string, any> | null) || {};
+  // Создаем минимальный SkinProfile для проверки шагов
+  const { createEmptySkinProfile } = await import('@/lib/skinprofile-types');
+  const stepProfile: import('@/lib/skinprofile-types').SkinProfile = {
+    ...createEmptySkinProfile(),
+    skinType: profile.skinType as any,
+    sensitivity: profile.sensitivityLevel as any,
+    diagnoses: Array.isArray(medicalMarkers.diagnoses) ? medicalMarkers.diagnoses : [],
+    contraindications: Array.isArray(medicalMarkers.contraindications)
+      ? medicalMarkers.contraindications
+      : [],
+    mainGoals: Array.isArray(medicalMarkers.mainGoals) ? medicalMarkers.mainGoals : [],
+  };
+
   const profileClassification = {
     focus: goals.filter((g: string) => 
       ['Акне и высыпания', 'Сократить видимость пор', 'Выровнять пигментацию', 'Морщины и мелкие линии'].includes(g)
@@ -226,6 +277,44 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   } else if (goals.includes('Морщины и мелкие линии') || concerns.includes('Морщины')) {
     primaryFocus = 'wrinkles';
   }
+
+  // Маппим цели в mainGoals для CarePlanTemplate
+  const mainGoals: string[] = [];
+  if (primaryFocus === 'acne') mainGoals.push('acne');
+  if (primaryFocus === 'pigmentation') mainGoals.push('pigmentation');
+  if (primaryFocus === 'wrinkles') mainGoals.push('antiage');
+  if (concerns.includes('Барьер') || concerns.includes('Чувствительность')) {
+    mainGoals.push('barrier');
+  }
+  if (concerns.includes('Обезвоженность') || concerns.includes('Сухость')) {
+    mainGoals.push('dehydration');
+  }
+
+  // Определяем сложность рутины для CarePlanTemplate
+  let routineComplexity: CarePlanProfileInput['routineComplexity'] = 'medium';
+  if (typeof profileClassification.stepsPreference === 'string') {
+    if (profileClassification.stepsPreference.toLowerCase().includes('миним')) {
+      routineComplexity = 'minimal';
+    } else if (profileClassification.stepsPreference.toLowerCase().includes('максим')) {
+      routineComplexity = 'maximal';
+    }
+  }
+
+  const carePlanProfileInput: CarePlanProfileInput = {
+    skinType: profile.skinType || 'normal',
+    mainGoals: mainGoals.length > 0 ? mainGoals : ['general'],
+    sensitivityLevel: profile.sensitivityLevel || 'low',
+    routineComplexity,
+  };
+
+  const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
+  console.log('🧩 Selected care plan template:', {
+    templateId: carePlanTemplate.id,
+    skinType: carePlanProfileInput.skinType,
+    mainGoals: carePlanProfileInput.mainGoals,
+    sensitivityLevel: carePlanProfileInput.sensitivityLevel,
+    routineComplexity: carePlanProfileInput.routineComplexity,
+  });
 
   // Шаг 2: Фильтрация продуктов
   console.log(`🔍 Filtering products for focus: ${primaryFocus}, skinType: ${profileClassification.skinType}, budget: ${profileClassification.budget}`);
@@ -293,38 +382,64 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
   // Если используем продукты из RecommendationSession, пропускаем фильтрацию
   // (они уже прошли фильтрацию при создании сессии)
-  // Иначе фильтруем продукты по критериям
+  // Иначе фильтруем продукты по критериям, СИНХРОНИЗИРОВАННЫМ с полями админки:
+  // - step (категория шага)
+  // - skinTypes (для каких типов кожи подходит)
+  // - concerns (активы / ключевые свойства)
+  // - avoidIf (беременность, аллергия на ретинол и т.п.)
   const filteredProducts = recommendationProducts.length > 0 
     ? allProducts // Используем продукты из RecommendationSession без дополнительной фильтрации
     : allProducts.filter(product => {
+    const productPrice = (product as any).price as number | null | undefined;
+    const productSkinTypes: string[] = product.skinTypes || [];
+    const productConcerns: string[] = product.concerns || [];
+    const productAvoidIf: string[] = product.avoidIf || [];
+
     // SPF универсален для всех типов кожи - пропускаем проверку типа кожи
     const isSPF = product.step === 'spf' || product.category === 'spf';
     
     // Проверка типа кожи (кроме SPF)
-    const skinTypeMatches = isSPF || 
-      !product.skinTypes || 
-      product.skinTypes.length === 0 || 
-      product.skinTypes.includes(profileClassification.skinType);
+    const skinTypeMatches =
+      isSPF ||
+      productSkinTypes.length === 0 ||
+      productSkinTypes.includes(profileClassification.skinType);
 
     // Проверка бюджета (если указан)
-    const productPrice = (product as any).price as number | null | undefined;
-    const budgetMatches = !profileClassification.budget || 
+    const budgetMatches =
+      !profileClassification.budget ||
       profileClassification.budget === 'любой' ||
       !productPrice ||
       getBudgetTier(productPrice) === profileClassification.budget;
 
-    // Проверка исключенных ингредиентов
-    const productIngredients = product.concerns || []; // Используем concerns как ингредиенты (можно добавить отдельное поле)
+    // Проверка исключенных ингредиентов (по admin-полю concerns + ответу exclude_ingredients)
     const noExcludedIngredients = !containsExcludedIngredients(
-      productIngredients,
+      productConcerns,
       profileClassification.exclude
     );
 
-    // Проверка беременности (исключаем ретинол)
-    const safeForPregnancy = !profileClassification.pregnant || 
-      !containsRetinol(productIngredients);
+    // Явные противопоказания из админки:
+    // - avoidIf: ['pregnant', 'retinol_allergy', ...]
+    // - беременность: profileClassification.pregnant (из профиля / ответов)
+    const safeForPregnancy =
+      !profileClassification.pregnant || !productAvoidIf.includes('pregnant');
 
-    return skinTypeMatches && budgetMatches && noExcludedIngredients && safeForPregnancy;
+    // Аллергия на ретинол / сильные кислоты:
+    // если в ответах пользователь исключил ретинол, то избегаем продуктов с avoidIf 'retinol_allergy'
+    const hasRetinolContraInAnswers = Array.isArray(profileClassification.exclude)
+      ? profileClassification.exclude.some((ex: string) =>
+          ex.toLowerCase().includes('ретинол') || ex.toLowerCase().includes('retinol')
+        )
+      : false;
+    const safeForRetinolAllergy =
+      !hasRetinolContraInAnswers || !productAvoidIf.includes('retinol_allergy');
+
+    return (
+      skinTypeMatches &&
+      budgetMatches &&
+      noExcludedIngredients &&
+      safeForPregnancy &&
+      safeForRetinolAllergy
+    );
   });
 
   // Сортируем продукты по релевантности (приоритет основному фокусу, затем isHero и priority)
@@ -445,13 +560,36 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
   // Группируем продукты по шагам
   const productsByStep: Record<string, typeof selectedProducts> = {};
-  selectedProducts.forEach((product) => {
-    const step = product.step || 'other';
-    if (!productsByStep[step]) {
-      productsByStep[step] = [];
+
+  const registerProductForStep = (
+    stepKey: string,
+    product: (typeof selectedProducts)[number]
+  ) => {
+    if (!productsByStep[stepKey]) {
+      productsByStep[stepKey] = [];
     }
-    productsByStep[step].push(product);
+    productsByStep[stepKey].push(product);
+  };
+
+  selectedProducts.forEach((product) => {
+    const stepKey = (product.step || product.category || 'other') as string;
+    registerProductForStep(stepKey, product);
+    const fallbackStep = getFallbackStep(stepKey);
+    if (fallbackStep && fallbackStep !== stepKey) {
+      registerProductForStep(fallbackStep, product);
+    }
   });
+
+  const getProductsForStep = (step: StepCategory) => {
+    if (productsByStep[step] && productsByStep[step].length > 0) {
+      return productsByStep[step];
+    }
+    const fallback = getFallbackStep(step);
+    if (fallback && productsByStep[fallback] && productsByStep[fallback].length > 0) {
+      return productsByStep[fallback];
+    }
+    return [];
+  };
 
   // ГАРАНТИРУЕМ наличие очищения (cleanser) и SPF - они обязательны для всех
   // Если их нет в отфильтрованных продуктах, добавляем отдельно
@@ -544,23 +682,6 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     }
   }
 
-  // Определяем базовые шаги на основе предпочтений
-  // Умывание (cleanser) и SPF обязательны для всех
-  let maxSteps = 3;
-  if (profileClassification.stepsPreference && typeof profileClassification.stepsPreference === 'string') {
-    if (profileClassification.stepsPreference.includes('Минимум')) maxSteps = 2;
-    else if (profileClassification.stepsPreference.includes('Средний')) maxSteps = 4;
-    else if (profileClassification.stepsPreference.includes('Максимум')) maxSteps = 5;
-  }
-
-  // Базовые шаги: умывание всегда первое, SPF всегда в утреннем уходе
-  const baseSteps = ['cleanser', 'toner', 'treatment', 'moisturizer', 'spf'].slice(0, maxSteps);
-  
-  // Убеждаемся, что SPF всегда включен в утренний уход (если есть в базовых шагах или добавляем отдельно)
-  if (!baseSteps.includes('spf')) {
-    baseSteps.push('spf'); // Добавляем SPF, если его нет
-  }
-  
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
   
@@ -570,60 +691,91 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     for (let dayNum = 1; dayNum <= 7; dayNum++) {
       const day = (weekNum - 1) * 7 + dayNum;
       
-      // Постепенное введение продуктов (неделя 1: базовое, неделя 2+: активы)
-      // Умывание (cleanser) и SPF всегда в утреннем уходе с первой недели
-      const baseStepsWithoutSPF = baseSteps.filter(s => s !== 'spf');
-      const morningStepsCount = Math.min(2 + Math.floor((weekNum - 1) / 2), baseStepsWithoutSPF.length);
-      const morningSteps = ['cleanser', ...baseStepsWithoutSPF.slice(0, morningStepsCount - 1), 'spf'].filter((v, i, a) => a.indexOf(v) === i);
-      const eveningStepsCount = Math.min(3 + Math.floor((weekNum - 1) / 2), baseStepsWithoutSPF.length);
-      const eveningSteps = ['cleanser', ...baseStepsWithoutSPF.slice(0, eveningStepsCount - 1)].filter((v, i, a) => a.indexOf(v) === i);
-      
-      // Убираем SPF из вечернего ухода (он только утром)
-      const eveningStepsFiltered = eveningSteps.filter(s => s !== 'spf');
-      
-      // Собираем продукты для дня
+      const templateMorningBase = carePlanTemplate.morning;
+      const templateEveningBase = carePlanTemplate.evening;
+
+      const progressionFactor = (weekNum - 1) / 3;
+
+      const baseMorningCleanser =
+        templateMorningBase.find(isCleanserStep) ?? CLEANER_FALLBACK_STEP;
+      const baseMorningSPF = templateMorningBase.find(isSPFStep) ?? SPF_FALLBACK_STEP;
+      const templateMorningAdditional = templateMorningBase.filter(
+        (step) => !isCleanserStep(step) && !isSPFStep(step)
+      );
+      const morningAdditionalLimit = Math.max(
+        0,
+        Math.round(
+          1 +
+            progressionFactor *
+              Math.max(templateMorningAdditional.length - 1, 0)
+        )
+      );
+      const rawMorningSteps = dedupeSteps([
+        baseMorningCleanser,
+        ...templateMorningAdditional.slice(0, morningAdditionalLimit),
+        baseMorningSPF,
+      ]);
+
+      const baseEveningCleanser =
+        templateEveningBase.find(isCleanserStep) ?? CLEANER_FALLBACK_STEP;
+      const templateEveningAdditional = templateEveningBase.filter(
+        (step) => !isCleanserStep(step) && !isSPFStep(step)
+      );
+      const eveningAdditionalLimit = Math.max(
+        0,
+        Math.round(
+          1 +
+            progressionFactor *
+              Math.max(templateEveningAdditional.length - 1, 0)
+        )
+      );
+      const rawEveningSteps = dedupeSteps([
+        baseEveningCleanser,
+        ...templateEveningAdditional.slice(0, eveningAdditionalLimit),
+      ]);
+
+      const allowedMorningSteps = rawMorningSteps.filter((step) =>
+        isStepAllowedForProfile(step, stepProfile)
+      );
+      const allowedEveningSteps = rawEveningSteps.filter((step) =>
+        isStepAllowedForProfile(step, stepProfile)
+      );
+
+      const morningSteps = ensureStepPresence(
+        ensureStepPresence(allowedMorningSteps, isCleanserStep, CLEANER_FALLBACK_STEP),
+        isSPFStep,
+        SPF_FALLBACK_STEP
+      );
+      const eveningSteps = ensureStepPresence(
+        allowedEveningSteps.filter((step) => !isSPFStep(step)),
+        isCleanserStep,
+        CLEANER_FALLBACK_STEP
+      );
+
       const dayProducts: Record<string, any> = {};
-      [...morningSteps, ...eveningStepsFiltered].forEach((step) => {
-        if (productsByStep[step] && productsByStep[step].length > 0) {
-          // Выбираем первый продукт для каждого шага (можно добавить ротацию)
+      const stepsForDay = [...morningSteps, ...eveningSteps];
+      stepsForDay.forEach((step) => {
+        const stepProducts = getProductsForStep(step);
+        if (stepProducts.length > 0) {
           dayProducts[step] = {
-            id: productsByStep[step][0].id,
-            name: productsByStep[step][0].name,
-            brand: productsByStep[step][0].brand.name,
-            step: step,
+            id: stepProducts[0].id,
+            name: stepProducts[0].name,
+            brand: stepProducts[0].brand.name,
+            step,
           };
         }
       });
-      
-      // Убеждаемся, что очищение (cleanser) и SPF всегда включены в шаги, даже если продуктов нет
-      // Очищение должно быть и утром, и вечером
-      if (!morningSteps.includes('cleanser')) {
-        morningSteps.unshift('cleanser');
-      }
-      if (!eveningStepsFiltered.includes('cleanser')) {
-        eveningStepsFiltered.unshift('cleanser');
-      }
-      
-      // SPF только утром
-      if (!morningSteps.includes('spf')) {
-        morningSteps.push('spf');
-      }
-      
+
       days.push({
         day,
         week: weekNum,
-        // Очищение и SPF всегда в списке шагов, даже если продукта нет
-        morning: morningSteps.filter(s => {
-          // Очищение и SPF всегда показываем
-          if (s === 'cleanser' || s === 'spf') return true;
-          // Остальные - только если есть продукты
-          return productsByStep[s]?.length > 0;
+        morning: morningSteps.filter((step) => {
+          if (isCleanserStep(step) || isSPFStep(step)) return true;
+          return getProductsForStep(step).length > 0;
         }),
-        evening: eveningStepsFiltered.filter(s => {
-          // Очищение всегда показываем
-          if (s === 'cleanser') return true;
-          // Остальные - только если есть продукты
-          return productsByStep[s]?.length > 0;
+        evening: eveningSteps.filter((step) => {
+          if (isCleanserStep(step)) return true;
+          return getProductsForStep(step).length > 0;
         }),
         products: dayProducts,
         completed: false,

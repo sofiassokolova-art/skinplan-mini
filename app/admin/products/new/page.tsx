@@ -31,13 +31,49 @@ const CONCERNS = [
 ];
 
 const STEPS = [
-  { value: 'cleanser', label: 'Очищение' },
-  { value: 'toner', label: 'Тонер' },
-  { value: 'serum', label: 'Сыворотка' },
-  { value: 'moisturizer', label: 'Увлажнение' },
-  { value: 'spf', label: 'SPF' },
-  { value: 'treatment', label: 'Лечение (кислоты, ретинол)' },
-  { value: 'mask', label: 'Маска' },
+  // Очищение
+  { value: 'cleanser_gentle', label: 'Очищение (мягкое)' },
+  { value: 'cleanser_balancing', label: 'Очищение (балансирующее)' },
+  { value: 'cleanser_deep', label: 'Очищение (глубокое/кислотное)' },
+  // Тоник
+  { value: 'toner_hydrating', label: 'Тоник (увлажняющий)' },
+  { value: 'toner_soothing', label: 'Тоник (успокаивающий)' },
+  // Сыворотки
+  { value: 'serum_hydrating', label: 'Сыворотка (увлажняющая)' },
+  { value: 'serum_niacinamide', label: 'Сыворотка (ниацинамид)' },
+  { value: 'serum_vitc', label: 'Сыворотка (витамин C)' },
+  { value: 'serum_anti_redness', label: 'Сыворотка (против покраснений)' },
+  { value: 'serum_brightening_soft', label: 'Сыворотка (осветляющая)' },
+  // Лечебные средства
+  { value: 'treatment_acne_bpo', label: 'Лечение акне (BPO)' },
+  { value: 'treatment_acne_azelaic', label: 'Лечение акне (азелаиновая кислота)' },
+  { value: 'treatment_acne_local', label: 'Лечение акне (точечное)' },
+  { value: 'treatment_exfoliant_mild', label: 'Эксфолиант (мягкий)' },
+  { value: 'treatment_exfoliant_strong', label: 'Эксфолиант (сильный)' },
+  { value: 'treatment_pigmentation', label: 'Лечение пигментации' },
+  { value: 'treatment_antiage', label: 'Антиэйдж' },
+  // Увлажняющие кремы
+  { value: 'moisturizer_light', label: 'Увлажнение (легкое)' },
+  { value: 'moisturizer_balancing', label: 'Увлажнение (балансирующее)' },
+  { value: 'moisturizer_barrier', label: 'Увлажнение (барьерное)' },
+  { value: 'moisturizer_soothing', label: 'Увлажнение (успокаивающее)' },
+  // Кремы для век
+  { value: 'eye_cream_basic', label: 'Крем для век (базовый)' },
+  { value: 'eye_cream_dark_circles', label: 'Крем для век (темные круги)' },
+  { value: 'eye_cream_puffiness', label: 'Крем для век (отеки)' },
+  // SPF
+  { value: 'spf_50_face', label: 'SPF 50 (для лица)' },
+  { value: 'spf_50_oily', label: 'SPF 50 (для жирной кожи)' },
+  { value: 'spf_50_sensitive', label: 'SPF 50 (для чувствительной кожи)' },
+  // Маски
+  { value: 'mask_clay', label: 'Маска (глиняная)' },
+  { value: 'mask_hydrating', label: 'Маска (увлажняющая)' },
+  { value: 'mask_soothing', label: 'Маска (успокаивающая)' },
+  { value: 'mask_sleeping', label: 'Маска (ночная)' },
+  // Доп. уход
+  { value: 'spot_treatment', label: 'Точечное лечение' },
+  { value: 'lip_care', label: 'Уход за губами' },
+  { value: 'balm_barrier_repair', label: 'Бальзам (восстановление барьера)' },
 ];
 
 export default function NewProductPage() {

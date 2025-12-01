@@ -97,30 +97,53 @@ export function PlanPageClient({
   ])];
 
   const completeCurrentDay = async () => {
-    const newCompleted = new Set(completedDays);
-    newCompleted.add(currentDay);
-    setCompletedDays(newCompleted);
+    try {
+      const newCompleted = new Set(completedDays);
+      newCompleted.add(currentDay);
+      setCompletedDays(newCompleted);
 
-    // Сохраняем в localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('plan_progress', JSON.stringify({
-        currentDay: currentDay + 1,
-        completedDays: Array.from(newCompleted),
-      }));
-    }
+      const nextDay = Math.min(currentDay + 1, 28);
 
-    toast.success('День завершен! ✨');
-    
-    // Haptic feedback
-    if (typeof window !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(200);
-    }
+      // Локальный кеш — чтобы UX был мгновенным даже до ответа сервера
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(
+          'plan_progress',
+          JSON.stringify({
+            currentDay: nextDay,
+            completedDays: Array.from(newCompleted),
+          })
+        );
+      }
 
-    // Переход к следующему дню (если не последний)
-    if (currentDay < 28) {
-      setTimeout(() => {
-        router.refresh();
-      }, 1500);
+      // Сохраняем прогресс в БД для синхронизации между устройствами
+      if (
+        typeof window !== 'undefined' &&
+        window.Telegram?.WebApp?.initData
+      ) {
+        try {
+          await api.savePlanProgress(nextDay, Array.from(newCompleted));
+        } catch (err: any) {
+          // Если ошибка авторизации — просто логируем, локальный кеш уже обновлён
+          console.warn('Ошибка сохранения прогресса плана на сервере:', err);
+        }
+      }
+
+      toast.success('День завершен! ✨');
+
+      // Haptic feedback
+      if (typeof window !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(200);
+      }
+
+      // Переход к следующему дню (если не последний)
+      if (currentDay < 28) {
+        setTimeout(() => {
+          router.refresh();
+        }, 1500);
+      }
+    } catch (err: any) {
+      console.error('Error completing day:', err);
+      toast.error('Не удалось обновить прогресс. Попробуйте еще раз.');
     }
   };
 

@@ -174,11 +174,54 @@ export default function PlanPage() {
         console.warn('Could not load wishlist:', err);
       }
 
+      // Загружаем прогресс плана из БД (синхронизация между устройствами)
+      let planProgress: { currentDay: number; completedDays: number[] } = {
+        currentDay: 1,
+        completedDays: [],
+      };
+
+      try {
+        const progressResponse = await api.getPlanProgress() as {
+          currentDay: number;
+          completedDays: number[];
+        };
+        if (
+          progressResponse &&
+          typeof progressResponse.currentDay === 'number' &&
+          Array.isArray(progressResponse.completedDays)
+        ) {
+          planProgress = {
+            currentDay:
+              progressResponse.currentDay < 1
+                ? 1
+                : progressResponse.currentDay > 28
+                ? 28
+                : progressResponse.currentDay,
+            completedDays: progressResponse.completedDays,
+          };
+        }
+      } catch (progressError: any) {
+        // Если ошибка авторизации — это означает, что initData не валиден,
+        // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
+        console.warn('Could not load plan progress, using defaults:', progressError);
+      }
+
       // Обрабатываем данные для передачи в компонент
-      const currentDayGlobal = 1; // TODO: получить из progress
-      const currentWeek = 1;
-      const currentWeekData = plan.weeks[0];
-      const currentDayData = currentWeekData?.days[0];
+      const currentDayGlobal = planProgress.currentDay || 1;
+      const currentWeek =
+        currentDayGlobal <= 7
+          ? 1
+          : currentDayGlobal <= 14
+          ? 2
+          : currentDayGlobal <= 21
+          ? 3
+          : 4;
+
+      const currentWeekIndex = Math.max(0, Math.min(plan.weeks.length - 1, currentWeek - 1));
+      const currentWeekData = plan.weeks[currentWeekIndex];
+
+      const dayIndexWithinWeek = (currentDayGlobal - 1) % (currentWeekData?.days?.length || 7);
+      const currentDayData = currentWeekData?.days[dayIndexWithinWeek] || currentWeekData?.days[0];
 
       const todayMorning = currentDayData?.morning || [];
       const todayEvening = currentDayData?.evening || [];
@@ -248,8 +291,8 @@ export default function PlanPage() {
           })),
         },
         progress: {
-          currentDay: 1,
-          completedDays: [],
+          currentDay: currentDayGlobal,
+          completedDays: planProgress.completedDays,
         },
         wishlist,
         currentDay: currentDayGlobal,

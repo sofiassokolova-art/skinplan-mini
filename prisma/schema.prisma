@@ -31,6 +31,7 @@ model User {
   userAnswers            UserAnswer[]
   recommendationSessions RecommendationSession[]
   planFeedbacks          PlanFeedback[]
+  planProgress           PlanProgress?
   wishlist               Wishlist[]
   wishlistFeedbacks      WishlistFeedback[]
   cart                   Cart[]
@@ -315,6 +316,25 @@ model PlanFeedback {
   @@index([userId])
   @@index([createdAt])
   @@map("plan_feedback")
+}
+
+// ============================================
+// ПРОГРЕСС ПЛАНА
+// ============================================
+
+model PlanProgress {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  currentDay    Int      @default(1)
+  completedDays Int[]    @default([])
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([userId])
+  @@map("plan_progress")
 }
 
 // ============================================
