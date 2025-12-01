@@ -10,8 +10,13 @@ import { rateLimit, getIdentifier } from './lib/rate-limit';
 const RATE_LIMITS: Record<string, { maxRequests: number; interval: number }> = {
   '/api/plan/generate': { maxRequests: 10, interval: 60 * 1000 }, // 10 запросов в минуту
   '/api/questionnaire/answers': { maxRequests: 5, interval: 60 * 1000 }, // 5 запросов в минуту
+  '/api/questionnaire/partial-update': { maxRequests: 5, interval: 60 * 1000 }, // 5 запросов в минуту
+  '/api/products/batch': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
   '/api/recommendations': { maxRequests: 20, interval: 60 * 1000 }, // 20 запросов в минуту
   '/api/admin/login': { maxRequests: 3, interval: 15 * 60 * 1000 }, // 3 попытки за 15 минут (защита от брутфорса)
+  '/api/wishlist': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
+  '/api/cart': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
+  '/api/plan/progress': { maxRequests: 20, interval: 60 * 1000 }, // 20 запросов в минуту
 };
 
 // Публичные маршруты - теперь большинство пользовательских маршрутов публичные
@@ -45,9 +50,9 @@ export async function middleware(request: NextRequest) {
       
       // Определяем тип лимитера
       let limiterType: 'plan' | 'answers' | 'recommendations' | 'admin' = 'plan';
-      if (route.includes('plan/generate')) limiterType = 'plan';
-      else if (route.includes('questionnaire/answers')) limiterType = 'answers';
-      else if (route.includes('recommendations')) limiterType = 'recommendations';
+      if (route.includes('plan/generate') || route.includes('plan/progress')) limiterType = 'plan';
+      else if (route.includes('questionnaire/answers') || route.includes('questionnaire/partial-update')) limiterType = 'answers';
+      else if (route.includes('recommendations') || route.includes('products/batch') || route.includes('wishlist') || route.includes('cart')) limiterType = 'recommendations';
       else if (route.includes('admin/login')) limiterType = 'admin';
       
       const result = await rateLimit(identifier, limits, limiterType);

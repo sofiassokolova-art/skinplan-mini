@@ -6,10 +6,16 @@ import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { applyRulesToSkinProfile } from '@/lib/skinprofile-rules-engine';
 import { getTopicById, shouldRebuildPlan } from '@/lib/quiz-topics';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/questionnaire/partial-update';
+  let userId: string | undefined;
+
   try {
     const initData =
       request.headers.get('x-telegram-init-data') ||
@@ -22,7 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     if (!userId) {
       return NextResponse.json(
         { error: 'Invalid or expired initData' },
@@ -87,7 +93,7 @@ export async function POST(request: NextRequest) {
       
       // Валидация: должен быть хотя бы один идентификатор
       if (!questionId && !questionCode) {
-        console.warn('Answer missing both questionId and questionCode, skipping');
+        logger.warn('Answer missing both questionId and questionCode, skipping', { userId, topicId });
         continue;
       }
       
@@ -97,7 +103,7 @@ export async function POST(request: NextRequest) {
         : questionnaire.questions.find(q => q.code === questionCode);
 
       if (!question) {
-        console.warn(`Question not found: questionId=${questionId}, questionCode=${questionCode}`);
+        logger.warn('Question not found', { userId, topicId, questionId, questionCode });
         continue;
       }
 
@@ -106,32 +112,32 @@ export async function POST(request: NextRequest) {
                        (topic.questionCodes && topic.questionCodes.includes(question.code));
       
       if (!isInTopic) {
-        console.warn(`Question ${question.id} (${question.code}) is not in topic ${topicId}`);
+        logger.warn('Question not in topic', { userId, topicId, questionId: question.id, questionCode: question.code });
         continue;
       }
 
       // Валидация формата ответа
       if (question.type === 'multi_choice') {
         if (!Array.isArray(values) || values.length === 0) {
-          console.warn(`Multi-choice question ${question.id} requires values array`);
+          logger.warn('Multi-choice question requires values array', { userId, questionId: question.id });
           continue;
         }
         // Проверяем, что все значения существуют в answerOptions
         const validValues = question.answerOptions.map(opt => opt.value);
         const invalidValues = values.filter(v => !validValues.includes(v));
         if (invalidValues.length > 0) {
-          console.warn(`Invalid values for question ${question.id}: ${invalidValues.join(', ')}`);
+          logger.warn('Invalid values for question', { userId, questionId: question.id, invalidValues });
           continue;
         }
       } else {
         if (!value) {
-          console.warn(`Single-choice question ${question.id} requires value`);
+          logger.warn('Single-choice question requires value', { userId, questionId: question.id });
           continue;
         }
         // Проверяем, что значение существует в answerOptions
         const validValues = question.answerOptions.map(opt => opt.value);
         if (!validValues.includes(value)) {
-          console.warn(`Invalid value for question ${question.id}: ${value}`);
+          logger.warn('Invalid value for question', { userId, questionId: question.id, value });
           continue;
         }
       }
@@ -254,14 +260,17 @@ export async function POST(request: NextRequest) {
             'X-Telegram-Init-Data': initData,
           },
         }).catch(err => {
-          console.warn('Background plan regeneration failed:', err);
+          logger.warn('Background plan regeneration failed', { userId, error: err });
           // Не критично - план пересоберется при следующем запросе
         });
         planRegenerated = true;
       } catch (err) {
-        console.warn('Could not trigger plan regeneration:', err);
+        logger.warn('Could not trigger plan regeneration', { userId, error: err });
       }
     }
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
 
     return NextResponse.json({
       success: true,
@@ -280,9 +289,16 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error updating partial questionnaire:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const errorMessage = isDevelopment 
+      ? error.message || 'Internal server error'
+      : 'Internal server error';
+
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -4,10 +4,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/products/batch';
+  let userId: string | undefined;
+
   try {
     const initData =
       request.headers.get('x-telegram-init-data') ||
@@ -20,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     if (!userId) {
       return NextResponse.json(
         { error: 'Invalid or expired initData' },
@@ -73,14 +79,24 @@ export async function POST(request: NextRequest) {
       activeIngredients: p.activeIngredients,
     }));
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       products: formattedProducts,
       count: formattedProducts.length,
     });
   } catch (error: any) {
-    console.error('Error loading products batch:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const errorMessage = isDevelopment 
+      ? error.message || 'Internal server error'
+      : 'Internal server error';
+
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
