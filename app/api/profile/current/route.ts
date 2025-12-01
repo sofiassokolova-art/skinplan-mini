@@ -45,19 +45,9 @@ export async function GET(request: NextRequest) {
     });
 
     if (!profile) {
-      logger.warn('Profile not found', { userId });
-      
-      // Проверяем, существует ли пользователь
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-      const totalProfiles = await prisma.skinProfile.count();
-      
-      logger.debug('Profile lookup details', {
-        userId,
-        userExists: !!user,
-        totalProfiles,
-      });
+      // Это нормальная ситуация для пользователей, которые еще не прошли анкету
+      // Логируем как INFO, а не WARN
+      logger.info('Profile not found (user may not have completed questionnaire yet)', { userId });
       
       return NextResponse.json(
         { error: 'No profile found' },
