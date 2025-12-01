@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { PlanPageClient } from './plan-client';
+import { PlanPageClientNew } from './plan-client-new';
+import type { Plan28 } from '@/lib/plan-types';
 
 interface PlanData {
   user: {
@@ -122,7 +123,8 @@ export default function PlanPage() {
         throw planError;
       }
       
-      if (!plan || !plan.weeks || plan.weeks.length === 0) {
+      // Проверяем наличие плана (новый формат plan28 или старый weeks)
+      if (!plan || (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0))) {
         if (retryCount < 3) {
           console.log(`⏳ План пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -244,6 +246,46 @@ export default function PlanPage() {
       // Преобразуем scores из плана
       const scores = plan.skinScores || [];
 
+      // Используем новый формат plan28, если доступен
+      const plan28 = plan.plan28 as Plan28 | undefined;
+      
+      // Создаем Map продуктов для быстрого доступа
+      const productsMap = new Map<number, {
+        id: number;
+        name: string;
+        brand: { name: string };
+        price?: number;
+        imageUrl?: string | null;
+        description?: string;
+      }>();
+      
+      if (plan.products && Array.isArray(plan.products)) {
+        plan.products.forEach((p: any) => {
+          productsMap.set(p.id, {
+            id: p.id,
+            name: p.name,
+            brand: { name: p.brand || 'Unknown' },
+            price: p.price,
+            imageUrl: p.imageUrl || null,
+            description: p.description,
+          });
+        });
+      }
+
+      // Если есть plan28, используем новый формат
+      if (plan28) {
+        setPlanData({
+          plan28,
+          productsMap,
+          wishlist,
+          currentDay: planProgress.currentDay,
+          completedDays: planProgress.completedDays,
+        } as any);
+        setLoading(false);
+        return;
+      }
+
+      // Иначе используем старый формат (для обратной совместимости)
       setPlanData({
         user: {
           id: profile.id || '',
@@ -452,6 +494,20 @@ export default function PlanPage() {
     );
   }
 
+  // Используем новый компонент, если есть plan28
+  if ((planData as any).plan28) {
+    return (
+      <PlanPageClientNew
+        plan28={(planData as any).plan28}
+        products={(planData as any).productsMap}
+        wishlist={planData.wishlist}
+        currentDay={planData.currentDay}
+        completedDays={planData.completedDays}
+      />
+    );
+  }
+
+  // Иначе используем старый компонент (для обратной совместимости)
   return (
     <PlanPageClient
       user={planData.user}

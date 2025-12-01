@@ -1,0 +1,185 @@
+// components/StepCard.tsx
+// Карточка шага ухода с продуктом
+
+'use client';
+
+import { useState } from 'react';
+import { Heart, ShoppingCart, RefreshCw } from 'lucide-react';
+import type { DayStep } from '@/lib/plan-types';
+import { getStepCategoryLabel } from '@/lib/plan-types';
+
+interface StepCardProps {
+  step: DayStep;
+  product?: {
+    id: number;
+    name: string;
+    brand: { name: string };
+    price?: number;
+    imageUrl?: string | null;
+    description?: string;
+  } | null;
+  isInWishlist?: boolean;
+  onToggleWishlist?: (productId: number) => void;
+  onAddToCart?: (productId: number) => void;
+  onReplace?: (step: DayStep, productId: number) => void;
+}
+
+export function StepCard({
+  step,
+  product,
+  isInWishlist = false,
+  onToggleWishlist,
+  onAddToCart,
+  onReplace,
+}: StepCardProps) {
+  const stepLabel = getStepCategoryLabel(step.stepCategory);
+
+  if (!product) {
+    return (
+      <div style={{
+        padding: '16px',
+        borderRadius: '16px',
+        backgroundColor: '#F9FAFB',
+        border: '1px solid #E5E7EB',
+      }}>
+        <div style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280', marginBottom: '8px' }}>
+          {stepLabel}
+        </div>
+        <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+          Продукт не найден
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      padding: '16px',
+      borderRadius: '16px',
+      backgroundColor: 'white',
+      border: '1px solid #E5E7EB',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    }}>
+      {/* Заголовок шага */}
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59', marginBottom: '4px' }}>
+          {stepLabel}
+        </div>
+        {product.description && (
+          <div style={{ fontSize: '12px', color: '#6B7280' }}>
+            {product.description}
+          </div>
+        )}
+      </div>
+
+      {/* Информация о продукте */}
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+          {product.name}
+        </div>
+        <div style={{ fontSize: '14px', color: '#6B7280' }}>
+          {product.brand.name}
+          {product.price && ` • ${product.price} ₽`}
+        </div>
+      </div>
+
+      {/* Кнопки действий */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        {onToggleWishlist && (
+          <button
+            onClick={() => onToggleWishlist(product.id)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '12px',
+              backgroundColor: isInWishlist ? '#FEE2E2' : '#F3F4F6',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              color: isInWishlist ? '#DC2626' : '#6B7280',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isInWishlist ? '#FECACA' : '#E5E7EB';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isInWishlist ? '#FEE2E2' : '#F3F4F6';
+            }}
+          >
+            <Heart size={16} fill={isInWishlist ? '#DC2626' : 'none'} />
+            {isInWishlist ? 'В избранном' : 'В избранное'}
+          </button>
+        )}
+
+        {onAddToCart && (
+          <button
+            onClick={() => onAddToCart(product.id)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#0C7A73';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#0A5F59';
+            }}
+          >
+            <ShoppingCart size={16} />
+            В корзину
+          </button>
+        )}
+
+        {onReplace && (
+          <button
+            onClick={() => onReplace(step, product.id)}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '12px',
+              backgroundColor: 'transparent',
+              border: '1px solid #E5E7EB',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              color: '#6B7280',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#9CA3AF';
+              e.currentTarget.style.color = '#374151';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#E5E7EB';
+              e.currentTarget.style.color = '#6B7280';
+            }}
+          >
+            <RefreshCw size={16} />
+            Заменить
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+

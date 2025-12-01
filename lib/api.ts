@@ -246,4 +246,14 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  // Анкета (используем существующие методы)
+  async getQuestionnaire() {
+    return request('/questionnaire/active');
+  },
+
+  async getUserAnswers() {
+    // Получаем ответы через существующий endpoint
+    return request('/questionnaire/answers');
+  },
 };

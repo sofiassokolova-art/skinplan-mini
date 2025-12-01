@@ -7,6 +7,8 @@ import { getCachedPlan, setCachedPlan } from '@/lib/cache';
 import { calculateSkinAxes, getDermatologistRecommendations, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 import { isStepAllowedForProfile, type StepCategory } from '@/lib/step-category-rules';
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
+import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
+import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
 
 export const runtime = 'nodejs';
 
@@ -931,6 +933,82 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     warnings.push(`⚠️ Учитываются аллергии: ${profileClassification.allergies.join(', ')}`);
   }
 
+  // Преобразуем план в новый формат Plan28
+  const plan28Days: DayPlan[] = [];
+  const weeklySteps = carePlanTemplate.weekly || [];
+  
+  for (let dayIndex = 1; dayIndex <= 28; dayIndex++) {
+    const weekNum = Math.ceil(dayIndex / 7);
+    const dayInWeek = ((dayIndex - 1) % 7) + 1;
+    const weekData = weeks.find(w => w.week === weekNum);
+    const dayData = weekData?.days.find(d => d.day === dayIndex);
+    
+    if (!dayData) continue;
+    
+    const phase = getPhaseForDay(dayIndex);
+    const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps);
+    
+    // Преобразуем morning steps
+    const morningSteps: DayStep[] = dayData.morning.map((step: StepCategory) => {
+      const product = dayData.products[step];
+      const stepProducts = getProductsForStep(step);
+      const alternatives = stepProducts
+        .slice(1, 4) // Берем следующие 3 продукта как альтернативы
+        .map(p => String(p.id));
+      
+      return {
+        stepCategory: step,
+        productId: product ? String(product.id) : (stepProducts.length > 0 ? String(stepProducts[0].id) : null),
+        alternatives,
+      };
+    });
+    
+    // Преобразуем evening steps
+    const eveningSteps: DayStep[] = dayData.evening.map((step: StepCategory) => {
+      const product = dayData.products[step];
+      const stepProducts = getProductsForStep(step);
+      const alternatives = stepProducts
+        .slice(1, 4)
+        .map(p => String(p.id));
+      
+      return {
+        stepCategory: step,
+        productId: product ? String(product.id) : (stepProducts.length > 0 ? String(stepProducts[0].id) : null),
+        alternatives,
+      };
+    });
+    
+    // Преобразуем weekly steps (если это день для недельного ухода)
+    const weeklyDaySteps: DayStep[] = isWeekly ? weeklySteps.map((step: StepCategory) => {
+      const stepProducts = getProductsForStep(step);
+      const alternatives = stepProducts
+        .slice(1, 4)
+        .map(p => String(p.id));
+      
+      return {
+        stepCategory: step,
+        productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
+        alternatives,
+      };
+    }) : [];
+    
+    plan28Days.push({
+      dayIndex,
+      phase,
+      isWeeklyFocusDay: isWeekly,
+      morning: morningSteps,
+      evening: eveningSteps,
+      weekly: weeklyDaySteps,
+    });
+  }
+  
+  const plan28: Plan28 = {
+    userId,
+    skinProfileId: profile.id,
+    days: plan28Days,
+    mainGoals,
+  };
+
   return {
     profile: {
       skinType: profile.skinType || 'normal',
@@ -960,6 +1038,8 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     },
     products: formattedProducts,
     warnings: warnings.length > 0 ? warnings : undefined,
+    // Новый формат плана Plan28
+    plan28,
   };
 }
 

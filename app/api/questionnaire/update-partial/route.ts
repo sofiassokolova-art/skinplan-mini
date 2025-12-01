@@ -1,0 +1,244 @@
+// app/api/questionnaire/update-partial/route.ts
+// API для частичного обновления ответов анкеты
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { applyRulesToSkinProfile } from '@/lib/skinprofile-rules-engine';
+import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
+import { getQuestionCodesForTopic, topicRequiresPlanRebuild, type QuestionTopicId } from '@/lib/questionnaire-topics';
+
+export const runtime = 'nodejs';
+
+interface UpdateRequest {
+  topicId: QuestionTopicId;
+  answers: Array<{
+    questionCode: string;
+    answerValue?: string;
+    answerValues?: string[];
+  }>;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const initData =
+      request.headers.get('x-telegram-init-data') ||
+      request.headers.get('X-Telegram-Init-Data') ||
+      null;
+
+    if (!initData) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = await getUserIdFromInitData(initData);
+    if (!userId) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const body: UpdateRequest = await request.json();
+    const { topicId, answers } = body;
+
+    if (!topicId || !Array.isArray(answers) || answers.length === 0) {
+      return NextResponse.json(
+        { error: 'topicId and answers are required' },
+        { status: 400 }
+      );
+    }
+
+    // Получаем активную анкету
+    const questionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      include: {
+        questions: {
+          include: {
+            answerOptions: true,
+          },
+        },
+      },
+    });
+
+    if (!questionnaire) {
+      return NextResponse.json(
+        { error: 'No active questionnaire found' },
+        { status: 404 }
+      );
+    }
+
+    // Получаем все текущие ответы пользователя
+    const existingAnswers = await prisma.userAnswer.findMany({
+      where: {
+        userId,
+        questionnaireId: questionnaire.id,
+      },
+      include: {
+        question: true,
+      },
+    });
+
+    // Обновляем или создаем ответы для выбранной темы
+    const questionCodes = getQuestionCodesForTopic(topicId);
+    const updatedQuestionIds = new Set<number>();
+
+    for (const answerData of answers) {
+      const question = questionnaire.questions.find(
+        (q) => q.code === answerData.questionCode
+      );
+
+      if (!question) {
+        console.warn(`Question with code ${answerData.questionCode} not found`);
+        continue;
+      }
+
+      updatedQuestionIds.add(question.id);
+
+      // Ищем существующий ответ
+      const existingAnswer = existingAnswers.find(
+        (a) => a.questionId === question.id
+      );
+
+      if (existingAnswer) {
+        // Обновляем существующий ответ
+        await prisma.userAnswer.update({
+          where: { id: existingAnswer.id },
+          data: {
+            answerValue: answerData.answerValue || null,
+            answerValues: answerData.answerValues
+              ? (answerData.answerValues as any)
+              : null,
+          },
+        });
+      } else {
+        // Создаем новый ответ
+        await prisma.userAnswer.create({
+          data: {
+            userId,
+            questionnaireId: questionnaire.id,
+            questionId: question.id,
+            answerValue: answerData.answerValue || null,
+            answerValues: answerData.answerValues
+              ? (answerData.answerValues as any)
+              : null,
+          },
+        });
+      }
+    }
+
+    // Получаем все ответы (включая обновленные) для пересчета профиля
+    const allAnswers = await prisma.userAnswer.findMany({
+      where: {
+        userId,
+        questionnaireId: questionnaire.id,
+      },
+      include: {
+        question: true,
+      },
+    });
+
+    // Преобразуем ответы в формат для skinprofile-rules-engine
+    const rawAnswers = allAnswers.map((answer) => {
+      const value =
+        answer.answerValue ||
+        (answer.answerValues
+          ? JSON.parse(JSON.stringify(answer.answerValues))
+          : null);
+
+      return {
+        questionId: answer.question.id,
+        subKey: undefined, // Можно добавить поддержку subKey если нужно
+        value,
+      };
+    });
+
+    // Генерируем новый SkinProfile
+    const newProfile = applyRulesToSkinProfile(rawAnswers);
+
+    // Получаем текущий профиль для версионирования
+    const currentProfile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const newVersion = currentProfile ? (currentProfile.version || 1) + 1 : 1;
+
+    // Сохраняем новый профиль
+    // Сначала получаем текущий профиль для сохранения других полей
+    const currentProfileData = currentProfile ? {
+      dehydrationLevel: currentProfile.dehydrationLevel,
+      acneLevel: currentProfile.acneLevel,
+      rosaceaRisk: currentProfile.rosaceaRisk,
+      pigmentationRisk: currentProfile.pigmentationRisk,
+      hasPregnancy: currentProfile.hasPregnancy,
+      notes: currentProfile.notes,
+    } : {};
+
+    const updatedProfile = await prisma.skinProfile.create({
+      data: {
+        userId,
+        version: newVersion,
+        skinType: newProfile.skinType || null,
+        sensitivityLevel: newProfile.sensitivity || null,
+        ...currentProfileData,
+        medicalMarkers: {
+          mainGoals: newProfile.mainGoals,
+          secondaryGoals: newProfile.secondaryGoals,
+          diagnoses: newProfile.diagnoses,
+          contraindications: newProfile.contraindications,
+          ageGroup: newProfile.ageGroup,
+          gender: newProfile.gender,
+          seasonality: newProfile.seasonality,
+          pregnancyStatus: newProfile.pregnancyStatus,
+          spfHabit: newProfile.spfHabit,
+          makeupFrequency: newProfile.makeupFrequency,
+          lifestyleFactors: newProfile.lifestyleFactors,
+          carePreference: newProfile.carePreference,
+          routineComplexity: newProfile.routineComplexity,
+          budgetSegment: newProfile.budgetSegment,
+          currentTopicals: newProfile.currentTopicals,
+          currentOralMeds: newProfile.currentOralMeds,
+        } as any,
+      },
+    });
+
+    // Проверяем, нужно ли пересобирать план
+    const requiresPlanRebuild = topicRequiresPlanRebuild(topicId);
+    let planRebuilt = false;
+
+    if (requiresPlanRebuild) {
+      // Определяем параметры для CarePlanTemplate
+      const carePlanProfileInput: CarePlanProfileInput = {
+        skinType: newProfile.skinType || 'normal',
+        mainGoals: newProfile.mainGoals.length > 0 ? newProfile.mainGoals : ['general'],
+        sensitivityLevel: newProfile.sensitivity || 'low',
+        routineComplexity: newProfile.routineComplexity || 'medium',
+      };
+
+      const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
+
+      // Удаляем старую сессию рекомендаций, чтобы план пересобрался
+      await prisma.recommendationSession.deleteMany({
+        where: { userId, profileId: updatedProfile.id },
+      });
+
+      planRebuilt = true;
+    }
+
+    return NextResponse.json({
+      success: true,
+      profile: {
+        id: updatedProfile.id,
+        version: updatedProfile.version,
+        skinType: updatedProfile.skinType,
+        mainGoals: updatedProfile.mainGoals,
+      },
+      planRebuilt,
+      updatedQuestions: Array.from(updatedQuestionIds),
+    });
+  } catch (error: any) {
+    console.error('Error updating partial questionnaire:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
