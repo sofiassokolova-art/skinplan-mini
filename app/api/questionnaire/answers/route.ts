@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
   const path = '/api/questionnaire/answers';
-  let userId: string | undefined;
+  let userId: string;
 
   try {
     // Получаем initData из заголовков (пробуем оба варианта регистра)
@@ -41,14 +41,15 @@ export async function POST(request: NextRequest) {
 
     // Получаем userId из initData (автоматически создает/обновляет пользователя)
     const userIdResult = await getUserIdFromInitData(initData);
-    userId = userIdResult || undefined;
     
-    if (!userId) {
+    if (!userIdResult) {
       return NextResponse.json(
         { error: 'Invalid or expired initData' },
         { status: 401 }
       );
     }
+    
+    userId = userIdResult; // Теперь userId гарантированно string
 
     const body = await request.json();
     const { questionnaireId, answers } = body;
