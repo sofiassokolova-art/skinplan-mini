@@ -54,11 +54,18 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    const errorMessage = error.error || `HTTP ${response.status}`;
-    
     // Для 401 ошибок добавляем более информативное сообщение
+    // НО: для некоторых endpoints (cart, wishlist) 401 - это нормально (пользователь не авторизован)
+    // В этом случае не выбрасываем исключение, а возвращаем пустой результат
     if (response.status === 401) {
+      // Для cart и wishlist 401 - это нормально, если пользователь не авторизован
+      // Возвращаем пустой результат вместо исключения
+      if (endpoint.includes('/cart') || endpoint.includes('/wishlist')) {
+        console.log('ℹ️ 401 for cart/wishlist (user may not be authorized), returning empty result');
+        return { items: [] } as T;
+      }
+      
+      // Для других endpoints 401 - это ошибка авторизации
       const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
       console.error('❌ 401 Unauthorized:', {
         endpoint,
@@ -73,6 +80,10 @@ async function request<T>(
         throw new Error(errorData.error || 'Ошибка авторизации. Попробуйте обновить страницу.');
       }
     }
+    
+    // Для остальных ошибок
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    const errorMessage = error.error || `HTTP ${response.status}`;
     
     // Для 400 ошибок (Bad Request)
     if (response.status === 400) {
