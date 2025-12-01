@@ -3,6 +3,7 @@
 
 import type { Metadata } from 'next';
 import Script from 'next/script';
+import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/Toaster';
@@ -35,6 +36,7 @@ export default function RootLayout({
         <ErrorBoundary>
           {children}
           <Toaster />
+          <Analytics />
         </ErrorBoundary>
       </body>
     </html>
