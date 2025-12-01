@@ -10,8 +10,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/plan/progress';
+  let userId: string | undefined;
+
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
     const initData =
@@ -47,20 +53,35 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       currentDay: progress.currentDay,
       completedDays: progress.completedDays,
     });
   } catch (error: any) {
-    console.error('❌ Error getting plan progress:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const errorMessage = isDevelopment 
+      ? error?.message || 'Failed to get plan progress'
+      : 'Failed to get plan progress';
+
     return NextResponse.json(
-      { error: error?.message || 'Failed to get plan progress' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/plan/progress';
+  let userId: string | undefined;
+
   try {
     const initData =
       request.headers.get('x-telegram-init-data') ||
@@ -115,14 +136,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       currentDay: progress.currentDay,
       completedDays: progress.completedDays,
     });
   } catch (error: any) {
-    console.error('❌ Error saving plan progress:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const errorMessage = isDevelopment 
+      ? error?.message || 'Failed to save plan progress'
+      : 'Failed to save plan progress';
+
     return NextResponse.json(
-      { error: error?.message || 'Failed to save plan progress' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

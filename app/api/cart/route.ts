@@ -4,9 +4,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 // GET - получить корзину пользователя
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/cart';
+  let userId: string | undefined;
+
   try {
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
@@ -41,6 +47,29 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
+    return NextResponse.json({
+      items: cartItems.map(item => ({
+        id: item.id,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          brand: {
+            id: item.product.brand.id,
+            name: item.product.brand.name,
+          },
+          price: item.product.price,
+          imageUrl: item.product.imageUrl,
+          link: item.product.link,
+          marketLinks: item.product.marketLinks,
+        },
+        quantity: item.quantity,
+        createdAt: item.createdAt.toISOString(),
+      })),
+    });
+
     return NextResponse.json({
       items: cartItems.map(item => ({
         id: item.id,
@@ -61,7 +90,9 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error('Error loading cart:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -71,6 +102,11 @@ export async function GET(request: NextRequest) {
 
 // POST - добавить товар в корзину
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/cart';
+  let userId: string | undefined;
+
   try {
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
@@ -158,8 +194,33 @@ export async function POST(request: NextRequest) {
         quantity: cartItem.quantity,
       },
     });
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
+    return NextResponse.json({
+      success: true,
+      item: {
+        id: cartItem.id,
+        product: {
+          id: cartItem.product.id,
+          name: cartItem.product.name,
+          brand: {
+            id: cartItem.product.brand.id,
+            name: cartItem.product.brand.name,
+          },
+          price: cartItem.product.price,
+          imageUrl: cartItem.product.imageUrl,
+          link: cartItem.product.link,
+          marketLinks: cartItem.product.marketLinks,
+        },
+        quantity: cartItem.quantity,
+      },
+    });
   } catch (error) {
-    console.error('Error adding to cart:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -169,6 +230,11 @@ export async function POST(request: NextRequest) {
 
 // DELETE - удалить товар из корзины
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'DELETE';
+  const path = '/api/cart';
+  let userId: string | undefined;
+
   try {
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
@@ -206,9 +272,14 @@ export async function DELETE(request: NextRequest) {
       },
     });
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error removing from cart:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

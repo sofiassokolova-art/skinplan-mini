@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createSkinProfile } from '@/lib/profile-calculator';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -15,13 +16,18 @@ interface AnswerInput {
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/questionnaire/answers';
+  let userId: string | undefined;
+
   try {
     // Получаем initData из заголовков (пробуем оба варианта регистра)
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
-      console.error('⚠️ Missing initData in headers for questionnaire answers:', {
+      logger.warn('Missing initData in headers for questionnaire answers', {
         availableHeaders: Array.from(request.headers.keys()),
         userAgent: request.headers.get('user-agent'),
       });
@@ -31,10 +37,10 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('✅ initData получен, длина:', initData.length);
+    logger.debug('initData received', { length: initData.length });
 
     // Получаем userId из initData (автоматически создает/обновляет пользователя)
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
       return NextResponse.json(
@@ -292,10 +298,16 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        console.log(`✅ RecommendationSession created for user ${userId} with ${productIds.length} products`);
+        logger.info('RecommendationSession created', {
+          userId,
+          productCount: productIds.length,
+        });
       } else {
         // Если правило не найдено, создаем fallback сессию с базовыми продуктами
-        console.warn(`⚠️ No matching rule found for profile ${profile.id}, creating fallback session...`);
+        logger.warn('No matching rule found, creating fallback session', {
+          userId,
+          profileId: profile.id,
+        });
         
         const fallbackProductIds: number[] = [];
         
@@ -318,7 +330,7 @@ export async function POST(request: NextRequest) {
           
           if (products.length > 0) {
             fallbackProductIds.push(products[0].id);
-            console.log(`✅ Added fallback ${step}: ${products[0].name}`);
+            logger.debug('Added fallback product', { userId, step, productName: products[0].name });
           }
         }
         
@@ -352,14 +364,17 @@ export async function POST(request: NextRequest) {
             },
           });
           
-          console.log(`✅ Fallback RecommendationSession created with ${fallbackProductIds.length} products`);
+          logger.info('Fallback RecommendationSession created', {
+            userId,
+            productCount: fallbackProductIds.length,
+          });
         } else {
-          console.error(`❌ No products available for fallback session`);
+          logger.error('No products available for fallback session', { userId });
         }
       }
     } catch (recommendationError) {
       // Не блокируем сохранение ответов, если рекомендации не создались
-      console.error('Error creating recommendations:', recommendationError);
+      logger.error('Error creating recommendations', recommendationError, { userId });
     }
 
     // После успешного создания профиля, очищаем прогресс анкеты на сервере
@@ -371,10 +386,10 @@ export async function POST(request: NextRequest) {
           questionnaireId,
         },
       });
-      console.log(`✅ Quiz progress cleared for user ${userId} after profile creation`);
+      logger.info('Quiz progress cleared after profile creation', { userId });
     } catch (clearError) {
       // Не критично, если не удалось очистить - прогресс просто не будет показываться
-      console.warn('⚠️ Failed to clear quiz progress (non-critical):', clearError);
+      logger.warn('Failed to clear quiz progress (non-critical)', { userId, error: clearError });
     }
 
     return NextResponse.json({
@@ -392,8 +407,29 @@ export async function POST(request: NextRequest) {
       },
       answersCount: savedAnswers.length,
     });
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
+    return NextResponse.json({
+      success: true,
+      profile: {
+        id: profile.id,
+        skinType: profile.skinType,
+        sensitivityLevel: profile.sensitivityLevel,
+        acneLevel: profile.acneLevel,
+        dehydrationLevel: profile.dehydrationLevel,
+        rosaceaRisk: profile.rosaceaRisk,
+        pigmentationRisk: profile.pigmentationRisk,
+        ageGroup: profile.ageGroup,
+        notes: profile.notes,
+      },
+      answersCount: savedAnswers.length,
+    });
   } catch (error) {
-    console.error('Error saving answers:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

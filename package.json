@@ -30,7 +30,9 @@
     "seed:admin-telegram": "tsx scripts/seed-admin-telegram.ts",
     "seed:all": "tsx scripts/seed-all.ts",
     "telegram:webhook": "tsx scripts/setup-telegram-webhook.ts",
-    "generate:webhook-secret": "tsx scripts/generate-webhook-secret.ts"
+    "generate:webhook-secret": "tsx scripts/generate-webhook-secret.ts",
+    "backup:db": "tsx scripts/backup-db.ts",
+    "restore:db": "tsx scripts/restore-db.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

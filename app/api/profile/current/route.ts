@@ -4,15 +4,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/profile/current';
+  let userId: string | undefined;
+
   try {
     // Получаем initData из заголовков (пробуем оба варианта)
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
-      console.error('⚠️ Missing initData in headers:', {
+      logger.warn('Missing initData in headers', {
         availableHeaders: Array.from(request.headers.keys()),
       });
       return NextResponse.json(
@@ -22,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Получаем userId из initData
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
       return NextResponse.json(
@@ -38,17 +44,19 @@ export async function GET(request: NextRequest) {
     });
 
     if (!profile) {
-      console.error(`⚠️ Profile not found for userId: ${userId}`);
+      logger.warn('Profile not found', { userId });
       
       // Проверяем, существует ли пользователь
       const user = await prisma.user.findUnique({
         where: { id: userId },
       });
-      console.error(`   User exists: ${!!user}, userId: ${userId}`);
-      
-      // Проверяем, есть ли вообще профили в БД
       const totalProfiles = await prisma.skinProfile.count();
-      console.error(`   Total profiles in DB: ${totalProfiles}`);
+      
+      logger.debug('Profile lookup details', {
+        userId,
+        userExists: !!user,
+        totalProfiles,
+      });
       
       return NextResponse.json(
         { error: 'No profile found' },
@@ -82,8 +90,31 @@ export async function GET(request: NextRequest) {
       updatedAt: profile.updatedAt,
       primaryConcernRu: 'Акне', // TODO: Вычислить из профиля
     });
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
+    return NextResponse.json({
+      id: profile.id,
+      version: profile.version,
+      skinType: profile.skinType,
+      skinTypeRu: skinTypeRuMap[profile.skinType || 'normal'] || 'Нормальная',
+      sensitivityLevel: profile.sensitivityLevel,
+      dehydrationLevel: profile.dehydrationLevel,
+      acneLevel: profile.acneLevel,
+      rosaceaRisk: profile.rosaceaRisk,
+      pigmentationRisk: profile.pigmentationRisk,
+      ageGroup: profile.ageGroup,
+      hasPregnancy: profile.hasPregnancy,
+      notes: profile.notes,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+      primaryConcernRu: 'Акне', // TODO: Вычислить из профиля
+    });
   } catch (error) {
-    console.error('Error fetching profile:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
