@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
     logger.debug('initData received', { length: initData.length });
 
     // Получаем userId из initData (автоматически создает/обновляет пользователя)
-    userId = await getUserIdFromInitData(initData);
+    const userIdResult = await getUserIdFromInitData(initData);
+    userId = userIdResult || undefined;
     
     if (!userId) {
       return NextResponse.json(
