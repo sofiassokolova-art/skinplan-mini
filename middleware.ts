@@ -28,6 +28,8 @@ const publicRoutes = [
   '/api/plan/generate', // Использует initData напрямую
   '/api/recommendations', // Использует initData напрямую
   '/api/profile/current', // Использует initData напрямую
+  '/api/cart', // Использует initData напрямую
+  '/api/wishlist', // Использует initData напрямую
   '/api/telegram/webhook', // Webhook от Telegram
   '/api/admin/login', // Публичный endpoint для входа в админку (не требует JWT)
   '/api/admin/auth', // Публичный endpoint для авторизации через Telegram initData (не требует JWT)
@@ -112,26 +114,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Для остальных API маршрутов проверяем auth_token
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                  request.cookies.get('auth_token')?.value;
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return NextResponse.next();
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
+    // Для остальных API маршрутов (не публичных, не админских)
+    // В Edge Runtime не поддерживается Node.js crypto, поэтому полная валидация JWT
+    // делается в API routes (Node.js runtime)
+    // Здесь просто пропускаем запрос в API route, где будет выполнена валидация
+    return NextResponse.next();
   }
 
   return NextResponse.next();
