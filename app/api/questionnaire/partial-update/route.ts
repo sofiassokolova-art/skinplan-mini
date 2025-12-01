@@ -190,8 +190,9 @@ export async function POST(request: NextRequest) {
     // Преобразуем в формат для skinprofile-rules-engine
     const rawAnswers = allAnswers.map(answer => ({
       questionId: answer.questionId,
-      subKey: answer.question.code, // Можно улучшить, если есть subKey
-      value: answer.answerValue || answer.answerValues,
+      questionCode: answer.question.code,
+      answerValue: answer.answerValue,
+      answerValues: answer.answerValues,
     }));
 
     // Получаем текущий профиль
