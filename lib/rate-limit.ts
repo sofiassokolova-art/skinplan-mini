@@ -7,57 +7,70 @@ import { getRedis } from './redis';
 // Пробуем использовать Upstash Redis для production
 let ratelimit: any = null;
 let useRedis = false;
+let redisDisabled = false; // Флаг для отслеживания, был ли Redis отключен из-за ошибок
 
-try {
-  // Получаем Redis экземпляр через singleton
-  const redis = getRedis();
-
-  // Проверяем, есть ли Redis и переменные окружения для Upstash
-  if (
-    redis &&
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    // Динамический импорт, чтобы не падать, если пакеты не установлены
-    const { Ratelimit } = require('@upstash/ratelimit');
-
-    // Создаем разные лимитеры для разных endpoints
-    ratelimit = {
-      // Для генерации плана - 10 запросов в минуту
-      plan: new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(10, '1 m'),
-        analytics: true,
-      }),
-      // Для ответов анкеты - 5 запросов в минуту
-      answers: new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(5, '1 m'),
-        analytics: true,
-      }),
-      // Для рекомендаций - 20 запросов в минуту
-      recommendations: new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(20, '1 m'),
-        analytics: true,
-      }),
-      // Для админки - 3 попытки за 15 минут
-      admin: new Ratelimit({
-        redis,
-        limiter: Ratelimit.slidingWindow(3, '15 m'),
-        analytics: true,
-      }),
-    };
-
-    useRedis = true;
-    console.log('✅ Using Upstash Redis for rate limiting');
-  } else {
-    console.log('ℹ️ Redis not configured, using in-memory fallback for rate limiting');
+// Функция для инициализации Redis rate limiting
+function initializeRedisRateLimit() {
+  // Если Redis уже был отключен из-за ошибок, не пытаемся снова
+  if (redisDisabled) {
+    return;
   }
-} catch (error) {
-  console.warn('⚠️ Upstash Redis not available, using in-memory fallback:', error);
-  useRedis = false;
+
+  try {
+    // Получаем Redis экземпляр через singleton
+    const redis = getRedis();
+
+    // Проверяем, есть ли Redis и переменные окружения для Upstash
+    if (
+      redis &&
+      process.env.UPSTASH_REDIS_REST_URL &&
+      process.env.UPSTASH_REDIS_REST_TOKEN
+    ) {
+      // Динамический импорт, чтобы не падать, если пакеты не установлены
+      const { Ratelimit } = require('@upstash/ratelimit');
+
+      // Создаем разные лимитеры для разных endpoints
+      ratelimit = {
+        // Для генерации плана - 10 запросов в минуту
+        plan: new Ratelimit({
+          redis,
+          limiter: Ratelimit.slidingWindow(10, '1 m'),
+          analytics: true,
+        }),
+        // Для ответов анкеты - 5 запросов в минуту
+        answers: new Ratelimit({
+          redis,
+          limiter: Ratelimit.slidingWindow(5, '1 m'),
+          analytics: true,
+        }),
+        // Для рекомендаций - 20 запросов в минуту
+        recommendations: new Ratelimit({
+          redis,
+          limiter: Ratelimit.slidingWindow(20, '1 m'),
+          analytics: true,
+        }),
+        // Для админки - 3 попытки за 15 минут
+        admin: new Ratelimit({
+          redis,
+          limiter: Ratelimit.slidingWindow(3, '15 m'),
+          analytics: true,
+        }),
+      };
+
+      useRedis = true;
+      console.log('✅ Using Upstash Redis for rate limiting');
+    } else {
+      console.log('ℹ️ Redis not configured, using in-memory fallback for rate limiting');
+    }
+  } catch (error) {
+    console.warn('⚠️ Upstash Redis not available, using in-memory fallback:', error);
+    useRedis = false;
+    redisDisabled = true;
+  }
 }
+
+// Инициализируем при загрузке модуля
+initializeRedisRateLimit();
 
 // Fallback: In-memory store (только для разработки)
 interface RateLimitStore {
@@ -148,12 +161,15 @@ export async function rateLimit(
                                 error?.message?.includes('evalsha') ||
                                 error?.code === 'NOPERM';
       
-      if (isPermissionError) {
+      if (isPermissionError && !redisDisabled) {
         // Ошибка прав доступа - отключаем Redis и используем только in-memory
-        console.warn('⚠️ Redis permission error (NOPERM), disabling Redis for rate limiting:', error?.message);
+        // Выводим предупреждение только один раз
+        console.warn('⚠️ Redis permission error (NOPERM), disabling Redis for rate limiting. Using in-memory fallback.');
         useRedis = false;
         ratelimit = null;
-      } else {
+        redisDisabled = true; // Помечаем, что Redis отключен
+      } else if (!redisDisabled) {
+        // Другие ошибки Redis - логируем только если Redis еще не отключен
         console.error('Redis rate limit error, falling back to in-memory:', error);
       }
       // Fallback на in-memory при ошибке Redis
