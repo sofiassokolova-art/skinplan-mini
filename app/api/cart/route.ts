@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
-    logApiRequest(method, path, 200, duration, userId);
+    logApiRequest(method, path, 200, duration, userId || undefined);
 
     return NextResponse.json({
       items: cartItems.map(item => ({
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
-    logApiRequest(method, path, 200, duration, userId);
+    logApiRequest(method, path, 200, duration, userId || undefined);
 
     return NextResponse.json({
       success: true,
@@ -273,7 +273,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
-    logApiRequest(method, path, 200, duration, userId);
+    logApiRequest(method, path, 200, duration, userId || undefined);
 
     return NextResponse.json({ success: true });
   } catch (error) {

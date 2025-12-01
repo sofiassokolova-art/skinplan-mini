@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
-import { applyRulesToSkinProfile } from '@/lib/skinprofile-rules-engine';
+import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { getTopicById, shouldRebuildPlan } from '@/lib/quiz-topics';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
@@ -199,17 +199,8 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Генерируем новый SkinProfile
-    const newProfileData = applyRulesToSkinProfile(
-      rawAnswers,
-      currentProfile ? {
-        skinType: currentProfile.skinType as any,
-        sensitivity: currentProfile.sensitivityLevel as any,
-        mainGoals: (currentProfile.medicalMarkers as any)?.mainGoals || [],
-        diagnoses: (currentProfile.medicalMarkers as any)?.diagnoses || [],
-        contraindications: (currentProfile.medicalMarkers as any)?.contraindications || [],
-      } : undefined
-    );
+    // Генерируем новый SkinProfile из всех ответов
+    const newProfileData = buildSkinProfileFromAnswers(rawAnswers);
 
     // Обновляем или создаем SkinProfile
     const medicalMarkers = {

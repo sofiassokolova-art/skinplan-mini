@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
-import { applyRulesToSkinProfile } from '@/lib/skinprofile-rules-engine';
+import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
 import { getQuestionCodesForTopic, topicRequiresPlanRebuild, type QuestionTopicId } from '@/lib/questionnaire-topics';
 
@@ -149,8 +149,8 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    // Генерируем новый SkinProfile
-    const newProfile = applyRulesToSkinProfile(rawAnswers);
+    // Генерируем новый SkinProfile из всех ответов
+    const newProfile = buildSkinProfileFromAnswers(rawAnswers);
 
     // Получаем текущий профиль для версионирования
     const currentProfile = await prisma.skinProfile.findFirst({

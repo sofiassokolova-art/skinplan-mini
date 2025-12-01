@@ -9,6 +9,7 @@ import { isStepAllowedForProfile, type StepCategory } from '@/lib/step-category-
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
 import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
 import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -87,6 +88,7 @@ interface GeneratedPlan {
     ingredients?: string[];
   }>;
   warnings?: string[]; // Предупреждения об аллергиях и исключениях
+  plan28?: Plan28; // Новый формат плана Plan28
 }
 
 // Вспомогательная функция: определение бюджетного сегмента
@@ -937,10 +939,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   const plan28Days: DayPlan[] = [];
   const weeklySteps = carePlanTemplate.weekly || [];
   
-  // Получаем routineComplexity из профиля для определения частоты недельных шагов
-  const routineComplexity = (medicalMarkers as any)?.routineComplexity || 
-                           carePlanProfileInput.routineComplexity || 
-                           'medium';
+  // Используем уже определенную routineComplexity из carePlanProfileInput
+  // Если нужно переопределить из medicalMarkers, делаем это без const
+  if ((medicalMarkers as any)?.routineComplexity) {
+    routineComplexity = (medicalMarkers as any).routineComplexity;
+  }
   
   for (let dayIndex = 1; dayIndex <= 28; dayIndex++) {
     const weekNum = Math.ceil(dayIndex / 7);
@@ -954,30 +957,32 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps, routineComplexity as any);
     
     // Преобразуем morning steps
-    const morningSteps: DayStep[] = dayData.morning.map((step: StepCategory) => {
+    const morningSteps: DayStep[] = dayData.morning.map((step: string) => {
+      const stepCategory = step as StepCategory;
       const product = dayData.products[step];
-      const stepProducts = getProductsForStep(step);
+      const stepProducts = getProductsForStep(stepCategory);
       const alternatives = stepProducts
         .slice(1, 4) // Берем следующие 3 продукта как альтернативы
         .map(p => String(p.id));
       
       return {
-        stepCategory: step,
+        stepCategory: stepCategory,
         productId: product ? String(product.id) : (stepProducts.length > 0 ? String(stepProducts[0].id) : null),
         alternatives,
       };
     });
     
     // Преобразуем evening steps
-    const eveningSteps: DayStep[] = dayData.evening.map((step: StepCategory) => {
+    const eveningSteps: DayStep[] = dayData.evening.map((step: string) => {
+      const stepCategory = step as StepCategory;
       const product = dayData.products[step];
-      const stepProducts = getProductsForStep(step);
+      const stepProducts = getProductsForStep(stepCategory);
       const alternatives = stepProducts
         .slice(1, 4)
         .map(p => String(p.id));
       
       return {
-        stepCategory: step,
+        stepCategory: stepCategory,
         productId: product ? String(product.id) : (stepProducts.length > 0 ? String(stepProducts[0].id) : null),
         alternatives,
       };
@@ -1049,7 +1054,10 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 }
 
 export async function GET(request: NextRequest) {
-  console.log('🚀 Plan generation request received');
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/plan/generate';
+  let userId: string | undefined;
   
   try {
     // Получаем initData из заголовков
@@ -1073,7 +1081,8 @@ export async function GET(request: NextRequest) {
 
     // Получаем userId из initData (автоматически создает/обновляет пользователя)
     const { getUserIdFromInitData } = await import('@/lib/get-user-from-initdata');
-    const userId = await getUserIdFromInitData(initData);
+    const userIdResult = await getUserIdFromInitData(initData);
+    userId = userIdResult || undefined;
     
     if (!userId) {
       console.error('❌ Invalid or expired initData');

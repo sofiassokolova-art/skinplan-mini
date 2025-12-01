@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PlanPageClientNew } from './plan-client-new';
+import { PlanPageClient } from './plan-client';
 import type { Plan28 } from '@/lib/plan-types';
 
 interface PlanData {
@@ -552,7 +553,7 @@ export default function PlanPage() {
         products={(planData as any).productsMap}
         wishlist={planData.wishlist}
         currentDay={planData.currentDay}
-        completedDays={planData.completedDays}
+        completedDays={planData.progress?.completedDays || []}
       />
     );
   }

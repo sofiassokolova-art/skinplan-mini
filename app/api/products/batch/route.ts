@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    userId = await getUserIdFromInitData(initData);
+    const userIdResult = await getUserIdFromInitData(initData);
+    userId = userIdResult || undefined;
     if (!userId) {
       return NextResponse.json(
         { error: 'Invalid or expired initData' },

@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Получаем userId из initData
-    userId = await getUserIdFromInitData(initData);
+    const userIdResult = await getUserIdFromInitData(initData);
+    userId = userIdResult || undefined;
     
     if (!userId) {
       return NextResponse.json(
@@ -72,24 +73,6 @@ export async function GET(request: NextRequest) {
       normal: 'Нормальная',
       sensitive: 'Чувствительная',
     };
-
-    return NextResponse.json({
-      id: profile.id,
-      version: profile.version,
-      skinType: profile.skinType,
-      skinTypeRu: skinTypeRuMap[profile.skinType || 'normal'] || 'Нормальная',
-      sensitivityLevel: profile.sensitivityLevel,
-      dehydrationLevel: profile.dehydrationLevel,
-      acneLevel: profile.acneLevel,
-      rosaceaRisk: profile.rosaceaRisk,
-      pigmentationRisk: profile.pigmentationRisk,
-      ageGroup: profile.ageGroup,
-      hasPregnancy: profile.hasPregnancy,
-      notes: profile.notes,
-      createdAt: profile.createdAt,
-      updatedAt: profile.updatedAt,
-      primaryConcernRu: 'Акне', // TODO: Вычислить из профиля
-    });
 
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId);
