@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ items: [] });
     }
 
-    userId = await getUserIdFromInitData(initData);
+    const userIdResult = await getUserIdFromInitData(initData);
+    userId = userIdResult || undefined;
     
     // Если не удалось получить userId - возвращаем пустой список (без ошибки)
     if (!userId) {
@@ -113,7 +114,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    userId = await getUserIdFromInitData(initData);
+    const userIdResult = await getUserIdFromInitData(initData);
+    userId = userIdResult || undefined;
     
     if (!userId) {
       return NextResponse.json(
@@ -250,7 +252,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    userId = await getUserIdFromInitData(initData);
+    const userIdResult = await getUserIdFromInitData(initData);
+    userId = userIdResult || undefined;
     
     if (!userId) {
       return NextResponse.json(

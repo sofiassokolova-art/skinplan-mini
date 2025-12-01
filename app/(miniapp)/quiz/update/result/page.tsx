@@ -3,12 +3,14 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getTopicById } from '@/lib/quiz-topics';
 import { CheckCircle } from 'lucide-react';
 
-export default function QuizUpdateResultPage() {
+function QuizUpdateResultContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const topicId = searchParams.get('topicId') || '';
@@ -163,6 +165,14 @@ export default function QuizUpdateResultPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function QuizUpdateResultPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <QuizUpdateResultContent />
+    </Suspense>
   );
 }
 
