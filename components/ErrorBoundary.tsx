@@ -80,7 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
               marginBottom: '24px',
               lineHeight: '1.6',
             }}>
-              Произошла неожиданная ошибка. Попробуйте обновить страницу или вернуться на главную.
+              Произошла неожиданная ошибка. Попробуйте обновить страницу.
             </p>
             <div style={{
               display: 'flex',
@@ -103,21 +103,6 @@ export class ErrorBoundary extends Component<Props, State> {
                 }}
               >
                 Обновить страницу
-              </button>
-              <button
-                onClick={() => window.location.href = '/'}
-                style={{
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(10, 95, 89, 0.1)',
-                  color: '#0A5F59',
-                  border: '2px solid #0A5F59',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                }}
-              >
-                На главную
               </button>
             </div>
             {(process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_SHOW_ERROR_DETAILS === 'true') && this.state.error && (

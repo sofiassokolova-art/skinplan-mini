@@ -273,7 +273,7 @@ export default function PersonalCabinet() {
           <h1 style={{ color: '#1F2937', marginBottom: '16px' }}>Ошибка</h1>
           <p style={{ color: '#6B7280', marginBottom: '24px' }}>{error}</p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => window.location.reload()}
             style={{
               padding: '12px 24px',
               borderRadius: '12px',
@@ -285,7 +285,7 @@ export default function PersonalCabinet() {
               fontWeight: 'bold',
             }}
           >
-            Вернуться на главную
+            Обновить страницу
           </button>
         </div>
       </div>
