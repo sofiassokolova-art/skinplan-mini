@@ -163,8 +163,10 @@ export async function rateLimit(
       
       if (isPermissionError && !redisDisabled) {
         // Ошибка прав доступа - отключаем Redis и используем только in-memory
-        // Выводим предупреждение только один раз
-        console.warn('⚠️ Redis permission error (NOPERM), disabling Redis for rate limiting. Using in-memory fallback.');
+        // Логируем только один раз на уровне debug (не критично, система работает с fallback)
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Redis permission error (NOPERM), disabling Redis for rate limiting. Using in-memory fallback.');
+        }
         useRedis = false;
         ratelimit = null;
         redisDisabled = true; // Помечаем, что Redis отключен
