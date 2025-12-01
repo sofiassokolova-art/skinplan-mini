@@ -556,21 +556,25 @@ export default function HomePage() {
     }
   };
 
+  // Устанавливаем query параметр для скрытия навигации (вынесено на верхний уровень)
+  useEffect(() => {
+    if (showResumeScreen && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('resume', 'true');
+      window.history.replaceState({}, '', url.toString());
+    } else if (!showResumeScreen && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('resume');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [showResumeScreen]);
+
   // Экран незавершенной анкеты
   if (showResumeScreen && savedProgress) {
     const answeredCount = Object.keys(savedProgress.answers).length;
     // Используем реальное количество вопросов из анкеты, если доступно, иначе 22
     const totalQuestions = 22; // Можно улучшить, загрузив анкету
     const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
-
-    // Устанавливаем query параметр для скрытия навигации
-    useEffect(() => {
-      if (showResumeScreen && typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('resume', 'true');
-        window.history.replaceState({}, '', url.toString());
-      }
-    }, [showResumeScreen]);
 
     return (
       <div style={{ 
