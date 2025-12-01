@@ -231,29 +231,41 @@ export default function HomePage() {
     
     // Загружаем данные (пользователь идентифицируется автоматически через initData)
     const initAndLoad = async () => {
-      // Проверяем, что приложение открыто через Telegram
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-        console.log('Telegram WebApp не доступен, перенаправляем на анкету');
-        router.push('/quiz');
-        return;
+      try {
+        // Проверяем, что приложение открыто через Telegram
+        if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+          console.log('Telegram WebApp не доступен, перенаправляем на анкету');
+          router.push('/quiz');
+          return;
+        }
+
+        // Сначала проверяем, есть ли незавершенная анкета
+        const hasIncompleteQuiz = await checkIncompleteQuiz();
+        
+        // Если есть незавершенная анкета, не загружаем рекомендации
+        if (hasIncompleteQuiz) {
+          return;
+        }
+
+        // Загружаем рекомендации (initData передается автоматически в запросе)
+        await loadRecommendations();
+
+        // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
+        await checkFeedbackPopup();
+      } catch (err) {
+        // Обрабатываем любые необработанные ошибки
+        console.error('❌ Error in initAndLoad:', err);
+        setError('Произошла ошибка при загрузке данных. Попробуйте обновить страницу.');
+        setLoading(false);
       }
-
-      // Сначала проверяем, есть ли незавершенная анкета
-      const hasIncompleteQuiz = await checkIncompleteQuiz();
-      
-      // Если есть незавершенная анкета, не загружаем рекомендации
-      if (hasIncompleteQuiz) {
-        return;
-      }
-
-      // Загружаем рекомендации (initData передается автоматически в запросе)
-      await loadRecommendations();
-
-      // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
-      await checkFeedbackPopup();
     };
 
-    initAndLoad();
+    initAndLoad().catch((err) => {
+      // Дополнительная обработка на случай, если промис отклонен
+      console.error('❌ Unhandled promise rejection in initAndLoad:', err);
+      setError('Произошла ошибка при загрузке данных. Попробуйте обновить страницу.');
+      setLoading(false);
+    });
   }, [router]);
 
   // Проверка, нужно ли показывать поп-ап с отзывом (раз в неделю)

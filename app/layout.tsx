@@ -7,6 +7,7 @@ import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/Toaster';
+import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 
 export const metadata: Metadata = {
   title: 'SkinIQ - Умный уход за кожей',
@@ -34,6 +35,7 @@ export default function RootLayout({
       </head>
       <body>
         <ErrorBoundary>
+          <GlobalErrorHandler />
           {children}
           <Toaster />
           <Analytics />
