@@ -547,7 +547,18 @@ export default function HomePage() {
   // Экран незавершенной анкеты
   if (showResumeScreen && savedProgress) {
     const answeredCount = Object.keys(savedProgress.answers).length;
-    const progressPercent = 22 > 0 ? Math.round((answeredCount / 22) * 100) : 0;
+    // Используем реальное количество вопросов из анкеты, если доступно, иначе 22
+    const totalQuestions = 22; // Можно улучшить, загрузив анкету
+    const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+
+    // Устанавливаем query параметр для скрытия навигации
+    useEffect(() => {
+      if (showResumeScreen && typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('resume', 'true');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }, [showResumeScreen]);
 
     return (
       <div style={{ 
@@ -607,7 +618,7 @@ export default function HomePage() {
               fontWeight: 600,
             }}>
               <span>Прогресс</span>
-              <span>{answeredCount} из 22 вопросов</span>
+              <span>{answeredCount} из {totalQuestions} вопросов</span>
             </div>
             <div style={{
               width: '100%',

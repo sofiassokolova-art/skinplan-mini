@@ -142,8 +142,20 @@ export async function rateLimit(
         remaining: result.remaining,
         resetAt: result.reset ? new Date(result.reset).getTime() : Date.now() + options.interval,
       };
-    } catch (error) {
-      console.error('Redis rate limit error, falling back to in-memory:', error);
+    } catch (error: any) {
+      // Проверяем, является ли это ошибкой прав доступа (NOPERM)
+      const isPermissionError = error?.message?.includes('NOPERM') || 
+                                error?.message?.includes('evalsha') ||
+                                error?.code === 'NOPERM';
+      
+      if (isPermissionError) {
+        // Ошибка прав доступа - отключаем Redis и используем только in-memory
+        console.warn('⚠️ Redis permission error (NOPERM), disabling Redis for rate limiting:', error?.message);
+        useRedis = false;
+        ratelimit = null;
+      } else {
+        console.error('Redis rate limit error, falling back to in-memory:', error);
+      }
       // Fallback на in-memory при ошибке Redis
       return rateLimitInMemory(identifier, options);
     }

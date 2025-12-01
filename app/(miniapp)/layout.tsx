@@ -45,11 +45,11 @@ function LayoutContent({
     }
   }, [initData, isAuthorized, initialize]);
 
-  // Скрываем навигацию на определенных страницах
-  const hideNav = pathname === '/quiz' || pathname.startsWith('/quiz/');
-  
   // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
   const isResumeScreen = searchParams?.get('resume') === 'true';
+  
+  // Скрываем навигацию на определенных страницах и на экране прогресса
+  const hideNav = pathname === '/quiz' || pathname.startsWith('/quiz/') || isResumeScreen;
   
   // Скрываем логотип на главной странице, на странице незавершенной анкеты, и на страницах плана, избранного и профиля (там логотип встроен в страницу)
   const showLogo = pathname !== '/' && 

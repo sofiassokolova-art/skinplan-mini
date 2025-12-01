@@ -110,9 +110,15 @@ export default function QuizPage() {
       }
 
       // Загружаем прогресс с сервера (только если Telegram WebApp доступен)
+      // Важно: загружаем после загрузки анкеты, чтобы правильно вычислить totalQuestions
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
           await loadSavedProgressFromServer();
+          // Если прогресс загружен, показываем экран продолжения
+          if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+            setShowResumeScreen(true);
+            setLoading(false);
+          }
         } catch (err: any) {
           // Если ошибка 401 - это нормально, просто используем localStorage
           if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
@@ -157,6 +163,7 @@ export default function QuizPage() {
         // Показываем экран продолжения только если есть сохранённые ответы
         if (progress.answers && Object.keys(progress.answers).length > 0) {
           setShowResumeScreen(true);
+          setLoading(false);
         }
       } catch (err) {
         console.error('Error loading saved progress:', err);
@@ -229,19 +236,26 @@ export default function QuizPage() {
       if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
         setSavedProgress(response.progress);
         setShowResumeScreen(true);
+        setLoading(false);
         // Также сохраняем в localStorage для офлайн доступа
         if (typeof window !== 'undefined') {
           localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
         }
+      } else {
+        // Если прогресса нет на сервере, проверяем localStorage
+        loadSavedProgress();
       }
     } catch (err: any) {
       // Если ошибка 401 - это нормально, просто не используем серверный прогресс
       if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
         // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
+        // Fallback на localStorage
+        loadSavedProgress();
         return;
       }
       console.warn('Ошибка загрузки прогресса с сервера:', err);
-      // Не вызываем loadSavedProgress() здесь, чтобы избежать множественных вызовов
+      // Fallback на localStorage при любой ошибке
+      loadSavedProgress();
     }
   };
 
@@ -1006,11 +1020,11 @@ export default function QuizPage() {
 
     // Устанавливаем query параметр для скрытия навигации в layout
     useEffect(() => {
-      if (showResumeScreen) {
+      if (showResumeScreen && typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.set('resume', 'true');
         window.history.replaceState({}, '', url.toString());
-      } else {
+      } else if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.delete('resume');
         window.history.replaceState({}, '', url.toString());
