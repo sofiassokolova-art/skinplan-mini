@@ -144,8 +144,9 @@ export async function POST(request: NextRequest) {
 
       return {
         questionId: answer.question.id,
-        subKey: undefined, // Можно добавить поддержку subKey если нужно
-        value,
+        questionCode: answer.question.code,
+        answerValue: answer.answerValue || null,
+        answerValues: answer.answerValues || null,
       };
     });
 
