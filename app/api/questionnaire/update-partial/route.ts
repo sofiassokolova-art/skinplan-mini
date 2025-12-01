@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
         skinType: newProfile.skinType || 'normal',
         mainGoals: newProfile.mainGoals.length > 0 ? newProfile.mainGoals : ['general'],
         sensitivityLevel: newProfile.sensitivity || 'low',
-        routineComplexity: newProfile.routineComplexity || 'medium',
+        routineComplexity: (newProfile.routineComplexity === 'any' ? 'medium' : newProfile.routineComplexity) || 'medium',
       };
 
       const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
