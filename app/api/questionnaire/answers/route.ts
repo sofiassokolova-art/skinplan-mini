@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
   const path = '/api/questionnaire/answers';
-  let userId: string;
+  let userId: string | undefined;
 
   try {
     // Получаем initData из заголовков (пробуем оба варианта регистра)
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
           // Создаем новый ответ
           return prisma.userAnswer.create({
             data: {
-              userId,
+              userId: userId!,
               questionnaireId,
               questionId: answer.questionId,
               answerValue: answer.answerValue || null,
@@ -411,7 +411,7 @@ export async function POST(request: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
-    logApiRequest(method, path, 200, duration, userId);
+    logApiRequest(method, path, 200, duration, userId || undefined);
 
     return NextResponse.json({
       success: true,
@@ -430,7 +430,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const duration = Date.now() - startTime;
-    logApiError(method, path, error, userId);
+    logApiError(method, path, error, userId || undefined);
 
     return NextResponse.json(
       { error: 'Internal server error' },
