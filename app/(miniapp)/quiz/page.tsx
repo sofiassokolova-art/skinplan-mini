@@ -53,6 +53,7 @@ export default function QuizPage() {
     infoScreenIndex: number;
   } | null>(null);
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
+  const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
 
   useEffect(() => {
     // Ждем готовности Telegram WebApp
@@ -708,6 +709,7 @@ export default function QuizPage() {
     }
     
     setShowResumeScreen(false);
+    setHasResumed(true); // Помечаем, что пользователь восстановил прогресс
   };
 
   // Начать заново
@@ -1620,7 +1622,29 @@ export default function QuizPage() {
   }
   
   // При повторном прохождении сразу переходим к вопросам
-  if (isRetakingQuiz && questionnaire && currentInfoScreenIndex < initialInfoScreens.length) {
+  // ВАЖНО: Эта логика должна выполняться только один раз при инициализации, а не при каждом рендере
+  // Также не должна выполняться, если пользователь продолжает анкету (showResumeScreen был показан)
+  useEffect(() => {
+    // Определяем initialInfoScreens внутри useEffect
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    
+    // Пропускаем, если пользователь продолжает анкету (не повторное прохождение)
+    // savedProgress или hasResumed означает, что пользователь нажал "Продолжить" и мы не должны сбрасывать состояние
+    if (showResumeScreen || savedProgress || hasResumed) {
+      return;
+    }
+    
+    // Пропускаем, если уже на вопросах или если нет анкеты
+    if (!isRetakingQuiz || !questionnaire || currentInfoScreenIndex >= initialInfoScreens.length) {
+      return;
+    }
+    
+    // Пропускаем, если уже не на первом вопросе (пользователь уже начал отвечать)
+    // Или если есть сохраненные ответы (пользователь уже отвечал)
+    if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
+      return;
+    }
+    
     // Получаем все вопросы с фильтрацией
     const allQuestionsRaw = [
       ...questionnaire.groups.flatMap((g) => g.questions),
@@ -1681,14 +1705,14 @@ export default function QuizPage() {
       
       return !isMale;
     });
+    
     if (allQuestions.length > 0) {
-      // Переходим сразу к первому вопросу
+      // Переходим сразу к первому вопросу только если мы на начальных экранах
       if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreens.length) {
         setCurrentInfoScreenIndex(initialInfoScreens.length);
-        // Продолжаем рендер, показывая вопрос
       }
     }
-  }
+  }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers]);
 
   if (!currentQuestion) {
     return (
