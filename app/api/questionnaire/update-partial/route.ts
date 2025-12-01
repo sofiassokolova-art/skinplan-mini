@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
         id: updatedProfile.id,
         version: updatedProfile.version,
         skinType: updatedProfile.skinType,
-        mainGoals: updatedProfile.mainGoals,
+        mainGoals: (updatedProfile.medicalMarkers as any)?.mainGoals || [],
       },
       planRebuilt,
       updatedQuestions: Array.from(updatedQuestionIds),
