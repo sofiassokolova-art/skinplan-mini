@@ -8,6 +8,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { getTopicById } from '@/lib/quiz-topics';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { logger } from '@/lib/logger';
 
 export default function QuizTopicPage() {
   const router = useRouter();
@@ -41,30 +42,88 @@ export default function QuizTopicPage() {
       const questionnaire = await api.getQuestionnaire() as any;
       if (!questionnaire) {
         toast.error('Анкета не найдена');
+        setLoading(false);
+        return;
+      }
+
+      // Получаем все вопросы из групп и отдельные вопросы
+      const allQuestions = [
+        ...(questionnaire.groups?.flatMap((g: any) => g.questions || []) || []),
+        ...(questionnaire.questions || []),
+      ];
+
+      if (!Array.isArray(allQuestions) || allQuestions.length === 0) {
+        toast.error('Вопросы не найдены в анкете');
+        setLoading(false);
         return;
       }
 
       // Фильтруем вопросы по теме
-      const topicQuestions = questionnaire.questions.filter((q: any) => 
-        topicData.questionIds.includes(q.id) ||
-        (topicData.questionCodes && topicData.questionCodes.includes(q.code))
-      );
+      const topicQuestions = allQuestions.filter((q: any) => {
+        if (!q || !q.id) return false;
+        
+        // Проверяем по ID
+        if (topicData.questionIds && topicData.questionIds.includes(q.id)) {
+          return true;
+        }
+        
+        // Проверяем по коду
+        if (topicData.questionCodes && q.code && topicData.questionCodes.includes(q.code)) {
+          return true;
+        }
+        
+        return false;
+      });
+
+      if (topicQuestions.length === 0) {
+        toast.error('Вопросы для выбранной темы не найдены');
+        setLoading(false);
+        return;
+      }
 
       // Загружаем текущие ответы пользователя для предзаполнения
-      const currentAnswers = await api.getUserAnswers() as any;
-      const answersMap: Record<number, any> = {};
-      
-      currentAnswers.forEach((answer: any) => {
-        if (topicQuestions.some((q: any) => q.id === answer.questionId)) {
-          answersMap[answer.questionId] = answer.answerValue || answer.answerValues;
+      let answersMap: Record<number, any> = {};
+      try {
+        const currentAnswers = await api.getUserAnswers() as any;
+        
+        if (Array.isArray(currentAnswers) && currentAnswers.length > 0) {
+          currentAnswers.forEach((answer: any) => {
+            if (answer && answer.questionId && topicQuestions.some((q: any) => q.id === answer.questionId)) {
+              answersMap[answer.questionId] = answer.answerValue || answer.answerValues;
+            }
+          });
         }
-      });
+      } catch (answerError: any) {
+        // Если не удалось загрузить ответы - это не критично, просто не предзаполняем
+        console.warn('Could not load previous answers (non-critical):', answerError);
+      }
 
       setQuestions(topicQuestions);
       setAnswers(answersMap);
     } catch (err: any) {
       console.error('Error loading topic questions:', err);
-      toast.error('Ошибка загрузки вопросов');
+      console.error('Error details:', {
+        message: err?.message,
+        stack: err?.stack,
+        topicId,
+      });
+      
+      // Более информативное сообщение об ошибке
+      let errorMessage = 'Ошибка загрузки вопросов';
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
+        errorMessage = 'Ошибка авторизации. Пожалуйста, обновите страницу.';
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      toast.error(errorMessage);
+      
+      // Если критическая ошибка, возвращаемся назад
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
+        setTimeout(() => {
+          router.push('/quiz/update');
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
@@ -111,8 +170,17 @@ export default function QuizTopicPage() {
       // Переходим на страницу результата
       router.push(`/quiz/update/result?topicId=${topicId}&needsRebuild=${result.needsPlanRebuild}`);
     } catch (err: any) {
+      logger.error('Error submitting answers', err, { topicId });
       console.error('Error submitting answers:', err);
-      toast.error(err?.message || 'Не удалось обновить профиль');
+      
+      let errorMessage = 'Не удалось обновить профиль';
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
+        errorMessage = 'Ошибка авторизации. Пожалуйста, обновите страницу.';
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -212,7 +280,8 @@ export default function QuizTopicPage() {
 
               {/* Варианты ответов */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {question.answerOptions?.map((option: any) => {
+                {question.answerOptions && Array.isArray(question.answerOptions) && question.answerOptions.length > 0 ? (
+                  question.answerOptions.map((option: any) => {
                   const isSelected = question.type === 'multi_choice'
                     ? Array.isArray(currentAnswer) && currentAnswer.includes(option.value)
                     : currentAnswer === option.value;
@@ -246,7 +315,20 @@ export default function QuizTopicPage() {
                       {option.label}
                     </button>
                   );
-                })}
+                })
+                ) : (
+                  <div style={{
+                    padding: '12px',
+                    borderRadius: '12px',
+                    backgroundColor: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    color: '#991B1B',
+                    fontSize: '14px',
+                    textAlign: 'center',
+                  }}>
+                    Варианты ответов не найдены для этого вопроса
+                  </div>
+                )}
               </div>
             </div>
           );
