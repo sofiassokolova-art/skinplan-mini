@@ -937,6 +937,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   const plan28Days: DayPlan[] = [];
   const weeklySteps = carePlanTemplate.weekly || [];
   
+  // Получаем routineComplexity из профиля для определения частоты недельных шагов
+  const routineComplexity = (medicalMarkers as any)?.routineComplexity || 
+                           carePlanProfileInput.routineComplexity || 
+                           'medium';
+  
   for (let dayIndex = 1; dayIndex <= 28; dayIndex++) {
     const weekNum = Math.ceil(dayIndex / 7);
     const dayInWeek = ((dayIndex - 1) % 7) + 1;
@@ -946,7 +951,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     if (!dayData) continue;
     
     const phase = getPhaseForDay(dayIndex);
-    const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps);
+    const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps, routineComplexity as any);
     
     // Преобразуем morning steps
     const morningSteps: DayStep[] = dayData.morning.map((step: StepCategory) => {

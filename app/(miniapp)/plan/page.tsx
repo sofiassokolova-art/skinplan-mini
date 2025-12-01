@@ -259,21 +259,71 @@ export default function PlanPage() {
         description?: string;
       }>();
       
-      if (plan.products && Array.isArray(plan.products)) {
-        plan.products.forEach((p: any) => {
-          productsMap.set(p.id, {
-            id: p.id,
-            name: p.name,
-            brand: { name: p.brand || 'Unknown' },
-            price: p.price,
-            imageUrl: p.imageUrl || null,
-            description: p.description,
+      if (plan28) {
+        // Собираем все productId из plan28
+        const allProductIds = new Set<number>();
+        plan28.days.forEach(day => {
+          day.morning.forEach(step => {
+            if (step.productId) allProductIds.add(Number(step.productId));
+            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
+          });
+          day.evening.forEach(step => {
+            if (step.productId) allProductIds.add(Number(step.productId));
+            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
+          });
+          day.weekly.forEach(step => {
+            if (step.productId) allProductIds.add(Number(step.productId));
+            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
           });
         });
-      }
 
-      // Если есть plan28, используем новый формат
-      if (plan28) {
+        // Загружаем продукты из БД
+        try {
+          const productIdsArray = Array.from(allProductIds);
+          if (productIdsArray.length > 0) {
+            const productsResponse = await fetch('/api/products/batch', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': initData || '',
+              },
+              body: JSON.stringify({ productIds: productIdsArray }),
+            });
+
+            if (productsResponse.ok) {
+              const productsData = await productsResponse.json();
+              if (productsData.products && Array.isArray(productsData.products)) {
+                productsData.products.forEach((p: any) => {
+                  productsMap.set(p.id, {
+                    id: p.id,
+                    name: p.name,
+                    brand: { name: p.brand?.name || p.brand || 'Unknown' },
+                    price: p.price,
+                    imageUrl: p.imageUrl || null,
+                    description: p.description || p.descriptionUser || null,
+                  });
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Could not load products from batch endpoint, using plan.products:', err);
+          // Fallback на продукты из плана
+          if (plan.products && Array.isArray(plan.products)) {
+            plan.products.forEach((p: any) => {
+              productsMap.set(p.id, {
+                id: p.id,
+                name: p.name,
+                brand: { name: p.brand || 'Unknown' },
+                price: p.price,
+                imageUrl: p.imageUrl || null,
+                description: p.description,
+              });
+            });
+          }
+        }
+
+        // Если есть plan28, используем новый формат
         setPlanData({
           plan28,
           productsMap,

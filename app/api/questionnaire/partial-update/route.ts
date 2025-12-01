@@ -85,6 +85,12 @@ export async function POST(request: NextRequest) {
     for (const answer of answers) {
       const { questionId, questionCode, value, values } = answer;
       
+      // Валидация: должен быть хотя бы один идентификатор
+      if (!questionId && !questionCode) {
+        console.warn('Answer missing both questionId and questionCode, skipping');
+        continue;
+      }
+      
       // Находим вопрос по ID или коду
       let question = questionId
         ? questionnaire.questions.find(q => q.id === questionId)
@@ -102,6 +108,32 @@ export async function POST(request: NextRequest) {
       if (!isInTopic) {
         console.warn(`Question ${question.id} (${question.code}) is not in topic ${topicId}`);
         continue;
+      }
+
+      // Валидация формата ответа
+      if (question.type === 'multi_choice') {
+        if (!Array.isArray(values) || values.length === 0) {
+          console.warn(`Multi-choice question ${question.id} requires values array`);
+          continue;
+        }
+        // Проверяем, что все значения существуют в answerOptions
+        const validValues = question.answerOptions.map(opt => opt.value);
+        const invalidValues = values.filter(v => !validValues.includes(v));
+        if (invalidValues.length > 0) {
+          console.warn(`Invalid values for question ${question.id}: ${invalidValues.join(', ')}`);
+          continue;
+        }
+      } else {
+        if (!value) {
+          console.warn(`Single-choice question ${question.id} requires value`);
+          continue;
+        }
+        // Проверяем, что значение существует в answerOptions
+        const validValues = question.answerOptions.map(opt => opt.value);
+        if (!validValues.includes(value)) {
+          console.warn(`Invalid value for question ${question.id}: ${value}`);
+          continue;
+        }
       }
 
       // Удаляем старый ответ, если есть
@@ -210,6 +242,27 @@ export async function POST(request: NextRequest) {
     // Проверяем, нужно ли пересобирать план
     const needsPlanRebuild = shouldRebuildPlan(topicId);
 
+    // Если нужно пересобрать план, запускаем генерацию в фоне
+    let planRegenerated = false;
+    if (needsPlanRebuild) {
+      try {
+        // Вызываем генерацию плана асинхронно (не ждем завершения)
+        // Это улучшает UX - пользователь не ждет долгой генерации
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/plan/generate`, {
+          method: 'GET',
+          headers: {
+            'X-Telegram-Init-Data': initData,
+          },
+        }).catch(err => {
+          console.warn('Background plan regeneration failed:', err);
+          // Не критично - план пересоберется при следующем запросе
+        });
+        planRegenerated = true;
+      } catch (err) {
+        console.warn('Could not trigger plan regeneration:', err);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       profile: {
@@ -220,6 +273,7 @@ export async function POST(request: NextRequest) {
       },
       updatedFields,
       needsPlanRebuild,
+      planRegenerated,
       topic: {
         id: topic.id,
         title: topic.title,

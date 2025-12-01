@@ -144,7 +144,19 @@ export function DayView({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {dayPlan.morning.map((step, index) => {
-            const product = step.productId ? products.get(Number(step.productId)) : null;
+            let product = step.productId ? products.get(Number(step.productId)) : null;
+            
+            // Если продукт не найден, пробуем альтернативы
+            if (!product && step.alternatives.length > 0) {
+              for (const altId of step.alternatives) {
+                const altProduct = products.get(Number(altId));
+                if (altProduct) {
+                  product = altProduct;
+                  break;
+                }
+              }
+            }
+            
             return (
               <StepCard
                 key={`${step.stepCategory}-${index}`}
@@ -153,7 +165,7 @@ export function DayView({
                 isInWishlist={product ? wishlistProductIds.has(product.id) : false}
                 onToggleWishlist={onToggleWishlist}
                 onAddToCart={onAddToCart}
-                onReplace={onReplace ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
+                onReplace={onReplace && product ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
               />
             );
           })}
@@ -201,7 +213,19 @@ export function DayView({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {dayPlan.evening.map((step, index) => {
-            const product = step.productId ? products.get(Number(step.productId)) : null;
+            let product = step.productId ? products.get(Number(step.productId)) : null;
+            
+            // Если продукт не найден, пробуем альтернативы
+            if (!product && step.alternatives.length > 0) {
+              for (const altId of step.alternatives) {
+                const altProduct = products.get(Number(altId));
+                if (altProduct) {
+                  product = altProduct;
+                  break;
+                }
+              }
+            }
+            
             return (
               <StepCard
                 key={`${step.stepCategory}-${index}`}
@@ -210,7 +234,7 @@ export function DayView({
                 isInWishlist={product ? wishlistProductIds.has(product.id) : false}
                 onToggleWishlist={onToggleWishlist}
                 onAddToCart={onAddToCart}
-                onReplace={onReplace ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
+                onReplace={onReplace && product ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
               />
             );
           })}
@@ -243,7 +267,19 @@ export function DayView({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {dayPlan.weekly.map((step, index) => {
-              const product = step.productId ? products.get(Number(step.productId)) : null;
+              let product = step.productId ? products.get(Number(step.productId)) : null;
+              
+              // Если продукт не найден, пробуем альтернативы
+              if (!product && step.alternatives.length > 0) {
+                for (const altId of step.alternatives) {
+                  const altProduct = products.get(Number(altId));
+                  if (altProduct) {
+                    product = altProduct;
+                    break;
+                  }
+                }
+              }
+              
               return (
                 <div key={`weekly-${step.stepCategory}-${index}`}>
                   <div style={{
@@ -259,7 +295,7 @@ export function DayView({
                     isInWishlist={product ? wishlistProductIds.has(product.id) : false}
                     onToggleWishlist={onToggleWishlist}
                     onAddToCart={onAddToCart}
-                    onReplace={onReplace ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
+                    onReplace={onReplace && product ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
                   />
                 </div>
               );

@@ -76,22 +76,54 @@ export function PlanPageClientNew({
 
   const handleAddToCart = async (productId: number) => {
     try {
-      // TODO: Реализовать добавление в корзину
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        toast.error('Откройте приложение через Telegram Mini App');
+        return;
+      }
+
+      await api.addToCart(productId, 1);
       toast.success('Добавлено в корзину');
     } catch (err: any) {
       console.error('Error adding to cart:', err);
-      toast.error('Не удалось добавить в корзину');
+      toast.error(err?.message || 'Не удалось добавить в корзину');
     }
   };
 
-  const handleReplace = async (stepCategory: string, productId: number) => {
+  const handleReplace = async (stepCategory: string, oldProductId: number) => {
     try {
-      // TODO: Реализовать замену продукта
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        toast.error('Откройте приложение через Telegram Mini App');
+        return;
+      }
+
+      // Находим альтернативы для этого шага
+      const currentDayPlan = plan28.days.find(d => d.dayIndex === selectedDay);
+      if (!currentDayPlan) {
+        toast.error('День не найден');
+        return;
+      }
+
+      // Ищем шаг с этим stepCategory
+      const allSteps = [...currentDayPlan.morning, ...currentDayPlan.evening, ...currentDayPlan.weekly];
+      const step = allSteps.find(s => s.stepCategory === stepCategory && s.productId === String(oldProductId));
+      
+      if (!step || step.alternatives.length === 0) {
+        toast.error('Нет доступных альтернатив для замены');
+        return;
+      }
+
+      // Показываем модалку выбора (пока просто берем первую альтернативу)
+      // TODO: Создать компонент ReplaceProductModal для выбора из альтернатив
+      const newProductId = Number(step.alternatives[0]);
+      
+      // Заменяем продукт через API
+      await api.replaceProductInPlan(oldProductId, newProductId);
+      
       toast.success('Продукт заменен');
       router.refresh();
     } catch (err: any) {
       console.error('Error replacing product:', err);
-      toast.error('Не удалось заменить продукт');
+      toast.error(err?.message || 'Не удалось заменить продукт');
     }
   };
 

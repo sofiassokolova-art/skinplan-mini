@@ -75,12 +75,34 @@ export function getPhaseDescription(phase: PlanPhases, goals: string[]): string 
 }
 
 // Функция для определения, является ли день недельным фокусом (маска/пилинг)
-export function isWeeklyFocusDay(dayIndex: number, weeklySteps: StepCategory[]): boolean {
+export function isWeeklyFocusDay(
+  dayIndex: number, 
+  weeklySteps: StepCategory[],
+  routineComplexity: 'minimal' | 'medium' | 'maximal' | 'any' = 'medium'
+): boolean {
   if (weeklySteps.length === 0) return false;
   
-  // Маски/пилинги обычно делаются 1-2 раза в неделю
-  // Распределяем их равномерно: дни 3, 10, 17, 24 (примерно раз в неделю)
-  const weeklyDays = [3, 10, 17, 24];
+  // Распределяем недельные шаги в зависимости от сложности рутины
+  let weeklyDays: number[] = [];
+  
+  switch (routineComplexity) {
+    case 'minimal':
+      // 1 раз в неделю: дни 4, 11, 18, 25
+      weeklyDays = [4, 11, 18, 25];
+      break;
+    case 'medium':
+      // 2 раза в неделю: дни 3, 7, 10, 14, 17, 21, 24, 28
+      weeklyDays = [3, 7, 10, 14, 17, 21, 24, 28];
+      break;
+    case 'maximal':
+      // 3-4 раза в неделю: дни 2, 5, 8, 11, 14, 17, 20, 23, 26
+      weeklyDays = [2, 5, 8, 11, 14, 17, 20, 23, 26];
+      break;
+    default:
+      // По умолчанию: 2 раза в неделю
+      weeklyDays = [3, 10, 17, 24];
+  }
+  
   return weeklyDays.includes(dayIndex);
 }
 
