@@ -165,17 +165,17 @@ function getFallbackStep(step: string): StepCategory | undefined {
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
  */
 async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
-  console.log(`📊 Generating plan for user ${userId}...`);
+    logger.info('Generating plan', { userId });
   
   // Получаем профиль кожи
-  console.log(`🔍 Looking for skin profile for user ${userId}...`);
+    logger.debug('Looking for skin profile', { userId });
   const profile = await prisma.skinProfile.findFirst({
     where: { userId },
     orderBy: { createdAt: 'desc' },
   });
 
   if (!profile) {
-    console.error(`❌ No skin profile found for user ${userId}`);
+    logger.error('No skin profile found', undefined, { userId });
     throw new Error('No skin profile found');
   }
   
@@ -1122,11 +1122,22 @@ export async function GET(request: NextRequest) {
       warnings: plan.warnings?.length || 0,
     });
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json(plan);
   } catch (error: any) {
-    console.error('Error generating plan:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+    
+    // Не возвращаем детали ошибки в production
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const errorMessage = isDevelopment 
+      ? error.message || 'Internal server error'
+      : 'Internal server error';
+
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
