@@ -183,7 +183,7 @@ export function PlanPageClientNew({
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
       padding: '20px',
-      paddingBottom: '120px',
+      paddingBottom: '100px',
     }}>
       {/* Логотип */}
       <div style={{
@@ -233,56 +233,6 @@ export function PlanPageClientNew({
         onCompleteMorning={handleCompleteMorning}
         onCompleteEvening={handleCompleteEvening}
       />
-
-      {/* Нижняя навигация */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        backdropFilter: 'blur(28px)',
-        borderTop: '1px solid rgba(10, 95, 89, 0.1)',
-        padding: '12px 16px',
-        zIndex: 50,
-      }}>
-        <div style={{ maxWidth: '420px', margin: '0 auto', display: 'flex', gap: '12px' }}>
-          <button
-            onClick={() => router.push('/wishlist')}
-            style={{
-              flex: 1,
-              backgroundColor: '#F3F4F6',
-              padding: '16px',
-              borderRadius: '16px',
-              textAlign: 'center',
-              fontWeight: 'bold',
-              color: '#0A5F59',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
-            Избранное ({wishlistProductIds.size})
-          </button>
-          <button
-            onClick={() => router.push('/profile')}
-            style={{
-              flex: 1,
-              backgroundColor: '#9333EA',
-              padding: '16px',
-              borderRadius: '16px',
-              textAlign: 'center',
-              fontWeight: 'bold',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
-            Профиль кожи
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

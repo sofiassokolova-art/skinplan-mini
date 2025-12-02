@@ -455,66 +455,6 @@ export function PlanPageClient({
           onToggleWishlist={toggleWishlist}
           onOpenReplace={openReplaceModal}
         />
-
-        {/* Нижняя навигация */}
-        <div style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(28px)',
-          borderTop: '1px solid rgba(10, 95, 89, 0.1)',
-          padding: '12px 16px',
-          zIndex: 50,
-        }}>
-          <div style={{ maxWidth: '420px', margin: '0 auto', display: 'flex', gap: '12px' }}>
-            <Link 
-              href="/wishlist" 
-              style={{
-                flex: 1,
-                backgroundColor: '#F3F4F6',
-                padding: '16px',
-                borderRadius: '16px',
-                textAlign: 'center',
-                fontWeight: 'bold',
-                color: '#0A5F59',
-                textDecoration: 'none',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#E5E7EB';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#F3F4F6';
-              }}
-            >
-              Избранное ({wishlistProductIds.size})
-            </Link>
-            <Link 
-              href="/profile" 
-              style={{
-                flex: 1,
-                backgroundColor: '#9333EA',
-                padding: '16px',
-                borderRadius: '16px',
-                textAlign: 'center',
-                fontWeight: 'bold',
-                color: 'white',
-                textDecoration: 'none',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#7E22CE';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#9333EA';
-              }}
-            >
-              Профиль кожи
-            </Link>
-          </div>
-        </div>
       </div>
 
       {/* Модалка замены продукта */}
