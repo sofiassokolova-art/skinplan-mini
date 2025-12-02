@@ -39,6 +39,7 @@ model User {
   botMessages            BotMessage[]
   broadcastLogs          BroadcastLog[]
   supportChats           SupportChat[]
+  clientLogs             ClientLog[]
 
   @@map("users")
 }
@@ -505,4 +506,26 @@ model BroadcastLog {
   @@index([userId])
   @@index([status])
   @@map("broadcast_logs")
+}
+
+// ============================================
+// ЛОГИ КЛИЕНТОВ ДЛЯ ТЕХПОДДЕРЖКИ
+// ============================================
+
+model ClientLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  level     String // 'debug' | 'info' | 'warn' | 'error'
+  message   String
+  context   Json? // Дополнительный контекст (метод, путь, ошибки и т.д.)
+  userAgent String?  @map("user_agent")
+  url       String? // URL страницы, где произошло событие
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([level])
+  @@index([createdAt])
+  @@map("client_logs")
 }

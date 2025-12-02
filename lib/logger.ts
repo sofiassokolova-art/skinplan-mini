@@ -7,9 +7,54 @@ interface LogContext {
   [key: string]: any;
 }
 
+interface ClientLogOptions {
+  userId?: string;
+  userAgent?: string;
+  url?: string;
+  saveToDb?: boolean; // Сохранять ли в БД (по умолчанию только error и warn)
+}
+
 class Logger {
   private isDevelopment = process.env.NODE_ENV === 'development';
   private serviceName = process.env.SERVICE_NAME || 'skinplan-mini';
+  
+  // Функция для сохранения лога в БД (асинхронно, не блокирует)
+  private async saveToDatabase(
+    level: LogLevel,
+    message: string,
+    context?: LogContext,
+    options?: ClientLogOptions
+  ) {
+    // Сохраняем только error и warn по умолчанию, или если явно указано saveToDb: true
+    const shouldSave = options?.saveToDb === true || 
+                       (options?.saveToDb !== false && (level === 'error' || level === 'warn'));
+    
+    if (!shouldSave || !options?.userId) {
+      return;
+    }
+
+    // Сохраняем асинхронно, не блокируя основной поток
+    setTimeout(async () => {
+      try {
+        // Динамический импорт для избежания циклических зависимостей
+        const { prisma } = await import('@/lib/db');
+        
+        await prisma.clientLog.create({
+          data: {
+            userId: options.userId!,
+            level,
+            message,
+            context: context || null,
+            userAgent: options.userAgent || null,
+            url: options.url || null,
+          },
+        });
+      } catch (error) {
+        // Не логируем ошибки сохранения логов, чтобы избежать бесконечной рекурсии
+        console.error('Failed to save log to database:', error);
+      }
+    }, 0);
+  }
 
   private formatMessage(level: LogLevel, message: string, context?: LogContext): string {
     const timestamp = new Date().toISOString();
@@ -29,7 +74,7 @@ class Logger {
     return JSON.stringify(logEntry);
   }
 
-  private log(level: LogLevel, message: string, context?: LogContext) {
+  private log(level: LogLevel, message: string, context?: LogContext, options?: ClientLogOptions) {
     const formatted = this.formatMessage(level, message, context);
     
     switch (level) {
@@ -52,21 +97,24 @@ class Logger {
         }
         break;
     }
+
+    // Сохраняем в БД (асинхронно)
+    this.saveToDatabase(level, message, context, options);
   }
 
-  debug(message: string, context?: LogContext) {
-    this.log('debug', message, context);
+  debug(message: string, context?: LogContext, options?: ClientLogOptions) {
+    this.log('debug', message, context, options);
   }
 
-  info(message: string, context?: LogContext) {
-    this.log('info', message, context);
+  info(message: string, context?: LogContext, options?: ClientLogOptions) {
+    this.log('info', message, context, options);
   }
 
-  warn(message: string, context?: LogContext) {
-    this.log('warn', message, context);
+  warn(message: string, context?: LogContext, options?: ClientLogOptions) {
+    this.log('warn', message, context, options);
   }
 
-  error(message: string, error?: Error | unknown, context?: LogContext) {
+  error(message: string, error?: Error | unknown, context?: LogContext, options?: ClientLogOptions) {
     const errorContext: LogContext = {
       ...context,
     };
@@ -81,7 +129,7 @@ class Logger {
       errorContext.error = String(error);
     }
 
-    this.log('error', message, errorContext);
+    this.log('error', message, errorContext, options);
   }
 }
 
@@ -110,12 +158,19 @@ export function logApiError(
   method: string,
   path: string,
   error: Error | unknown,
-  userId?: string
+  userId?: string,
+  options?: ClientLogOptions
 ) {
   logger.error('API Error', error, {
     method,
     path,
     userId,
+  }, {
+    ...options,
+    userId,
   });
 }
+
+// Экспортируем типы для использования в других модулях
+export type { LogLevel, LogContext, ClientLogOptions };
 
