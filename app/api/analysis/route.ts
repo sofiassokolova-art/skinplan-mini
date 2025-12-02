@@ -269,26 +269,47 @@ export async function GET(request: NextRequest) {
     
     for (const answer of userAnswers) {
       const code = answer.question?.code || '';
-      const value = answer.answerValue || 
+      const rawValue = answer.answerValue || 
         (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
+      
+      // Проверяем, что значение - строка
+      if (!rawValue || typeof rawValue !== 'string') {
+        continue;
+      }
+      
+      const value = rawValue as string;
       
       if (code === 'gender' && value) {
         // Преобразуем "Женский" -> "female", "Мужской" -> "male"
-        gender = value.toLowerCase().includes('женск') ? 'female' : 
-                 value.toLowerCase().includes('мужск') ? 'male' : value.toLowerCase();
+        const lowerValue = value.toLowerCase();
+        gender = lowerValue.includes('женск') ? 'female' : 
+                 lowerValue.includes('мужск') ? 'male' : lowerValue;
       } else if (code === 'age' && value) {
         // Преобразуем возраст из строки в число (берем середину диапазона или первую цифру)
         // "18–24" -> 21, "25–34" -> 30, "45+" -> 47
         if (value.includes('–')) {
-          const [min, max] = value.split('–').map(s => parseInt(s.trim()));
-          age = Math.floor((min + max) / 2);
+          const parts = value.split('–');
+          const min = parseInt(parts[0]?.trim() || '0');
+          const max = parseInt(parts[1]?.trim() || '0');
+          if (!isNaN(min) && !isNaN(max)) {
+            age = Math.floor((min + max) / 2);
+          }
         } else if (value.includes('+')) {
-          age = parseInt(value.replace('+', '').trim()) + 2;
+          const numStr = value.replace('+', '').trim();
+          const num = parseInt(numStr);
+          if (!isNaN(num)) {
+            age = num + 2;
+          }
         } else if (value.includes('До')) {
           age = 16; // "До 18 лет"
         } else {
           const numMatch = value.match(/\d+/);
-          age = numMatch ? parseInt(numMatch[0]) : null;
+          if (numMatch) {
+            const num = parseInt(numMatch[0]);
+            if (!isNaN(num)) {
+              age = num;
+            }
+          }
         }
       }
     }
