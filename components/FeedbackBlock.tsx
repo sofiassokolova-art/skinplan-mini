@@ -108,7 +108,9 @@ export function FeedbackBlock({ onSubmit }: FeedbackBlockProps) {
           color: '#475467',
           lineHeight: '1.5',
         }}>
-          Ваш отзыв поможет улучшить подбор ухода
+          {showFeedback 
+            ? 'Ваш отзыв поможет улучшить подбор ухода'
+            : 'Рады, что рекомендации подошли!'}
         </p>
       </div>
     );

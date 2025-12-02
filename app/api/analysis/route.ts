@@ -239,10 +239,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Получаем пользователя для имени
+    // Получаем пользователя для имени, пола и возраста
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { firstName: true, lastName: true },
+      select: { 
+        firstName: true, 
+        lastName: true,
+        gender: true,
+        age: true,
+      },
     });
 
     // Получаем ответы пользователя для расчета проблем
@@ -401,15 +406,17 @@ export async function GET(request: NextRequest) {
               finalIsMorning = !hasMorningCleanser;
             }
             
-            const formattedProducts = products.map((p: any) => ({
-              id: p.id,
-              name: p.name,
-              brand: { name: p.brand || (typeof p.brand === 'object' ? p.brand?.name : 'Unknown') },
-              price: (p as any).price || 0,
-              imageUrl: p.imageUrl || null,
-              description: p.description || p.descriptionUser || '',
-              tags: [],
-            }));
+              // Ограничиваем до 3 продуктов на шаг (как в ТЗ)
+              const productsToShow = Array.isArray(products) ? products.slice(0, 3) : [];
+              const formattedProducts = productsToShow.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                brand: { name: p.brand || (typeof p.brand === 'object' ? p.brand?.name : 'Unknown') },
+                price: (p as any).price || 0,
+                imageUrl: p.imageUrl || null,
+                description: p.description || p.descriptionUser || '',
+                tags: p.tags || (p.concerns || []).slice(0, 2), // Используем теги продукта или concerns
+              }));
             
             const careStep = {
               stepNumber: finalIsMorning ? morningStepNumber++ : eveningStepNumber++,
@@ -462,8 +469,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       profile: {
-        gender: null, // Пол можно получить из профиля если нужно
-        age: null, // Возраст можно получить из ageGroup профиля если нужно
+        gender: user?.gender || null,
+        age: user?.age || null,
         skinType: profile.skinType || 'normal',
         skinTypeRu: skinTypeRuMap[profile.skinType || 'normal'] || 'Нормальная',
         keyProblems,
