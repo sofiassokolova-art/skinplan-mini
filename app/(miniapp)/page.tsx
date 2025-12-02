@@ -48,7 +48,25 @@ const ICONS: Record<string, string> = {
 
 export default function HomePage() {
   const router = useRouter();
-  const { initialize, isAvailable } = useTelegram();
+  
+  // Безопасная инициализация useTelegram
+  let telegramHook;
+  try {
+    telegramHook = useTelegram();
+  } catch (err) {
+    console.error('❌ Error initializing Telegram hook:', err);
+    // Fallback значения
+    telegramHook = {
+      initialize: () => {},
+      isAvailable: false,
+      initData: '',
+      user: undefined,
+      tg: null,
+      sendData: () => ({ ok: false, reason: 'error' }),
+    };
+  }
+  
+  const { initialize, isAvailable } = telegramHook;
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<Recommendation | null>(null);

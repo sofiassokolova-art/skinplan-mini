@@ -33,7 +33,7 @@ declare global {
 }
 
 export const tg: TelegramWebApp | null =
-  typeof window !== 'undefined' && window.Telegram
+  typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp
     ? window.Telegram.WebApp
     : null;
 
@@ -58,13 +58,27 @@ export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
  * Хук для работы с Telegram WebApp
  */
 export function useTelegram() {
-  const initData = tg?.initData || '';
-  const user = tg?.initDataUnsafe?.user;
+  // Безопасное получение initData и user
+  let initData = '';
+  let user = undefined;
+  
+  try {
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      initData = window.Telegram.WebApp.initData || '';
+      user = window.Telegram.WebApp.initDataUnsafe?.user;
+    }
+  } catch (err) {
+    console.warn('⚠️ Error accessing Telegram WebApp:', err);
+  }
 
   const initialize = () => {
-    if (tg) {
-      tg.ready();
-      tg.expand();
+    try {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+      }
+    } catch (err) {
+      console.warn('⚠️ Error initializing Telegram WebApp:', err);
     }
   };
 
