@@ -462,7 +462,7 @@ export default function QuizPage() {
     if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       try {
         const isArray = Array.isArray(value);
-        console.log('📤 Saving to server:', {
+        addDebugLog('📤 Saving to server', {
           questionnaireId: questionnaire.id,
           questionId,
           questionIdType: typeof questionId,
