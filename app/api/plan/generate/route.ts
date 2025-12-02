@@ -1113,8 +1113,15 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Checking cache for plan...');
     const cachedPlan = await getCachedPlan(userId, profile.version);
     if (cachedPlan) {
-      console.log('✅ Plan retrieved from cache');
-      return NextResponse.json(cachedPlan);
+      // Проверяем, что кэшированный план содержит plan28 (новый формат)
+      // Если нет - игнорируем кэш и генерируем новый план
+      if (cachedPlan.plan28) {
+        console.log('✅ Plan retrieved from cache (with plan28)');
+        return NextResponse.json(cachedPlan);
+      } else {
+        console.warn('⚠️ Cached plan found but missing plan28, regenerating...');
+        // Продолжаем генерацию нового плана вместо возврата старого кэша
+      }
     }
 
     console.log('📋 Starting plan generation for userId:', userId);

@@ -110,6 +110,12 @@ export default function PlanPage() {
       let plan;
       try {
         plan = await api.getPlan() as any;
+        console.log('📋 Plan loaded:', {
+          hasPlan28: !!plan?.plan28,
+          hasWeeks: !!plan?.weeks,
+          weeksCount: plan?.weeks?.length || 0,
+          plan28DaysCount: plan?.plan28?.days?.length || 0,
+        });
       } catch (planError: any) {
         // Если профиль не найден и это первая/вторая попытка - ждем и повторяем
         if (retryCount < 3 && (
@@ -250,6 +256,13 @@ export default function PlanPage() {
       // Используем новый формат plan28, если доступен
       const plan28 = plan.plan28 as Plan28 | undefined;
       
+      if (!plan28) {
+        console.warn('⚠️ plan28 not found in plan response, falling back to old format');
+        console.warn('Plan keys:', Object.keys(plan || {}));
+        // Если plan28 отсутствует, но план есть - это проблема
+        // Возможно, нужно перегенерировать план или очистить кэш
+      }
+      
       // Создаем Map продуктов для быстрого доступа
       const productsMap = new Map<number, {
         id: number;
@@ -261,6 +274,7 @@ export default function PlanPage() {
       }>();
       
       if (plan28) {
+        console.log('✅ Using new plan28 format with', plan28.days?.length || 0, 'days');
         // Собираем все productId из plan28
         const allProductIds = new Set<number>();
         plan28.days.forEach(day => {
