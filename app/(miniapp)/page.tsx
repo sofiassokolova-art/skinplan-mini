@@ -49,23 +49,9 @@ const ICONS: Record<string, string> = {
 export default function HomePage() {
   const router = useRouter();
   
-  // Безопасная инициализация useTelegram
-  let telegramHook;
-  try {
-    telegramHook = useTelegram();
-  } catch (err) {
-    console.error('❌ Error initializing Telegram hook:', err);
-    // Fallback значения
-    telegramHook = {
-      initialize: () => {},
-      isAvailable: false,
-      initData: '',
-      user: undefined,
-      tg: null,
-      sendData: () => ({ ok: false, reason: 'error' }),
-    };
-  }
-  
+  // Хуки должны вызываться на верхнем уровне, без условий
+  // useTelegram должен сам обрабатывать ошибки внутри
+  const telegramHook = useTelegram();
   const { initialize, isAvailable } = telegramHook;
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -322,18 +308,18 @@ export default function HomePage() {
         // Если профиль есть - загружаем рекомендации
         if (hasProfile) {
           console.log('✅ Profile exists, loading recommendations...');
-          await loadRecommendations();
-          console.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
-          
-          // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
-          setTimeout(async () => {
-            if (!error && recommendations) {
-              console.log('✅ Recommendations loaded, checking feedback popup...');
-              await checkFeedbackPopup();
-            } else {
-              console.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
-            }
-          }, 100);
+        await loadRecommendations();
+        console.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
+        
+        // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
+        setTimeout(async () => {
+          if (!error && recommendations) {
+            console.log('✅ Recommendations loaded, checking feedback popup...');
+            await checkFeedbackPopup();
+          } else {
+            console.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
+          }
+        }, 100);
           return; // Завершаем инициализацию
         }
 
@@ -537,8 +523,25 @@ export default function HomePage() {
       }
       
       console.log('📥 Loading recommendations...');
-      const data = await api.getRecommendations() as Recommendation;
-      console.log('✅ Recommendations loaded:', { hasData: !!data, hasSteps: !!data?.steps });
+      let data: Recommendation;
+      try {
+        data = await api.getRecommendations() as Recommendation;
+        console.log('✅ Recommendations loaded:', { hasData: !!data, hasSteps: !!data?.steps });
+      } catch (recErr: any) {
+        console.error('❌ Error loading recommendations API:', recErr);
+        // Если ошибка при загрузке рекомендаций, проверяем план
+        try {
+          const plan = await api.getPlan() as any;
+          if (plan && (plan.plan28 || plan.weeks)) {
+            console.log('✅ Plan exists, redirecting to /plan');
+            router.push('/plan');
+            return;
+          }
+        } catch (planError) {
+          console.warn('⚠️ Could not load plan:', planError);
+        }
+        throw recErr; // Пробрасываем ошибку дальше
+      }
       
       // Проверяем, что данные валидны
       if (!data || !data.steps) {
@@ -548,6 +551,7 @@ export default function HomePage() {
       }
       
       setRecommendations(data);
+      setError(null); // Очищаем ошибку при успешной загрузке
       console.log('✅ Recommendations set in state');
       
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
@@ -743,7 +747,9 @@ export default function HomePage() {
       }
       
       // Если план не найден, показываем ошибку
-      setError(error?.message || 'Ошибка загрузки рекомендаций');
+      const errorMessage = error?.message || 'Ошибка загрузки рекомендаций';
+      console.error('❌ Setting error state:', errorMessage);
+      setError(errorMessage);
       setMorningItems([]);
       setEveningItems([]);
     } finally {
@@ -992,38 +998,7 @@ export default function HomePage() {
   // Получаем текущие элементы в зависимости от вкладки
   const routineItems = tab === 'AM' ? morningItems : eveningItems;
   
-  if (error && routineItems.length === 0) {
-    return (
-      <div style={{ 
-        padding: '20px', 
-        textAlign: 'center',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-      }}>
-        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка загрузки</h1>
-        <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
-        <button
-          onClick={() => router.push('/quiz')}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold',
-          }}
-        >
-          Пройти анкету заново
-        </button>
-      </div>
-    );
-  }
+  // Этот блок теперь перенесен выше, перед основным рендером
 
   // Проверяем наличие плана, если рекомендации не загрузились
   useEffect(() => {
@@ -1102,6 +1077,40 @@ export default function HomePage() {
     );
   }
 
+  // Если есть ошибка, не рендерим основной контент
+  if (error) {
+    return (
+      <div style={{ 
+        padding: '20px', 
+        textAlign: 'center',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка загрузки</h1>
+        <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
+        <button
+          onClick={() => router.push('/quiz')}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '12px',
+            backgroundColor: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          }}
+        >
+          Пройти анкету заново
+        </button>
+      </div>
+    );
+  }
+
   const completedCount = routineItems.filter((item) => item.done).length;
   const totalCount = routineItems.length;
 
@@ -1124,6 +1133,10 @@ export default function HomePage() {
             marginTop: '8px',
             marginBottom: '8px',
           }}
+          onError={(e) => {
+            console.warn('Logo not found');
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
         />
         <div style={{
           fontSize: '26px',
@@ -1135,7 +1148,14 @@ export default function HomePage() {
         </div>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button
-            onClick={() => router.push('/plan')}
+            onClick={() => {
+              try {
+                router.push('/plan');
+              } catch (err) {
+                console.error('Error navigating to plan:', err);
+                setError('Ошибка при переходе к плану');
+              }
+            }}
             style={{
               marginTop: '16px',
               padding: '12px 24px',
@@ -1285,6 +1305,11 @@ export default function HomePage() {
                 height: '60px',
                 objectFit: 'contain',
                 flexShrink: 0,
+              }}
+              onError={(e) => {
+                // Fallback для отсутствующих иконок
+                console.warn('Icon not found:', item.icon);
+                (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
 

@@ -236,7 +236,7 @@ export default function QuizPage() {
             }
           }
         } catch (err: any) {
-          console.warn('⚠️ Ошибка загрузки предыдущих ответов:', err);
+        console.warn('⚠️ Ошибка загрузки предыдущих ответов:', err);
         }
       })();
     }
@@ -862,13 +862,13 @@ export default function QuizPage() {
       console.log('⏳ Ожидание создания профиля...');
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Редирект на страницу плана
-      console.log('🔄 Редирект на /plan');
+      // Редирект на страницу анализа
+      console.log('🔄 Редирект на /analysis');
       if (typeof window !== 'undefined') {
         // Используем window.location для гарантированного редиректа
-        window.location.href = '/plan';
+        window.location.href = '/analysis';
       } else {
-        router.push('/plan');
+        router.push('/analysis');
       }
     } catch (err: any) {
       console.error('❌ Ошибка при отправке ответов:', err);
@@ -1012,10 +1012,10 @@ export default function QuizPage() {
   // ВАЖНО: все хуки должны вызываться до любых условных return'ов
   const allQuestionsRaw = useMemo(() => {
     try {
-      if (!questionnaire) {
-        console.log('⚠️ No questionnaire, allQuestionsRaw is empty');
-        return [];
-      }
+    if (!questionnaire) {
+      console.log('⚠️ No questionnaire, allQuestionsRaw is empty');
+      return [];
+    }
       
       // Защита от ошибок при доступе к groups и questions
       const groups = questionnaire.groups || [];
@@ -1030,20 +1030,20 @@ export default function QuizPage() {
         }
       });
       
-      const raw = [
+    const raw = [
         ...questionsFromGroups,
         ...questions,
-      ];
+    ];
       
       // Убираем вызов addDebugLog из useMemo, чтобы избежать проблем с хуками
       // Логируем только в консоль
       console.log('📋 allQuestionsRaw loaded', {
-        total: raw.length,
+      total: raw.length,
         fromGroups: questionsFromGroups.length,
         fromQuestions: questions.length,
-        questionIds: raw.map((q: Question) => q.id),
-      });
-      return raw;
+          questionIds: raw.map((q: Question) => q.id),
+    });
+    return raw;
     } catch (err) {
       console.error('❌ Error computing allQuestionsRaw:', err, {
         questionnaire,
@@ -1058,9 +1058,9 @@ export default function QuizPage() {
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
   const allQuestions = useMemo<Question[]>(() => {
     try {
-      if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
-      
-      return allQuestionsRaw.filter((question) => {
+    if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
+    
+    return allQuestionsRaw.filter((question) => {
         try {
     // Проверяем, является ли это вопросом про беременность/кормление
     const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
@@ -2264,51 +2264,51 @@ export default function QuizPage() {
           </div>
         ) : (
           <>
-            {/* Кнопка "Назад" - скрыта на первом вопросе */}
-            {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
-              <button
-                onClick={handleBack}
-                style={{
-                  marginBottom: '16px',
-                  padding: '8px 16px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(10, 95, 89, 0.2)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                  color: '#0A5F59',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
-                }}
-              >
-                <span>←</span>
-                <span>Назад</span>
-              </button>
-            )}
-
-            <div style={{ marginBottom: '16px', color: '#0A5F59', fontSize: '14px' }}>
-              Вопрос {currentQuestionIndex + 1} из {allQuestions.length}
-            </div>
-
-            <h2 style={{ 
-              fontSize: '24px', 
-              fontWeight: 'bold', 
+        {/* Кнопка "Назад" - скрыта на первом вопросе */}
+        {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
+          <button
+            onClick={handleBack}
+            style={{
+              marginBottom: '16px',
+              padding: '8px 16px',
+              borderRadius: '12px',
+              border: '1px solid rgba(10, 95, 89, 0.2)',
+              backgroundColor: 'rgba(255, 255, 255, 0.5)',
               color: '#0A5F59',
-              marginBottom: '24px'
-            }}>
-              {currentQuestion.text}
-            </h2>
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+            }}
+          >
+            <span>←</span>
+            <span>Назад</span>
+          </button>
+        )}
 
-            {currentQuestion.type === 'single_choice' && currentQuestion.options && (
+        <div style={{ marginBottom: '16px', color: '#0A5F59', fontSize: '14px' }}>
+          Вопрос {currentQuestionIndex + 1} из {allQuestions.length}
+        </div>
+
+        <h2 style={{ 
+          fontSize: '24px', 
+          fontWeight: 'bold', 
+          color: '#0A5F59',
+          marginBottom: '24px'
+        }}>
+          {currentQuestion.text}
+        </h2>
+
+        {currentQuestion.type === 'single_choice' && currentQuestion.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentQuestion.options.map((option) => {
               const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
@@ -2427,8 +2427,8 @@ export default function QuizPage() {
           </div>
         )}
 
-            {currentQuestion.type === 'multi_choice' && currentQuestion.options && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {currentQuestion.type === 'multi_choice' && currentQuestion.options && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentQuestion.options.map((option) => {
               const currentAnswers = (answers[currentQuestion.id] as string[]) || [];
               const isSelected = currentAnswers.includes(option.value);

@@ -286,4 +286,9 @@ export const api = {
     // Получаем ответы через существующий endpoint
     return request('/questionnaire/answers');
   },
+
+  // Анализ кожи
+  async getAnalysis() {
+    return request('/analysis');
+  },
 };

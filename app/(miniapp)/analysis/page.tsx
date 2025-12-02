@@ -72,11 +72,8 @@ export default function AnalysisPage() {
       setLoading(true);
       setError(null);
 
-      // Загружаем профиль
-      const profile = await api.getCurrentProfile() as any;
-      
-      // Загружаем план для получения рекомендаций
-      const plan = await api.getPlan() as any;
+      // Загружаем данные анализа через новый API endpoint
+      const analysisData = await api.getAnalysis() as AnalysisData;
 
       // Загружаем wishlist
       let wishlist: number[] = [];
@@ -90,112 +87,7 @@ export default function AnalysisPage() {
         console.warn('Could not load wishlist:', err);
       }
 
-      // TODO: Загрузить проблемы кожи через API endpoint
-      // Пока используем заглушку на основе данных профиля
-      const issues: SkinIssue[] = [];
-      if (profile.acneLevel && profile.acneLevel >= 3) {
-        issues.push({
-          id: 'acne',
-          name: 'Акне / высыпания',
-          severity_score: profile.acneLevel * 20,
-          severity_label: profile.acneLevel >= 4 ? 'критично' : 'плохо',
-          description: 'Активные воспаления требуют специального ухода',
-          tags: ['воспаления', 'постакне'],
-        });
-      }
-      if (profile.skinType === 'oily' || profile.skinType === 'combo') {
-        issues.push({
-          id: 'oiliness',
-          name: 'Жирность и блеск кожи',
-          severity_score: 60,
-          severity_label: 'умеренно',
-          description: 'Избыточное выделение кожного сала',
-          tags: ['Т-зона'],
-        });
-      }
-      if (profile.sensitivityLevel === 'high' || profile.sensitivityLevel === 'very_high') {
-        issues.push({
-          id: 'sensitivity',
-          name: 'Краснота, раздражение, чувствительность',
-          severity_score: 70,
-          severity_label: 'плохо',
-          description: 'Повышенная чувствительность кожи требует мягкого ухода',
-          tags: ['раздражение'],
-        });
-      }
-
-      // Формируем ключевые проблемы для профиля
-      const keyProblems = issues
-        .filter(i => i.severity_label === 'критично' || i.severity_label === 'плохо')
-        .map(i => i.name);
-
-      // TODO: Преобразовать план в формат CareStep
-      // Пока используем заглушку
-      const morningSteps: CareStep[] = [];
-      const eveningSteps: CareStep[] = [];
-
-      if (plan?.plan28) {
-        // Используем первый день плана для рекомендаций
-        const firstDay = plan.plan28.days[0];
-        
-        // Преобразуем morning steps
-        firstDay.morning.forEach((step: any, index: number) => {
-          const productId = step.productId ? Number(step.productId) : null;
-          if (productId && plan.productsMap) {
-            const product = plan.productsMap.get(productId);
-            if (product) {
-              const stepIndex = morningSteps.findIndex(s => s.stepNumber === index + 1);
-              if (stepIndex === -1) {
-                morningSteps.push({
-                  stepNumber: index + 1,
-                  stepName: getStepName(step.stepCategory),
-                  stepDescription: getStepDescription(step.stepCategory),
-                  stepTags: getStepTags(step.stepCategory),
-                  products: [product],
-                });
-              } else {
-                morningSteps[stepIndex].products.push(product);
-              }
-            }
-          }
-        });
-
-        // Преобразуем evening steps
-        firstDay.evening.forEach((step: any, index: number) => {
-          const productId = step.productId ? Number(step.productId) : null;
-          if (productId && plan.productsMap) {
-            const product = plan.productsMap.get(productId);
-            if (product) {
-              const stepIndex = eveningSteps.findIndex(s => s.stepNumber === index + 1);
-              if (stepIndex === -1) {
-                eveningSteps.push({
-                  stepNumber: index + 1,
-                  stepName: getStepName(step.stepCategory),
-                  stepDescription: getStepDescription(step.stepCategory),
-                  stepTags: getStepTags(step.stepCategory),
-                  products: [product],
-                });
-              } else {
-                eveningSteps[stepIndex].products.push(product);
-              }
-            }
-          }
-        });
-      }
-
-      setAnalysisData({
-        profile: {
-          gender: profile.gender,
-          age: profile.age,
-          skinType: profile.skinType || 'normal',
-          skinTypeRu: profile.skinTypeRu || 'Нормальная',
-          keyProblems,
-        },
-        issues,
-        morningSteps,
-        eveningSteps,
-      });
-
+      setAnalysisData(analysisData);
       setLoading(false);
     } catch (err: any) {
       console.error('Error loading analysis data:', err);
@@ -250,43 +142,6 @@ export default function AnalysisPage() {
     // await api.submitFeedback(feedback);
   };
 
-  // Вспомогательные функции для преобразования stepCategory
-  const getStepName = (stepCategory: string): string => {
-    const names: Record<string, string> = {
-      cleanser_gentle: 'Очищение',
-      cleanser_balancing: 'Очищение',
-      cleanser_deep: 'Очищение',
-      toner_hydrating: 'Тоник',
-      toner_soothing: 'Тоник',
-      serum_hydrating: 'Сыворотка',
-      serum_niacinamide: 'Сыворотка',
-      serum_vitc: 'Сыворотка',
-      moisturizer_light: 'Увлажнение',
-      moisturizer_balancing: 'Увлажнение',
-      spf_50_face: 'SPF защита',
-    };
-    return names[stepCategory] || 'Уход';
-  };
-
-  const getStepDescription = (stepCategory: string): string => {
-    const descriptions: Record<string, string> = {
-      cleanser_gentle: 'Мягкое очищение кожи от загрязнений',
-      cleanser_balancing: 'Балансирующее очищение для нормализации работы сальных желез',
-      serum_hydrating: 'Интенсивное увлажнение и питание кожи',
-      moisturizer_light: 'Легкое увлажнение без ощущения тяжести',
-      spf_50_face: 'Защита от УФ-излучения и преждевременного старения',
-    };
-    return descriptions[stepCategory] || 'Важный этап ухода за кожей';
-  };
-
-  const getStepTags = (stepCategory: string): string[] => {
-    const tags: Record<string, string[]> = {
-      cleanser_gentle: ['подходит при акне', 'мягкое очищение'],
-      serum_niacinamide: ['уменьшает воспаления', 'нормализует работу сальных желез'],
-      spf_50_face: ['защита от УФ', 'предотвращение старения'],
-    };
-    return tags[stepCategory] || [];
-  };
 
   if (showLoading) {
     return (
