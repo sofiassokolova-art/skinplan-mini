@@ -215,11 +215,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверяем, что вопрос существует в базе данных
+    // Проверяем, что активная анкета существует
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    });
+
+    if (!activeQuestionnaire) {
+      console.error('No active questionnaire found');
+      return NextResponse.json(
+        { error: 'No active questionnaire found' },
+        { status: 404 }
+      );
+    }
+
+    // Проверяем, что вопрос существует в активной анкете
     const question = await prisma.question.findFirst({
       where: {
         id: questionIdNum,
-        questionnaireId: questionnaireId,
+        questionnaireId: activeQuestionnaire.id, // Используем ID активной анкеты
       },
     });
 
@@ -232,26 +246,57 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           questionnaireId: true,
+          code: true,
         },
       });
 
-      console.error('Question not found in questionnaire:', { 
+      // Получаем список всех вопросов в активной анкете для отладки
+      const allQuestionsInActive = await prisma.question.findMany({
+        where: {
+          questionnaireId: activeQuestionnaire.id,
+        },
+        select: {
+          id: true,
+          code: true,
+          text: true,
+        },
+        take: 10, // Первые 10 для примера
+      });
+
+      console.error('❌ Question not found in active questionnaire:', { 
         questionId: questionIdNum, 
-        questionnaireId, 
+        requestedQuestionnaireId: questionnaireId,
+        activeQuestionnaireId: activeQuestionnaire.id,
         userId,
         questionExistsInOtherQuestionnaire: !!questionInAnyQuestionnaire,
         actualQuestionnaireId: questionInAnyQuestionnaire?.questionnaireId,
+        questionCode: questionInAnyQuestionnaire?.code,
+        sampleQuestionsInActive: allQuestionsInActive.map(q => ({ id: q.id, code: q.code })),
       });
 
       return NextResponse.json(
         { 
-          error: `Question with id ${questionIdNum} not found in questionnaire ${questionnaireId}`,
+          error: `Question with id ${questionIdNum} not found in active questionnaire`,
           questionId: questionIdNum,
-          questionnaireId,
+          requestedQuestionnaireId: questionnaireId,
+          activeQuestionnaireId: activeQuestionnaire.id,
           questionExistsInOtherQuestionnaire: !!questionInAnyQuestionnaire,
+          sampleQuestionsInActive: allQuestionsInActive.map(q => ({ id: q.id, code: q.code })),
         },
         { status: 404 }
       );
+    }
+
+    // Проверяем, что questionnaireId совпадает с активной анкетой
+    if (questionnaireId !== activeQuestionnaire.id) {
+      console.warn('⚠️ Questionnaire ID mismatch:', {
+        requestedQuestionnaireId: questionnaireId,
+        activeQuestionnaireId: activeQuestionnaire.id,
+        questionId: questionIdNum,
+        userId,
+      });
+      // Используем ID активной анкеты вместо запрошенного
+      questionnaireId = activeQuestionnaire.id;
     }
 
     // Удаляем старый ответ на этот вопрос (если есть)
