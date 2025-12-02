@@ -1137,7 +1137,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!profile) {
-      console.error('❌ No skin profile found for user ${userId}');
+      console.error(`❌ No skin profile found for user ${userId}`);
       return NextResponse.json(
         { error: 'No skin profile found' },
         { status: 404 }

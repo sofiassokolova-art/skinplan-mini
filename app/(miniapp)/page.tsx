@@ -561,9 +561,30 @@ export default function HomePage() {
         throw recErr;
       }
       
-      // Проверяем, что данные валидны
-      if (!data || !data.steps) {
-        console.log('⚠️ Invalid recommendations data, redirecting to quiz');
+      // Проверяем, что данные валидны и содержат хотя бы один шаг
+      if (!data || !data.steps || Object.keys(data.steps).length === 0) {
+        console.log('⚠️ Invalid or empty recommendations data:', { 
+          hasData: !!data, 
+          hasSteps: !!data?.steps, 
+          stepsCount: data?.steps ? Object.keys(data.steps).length : 0 
+        });
+        // Если рекомендации пустые, проверяем план
+        try {
+          const plan = await api.getPlan() as any;
+          if (plan && (plan.plan28 || plan.weeks)) {
+            console.log('✅ Plan exists, redirecting to /plan');
+            setLoading(false);
+            if (typeof window !== 'undefined') {
+              window.location.href = '/plan';
+            } else {
+              router.push('/plan');
+            }
+            return;
+          }
+        } catch (planError) {
+          console.warn('⚠️ Could not load plan:', planError);
+        }
+        // Если план тоже не найден, редиректим на анкету
         router.push('/quiz');
         return;
       }

@@ -200,10 +200,25 @@ export async function GET(request: NextRequest) {
           step = 'serum'; // Объединяем treatment и essence в serum для главной страницы
         }
         
-        if (!steps[step]) {
-          steps[step] = [];
+        // Нормализуем базовые шаги для группировки
+        // Например: cleanser_gentle -> cleanser, spf_50_face -> spf
+        let normalizedStep = step;
+        if (step.startsWith('cleanser')) {
+          normalizedStep = 'cleanser';
+        } else if (step.startsWith('spf')) {
+          normalizedStep = 'spf';
+        } else if (step.startsWith('moisturizer')) {
+          normalizedStep = 'moisturizer';
+        } else if (step.startsWith('toner')) {
+          normalizedStep = 'toner';
+        } else if (step.startsWith('serum')) {
+          normalizedStep = 'serum';
         }
-        steps[step].push({
+        
+        if (!steps[normalizedStep]) {
+          steps[normalizedStep] = [];
+        }
+        steps[normalizedStep].push({
           id: product.id,
           name: product.name,
           brand: product.brand.name,

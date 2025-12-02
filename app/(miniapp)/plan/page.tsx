@@ -254,13 +254,12 @@ export default function PlanPage() {
       const scores = plan.skinScores || [];
 
       // Используем новый формат plan28, если доступен
-      const plan28 = plan.plan28 as Plan28 | undefined;
+      let plan28 = plan.plan28 as Plan28 | undefined;
       
       if (!plan28) {
         console.warn('⚠️ plan28 not found in plan response, falling back to old format');
         console.warn('Plan keys:', Object.keys(plan || {}));
-        // Если plan28 отсутствует, но план есть - это проблема
-        // Возможно, нужно перегенерировать план или очистить кэш
+        console.warn('⚠️ NOTE: Plan needs to be regenerated to use new format. Old format will be used.');
       }
       
       // Создаем Map продуктов для быстрого доступа
