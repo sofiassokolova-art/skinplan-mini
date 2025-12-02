@@ -148,11 +148,14 @@ export async function GET(request: NextRequest) {
     });
 
     if (!profile) {
+      console.log('⚠️ Profile not found for recommendations, returning 404', { userId });
       return NextResponse.json(
         { error: 'No skin profile found. Please complete the questionnaire first.' },
         { status: 404 }
       );
     }
+    
+    console.log('✅ Profile found for recommendations', { userId, profileId: profile.id, version: profile.version });
 
     // Проверяем кэш
     const cachedRecommendations = await getCachedRecommendations(userId, profile.version);
@@ -454,8 +457,13 @@ export async function GET(request: NextRequest) {
     await setCachedRecommendations(userId, profile.version, response);
 
     return NextResponse.json(response);
-  } catch (error) {
-    console.error('Error fetching recommendations:', error);
+  } catch (error: any) {
+    console.error('❌ Error fetching recommendations:', {
+      error,
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

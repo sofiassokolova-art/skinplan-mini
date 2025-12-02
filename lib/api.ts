@@ -83,8 +83,10 @@ async function request<T>(
     
     // Для 404 ошибок (Not Found) - обычно означает отсутствие профиля
     if (response.status === 404) {
+      console.log('⚠️ 404 response from API:', endpoint);
       const errorData = await response.json().catch(() => ({ error: 'Not found' }));
       const errorMessage = errorData.error || 'Not found';
+      console.log('⚠️ 404 error details:', { endpoint, errorMessage });
       // Создаем специальную ошибку с кодом 404 для обработки на клиенте
       const notFoundError = new Error(errorMessage) as any;
       notFoundError.status = 404;
