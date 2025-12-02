@@ -1584,7 +1584,25 @@ export default function QuizPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        position: 'relative',
       }}>
+        {/* Логотип на фоне по центру вверху */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 0,
+          opacity: 0.15,
+        }}>
+          <img
+            src="/skiniq-logo.png"
+            alt="SkinIQ"
+            style={{
+              height: '120px',
+            }}
+          />
+        </div>
         <div style={{
           width: '88%',
           maxWidth: isTestimonialsScreen ? '90%' : '420px',
@@ -1594,6 +1612,9 @@ export default function QuizPage() {
           borderRadius: '44px',
           padding: '36px 28px 32px 28px',
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
+          position: 'relative',
+          zIndex: 1,
+          marginTop: '80px',
         }}>
           {/* Изображение */}
           {screen.image && !isTinderScreen && (
@@ -2223,51 +2244,63 @@ export default function QuizPage() {
         maxWidth: '600px',
         margin: '0 auto',
       }}>
-        {/* Кнопка "Назад" - скрыта на первом вопросе */}
-        {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
-          <button
-            onClick={handleBack}
-            style={{
-              marginBottom: '16px',
-              padding: '8px 16px',
-              borderRadius: '12px',
-              border: '1px solid rgba(10, 95, 89, 0.2)',
-              backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        {/* Проверка на существование вопроса */}
+        {!currentQuestion ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '12px' }}>
+              Вопрос не найден
+            </div>
+            <div style={{ color: '#6B7280', fontSize: '14px' }}>
+              Попробуйте обновить страницу
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Кнопка "Назад" - скрыта на первом вопросе */}
+            {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
+              <button
+                onClick={handleBack}
+                style={{
+                  marginBottom: '16px',
+                  padding: '8px 16px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(10, 95, 89, 0.2)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                  color: '#0A5F59',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+                }}
+              >
+                <span>←</span>
+                <span>Назад</span>
+              </button>
+            )}
+
+            <div style={{ marginBottom: '16px', color: '#0A5F59', fontSize: '14px' }}>
+              Вопрос {currentQuestionIndex + 1} из {allQuestions.length}
+            </div>
+
+            <h2 style={{ 
+              fontSize: '24px', 
+              fontWeight: 'bold', 
               color: '#0A5F59',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
-            }}
-          >
-            <span>←</span>
-            <span>Назад</span>
-          </button>
-        )}
+              marginBottom: '24px'
+            }}>
+              {currentQuestion.text}
+            </h2>
 
-        <div style={{ marginBottom: '16px', color: '#0A5F59', fontSize: '14px' }}>
-          Вопрос {currentQuestionIndex + 1} из {allQuestions.length}
-        </div>
-
-        <h2 style={{ 
-          fontSize: '24px', 
-          fontWeight: 'bold', 
-          color: '#0A5F59',
-          marginBottom: '24px'
-        }}>
-          {currentQuestion.text}
-        </h2>
-
-        {currentQuestion.type === 'single_choice' && currentQuestion.options && (
+            {currentQuestion.type === 'single_choice' && currentQuestion.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentQuestion.options.map((option) => {
               const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
@@ -2386,8 +2419,8 @@ export default function QuizPage() {
           </div>
         )}
 
-        {currentQuestion.type === 'multi_choice' && currentQuestion.options && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {currentQuestion.type === 'multi_choice' && currentQuestion.options && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentQuestion.options.map((option) => {
               const currentAnswers = (answers[currentQuestion.id] as string[]) || [];
               const isSelected = currentAnswers.includes(option.value);
@@ -2490,6 +2523,8 @@ export default function QuizPage() {
               )
             )}
           </div>
+        )}
+          </>
         )}
       </div>
     </div>
