@@ -163,6 +163,23 @@ function getFallbackStep(step: string): StepCategory | undefined {
   return undefined;
 }
 
+function getBaseStepFromStepCategory(stepCategory: StepCategory): string {
+  // Обратный маппинг: от StepCategory к базовому step
+  // Например: 'toner_hydrating' -> 'toner', 'serum_hydrating' -> 'serum'
+  if (stepCategory.startsWith('cleanser_')) return 'cleanser';
+  if (stepCategory.startsWith('toner_')) return 'toner';
+  if (stepCategory.startsWith('serum_')) return 'serum';
+  if (stepCategory.startsWith('treatment_')) return 'treatment';
+  if (stepCategory.startsWith('moisturizer_')) return 'moisturizer';
+  if (stepCategory.startsWith('eye_cream_')) return 'moisturizer';
+  if (stepCategory.startsWith('spf_')) return 'spf';
+  if (stepCategory.startsWith('mask_')) return 'mask';
+  if (stepCategory === 'spot_treatment') return 'treatment';
+  if (stepCategory === 'lip_care') return 'moisturizer';
+  if (stepCategory === 'balm_barrier_repair') return 'moisturizer';
+  return stepCategory; // Если не распознан, возвращаем как есть
+}
+
 /**
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
  */
@@ -585,13 +602,31 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   });
 
   const getProductsForStep = (step: StepCategory) => {
+    // Сначала пробуем найти по точному совпадению StepCategory
     if (productsByStep[step] && productsByStep[step].length > 0) {
       return productsByStep[step];
     }
+    
+    // Если не найдено, пробуем найти по базовому step (например, 'toner' для 'toner_hydrating')
+    const baseStep = getBaseStepFromStepCategory(step);
+    if (baseStep !== step && productsByStep[baseStep] && productsByStep[baseStep].length > 0) {
+      return productsByStep[baseStep];
+    }
+    
+    // Если не найдено, пробуем fallback StepCategory
     const fallback = getFallbackStep(step);
-    if (fallback && productsByStep[fallback] && productsByStep[fallback].length > 0) {
+    if (fallback && fallback !== step && productsByStep[fallback] && productsByStep[fallback].length > 0) {
       return productsByStep[fallback];
     }
+    
+    // Если fallback тоже не найден, пробуем базовый step от fallback
+    if (fallback) {
+      const fallbackBaseStep = getBaseStepFromStepCategory(fallback);
+      if (fallbackBaseStep !== fallback && productsByStep[fallbackBaseStep] && productsByStep[fallbackBaseStep].length > 0) {
+        return productsByStep[fallbackBaseStep];
+      }
+    }
+    
     return [];
   };
 

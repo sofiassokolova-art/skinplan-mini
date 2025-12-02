@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
@@ -70,6 +70,7 @@ export default function HomePage() {
   const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
   const [hasPlan, setHasPlan] = useState(false);
   const [checkingPlan, setCheckingPlan] = useState(false);
+  const planCheckDoneRef = useRef(false); // Защита от повторных проверок плана
 
   // Проверка незавершённой анкеты (объявляем до использования)
   const checkIncompleteQuiz = async (): Promise<boolean> => {
@@ -240,6 +241,7 @@ export default function HomePage() {
   useEffect(() => {
     console.log('🚀 HomePage useEffect started');
     setMounted(true);
+    planCheckDoneRef.current = false; // Сбрасываем флаг проверки плана при монтировании
     
     // Проверяем доступность Telegram WebApp
     console.log('📱 Checking Telegram WebApp:', {
@@ -568,6 +570,7 @@ export default function HomePage() {
       
       setRecommendations(data);
       setError(null); // Очищаем ошибку при успешной загрузке
+      planCheckDoneRef.current = true; // Помечаем, что рекомендации загружены, проверка плана не нужна
       console.log('✅ Recommendations set in state');
       
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
@@ -814,28 +817,36 @@ export default function HomePage() {
   // Проверяем наличие плана, если рекомендации не загрузились
   // ВАЖНО: Этот useEffect должен быть ПЕРЕД всеми ранними return'ами!
   useEffect(() => {
+    // Защита от повторных проверок: если уже проверяли, не проверяем снова
+    if (planCheckDoneRef.current) {
+      return;
+    }
+    
     // Проверяем только если рекомендации не загружены, не загружаемся и не проверяем уже план
     if (routineItemsLength === 0 && !loading && !checkingPlan && !hasPlan) {
       console.log('🔍 Checking if plan exists...');
+      planCheckDoneRef.current = true; // Помечаем, что проверка началась
+      
       const checkPlan = async () => {
         setCheckingPlan(true);
         try {
           const plan = await api.getPlan() as any;
           if (plan && (plan.plan28 || plan.weeks)) {
             console.log('✅ Plan found, redirecting to /plan');
+            setHasPlan(true);
             // Если план найден, но рекомендаций нет - редиректим на страницу плана
             // Используем window.location для гарантированного редиректа
             if (typeof window !== 'undefined') {
               window.location.href = '/plan';
-            } else {
-              router.push('/plan');
             }
             return;
           } else {
             console.log('ℹ️ Plan not found or empty');
+            planCheckDoneRef.current = false; // Разрешаем повторную проверку, если план не найден
           }
         } catch (err) {
           console.log('ℹ️ Plan check failed (expected if no plan):', err);
+          planCheckDoneRef.current = false; // Разрешаем повторную проверку при ошибке
           // План не найден - это нормально, не показываем ошибку
         } finally {
           setCheckingPlan(false);

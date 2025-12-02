@@ -41,7 +41,7 @@ export async function getCachedPlan(
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
-      console.error('Error getting cached plan:', error);
+    console.error('Error getting cached plan:', error);
     }
     return null;
   }
@@ -65,7 +65,7 @@ export async function setCachedPlan(
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
-      console.error('Error caching plan:', error);
+    console.error('Error caching plan:', error);
     }
     // Не прерываем выполнение, если кэш не работает
   }
@@ -89,7 +89,7 @@ export async function getCachedRecommendations(
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
-      console.error('Error getting cached recommendations:', error);
+    console.error('Error getting cached recommendations:', error);
     }
     return null;
   }
@@ -113,7 +113,7 @@ export async function setCachedRecommendations(
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
-      console.error('Error caching recommendations:', error);
+    console.error('Error caching recommendations:', error);
     }
     // Не прерываем выполнение, если кэш не работает
   }
@@ -137,7 +137,7 @@ export async function invalidateCache(userId: string, profileVersion: number): P
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
-      console.error('Error invalidating cache:', error);
+    console.error('Error invalidating cache:', error);
     }
   }
 }
