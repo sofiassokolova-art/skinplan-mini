@@ -1181,6 +1181,100 @@ export default function QuizPage() {
     }
   }, [hasResumed, allQuestions, currentQuestionIndex, currentInfoScreenIndex, questionnaire]);
 
+  // При повторном прохождении сразу переходим к вопросам
+  // ВАЖНО: Эта логика должна выполняться только один раз при инициализации, а не при каждом рендере
+  // Также не должна выполняться, если пользователь продолжает анкету (showResumeScreen был показан)
+  // ВАЖНО: Этот useEffect должен быть ВСЕГДА вызван, даже если есть ранние return'ы, чтобы соблюдать порядок хуков
+  useEffect(() => {
+    // Определяем initialInfoScreens внутри useEffect
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    
+    // Пропускаем, если пользователь продолжает анкету (не повторное прохождение)
+    // savedProgress или hasResumed означает, что пользователь нажал "Продолжить" и мы не должны сбрасывать состояние
+    if (showResumeScreen || savedProgress || hasResumed) {
+      return;
+    }
+    
+    // Пропускаем, если уже на вопросах или если нет анкеты
+    if (!isRetakingQuiz || !questionnaire || currentInfoScreenIndex >= initialInfoScreens.length) {
+      return;
+    }
+    
+    // Пропускаем, если уже не на первом вопросе (пользователь уже начал отвечать)
+    // Или если есть сохраненные ответы (пользователь уже отвечал)
+    if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
+      return;
+    }
+    
+    // Получаем все вопросы с фильтрацией
+    const allQuestionsRaw = [
+      ...questionnaire.groups.flatMap((g) => g.questions),
+      ...questionnaire.questions,
+    ];
+    
+    // Фильтруем вопросы на основе ответов
+    const allQuestions = allQuestionsRaw.filter((question) => {
+      const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
+                                  question.code === 'pregnancy' ||
+                                  question.text?.toLowerCase().includes('беременн') ||
+                                  question.text?.toLowerCase().includes('кормлен');
+      
+      if (!isPregnancyQuestion) {
+        return true;
+      }
+      
+      let genderValue: string | undefined;
+      let genderQuestion: Question | undefined;
+      
+      for (const q of allQuestionsRaw) {
+        if (q.code === 'gender') {
+          genderQuestion = q;
+          if (answers[q.id]) {
+            const answerValue = Array.isArray(answers[q.id]) 
+              ? (answers[q.id] as string[])[0] 
+              : (answers[q.id] as string);
+            
+            genderValue = answerValue;
+            
+            if (q.options && q.options.length > 0) {
+              const matchingOption = q.options.find(opt => 
+                opt.id.toString() === answerValue || 
+                opt.value === answerValue ||
+                opt.value?.toLowerCase() === answerValue?.toLowerCase()
+              );
+              if (matchingOption) {
+                genderValue = matchingOption.value || matchingOption.label || answerValue;
+              }
+            }
+            break;
+          }
+        }
+      }
+      
+      const isMale = genderValue?.toLowerCase().includes('мужчин') || 
+                     genderValue?.toLowerCase().includes('male') ||
+                     genderValue === 'male' ||
+                     genderValue === 'мужской' ||
+                     genderValue?.toLowerCase() === 'мужской' ||
+                     (genderQuestion?.options?.some(opt => 
+                       (opt.value?.toLowerCase().includes('мужчин') || 
+                        opt.label?.toLowerCase().includes('мужчин') ||
+                        opt.value?.toLowerCase().includes('male')) &&
+                       (answers[genderQuestion.id] === opt.value || 
+                        answers[genderQuestion.id] === opt.id.toString())
+                     ));
+      
+      return !isMale;
+    });
+    
+    if (allQuestions.length > 0) {
+      // Переходим сразу к первому вопросу только если мы на начальных экранах
+      if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreens.length) {
+        setCurrentInfoScreenIndex(initialInfoScreens.length);
+      }
+    }
+  }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers]);
+
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
   const initialInfoScreens = useMemo(() => INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode), []);
 
@@ -2007,99 +2101,6 @@ export default function QuizPage() {
   if (isShowingInitialInfoScreen && currentInitialInfoScreen && !isRetakingQuiz) {
     return renderInfoScreen(currentInitialInfoScreen);
   }
-  
-  // При повторном прохождении сразу переходим к вопросам
-  // ВАЖНО: Эта логика должна выполняться только один раз при инициализации, а не при каждом рендере
-  // Также не должна выполняться, если пользователь продолжает анкету (showResumeScreen был показан)
-  useEffect(() => {
-    // Определяем initialInfoScreens внутри useEffect
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
-    
-    // Пропускаем, если пользователь продолжает анкету (не повторное прохождение)
-    // savedProgress или hasResumed означает, что пользователь нажал "Продолжить" и мы не должны сбрасывать состояние
-    if (showResumeScreen || savedProgress || hasResumed) {
-      return;
-    }
-    
-    // Пропускаем, если уже на вопросах или если нет анкеты
-    if (!isRetakingQuiz || !questionnaire || currentInfoScreenIndex >= initialInfoScreens.length) {
-      return;
-    }
-    
-    // Пропускаем, если уже не на первом вопросе (пользователь уже начал отвечать)
-    // Или если есть сохраненные ответы (пользователь уже отвечал)
-    if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
-      return;
-    }
-    
-    // Получаем все вопросы с фильтрацией
-    const allQuestionsRaw = [
-      ...questionnaire.groups.flatMap((g) => g.questions),
-      ...questionnaire.questions,
-    ];
-    
-    // Фильтруем вопросы на основе ответов
-    const allQuestions = allQuestionsRaw.filter((question) => {
-      const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
-                                  question.code === 'pregnancy' ||
-                                  question.text?.toLowerCase().includes('беременн') ||
-                                  question.text?.toLowerCase().includes('кормлен');
-      
-      if (!isPregnancyQuestion) {
-        return true;
-      }
-      
-      let genderValue: string | undefined;
-      let genderQuestion: Question | undefined;
-      
-      for (const q of allQuestionsRaw) {
-        if (q.code === 'gender') {
-          genderQuestion = q;
-          if (answers[q.id]) {
-            const answerValue = Array.isArray(answers[q.id]) 
-              ? (answers[q.id] as string[])[0] 
-              : (answers[q.id] as string);
-            
-            genderValue = answerValue;
-            
-            if (q.options && q.options.length > 0) {
-              const matchingOption = q.options.find(opt => 
-                opt.id.toString() === answerValue || 
-                opt.value === answerValue ||
-                opt.value?.toLowerCase() === answerValue?.toLowerCase()
-              );
-              if (matchingOption) {
-                genderValue = matchingOption.value || matchingOption.label || answerValue;
-              }
-            }
-            break;
-          }
-        }
-      }
-      
-      const isMale = genderValue?.toLowerCase().includes('мужчин') || 
-                     genderValue?.toLowerCase().includes('male') ||
-                     genderValue === 'male' ||
-                     genderValue === 'мужской' ||
-                     genderValue?.toLowerCase() === 'мужской' ||
-                     (genderQuestion?.options?.some(opt => 
-                       (opt.value?.toLowerCase().includes('мужчин') || 
-                        opt.label?.toLowerCase().includes('мужчин') ||
-                        opt.value?.toLowerCase().includes('male')) &&
-                       (answers[genderQuestion.id] === opt.value || 
-                        answers[genderQuestion.id] === opt.id.toString())
-                     ));
-      
-      return !isMale;
-    });
-    
-    if (allQuestions.length > 0) {
-      // Переходим сразу к первому вопросу только если мы на начальных экранах
-      if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreens.length) {
-        setCurrentInfoScreenIndex(initialInfoScreens.length);
-      }
-    }
-  }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers]);
 
   // Если вопрос не найден, но пользователь восстановил прогресс - это может быть временное состояние
   // Даем время на обновление состояния после resumeQuiz
