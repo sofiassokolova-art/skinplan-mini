@@ -786,6 +786,28 @@ export default function HomePage() {
     }
   }, [showResumeScreen]);
 
+  // Проверяем наличие плана, если рекомендации не загрузились
+  // ВАЖНО: Этот useEffect должен быть ПЕРЕД всеми ранними return'ами!
+  const routineItems = tab === 'AM' ? morningItems : eveningItems;
+  useEffect(() => {
+    if (routineItems.length === 0 && !loading && !checkingPlan) {
+      const checkPlan = async () => {
+        setCheckingPlan(true);
+        try {
+          const plan = await api.getPlan() as any;
+          if (plan && (plan.plan28 || plan.weeks)) {
+            setHasPlan(true);
+          }
+        } catch (err) {
+          // План не найден
+        } finally {
+          setCheckingPlan(false);
+        }
+      };
+      checkPlan();
+    }
+  }, [routineItems.length, loading, checkingPlan]);
+
   // Экран незавершенной анкеты
   if (showResumeScreen && savedProgress) {
     const answeredCount = Object.keys(savedProgress.answers).length;
@@ -995,30 +1017,7 @@ export default function HomePage() {
     );
   }
 
-  // Получаем текущие элементы в зависимости от вкладки
-  const routineItems = tab === 'AM' ? morningItems : eveningItems;
-  
-  // Этот блок теперь перенесен выше, перед основным рендером
-
-  // Проверяем наличие плана, если рекомендации не загрузились
-  useEffect(() => {
-    if (routineItems.length === 0 && !loading && !checkingPlan) {
-      const checkPlan = async () => {
-        setCheckingPlan(true);
-        try {
-          const plan = await api.getPlan() as any;
-          if (plan && (plan.plan28 || plan.weeks)) {
-            setHasPlan(true);
-          }
-        } catch (err) {
-          // План не найден
-        } finally {
-          setCheckingPlan(false);
-        }
-      };
-      checkPlan();
-    }
-  }, [routineItems.length, loading, checkingPlan]);
+  // Получаем текущие элементы в зависимости от вкладки (используется в useEffect выше)
 
   if (routineItems.length === 0) {
     if (checkingPlan) {
