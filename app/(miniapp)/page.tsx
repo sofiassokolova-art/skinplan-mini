@@ -249,19 +249,21 @@ export default function HomePage() {
 
         // Загружаем рекомендации (initData передается автоматически в запросе)
         // Если профиля нет (404), loadRecommendations перенаправит на /quiz
-        try {
-          await loadRecommendations();
-          
-          // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
-          // Только если рекомендации загрузились успешно и нет ошибки
+        console.log('🔄 Starting loadRecommendations...');
+        await loadRecommendations();
+        console.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
+        
+        // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
+        // Только если рекомендации загрузились успешно и нет ошибки
+        // Используем setTimeout, чтобы дать React обновить состояние
+        setTimeout(async () => {
           if (!error && recommendations) {
+            console.log('✅ Recommendations loaded, checking feedback popup...');
             await checkFeedbackPopup();
+          } else {
+            console.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
           }
-        } catch (recError: any) {
-          // Если ошибка при загрузке рекомендаций - loadRecommendations уже обработал её
-          // Просто логируем и продолжаем
-          console.warn('⚠️ Error in loadRecommendations (may have redirected):', recError);
-        }
+        }, 100);
       } catch (err: any) {
         // Обрабатываем любые необработанные ошибки
         // НО: если это 404 (профиль не найден), не показываем ошибку, а перенаправляем
