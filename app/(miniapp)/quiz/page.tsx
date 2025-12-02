@@ -193,25 +193,7 @@ export default function QuizPage() {
 
   // Корректируем currentQuestionIndex после восстановления прогресса
   // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
-  useEffect(() => {
-    if (!hasResumed || !questionnaire || allQuestions.length === 0) return;
-    
-    // Если currentQuestionIndex выходит за пределы массива, корректируем его
-    if (currentQuestionIndex >= allQuestions.length) {
-      console.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем:', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-      });
-      setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
-    }
-    
-    // Также убеждаемся, что мы не на начальных экранах после восстановления
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
-    if (hasResumed && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex > 0) {
-      console.log('✅ Корректируем infoScreenIndex после восстановления');
-      setCurrentInfoScreenIndex(initialInfoScreens.length);
-    }
-  }, [hasResumed, allQuestions, currentQuestionIndex, currentInfoScreenIndex, questionnaire]);
+  // ПЕРЕМЕЩЕНО НИЖЕ после объявления allQuestions
 
   // Загружаем сохранённый прогресс из localStorage (fallback)
   const loadSavedProgress = () => {
@@ -1142,6 +1124,28 @@ export default function QuizPage() {
     
     return allQuestions;
   }, [allQuestionsRaw, answers]);
+
+  // Корректируем currentQuestionIndex после восстановления прогресса
+  // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
+  useEffect(() => {
+    if (!hasResumed || !questionnaire || allQuestions.length === 0) return;
+    
+    // Если currentQuestionIndex выходит за пределы массива, корректируем его
+    if (currentQuestionIndex >= allQuestions.length) {
+      addDebugLog('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+      });
+      setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
+    }
+    
+    // Также убеждаемся, что мы не на начальных экранах после восстановления
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    if (hasResumed && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex > 0) {
+      addDebugLog('✅ Корректируем infoScreenIndex после восстановления');
+      setCurrentInfoScreenIndex(initialInfoScreens.length);
+    }
+  }, [hasResumed, allQuestions, currentQuestionIndex, currentInfoScreenIndex, questionnaire]);
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
   const initialInfoScreens = useMemo(() => INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode), []);
