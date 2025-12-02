@@ -288,36 +288,68 @@ export default function HomePage() {
         
         console.log('✅ Telegram WebApp available, proceeding with initialization');
 
-        // Сначала проверяем, есть ли незавершенная анкета
-        console.log('🔍 Checking for incomplete quiz...');
+        // СНАЧАЛА проверяем наличие профиля (самая надежная проверка)
+        console.log('🔍 Step 1: Checking for existing profile...');
+        let hasProfile = false;
+        try {
+          const profile = await api.getCurrentProfile();
+          if (profile && (profile as any).id) {
+            hasProfile = true;
+            console.log('✅ Profile exists, user has completed quiz');
+          }
+        } catch (err: any) {
+          // Проверяем, какая именно ошибка
+          const errorMessage = err?.message || err?.toString() || '';
+          const isNotFound = errorMessage.includes('404') || 
+                            errorMessage.includes('No skin profile') ||
+                            errorMessage.includes('Skin profile not found') ||
+                            errorMessage.includes('Profile not found') ||
+                            err?.status === 404 ||
+                            err?.isNotFound;
+          
+          if (isNotFound) {
+            console.log('ℹ️ Profile not found (expected for new users or incomplete quiz)');
+            hasProfile = false;
+          } else {
+            // Другая ошибка (сеть, авторизация и т.д.) - логируем, но продолжаем
+            console.warn('⚠️ Error checking profile:', errorMessage);
+            hasProfile = false;
+          }
+        }
+
+        // Если профиль есть - загружаем рекомендации
+        if (hasProfile) {
+          console.log('✅ Profile exists, loading recommendations...');
+          await loadRecommendations();
+          console.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
+          
+          // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
+          setTimeout(async () => {
+            if (!error && recommendations) {
+              console.log('✅ Recommendations loaded, checking feedback popup...');
+              await checkFeedbackPopup();
+            } else {
+              console.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
+            }
+          }, 100);
+          return; // Завершаем инициализацию
+        }
+
+        // Если профиля нет - проверяем незавершенную анкету
+        console.log('🔍 Step 2: No profile found, checking for incomplete quiz...');
         const hasIncompleteQuiz = await checkIncompleteQuiz();
         console.log('✅ checkIncompleteQuiz result:', hasIncompleteQuiz);
         
-        // Если есть незавершенная анкета, не загружаем рекомендации
+        // Если есть незавершенная анкета, показываем экран продолжения
         if (hasIncompleteQuiz) {
-          console.log('ℹ️ Incomplete quiz found, stopping initialization');
+          console.log('ℹ️ Incomplete quiz found, showing resume screen');
           return;
         }
         
-        console.log('✅ No incomplete quiz, proceeding to load recommendations');
-
-        // Загружаем рекомендации (initData передается автоматически в запросе)
-        // Если профиля нет (404), loadRecommendations перенаправит на /quiz
-        console.log('🔄 Starting loadRecommendations...');
-        await loadRecommendations();
-        console.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
-        
-        // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
-        // Только если рекомендации загрузились успешно и нет ошибки
-        // Используем setTimeout, чтобы дать React обновить состояние
-        setTimeout(async () => {
-          if (!error && recommendations) {
-            console.log('✅ Recommendations loaded, checking feedback popup...');
-            await checkFeedbackPopup();
-          } else {
-            console.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
-          }
-        }, 100);
+        // Если нет профиля и нет прогресса - перенаправляем на анкету
+        console.log('ℹ️ No profile and no progress, redirecting to quiz');
+        router.push('/quiz');
+        return;
       } catch (err: any) {
         console.error('❌ Error in initAndLoad:', {
           error: err,
