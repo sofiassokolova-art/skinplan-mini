@@ -226,26 +226,56 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    console.log('🚀 HomePage useEffect started');
     setMounted(true);
+    
+    // Проверяем доступность Telegram WebApp
+    console.log('📱 Checking Telegram WebApp:', {
+      hasWindow: typeof window !== 'undefined',
+      hasTelegram: typeof window !== 'undefined' && !!window.Telegram,
+      hasWebApp: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
+      hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
+      initDataLength: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData?.length || 0,
+    });
+    
     initialize();
+    console.log('✅ Telegram WebApp initialized');
     
     // Загружаем данные (пользователь идентифицируется автоматически через initData)
     const initAndLoad = async () => {
       try {
+        console.log('🔄 initAndLoad started');
+        
+        // Ждем немного, чтобы Telegram WebApp успел инициализироваться
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Проверяем, что приложение открыто через Telegram
-        if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-          console.log('Telegram WebApp не доступен, перенаправляем на анкету');
+        const hasInitData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData;
+        console.log('🔍 Checking initData after wait:', {
+          hasInitData,
+          initDataLength: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData?.length || 0,
+        });
+        
+        if (!hasInitData) {
+          console.warn('⚠️ Telegram WebApp не доступен, перенаправляем на анкету');
           router.push('/quiz');
           return;
         }
+        
+        console.log('✅ Telegram WebApp available, proceeding with initialization');
 
         // Сначала проверяем, есть ли незавершенная анкета
+        console.log('🔍 Checking for incomplete quiz...');
         const hasIncompleteQuiz = await checkIncompleteQuiz();
+        console.log('✅ checkIncompleteQuiz result:', hasIncompleteQuiz);
         
         // Если есть незавершенная анкета, не загружаем рекомендации
         if (hasIncompleteQuiz) {
+          console.log('ℹ️ Incomplete quiz found, stopping initialization');
           return;
         }
+        
+        console.log('✅ No incomplete quiz, proceeding to load recommendations');
 
         // Загружаем рекомендации (initData передается автоматически в запросе)
         // Если профиля нет (404), loadRecommendations перенаправит на /quiz
@@ -265,6 +295,15 @@ export default function HomePage() {
           }
         }, 100);
       } catch (err: any) {
+        console.error('❌ Error in initAndLoad:', {
+          error: err,
+          message: err?.message,
+          status: err?.status,
+          isNotFound: err?.isNotFound,
+          stack: err?.stack,
+          name: err?.name,
+        });
+        
         // Обрабатываем любые необработанные ошибки
         // НО: если это 404 (профиль не найден), не показываем ошибку, а перенаправляем
         if (err?.status === 404 || err?.isNotFound || 
@@ -277,13 +316,22 @@ export default function HomePage() {
           return;
         }
         
-        console.error('❌ Error in initAndLoad:', err);
+        console.error('❌ Unexpected error in initAndLoad, setting error state');
         setError('Произошла ошибка при загрузке данных. Попробуйте обновить страницу.');
         setLoading(false);
       }
     };
 
     initAndLoad().catch((err: any) => {
+      console.error('❌ Unhandled promise rejection in initAndLoad catch:', {
+        error: err,
+        message: err?.message,
+        status: err?.status,
+        isNotFound: err?.isNotFound,
+        stack: err?.stack,
+        name: err?.name,
+      });
+      
       // Дополнительная обработка на случай, если промис отклонен
       // Если это 404 (профиль не найден), перенаправляем на анкету
       if (err?.status === 404 || err?.isNotFound || 
@@ -296,7 +344,7 @@ export default function HomePage() {
         return;
       }
       
-      console.error('❌ Unhandled promise rejection in initAndLoad:', err);
+      console.error('❌ Unexpected unhandled rejection, setting error state');
       setError('Произошла ошибка при загрузке данных. Попробуйте обновить страницу.');
       setLoading(false);
     });
