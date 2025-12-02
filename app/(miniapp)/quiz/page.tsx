@@ -115,22 +115,28 @@ export default function QuizPage() {
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
           await loadSavedProgressFromServer();
-          // Если прогресс загружен, показываем экран продолжения
-          if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
-            setShowResumeScreen(true);
-            setLoading(false);
-          }
+          // loadSavedProgressFromServer сам устанавливает setShowResumeScreen(true) если есть прогресс
+          // и очищает localStorage если прогресса нет на сервере
         } catch (err: any) {
-          // Если ошибка 401 - это нормально, просто используем localStorage
+          // Если ошибка 401 - это нормально, просто не используем серверный прогресс
           if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
             console.warn('Не удалось загрузить прогресс с сервера:', err);
           }
-          // Fallback на localStorage
-          loadSavedProgress();
+          // НЕ используем fallback на localStorage - прогресс должен быть синхронизирован с сервером
+          // Если на сервере нет прогресса, значит его не должно быть и локально
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('quiz_progress');
+          }
+          setSavedProgress(null);
+          setShowResumeScreen(false);
         }
       } else {
-        // Если Telegram WebApp не доступен, используем только localStorage
-        loadSavedProgress();
+        // Если Telegram WebApp не доступен, очищаем localStorage (прогресс должен быть на сервере)
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('quiz_progress');
+        }
+        setSavedProgress(null);
+        setShowResumeScreen(false);
       }
     };
     
@@ -280,20 +286,34 @@ export default function QuizPage() {
           localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
         }
       } else {
-        // Если прогресса нет на сервере, проверяем localStorage
-        loadSavedProgress();
+        // Если прогресса нет на сервере, очищаем localStorage (чтобы не загружать старый прогресс)
+        // и не показываем экран "Продолжить"
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('quiz_progress');
+        }
+        setSavedProgress(null);
+        setShowResumeScreen(false);
+        // Не вызываем loadSavedProgress(), так как прогресс должен быть синхронизирован с сервером
       }
     } catch (err: any) {
       // Если ошибка 401 - это нормально, просто не используем серверный прогресс
       if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
         // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
-        // Fallback на localStorage
-        loadSavedProgress();
+        // Очищаем localStorage, так как прогресс должен быть синхронизирован с сервером
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('quiz_progress');
+        }
+        setSavedProgress(null);
+        setShowResumeScreen(false);
         return;
       }
       console.warn('Ошибка загрузки прогресса с сервера:', err);
-      // Fallback на localStorage при любой ошибке
-      loadSavedProgress();
+      // Очищаем localStorage при любой ошибке - прогресс должен быть на сервере
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('quiz_progress');
+      }
+      setSavedProgress(null);
+      setShowResumeScreen(false);
     }
   };
 
