@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTelegram } from '@/lib/telegram-client';
@@ -61,7 +61,9 @@ export default function QuizPage() {
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
   // Функция для добавления логов (только в development)
-  const addDebugLog = (message: string, data?: any) => {
+  // ВАЖНО: оборачиваем в useCallback, чтобы функция не менялась между рендерами
+  // и не вызывала лишние пересчеты в useMemo
+  const addDebugLog = useCallback((message: string, data?: any) => {
     const time = new Date().toLocaleTimeString();
     // Также логируем в консоль для тех, кто может ее открыть
     console.log(`[${time}] ${message}`, data || '');
@@ -74,7 +76,7 @@ export default function QuizPage() {
       };
       setDebugLogs(prev => [...prev.slice(-19), log]); // Храним последние 20 логов
     }
-  };
+  }, []);
 
   useEffect(() => {
     // Ждем готовности Telegram WebApp
@@ -1081,7 +1083,9 @@ export default function QuizPage() {
         ...questions,
       ];
       
-      addDebugLog('📋 allQuestionsRaw loaded', {
+      // Убираем вызов addDebugLog из useMemo, чтобы избежать проблем с хуками
+      // Логируем только в консоль
+      console.log('📋 allQuestionsRaw loaded', {
         total: raw.length,
         fromGroups: questionsFromGroups.length,
         fromQuestions: questions.length,
@@ -1261,7 +1265,9 @@ export default function QuizPage() {
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   const currentQuestion = useMemo(() => {
-    addDebugLog('🔍 currentQuestion calculation', {
+    // Убираем вызовы addDebugLog из useMemo, чтобы избежать проблем с хуками
+    // Логируем только в консоль
+    console.log('🔍 currentQuestion calculation', {
       isShowingInitialInfoScreen,
       pendingInfoScreen: !!pendingInfoScreen,
       currentQuestionIndex,
@@ -1270,19 +1276,19 @@ export default function QuizPage() {
     });
     
     if (isShowingInitialInfoScreen || pendingInfoScreen) {
-      addDebugLog('❌ Question not shown: isShowingInitialInfoScreen or pendingInfoScreen');
+      console.log('❌ Question not shown: isShowingInitialInfoScreen or pendingInfoScreen');
       return null;
     }
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
       const question = allQuestions[currentQuestionIndex];
-      addDebugLog('✅ Current question found', {
+      console.log('✅ Current question found', {
         questionId: question?.id,
         questionCode: question?.code,
         questionText: question?.text?.substring(0, 50),
       });
       return question;
     }
-    addDebugLog('❌ Question not shown: index out of bounds');
+    console.log('❌ Question not shown: index out of bounds');
     return null;
   }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions, questionnaire]);
 
