@@ -152,6 +152,21 @@ export default function QuizPage() {
     }
   }, [isRetakingQuiz, questionnaire]);
 
+  // Устанавливаем query параметр для скрытия навигации в layout (вынесено на верхний уровень)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    if (showResumeScreen) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('resume', 'true');
+      window.history.replaceState({}, '', url.toString());
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('resume');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [showResumeScreen]);
+
   // Загружаем сохранённый прогресс из localStorage (fallback)
   const loadSavedProgress = () => {
     if (typeof window === 'undefined') return;
@@ -688,28 +703,46 @@ export default function QuizPage() {
 
   // Продолжить с сохранённого места
   const resumeQuiz = () => {
-    if (!savedProgress || !questionnaire) return;
+    if (!savedProgress || !questionnaire) {
+      console.error('❌ resumeQuiz: savedProgress or questionnaire is missing', { savedProgress: !!savedProgress, questionnaire: !!questionnaire });
+      return;
+    }
     
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    
+    console.log('🔄 resumeQuiz: Восстанавливаем прогресс', {
+      questionIndex: savedProgress.questionIndex,
+      infoScreenIndex: savedProgress.infoScreenIndex,
+      answersCount: Object.keys(savedProgress.answers).length,
+      initialInfoScreensLength: initialInfoScreens.length,
+    });
     
     // Восстанавливаем прогресс
     setAnswers(savedProgress.answers);
     
-    // Если infoScreenIndex указывает на начальный экран, который уже пройден - пропускаем
-    // Если вопрос уже начался (infoScreenIndex >= initialInfoScreens.length), используем сохранённые значения
+    // ВАЖНО: Всегда пропускаем начальные экраны, если пользователь уже начал отвечать на вопросы
+    // Если infoScreenIndex указывает на начальный экран, но вопрос уже начался - пропускаем начальные экраны
     if (savedProgress.infoScreenIndex >= initialInfoScreens.length) {
       // Начальные экраны пройдены, переходим к вопросам
+      console.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к вопросу', savedProgress.questionIndex);
       setCurrentQuestionIndex(savedProgress.questionIndex);
       setCurrentInfoScreenIndex(savedProgress.infoScreenIndex);
-    } else {
-      // Начальные экраны ещё не все пройдены, но вопрос уже начался
-      // В этом случае пропускаем начальные экраны и идём к вопросам
+    } else if (savedProgress.questionIndex > 0 || Object.keys(savedProgress.answers).length > 0) {
+      // Пользователь уже начал отвечать, но infoScreenIndex еще на начальных экранах
+      // Пропускаем все начальные экраны и переходим к сохранённому вопросу
+      console.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к вопросу', savedProgress.questionIndex);
       setCurrentQuestionIndex(savedProgress.questionIndex);
       setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
+    } else {
+      // Пользователь еще не начал отвечать, начинаем с начальных экранов
+      console.log('✅ resumeQuiz: Начинаем с начальных экранов');
+      setCurrentQuestionIndex(0);
+      setCurrentInfoScreenIndex(savedProgress.infoScreenIndex);
     }
     
     setShowResumeScreen(false);
     setHasResumed(true); // Помечаем, что пользователь восстановил прогресс
+    console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true');
   };
 
   // Начать заново
@@ -946,8 +979,9 @@ export default function QuizPage() {
   const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
 
   // Определяем, показываем ли мы начальный инфо-экран
-  // При повторном прохождении пропускаем все info screens
-  const isShowingInitialInfoScreen = !isRetakingQuiz && currentInfoScreenIndex < initialInfoScreens.length;
+  // При повторном прохождении или после восстановления прогресса пропускаем все info screens
+  // ВАЖНО: Если hasResumed = true, значит пользователь нажал "Продолжить" и мы не должны показывать начальные экраны
+  const isShowingInitialInfoScreen = !isRetakingQuiz && !hasResumed && currentInfoScreenIndex < initialInfoScreens.length;
   const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
@@ -1019,19 +1053,6 @@ export default function QuizPage() {
     const answeredCount = Object.keys(savedProgress.answers).length;
     const totalQuestions = allQuestions.length;
     const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
-
-    // Устанавливаем query параметр для скрытия навигации в layout
-    useEffect(() => {
-      if (showResumeScreen && typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('resume', 'true');
-        window.history.replaceState({}, '', url.toString());
-      } else if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('resume');
-        window.history.replaceState({}, '', url.toString());
-      }
-    }, [showResumeScreen]);
 
     return (
       <div style={{ 
@@ -1714,6 +1735,63 @@ export default function QuizPage() {
     }
   }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers]);
 
+  // Если вопрос не найден, но пользователь восстановил прогресс - это может быть временное состояние
+  // Даем время на обновление состояния после resumeQuiz
+  if (!currentQuestion && !hasResumed && !showResumeScreen) {
+    // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
+    if (questionnaire && allQuestions.length > 0) {
+      // Проверяем, не выходит ли индекс за пределы
+      if (currentQuestionIndex >= allQuestions.length) {
+        // Это последний вопрос - показываем экран завершения
+        return (
+          <div style={{ padding: '20px' }}>
+            <h1>Анкета завершена</h1>
+            <button onClick={submitAnswers}>Отправить ответы</button>
+          </div>
+        );
+      }
+    }
+    
+    // Если вопрос не найден и это не ожидаемое состояние - показываем ошибку
+    if (questionnaire && allQuestions.length > 0) {
+      console.error('❌ currentQuestion is null but should exist', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        hasResumed,
+        showResumeScreen,
+        currentInfoScreenIndex,
+        isShowingInitialInfoScreen,
+        pendingInfoScreen: !!pendingInfoScreen,
+      });
+      return (
+        <div style={{ padding: '20px' }}>
+          <h1>Ошибка загрузки вопроса</h1>
+          <p>Попробуйте обновить страницу</p>
+          <button onClick={() => window.location.reload()}>Обновить страницу</button>
+        </div>
+      );
+    }
+    
+    // Если анкета еще не загружена - показываем загрузку
+    if (loading) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <div>Загрузка анкеты...</div>
+        </div>
+      );
+    }
+  }
+  
+  // Если вопрос не найден, но hasResumed = true - это временное состояние, показываем загрузку
+  if (!currentQuestion && hasResumed) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <div>Загрузка вопроса...</div>
+      </div>
+    );
+  }
+  
+  // Если вопрос все еще не найден после всех проверок
   if (!currentQuestion) {
     return (
       <div style={{ padding: '20px' }}>
