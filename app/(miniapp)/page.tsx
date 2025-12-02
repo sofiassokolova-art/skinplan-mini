@@ -542,13 +542,21 @@ export default function HomePage() {
           const plan = await api.getPlan() as any;
           if (plan && (plan.plan28 || plan.weeks)) {
             console.log('✅ Plan exists, redirecting to /plan');
-            router.push('/plan');
+            // Устанавливаем loading в false перед редиректом
+            setLoading(false);
+            // Используем window.location для гарантированного редиректа
+            if (typeof window !== 'undefined') {
+              window.location.href = '/plan';
+            } else {
+              router.push('/plan');
+            }
             return;
           }
         } catch (planError) {
           console.warn('⚠️ Could not load plan:', planError);
         }
-        throw recErr; // Пробрасываем ошибку дальше
+        // Если план не найден, пробрасываем ошибку дальше
+        throw recErr;
       }
       
       // Проверяем, что данные валидны
@@ -816,7 +824,12 @@ export default function HomePage() {
           if (plan && (plan.plan28 || plan.weeks)) {
             console.log('✅ Plan found, redirecting to /plan');
             // Если план найден, но рекомендаций нет - редиректим на страницу плана
-            router.push('/plan');
+            // Используем window.location для гарантированного редиректа
+            if (typeof window !== 'undefined') {
+              window.location.href = '/plan';
+            } else {
+              router.push('/plan');
+            }
             return;
           } else {
             console.log('ℹ️ Plan not found or empty');
@@ -830,7 +843,9 @@ export default function HomePage() {
       };
       checkPlan();
     }
-  }, [routineItemsLength, loading, checkingPlan, hasPlan, router]);
+    // Убираем router из зависимостей, чтобы избежать лишних пересчетов
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routineItemsLength, loading, checkingPlan, hasPlan]);
 
   // Экран незавершенной анкеты
   if (showResumeScreen && savedProgress) {
