@@ -409,6 +409,8 @@ export default function QuizPage() {
       currentQuestion: currentQuestion?.id,
       currentQuestionCode: currentQuestion?.code,
       questionnaireId: questionnaire?.id,
+      allQuestionsLength: allQuestions.length,
+      currentQuestionIndex,
     });
 
     // Валидация: проверяем, что questionId соответствует текущему вопросу
@@ -420,6 +422,18 @@ export default function QuizPage() {
       });
       // Используем ID текущего вопроса вместо переданного
       questionId = currentQuestion.id;
+    }
+
+    // Дополнительная валидация: проверяем, что вопрос существует в allQuestions
+    const questionExists = allQuestions.some(q => q.id === questionId);
+    if (!questionExists && allQuestions.length > 0) {
+      console.error('❌ Question ID not found in allQuestions:', {
+        questionId,
+        allQuestionIds: allQuestions.map(q => q.id),
+        currentQuestionId: currentQuestion?.id,
+      });
+      // Если вопрос не найден, не сохраняем ответ
+      return;
     }
 
     const newAnswers = { ...answers, [questionId]: value };
