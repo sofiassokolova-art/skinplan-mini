@@ -995,11 +995,21 @@ export default function QuizPage() {
 
   // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
   const allQuestionsRaw = useMemo(() => {
-    if (!questionnaire) return [];
-    return [
+    if (!questionnaire) {
+      console.log('⚠️ No questionnaire, allQuestionsRaw is empty');
+      return [];
+    }
+    const raw = [
       ...questionnaire.groups.flatMap((g) => g.questions),
       ...questionnaire.questions,
     ];
+    console.log('📋 allQuestionsRaw:', {
+      total: raw.length,
+      fromGroups: questionnaire.groups.flatMap((g) => g.questions).length,
+      fromQuestions: questionnaire.questions.length,
+      questionIds: raw.map(q => q.id),
+    });
+    return raw;
   }, [questionnaire]);
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
@@ -1071,8 +1081,20 @@ export default function QuizPage() {
                       answers[genderQuestion.id] === opt.id.toString())
                    ));
     
-      return !isMale; // Показываем только если не мужчина
+      const shouldShow = !isMale; // Показываем только если не мужчина
+      if (!shouldShow) {
+        console.log('🚫 Question filtered out (pregnancy question for male):', question.code);
+      }
+      return shouldShow;
     });
+    
+    console.log('✅ allQuestions after filtering:', {
+      total: allQuestions.length,
+      questionIds: allQuestions.map(q => q.id),
+      questionCodes: allQuestions.map(q => q.code),
+    });
+    
+    return allQuestions;
   }, [allQuestionsRaw, answers]);
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
@@ -1113,12 +1135,30 @@ export default function QuizPage() {
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   const currentQuestion = useMemo(() => {
-    if (isShowingInitialInfoScreen || pendingInfoScreen) return null;
-    if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
-      return allQuestions[currentQuestionIndex];
+    console.log('🔍 currentQuestion calculation:', {
+      isShowingInitialInfoScreen,
+      pendingInfoScreen: !!pendingInfoScreen,
+      currentQuestionIndex,
+      allQuestionsLength: allQuestions.length,
+      questionnaireId: questionnaire?.id,
+    });
+    
+    if (isShowingInitialInfoScreen || pendingInfoScreen) {
+      console.log('❌ Question not shown: isShowingInitialInfoScreen or pendingInfoScreen');
+      return null;
     }
+    if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
+      const question = allQuestions[currentQuestionIndex];
+      console.log('✅ Current question found:', {
+        questionId: question?.id,
+        questionCode: question?.code,
+        questionText: question?.text?.substring(0, 50),
+      });
+      return question;
+    }
+    console.log('❌ Question not shown: index out of bounds');
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions]);
+  }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions, questionnaire]);
 
   // Экран продолжения анкеты
   if (showResumeScreen && savedProgress) {
