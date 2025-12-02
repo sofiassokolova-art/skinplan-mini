@@ -788,25 +788,34 @@ export default function HomePage() {
 
   // Проверяем наличие плана, если рекомендации не загрузились
   // ВАЖНО: Этот useEffect должен быть ПЕРЕД всеми ранними return'ами!
+  // Используем useMemo чтобы избежать пересчета при каждом рендере
   const routineItems = tab === 'AM' ? morningItems : eveningItems;
+  const routineItemsLength = routineItems.length;
+  
   useEffect(() => {
-    if (routineItems.length === 0 && !loading && !checkingPlan) {
+    // Проверяем только если рекомендации не загружены, не загружаемся и не проверяем уже план
+    if (routineItemsLength === 0 && !loading && !checkingPlan && !hasPlan) {
+      console.log('🔍 Checking if plan exists...');
       const checkPlan = async () => {
         setCheckingPlan(true);
         try {
           const plan = await api.getPlan() as any;
           if (plan && (plan.plan28 || plan.weeks)) {
+            console.log('✅ Plan found, setting hasPlan to true');
             setHasPlan(true);
+          } else {
+            console.log('ℹ️ Plan not found or empty');
           }
         } catch (err) {
-          // План не найден
+          console.log('ℹ️ Plan check failed (expected if no plan):', err);
+          // План не найден - это нормально, не показываем ошибку
         } finally {
           setCheckingPlan(false);
         }
       };
       checkPlan();
     }
-  }, [routineItems.length, loading, checkingPlan]);
+  }, [routineItemsLength, loading, checkingPlan, hasPlan]);
 
   // Экран незавершенной анкеты
   if (showResumeScreen && savedProgress) {
