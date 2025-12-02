@@ -37,7 +37,25 @@ interface Questionnaire {
 
 export default function QuizPage() {
   const router = useRouter();
-  const { initialize, initData } = useTelegram();
+  
+  // Безопасная инициализация useTelegram
+  let telegramHook;
+  try {
+    telegramHook = useTelegram();
+  } catch (err) {
+    console.error('❌ Error initializing Telegram hook in QuizPage:', err);
+    // Fallback значения
+    telegramHook = {
+      initialize: () => {},
+      isAvailable: false,
+      initData: '',
+      user: undefined,
+      tg: null,
+      sendData: () => ({ ok: false, reason: 'error' }),
+    };
+  }
+  
+  const { initialize, initData } = telegramHook;
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,14 +121,21 @@ export default function QuizPage() {
     };
 
     const init = async () => {
-      // Инициализируем Telegram WebApp
-      initialize();
-      
-      // Ждем готовности Telegram WebApp
-      await waitForTelegram();
+      try {
+        // Инициализируем Telegram WebApp
+        console.log('🔄 Initializing Telegram WebApp...');
+        initialize();
+        console.log('✅ Telegram WebApp initialized');
+        
+        // Ждем готовности Telegram WebApp
+        console.log('⏳ Waiting for Telegram WebApp...');
+        await waitForTelegram();
+        console.log('✅ Telegram WebApp ready');
 
-      // Сначала загружаем анкету (публичный маршрут)
-      await loadQuestionnaire();
+        // Сначала загружаем анкету (публичный маршрут)
+        console.log('📥 Loading questionnaire...');
+        await loadQuestionnaire();
+        console.log('✅ Questionnaire loaded');
       
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
       // isRetakingQuiz будет установлен в отдельном useEffect после загрузки questionnaire
