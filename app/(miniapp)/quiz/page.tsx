@@ -54,6 +54,22 @@ export default function QuizPage() {
   } | null>(null);
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
+  const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  
+  // Функция для добавления логов (только в development)
+  const addDebugLog = (message: string, data?: any) => {
+    if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG === 'true') {
+      const log = {
+        time: new Date().toLocaleTimeString(),
+        message,
+        data: data ? JSON.stringify(data, null, 2) : undefined,
+      };
+      setDebugLogs(prev => [...prev.slice(-19), log]); // Храним последние 20 логов
+    }
+    // Также логируем в консоль для тех, кто может ее открыть
+    console.log(`[${log.time}] ${message}`, data || '');
+  };
 
   useEffect(() => {
     // Ждем готовности Telegram WebApp
@@ -402,7 +418,7 @@ export default function QuizPage() {
   };
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
-    console.log('💾 handleAnswer called:', { 
+    addDebugLog('💾 handleAnswer called', { 
       questionId, 
       questionIdType: typeof questionId,
       value,
@@ -1017,7 +1033,7 @@ export default function QuizPage() {
       ...questionnaire.groups.flatMap((g) => g.questions),
       ...questionnaire.questions,
     ];
-    console.log('📋 allQuestionsRaw:', {
+    addDebugLog('📋 allQuestionsRaw loaded', {
       total: raw.length,
       fromGroups: questionnaire.groups.flatMap((g) => g.questions).length,
       fromQuestions: questionnaire.questions.length,
@@ -1102,7 +1118,7 @@ export default function QuizPage() {
       return shouldShow;
     });
     
-    console.log('✅ allQuestions after filtering:', {
+    addDebugLog('✅ allQuestions after filtering', {
       total: allQuestions.length,
       questionIds: allQuestions.map(q => q.id),
       questionCodes: allQuestions.map(q => q.code),
@@ -1149,7 +1165,7 @@ export default function QuizPage() {
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   const currentQuestion = useMemo(() => {
-    console.log('🔍 currentQuestion calculation:', {
+    addDebugLog('🔍 currentQuestion calculation', {
       isShowingInitialInfoScreen,
       pendingInfoScreen: !!pendingInfoScreen,
       currentQuestionIndex,
@@ -1158,19 +1174,19 @@ export default function QuizPage() {
     });
     
     if (isShowingInitialInfoScreen || pendingInfoScreen) {
-      console.log('❌ Question not shown: isShowingInitialInfoScreen or pendingInfoScreen');
+      addDebugLog('❌ Question not shown: isShowingInitialInfoScreen or pendingInfoScreen');
       return null;
     }
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
       const question = allQuestions[currentQuestionIndex];
-      console.log('✅ Current question found:', {
+      addDebugLog('✅ Current question found', {
         questionId: question?.id,
         questionCode: question?.code,
         questionText: question?.text?.substring(0, 50),
       });
       return question;
     }
-    console.log('❌ Question not shown: index out of bounds');
+    addDebugLog('❌ Question not shown: index out of bounds');
     return null;
   }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions, questionnaire]);
 
