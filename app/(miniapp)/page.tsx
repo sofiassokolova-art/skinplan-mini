@@ -82,6 +82,8 @@ export default function HomePage() {
     infoScreenIndex: number;
   } | null>(null);
   const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
+  const [hasPlan, setHasPlan] = useState(false);
+  const [checkingPlan, setCheckingPlan] = useState(false);
 
   // Проверка незавершённой анкеты (объявляем до использования)
   const checkIncompleteQuiz = async (): Promise<boolean> => {
@@ -723,8 +725,24 @@ export default function HomePage() {
         return;
       }
       
-      // Другие ошибки - показываем сообщение только если это не связано с отсутствием профиля
+      // Другие ошибки - проверяем, есть ли план
       console.error('❌ Unexpected error loading recommendations:', error);
+      
+      // Если это ошибка KV или другая ошибка, но план может быть доступен - проверяем план
+      try {
+        const plan = await api.getPlan() as any;
+        if (plan && (plan.plan28 || plan.weeks)) {
+          // План есть - перенаправляем на страницу плана
+          console.log('✅ Plan exists, redirecting to /plan');
+          router.push('/plan');
+          return;
+        }
+      } catch (planError) {
+        // Не удалось загрузить план - продолжаем с ошибкой
+        console.warn('⚠️ Could not load plan:', planError);
+      }
+      
+      // Если план не найден, показываем ошибку
       setError(error?.message || 'Ошибка загрузки рекомендаций');
       setMorningItems([]);
       setEveningItems([]);
@@ -1007,7 +1025,61 @@ export default function HomePage() {
     );
   }
 
+  // Проверяем наличие плана, если рекомендации не загрузились
+  useEffect(() => {
+    if (routineItems.length === 0 && !loading && !checkingPlan) {
+      const checkPlan = async () => {
+        setCheckingPlan(true);
+        try {
+          const plan = await api.getPlan() as any;
+          if (plan && (plan.plan28 || plan.weeks)) {
+            setHasPlan(true);
+          }
+        } catch (err) {
+          // План не найден
+        } finally {
+          setCheckingPlan(false);
+        }
+      };
+      checkPlan();
+    }
+  }, [routineItems.length, loading, checkingPlan]);
+
   if (routineItems.length === 0) {
+    if (checkingPlan) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
+        </div>
+      );
+    }
+    
+    if (hasPlan) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Перейдите к плану</h1>
+          <p style={{ color: '#475467', marginBottom: '24px' }}>
+            Ваш персональный план ухода готов
+          </p>
+          <button
+            onClick={() => router.push('/plan')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          >
+            Перейти к плану →
+          </button>
+        </div>
+      );
+    }
+    
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <h1>Нет рекомендаций</h1>
