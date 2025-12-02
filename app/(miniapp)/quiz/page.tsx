@@ -38,24 +38,9 @@ interface Questionnaire {
 export default function QuizPage() {
   const router = useRouter();
   
-  // Безопасная инициализация useTelegram
-  let telegramHook;
-  try {
-    telegramHook = useTelegram();
-  } catch (err) {
-    console.error('❌ Error initializing Telegram hook in QuizPage:', err);
-    // Fallback значения
-    telegramHook = {
-      initialize: () => {},
-      isAvailable: false,
-      initData: '',
-      user: undefined,
-      tg: null,
-      sendData: () => ({ ok: false, reason: 'error' }),
-    };
-  }
-  
-  const { initialize, initData } = telegramHook;
+  // Инициализация useTelegram (хук сам обрабатывает ошибки внутри)
+  // ВАЖНО: хуки должны вызываться всегда в одном порядке, нельзя оборачивать в try-catch
+  const { initialize, initData } = useTelegram();
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

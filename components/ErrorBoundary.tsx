@@ -53,6 +53,13 @@ export class ErrorBoundary extends Component<Props, State> {
       timestamp: new Date().toISOString(),
       errorName: error.name,
       errorString: error.toString(),
+      // Расшифровка React ошибок
+      reactErrorCode: error.message.includes('Minified React error #') 
+        ? error.message.match(/Minified React error #(\d+)/)?.[1] 
+        : undefined,
+      reactErrorDescription: error.message.includes('Minified React error #310')
+        ? 'Rendered more hooks than during the previous render. This usually means you have conditional hooks or hooks inside loops. Hooks must be called in the same order on every render.'
+        : undefined,
       // Дополнительная информация
       localStorage: typeof window !== 'undefined' ? {
         quizProgress: localStorage.getItem('quiz_progress') ? 'exists' : 'not found',
@@ -228,6 +235,32 @@ export class ErrorBoundary extends Component<Props, State> {
                     <div style={{ color: '#475467', marginTop: '4px', wordBreak: 'break-word' }}>
                       {this.state.errorDetails.message || 'Нет сообщения'}
                     </div>
+                    {this.state.errorDetails.message?.includes('Minified React error #310') && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '12px',
+                        backgroundColor: '#FEF3C7',
+                        borderRadius: '8px',
+                        border: '1px solid #FCD34D',
+                        fontSize: '13px',
+                        color: '#92400E',
+                      }}>
+                        <strong>⚠️ Расшифровка ошибки React #310:</strong>
+                        <div style={{ marginTop: '4px' }}>
+                          Количество хуков изменилось между рендерами. Это обычно означает, что хуки вызываются условно или внутри циклов. 
+                          Хуки должны вызываться всегда в одном и том же порядке на каждом рендере.
+                        </div>
+                        <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                          <strong>Возможные причины:</strong>
+                          <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>
+                            <li>Хуки внутри условий (if/else)</li>
+                            <li>Хуки внутри циклов (for/while)</li>
+                            <li>Хуки внутри try-catch блоков</li>
+                            <li>Условный return до вызова всех хуков</li>
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {this.state.errorDetails.url && (
