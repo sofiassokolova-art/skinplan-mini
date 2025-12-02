@@ -166,10 +166,78 @@ export async function POST(request: NextRequest) {
 
     const { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
 
-    if (!questionnaireId || !questionId) {
+    if (!questionnaireId || questionId === undefined) {
       return NextResponse.json(
-        { error: 'Missing questionnaireId or questionId' },
+        { error: 'Missing questionnaireId' },
         { status: 400 }
+      );
+    }
+
+    let savedAnswer = null;
+
+    // Если questionId = -1, это только метаданные позиции
+    if (questionId === -1) {
+      // Обрабатываем только метаданные позиции
+      if (questionIndex !== undefined || infoScreenIndex !== undefined) {
+        // Удаляем старую запись о позиции (если есть)
+        await prisma.userAnswer.deleteMany({
+          where: {
+            userId,
+            questionnaireId,
+            questionId: -1, // Используем -1 как маркер для метаданных позиции
+          },
+        });
+
+        // Сохраняем позицию в answerValue как JSON строку
+        savedAnswer = await prisma.userAnswer.create({
+          data: {
+            userId,
+            questionnaireId,
+            questionId: -1, // Маркер для метаданных
+            answerValue: JSON.stringify({
+              questionIndex: questionIndex ?? null,
+              infoScreenIndex: infoScreenIndex ?? null,
+              timestamp: Date.now(),
+            }),
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        answer: savedAnswer ? {
+          id: savedAnswer.id,
+          questionId: savedAnswer.questionId,
+          answerValue: savedAnswer.answerValue,
+          answerValues: savedAnswer.answerValues,
+        } : null,
+      });
+    }
+
+    // Обычный ответ на вопрос - валидируем, что вопрос существует
+    if (questionId === null) {
+      return NextResponse.json(
+        { error: 'Missing questionId' },
+        { status: 400 }
+      );
+    }
+
+    const question = await prisma.question.findFirst({
+      where: {
+        id: questionId,
+        questionnaireId: questionnaireId,
+      },
+    });
+
+    if (!question) {
+      console.error('Question not found:', { questionId, questionnaireId, userId });
+      return NextResponse.json(
+        { 
+          error: `Question with id ${questionId} not found in questionnaire ${questionnaireId}`,
+          questionId,
+          questionnaireId,
+        },
+        { status: 404 }
       );
     }
 
@@ -183,7 +251,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Сохраняем новый ответ
-    const answer = await prisma.userAnswer.create({
+    savedAnswer = await prisma.userAnswer.create({
       data: {
         userId,
         questionnaireId,
@@ -193,10 +261,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Сохраняем позицию (questionIndex и infoScreenIndex) в отдельной таблице или в метаданных
-    // Используем таблицу UserAnswer для хранения метаданных о позиции
-    // Сохраняем позицию в специальном ответе с questionId = -1 (или используем отдельную таблицу)
-    // Для простоты сохраняем в JSON поле или создаем отдельную запись
+    // Сохраняем позицию (questionIndex и infoScreenIndex) в метаданных, если указана
     if (questionIndex !== undefined || infoScreenIndex !== undefined) {
       // Удаляем старую запись о позиции (если есть)
       await prisma.userAnswer.deleteMany({
@@ -225,10 +290,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       answer: {
-        id: answer.id,
-        questionId: answer.questionId,
-        answerValue: answer.answerValue,
-        answerValues: answer.answerValues,
+        id: savedAnswer.id,
+        questionId: savedAnswer.questionId,
+        answerValue: savedAnswer.answerValue,
+        answerValues: savedAnswer.answerValues,
       },
     });
   } catch (error) {
