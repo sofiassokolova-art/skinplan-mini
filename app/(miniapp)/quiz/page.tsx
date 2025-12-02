@@ -402,6 +402,26 @@ export default function QuizPage() {
   };
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
+    console.log('💾 handleAnswer called:', { 
+      questionId, 
+      questionIdType: typeof questionId,
+      value,
+      currentQuestion: currentQuestion?.id,
+      currentQuestionCode: currentQuestion?.code,
+      questionnaireId: questionnaire?.id,
+    });
+
+    // Валидация: проверяем, что questionId соответствует текущему вопросу
+    if (currentQuestion && currentQuestion.id !== questionId) {
+      console.error('⚠️ Question ID mismatch:', {
+        currentQuestionId: currentQuestion.id,
+        providedQuestionId: questionId,
+        currentQuestionCode: currentQuestion.code,
+      });
+      // Используем ID текущего вопроса вместо переданного
+      questionId = currentQuestion.id;
+    }
+
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
     await saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
@@ -410,6 +430,13 @@ export default function QuizPage() {
     if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       try {
         const isArray = Array.isArray(value);
+        console.log('📤 Saving to server:', {
+          questionnaireId: questionnaire.id,
+          questionId,
+          questionIdType: typeof questionId,
+          hasValue: !!value,
+          isArray,
+        });
         await api.saveQuizProgress(
           questionnaire.id,
           questionId,
@@ -418,10 +445,16 @@ export default function QuizPage() {
           currentQuestionIndex,
           currentInfoScreenIndex
         );
+        console.log('✅ Successfully saved to server');
       } catch (err: any) {
         // Если ошибка 401 - это нормально, прогресс сохранен локально
         if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
-          console.warn('Ошибка сохранения прогресса на сервер:', err);
+          console.error('❌ Ошибка сохранения прогресса на сервер:', {
+            error: err.message,
+            questionId,
+            questionnaireId: questionnaire.id,
+            errorDetails: err,
+          });
         }
       }
     }
