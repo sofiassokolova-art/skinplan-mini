@@ -15,7 +15,8 @@ import {
   MessageSquare,
   Send,
   Menu,
-  X
+  X,
+  FileSearch
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +78,7 @@ export default function AdminLayout({
     { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare },
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
     { href: '/admin/broadcasts', label: 'Рассылки', icon: Send },
+    { href: '/admin/logs', label: 'Логи клиентов', icon: FileSearch },
   ];
 
   if (isLoginPage) {

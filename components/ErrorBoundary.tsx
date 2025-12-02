@@ -15,21 +15,9 @@ interface State {
   error?: Error;
   errorDetails?: {
     message: string;
-    stack?: string;
-    componentStack?: string;
     url: string;
     timestamp: string;
     errorName: string;
-    localStorage?: {
-      quizProgress: string;
-      initData: string;
-    };
-    telegramWebApp?: {
-      available: boolean;
-      initDataLength: number;
-      hasUser: boolean;
-      userId: string | number;
-    };
   };
 }
 
@@ -73,40 +61,49 @@ export class ErrorBoundary extends Component<Props, State> {
       } : undefined,
     };
     
-    // Сохраняем детали ошибки в state для отображения на экране
+    // Сохраняем только базовую информацию для отображения
     this.setState({
       errorDetails: {
         message: errorDetails.message,
-        stack: errorDetails.stack,
-        componentStack: errorDetails.componentStack,
         url: errorDetails.url,
         timestamp: errorDetails.timestamp,
         errorName: errorDetails.errorName,
-        localStorage: errorDetails.localStorage,
-        telegramWebApp: errorDetails.telegramWebApp,
       },
     });
     
-    // Подробное логирование ошибки
+    // Логируем в консоль для разработки
     console.error('❌ ErrorBoundary caught an error:', errorDetails);
-    console.error('📋 Full error object:', error);
-    console.error('📋 Error info:', errorInfo);
-    console.error('📋 Error details (formatted):', JSON.stringify(errorDetails, null, 2));
     
-    // Логируем все свойства ошибки
-    if (error) {
-      console.error('📋 Error properties:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        cause: (error as any).cause,
-        // Любые дополнительные свойства
-        ...Object.getOwnPropertyNames(error).reduce((acc, key) => {
-          if (key !== 'name' && key !== 'message' && key !== 'stack') {
-            acc[key] = (error as any)[key];
-          }
-          return acc;
-        }, {} as Record<string, any>),
+    // Сохраняем ошибку в БД через API (асинхронно, не блокируем)
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      const initData = window.Telegram.WebApp.initData;
+      const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id;
+      
+      // Отправляем в БД через API
+      fetch('/api/logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': initData,
+        },
+        body: JSON.stringify({
+          level: 'error',
+          message: error.message,
+          context: {
+            errorName: error.name,
+            stack: error.stack,
+            componentStack: errorInfo.componentStack,
+            reactErrorCode: errorDetails.reactErrorCode,
+            reactErrorDescription: errorDetails.reactErrorDescription,
+            localStorage: errorDetails.localStorage,
+            telegramWebApp: errorDetails.telegramWebApp,
+          },
+          userAgent: errorDetails.userAgent,
+          url: errorDetails.url,
+        }),
+      }).catch((err) => {
+        // Игнорируем ошибки сохранения лога, чтобы не создавать бесконечный цикл
+        console.error('Failed to save error log:', err);
       });
     }
     
@@ -165,180 +162,18 @@ export class ErrorBoundary extends Component<Props, State> {
               Что-то пошло не так
             </h2>
             
-            {/* Показываем основное сообщение об ошибке сразу */}
-            {this.state.errorDetails && (
-              <div style={{
-                marginBottom: '24px',
-                padding: '16px',
-                backgroundColor: '#FEF2F2',
-                borderRadius: '12px',
-                border: '1px solid #FCA5A5',
-                textAlign: 'left',
-              }}>
-                <div style={{ marginBottom: '8px' }}>
-                  <strong style={{ color: '#991B1B', fontSize: '14px' }}>Тип ошибки:</strong>
-                  <div style={{ color: '#475467', marginTop: '4px', fontSize: '16px', fontWeight: '600' }}>
-                    {this.state.errorDetails.errorName}
-                  </div>
-                </div>
-                <div>
-                  <strong style={{ color: '#991B1B', fontSize: '14px' }}>Сообщение:</strong>
-                  <div style={{ color: '#475467', marginTop: '4px', fontSize: '16px', wordBreak: 'break-word' }}>
-                    {this.state.errorDetails.message || 'Нет сообщения'}
-                  </div>
-                </div>
-              </div>
-            )}
-            
             <p style={{
               color: '#475467',
               marginBottom: '24px',
               lineHeight: '1.6',
             }}>
               Произошла неожиданная ошибка. Попробуйте обновить страницу.
+              {this.state.errorDetails && (
+                <span style={{ display: 'block', marginTop: '8px', fontSize: '14px', color: '#6B7280' }}>
+                  Ошибка сохранена в системе. Техподдержка уже получила уведомление.
+                </span>
+              )}
             </p>
-            
-            {/* Показываем детали ошибки всегда */}
-            {this.state.errorDetails && (
-              <details open style={{
-                marginTop: '24px',
-                textAlign: 'left',
-                padding: '16px',
-                backgroundColor: '#F9FAFB',
-                borderRadius: '12px',
-                border: '1px solid #E5E7EB',
-                width: '100%',
-              }}>
-                <summary style={{
-                  cursor: 'pointer',
-                  color: '#475467',
-                  fontWeight: '600',
-                  marginBottom: '12px',
-                  fontSize: '16px',
-                }}>
-                  🔍 Подробные детали ошибки (нажмите, чтобы свернуть)
-                </summary>
-                <div style={{
-                  marginTop: '12px',
-                  fontSize: '13px',
-                  lineHeight: '1.6',
-                }}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <strong style={{ color: '#991B1B' }}>Тип ошибки:</strong>
-                    <div style={{ color: '#475467', marginTop: '4px' }}>
-                      {this.state.errorDetails.errorName}
-                    </div>
-                  </div>
-                  
-                  <div style={{ marginBottom: '12px' }}>
-                    <strong style={{ color: '#991B1B' }}>Сообщение:</strong>
-                    <div style={{ color: '#475467', marginTop: '4px', wordBreak: 'break-word' }}>
-                      {this.state.errorDetails.message || 'Нет сообщения'}
-                    </div>
-                    {this.state.errorDetails.message?.includes('Minified React error #310') && (
-                      <div style={{
-                        marginTop: '8px',
-                        padding: '12px',
-                        backgroundColor: '#FEF3C7',
-                        borderRadius: '8px',
-                        border: '1px solid #FCD34D',
-                        fontSize: '13px',
-                        color: '#92400E',
-                      }}>
-                        <strong>⚠️ Расшифровка ошибки React #310:</strong>
-                        <div style={{ marginTop: '4px' }}>
-                          Количество хуков изменилось между рендерами. Это обычно означает, что хуки вызываются условно или внутри циклов. 
-                          Хуки должны вызываться всегда в одном и том же порядке на каждом рендере.
-                        </div>
-                        <div style={{ marginTop: '8px', fontSize: '12px' }}>
-                          <strong>Возможные причины:</strong>
-                          <ul style={{ marginTop: '4px', paddingLeft: '20px' }}>
-                            <li>Хуки внутри условий (if/else)</li>
-                            <li>Хуки внутри циклов (for/while)</li>
-                            <li>Хуки внутри try-catch блоков</li>
-                            <li>Условный return до вызова всех хуков</li>
-                          </ul>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {this.state.errorDetails.url && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <strong style={{ color: '#991B1B' }}>Страница:</strong>
-                      <div style={{ color: '#475467', marginTop: '4px', wordBreak: 'break-word', fontSize: '12px' }}>
-                        {this.state.errorDetails.url}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {this.state.errorDetails.telegramWebApp && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <strong style={{ color: '#991B1B' }}>Telegram WebApp:</strong>
-                      <div style={{ color: '#475467', marginTop: '4px', fontSize: '12px' }}>
-                        Доступен: {this.state.errorDetails.telegramWebApp.available ? '✅' : '❌'}<br/>
-                        InitData длина: {this.state.errorDetails.telegramWebApp.initDataLength}<br/>
-                        Пользователь: {this.state.errorDetails.telegramWebApp.hasUser ? `✅ (ID: ${this.state.errorDetails.telegramWebApp.userId})` : '❌'}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {this.state.errorDetails.localStorage && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <strong style={{ color: '#991B1B' }}>LocalStorage:</strong>
-                      <div style={{ color: '#475467', marginTop: '4px', fontSize: '12px' }}>
-                        Quiz Progress: {this.state.errorDetails.localStorage.quizProgress}<br/>
-                        InitData: {this.state.errorDetails.localStorage.initData}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {this.state.errorDetails.stack && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <strong style={{ color: '#991B1B' }}>Стек ошибки:</strong>
-                      <pre style={{
-                        backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        fontSize: '11px',
-                        overflow: 'auto',
-                        marginTop: '8px',
-                        color: '#991B1B',
-                        maxHeight: '200px',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}>
-                        {this.state.errorDetails.stack}
-                      </pre>
-                    </div>
-                  )}
-                  
-                  {this.state.errorDetails.componentStack && (
-                    <div style={{ marginBottom: '12px' }}>
-                      <strong style={{ color: '#991B1B' }}>Компонент:</strong>
-                      <pre style={{
-                        backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        fontSize: '11px',
-                        overflow: 'auto',
-                        marginTop: '8px',
-                        color: '#991B1B',
-                        maxHeight: '150px',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}>
-                        {this.state.errorDetails.componentStack}
-                      </pre>
-                    </div>
-                  )}
-                  
-                  <div style={{ marginTop: '12px', fontSize: '11px', color: '#6B7280' }}>
-                    Время: {new Date(this.state.errorDetails.timestamp).toLocaleString('ru-RU')}
-                  </div>
-                </div>
-              </details>
-            )}
             
             <div style={{
               display: 'flex',

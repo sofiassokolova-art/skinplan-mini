@@ -38,13 +38,14 @@ class Logger {
       try {
         // Динамический импорт для избежания циклических зависимостей
         const { prisma } = await import('@/lib/db');
+        const { Prisma } = await import('@prisma/client');
         
         await prisma.clientLog.create({
           data: {
             userId: options.userId!,
             level,
             message,
-            context: context || null,
+            context: context ? (context as any) : Prisma.JsonNull,
             userAgent: options.userAgent || null,
             url: options.url || null,
           },
