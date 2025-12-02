@@ -56,6 +56,22 @@ export default function QuizPage() {
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+
+    if (showResumeScreen) {
+      url.searchParams.set('resume', 'true');
+    } else {
+      url.searchParams.delete('resume');
+    }
+
+    window.history.replaceState({}, '', url.toString());
+  }, [showResumeScreen]);
+
+  useEffect(() => {
     // Ждем готовности Telegram WebApp
     const waitForTelegram = (): Promise<void> => {
       return new Promise((resolve) => {
@@ -1019,19 +1035,6 @@ export default function QuizPage() {
     const answeredCount = Object.keys(savedProgress.answers).length;
     const totalQuestions = allQuestions.length;
     const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
-
-    // Устанавливаем query параметр для скрытия навигации в layout
-    useEffect(() => {
-      if (showResumeScreen && typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('resume', 'true');
-        window.history.replaceState({}, '', url.toString());
-      } else if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('resume');
-        window.history.replaceState({}, '', url.toString());
-      }
-    }, [showResumeScreen]);
 
     return (
       <div style={{ 
