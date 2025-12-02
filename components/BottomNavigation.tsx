@@ -40,8 +40,6 @@ export default function BottomNavigation() {
   }, []);
 
   const navItems = [
-    { path: '/', label: 'Главная', icon: 'home' },
-    { path: '/plan', label: 'План', icon: 'plan' },
     { path: '/cart', label: 'Избранное', icon: 'wishlist' },
     { path: '/profile', label: 'Профиль', icon: 'profile' },
   ];
