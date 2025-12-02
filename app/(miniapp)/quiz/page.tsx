@@ -1048,16 +1048,8 @@ export default function QuizPage() {
     );
   }
 
-  if (!questionnaire) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <h1>Анкета не найдена</h1>
-        <p>Активная анкета не найдена. Обратитесь к администратору.</p>
-      </div>
-    );
-  }
-
   // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
+  // ВАЖНО: все хуки должны вызываться до любых условных return'ов
   const allQuestionsRaw = useMemo(() => {
     try {
       if (!questionnaire) {
@@ -1291,6 +1283,17 @@ export default function QuizPage() {
     console.log('❌ Question not shown: index out of bounds');
     return null;
   }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions, questionnaire]);
+
+  // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
+  // Проверяем наличие анкеты после вызова всех хуков
+  if (!questionnaire) {
+    return (
+      <div style={{ padding: '20px' }}>
+        <h1>Анкета не найдена</h1>
+        <p>Активная анкета не найдена. Обратитесь к администратору.</p>
+      </div>
+    );
+  }
 
   // Экран продолжения анкеты
   if (showResumeScreen && savedProgress) {
