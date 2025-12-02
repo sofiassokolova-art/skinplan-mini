@@ -402,10 +402,24 @@ export default function QuizPage() {
   const loadQuestionnaire = async () => {
     try {
       const data = await api.getActiveQuestionnaire();
-      setQuestionnaire(data as Questionnaire);
+      const questionnaireData = data as Questionnaire;
+      addDebugLog('📥 Questionnaire loaded', {
+        questionnaireId: questionnaireData.id,
+        name: questionnaireData.name,
+        version: questionnaireData.version,
+        groupsCount: questionnaireData.groups.length,
+        questionsCount: questionnaireData.questions.length,
+        totalQuestions: questionnaireData.groups.reduce((sum, g) => sum + g.questions.length, 0) + questionnaireData.questions.length,
+        questionIds: [
+          ...questionnaireData.groups.flatMap(g => g.questions.map(q => q.id)),
+          ...questionnaireData.questions.map(q => q.id),
+        ],
+      });
+      setQuestionnaire(questionnaireData);
       setError(null); // Очищаем ошибки при успешной загрузке
-      return data as Questionnaire; // Возвращаем загруженную анкету
+      return questionnaireData; // Возвращаем загруженную анкету
     } catch (err: any) {
+      addDebugLog('❌ Error loading questionnaire', { error: err.message });
       console.error('Ошибка загрузки анкеты:', err);
       // Если ошибка авторизации, не показываем её как критическую
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
