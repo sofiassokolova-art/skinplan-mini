@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { INFO_SCREENS, getInfoScreenAfterQuestion, type InfoScreen } from './info-screens';
+import { getAllTopics, type QuestionTopic } from '@/lib/questionnaire-topics';
 
 interface Question {
   id: number;
