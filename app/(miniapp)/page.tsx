@@ -67,13 +67,16 @@ export default function HomePage() {
 
   // Проверка незавершённой анкеты (объявляем до использования)
   const checkIncompleteQuiz = async (): Promise<boolean> => {
+    console.log('🔍 checkIncompleteQuiz started');
     try {
       // СНАЧАЛА проверяем, есть ли уже профиль кожи (анкета завершена)
       // Это самая надежная проверка - если профиль есть, анкета точно завершена
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        console.log('🔍 Checking for existing profile...');
         try {
           // Пробуем загрузить профиль напрямую - это более надежный способ проверки
           const profile = await api.getCurrentProfile();
+          console.log('✅ Profile check result:', { hasProfile: !!profile, profileId: (profile as any)?.id });
           
           // Если профиль загрузился, значит анкета завершена
           // Очищаем весь прогресс (локально и состояние)
@@ -89,13 +92,16 @@ export default function HomePage() {
         } catch (err: any) {
           // Проверяем, какая именно ошибка
           const errorMessage = err?.message || err?.toString() || '';
+          console.log('🔍 Profile check error:', { errorMessage, status: err?.status, isNotFound: err?.isNotFound });
           
           // Если 404 или "No skin profile" - значит анкета не завершена, продолжаем проверку прогресса
           if (errorMessage.includes('404') || 
               errorMessage.includes('No skin profile') ||
               errorMessage.includes('Skin profile not found') ||
-              errorMessage.includes('Profile not found')) {
-            console.log('ℹ️ No profile found, checking for incomplete quiz...');
+              errorMessage.includes('Profile not found') ||
+              err?.status === 404 ||
+              err?.isNotFound) {
+            console.log('ℹ️ No profile found (expected for new users), checking for incomplete quiz...');
             // Продолжаем проверку прогресса ниже
           } else {
             // Другая ошибка (сеть, авторизация и т.д.) - логируем
