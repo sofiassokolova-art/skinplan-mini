@@ -59,16 +59,18 @@ export default function QuizPage() {
   
   // Функция для добавления логов (только в development)
   const addDebugLog = (message: string, data?: any) => {
+    const time = new Date().toLocaleTimeString();
+    // Также логируем в консоль для тех, кто может ее открыть
+    console.log(`[${time}] ${message}`, data || '');
+    
     if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG === 'true') {
       const log = {
-        time: new Date().toLocaleTimeString(),
+        time,
         message,
         data: data ? JSON.stringify(data, null, 2) : undefined,
       };
       setDebugLogs(prev => [...prev.slice(-19), log]); // Храним последние 20 логов
     }
-    // Также логируем в консоль для тех, кто может ее открыть
-    console.log(`[${log.time}] ${message}`, data || '');
   };
 
   useEffect(() => {
