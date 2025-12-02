@@ -1072,29 +1072,55 @@ export default function QuizPage() {
 
   // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
   const allQuestionsRaw = useMemo(() => {
-    if (!questionnaire) {
-      console.log('⚠️ No questionnaire, allQuestionsRaw is empty');
+    try {
+      if (!questionnaire) {
+        console.log('⚠️ No questionnaire, allQuestionsRaw is empty');
+        return [];
+      }
+      
+      // Защита от ошибок при доступе к groups и questions
+      const groups = questionnaire.groups || [];
+      const questions = questionnaire.questions || [];
+      
+      const questionsFromGroups = groups.flatMap((g) => {
+        try {
+          return g?.questions || [];
+        } catch (err) {
+          console.error('❌ Error accessing group questions:', err, g);
+          return [];
+        }
+      });
+      
+      const raw = [
+        ...questionsFromGroups,
+        ...questions,
+      ];
+      
+      addDebugLog('📋 allQuestionsRaw loaded', {
+        total: raw.length,
+        fromGroups: questionsFromGroups.length,
+        fromQuestions: questions.length,
+        questionIds: raw.map((q: Question) => q.id),
+      });
+      return raw;
+    } catch (err) {
+      console.error('❌ Error computing allQuestionsRaw:', err, {
+        questionnaire,
+        hasGroups: !!questionnaire?.groups,
+        hasQuestions: !!questionnaire?.questions,
+      });
       return [];
     }
-    const raw = [
-      ...questionnaire.groups.flatMap((g) => g.questions),
-      ...questionnaire.questions,
-    ];
-    addDebugLog('📋 allQuestionsRaw loaded', {
-      total: raw.length,
-      fromGroups: questionnaire.groups.flatMap((g) => g.questions).length,
-      fromQuestions: questionnaire.questions.length,
-          questionIds: raw.map((q: Question) => q.id),
-    });
-    return raw;
   }, [questionnaire]);
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
   const allQuestions = useMemo<Question[]>(() => {
-    if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
-    
-    return allQuestionsRaw.filter((question) => {
+    try {
+      if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
+      
+      return allQuestionsRaw.filter((question) => {
+        try {
     // Проверяем, является ли это вопросом про беременность/кормление
     const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                 question.code === 'pregnancy' ||
@@ -1163,7 +1189,20 @@ export default function QuizPage() {
         console.log('🚫 Question filtered out (pregnancy question for male):', question.code);
       }
       return shouldShow;
-    });
+        } catch (filterErr) {
+          console.error('❌ Error filtering question:', filterErr, question);
+          // В случае ошибки показываем вопрос (безопасный вариант)
+          return true;
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error computing allQuestions:', err, {
+        allQuestionsRawLength: allQuestionsRaw?.length,
+        answersKeys: Object.keys(answers || {}),
+      });
+      // В случае ошибки возвращаем все вопросы из allQuestionsRaw
+      return allQuestionsRaw || [];
+    }
   }, [allQuestionsRaw, answers]);
   
   // Логируем результат фильтрации после вычисления

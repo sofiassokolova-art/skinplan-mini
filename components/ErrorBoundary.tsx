@@ -43,7 +43,8 @@ export class ErrorBoundary extends Component<Props, State> {
       telegramWebApp: typeof window !== 'undefined' ? {
         available: !!window.Telegram?.WebApp,
         initDataLength: window.Telegram?.WebApp?.initData?.length || 0,
-        version: window.Telegram?.WebApp?.version || 'N/A',
+        hasUser: !!window.Telegram?.WebApp?.initDataUnsafe?.user,
+        userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'N/A',
       } : 'N/A',
     };
     
