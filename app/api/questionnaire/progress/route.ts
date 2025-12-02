@@ -170,13 +170,14 @@ export async function POST(request: NextRequest) {
       userId, 
       questionnaireId, 
       questionId, 
+      questionIdType: typeof questionId,
       hasAnswerValue: !!answerValue, 
       hasAnswerValues: !!answerValues,
       questionIndex,
       infoScreenIndex,
     });
 
-    if (!questionnaireId || questionId === undefined) {
+    if (!questionnaireId) {
       return NextResponse.json(
         { error: 'Missing questionnaireId' },
         { status: 400 }
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
     let savedAnswer = null;
 
     // Если questionId = -1, это только метаданные позиции
-    if (questionId === -1) {
+    if (questionId === -1 || questionId === '-1') {
       // Обрабатываем только метаданные позиции
       if (questionIndex !== undefined || infoScreenIndex !== undefined) {
         // Удаляем старую запись о позиции (если есть)
@@ -225,27 +226,62 @@ export async function POST(request: NextRequest) {
     }
 
     // Обычный ответ на вопрос - валидируем, что вопрос существует
-    if (questionId === null) {
+    if (questionId === null || questionId === undefined) {
       return NextResponse.json(
         { error: 'Missing questionId' },
         { status: 400 }
       );
     }
 
+    // Преобразуем questionId в число, если это строка
+    const questionIdNum = typeof questionId === 'string' ? parseInt(questionId, 10) : questionId;
+    
+    if (isNaN(questionIdNum) || questionIdNum <= 0) {
+      console.error('Invalid questionId:', { questionId, questionIdNum, questionnaireId, userId });
+      return NextResponse.json(
+        { 
+          error: `Invalid questionId: ${questionId} (must be a positive number)`,
+          questionId,
+          questionnaireId,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Проверяем, что вопрос существует в базе данных
     const question = await prisma.question.findFirst({
       where: {
-        id: questionId,
+        id: questionIdNum,
         questionnaireId: questionnaireId,
       },
     });
 
     if (!question) {
-      console.error('Question not found:', { questionId, questionnaireId, userId });
+      // Проверяем, существует ли вопрос вообще (может быть в другой анкете)
+      const questionInAnyQuestionnaire = await prisma.question.findFirst({
+        where: {
+          id: questionIdNum,
+        },
+        select: {
+          id: true,
+          questionnaireId: true,
+        },
+      });
+
+      console.error('Question not found in questionnaire:', { 
+        questionId: questionIdNum, 
+        questionnaireId, 
+        userId,
+        questionExistsInOtherQuestionnaire: !!questionInAnyQuestionnaire,
+        actualQuestionnaireId: questionInAnyQuestionnaire?.questionnaireId,
+      });
+
       return NextResponse.json(
         { 
-          error: `Question with id ${questionId} not found in questionnaire ${questionnaireId}`,
-          questionId,
+          error: `Question with id ${questionIdNum} not found in questionnaire ${questionnaireId}`,
+          questionId: questionIdNum,
           questionnaireId,
+          questionExistsInOtherQuestionnaire: !!questionInAnyQuestionnaire,
         },
         { status: 404 }
       );
@@ -256,7 +292,7 @@ export async function POST(request: NextRequest) {
       where: {
         userId,
         questionnaireId,
-        questionId,
+        questionId: questionIdNum,
       },
     });
 
@@ -265,7 +301,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         questionnaireId,
-        questionId,
+        questionId: questionIdNum,
         answerValue: answerValue || null,
         answerValues: answerValues ? (answerValues as any) : null,
       },
