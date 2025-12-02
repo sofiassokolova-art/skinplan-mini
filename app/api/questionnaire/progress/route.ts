@@ -166,6 +166,16 @@ export async function POST(request: NextRequest) {
 
     const { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
 
+    console.log('📝 Saving quiz progress:', { 
+      userId, 
+      questionnaireId, 
+      questionId, 
+      hasAnswerValue: !!answerValue, 
+      hasAnswerValues: !!answerValues,
+      questionIndex,
+      infoScreenIndex,
+    });
+
     if (!questionnaireId || questionId === undefined) {
       return NextResponse.json(
         { error: 'Missing questionnaireId' },
