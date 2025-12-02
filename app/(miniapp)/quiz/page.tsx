@@ -347,9 +347,18 @@ export default function QuizPage() {
     localStorage.removeItem('quiz_progress');
     setSavedProgress(null);
     setShowResumeScreen(false);
+    setHasResumed(false); // Сбрасываем флаг восстановления прогресса
     
-    // Также очищаем прогресс на сервере (опционально, если нужна явная очистка)
-    // Но обычно прогресс очищается автоматически при создании профиля
+    // Также очищаем прогресс на сервере
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      try {
+        await api.clearQuizProgress();
+        console.log('✅ Прогресс очищен на сервере');
+      } catch (err: any) {
+        // Не критично, если не удалось очистить - прогресс просто не будет показываться
+        console.warn('⚠️ Не удалось очистить прогресс на сервере:', err);
+      }
+    }
   };
 
   const loadQuestionnaire = async () => {
@@ -770,12 +779,19 @@ export default function QuizPage() {
   };
 
   // Начать заново
-  const startOver = () => {
-    clearProgress();
+  const startOver = async () => {
+    // Очищаем весь прогресс (локальный и серверный)
+    await clearProgress();
+    
+    // Сбрасываем все состояния
     setAnswers({});
     setCurrentQuestionIndex(0);
     setCurrentInfoScreenIndex(0);
     setShowResumeScreen(false);
+    setHasResumed(false);
+    setSavedProgress(null);
+    
+    console.log('✅ Анкета начата заново, весь прогресс очищен');
   };
 
   // Лоадер при отправке ответов

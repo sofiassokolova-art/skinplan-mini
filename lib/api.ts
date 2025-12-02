@@ -171,6 +171,12 @@ export const api = {
     return request('/questionnaire/progress');
   },
 
+  async clearQuizProgress() {
+    return request('/questionnaire/progress', {
+      method: 'DELETE',
+    });
+  },
+
   async saveQuizProgress(
     questionnaireId: number, 
     questionId: number, 

@@ -239,3 +239,61 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// DELETE - очистка прогресса анкеты
+export async function DELETE(request: NextRequest) {
+  try {
+    // Пробуем оба варианта заголовка (регистронезависимо)
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
+
+    if (!initData) {
+      return NextResponse.json(
+        { error: 'Missing Telegram initData' },
+        { status: 401 }
+      );
+    }
+
+    const userId = await getUserIdFromInitData(initData);
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Invalid or expired initData' },
+        { status: 401 }
+      );
+    }
+
+    // Получаем активную анкету
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+    });
+
+    if (!activeQuestionnaire) {
+      return NextResponse.json(
+        { error: 'No active questionnaire found' },
+        { status: 404 }
+      );
+    }
+
+    // Удаляем все ответы пользователя для активной анкеты
+    const deletedCount = await prisma.userAnswer.deleteMany({
+      where: {
+        userId,
+        questionnaireId: activeQuestionnaire.id,
+      },
+    });
+
+    console.log(`✅ Quiz progress cleared for user ${userId}, deleted ${deletedCount.count} answers`);
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: deletedCount.count,
+    });
+  } catch (error) {
+    console.error('Error clearing progress:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
