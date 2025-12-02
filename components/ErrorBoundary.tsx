@@ -13,12 +13,30 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  errorDetails?: {
+    message: string;
+    stack?: string;
+    componentStack?: string;
+    url: string;
+    timestamp: string;
+    errorName: string;
+    localStorage?: {
+      quizProgress: string;
+      initData: string;
+    };
+    telegramWebApp?: {
+      available: boolean;
+      initDataLength: number;
+      hasUser: boolean;
+      userId: string | number;
+    };
+  };
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, errorDetails: undefined };
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -39,14 +57,28 @@ export class ErrorBoundary extends Component<Props, State> {
       localStorage: typeof window !== 'undefined' ? {
         quizProgress: localStorage.getItem('quiz_progress') ? 'exists' : 'not found',
         initData: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData ? 'exists' : 'not found',
-      } : 'N/A',
+      } : undefined,
       telegramWebApp: typeof window !== 'undefined' ? {
         available: !!window.Telegram?.WebApp,
         initDataLength: window.Telegram?.WebApp?.initData?.length || 0,
         hasUser: !!window.Telegram?.WebApp?.initDataUnsafe?.user,
         userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'N/A',
-      } : 'N/A',
+      } : undefined,
     };
+    
+    // Сохраняем детали ошибки в state для отображения на экране
+    this.setState({
+      errorDetails: {
+        message: errorDetails.message,
+        stack: errorDetails.stack,
+        componentStack: errorDetails.componentStack,
+        url: errorDetails.url,
+        timestamp: errorDetails.timestamp,
+        errorName: errorDetails.errorName,
+        localStorage: errorDetails.localStorage,
+        telegramWebApp: errorDetails.telegramWebApp,
+      },
+    });
     
     // Подробное логирование ошибки
     console.error('❌ ErrorBoundary caught an error:', errorDetails);
@@ -125,6 +157,32 @@ export class ErrorBoundary extends Component<Props, State> {
             }}>
               Что-то пошло не так
             </h2>
+            
+            {/* Показываем основное сообщение об ошибке сразу */}
+            {this.state.errorDetails && (
+              <div style={{
+                marginBottom: '24px',
+                padding: '16px',
+                backgroundColor: '#FEF2F2',
+                borderRadius: '12px',
+                border: '1px solid #FCA5A5',
+                textAlign: 'left',
+              }}>
+                <div style={{ marginBottom: '8px' }}>
+                  <strong style={{ color: '#991B1B', fontSize: '14px' }}>Тип ошибки:</strong>
+                  <div style={{ color: '#475467', marginTop: '4px', fontSize: '16px', fontWeight: '600' }}>
+                    {this.state.errorDetails.errorName}
+                  </div>
+                </div>
+                <div>
+                  <strong style={{ color: '#991B1B', fontSize: '14px' }}>Сообщение:</strong>
+                  <div style={{ color: '#475467', marginTop: '4px', fontSize: '16px', wordBreak: 'break-word' }}>
+                    {this.state.errorDetails.message || 'Нет сообщения'}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <p style={{
               color: '#475467',
               marginBottom: '24px',
@@ -132,11 +190,129 @@ export class ErrorBoundary extends Component<Props, State> {
             }}>
               Произошла неожиданная ошибка. Попробуйте обновить страницу.
             </p>
+            
+            {/* Показываем детали ошибки всегда */}
+            {this.state.errorDetails && (
+              <details open style={{
+                marginTop: '24px',
+                textAlign: 'left',
+                padding: '16px',
+                backgroundColor: '#F9FAFB',
+                borderRadius: '12px',
+                border: '1px solid #E5E7EB',
+                width: '100%',
+              }}>
+                <summary style={{
+                  cursor: 'pointer',
+                  color: '#475467',
+                  fontWeight: '600',
+                  marginBottom: '12px',
+                  fontSize: '16px',
+                }}>
+                  🔍 Подробные детали ошибки (нажмите, чтобы свернуть)
+                </summary>
+                <div style={{
+                  marginTop: '12px',
+                  fontSize: '13px',
+                  lineHeight: '1.6',
+                }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <strong style={{ color: '#991B1B' }}>Тип ошибки:</strong>
+                    <div style={{ color: '#475467', marginTop: '4px' }}>
+                      {this.state.errorDetails.errorName}
+                    </div>
+                  </div>
+                  
+                  <div style={{ marginBottom: '12px' }}>
+                    <strong style={{ color: '#991B1B' }}>Сообщение:</strong>
+                    <div style={{ color: '#475467', marginTop: '4px', wordBreak: 'break-word' }}>
+                      {this.state.errorDetails.message || 'Нет сообщения'}
+                    </div>
+                  </div>
+                  
+                  {this.state.errorDetails.url && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong style={{ color: '#991B1B' }}>Страница:</strong>
+                      <div style={{ color: '#475467', marginTop: '4px', wordBreak: 'break-word', fontSize: '12px' }}>
+                        {this.state.errorDetails.url}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {this.state.errorDetails.telegramWebApp && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong style={{ color: '#991B1B' }}>Telegram WebApp:</strong>
+                      <div style={{ color: '#475467', marginTop: '4px', fontSize: '12px' }}>
+                        Доступен: {this.state.errorDetails.telegramWebApp.available ? '✅' : '❌'}<br/>
+                        InitData длина: {this.state.errorDetails.telegramWebApp.initDataLength}<br/>
+                        Пользователь: {this.state.errorDetails.telegramWebApp.hasUser ? `✅ (ID: ${this.state.errorDetails.telegramWebApp.userId})` : '❌'}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {this.state.errorDetails.localStorage && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong style={{ color: '#991B1B' }}>LocalStorage:</strong>
+                      <div style={{ color: '#475467', marginTop: '4px', fontSize: '12px' }}>
+                        Quiz Progress: {this.state.errorDetails.localStorage.quizProgress}<br/>
+                        InitData: {this.state.errorDetails.localStorage.initData}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {this.state.errorDetails.stack && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong style={{ color: '#991B1B' }}>Стек ошибки:</strong>
+                      <pre style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        overflow: 'auto',
+                        marginTop: '8px',
+                        color: '#991B1B',
+                        maxHeight: '200px',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}>
+                        {this.state.errorDetails.stack}
+                      </pre>
+                    </div>
+                  )}
+                  
+                  {this.state.errorDetails.componentStack && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong style={{ color: '#991B1B' }}>Компонент:</strong>
+                      <pre style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        overflow: 'auto',
+                        marginTop: '8px',
+                        color: '#991B1B',
+                        maxHeight: '150px',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}>
+                        {this.state.errorDetails.componentStack}
+                      </pre>
+                    </div>
+                  )}
+                  
+                  <div style={{ marginTop: '12px', fontSize: '11px', color: '#6B7280' }}>
+                    Время: {new Date(this.state.errorDetails.timestamp).toLocaleString('ru-RU')}
+                  </div>
+                </div>
+              </details>
+            )}
+            
             <div style={{
               display: 'flex',
               gap: '12px',
               justifyContent: 'center',
               flexWrap: 'wrap',
+              marginTop: '24px',
             }}>
               <button
                 onClick={() => window.location.reload()}
@@ -155,39 +331,6 @@ export class ErrorBoundary extends Component<Props, State> {
                 Обновить страницу
               </button>
             </div>
-            {(process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_SHOW_ERROR_DETAILS === 'true') && this.state.error && (
-              <details style={{
-                marginTop: '24px',
-                textAlign: 'left',
-                padding: '16px',
-                backgroundColor: '#FEF2F2',
-                borderRadius: '12px',
-                border: '1px solid #FCA5A5',
-              }}>
-                <summary style={{
-                  cursor: 'pointer',
-                  color: '#991B1B',
-                  fontWeight: '600',
-                  marginBottom: '8px',
-                }}>
-                  Детали ошибки (только для разработки)
-                </summary>
-                <pre style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  overflow: 'auto',
-                  marginTop: '8px',
-                  color: '#991B1B',
-                  maxHeight: '300px',
-                }}>
-                  {this.state.error.toString()}
-                  {'\n\n'}
-                  {this.state.error.stack}
-                </pre>
-              </details>
-            )}
           </div>
         </div>
       );
