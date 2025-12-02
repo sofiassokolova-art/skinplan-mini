@@ -81,6 +81,17 @@ async function request<T>(
       }
     }
     
+    // Для 404 ошибок (Not Found) - обычно означает отсутствие профиля
+    if (response.status === 404) {
+      const errorData = await response.json().catch(() => ({ error: 'Not found' }));
+      const errorMessage = errorData.error || 'Not found';
+      // Создаем специальную ошибку с кодом 404 для обработки на клиенте
+      const notFoundError = new Error(errorMessage) as any;
+      notFoundError.status = 404;
+      notFoundError.isNotFound = true;
+      throw notFoundError;
+    }
+    
     // Для остальных ошибок
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     const errorMessage = error.error || `HTTP ${response.status}`;

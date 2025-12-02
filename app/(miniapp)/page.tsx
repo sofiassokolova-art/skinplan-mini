@@ -248,20 +248,46 @@ export default function HomePage() {
         }
 
         // Загружаем рекомендации (initData передается автоматически в запросе)
+        // Если профиля нет (404), loadRecommendations перенаправит на /quiz
         await loadRecommendations();
 
         // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
-        await checkFeedbackPopup();
-      } catch (err) {
+        // Только если рекомендации загрузились успешно
+        if (!error) {
+          await checkFeedbackPopup();
+        }
+      } catch (err: any) {
         // Обрабатываем любые необработанные ошибки
+        // НО: если это 404 (профиль не найден), не показываем ошибку, а перенаправляем
+        if (err?.status === 404 || err?.isNotFound || 
+            err?.message?.includes('404') || 
+            err?.message?.includes('Not found') ||
+            err?.message?.includes('No skin profile') ||
+            err?.message?.includes('Profile not found')) {
+          console.log('ℹ️ Profile not found in initAndLoad, redirecting to quiz');
+          router.push('/quiz');
+          return;
+        }
+        
         console.error('❌ Error in initAndLoad:', err);
         setError('Произошла ошибка при загрузке данных. Попробуйте обновить страницу.');
         setLoading(false);
       }
     };
 
-    initAndLoad().catch((err) => {
+    initAndLoad().catch((err: any) => {
       // Дополнительная обработка на случай, если промис отклонен
+      // Если это 404 (профиль не найден), перенаправляем на анкету
+      if (err?.status === 404 || err?.isNotFound || 
+          err?.message?.includes('404') || 
+          err?.message?.includes('Not found') ||
+          err?.message?.includes('No skin profile') ||
+          err?.message?.includes('Profile not found')) {
+        console.log('ℹ️ Profile not found in catch, redirecting to quiz');
+        router.push('/quiz');
+        return;
+      }
+      
       console.error('❌ Unhandled promise rejection in initAndLoad:', err);
       setError('Произошла ошибка при загрузке данных. Попробуйте обновить страницу.');
       setLoading(false);
@@ -365,6 +391,14 @@ export default function HomePage() {
   const loadRecommendations = async () => {
     try {
       const data = await api.getRecommendations() as Recommendation;
+      
+      // Проверяем, что данные валидны
+      if (!data || !data.steps) {
+        console.log('⚠️ Invalid recommendations data, redirecting to quiz');
+        router.push('/quiz');
+        return;
+      }
+      
       setRecommendations(data);
       
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
@@ -518,20 +552,26 @@ export default function HomePage() {
       console.error('Error loading recommendations:', error);
       
       // Проверяем тип ошибки
+      if (error?.status === 404 || error?.isNotFound || 
+          error?.message?.includes('404') || 
+          error?.message?.includes('Not found') ||
+          error?.message?.includes('No skin profile') ||
+          error?.message?.includes('Profile not found')) {
+        // Профиль не найден - перенаправляем на анкету (не показываем ошибку)
+        console.log('ℹ️ Profile not found (404), redirecting to quiz');
+        router.push('/quiz');
+        return;
+      }
+      
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('401') || error?.message?.includes('initData')) {
         // Ошибка идентификации - перенаправляем на анкету
+        console.log('ℹ️ Unauthorized, redirecting to quiz');
         router.push('/quiz');
         return;
       }
       
-      if (error?.message?.includes('404') || error?.message?.includes('No skin profile')) {
-        // Профиль не найден - перенаправляем на анкету
-        console.log('Профиль не найден, перенаправляем на анкету');
-        router.push('/quiz');
-        return;
-      }
-      
-      // Другие ошибки - показываем сообщение
+      // Другие ошибки - показываем сообщение только если это не связано с отсутствием профиля
+      console.error('❌ Unexpected error loading recommendations:', error);
       setError(error?.message || 'Ошибка загрузки рекомендаций');
       setMorningItems([]);
       setEveningItems([]);
