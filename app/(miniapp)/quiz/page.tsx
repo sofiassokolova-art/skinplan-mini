@@ -1042,7 +1042,7 @@ export default function QuizPage() {
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
-  const allQuestions = useMemo(() => {
+  const allQuestions = useMemo<Question[]>(() => {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
     
     return allQuestionsRaw.filter((question) => {
