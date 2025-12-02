@@ -739,6 +739,9 @@ export default function QuizPage() {
       initialInfoScreensLength: initialInfoScreens.length,
     });
     
+    // ВАЖНО: Сначала устанавливаем hasResumed, чтобы предотвратить показ начальных экранов на следующем рендере
+    setHasResumed(true);
+    
     // Восстанавливаем прогресс
     setAnswers(savedProgress.answers);
     
@@ -763,7 +766,6 @@ export default function QuizPage() {
     }
     
     setShowResumeScreen(false);
-    setHasResumed(true); // Помечаем, что пользователь восстановил прогресс
     console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true');
   };
 
@@ -1011,7 +1013,17 @@ export default function QuizPage() {
   // При повторном прохождении или после восстановления прогресса пропускаем все info screens
   // ВАЖНО: Если hasResumed = true, значит пользователь нажал "Продолжить" и мы не должны показывать начальные экраны
   // Также пропускаем, если пользователь уже начал отвечать (currentQuestionIndex > 0 или есть ответы)
+  // ВАЖНО: Если есть savedProgress, значит пользователь должен продолжить, и мы не должны показывать начальные экраны
   const isShowingInitialInfoScreen = useMemo(() => {
+    // Если показывается экран продолжения - не показываем начальные экраны
+    if (showResumeScreen) {
+      return false;
+    }
+    // Если есть сохраненный прогресс (даже если еще не нажали "Продолжить") - не показываем начальные экраны
+    // Это предотвращает показ начальных экранов на промежуточных рендерах после resumeQuiz
+    if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+      return false;
+    }
     // Если пользователь восстановил прогресс - не показываем начальные экраны
     if (hasResumed) {
       return false;
@@ -1026,7 +1038,7 @@ export default function QuizPage() {
     }
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
     return currentInfoScreenIndex < initialInfoScreens.length;
-  }, [hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
+  }, [showResumeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
   
   const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
   
