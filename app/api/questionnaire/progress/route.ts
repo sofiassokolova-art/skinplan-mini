@@ -94,35 +94,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Преобразуем ответы в формат для фронтенда (исключаем метаданные с questionId = -1)
+    // Преобразуем ответы в формат для фронтенда
+    // Исключаем метаданные с questionId = -1 (если они еще есть в БД от старых версий)
     const answers: Record<number, string | string[]> = {};
-    let savedQuestionIndex: number | null = null;
-    let savedInfoScreenIndex: number | null = null;
     
     for (const answer of userAnswers) {
-      // Проверяем, является ли это метаданными позиции
-      if (answer.questionId === -1 && answer.answerValue) {
-        try {
-          const positionData = JSON.parse(answer.answerValue);
-          savedQuestionIndex = positionData.questionIndex ?? null;
-          savedInfoScreenIndex = positionData.infoScreenIndex ?? null;
-        } catch (e) {
-          console.warn('Failed to parse position metadata:', e);
-        }
-      } else if (answer.answerValues) {
+      // Пропускаем метаданные позиции (questionId = -1) - они больше не используются
+      if (answer.questionId === -1) {
+        continue;
+      }
+      
+      if (answer.answerValues) {
         answers[answer.questionId] = answer.answerValues as string[];
       } else if (answer.answerValue) {
         answers[answer.questionId] = answer.answerValue;
       }
     }
 
-    // Используем сохраненную позицию, если она есть, иначе вычисляем
-    const finalQuestionIndex = savedQuestionIndex !== null 
-      ? savedQuestionIndex 
-      : lastAnsweredIndex + 1; // Следующий вопрос после последнего отвеченного
-    const finalInfoScreenIndex = savedInfoScreenIndex !== null 
-      ? savedInfoScreenIndex 
-      : 0; // По умолчанию 0
+    // Вычисляем позицию на основе последнего отвеченного вопроса
+    // Метаданные позиции больше не хранятся в БД, они только локально
+    const finalQuestionIndex = lastAnsweredIndex + 1; // Следующий вопрос после последнего отвеченного
+    const finalInfoScreenIndex = 0; // По умолчанию 0
 
     return NextResponse.json({
       progress: {
@@ -187,41 +179,16 @@ export async function POST(request: NextRequest) {
     let savedAnswer = null;
 
     // Если questionId = -1, это только метаданные позиции
+    // НЕ сохраняем их в БД, так как это нарушает внешний ключ
+    // Метаданные позиции хранятся только локально на клиенте
     if (questionId === -1 || questionId === '-1') {
-      // Обрабатываем только метаданные позиции
-      if (questionIndex !== undefined || infoScreenIndex !== undefined) {
-        // Удаляем старую запись о позиции (если есть)
-        await prisma.userAnswer.deleteMany({
-          where: {
-            userId,
-            questionnaireId,
-            questionId: -1, // Используем -1 как маркер для метаданных позиции
-          },
-        });
-
-        // Сохраняем позицию в answerValue как JSON строку
-        savedAnswer = await prisma.userAnswer.create({
-          data: {
-            userId,
-            questionnaireId,
-            questionId: -1, // Маркер для метаданных
-            answerValue: JSON.stringify({
-              questionIndex: questionIndex ?? null,
-              infoScreenIndex: infoScreenIndex ?? null,
-              timestamp: Date.now(),
-            }),
-          },
-        });
-      }
-
+      console.log('ℹ️ Metadata position update (not saved to DB, stored locally only):', {
+        questionIndex,
+        infoScreenIndex,
+      });
       return NextResponse.json({
         success: true,
-        answer: savedAnswer ? {
-          id: savedAnswer.id,
-          questionId: savedAnswer.questionId,
-          answerValue: savedAnswer.answerValue,
-          answerValues: savedAnswer.answerValues,
-        } : null,
+        answer: null, // Метаданные не сохраняются в БД
       });
     }
 
@@ -307,31 +274,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Сохраняем позицию (questionIndex и infoScreenIndex) в метаданных, если указана
-    if (questionIndex !== undefined || infoScreenIndex !== undefined) {
-      // Удаляем старую запись о позиции (если есть)
-      await prisma.userAnswer.deleteMany({
-        where: {
-          userId,
-          questionnaireId,
-          questionId: -1, // Используем -1 как маркер для метаданных позиции
-        },
-      });
-
-      // Сохраняем позицию в answerValue как JSON строку
-      await prisma.userAnswer.create({
-        data: {
-          userId,
-          questionnaireId,
-          questionId: -1, // Маркер для метаданных
-          answerValue: JSON.stringify({
-            questionIndex: questionIndex ?? null,
-            infoScreenIndex: infoScreenIndex ?? null,
-            timestamp: Date.now(),
-          }),
-        },
-      });
-    }
+    // Метаданные позиции (questionIndex, infoScreenIndex) больше не сохраняются в БД
+    // Они хранятся только локально на клиенте в localStorage
+    // Позицию можно вычислить на основе последнего отвеченного вопроса
 
     return NextResponse.json({
       success: true,
