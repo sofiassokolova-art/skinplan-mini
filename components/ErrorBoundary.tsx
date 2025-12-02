@@ -35,11 +35,40 @@ export class ErrorBoundary extends Component<Props, State> {
       timestamp: new Date().toISOString(),
       errorName: error.name,
       errorString: error.toString(),
+      // Дополнительная информация
+      localStorage: typeof window !== 'undefined' ? {
+        quizProgress: localStorage.getItem('quiz_progress') ? 'exists' : 'not found',
+        initData: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData ? 'exists' : 'not found',
+      } : 'N/A',
+      telegramWebApp: typeof window !== 'undefined' ? {
+        available: !!window.Telegram?.WebApp,
+        initDataLength: window.Telegram?.WebApp?.initData?.length || 0,
+        version: window.Telegram?.WebApp?.version || 'N/A',
+      } : 'N/A',
     };
     
+    // Подробное логирование ошибки
     console.error('❌ ErrorBoundary caught an error:', errorDetails);
-    console.error('Full error object:', error);
-    console.error('Error info:', errorInfo);
+    console.error('📋 Full error object:', error);
+    console.error('📋 Error info:', errorInfo);
+    console.error('📋 Error details (formatted):', JSON.stringify(errorDetails, null, 2));
+    
+    // Логируем все свойства ошибки
+    if (error) {
+      console.error('📋 Error properties:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        cause: (error as any).cause,
+        // Любые дополнительные свойства
+        ...Object.getOwnPropertyNames(error).reduce((acc, key) => {
+          if (key !== 'name' && key !== 'message' && key !== 'stack') {
+            acc[key] = (error as any)[key];
+          }
+          return acc;
+        }, {} as Record<string, any>),
+      });
+    }
     
     // Отправка в Sentry (будет добавлено позже)
     // Sentry.captureException(error, { contexts: { react: errorInfo } });
@@ -47,6 +76,17 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Логируем, когда показывается экран ошибки
+      if (this.state.error) {
+        console.error('🔴 ErrorBoundary: Rendering error screen', {
+          errorMessage: this.state.error.message,
+          errorName: this.state.error.name,
+          errorStack: this.state.error.stack,
+          url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+          timestamp: new Date().toISOString(),
+        });
+      }
+      
       if (this.props.fallback) {
         return this.props.fallback;
       }
