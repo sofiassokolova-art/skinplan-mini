@@ -2008,8 +2008,78 @@ export default function QuizPage() {
     <div style={{ 
       padding: '20px',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      position: 'relative',
     }}>
+      {/* Debug Panel (только в development) */}
+      {(process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG === 'true') && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 10000,
+        }}>
+          <button
+            onClick={() => setShowDebugPanel(!showDebugPanel)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              backgroundColor: showDebugPanel ? '#0A5F59' : 'rgba(10, 95, 89, 0.7)',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 'bold',
+            }}
+          >
+            {showDebugPanel ? '🔽 Скрыть логи' : '🔺 Показать логи'}
+          </button>
+          {showDebugPanel && (
+            <div style={{
+              position: 'absolute',
+              bottom: '40px',
+              right: '0',
+              width: '300px',
+              maxHeight: '400px',
+              backgroundColor: 'rgba(0, 0, 0, 0.9)',
+              color: '#0f0',
+              padding: '12px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              overflow: 'auto',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            }}>
+              <div style={{ marginBottom: '8px', fontWeight: 'bold', color: '#fff' }}>
+                Debug Logs ({debugLogs.length})
+              </div>
+              {debugLogs.map((log, idx) => (
+                <div key={idx} style={{ marginBottom: '8px', borderBottom: '1px solid #333', paddingBottom: '4px' }}>
+                  <div style={{ color: '#0f0', fontWeight: 'bold' }}>
+                    [{log.time}] {log.message}
+                  </div>
+                  {log.data && (
+                    <pre style={{ 
+                      marginTop: '4px', 
+                      color: '#ccc', 
+                      fontSize: '10px',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                    }}>
+                      {log.data}
+                    </pre>
+                  )}
+                </div>
+              ))}
+              {debugLogs.length === 0 && (
+                <div style={{ color: '#666', fontStyle: 'italic' }}>
+                  Логи появятся здесь...
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       <div style={{
         backgroundColor: 'rgba(255, 255, 255, 0.56)',
         backdropFilter: 'blur(28px)',
