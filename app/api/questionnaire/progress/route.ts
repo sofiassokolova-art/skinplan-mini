@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
+    let { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
 
     console.log('📝 Saving quiz progress:', { 
       userId, 

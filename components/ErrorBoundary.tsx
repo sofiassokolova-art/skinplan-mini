@@ -26,11 +26,20 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('Error caught by ErrorBoundary:', error, errorInfo);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    console.error('Component stack:', errorInfo.componentStack);
-    console.error('Current URL:', typeof window !== 'undefined' ? window.location.href : 'N/A');
+    const errorDetails = {
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'N/A',
+      timestamp: new Date().toISOString(),
+      errorName: error.name,
+      errorString: error.toString(),
+    };
+    
+    console.error('❌ ErrorBoundary caught an error:', errorDetails);
+    console.error('Full error object:', error);
+    console.error('Error info:', errorInfo);
     
     // Отправка в Sentry (будет добавлено позже)
     // Sentry.captureException(error, { contexts: { react: errorInfo } });

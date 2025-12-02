@@ -393,8 +393,8 @@ export default function QuizPage() {
         questionsCount: questionnaireData.questions.length,
         totalQuestions: questionnaireData.groups.reduce((sum, g) => sum + g.questions.length, 0) + questionnaireData.questions.length,
         questionIds: [
-          ...questionnaireData.groups.flatMap(g => g.questions.map(q => q.id)),
-          ...questionnaireData.questions.map(q => q.id),
+          ...questionnaireData.groups.flatMap((g: any) => g.questions.map((q: Question) => q.id)),
+          ...questionnaireData.questions.map((q: Question) => q.id),
         ],
       });
       setQuestionnaire(questionnaireData);
@@ -1035,7 +1035,7 @@ export default function QuizPage() {
       total: raw.length,
       fromGroups: questionnaire.groups.flatMap((g) => g.questions).length,
       fromQuestions: questionnaire.questions.length,
-      questionIds: raw.map(q => q.id),
+          questionIds: raw.map((q: Question) => q.id),
     });
     return raw;
   }, [questionnaire]);
@@ -1060,7 +1060,7 @@ export default function QuizPage() {
     // Ищем ответ на вопрос о поле (gender)
     const genderAnswer = Object.values(answers).find((_, idx) => {
       const questionId = Object.keys(answers)[idx];
-      const q = allQuestionsRaw.find(q => q.id.toString() === questionId);
+      const q = allQuestionsRaw.find((q: Question) => q.id.toString() === questionId);
       return q?.code === 'gender';
     });
     
@@ -1115,15 +1115,18 @@ export default function QuizPage() {
       }
       return shouldShow;
     });
-    
-    addDebugLog('✅ allQuestions after filtering', {
-      total: allQuestions.length,
-      questionIds: allQuestions.map(q => q.id),
-      questionCodes: allQuestions.map(q => q.code),
-    });
-    
-    return allQuestions;
   }, [allQuestionsRaw, answers]);
+  
+  // Логируем результат фильтрации после вычисления
+  useEffect(() => {
+    if (allQuestions.length > 0) {
+      addDebugLog('✅ allQuestions after filtering', {
+        total: allQuestions.length,
+        questionIds: allQuestions.map((q: Question) => q.id),
+        questionCodes: allQuestions.map((q: Question) => q.code),
+      });
+    }
+  }, [allQuestions]);
 
   // Корректируем currentQuestionIndex после восстановления прогресса
   // Это важно, потому что после фильтрации вопросов индекс может стать невалидным

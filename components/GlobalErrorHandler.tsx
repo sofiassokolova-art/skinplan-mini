@@ -9,14 +9,39 @@ export function GlobalErrorHandler() {
   useEffect(() => {
     // Обработчик необработанных ошибок
     const handleError = (event: ErrorEvent) => {
-      console.error('❌ Unhandled error:', event.error);
+      const errorDetails = {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error,
+        errorStack: event.error?.stack,
+        errorName: event.error?.name,
+        url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+        timestamp: new Date().toISOString(),
+      };
+      
+      console.error('❌ GlobalErrorHandler: Unhandled error:', errorDetails);
+      console.error('Full error event:', event);
+      
       // Предотвращаем показ стандартного диалога ошибки
       event.preventDefault();
     };
 
     // Обработчик необработанных отклоненных промисов
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('❌ Unhandled promise rejection:', event.reason);
+      const rejectionDetails = {
+        reason: event.reason,
+        reasonString: String(event.reason),
+        reasonStack: event.reason?.stack,
+        reasonName: event.reason?.name,
+        url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+        timestamp: new Date().toISOString(),
+      };
+      
+      console.error('❌ GlobalErrorHandler: Unhandled promise rejection:', rejectionDetails);
+      console.error('Full rejection event:', event);
+      
       // Предотвращаем вывод ошибки в консоль браузера
       event.preventDefault();
     };
