@@ -239,14 +239,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Получаем пользователя для имени, пола и возраста
+    // Получаем пользователя для имени
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { 
         firstName: true, 
         lastName: true,
-        gender: true,
-        age: true,
       },
     });
 
@@ -264,6 +262,36 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // Извлекаем пол и возраст из ответов
+    let gender: string | null = null;
+    let age: number | null = null;
+    
+    for (const answer of userAnswers) {
+      const code = answer.question?.code || '';
+      const value = answer.answerValue || 
+        (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
+      
+      if (code === 'gender' && value) {
+        // Преобразуем "Женский" -> "female", "Мужской" -> "male"
+        gender = value.toLowerCase().includes('женск') ? 'female' : 
+                 value.toLowerCase().includes('мужск') ? 'male' : value.toLowerCase();
+      } else if (code === 'age' && value) {
+        // Преобразуем возраст из строки в число (берем середину диапазона или первую цифру)
+        // "18–24" -> 21, "25–34" -> 30, "45+" -> 47
+        if (value.includes('–')) {
+          const [min, max] = value.split('–').map(s => parseInt(s.trim()));
+          age = Math.floor((min + max) / 2);
+        } else if (value.includes('+')) {
+          age = parseInt(value.replace('+', '').trim()) + 2;
+        } else if (value.includes('До')) {
+          age = 16; // "До 18 лет"
+        } else {
+          const numMatch = value.match(/\d+/);
+          age = numMatch ? parseInt(numMatch[0]) : null;
+        }
+      }
+    }
 
     // Вычисляем skin scores
     const questionnaireAnswers: QuestionnaireAnswers = {
@@ -469,8 +497,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       profile: {
-        gender: user?.gender || null,
-        age: user?.age || null,
+        gender: gender || null,
+        age: age || null,
         skinType: profile.skinType || 'normal',
         skinTypeRu: skinTypeRuMap[profile.skinType || 'normal'] || 'Нормальная',
         keyProblems,
