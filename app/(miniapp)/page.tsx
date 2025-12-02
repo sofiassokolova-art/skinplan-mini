@@ -308,18 +308,26 @@ export default function HomePage() {
         // Если профиль есть - загружаем рекомендации
         if (hasProfile) {
           console.log('✅ Profile exists, loading recommendations...');
-        await loadRecommendations();
-        console.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
-        
-        // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
-        setTimeout(async () => {
-          if (!error && recommendations) {
-            console.log('✅ Recommendations loaded, checking feedback popup...');
-            await checkFeedbackPopup();
-          } else {
-            console.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
+          try {
+            await loadRecommendations();
+            console.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
+            
+            // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
+            setTimeout(async () => {
+              if (!error && recommendations) {
+                console.log('✅ Recommendations loaded, checking feedback popup...');
+                await checkFeedbackPopup();
+              } else {
+                console.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
+              }
+            }, 100);
+          } catch (recError: any) {
+            console.error('❌ Error in loadRecommendations:', recError);
+            // loadRecommendations уже обработал ошибку и вызвал setLoading(false)
+            // Если произошел редирект или установлена ошибка, просто завершаем
           }
-        }, 100);
+          // Убеждаемся что loading установлен в false
+          setLoading(false);
           return; // Завершаем инициализацию
         }
 
