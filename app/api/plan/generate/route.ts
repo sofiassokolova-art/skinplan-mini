@@ -329,6 +329,10 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   };
 
   const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
+  const requiredStepCategories = new Set<StepCategory>();
+  carePlanTemplate.morning.forEach((step) => requiredStepCategories.add(step));
+  carePlanTemplate.evening.forEach((step) => requiredStepCategories.add(step));
+  carePlanTemplate.weekly?.forEach((step) => requiredStepCategories.add(step));
   console.log('🧩 Selected care plan template:', {
     templateId: carePlanTemplate.id,
     skinType: carePlanProfileInput.skinType,
@@ -630,6 +634,75 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     return [];
   };
 
+  const ensureProductsForRequiredSteps = async () => {
+    const missingByBaseStep = new Map<string, Set<StepCategory>>();
+
+    requiredStepCategories.forEach((stepCategory) => {
+      if (getProductsForStep(stepCategory).length > 0) {
+        return;
+      }
+      const baseStep = getBaseStepFromStepCategory(stepCategory);
+      if (!missingByBaseStep.has(baseStep)) {
+        missingByBaseStep.set(baseStep, new Set());
+      }
+      missingByBaseStep.get(baseStep)!.add(stepCategory);
+    });
+
+    for (const [baseStep, stepCategories] of missingByBaseStep.entries()) {
+      const whereClause: any = {
+        published: true as any,
+        brand: {
+          isActive: true,
+        },
+      };
+
+      if (baseStep === 'spf') {
+        whereClause.OR = [
+          { step: 'spf' },
+          { category: 'spf' },
+        ];
+      } else {
+        whereClause.step = baseStep;
+      }
+
+      if (baseStep !== 'spf' && profileClassification.skinType) {
+        whereClause.AND = [
+          ...(whereClause.AND || []),
+          {
+            OR: [
+              { skinTypes: { has: profileClassification.skinType } },
+              { skinTypes: { isEmpty: true } },
+            ],
+          },
+        ];
+      }
+
+      const fallbackProduct = await prisma.product.findFirst({
+        where: whereClause,
+        include: { brand: true },
+        orderBy: [
+          { isHero: 'desc' },
+          { priority: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      });
+
+      if (!fallbackProduct) {
+        console.warn(`⚠️ Could not find fallback product for base step ${baseStep}`);
+        continue;
+      }
+
+      console.log(`✅ Added fallback ${baseStep} product for plan: ${fallbackProduct.name} (#${fallbackProduct.id})`);
+      registerProductForStep(baseStep, fallbackProduct);
+      for (const stepCategory of stepCategories.values()) {
+        registerProductForStep(stepCategory, fallbackProduct);
+      }
+      if (!selectedProducts.some((p: any) => p.id === fallbackProduct.id)) {
+        selectedProducts.push(fallbackProduct);
+      }
+    }
+  };
+
   // ГАРАНТИРУЕМ наличие очищения (cleanser) и SPF - они обязательны для всех
   // Если их нет в отфильтрованных продуктах, добавляем отдельно
   
@@ -720,6 +793,8 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       console.log(`✅ Added fallback SPF: ${fallbackSPF.name}`);
     }
   }
+
+  await ensureProductsForRequiredSteps();
 
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
