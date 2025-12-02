@@ -249,12 +249,18 @@ export default function HomePage() {
 
         // Загружаем рекомендации (initData передается автоматически в запросе)
         // Если профиля нет (404), loadRecommendations перенаправит на /quiz
-        await loadRecommendations();
-
-        // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
-        // Только если рекомендации загрузились успешно
-        if (!error) {
-          await checkFeedbackPopup();
+        try {
+          await loadRecommendations();
+          
+          // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
+          // Только если рекомендации загрузились успешно и нет ошибки
+          if (!error && recommendations) {
+            await checkFeedbackPopup();
+          }
+        } catch (recError: any) {
+          // Если ошибка при загрузке рекомендаций - loadRecommendations уже обработал её
+          // Просто логируем и продолжаем
+          console.warn('⚠️ Error in loadRecommendations (may have redirected):', recError);
         }
       } catch (err: any) {
         // Обрабатываем любые необработанные ошибки
@@ -360,8 +366,12 @@ export default function HomePage() {
           }
         }
       }
-    } catch (err) {
-      console.warn('⚠️ Error checking feedback popup:', err);
+    } catch (err: any) {
+      // Игнорируем ошибки при проверке поп-апа (404, отсутствие профиля и т.д.)
+      // Это не критично для работы приложения
+      if (err?.status !== 404 && !err?.message?.includes('404') && !err?.message?.includes('Not found')) {
+        console.warn('⚠️ Error checking feedback popup:', err);
+      }
       // Не показываем поп-ап при ошибке
     }
   };
@@ -390,7 +400,9 @@ export default function HomePage() {
 
   const loadRecommendations = async () => {
     try {
+      console.log('📥 Loading recommendations...');
       const data = await api.getRecommendations() as Recommendation;
+      console.log('✅ Recommendations loaded:', { hasData: !!data, hasSteps: !!data?.steps });
       
       // Проверяем, что данные валидны
       if (!data || !data.steps) {
@@ -400,6 +412,7 @@ export default function HomePage() {
       }
       
       setRecommendations(data);
+      console.log('✅ Recommendations set in state');
       
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
       const morning: RoutineItem[] = [];
@@ -549,7 +562,13 @@ export default function HomePage() {
       setMorningItems(morning);
       setEveningItems(evening);
     } catch (error: any) {
-      console.error('Error loading recommendations:', error);
+      console.error('❌ Error loading recommendations:', {
+        error,
+        status: error?.status,
+        isNotFound: error?.isNotFound,
+        message: error?.message,
+        stack: error?.stack,
+      });
       
       // Проверяем тип ошибки
       if (error?.status === 404 || error?.isNotFound || 
