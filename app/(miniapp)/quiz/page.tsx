@@ -185,7 +185,7 @@ export default function QuizPage() {
       // Только после всех загрузок устанавливаем loading = false
       console.log('✅ Initialization complete, setting loading = false');
       setLoading(false);
-      } catch (initErr: any) {
+    } catch (initErr: any) {
         console.error('❌ Error in init function:', {
           error: initErr,
           message: initErr?.message,
