@@ -973,81 +973,6 @@ export default function QuizPage() {
     );
   }
 
-  if (loading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column',
-        gap: '16px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-      }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анкеты...</div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  if (error && !questionnaire) {
-    return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.56)',
-          backdropFilter: 'blur(28px)',
-          borderRadius: '24px',
-          padding: '24px',
-          maxWidth: '400px',
-          textAlign: 'center',
-        }}>
-          <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка</h1>
-          <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
-          <button
-            onClick={() => {
-              setError(null);
-              setLoading(true);
-              window.location.reload();
-            }}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-            }}
-          >
-            Обновить страницу
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
   // ВАЖНО: все хуки должны вызываться до любых условных return'ов
   const allQuestionsRaw = useMemo(() => {
@@ -1285,7 +1210,112 @@ export default function QuizPage() {
   }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions, questionnaire]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
-  // Проверяем наличие анкеты после вызова всех хуков
+  // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '16px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(10, 95, 89, 0.2)',
+          borderTop: '4px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анкеты...</div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error && !questionnaire) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '16px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(10, 95, 89, 0.2)',
+          borderTop: '4px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анкеты...</div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error && !questionnaire) {
+    return (
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.56)',
+          backdropFilter: 'blur(28px)',
+          borderRadius: '24px',
+          padding: '24px',
+          maxWidth: '400px',
+          textAlign: 'center',
+        }}>
+          <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка</h1>
+          <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              window.location.reload();
+            }}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          >
+            Обновить страницу
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!questionnaire) {
     return (
       <div style={{ padding: '20px' }}>
