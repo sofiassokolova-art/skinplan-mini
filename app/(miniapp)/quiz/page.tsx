@@ -443,7 +443,7 @@ export default function QuizPage() {
     if (!questionExists && allQuestions.length > 0) {
       console.error('❌ Question ID not found in allQuestions:', {
         questionId,
-        allQuestionIds: allQuestions.map(q => q.id),
+        allQuestionIds: allQuestions.map((q: Question) => q.id),
         currentQuestionId: currentQuestion?.id,
       });
       // Если вопрос не найден, не сохраняем ответ
