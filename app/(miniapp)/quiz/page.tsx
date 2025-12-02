@@ -201,9 +201,44 @@ export default function QuizPage() {
   useEffect(() => {
     if (isRetakingQuiz && questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       console.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
-      loadPreviousAnswers(questionnaire).catch((err) => {
-        console.warn('⚠️ Ошибка загрузки предыдущих ответов:', err);
-      });
+      // Вызываем функцию напрямую, не добавляя в зависимости, чтобы избежать проблем
+      (async () => {
+        const quiz = questionnaire;
+        if (!quiz) {
+          console.warn('⚠️ Cannot load previous answers: questionnaire not loaded');
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/api/questionnaire/progress?retaking=true`, {
+            headers: {
+              'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+                ? window.Telegram.WebApp.initData
+                : '',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json() as {
+              progress?: {
+                answers: Record<number, string | string[]>;
+                questionIndex: number;
+                infoScreenIndex: number;
+              } | null;
+            };
+            
+            if (data?.progress?.answers && Object.keys(data.progress.answers).length > 0) {
+              console.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
+              setAnswers(data.progress.answers);
+              if (data.progress.questionIndex !== undefined && data.progress.questionIndex >= 0) {
+                setCurrentQuestionIndex(data.progress.questionIndex);
+              }
+            }
+          }
+        } catch (err: any) {
+          console.warn('⚠️ Ошибка загрузки предыдущих ответов:', err);
+        }
+      })();
     }
   }, [isRetakingQuiz, questionnaire]);
 
@@ -1114,7 +1149,8 @@ export default function QuizPage() {
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
     if (allQuestions.length > 0) {
-      addDebugLog('✅ allQuestions after filtering', {
+      // Логируем только в консоль, не используем addDebugLog чтобы избежать проблем с хуками
+      console.log('✅ allQuestions after filtering', {
         total: allQuestions.length,
         questionIds: allQuestions.map((q: Question) => q.id),
         questionCodes: allQuestions.map((q: Question) => q.code),
@@ -1129,7 +1165,8 @@ export default function QuizPage() {
     
     // Если currentQuestionIndex выходит за пределы массива, корректируем его
     if (currentQuestionIndex >= allQuestions.length) {
-      addDebugLog('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
+      // Логируем только в консоль, не используем addDebugLog чтобы избежать проблем с хуками
+      console.log('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
       });
@@ -1139,7 +1176,7 @@ export default function QuizPage() {
     // Также убеждаемся, что мы не на начальных экранах после восстановления
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
     if (hasResumed && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex > 0) {
-      addDebugLog('✅ Корректируем infoScreenIndex после восстановления');
+      console.log('✅ Корректируем infoScreenIndex после восстановления');
       setCurrentInfoScreenIndex(initialInfoScreens.length);
     }
   }, [hasResumed, allQuestions, currentQuestionIndex, currentInfoScreenIndex, questionnaire]);
@@ -1212,36 +1249,6 @@ export default function QuizPage() {
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
   if (loading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column',
-        gap: '16px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-      }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анкеты...</div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  if (error && !questionnaire) {
     return (
       <div style={{ 
         display: 'flex', 
