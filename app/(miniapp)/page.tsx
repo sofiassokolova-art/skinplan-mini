@@ -814,8 +814,10 @@ export default function HomePage() {
         try {
           const plan = await api.getPlan() as any;
           if (plan && (plan.plan28 || plan.weeks)) {
-            console.log('✅ Plan found, setting hasPlan to true');
-            setHasPlan(true);
+            console.log('✅ Plan found, redirecting to /plan');
+            // Если план найден, но рекомендаций нет - редиректим на страницу плана
+            router.push('/plan');
+            return;
           } else {
             console.log('ℹ️ Plan not found or empty');
           }
@@ -828,7 +830,7 @@ export default function HomePage() {
       };
       checkPlan();
     }
-  }, [routineItemsLength, loading, checkingPlan, hasPlan]);
+  }, [routineItemsLength, loading, checkingPlan, hasPlan, router]);
 
   // Экран незавершенной анкеты
   if (showResumeScreen && savedProgress) {
@@ -1050,28 +1052,12 @@ export default function HomePage() {
       );
     }
     
+    // Если план найден, но рекомендаций нет - показываем загрузку (редирект на /plan уже выполняется)
+    // Или показываем сообщение о том, что нужно перейти к плану
     if (hasPlan) {
       return (
         <div style={{ padding: '20px', textAlign: 'center' }}>
-          <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Перейдите к плану</h1>
-          <p style={{ color: '#475467', marginBottom: '24px' }}>
-            Ваш персональный план ухода готов
-          </p>
-          <button
-            onClick={() => router.push('/plan')}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-            }}
-          >
-            Перейти к плану →
-          </button>
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Переход к плану...</div>
         </div>
       );
     }

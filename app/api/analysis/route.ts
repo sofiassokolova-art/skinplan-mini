@@ -337,44 +337,119 @@ export async function GET(request: NextRequest) {
         const recommendationsData = await recommendationsResponse.json();
         
         // Преобразуем рекомендации в формат CareStep
+        // Примечание: в recommendations API treatment и essence нормализуются в serum,
+        // поэтому нам нужно проверять оригинальный step продукта для определения типа
         const stepMapping: Record<string, { name: string; description: string; tags: string[]; isMorning: boolean }> = {
           cleanser: { name: 'Очищение', description: 'Мягкое очищение кожи от загрязнений', tags: ['мягкое очищение'], isMorning: true },
           toner: { name: 'Тоник', description: 'Балансирование pH и подготовка кожи', tags: ['увлажнение'], isMorning: true },
-          serum: { name: 'Сыворотка', description: 'Интенсивное увлажнение и питание кожи', tags: ['активные компоненты'], isMorning: true },
+          serum: { name: 'Сыворотка', description: 'Интенсивное увлажнение и питание кожи', tags: ['активные компоненты'], isMorning: false }, // По умолчанию вечер, но может быть и утром
+          treatment: { name: 'Активное средство', description: 'Интенсивное воздействие на проблемы кожи', tags: ['активные компоненты'], isMorning: false },
+          essence: { name: 'Эссенция', description: 'Увлажнение и подготовка кожи', tags: ['увлажнение'], isMorning: true },
+          acid: { name: 'Кислоты', description: 'Отшелушивание и обновление кожи', tags: ['отшелушивание'], isMorning: false },
           moisturizer: { name: 'Увлажнение', description: 'Легкое увлажнение без ощущения тяжести', tags: ['увлажнение'], isMorning: true },
           spf: { name: 'SPF защита', description: 'Защита от УФ-излучения и преждевременного старения', tags: ['защита от УФ', 'предотвращение старения'], isMorning: true },
         };
         
         if (recommendationsData.steps) {
-          let stepNumber = 1;
+          let morningStepNumber = 1;
+          let eveningStepNumber = 1;
+          
           for (const [stepKey, products] of Object.entries(recommendationsData.steps)) {
-            const stepInfo = stepMapping[stepKey];
-            if (stepInfo && Array.isArray(products) && products.length > 0) {
-              const formattedProducts = products.map((p: any) => ({
-                id: p.id,
-                name: p.name,
-                brand: { name: p.brand },
-                price: (p as any).price || 0,
-                imageUrl: p.imageUrl || null,
-                description: p.description || '',
-                tags: [],
-              }));
-              
-              const careStep = {
-                stepNumber: stepNumber++,
-                stepName: stepInfo.name,
-                stepDescription: stepInfo.description,
-                stepTags: stepInfo.tags,
-                products: formattedProducts,
-              };
-              
-              if (stepInfo.isMorning) {
-                morningSteps.push(careStep);
-              } else {
-                eveningSteps.push(careStep);
-              }
+            if (!Array.isArray(products) || products.length === 0) {
+              continue;
+            }
+            
+            // Проверяем оригинальный step продукта, чтобы понять, утренний он или вечерний
+            // Утренние шаги: cleanser, toner, essence, moisturizer, spf
+            // Вечерние шаги: cleanser (двойное очищение), treatment, serum (если step = 'serum' или 'treatment'), acid, moisturizer
+            const isMorningStep = stepKey === 'cleanser' || 
+                                 stepKey === 'toner' || 
+                                 stepKey === 'essence' || 
+                                 stepKey === 'moisturizer' || 
+                                 stepKey === 'spf';
+            
+            const isEveningStep = stepKey === 'cleanser' || // двойное очищение
+                                 stepKey === 'serum' || 
+                                 stepKey === 'treatment' || 
+                                 stepKey === 'acid' || 
+                                 stepKey === 'moisturizer';
+            
+            // Определяем реальный тип шага на основе оригинального step продукта
+            // Если stepKey = 'serum', но продукт имеет step = 'treatment' или 'essence', используем это
+            const firstProduct = products[0];
+            const actualStep = firstProduct?.step || stepKey;
+            
+            // Если actualStep = 'treatment' или 'essence', но stepKey = 'serum', используем actualStep
+            const stepToUse = (actualStep === 'treatment' || actualStep === 'essence') ? actualStep : stepKey;
+            
+            const stepInfo = stepMapping[stepToUse] || stepMapping[stepKey];
+            if (!stepInfo) {
+              // Если шаг не найден в маппинге, пропускаем или создаем базовый
+              logger.warn(`Unknown step in recommendations: ${stepKey}, actual step: ${actualStep}`);
+              continue;
+            }
+            
+            // Определяем, утренний или вечерний шаг на основе реального типа
+            let finalIsMorning = stepInfo.isMorning;
+            if (stepToUse === 'serum' || stepToUse === 'treatment') {
+              // Для serum/treatment определяем по оригинальному step
+              finalIsMorning = actualStep === 'essence';
+            } else if (stepToUse === 'cleanser') {
+              // Cleanser может быть и утром, и вечером - определяем по контексту
+              // Если уже есть cleanser в утренних - это вечерний (двойное очищение)
+              const hasMorningCleanser = morningSteps.some(s => s.stepName === 'Очищение');
+              finalIsMorning = !hasMorningCleanser;
+            }
+            
+            const formattedProducts = products.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              brand: { name: p.brand || (typeof p.brand === 'object' ? p.brand?.name : 'Unknown') },
+              price: (p as any).price || 0,
+              imageUrl: p.imageUrl || null,
+              description: p.description || p.descriptionUser || '',
+              tags: [],
+            }));
+            
+            const careStep = {
+              stepNumber: finalIsMorning ? morningStepNumber++ : eveningStepNumber++,
+              stepName: stepInfo.name,
+              stepDescription: stepInfo.description,
+              stepTags: stepInfo.tags,
+              products: formattedProducts,
+            };
+            
+            if (finalIsMorning) {
+              morningSteps.push(careStep);
+            } else {
+              eveningSteps.push(careStep);
             }
           }
+          
+          // Сортируем шаги по порядку (утренние: очищение -> тоник -> эссенция -> сыворотка -> увлажнение -> SPF)
+          // (вечерние: очищение -> кислоты -> сыворотка -> увлажнение)
+          const morningOrder = ['Очищение', 'Тоник', 'Эссенция', 'Сыворотка', 'Увлажнение', 'SPF защита'];
+          const eveningOrder = ['Очищение', 'Кислоты', 'Активное средство', 'Сыворотка', 'Увлажнение'];
+          
+          morningSteps.sort((a, b) => {
+            const indexA = morningOrder.indexOf(a.stepName);
+            const indexB = morningOrder.indexOf(b.stepName);
+            return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+          });
+          
+          eveningSteps.sort((a, b) => {
+            const indexA = eveningOrder.indexOf(a.stepName);
+            const indexB = eveningOrder.indexOf(b.stepName);
+            return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+          });
+          
+          // Перенумеровываем после сортировки
+          morningSteps.forEach((step, index) => {
+            step.stepNumber = index + 1;
+          });
+          eveningSteps.forEach((step, index) => {
+            step.stepNumber = index + 1;
+          });
         }
       }
     } catch (recError: any) {
@@ -405,4 +480,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 
