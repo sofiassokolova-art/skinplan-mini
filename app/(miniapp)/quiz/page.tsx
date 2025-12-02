@@ -181,10 +181,29 @@ export default function QuizPage() {
         setSavedProgress(null);
         setShowResumeScreen(false);
       }
+      
+      // Только после всех загрузок устанавливаем loading = false
+      console.log('✅ Initialization complete, setting loading = false');
+      setLoading(false);
+      } catch (initErr: any) {
+        console.error('❌ Error in init function:', {
+          error: initErr,
+          message: initErr?.message,
+          stack: initErr?.stack,
+          name: initErr?.name,
+        });
+        setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
+        setLoading(false);
+      }
     };
     
     init().catch((err) => {
-      console.error('Ошибка инициализации:', err);
+      console.error('❌ Unhandled error in init promise:', {
+        error: err,
+        message: (err as any)?.message,
+        stack: (err as any)?.stack,
+        name: (err as any)?.name,
+      });
       setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
       setLoading(false);
     });
@@ -303,14 +322,20 @@ export default function QuizPage() {
         } | null;
       };
       if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+        console.log('✅ Прогресс найден на сервере:', {
+          answersCount: Object.keys(response.progress.answers).length,
+          questionIndex: response.progress.questionIndex,
+          infoScreenIndex: response.progress.infoScreenIndex,
+        });
         setSavedProgress(response.progress);
         setShowResumeScreen(true);
-        setLoading(false);
+        // НЕ вызываем setLoading(false) здесь - это сделает init() после загрузки questionnaire
         // Также сохраняем в localStorage для офлайн доступа
         if (typeof window !== 'undefined') {
           localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
         }
       } else {
+        console.log('ℹ️ Прогресс на сервере не найден или пуст');
         // Если прогресса нет на сервере, очищаем localStorage (чтобы не загружать старый прогресс)
         // и не показываем экран "Продолжить"
         if (typeof window !== 'undefined') {
@@ -435,9 +460,8 @@ export default function QuizPage() {
       }
       setError(err?.message || 'Ошибка загрузки анкеты');
       return null;
-    } finally {
-      setLoading(false);
     }
+    // НЕ вызываем setLoading(false) здесь - это сделает init() после всех загрузок
   };
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
