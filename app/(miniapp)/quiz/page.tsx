@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTelegram } from '@/lib/telegram-client';
@@ -166,6 +166,28 @@ export default function QuizPage() {
       window.history.replaceState({}, '', url.toString());
     }
   }, [showResumeScreen]);
+
+  // Корректируем currentQuestionIndex после восстановления прогресса
+  // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
+  useEffect(() => {
+    if (!hasResumed || !questionnaire || allQuestions.length === 0) return;
+    
+    // Если currentQuestionIndex выходит за пределы массива, корректируем его
+    if (currentQuestionIndex >= allQuestions.length) {
+      console.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем:', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+      });
+      setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
+    }
+    
+    // Также убеждаемся, что мы не на начальных экранах после восстановления
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    if (hasResumed && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex > 0) {
+      console.log('✅ Корректируем infoScreenIndex после восстановления');
+      setCurrentInfoScreenIndex(initialInfoScreens.length);
+    }
+  }, [hasResumed, allQuestions, currentQuestionIndex, currentInfoScreenIndex, questionnaire]);
 
   // Загружаем сохранённый прогресс из localStorage (fallback)
   const loadSavedProgress = () => {
@@ -900,15 +922,21 @@ export default function QuizPage() {
     );
   }
 
-  // Получаем все вопросы с фильтрацией
-  const allQuestionsRaw = [
-    ...questionnaire.groups.flatMap((g) => g.questions),
-    ...questionnaire.questions,
-  ];
+  // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
+  const allQuestionsRaw = useMemo(() => {
+    if (!questionnaire) return [];
+    return [
+      ...questionnaire.groups.flatMap((g) => g.questions),
+      ...questionnaire.questions,
+    ];
+  }, [questionnaire]);
   
-  // Фильтруем вопросы на основе ответов
+  // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
-  const allQuestions = allQuestionsRaw.filter((question) => {
+  const allQuestions = useMemo(() => {
+    if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
+    
+    return allQuestionsRaw.filter((question) => {
     // Проверяем, является ли это вопросом про беременность/кормление
     const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                 question.code === 'pregnancy' ||
@@ -972,20 +1000,44 @@ export default function QuizPage() {
                       answers[genderQuestion.id] === opt.id.toString())
                    ));
     
-    return !isMale; // Показываем только если не мужчина
-  });
+      return !isMale; // Показываем только если не мужчина
+    });
+  }, [allQuestionsRaw, answers]);
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
-  const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+  const initialInfoScreens = useMemo(() => INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode), []);
 
   // Определяем, показываем ли мы начальный инфо-экран
   // При повторном прохождении или после восстановления прогресса пропускаем все info screens
   // ВАЖНО: Если hasResumed = true, значит пользователь нажал "Продолжить" и мы не должны показывать начальные экраны
-  const isShowingInitialInfoScreen = !isRetakingQuiz && !hasResumed && currentInfoScreenIndex < initialInfoScreens.length;
+  // Также пропускаем, если пользователь уже начал отвечать (currentQuestionIndex > 0 или есть ответы)
+  const isShowingInitialInfoScreen = useMemo(() => {
+    // Если пользователь восстановил прогресс - не показываем начальные экраны
+    if (hasResumed) {
+      return false;
+    }
+    // Если повторное прохождение - не показываем начальные экраны
+    if (isRetakingQuiz) {
+      return false;
+    }
+    // Если пользователь уже начал отвечать - не показываем начальные экраны
+    if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
+      return false;
+    }
+    // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
+    return currentInfoScreenIndex < initialInfoScreens.length;
+  }, [hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
+  
   const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
-  const currentQuestion = !isShowingInitialInfoScreen && !pendingInfoScreen ? allQuestions[currentQuestionIndex] : null;
+  const currentQuestion = useMemo(() => {
+    if (isShowingInitialInfoScreen || pendingInfoScreen) return null;
+    if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
+      return allQuestions[currentQuestionIndex];
+    }
+    return null;
+  }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions]);
 
   // Экран продолжения анкеты
   if (showResumeScreen && savedProgress) {
