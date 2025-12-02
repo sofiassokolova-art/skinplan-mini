@@ -45,7 +45,7 @@ class Logger {
             userId: options.userId!,
             level,
             message,
-            context: context ? (context as any) : Prisma.JsonNull,
+            context: context ? (context as any) : undefined,
             userAgent: options.userAgent || null,
             url: options.url || null,
           },
