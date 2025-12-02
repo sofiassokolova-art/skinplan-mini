@@ -439,7 +439,7 @@ export default function QuizPage() {
     }
 
     // Дополнительная валидация: проверяем, что вопрос существует в allQuestions
-    const questionExists = allQuestions.some(q => q.id === questionId);
+    const questionExists = allQuestions.some((q: Question) => q.id === questionId);
     if (!questionExists && allQuestions.length > 0) {
       console.error('❌ Question ID not found in allQuestions:', {
         questionId,
