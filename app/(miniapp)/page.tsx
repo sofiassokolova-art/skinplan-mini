@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
@@ -794,12 +794,17 @@ export default function HomePage() {
     }
   }, [showResumeScreen]);
 
+  // Вычисляем текущие элементы рутины через useMemo для стабильности
+  const routineItems = useMemo(() => {
+    return tab === 'AM' ? morningItems : eveningItems;
+  }, [tab, morningItems, eveningItems]);
+  
+  const routineItemsLength = useMemo(() => {
+    return routineItems.length;
+  }, [routineItems]);
+
   // Проверяем наличие плана, если рекомендации не загрузились
   // ВАЖНО: Этот useEffect должен быть ПЕРЕД всеми ранними return'ами!
-  // Используем useMemo чтобы избежать пересчета при каждом рендере
-  const routineItems = tab === 'AM' ? morningItems : eveningItems;
-  const routineItemsLength = routineItems.length;
-  
   useEffect(() => {
     // Проверяем только если рекомендации не загружены, не загружаемся и не проверяем уже план
     if (routineItemsLength === 0 && !loading && !checkingPlan && !hasPlan) {
