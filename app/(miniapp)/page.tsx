@@ -506,6 +506,34 @@ export default function HomePage() {
 
   const loadRecommendations = async () => {
     try {
+      // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: проверяем наличие профиля перед загрузкой рекомендаций
+      console.log('🔍 loadRecommendations: Checking profile before loading...');
+      try {
+        const profile = await api.getCurrentProfile();
+        if (!profile || !(profile as any).id) {
+          console.log('⚠️ loadRecommendations: No profile found, redirecting to quiz');
+          router.push('/quiz');
+          return;
+        }
+        console.log('✅ loadRecommendations: Profile confirmed, proceeding...');
+      } catch (profileErr: any) {
+        const errorMessage = profileErr?.message || profileErr?.toString() || '';
+        const isNotFound = errorMessage.includes('404') || 
+                          errorMessage.includes('No skin profile') ||
+                          errorMessage.includes('Skin profile not found') ||
+                          errorMessage.includes('Profile not found') ||
+                          profileErr?.status === 404 ||
+                          profileErr?.isNotFound;
+        
+        if (isNotFound) {
+          console.log('⚠️ loadRecommendations: Profile not found (404), redirecting to quiz');
+          router.push('/quiz');
+          return;
+        }
+        // Другая ошибка - логируем, но продолжаем (может быть временная проблема)
+        console.warn('⚠️ loadRecommendations: Error checking profile, but continuing:', errorMessage);
+      }
+      
       console.log('📥 Loading recommendations...');
       const data = await api.getRecommendations() as Recommendation;
       console.log('✅ Recommendations loaded:', { hasData: !!data, hasSteps: !!data?.steps });
