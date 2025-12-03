@@ -153,15 +153,31 @@ export default function ProductsAdmin() {
         throw new Error('Ошибка экспорта');
       }
 
+      // Получаем имя файла из заголовка Content-Disposition или создаем дефолтное
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `products-export-${new Date().toISOString().split('T')[0]}.${format}`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `products-export-${new Date().toISOString().split('T')[0]}.${format}`;
+      a.download = filename;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      
+      // Небольшая задержка перед удалением элемента
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
     } catch (err) {
       console.error('Ошибка экспорта:', err);
       alert('Ошибка экспорта продуктов');

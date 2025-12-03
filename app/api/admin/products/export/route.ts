@@ -84,10 +84,11 @@ export async function GET(request: NextRequest) {
         updatedAt: p.updatedAt.toISOString(),
       }));
 
+      const filename = `products-export-${new Date().toISOString().split('T')[0]}.json`;
       return new Response(JSON.stringify(exportData, null, 2), {
         headers: {
           'Content-Type': 'application/json',
-          'Content-Disposition': `attachment; filename="products-export-${new Date().toISOString().split('T')[0]}.json"`,
+          'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         },
       });
     } else {
@@ -151,10 +152,11 @@ export async function GET(request: NextRequest) {
 
       // Добавляем BOM для правильной кодировки в Excel
       const BOM = '\uFEFF';
+      const filename = `products-export-${new Date().toISOString().split('T')[0]}.csv`;
       return new Response(BOM + csvContent, {
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': `attachment; filename="products-export-${new Date().toISOString().split('T')[0]}.csv"`,
+          'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         },
       });
     }
