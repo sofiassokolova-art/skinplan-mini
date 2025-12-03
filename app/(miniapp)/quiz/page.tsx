@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { INFO_SCREENS, getInfoScreenAfterQuestion, type InfoScreen } from './info-screens';
 import { getAllTopics } from '@/lib/quiz-topics';
 import type { QuizTopic } from '@/lib/quiz-topics';
+import { PaymentGate } from '@/components/PaymentGate';
 
 interface Question {
   id: number;
@@ -1477,6 +1478,11 @@ export default function QuizPage() {
   if (showRetakeScreen && isRetakingQuiz) {
     const retakeTopics = getAllTopics();
     
+    // Проверяем, оплатил ли пользователь перепрохождение
+    const hasRetakingPayment = typeof window !== 'undefined' 
+      ? localStorage.getItem('payment_retaking_completed') === 'true'
+      : false;
+    
     const handleTopicSelect = (topic: QuizTopic) => {
       // Перенаправляем на страницу обновления по теме
       router.push(`/quiz/update/${topic.id}`);
@@ -1488,7 +1494,7 @@ export default function QuizPage() {
       // Пропускаем все info screens при полном перепрохождении
     };
 
-    return (
+    const retakeScreenContent = (
       <div style={{
         minHeight: '100vh',
         padding: '20px',
@@ -1674,6 +1680,27 @@ export default function QuizPage() {
         </div>
       </div>
     );
+
+    // Если оплата не пройдена, показываем PaymentGate
+    if (!hasRetakingPayment) {
+      return (
+        <PaymentGate
+          price={49}
+          isRetaking={true}
+          onPaymentComplete={() => {
+            // После оплаты обновляем страницу
+            if (typeof window !== 'undefined') {
+              window.location.reload();
+            }
+          }}
+        >
+          {retakeScreenContent}
+        </PaymentGate>
+      );
+    }
+
+    // Если оплата пройдена, показываем экран как обычно
+    return retakeScreenContent;
   }
 
   if (showResumeScreen && savedProgress) {
