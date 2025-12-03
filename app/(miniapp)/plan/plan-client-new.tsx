@@ -11,6 +11,7 @@ import { DayView } from '@/components/DayView';
 import { GoalProgressInfographic } from '@/components/GoalProgressInfographic';
 import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
+import { PaymentGate } from '@/components/PaymentGate';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
@@ -58,6 +59,8 @@ export function PlanPageClientNew({
   const [skinIssues, setSkinIssues] = useState<SkinIssue[]>([]);
   const [loadingIssues, setLoadingIssues] = useState(true);
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
+  const [isRetaking, setIsRetaking] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
@@ -67,7 +70,28 @@ export function PlanPageClientNew({
   useEffect(() => {
     loadSkinIssues();
     loadCart();
+    checkIfRetaking();
   }, []);
+
+  const checkIfRetaking = async () => {
+    try {
+      // Проверяем, есть ли уже профиль и когда он был создан
+      const profile = await api.getCurrentProfile() as any;
+      if (profile && profile.createdAt) {
+        const createdAt = new Date(profile.createdAt);
+        const now = new Date();
+        const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        
+        // Если профиль создан более 2 часов назад, это перепрохождение
+        if (hoursSinceCreation > 2) {
+          setIsRetaking(true);
+        }
+      }
+    } catch (err) {
+      // Профиля нет - это первый раз
+      setIsRetaking(false);
+    }
+  };
 
   const loadCart = async () => {
     try {
@@ -284,7 +308,7 @@ export function PlanPageClientNew({
       {/* Header с целями */}
       <PlanHeader mainGoals={plan28.mainGoals} />
 
-      {/* Блок проблем кожи - горизонтальный карусель */}
+      {/* Блок проблем кожи - горизонтальный карусель - показываем всегда без замыливания */}
       <div style={{ marginBottom: '32px' }}>
         {loadingIssues ? (
           <div style={{ 
@@ -300,38 +324,51 @@ export function PlanPageClientNew({
         ) : null}
       </div>
 
-      {/* Инфографика прогресса по целям */}
-      <GoalProgressInfographic
-        goals={plan28.mainGoals}
-        currentDay={selectedDay}
-      />
-
-      {/* Календарная навигация */}
-      <div style={{ marginBottom: '24px' }}>
-        <PlanCalendar
+      {/* Остальной контент обернут в PaymentGate */}
+      <PaymentGate
+        price={isRetaking ? 49 : 199}
+        isRetaking={isRetaking}
+        onPaymentComplete={() => {
+          setPaymentCompleted(true);
+          // Обновляем страницу для применения изменений
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        }}
+      >
+        {/* Инфографика прогресса по целям */}
+        <GoalProgressInfographic
+          goals={plan28.mainGoals}
           currentDay={selectedDay}
-          completedDays={Array.from(completedDays)}
-          onDaySelect={setSelectedDay}
         />
-      </div>
 
-      {/* Отображение выбранного дня */}
-      <DayView
-        dayPlan={currentDayPlan}
-        mainGoals={plan28.mainGoals}
-        products={products}
-        wishlistProductIds={wishlistProductIds}
-        cartQuantities={cartQuantities}
-        onToggleWishlist={toggleWishlist}
-        onAddToCart={handleAddToCart}
-        onReplace={handleReplace}
-        // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
-      />
+        {/* Календарная навигация */}
+        <div style={{ marginBottom: '24px' }}>
+          <PlanCalendar
+            currentDay={selectedDay}
+            completedDays={Array.from(completedDays)}
+            onDaySelect={setSelectedDay}
+          />
+        </div>
 
-      {/* Блок обратной связи в конце страницы */}
-      <div style={{ marginTop: '48px', marginBottom: '24px' }}>
-        <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
-      </div>
+        {/* Отображение выбранного дня */}
+        <DayView
+          dayPlan={currentDayPlan}
+          mainGoals={plan28.mainGoals}
+          products={products}
+          wishlistProductIds={wishlistProductIds}
+          cartQuantities={cartQuantities}
+          onToggleWishlist={toggleWishlist}
+          onAddToCart={handleAddToCart}
+          onReplace={handleReplace}
+          // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
+        />
+
+        {/* Блок обратной связи в конце страницы */}
+        <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+          <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
+        </div>
+      </PaymentGate>
     </div>
   );
 }

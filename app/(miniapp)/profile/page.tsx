@@ -47,7 +47,7 @@ export default function PersonalCabinet() {
   const [editingPhone, setEditingPhone] = useState(false);
   const [nameValue, setNameValue] = useState('');
   const [phoneValue, setPhoneValue] = useState('');
-  const [expandedFAQ, setExpandedFAQ] = useState(false);
+  const [expandedFAQ, setExpandedFAQ] = useState<number | false>(false);
 
   useEffect(() => {
     initialize();
@@ -562,68 +562,6 @@ export default function PersonalCabinet() {
           </div>
         </div>
 
-        {/* Профиль кожи */}
-        <Link
-          href="/profile/skin"
-          style={{
-            display: 'block',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            backdropFilter: 'blur(28px)',
-            borderRadius: '24px',
-            padding: '24px',
-            marginBottom: '16px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-            border: '1px solid rgba(10, 95, 89, 0.1)',
-            textDecoration: 'none',
-            color: 'inherit',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1F2937', marginBottom: '4px' }}>
-                Профиль кожи
-              </h3>
-              <p style={{ fontSize: '14px', color: '#6B7280' }}>
-                {skinProfile?.skinType 
-                  ? `${skinProfile.skinType === 'oily' ? 'Жирная' : skinProfile.skinType === 'dry' ? 'Сухая' : skinProfile.skinType === 'combo' ? 'Комбинированная' : 'Нормальная'}${skinProfile.acneLevel ? ` • Акне ${skinProfile.acneLevel} степени` : ''}`
-                  : 'Пройдите анкету для анализа'}
-              </p>
-            </div>
-            <div style={{ fontSize: '32px' }}>{skinProfile ? '→' : '✨'}</div>
-          </div>
-        </Link>
-
-        {/* 28-дневный план */}
-        <Link
-          href="/plan"
-          style={{
-            display: 'block',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            backdropFilter: 'blur(28px)',
-            borderRadius: '24px',
-            padding: '24px',
-            marginBottom: '16px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-            border: '1px solid rgba(10, 95, 89, 0.1)',
-            textDecoration: 'none',
-            color: 'inherit',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1F2937', marginBottom: '4px' }}>
-                Ваш план на 28 дней
-              </h3>
-              <p style={{ fontSize: '14px', color: '#6B7280' }}>
-                {planInfo.started && planInfo.currentDay
-                  ? `День ${planInfo.currentDay} из 28 • Активен`
-                  : 'План ещё не начат'}
-              </p>
-            </div>
-            <div style={{ fontSize: '32px' }}>{planInfo.started ? '✅' : '📅'}</div>
-          </div>
-        </Link>
-
         {/* SkinIQ FAQ */}
         <div style={{
           backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -634,35 +572,89 @@ export default function PersonalCabinet() {
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
           border: '1px solid rgba(10, 95, 89, 0.1)',
         }}>
-          <button
-            onClick={() => {
-              if (expandedFAQ) {
-                setExpandedFAQ(false);
-              } else {
-                router.push('/faq');
-              }
-            }}
+          <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>
+            Часто задаваемые вопросы
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[
+              {
+                question: 'Как работает SkinIQ?',
+                answer: 'SkinIQ анализирует вашу кожу на основе ответов в анкете и создает персональный 28-дневный план ухода. Мы учитываем тип кожи, проблемы, чувствительность и другие факторы для подбора оптимальных средств.',
+              },
+              {
+                question: 'Как часто нужно обновлять план?',
+                answer: 'Рекомендуется перепроходить анкету раз в 3-6 месяцев или при значительных изменениях состояния кожи (сезонные изменения, новые проблемы, смена климата).',
+              },
+              {
+                question: 'Где купить рекомендованные средства?',
+                answer: 'Все средства из вашего плана можно купить в аптеках, на маркетплейсах (Ozon, Wildberries) или в специализированных магазинах. В приложении есть прямые ссылки на покупку.',
+              },
+              {
+                question: 'Что делать, если средство не подошло?',
+                answer: 'Вы можете заменить любое средство из плана на альтернативное. Нажмите кнопку "Не подошло — заменить" рядом с продуктом, и мы предложим подходящие варианты.',
+              },
+              {
+                question: 'Как отслеживать прогресс?',
+                answer: 'В разделе "План" вы видите текущий день и прогресс выполнения. Отмечайте выполненные дни, чтобы видеть свой прогресс. Результаты обычно видны через 4-6 недель регулярного использования.',
+              },
+            ].map((item, index) => (
+              <div
+                key={index}
                 style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1F2937', marginBottom: '4px' }}>
-                SkinIQ FAQ
-              </h3>
-              <p style={{ fontSize: '14px', color: '#6B7280' }}>
-                Часто задаваемые вопросы
-              </p>
-            </div>
-            <div style={{ fontSize: '24px', color: '#0A5F59' }}>→</div>
-          </button>
+                  backgroundColor: expandedFAQ === index ? 'rgba(10, 95, 89, 0.05)' : 'transparent',
+                  borderRadius: '12px',
+                  padding: expandedFAQ === index ? '12px' : '0',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <button
+                  onClick={() => setExpandedFAQ(expandedFAQ === index ? false : index)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '8px 0',
+                    textAlign: 'left',
+                  }}
+                >
+                  <h4 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#0A5F59',
+                    margin: 0,
+                    flex: 1,
+                  }}>
+                    {item.question}
+                  </h4>
+                  <span style={{
+                    fontSize: '18px',
+                    color: '#0A5F59',
+                    marginLeft: '12px',
+                    transition: 'transform 0.2s',
+                    transform: expandedFAQ === index ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}>
+                    ▼
+                  </span>
+                </button>
+                {expandedFAQ === index && (
+                  <p style={{
+                    marginTop: '8px',
+                    fontSize: '14px',
+                    color: '#475467',
+                    lineHeight: '1.6',
+                    paddingTop: '8px',
+                    borderTop: '1px solid rgba(10, 95, 89, 0.1)',
+                  }}>
+                    {item.answer}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Поддержка */}
@@ -689,7 +681,7 @@ export default function PersonalCabinet() {
               Поддержка
             </h3>
             <p style={{ fontSize: '14px', color: '#6B7280' }}>
-              Чат с ботом
+              Операторы на связи в будние дни с 10:00 до 19:00 (МСК)
             </p>
           </div>
           <div style={{ fontSize: '24px', color: '#0A5F59' }}>→</div>

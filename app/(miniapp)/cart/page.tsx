@@ -93,6 +93,7 @@ export default function CartPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        backgroundAttachment: 'fixed',
         padding: '20px',
         paddingBottom: '120px',
       }}

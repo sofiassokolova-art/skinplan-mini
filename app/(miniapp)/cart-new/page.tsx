@@ -100,8 +100,9 @@ function CartPageContent() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        backgroundAttachment: 'fixed',
         padding: '20px',
-        paddingBottom: cartItems.length > 0 ? '140px' : '120px',
+        paddingBottom: cartItems.length > 0 ? '220px' : '120px',
       }}
     >
       {/* Header */}
@@ -252,7 +253,7 @@ function CartPageContent() {
           <div
             style={{
               position: 'fixed',
-              bottom: 0,
+              bottom: '80px',
               left: 0,
               right: 0,
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -291,6 +292,15 @@ function CartPageContent() {
               >
                 Купить всё ({cartItems.length} товар{cartItems.length > 1 ? 'а' : ''})
               </button>
+              <p style={{
+                fontSize: '11px',
+                color: '#6B7280',
+                textAlign: 'center',
+                marginTop: '8px',
+                opacity: 0.7,
+              }}>
+                Реклама
+              </p>
             </div>
           </div>
         </>
