@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Используем транзакцию для атомарности операций
-    const { savedAnswers, fullAnswers, profile } = await prisma.$transaction(async (tx) => {
+    const { savedAnswers, fullAnswers, profile, existingProfile } = await prisma.$transaction(async (tx) => {
       // Сохраняем или обновляем ответы (upsert для избежания дубликатов)
       const savedAnswers = await Promise.all(
         answers.map(async (answer: AnswerInput) => {
