@@ -7,6 +7,7 @@ import { getBaseStepFromStepCategory } from './plan-helpers';
 import { logger } from './logger';
 import { MIN_PRODUCTS_FOR_STEP } from './constants';
 import type { Prisma } from '@prisma/client';
+import type { ProfileClassification } from './plan-generation-helpers';
 
 export interface ProductWithBrand {
   id: number;
@@ -26,12 +27,7 @@ export interface ProductWithBrand {
   published: boolean;
 }
 
-export interface ProfileClassification {
-  skinType?: string;
-  concerns?: string[];
-  diagnoses?: string[];
-  hasPregnancy?: boolean;
-}
+// ProfileClassification импортируется из plan-generation-helpers.ts
 
 /**
  * Ищет fallback продукт для базового шага

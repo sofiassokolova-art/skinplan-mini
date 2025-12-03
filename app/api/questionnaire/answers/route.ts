@@ -1,11 +1,13 @@
 // app/api/questionnaire/answers/route.ts
 // Сохранение ответов пользователя и расчет профиля
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createSkinProfile } from '@/lib/profile-calculator';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { ApiResponse } from '@/lib/api-response';
+import { MAX_DUPLICATE_SUBMISSION_WINDOW_MS } from '@/lib/constants';
 
 export const runtime = 'nodejs';
 
@@ -31,10 +33,7 @@ export async function POST(request: NextRequest) {
         availableHeaders: Array.from(request.headers.keys()),
         userAgent: request.headers.get('user-agent'),
       });
-      return NextResponse.json(
-        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
-        { status: 401 }
-      );
+      return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
     }
     
     logger.debug('initData received', { length: initData.length });
@@ -43,10 +42,7 @@ export async function POST(request: NextRequest) {
     const userIdResult = await getUserIdFromInitData(initData);
     
     if (!userIdResult) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
+      return ApiResponse.unauthorized('Invalid or expired initData');
     }
     
     userId = userIdResult; // Теперь userId гарантированно string
@@ -55,10 +51,7 @@ export async function POST(request: NextRequest) {
     const { questionnaireId, answers } = body;
 
     if (!questionnaireId || !Array.isArray(answers)) {
-      return NextResponse.json(
-        { error: 'Invalid request body' },
-        { status: 400 }
-      );
+      return ApiResponse.badRequest('Invalid request body');
     }
 
     // Получаем анкету
@@ -67,10 +60,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!questionnaire) {
-      return NextResponse.json(
-        { error: 'Questionnaire not found' },
-        { status: 404 }
-      );
+      return ApiResponse.notFound('Questionnaire not found');
     }
 
     // Проверяем, не отправлял ли пользователь ответы недавно (защита от повторной отправки)
@@ -107,7 +97,7 @@ export async function POST(request: NextRequest) {
           orderBy: { createdAt: 'desc' },
         });
         
-        return NextResponse.json({
+        return ApiResponse.success({
           success: true,
           message: 'Answers already submitted',
           profile: existingProfile ? {
@@ -119,134 +109,145 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Сохраняем или обновляем ответы (upsert для избежания дубликатов)
-    const savedAnswers = await Promise.all(
-      answers.map(async (answer: AnswerInput) => {
-        // Проверяем, существует ли уже ответ
-        const existingAnswer = await prisma.userAnswer.findFirst({
-          where: {
-            userId,
-            questionnaireId,
-            questionId: answer.questionId,
-          },
-        });
-
-        if (existingAnswer) {
-          // Обновляем существующий ответ (updatedAt обновляется автоматически через @updatedAt)
-          return prisma.userAnswer.update({
-            where: { id: existingAnswer.id },
-            data: {
-              answerValue: answer.answerValue || null,
-              answerValues: answer.answerValues ? (answer.answerValues as any) : null,
-            },
-            include: {
-              question: {
-                include: {
-                  answerOptions: true,
-                },
-              },
-            },
-          });
-        } else {
-          // Создаем новый ответ
-          return prisma.userAnswer.create({
-            data: {
-              userId: userId!,
+    // Используем транзакцию для атомарности операций
+    const { savedAnswers, fullAnswers, profile } = await prisma.$transaction(async (tx) => {
+      // Сохраняем или обновляем ответы (upsert для избежания дубликатов)
+      const savedAnswers = await Promise.all(
+        answers.map(async (answer: AnswerInput) => {
+          // Проверяем, существует ли уже ответ
+          const existingAnswer = await tx.userAnswer.findFirst({
+            where: {
+              userId,
               questionnaireId,
               questionId: answer.questionId,
-              answerValue: answer.answerValue || null,
-              answerValues: answer.answerValues ? (answer.answerValues as any) : null,
-            },
-            include: {
-              question: {
-                include: {
-                  answerOptions: true,
-                },
-              },
             },
           });
-        }
-      })
-    );
 
-    // Загружаем полные данные для расчета профиля
-    const fullAnswers = await prisma.userAnswer.findMany({
-      where: {
+          if (existingAnswer) {
+            // Обновляем существующий ответ (updatedAt обновляется автоматически через @updatedAt)
+            return tx.userAnswer.update({
+              where: { id: existingAnswer.id },
+              data: {
+                answerValue: answer.answerValue || null,
+                answerValues: answer.answerValues ? (answer.answerValues as any) : null,
+              },
+              include: {
+                question: {
+                  include: {
+                    answerOptions: true,
+                  },
+                },
+              },
+            });
+          } else {
+            // Создаем новый ответ
+            return tx.userAnswer.create({
+              data: {
+                userId: userId!,
+                questionnaireId,
+                questionId: answer.questionId,
+                answerValue: answer.answerValue || null,
+                answerValues: answer.answerValues ? (answer.answerValues as any) : null,
+              },
+              include: {
+                question: {
+                  include: {
+                    answerOptions: true,
+                  },
+                },
+              },
+            });
+          }
+        })
+      );
+
+      // Загружаем полные данные для расчета профиля
+      const fullAnswers = await tx.userAnswer.findMany({
+        where: {
+          userId,
+          questionnaireId,
+        },
+        include: {
+          question: {
+            include: {
+              answerOptions: true,
+            },
+          },
+        },
+      });
+
+      // Рассчитываем профиль кожи
+      const profileData = createSkinProfile(
         userId,
         questionnaireId,
-      },
-      include: {
-        question: {
-          include: {
-            answerOptions: true,
-          },
-        },
-      },
-    });
+        fullAnswers,
+        questionnaire.version
+      );
 
-    // Рассчитываем профиль кожи
-    const profileData = createSkinProfile(
-      userId,
-      questionnaireId,
-      fullAnswers,
-      questionnaire.version
-    );
-
-    // Сохраняем или обновляем профиль
-    // Проверяем существующий профиль
-    const existingProfile = await prisma.skinProfile.findUnique({
-      where: {
-        userId_version: {
-          userId,
-          version: questionnaire.version,
-        },
-      },
-    });
-
-    // Подготавливаем данные для Prisma
-    // При повторном прохождении анкеты сохраняем некоторые данные из старого профиля
-    const existingMarkers = (existingProfile?.medicalMarkers as any) || {};
-    const mergedMarkers = {
-      ...existingMarkers,
-      ...(profileData.medicalMarkers ? (profileData.medicalMarkers as any) : {}),
-    };
-    // Сохраняем gender из старого профиля, если он был
-    if (existingMarkers?.gender) {
-      mergedMarkers.gender = existingMarkers.gender;
-    }
-    const profileDataForPrisma = {
-      ...profileData,
-      ageGroup: existingProfile?.ageGroup ?? profileData.ageGroup,
-      medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
-    };
-
-    const profile = existingProfile
-      ? await prisma.skinProfile.update({
-          where: { id: existingProfile.id },
-          data: {
-            ...profileDataForPrisma,
-            version: existingProfile.version + 1, // Инкрементируем версию при обновлении профиля
-            updatedAt: new Date(),
-          },
-        })
-      : await prisma.skinProfile.create({
-          data: {
+      // Сохраняем или обновляем профиль
+      // Проверяем существующий профиль
+      const existingProfile = await tx.skinProfile.findUnique({
+        where: {
+          userId_version: {
             userId,
             version: questionnaire.version,
-            ...profileDataForPrisma,
           },
-        });
+        },
+      });
+
+      // Подготавливаем данные для Prisma
+      // При повторном прохождении анкеты сохраняем некоторые данные из старого профиля
+      const existingMarkers = (existingProfile?.medicalMarkers as any) || {};
+      const mergedMarkers = {
+        ...existingMarkers,
+        ...(profileData.medicalMarkers ? (profileData.medicalMarkers as any) : {}),
+      };
+      // Сохраняем gender из старого профиля, если он был
+      if (existingMarkers?.gender) {
+        mergedMarkers.gender = existingMarkers.gender;
+      }
+      const profileDataForPrisma = {
+        ...profileData,
+        ageGroup: existingProfile?.ageGroup ?? profileData.ageGroup,
+        medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
+      };
+
+      const profile = existingProfile
+        ? await tx.skinProfile.update({
+            where: { id: existingProfile.id },
+            data: {
+              ...profileDataForPrisma,
+              version: existingProfile.version + 1, // Инкрементируем версию при обновлении профиля
+              updatedAt: new Date(),
+            },
+          })
+        : await tx.skinProfile.create({
+            data: {
+              userId: userId!,
+              version: questionnaire.version,
+              ...profileDataForPrisma,
+            },
+          });
+
+      return { savedAnswers, fullAnswers, profile, existingProfile };
+    }, {
+      timeout: 30000, // 30 секунд таймаут для транзакции
+    });
     
-    // Очищаем кэш плана и рекомендаций при обновлении профиля
+    // Очищаем кэш плана и рекомендаций при обновлении профиля (вне транзакции)
     if (existingProfile) {
-      console.log(`🔄 Profile updated, clearing cache for userId: ${userId}, old version: ${existingProfile.version}, new version: ${profile.version}`);
+      logger.info('Profile updated, clearing cache', { 
+        userId, 
+        oldVersion: existingProfile.version, 
+        newVersion: profile.version 
+      });
       try {
         const { invalidateCache } = await import('@/lib/cache');
         // Очищаем кэш для старой версии
         await invalidateCache(userId, existingProfile.version);
-        console.log('✅ Cache cleared for old profile version');
+        logger.info('Cache cleared for old profile version', { userId, version: existingProfile.version });
       } catch (cacheError) {
-        console.warn('⚠️ Failed to clear cache:', cacheError);
+        logger.warn('Failed to clear cache', { error: cacheError, userId });
       }
     }
 
@@ -451,26 +452,10 @@ export async function POST(request: NextRequest) {
       logger.warn('Failed to clear quiz progress (non-critical)', { userId, error: clearError });
     }
 
-    return NextResponse.json({
-      success: true,
-      profile: {
-        id: profile.id,
-        skinType: profile.skinType,
-        sensitivityLevel: profile.sensitivityLevel,
-        acneLevel: profile.acneLevel,
-        dehydrationLevel: profile.dehydrationLevel,
-        rosaceaRisk: profile.rosaceaRisk,
-        pigmentationRisk: profile.pigmentationRisk,
-        ageGroup: profile.ageGroup,
-        notes: profile.notes,
-      },
-      answersCount: savedAnswers.length,
-    });
-
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId || undefined);
 
-    return NextResponse.json({
+    return ApiResponse.success({
       success: true,
       profile: {
         id: profile.id,
@@ -485,13 +470,10 @@ export async function POST(request: NextRequest) {
       },
       answersCount: savedAnswers.length,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     logApiError(method, path, error, userId || undefined);
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    
+    return ApiResponse.internalError(error, { userId: userId || undefined, method, path, duration });
   }
 }

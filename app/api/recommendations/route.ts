@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (existingSession && existingSession.products && Array.isArray(existingSession.products)) {
-      console.log('✅ Using existing recommendation session');
+      logger.info('Using existing recommendation session', { userId, sessionId: existingSession.id });
       
       // Получаем продукты из сессии
       const productIds = existingSession.products as number[];
@@ -241,7 +241,11 @@ export async function GET(request: NextRequest) {
 
       // Если не хватает шагов, добавляем их
       if (missingSteps.length > 0) {
-        console.log(`⚠️ Missing required steps in session: ${missingSteps.join(', ')}, adding fallback products...`);
+        logger.warn('Missing required steps in session, adding fallback products', { 
+          userId, 
+          missingSteps: missingSteps.join(', '),
+          sessionId: existingSession.id 
+        });
         
         for (const missingStep of missingSteps) {
           // Для поиска продуктов используем шаги, которые начинаются с базового шага
@@ -335,9 +339,13 @@ export async function GET(request: NextRequest) {
               marketLinks: product.marketLinks,
               imageUrl: product.imageUrl,
             }));
-            console.log(`✅ Added fallback ${missingStep}: ${sortedFallback.length} products`);
+            logger.info('Added fallback products for missing step', { 
+              userId, 
+              step: missingStep, 
+              productsCount: sortedFallback.length 
+            });
           } else {
-            console.warn(`⚠️ Could not find fallback products for step: ${missingStep}`);
+            logger.warn('Could not find fallback products for step', { userId, step: missingStep });
           }
         }
       }
@@ -380,7 +388,7 @@ export async function GET(request: NextRequest) {
 
     // Если правило не найдено, используем fallback - возвращаем базовые продукты
     if (!matchedRule) {
-      console.warn(`⚠️ No matching rule found for profile ${profile.id}, using fallback products`);
+      logger.warn('No matching rule found for profile, using fallback products', { userId, profileId: profile.id });
       
       // Fallback: возвращаем базовые опубликованные продукты по категориям
       const fallbackSteps: Record<string, any[]> = {};

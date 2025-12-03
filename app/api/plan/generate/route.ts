@@ -12,7 +12,13 @@ import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
 import { PLAN_DAYS_TOTAL, PLAN_WEEKS_TOTAL, PLAN_DAYS_PER_WEEK } from '@/lib/constants';
-import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
+import { getBaseStepFromStepCategory, isCleanserStep, isSPFStep } from '@/lib/plan-helpers';
+import { 
+  ensureRequiredProducts, 
+  findFallbackProduct, 
+  type ProductWithBrand
+} from '@/lib/product-fallback';
+import type { ProfileClassification } from '@/lib/plan-generation-helpers';
 
 export const runtime = 'nodejs';
 
@@ -134,8 +140,7 @@ function containsRetinol(productIngredients: string[] | null | undefined): boole
 const CLEANER_FALLBACK_STEP: StepCategory = 'cleanser_gentle';
 const SPF_FALLBACK_STEP: StepCategory = 'spf_50_face';
 
-const isCleanserStep = (step: StepCategory) => step.startsWith('cleanser');
-const isSPFStep = (step: StepCategory) => step.startsWith('spf');
+// isCleanserStep и isSPFStep теперь импортируются из lib/plan-helpers.ts
 
 const dedupeSteps = (steps: StepCategory[]): StepCategory[] => {
   const seen = new Set<StepCategory>();
@@ -240,7 +245,10 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   const skinScores = calculateSkinAxes(questionnaireAnswers);
   const dermatologistRecs = getDermatologistRecommendations(skinScores, questionnaireAnswers);
   
-  console.log('📊 Skin analysis scores:', skinScores.map(s => `${s.title}: ${s.value} (${s.level})`).join(', '));
+  logger.debug('Skin analysis scores', { 
+    scores: skinScores.map(s => ({ title: s.title, value: s.value, level: s.level })),
+    userId 
+  });
 
   // Шаг 1: Классификация профиля (улучшенная логика)
   const goals = Array.isArray(answers.skin_goals) ? answers.skin_goals : [];
@@ -260,10 +268,10 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     mainGoals: Array.isArray(medicalMarkers.mainGoals) ? medicalMarkers.mainGoals : [],
   };
 
-  const profileClassification = {
+  const profileClassification: ProfileClassification = {
     focus: goals.filter((g: string) => 
       ['Акне и высыпания', 'Сократить видимость пор', 'Выровнять пигментацию', 'Морщины и мелкие линии'].includes(g)
-    ),
+    )[0] || 'general', // Берем первую цель как основной фокус
     skinType: profile.skinType || 'normal',
     concerns: concerns,
     ageGroup: profile.ageGroup || '25-34',
@@ -322,7 +330,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   carePlanTemplate.morning.forEach((step) => requiredStepCategories.add(step));
   carePlanTemplate.evening.forEach((step) => requiredStepCategories.add(step));
   carePlanTemplate.weekly?.forEach((step) => requiredStepCategories.add(step));
-  console.log('🧩 Selected care plan template:', {
+  logger.info('Selected care plan template', {
     templateId: carePlanTemplate.id,
     skinType: carePlanProfileInput.skinType,
     mainGoals: carePlanProfileInput.mainGoals,
@@ -332,7 +340,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   });
 
   // Шаг 2: Фильтрация продуктов
-  console.log(`🔍 Filtering products for focus: ${primaryFocus}, skinType: ${profileClassification.skinType}, budget: ${profileClassification.budget}`);
+  logger.debug('Filtering products', { primaryFocus, skinType: profileClassification.skinType, budget: profileClassification.budget, userId });
   
   // ВАЖНО: Сначала пытаемся получить продукты из RecommendationSession
   // Это гарантирует, что план использует те же продукты, что и главная страница
@@ -346,7 +354,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   });
 
   if (existingSession && existingSession.products && Array.isArray(existingSession.products)) {
-    console.log('✅ Using products from RecommendationSession for plan generation');
+    logger.info('Using products from RecommendationSession for plan generation', { userId });
     const productIds = existingSession.products as number[];
     recommendationProducts = await prisma.product.findMany({
       where: {
@@ -364,19 +372,19 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
       return b.priority - a.priority;
     });
-    console.log(`📦 Found ${recommendationProducts.length} products from RecommendationSession`);
+    logger.info('Products found from RecommendationSession', { count: recommendationProducts.length, userId });
   } else {
-    console.log('⚠️ No RecommendationSession found, will generate products from scratch');
+    logger.info('No RecommendationSession found, will generate products from scratch', { userId });
   }
   
   // Если есть продукты из RecommendationSession, используем их
   // Иначе получаем все опубликованные продукты
   let allProducts: any[];
   if (recommendationProducts.length > 0) {
-    console.log('✅ Using products from RecommendationSession');
+    logger.info('Using products from RecommendationSession', { userId });
     allProducts = recommendationProducts;
   } else {
-    console.log('⚠️ No RecommendationSession products, fetching all published products');
+    logger.info('No RecommendationSession products, fetching all published products', { userId });
     allProducts = await prisma.product.findMany({
       where: {
         published: true as any,
@@ -417,7 +425,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     const skinTypeMatches =
       isSPF ||
       productSkinTypes.length === 0 ||
-      productSkinTypes.includes(profileClassification.skinType);
+      (profileClassification.skinType && productSkinTypes.includes(profileClassification.skinType));
 
     // Проверка бюджета (если указан)
     const budgetMatches =
@@ -429,7 +437,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     // Проверка исключенных ингредиентов (по admin-полю concerns + ответу exclude_ingredients)
     const noExcludedIngredients = !containsExcludedIngredients(
       productConcerns,
-      profileClassification.exclude
+      profileClassification.exclude || []
     );
 
     // Явные противопоказания из админки:
@@ -440,7 +448,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
     // Аллергия на ретинол / сильные кислоты:
     // если в ответах пользователь исключил ретинол, то избегаем продуктов с avoidIf 'retinol_allergy'
-    const hasRetinolContraInAnswers = Array.isArray(profileClassification.exclude)
+    const hasRetinolContraInAnswers = Array.isArray(profileClassification.exclude) && profileClassification.exclude.length > 0
       ? profileClassification.exclude.some((ex: string) =>
           ex.toLowerCase().includes('ретинол') || ex.toLowerCase().includes('retinol')
         )
@@ -500,7 +508,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         // Проверяем, активен ли бренд
         const productBrand = (product as any).brand;
         if (productBrand && !productBrand.isActive) {
-          console.log(`⚠️ Product ${product.name} has inactive brand ${productBrand.name}, searching for replacement...`);
+          logger.warn('Product has inactive brand, searching for replacement', { productId: product.id, productName: product.name, brandName: productBrand.name, userId });
           
           // Ищем похожий продукт с активным брендом
           const replacementCandidates = await prisma.product.findMany({
@@ -532,7 +540,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
           
           if (replacementCandidates.length > 0) {
             const replacement = replacementCandidates[0];
-            console.log(`✅ Replaced ${product.name} with ${replacement.name}`);
+            logger.info('Product replaced', { oldProduct: product.name, newProduct: replacement.name, userId });
             return replacement;
           } else {
             // Если не нашли похожий, ищем любой продукт того же шага
@@ -558,7 +566,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
             
             if (anyReplacementCandidates.length > 0) {
               const anyReplacement = anyReplacementCandidates[0];
-              console.log(`✅ Replaced ${product.name} with any available ${anyReplacement.name}`);
+              logger.info('Product replaced with any available', { oldProduct: product.name, newProduct: anyReplacement.name, userId });
               return anyReplacement;
             }
           }
@@ -570,224 +578,169 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     selectedProducts = replacedProducts;
   } else {
     // Пользователь не перепроходил анкету - оставляем продукты как есть
-    console.log('ℹ️ User has not retaken questionnaire recently, keeping existing products even if brand is inactive');
+    logger.info('User has not retaken questionnaire recently, keeping existing products even if brand is inactive', { userId });
   }
   
-  console.log(`✅ Selected ${selectedProducts.length} products ${recommendationProducts.length > 0 ? 'from RecommendationSession' : 'after filtering'}`);
+  logger.info('Products selected', { 
+    count: selectedProducts.length, 
+    source: recommendationProducts.length > 0 ? 'recommendationSession' : 'filtering',
+    userId 
+  });
 
-  // Группируем продукты по шагам
-  const productsByStep: Record<string, typeof selectedProducts> = {};
+  // Группируем продукты по шагам (используем Map для лучшей типизации)
+  const productsByStepMap = new Map<StepCategory, ProductWithBrand[]>();
 
   const registerProductForStep = (
-    stepKey: string,
-    product: (typeof selectedProducts)[number]
+    stepKey: StepCategory | string,
+    product: ProductWithBrand
   ) => {
-    if (!productsByStep[stepKey]) {
-      productsByStep[stepKey] = [];
+    const category = stepKey as StepCategory;
+    const existing = productsByStepMap.get(category) || [];
+    if (!existing.some(p => p.id === product.id)) {
+      productsByStepMap.set(category, [...existing, product]);
     }
-    productsByStep[stepKey].push(product);
   };
 
   selectedProducts.forEach((product) => {
-    const stepKey = (product.step || product.category || 'other') as string;
-    registerProductForStep(stepKey, product);
+    const productBrand = product.brand as any;
+    const productWithBrand: ProductWithBrand = {
+      id: product.id,
+      name: product.name,
+      brand: {
+        id: productBrand.id,
+        name: productBrand.name,
+        isActive: productBrand.isActive,
+      },
+      step: product.step || '',
+      category: product.category,
+      price: product.price,
+      imageUrl: product.imageUrl,
+      isHero: product.isHero || false,
+      priority: product.priority || 0,
+      skinTypes: (product.skinTypes as string[]) || [],
+      published: product.published || false,
+    };
+    
+    const stepKey = (product.step || product.category || 'other') as StepCategory;
+    registerProductForStep(stepKey, productWithBrand);
     const fallbackStep = getFallbackStep(stepKey);
     if (fallbackStep && fallbackStep !== stepKey) {
-      registerProductForStep(fallbackStep, product);
+      registerProductForStep(fallbackStep, productWithBrand);
     }
   });
 
-  const getProductsForStep = (step: StepCategory) => {
+  const getProductsForStep = (step: StepCategory): ProductWithBrand[] => {
     // Сначала пробуем найти по точному совпадению StepCategory
-    if (productsByStep[step] && productsByStep[step].length > 0) {
-      return productsByStep[step];
+    const exact = productsByStepMap.get(step);
+    if (exact && exact.length > 0) {
+      return exact;
     }
     
     // Если не найдено, пробуем найти по базовому step (например, 'toner' для 'toner_hydrating')
     const baseStep = getBaseStepFromStepCategory(step);
-    if (baseStep !== step && productsByStep[baseStep] && productsByStep[baseStep].length > 0) {
-      return productsByStep[baseStep];
+    if (baseStep !== step) {
+      const base = productsByStepMap.get(baseStep as StepCategory);
+      if (base && base.length > 0) {
+        return base;
+      }
     }
     
     // Если не найдено, пробуем fallback StepCategory
     const fallback = getFallbackStep(step);
-    if (fallback && fallback !== step && productsByStep[fallback] && productsByStep[fallback].length > 0) {
-      return productsByStep[fallback];
-    }
-    
-    // Если fallback тоже не найден, пробуем базовый step от fallback
-    if (fallback) {
+    if (fallback && fallback !== step) {
+      const fallbackProducts = productsByStepMap.get(fallback);
+      if (fallbackProducts && fallbackProducts.length > 0) {
+        return fallbackProducts;
+      }
+      
+      // Если fallback тоже не найден, пробуем базовый step от fallback
       const fallbackBaseStep = getBaseStepFromStepCategory(fallback);
-      if (fallbackBaseStep !== fallback && productsByStep[fallbackBaseStep] && productsByStep[fallbackBaseStep].length > 0) {
-        return productsByStep[fallbackBaseStep];
+      if (fallbackBaseStep !== fallback) {
+        const fallbackBase = productsByStepMap.get(fallbackBaseStep as StepCategory);
+        if (fallbackBase && fallbackBase.length > 0) {
+          return fallbackBase;
+        }
       }
     }
     
     return [];
   };
 
-  const ensureProductsForRequiredSteps = async () => {
-    const missingByBaseStep = new Map<string, Set<StepCategory>>();
-
-    requiredStepCategories.forEach((stepCategory) => {
-      if (getProductsForStep(stepCategory).length > 0) {
-        return;
-      }
-      const baseStep = getBaseStepFromStepCategory(stepCategory);
-      if (!missingByBaseStep.has(baseStep)) {
-        missingByBaseStep.set(baseStep, new Set());
-      }
-      missingByBaseStep.get(baseStep)!.add(stepCategory);
-    });
-
-    for (const [baseStep, stepCategories] of missingByBaseStep.entries()) {
-      const whereClause: any = {
-        published: true as any,
-        brand: {
-          isActive: true,
-        },
-      };
-
-      if (baseStep === 'spf') {
-        whereClause.OR = [
-          { step: 'spf' },
-          { category: 'spf' },
-        ];
-      } else {
-        whereClause.step = baseStep;
-      }
-
-      if (baseStep !== 'spf' && profileClassification.skinType) {
-        whereClause.AND = [
-          ...(whereClause.AND || []),
-          {
-            OR: [
-              { skinTypes: { has: profileClassification.skinType } },
-              { skinTypes: { isEmpty: true } },
-            ],
-          },
-        ];
-      }
-
-      const fallbackProduct = await prisma.product.findFirst({
-        where: whereClause,
-        include: { brand: true },
-        orderBy: [
-          { isHero: 'desc' },
-          { priority: 'desc' },
-          { createdAt: 'desc' },
-        ],
-      });
-
-      if (!fallbackProduct) {
-        console.warn(`⚠️ Could not find fallback product for base step ${baseStep}`);
-        continue;
-      }
-
-      console.log(`✅ Added fallback ${baseStep} product for plan: ${fallbackProduct.name} (#${fallbackProduct.id})`);
-      registerProductForStep(baseStep, fallbackProduct);
-      for (const stepCategory of stepCategories.values()) {
-        registerProductForStep(stepCategory, fallbackProduct);
-      }
-      if (!selectedProducts.some((p: any) => p.id === fallbackProduct.id)) {
-        selectedProducts.push(fallbackProduct);
+  // Используем новый модуль для обеспечения продуктов - устраняет N+1 запросы
+  const ensureRequiredProductsForPlan = async () => {
+    const requiredStepsArray = Array.from(requiredStepCategories);
+    const updatedProductsMap = await ensureRequiredProducts(
+      requiredStepsArray,
+      profileClassification,
+      productsByStepMap
+    );
+    
+    // Обновляем productsByStepMap
+    for (const [step, products] of updatedProductsMap.entries()) {
+      productsByStepMap.set(step, products);
+    }
+    
+    // Добавляем новые продукты в selectedProducts
+    for (const products of updatedProductsMap.values()) {
+      for (const product of products) {
+        if (!selectedProducts.some(p => p.id === product.id)) {
+          selectedProducts.push(product as any);
+        }
       }
     }
   };
 
   // ГАРАНТИРУЕМ наличие очищения (cleanser) и SPF - они обязательны для всех
-  // Если их нет в отфильтрованных продуктах, добавляем отдельно
+  // Используем новый модуль для устранения дублирования и N+1 запросов
   
   // Проверяем и добавляем очищение, если его нет
-  if (!productsByStep['cleanser'] || productsByStep['cleanser'].length === 0) {
-    console.log('⚠️ No cleanser products found, searching for fallback...');
-    const whereCleanser: any = {
-      published: true as any,
-      step: 'cleanser', // Исправлено: было 'cleansing', должно быть 'cleanser'
-      brand: {
-        isActive: true, // Только активные бренды
-      },
-    };
-    
-    // Очищение должно быть доступно, но если есть тип кожи - предпочтем его
-    if (profileClassification.skinType) {
-      whereCleanser.OR = [
-        { skinTypes: { has: profileClassification.skinType } },
-        { skinTypes: { isEmpty: true } },
-      ];
-    }
-    
-    const fallbackCleanser = await prisma.product.findFirst({
-      where: {
-        ...whereCleanser,
-        brand: {
-          isActive: true, // Только активные бренды
-        },
-      } as any,
-      include: { brand: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    
-    if (fallbackCleanser) {
-      if (!productsByStep['cleanser']) {
-        productsByStep['cleanser'] = [];
-      }
-      productsByStep['cleanser'].push(fallbackCleanser);
-      console.log(`✅ Added fallback cleanser: ${fallbackCleanser.name}`);
-    } else {
-      // Если даже с фильтром не нашли, берем любой очищающий продукт
-      const anyCleanser = await prisma.product.findFirst({
-        where: {
-          published: true as any,
-          step: 'cleanser', // Исправлено: было 'cleansing', должно быть 'cleanser'
-          brand: {
-            isActive: true, // Только активные бренды
-        },
-        } as any,
-        include: { brand: true },
-        orderBy: { createdAt: 'desc' },
-      });
-      
-      if (anyCleanser) {
-        if (!productsByStep['cleanser']) {
-          productsByStep['cleanser'] = [];
+  const cleanserSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => isCleanserStep(step));
+  if (cleanserSteps.length > 0) {
+    const existingCleanser = cleanserSteps.some(step => getProductsForStep(step).length > 0);
+    if (!existingCleanser) {
+      logger.info('No cleanser products found, searching for fallback', { userId });
+      const fallbackCleanser = await findFallbackProduct('cleanser', profileClassification);
+      if (fallbackCleanser) {
+        for (const step of cleanserSteps) {
+          registerProductForStep(step, fallbackCleanser);
         }
-        productsByStep['cleanser'].push(anyCleanser);
-        console.log(`✅ Added any available cleanser: ${anyCleanser.name}`);
+        if (!selectedProducts.some((p: any) => p.id === fallbackCleanser.id)) {
+          selectedProducts.push(fallbackCleanser as any);
+        }
+        logger.info('Fallback cleanser added', { 
+          productId: fallbackCleanser.id, 
+          productName: fallbackCleanser.name,
+          userId 
+        });
       }
     }
   }
 
-  // Проверяем и добавляем SPF, если его нет (SPF универсален для всех)
-  if (!productsByStep['spf'] || productsByStep['spf'].length === 0) {
-    console.log('⚠️ No SPF products found, searching for fallback...');
-    const fallbackSPF = await prisma.product.findFirst({
-      where: {
-        published: true as any,
-        OR: [
-          { step: 'spf' },
-          { category: 'spf' },
-        ],
-        brand: {
-          isActive: true, // Только активные бренды
-        },
-        // SPF универсален - не фильтруем по типу кожи
-      } as any,
-      include: { brand: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    
-    if (fallbackSPF) {
-      if (!productsByStep['spf']) {
-        productsByStep['spf'] = [];
+  // Проверяем и добавляем SPF, если его нет
+  const spfSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => isSPFStep(step));
+  if (spfSteps.length > 0) {
+    const existingSPF = spfSteps.some(step => getProductsForStep(step).length > 0);
+    if (!existingSPF) {
+      logger.info('No SPF products found, searching for fallback', { userId });
+      const fallbackSPF = await findFallbackProduct('spf', profileClassification);
+      if (fallbackSPF) {
+        for (const step of spfSteps) {
+          registerProductForStep(step, fallbackSPF);
+        }
+        if (!selectedProducts.some((p: any) => p.id === fallbackSPF.id)) {
+          selectedProducts.push(fallbackSPF as any);
+        }
+        logger.info('Fallback SPF added', { 
+          productId: fallbackSPF.id, 
+          productName: fallbackSPF.name,
+          userId 
+        });
       }
-      productsByStep['spf'].push(fallbackSPF);
-      console.log(`✅ Added fallback SPF: ${fallbackSPF.name}`);
     }
   }
 
-  // Обеспечиваем продукты для всех обязательных шагов из шаблона
-  await ensureProductsForRequiredSteps();
+  // Обеспечиваем продукты для всех обязательных шагов из шаблона (batch запрос - устраняет N+1)
+  await ensureRequiredProductsForPlan();
 
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
@@ -1031,10 +984,10 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   if (profileClassification.pregnant) {
     warnings.push('⚠️ Во время беременности исключены продукты с ретинолом');
   }
-  if (profileClassification.exclude.length > 0) {
+  if (profileClassification.exclude && profileClassification.exclude.length > 0) {
     warnings.push(`⚠️ Исключены ингредиенты: ${profileClassification.exclude.join(', ')}`);
   }
-  if (profileClassification.allergies.length > 0) {
+  if (profileClassification.allergies && profileClassification.allergies.length > 0) {
     warnings.push(`⚠️ Учитываются аллергии: ${profileClassification.allergies.join(', ')}`);
   }
 
@@ -1169,7 +1122,7 @@ export async function GET(request: NextRequest) {
                      request.headers.get('X-Telegram-Init-Data');
     
     if (!initData) {
-      console.error('⚠️ Missing initData in headers for plan generation:', {
+      logger.error('Missing initData in headers for plan generation', {
         availableHeaders: Array.from(request.headers.keys()),
       });
     }
@@ -1199,12 +1152,12 @@ export async function GET(request: NextRequest) {
     });
 
     if (!profile) {
-      console.error(`❌ No skin profile found for user ${userId}`);
+      logger.error('No skin profile found for user', { userId });
       return ApiResponse.notFound('No skin profile found', { userId });
     }
 
     // Проверяем кэш
-    console.log('🔍 Checking cache for plan...');
+    logger.debug('Checking cache for plan', { userId });
     const cachedPlan = await getCachedPlan(userId, profile.version);
     if (cachedPlan) {
       // Проверяем, что кэшированный план содержит plan28 (новый формат)
