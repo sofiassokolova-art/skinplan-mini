@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
 
       // Рассчитываем профиль кожи
       const profileData = createSkinProfile(
-        userId,
+        userId!, // userId гарантированно string в транзакции
         questionnaireId,
         fullAnswers,
         questionnaire.version
