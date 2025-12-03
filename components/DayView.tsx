@@ -20,6 +20,7 @@ interface DayViewProps {
     description?: string;
   }>;
   wishlistProductIds?: Set<number>;
+  cartQuantities?: Map<number, number>; // Map productId -> quantity
   onToggleWishlist?: (productId: number) => void;
   onAddToCart?: (productId: number) => void;
   onReplace?: (stepCategory: string, productId: number) => void;
@@ -34,6 +35,7 @@ export function DayView({
   mainGoals,
   products,
   wishlistProductIds = new Set(),
+  cartQuantities = new Map(),
   onToggleWishlist,
   onAddToCart,
   onReplace,
@@ -293,6 +295,7 @@ export function DayView({
                     step={step}
                     product={product || undefined}
                     isInWishlist={product ? wishlistProductIds.has(product.id) : false}
+                    cartQuantity={product ? (cartQuantities.get(product.id) || 0) : 0}
                     onToggleWishlist={onToggleWishlist}
                     onAddToCart={onAddToCart}
                     onReplace={onReplace && product ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}

@@ -120,22 +120,29 @@ export default function PlanPage() {
           plan28DaysCount: plan?.plan28?.days?.length || 0,
         });
       } catch (planError: any) {
-        // Если профиль не найден и это первая/вторая попытка - ждем и повторяем
+        // Если ошибка 404 и это первая/вторая попытка - ждем и повторяем
         // НЕ показываем ошибку во время retry, только после всех попыток
         if (retryCount < 3 && (
           planError?.message?.includes('No skin profile') ||
           planError?.message?.includes('Skin profile not found') ||
           planError?.message?.includes('404') ||
           planError?.message?.includes('Internal server error') ||
+          planError?.message?.includes('Not found') ||
           planError?.status === 404 ||
-          planError?.status === 500
+          planError?.status === 500 ||
+          planError?.isNotFound
         )) {
           console.log(`⏳ План еще не готов, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
           // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
-        throw planError;
+        
+        // Если после всех попыток план все еще не найден - это может быть нормально
+        // (например, пользователь еще не проходил анкету)
+        // НЕ выбрасываем ошибку, просто оставляем plan = null и продолжаем проверку
+        console.warn('Could not load plan after retries:', planError);
+        plan = null;
       }
       
       // Проверяем наличие плана (новый формат plan28 или старый weeks)

@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import FeedbackModal from './FeedbackModal';
 import toast from 'react-hot-toast';
@@ -37,6 +37,9 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
   const [feedback, setFeedback] = useState(item.feedback);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isInCart, setIsInCart] = useState(false);
+  const [cartQuantity, setCartQuantity] = useState(0);
+  const [cartLoading, setCartLoading] = useState(false);
 
   const handleFeedback = async (value: string) => {
     if (value === 'bought_bad') {
@@ -71,6 +74,60 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
       toast.error('Ошибка замены. Попробуйте еще раз.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Проверяем статус корзины при монтировании
+  useEffect(() => {
+    const checkCartStatus = async () => {
+      try {
+        const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
+        const items = cart.items || [];
+        const cartItem = items.find((cartItem) => cartItem.product.id === item.product.id);
+        if (cartItem) {
+          setIsInCart(true);
+          setCartQuantity(cartItem.quantity);
+        } else {
+          setIsInCart(false);
+          setCartQuantity(0);
+        }
+      } catch (err) {
+        console.warn('Could not check cart status:', err);
+      }
+    };
+    
+    checkCartStatus();
+  }, [item.product.id]);
+
+  const handleAddToCart = async () => {
+    if (cartLoading) return;
+    
+    setCartLoading(true);
+    try {
+      if (isInCart) {
+        await api.removeFromCart(item.product.id);
+        setIsInCart(false);
+        setCartQuantity(0);
+        toast.success('Удалено из корзины');
+      } else {
+        await api.addToCart(item.product.id, 1);
+        setIsInCart(true);
+        setCartQuantity(1);
+        toast.success('Добавлено в корзину');
+      }
+      
+      // Перезагружаем корзину для актуальных данных
+      const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
+      const items = cart.items || [];
+      const cartItem = items.find((cartItem) => cartItem.product.id === item.product.id);
+      if (cartItem) {
+        setCartQuantity(cartItem.quantity);
+      }
+    } catch (err: any) {
+      console.error('Error toggling cart:', err);
+      toast.error(err?.message || 'Ошибка при изменении корзины');
+    } finally {
+      setCartLoading(false);
     }
   };
 
@@ -137,6 +194,69 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
                 от {item.product.price} ₽
               </div>
             )}
+
+            {/* Кнопка добавления в корзину */}
+            <div style={{ marginBottom: '16px', position: 'relative' }}>
+              <button
+                onClick={handleAddToCart}
+                disabled={cartLoading}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: isInCart ? '#10B981' : '#0A5F59',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: cartLoading ? 'not-allowed' : 'pointer',
+                  opacity: cartLoading ? 0.6 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'background-color 0.2s',
+                  position: 'relative',
+                }}
+              >
+                {cartLoading ? (
+                  'Загрузка...'
+                ) : isInCart ? (
+                  <>
+                    <span>✓</span>
+                    <span>В корзине</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🛒</span>
+                    <span>В корзину</span>
+                  </>
+                )}
+                {cartQuantity > 0 && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '-6px',
+                      right: '-6px',
+                      backgroundColor: '#EF4444',
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: '22px',
+                      height: '22px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      border: '2px solid white',
+                      minWidth: '22px',
+                    }}
+                  >
+                    {cartQuantity}
+                  </span>
+                )}
+              </button>
+            </div>
 
             {/* Ссылки на покупку */}
             {hasLinks && (

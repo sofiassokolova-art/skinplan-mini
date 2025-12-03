@@ -344,11 +344,13 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   
   // ВАЖНО: Сначала пытаемся получить продукты из RecommendationSession
   // Это гарантирует, что план использует те же продукты, что и главная страница
+  // Ищем сессию по userId (не по profileId), так как при обновлении профиля может быть новая версия
   let recommendationProducts: any[] = [];
   const existingSession = await prisma.recommendationSession.findFirst({
     where: {
       userId,
-      profileId: profile.id,
+      // Ищем сессию для текущего или любого профиля пользователя, 
+      // так как при обновлении профиля может быть новая версия с новым profileId
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -1173,6 +1175,38 @@ export async function GET(request: NextRequest) {
 
     logger.info('Starting plan generation', { userId });
     const plan = await generate28DayPlan(userId);
+    
+    // Получаем актуальный профиль для сохранения RecommendationSession
+    const currentProfile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    // Создаем или обновляем RecommendationSession с продуктами из плана
+    if (currentProfile && plan.products && plan.products.length > 0) {
+      const productIds = plan.products.map((p: any) => p.id);
+      
+      // Удаляем старую сессию, если есть
+      await prisma.recommendationSession.deleteMany({
+        where: { userId },
+      });
+      
+      // Создаем новую сессию с продуктами из плана
+      await prisma.recommendationSession.create({
+        data: {
+          userId,
+          profileId: currentProfile.id,
+          ruleId: null,
+          products: productIds,
+        },
+      });
+      
+      logger.info('RecommendationSession created/updated with plan products', {
+        userId,
+        profileId: currentProfile.id,
+        productCount: productIds.length,
+      });
+    }
     
     // Сохраняем в кэш
     logger.info('Caching plan', { userId, profileVersion: profile.version });

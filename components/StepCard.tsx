@@ -19,6 +19,7 @@ interface StepCardProps {
     description?: string;
   } | null;
   isInWishlist?: boolean;
+  cartQuantity?: number; // Количество товара в корзине
   onToggleWishlist?: (productId: number) => void;
   onAddToCart?: (productId: number) => void;
   onReplace?: (step: DayStep, productId: number) => void;
@@ -29,6 +30,7 @@ export function StepCard({
   step,
   product,
   isInWishlist = false,
+  cartQuantity = 0,
   onToggleWishlist,
   onAddToCart,
   onReplace,
@@ -146,7 +148,7 @@ export function StepCard({
               flex: 1,
               padding: '10px',
               borderRadius: '12px',
-              backgroundColor: '#0A5F59',
+              backgroundColor: cartQuantity > 0 ? '#10B981' : '#0A5F59',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
@@ -157,16 +159,39 @@ export function StepCard({
               fontSize: '14px',
               fontWeight: '500',
               transition: 'all 0.2s',
+              position: 'relative',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#0C7A73';
+              e.currentTarget.style.backgroundColor = cartQuantity > 0 ? '#059669' : '#0C7A73';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#0A5F59';
+              e.currentTarget.style.backgroundColor = cartQuantity > 0 ? '#10B981' : '#0A5F59';
             }}
           >
             <ShoppingCart size={16} />
-            В корзину
+            <span>{cartQuantity > 0 ? 'В корзине' : 'В корзину'}</span>
+            {cartQuantity > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-4px',
+                  backgroundColor: '#EF4444',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '20px',
+                  height: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  border: '2px solid white',
+                }}
+              >
+                {cartQuantity}
+              </span>
+            )}
           </button>
         )}
 

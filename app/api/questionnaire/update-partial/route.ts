@@ -215,10 +215,24 @@ export async function POST(request: NextRequest) {
 
       const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
 
-      // Удаляем старую сессию рекомендаций, чтобы план пересобрался
+      // Удаляем старую сессию рекомендаций для пользователя, чтобы план пересобрался
+      // Удаляем по userId, так как при обновлении профиля создается новая версия с новым profileId
+      // И старый RecommendationSession может быть привязан к старой версии профиля
       await prisma.recommendationSession.deleteMany({
-        where: { userId, profileId: updatedProfile.id },
+        where: { userId },
       });
+      
+      // Также инвалидируем кэш для всех версий профиля пользователя
+      try {
+        const { invalidateCache } = await import('@/lib/cache');
+        // Инвалидируем для текущей и предыдущей версий профиля
+        if (currentProfile) {
+          await invalidateCache(userId, currentProfile.version || 1);
+        }
+        await invalidateCache(userId, newVersion);
+      } catch (cacheError) {
+        console.warn('Failed to invalidate cache', cacheError);
+      }
 
       planRebuilt = true;
     }

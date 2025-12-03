@@ -55,15 +55,31 @@ export function PlanPageClientNew({
   const [completedEvening, setCompletedEvening] = useState(false);
   const [skinIssues, setSkinIssues] = useState<SkinIssue[]>([]);
   const [loadingIssues, setLoadingIssues] = useState(true);
+  const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
   }, [plan28.days, selectedDay]);
 
-  // Загружаем данные о проблемах кожи при монтировании
+  // Загружаем данные о проблемах кожи и корзине при монтировании
   useEffect(() => {
     loadSkinIssues();
+    loadCart();
   }, []);
+
+  const loadCart = async () => {
+    try {
+      const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
+      const items = cart.items || [];
+      const quantitiesMap = new Map<number, number>();
+      items.forEach((item) => {
+        quantitiesMap.set(item.product.id, item.quantity);
+      });
+      setCartQuantities(quantitiesMap);
+    } catch (err) {
+      console.warn('Could not load cart:', err);
+    }
+  };
 
   const loadSkinIssues = async () => {
     try {
@@ -131,6 +147,17 @@ export function PlanPageClientNew({
 
       await api.addToCart(productId, 1);
       toast.success('Добавлено в корзину');
+      
+      // Обновляем количество в корзине
+      setCartQuantities((prev) => {
+        const newMap = new Map(prev);
+        const currentQty = newMap.get(productId) || 0;
+        newMap.set(productId, currentQty + 1);
+        return newMap;
+      });
+      
+      // Перезагружаем корзину для актуальных данных
+      await loadCart();
     } catch (err: any) {
       console.error('Error adding to cart:', err);
       toast.error(err?.message || 'Не удалось добавить в корзину');
@@ -289,6 +316,7 @@ export function PlanPageClientNew({
         mainGoals={plan28.mainGoals}
         products={products}
         wishlistProductIds={wishlistProductIds}
+        cartQuantities={cartQuantities}
         onToggleWishlist={toggleWishlist}
         onAddToCart={handleAddToCart}
         onReplace={handleReplace}
