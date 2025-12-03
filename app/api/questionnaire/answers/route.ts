@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Очищаем кэш плана и рекомендаций при обновлении профиля (вне транзакции)
-    if (existingProfile) {
+    if (existingProfile && existingProfile.version !== profile.version) {
       logger.info('Profile updated, clearing cache', { 
         userId, 
         oldVersion: existingProfile.version, 
