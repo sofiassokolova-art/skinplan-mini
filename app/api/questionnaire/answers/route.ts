@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
       const existingProfile = await tx.skinProfile.findUnique({
         where: {
           userId_version: {
-            userId,
+            userId: userId!, // userId гарантированно string
             version: questionnaire.version,
           },
         },
