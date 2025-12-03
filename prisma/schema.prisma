@@ -15,17 +15,17 @@ datasource db {
 // ============================================
 
 model User {
-  id         String    @id @default(cuid())
-  telegramId String    @unique @map("telegram_id")
-  username   String?
-  firstName  String?   @map("first_name")
-  lastName   String?   @map("last_name")
-  language   String    @default("ru")
-  phoneNumber String?  @map("phone_number") // Номер телефона пользователя
-  tags       String[]  @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  lastActive DateTime? @map("last_active") // Обновляется при активности
+  id          String    @id @default(cuid())
+  telegramId  String    @unique @map("telegram_id")
+  username    String?
+  firstName   String?   @map("first_name")
+  lastName    String?   @map("last_name")
+  language    String    @default("ru")
+  phoneNumber String?   @map("phone_number") // Номер телефона пользователя
+  tags        String[]  @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  lastActive  DateTime? @map("last_active") // Обновляется при активности
 
   skinProfiles           SkinProfile[]
   userAnswers            UserAnswer[]
@@ -41,6 +41,7 @@ model User {
   supportChats           SupportChat[]
   clientLogs             ClientLog[]
 
+  @@index([lastActive])
   @@map("users")
 }
 
@@ -268,6 +269,7 @@ model RecommendationSession {
 
   @@index([userId])
   @@index([profileId])
+  @@index([createdAt])
   @@map("recommendation_sessions")
 }
 
@@ -316,6 +318,7 @@ model PlanFeedback {
 
   @@index([userId])
   @@index([createdAt])
+  @@index([rating])
   @@map("plan_feedback")
 }
 
@@ -388,6 +391,8 @@ model WishlistFeedback {
   @@unique([userId, productId])
   @@index([userId])
   @@index([productId])
+  @@index([feedback])
+  @@index([createdAt])
   @@map("wishlist_feedback")
 }
 

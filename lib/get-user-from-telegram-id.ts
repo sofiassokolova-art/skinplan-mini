@@ -19,6 +19,7 @@ export async function getUserIdFromTelegramId(telegramId: number, userData?: {
 
   try {
     // Создаем или обновляем пользователя
+    const now = new Date();
     const dbUser = await prisma.user.upsert({
       where: { telegramId: telegramId.toString() },
       update: {
@@ -26,7 +27,8 @@ export async function getUserIdFromTelegramId(telegramId: number, userData?: {
         ...(userData?.lastName && { lastName: userData.lastName }),
         ...(userData?.username && { username: userData.username }),
         ...(userData?.languageCode && { language: userData.languageCode }),
-        updatedAt: new Date(),
+        lastActive: now, // Обновляем lastActive при каждом запросе
+        updatedAt: now,
       },
       create: {
         telegramId: telegramId.toString(),
@@ -34,6 +36,7 @@ export async function getUserIdFromTelegramId(telegramId: number, userData?: {
         lastName: userData?.lastName || null,
         username: userData?.username || null,
         language: userData?.languageCode || 'ru',
+        lastActive: now, // Устанавливаем lastActive при создании
       },
     });
 
