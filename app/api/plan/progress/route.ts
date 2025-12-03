@@ -62,9 +62,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       currentDay: progress.currentDay,
       completedDays: progress.completedDays,
-      currentStreak: progress.currentStreak || 0,
-      longestStreak: progress.longestStreak || 0,
-      totalCompletedDays: progress.totalCompletedDays || progress.completedDays.length,
+      currentStreak: (progress as any).currentStreak || 0,
+      longestStreak: (progress as any).longestStreak || 0,
+      totalCompletedDays: (progress as any).totalCompletedDays || progress.completedDays.length,
     });
   } catch (error: any) {
     const duration = Date.now() - startTime;
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
     // Обновляем longestStreak только если новый стрик больше предыдущего
     const finalLongestStreak = existingProgress
-      ? Math.max(existingProgress.longestStreak || 0, longestStreak)
+      ? Math.max((existingProgress as any).longestStreak || 0, longestStreak)
       : longestStreak;
 
     const progress = await prisma.planProgress.upsert({
@@ -183,17 +183,17 @@ export async function POST(request: NextRequest) {
       update: {
         currentDay: safeCurrentDay,
         completedDays,
-        currentStreak,
-        longestStreak: finalLongestStreak,
-        totalCompletedDays,
+        currentStreak: currentStreak as any,
+        longestStreak: finalLongestStreak as any,
+        totalCompletedDays: totalCompletedDays as any,
       },
       create: {
         userId,
         currentDay: safeCurrentDay,
         completedDays,
-        currentStreak,
-        longestStreak: finalLongestStreak,
-        totalCompletedDays,
+        currentStreak: currentStreak as any,
+        longestStreak: finalLongestStreak as any,
+        totalCompletedDays: totalCompletedDays as any,
       },
     });
 
@@ -203,9 +203,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       currentDay: progress.currentDay,
       completedDays: progress.completedDays,
-      currentStreak: progress.currentStreak || 0,
-      longestStreak: progress.longestStreak || 0,
-      totalCompletedDays: progress.totalCompletedDays || progress.completedDays.length,
+      currentStreak: (progress as any).currentStreak || 0,
+      longestStreak: (progress as any).longestStreak || 0,
+      totalCompletedDays: (progress as any).totalCompletedDays || progress.completedDays.length,
     });
   } catch (error: any) {
     const duration = Date.now() - startTime;
