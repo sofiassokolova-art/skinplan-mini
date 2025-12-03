@@ -108,6 +108,28 @@ export async function GET(request: NextRequest) {
       { name: 'Все время', days: null },
     ];
 
+    // Получаем дополнительные данные для подсчета по периодам
+    const answersWithDates = await prisma.userAnswer.groupBy({
+      by: ['userId'],
+      _min: {
+        createdAt: true,
+      },
+    });
+
+    const profilesWithDates = await prisma.skinProfile.findMany({
+      select: {
+        userId: true,
+        createdAt: true,
+      },
+    });
+
+    const sessionsWithDates = await prisma.recommendationSession.findMany({
+      select: {
+        userId: true,
+        createdAt: true,
+      },
+    });
+
     const periodData = periods.map(period => {
       const startDate = period.days ? new Date(now.getTime() - period.days * 24 * 60 * 60 * 1000) : null;
       
@@ -115,23 +137,20 @@ export async function GET(request: NextRequest) {
         ? allUsers.filter(u => new Date(u.createdAt) >= startDate).length
         : totalUsers;
 
-      // Для периодов считаем только по данным в БД (без проверки кэша для производительности)
+      // Подсчитываем для периода
       const periodStarted = startDate
-        ? usersWithAnswers.filter((_, index) => {
-            // Приблизительная оценка - в реальности нужно проверять дату первого ответа
-            return true; // Упрощаем для производительности
+        ? answersWithDates.filter(a => {
+            const firstAnswerDate = a._min.createdAt;
+            return firstAnswerDate && new Date(firstAnswerDate) >= startDate;
           }).length
         : startedQuiz;
 
       const periodCompleted = startDate
-        ? completedQuiz.filter(p => {
-            // Нужно проверить дату создания профиля
-            return true; // Упрощаем
-          }).length
+        ? profilesWithDates.filter(p => new Date(p.createdAt) >= startDate).length
         : completedQuizCount;
 
       const periodPlan = startDate
-        ? usersWithSessions.length // Упрощенно - только сессии
+        ? sessionsWithDates.filter(s => new Date(s.createdAt) >= startDate).length
         : hasPlan;
 
       return {
