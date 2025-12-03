@@ -11,6 +11,7 @@ import { DayView } from '@/components/DayView';
 import { GoalProgressInfographic } from '@/components/GoalProgressInfographic';
 import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
+import { PaymentGate } from '@/components/PaymentGate';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
@@ -58,6 +59,7 @@ export function PlanPageClientNew({
   const [skinIssues, setSkinIssues] = useState<SkinIssue[]>([]);
   const [loadingIssues, setLoadingIssues] = useState(true);
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
+  const [isRetaking, setIsRetaking] = useState(false);
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
@@ -67,6 +69,11 @@ export function PlanPageClientNew({
   useEffect(() => {
     loadSkinIssues();
     loadCart();
+    // Проверяем, перепроходит ли пользователь анкету
+    if (typeof window !== 'undefined') {
+      const isRetakingFlag = localStorage.getItem('is_retaking_quiz') === 'true';
+      setIsRetaking(isRetakingFlag);
+    }
   }, []);
 
   const loadCart = async () => {
@@ -318,38 +325,87 @@ export function PlanPageClientNew({
         ) : null}
       </div>
 
-      {/* Инфографика прогресса по целям */}
-      <GoalProgressInfographic
-        goals={plan28.mainGoals}
-        currentDay={selectedDay}
-      />
+      {/* Основной контент плана - обернут в PaymentGate только при перепрохождении */}
+      {isRetaking ? (
+        <PaymentGate
+          price={49}
+          isRetaking={true}
+          onPaymentComplete={() => {
+            // После оплаты обновляем страницу
+            if (typeof window !== 'undefined') {
+              window.location.reload();
+            }
+          }}
+        >
+          {/* Инфографика прогресса по целям */}
+          <GoalProgressInfographic
+            goals={plan28.mainGoals}
+            currentDay={selectedDay}
+          />
 
-      {/* Календарная навигация */}
-      <div style={{ marginBottom: '24px' }}>
-        <PlanCalendar
-          currentDay={selectedDay}
-          completedDays={Array.from(completedDays)}
-          onDaySelect={setSelectedDay}
-        />
-      </div>
+          {/* Календарная навигация */}
+          <div style={{ marginBottom: '24px' }}>
+            <PlanCalendar
+              currentDay={selectedDay}
+              completedDays={Array.from(completedDays)}
+              onDaySelect={setSelectedDay}
+            />
+          </div>
 
-      {/* Отображение выбранного дня */}
-      <DayView
-        dayPlan={currentDayPlan}
-        mainGoals={plan28.mainGoals}
-        products={products}
-        wishlistProductIds={wishlistProductIds}
-        cartQuantities={cartQuantities}
-        onToggleWishlist={toggleWishlist}
-        onAddToCart={handleAddToCart}
-        onReplace={handleReplace}
-        // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
-      />
+          {/* Отображение выбранного дня */}
+          <DayView
+            dayPlan={currentDayPlan}
+            mainGoals={plan28.mainGoals}
+            products={products}
+            wishlistProductIds={wishlistProductIds}
+            cartQuantities={cartQuantities}
+            onToggleWishlist={toggleWishlist}
+            onAddToCart={handleAddToCart}
+            onReplace={handleReplace}
+            // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
+          />
 
-      {/* Блок обратной связи в конце страницы */}
-      <div style={{ marginTop: '48px', marginBottom: '24px' }}>
-        <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
-      </div>
+          {/* Блок обратной связи в конце страницы */}
+          <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+            <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
+          </div>
+        </PaymentGate>
+      ) : (
+        <>
+          {/* Инфографика прогресса по целям */}
+          <GoalProgressInfographic
+            goals={plan28.mainGoals}
+            currentDay={selectedDay}
+          />
+
+          {/* Календарная навигация */}
+          <div style={{ marginBottom: '24px' }}>
+            <PlanCalendar
+              currentDay={selectedDay}
+              completedDays={Array.from(completedDays)}
+              onDaySelect={setSelectedDay}
+            />
+          </div>
+
+          {/* Отображение выбранного дня */}
+          <DayView
+            dayPlan={currentDayPlan}
+            mainGoals={plan28.mainGoals}
+            products={products}
+            wishlistProductIds={wishlistProductIds}
+            cartQuantities={cartQuantities}
+            onToggleWishlist={toggleWishlist}
+            onAddToCart={handleAddToCart}
+            onReplace={handleReplace}
+            // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
+          />
+
+          {/* Блок обратной связи в конце страницы */}
+          <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+            <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
+          </div>
+        </>
+      )}
     </div>
   );
 }

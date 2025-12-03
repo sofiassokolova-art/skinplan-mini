@@ -282,73 +282,141 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
         gap: '12px',
         justifyContent: 'center',
       }}>
-        <button
-          onClick={handleThumbsDown}
-          disabled={isSubmitting}
-          style={{
-            padding: '16px 32px',
-            borderRadius: '16px',
-            border: '2px solid rgba(10, 95, 89, 0.3)',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            color: '#0A5F59',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600,
-            fontSize: '32px',
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            opacity: isSubmitting ? 0.5 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '80px',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            if (!isSubmitting) {
-              e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          👎
-        </button>
-        <button
-          onClick={handleThumbsUp}
-          disabled={isSubmitting}
-          style={{
-            padding: '16px 32px',
-            borderRadius: '16px',
-            border: 'none',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 600,
-            fontSize: '32px',
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            opacity: isSubmitting ? 0.5 : 1,
-            boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '80px',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            if (!isSubmitting) {
-              e.currentTarget.style.backgroundColor = '#059669';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#0A5F59';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          👍
-        </button>
+        {feedbackType === 'service' ? (
+          // Для еженедельной обратной связи - 👍/👎
+          <>
+            <button
+              onClick={handleThumbsDown}
+              disabled={isSubmitting}
+              style={{
+                padding: '16px 32px',
+                borderRadius: '16px',
+                border: '2px solid rgba(10, 95, 89, 0.3)',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                color: '#0A5F59',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '32px',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.5 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '80px',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              👎
+            </button>
+            <button
+              onClick={handleThumbsUp}
+              disabled={isSubmitting}
+              style={{
+                padding: '16px 32px',
+                borderRadius: '16px',
+                border: 'none',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '32px',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.5 : 1,
+                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '80px',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = '#059669';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#0A5F59';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              👍
+            </button>
+          </>
+        ) : (
+          // Для обратной связи по плану - "Да"/"Нет"
+          <>
+            <button
+              onClick={handleThumbsDown}
+              disabled={isSubmitting}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '12px',
+                border: '2px solid rgba(10, 95, 89, 0.3)',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                color: '#0A5F59',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.5 : 1,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              Нет
+            </button>
+            <button
+              onClick={handleThumbsUp}
+              disabled={isSubmitting}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '12px',
+                border: 'none',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.5 : 1,
+                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.backgroundColor = '#059669';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#0A5F59';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              Да
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
