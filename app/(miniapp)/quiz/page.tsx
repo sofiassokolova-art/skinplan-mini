@@ -58,8 +58,11 @@ export default function QuizPage() {
   } | null>(null);
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
+  const [retakeLandingDismissed, setRetakeLandingDismissed] = useState(false);
+  const [forceFullRetakeMode, setForceFullRetakeMode] = useState(false);
   const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const retakeTopics = useMemo(() => getAllTopics(), []);
   
   // Функция для добавления логов (только в development)
   // ВАЖНО: оборачиваем в useCallback, чтобы функция не менялась между рендерами
