@@ -43,9 +43,15 @@ async function request<T>(
     // Передаем initData без изменений (он уже в правильном формате от Telegram)
     headers['X-Telegram-Init-Data'] = initData;
     headers['x-telegram-init-data'] = initData;
-    console.log('✅ initData добавлен в заголовки, длина:', initData.length, 'endpoint:', endpoint);
+    // Логируем только в development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ initData добавлен в заголовки, длина:', initData.length, 'endpoint:', endpoint);
+    }
   } else {
-    console.warn('⚠️ initData not available in Telegram WebApp for endpoint:', endpoint);
+    // Предупреждение только в development или если это критичный endpoint
+    if (process.env.NODE_ENV === 'development' || endpoint.includes('/plan/generate') || endpoint.includes('/questionnaire')) {
+      console.warn('⚠️ initData not available in Telegram WebApp for endpoint:', endpoint);
+    }
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -61,17 +67,19 @@ async function request<T>(
       // Для cart и wishlist 401 - это нормально, если пользователь не авторизован
       // Возвращаем пустой результат вместо исключения
       if (endpoint.includes('/cart') || endpoint.includes('/wishlist')) {
-        console.log('ℹ️ 401 for cart/wishlist (user may not be authorized), returning empty result');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('ℹ️ 401 for cart/wishlist (user may not be authorized), returning empty result');
+        }
         return { items: [] } as T;
       }
       
       // Для других endpoints 401 - это ошибка авторизации
       const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
+      // Всегда логируем 401 ошибки (они важны для отладки)
       console.error('❌ 401 Unauthorized:', {
         endpoint,
         hasInitData: !!initData,
         error: errorData.error,
-        headers: Object.keys(headers),
       });
       
       if (!initData) {
@@ -85,12 +93,14 @@ async function request<T>(
     // Может происходить при повторной отправке формы или при изменении URL
     if (response.status === 301 || response.status === 302) {
       const location = response.headers.get('Location');
-      console.warn('⚠️ Redirect response:', { 
-        status: response.status, 
-        endpoint, 
-        location,
-        method: options.method || 'GET'
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Redirect response:', { 
+          status: response.status, 
+          endpoint, 
+          location,
+          method: options.method || 'GET'
+        });
+      }
       
       // Для POST запросов редирект может означать проблему с повторной отправкой
       if (options.method === 'POST') {
@@ -104,10 +114,12 @@ async function request<T>(
     
     // Для 404 ошибок (Not Found) - обычно означает отсутствие профиля
     if (response.status === 404) {
-      console.log('⚠️ 404 response from API:', endpoint);
       const errorData = await response.json().catch(() => ({ error: 'Not found' }));
       const errorMessage = errorData.error || 'Not found';
-      console.log('⚠️ 404 error details:', { endpoint, errorMessage });
+      // Логируем 404 только в development (они могут быть нормальными)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⚠️ 404 response from API:', { endpoint, errorMessage });
+      }
       // Создаем специальную ошибку с кодом 404 для обработки на клиенте
       const notFoundError = new Error(errorMessage) as any;
       notFoundError.status = 404;

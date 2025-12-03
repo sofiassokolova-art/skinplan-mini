@@ -1336,32 +1336,15 @@ export default function QuizPage() {
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   const currentQuestion = useMemo(() => {
-    // Убираем вызовы addDebugLog из useMemo, чтобы избежать проблем с хуками
-    // Логируем только в консоль
-    console.log('🔍 currentQuestion calculation', {
-      isShowingInitialInfoScreen,
-      pendingInfoScreen: !!pendingInfoScreen,
-      currentQuestionIndex,
-      allQuestionsLength: allQuestions.length,
-      questionnaireId: questionnaire?.id,
-    });
-    
+    // Убираем все console.log из useMemo - они могут вызывать проблемы с рендерингом
     if (isShowingInitialInfoScreen || pendingInfoScreen) {
-      console.log('❌ Question not shown: isShowingInitialInfoScreen or pendingInfoScreen');
       return null;
     }
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
-      const question = allQuestions[currentQuestionIndex];
-      console.log('✅ Current question found', {
-        questionId: question?.id,
-        questionCode: question?.code,
-        questionText: question?.text?.substring(0, 50),
-      });
-      return question;
+      return allQuestions[currentQuestionIndex];
     }
-    console.log('❌ Question not shown: index out of bounds');
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions, questionnaire]);
+  }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков

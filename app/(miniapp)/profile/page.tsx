@@ -153,7 +153,9 @@ export default function PersonalCabinet() {
             });
           } else {
             // План еще не готов - это нормально, не показываем ошибку
-            console.log('Plan not yet generated, will be generated on demand');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Plan not yet generated, will be generated on demand');
+            }
           }
         } catch (planErr: any) {
           // Не показываем ошибки загрузки плана - он может еще не быть сгенерирован
@@ -164,7 +166,9 @@ export default function PersonalCabinet() {
               !planErr?.message?.includes('Plan not found')) {
             console.warn('Unexpected error loading plan:', planErr);
           } else {
-            console.log('Plan not yet generated (this is normal)');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Plan not yet generated (this is normal)');
+            }
           }
         }
       } catch (err: any) {

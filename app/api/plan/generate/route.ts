@@ -10,6 +10,7 @@ import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-pl
 import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
 import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import '@/lib/env-check'; // Валидация env переменных при старте
 import { ApiResponse } from '@/lib/api-response';
 import { PLAN_DAYS_TOTAL, PLAN_WEEKS_TOTAL, PLAN_DAYS_PER_WEEK } from '@/lib/constants';
 import { getBaseStepFromStepCategory, isCleanserStep, isSPFStep } from '@/lib/plan-helpers';

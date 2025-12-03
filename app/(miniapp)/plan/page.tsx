@@ -107,18 +107,24 @@ export default function PlanPage() {
         return;
       }
 
-      console.log('✅ initData available, length:', initData.length);
+      // Логируем только в development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ initData available, length:', initData.length);
+      }
 
       // Загружаем план через API с retry-логикой
       let plan;
       try {
         plan = await api.getPlan() as any;
-        console.log('📋 Plan loaded:', {
-          hasPlan28: !!plan?.plan28,
-          hasWeeks: !!plan?.weeks,
-          weeksCount: plan?.weeks?.length || 0,
-          plan28DaysCount: plan?.plan28?.days?.length || 0,
-        });
+        // Логируем только в development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📋 Plan loaded:', {
+            hasPlan28: !!plan?.plan28,
+            hasWeeks: !!plan?.weeks,
+            weeksCount: plan?.weeks?.length || 0,
+            plan28DaysCount: plan?.plan28?.days?.length || 0,
+          });
+        }
       } catch (planError: any) {
         // Если это 404 (план не найден) - не делаем retry, сразу показываем ошибку
         // Только для ошибок сервера (500, 502, 503) делаем одну быструю попытку
@@ -128,13 +134,17 @@ export default function PlanPage() {
           planError?.status === 503 ||
           planError?.message?.includes('Internal server error')
         )) {
-          console.log(`⏳ Ошибка сервера, повторяем через 500мс... (попытка ${retryCount + 1}/1)`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`⏳ Ошибка сервера, повторяем через 500мс... (попытка ${retryCount + 1}/1)`);
+          }
           await new Promise(resolve => setTimeout(resolve, 500));
           return loadPlan(retryCount + 1);
         }
         
         // Для 404 или других ошибок - сразу показываем, не делаем retry
-        console.log('Plan not found or error:', planError?.message || planError?.status);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Plan not found or error:', planError?.message || planError?.status);
+        }
         plan = null;
       }
       
@@ -147,7 +157,9 @@ export default function PlanPage() {
           hasProfile = !!profileCheck;
         } catch (profileCheckError) {
           // Профиля нет - это нормальная ситуация для нового пользователя
-          console.log('Profile not found - user needs to complete questionnaire');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Profile not found - user needs to complete questionnaire');
+          }
           hasProfile = false;
         }
         
@@ -161,7 +173,9 @@ export default function PlanPage() {
         // Профиль есть, но план не найден в кэше
         // Не делаем retry - сразу показываем ошибку
         // Пользователь может нажать кнопку "Обновить" для генерации
-        console.warn('Plan not found in cache, but profile exists - showing error');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Plan not found in cache, but profile exists - showing error');
+        }
         setError('plan_generating');
         setLoading(false);
         return;
@@ -175,18 +189,24 @@ export default function PlanPage() {
       } catch (profileError: any) {
         // Если профиль не найден, но план есть - это нормально, продолжаем с план28
         // Профиль нужен только для старого формата плана
-        console.warn('Could not load profile, but plan exists - continuing with plan only');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Could not load profile, but plan exists - continuing with plan only');
+        }
         profile = null;
       }
       
       // Если план есть в новом формате plan28, можем продолжать без профиля
       if (plan.plan28) {
-        console.log('✅ Using plan28 format, profile not required');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Using plan28 format, profile not required');
+        }
         // Продолжаем дальше без проверки профиля
       } else if (!profile) {
         // Для старого формата нужен профиль
         if (retryCount < 3) {
-          console.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          }
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
@@ -203,7 +223,9 @@ export default function PlanPage() {
           item.product?.id || item.productId
         ).filter((id: any): id is number => typeof id === 'number');
       } catch (err) {
-        console.warn('Could not load wishlist:', err);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Could not load wishlist:', err);
+        }
       }
 
       // Загружаем прогресс плана из БД (синхронизация между устройствами)
@@ -235,7 +257,9 @@ export default function PlanPage() {
       } catch (progressError: any) {
         // Если ошибка авторизации — это означает, что initData не валиден,
         // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
-        console.warn('Could not load plan progress, using defaults:', progressError);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Could not load plan progress, using defaults:', progressError);
+        }
       }
 
       // Обрабатываем данные для передачи в компонент
@@ -280,9 +304,11 @@ export default function PlanPage() {
       let plan28 = plan.plan28 as Plan28 | undefined;
       
       if (!plan28) {
-        console.warn('⚠️ plan28 not found in plan response, falling back to old format');
-        console.warn('Plan keys:', Object.keys(plan || {}));
-        console.warn('⚠️ NOTE: Plan needs to be regenerated to use new format. Old format will be used.');
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ plan28 not found in plan response, falling back to old format');
+          console.warn('Plan keys:', Object.keys(plan || {}));
+          console.warn('⚠️ NOTE: Plan needs to be regenerated to use new format. Old format will be used.');
+        }
       }
       
       // Создаем Map продуктов для быстрого доступа
@@ -296,7 +322,9 @@ export default function PlanPage() {
       }>();
       
       if (plan28) {
-        console.log('✅ Using new plan28 format with', plan28.days?.length || 0, 'days');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Using new plan28 format with', plan28.days?.length || 0, 'days');
+        }
         // Собираем все productId из plan28
         const allProductIds = new Set<number>();
         plan28.days.forEach(day => {
@@ -344,7 +372,9 @@ export default function PlanPage() {
             }
           }
         } catch (err) {
-          console.warn('Could not load products from batch endpoint, using plan.products:', err);
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Could not load products from batch endpoint, using plan.products:', err);
+          }
           // Fallback на продукты из плана
           if (plan.products && Array.isArray(plan.products)) {
             plan.products.forEach((p: any) => {
@@ -442,7 +472,9 @@ export default function PlanPage() {
         err?.status === 502 ||
         err?.status === 503
       )) {
-        console.log(`⏳ Ошибка сервера, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`⏳ Ошибка сервера, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+        }
         await new Promise(resolve => setTimeout(resolve, 2000));
         return loadPlan(retryCount + 1);
       }
@@ -588,9 +620,13 @@ export default function PlanPage() {
               setLoading(true);
               try {
                 // Явно генерируем план
-                console.log('🔄 User requested plan generation...');
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('🔄 User requested plan generation...');
+                }
                 const plan = await api.generatePlan() as any;
-                console.log('✅ Plan generated successfully');
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('✅ Plan generated successfully');
+                }
                 // Перезагружаем план после генерации
                 await loadPlan(0);
               } catch (generateError: any) {
