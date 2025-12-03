@@ -603,7 +603,18 @@ export default function QuizPage() {
     
     // Фильтруем вопросы на основе ответов
     // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
+    // При повторном прохождении исключаем вопросы про пол и возраст
     const allQuestions = allQuestionsRaw.filter((question) => {
+      // При повторном прохождении исключаем вопросы про пол и возраст
+      if (isRetakingQuiz && !showRetakeScreen) {
+        if (question.code === 'gender' || question.code === 'GENDER' || 
+            question.code === 'age' || question.code === 'AGE' ||
+            question.text?.toLowerCase().includes('ваш пол') ||
+            question.text?.toLowerCase().includes('сколько вам лет')) {
+          return false;
+        }
+      }
+      
       // Проверяем, является ли это вопросом про беременность/кормление
       const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                   question.code === 'pregnancy' ||
@@ -615,20 +626,20 @@ export default function QuizPage() {
       }
       
       // Для вопроса про беременность проверяем пол
-      // Ищем ответ на вопрос о поле (gender)
+      // Ищем ответ на вопрос о поле (gender) - проверяем как текущие ответы, так и сохраненные
       let genderValue: string | undefined;
       let genderQuestion: Question | undefined;
       
       for (const q of allQuestionsRaw) {
-        if (q.code === 'gender') {
+        if (q.code === 'gender' || q.code === 'GENDER') {
           genderQuestion = q;
+          // Проверяем текущие ответы (могут быть еще не загружены при повторном прохождении)
           if (answers[q.id]) {
             const answerValue = Array.isArray(answers[q.id]) 
               ? (answers[q.id] as string[])[0] 
               : (answers[q.id] as string);
             
             // Проверяем, является ли ответ значением опции или ID опции
-            // Сначала проверяем само значение
             genderValue = answerValue;
             
             // Если это не похоже на текст (может быть ID), ищем опцию
@@ -1079,12 +1090,25 @@ export default function QuizPage() {
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
+  // При повторном прохождении исключаем вопросы про пол и возраст (они уже записаны в профиле)
   const allQuestions = useMemo<Question[]>(() => {
     try {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
     
     return allQuestionsRaw.filter((question) => {
         try {
+    // При повторном прохождении исключаем вопросы про пол и возраст
+    // Эти данные уже записаны в профиле пользователя после первой анкеты
+    if (isRetakingQuiz && !showRetakeScreen) {
+      // Исключаем вопросы про пол и возраст при полном перепрохождении
+      if (question.code === 'gender' || question.code === 'GENDER' || 
+          question.code === 'age' || question.code === 'AGE' ||
+          question.text?.toLowerCase().includes('ваш пол') ||
+          question.text?.toLowerCase().includes('сколько вам лет')) {
+        return false;
+      }
+    }
+    
     // Проверяем, является ли это вопросом про беременность/кормление
     const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                 question.code === 'pregnancy' ||
@@ -1167,7 +1191,7 @@ export default function QuizPage() {
       // В случае ошибки возвращаем все вопросы из allQuestionsRaw
       return allQuestionsRaw || [];
     }
-  }, [allQuestionsRaw, answers]);
+  }, [allQuestionsRaw, answers, isRetakingQuiz, showRetakeScreen]);
   
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
@@ -1237,6 +1261,16 @@ export default function QuizPage() {
     
     // Фильтруем вопросы на основе ответов
     const allQuestions = allQuestionsRaw.filter((question) => {
+      // При повторном прохождении исключаем вопросы про пол и возраст
+      if (isRetakingQuiz && !showRetakeScreen) {
+        if (question.code === 'gender' || question.code === 'GENDER' || 
+            question.code === 'age' || question.code === 'AGE' ||
+            question.text?.toLowerCase().includes('ваш пол') ||
+            question.text?.toLowerCase().includes('сколько вам лет')) {
+          return false;
+        }
+      }
+      
       const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                   question.code === 'pregnancy' ||
                                   question.text?.toLowerCase().includes('беременн') ||
@@ -1250,8 +1284,9 @@ export default function QuizPage() {
       let genderQuestion: Question | undefined;
       
       for (const q of allQuestionsRaw) {
-        if (q.code === 'gender') {
+        if (q.code === 'gender' || q.code === 'GENDER') {
           genderQuestion = q;
+          // Проверяем текущие ответы (включая сохраненные при повторном прохождении)
           if (answers[q.id]) {
             const answerValue = Array.isArray(answers[q.id]) 
               ? (answers[q.id] as string[])[0] 
@@ -1636,16 +1671,21 @@ export default function QuizPage() {
         return true;
       }
       
+      // Проверяем пол из сохраненных ответов (включая ответы из savedProgress)
       let genderValue: string | undefined;
       let genderQuestion: Question | undefined;
       
+      // Сначала проверяем savedProgress (может содержать сохраненные ответы)
+      const allAnswers = { ...answers, ...(savedProgress?.answers || {}) };
+      
       for (const q of allQuestionsRaw) {
-        if (q.code === 'gender') {
+        if (q.code === 'gender' || q.code === 'GENDER') {
           genderQuestion = q;
-          if (answers[q.id]) {
-            const answerValue = Array.isArray(answers[q.id]) 
-              ? (answers[q.id] as string[])[0] 
-              : (answers[q.id] as string);
+          // Проверяем как текущие ответы, так и сохраненные
+          if (allAnswers[q.id]) {
+            const answerValue = Array.isArray(allAnswers[q.id]) 
+              ? (allAnswers[q.id] as string[])[0] 
+              : (allAnswers[q.id] as string);
             
             genderValue = answerValue;
             

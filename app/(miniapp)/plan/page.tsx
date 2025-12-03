@@ -360,10 +360,28 @@ export default function PlanPage() {
         }
         
         // Профиль есть, но план не найден в кэше
-        // Не делаем retry - сразу показываем ошибку
-        // Пользователь может нажать кнопку "Обновить" для генерации
+        // Попробуем явно сгенерировать план один раз (возможно, кэш был очищен)
+        if (retryCount === 0) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Plan not found in cache, but profile exists - attempting to generate');
+          }
+          try {
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+              // План успешно сгенерирован, обрабатываем его
+              await processPlanData(generatedPlan);
+              return;
+            }
+          } catch (generateError: any) {
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Failed to generate plan:', generateError);
+            }
+          }
+        }
+        
+        // Если генерация не помогла, показываем экран генерации
         if (process.env.NODE_ENV === 'development') {
-          console.warn('Plan not found in cache, but profile exists - showing error');
+          console.warn('Plan generation failed or returned empty - showing error');
         }
         setError('plan_generating');
         setLoading(false);
