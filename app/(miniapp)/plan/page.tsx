@@ -159,14 +159,24 @@ export default function PlanPage() {
         try {
           const profileCheck = await api.getCurrentProfile() as any;
           if (profileCheck) {
-            // Профиль есть, но план еще не готов - показываем ошибку генерации плана
-            console.warn('Profile exists but plan is empty - plan may be generating');
-            setError('no_profile'); // Показываем сообщение о необходимости пройти анкету (на самом деле план генерируется)
+            // Профиль есть, но план еще не готов - план может генерироваться в фоне
+            // Пробуем еще раз с большей задержкой
+            console.log('Profile exists but plan is empty - trying to trigger plan generation');
+            if (retryCount < 5) {
+              // Ждем дольше для генерации плана (5 секунд)
+              console.log(`⏳ План генерируется, ждем 5 секунд... (попытка ${retryCount + 1}/5)`);
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              return loadPlan(retryCount + 1);
+            }
+            // Если после всех попыток план все еще не готов, показываем ошибку
+            console.warn('Plan generation taking too long, showing error');
+            setError('plan_generating'); // Специальная ошибка для случая генерации плана
             setLoading(false);
             return;
           }
         } catch (profileCheckError) {
           // Профиля нет - это нормальная ситуация для нового пользователя
+          console.log('Profile not found - user needs to complete questionnaire');
         }
         
         setError('no_profile');
@@ -540,6 +550,82 @@ export default function PlanPage() {
           >
             На главную
           </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (error === 'plan_generating') {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '24px',
+          padding: '32px',
+          maxWidth: '500px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid rgba(10, 95, 89, 0.2)',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 24px',
+          }}></div>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#0A5F59',
+            marginBottom: '12px',
+          }}>
+            Генерация плана
+          </h2>
+          <p style={{
+            color: '#475467',
+            marginBottom: '24px',
+            lineHeight: '1.6',
+          }}>
+            План ухода формируется. Это может занять несколько секунд.
+          </p>
+          <button
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              loadPlan(0);
+            }}
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+            }}
+          >
+            Обновить
+          </button>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       </div>
     );

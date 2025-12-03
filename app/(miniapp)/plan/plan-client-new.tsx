@@ -102,7 +102,7 @@ export function PlanPageClientNew({
     comment?: string;
   }) => {
     try {
-      await api.submitFeedback(feedback.isRelevant, feedback.reasons, feedback.comment);
+      await api.submitAnalysisFeedback(feedback);
     } catch (err: any) {
       console.error('Error submitting feedback:', err);
       toast.error(err?.message || 'Не удалось отправить отзыв');
