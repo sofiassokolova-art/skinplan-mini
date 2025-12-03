@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
     if (!TELEGRAM_BOT_TOKEN) {
-      return ApiResponse.error('TELEGRAM_BOT_TOKEN not configured', { status: 500 });
+      return ApiResponse.error('TELEGRAM_BOT_TOKEN not configured', 500);
     }
 
     // Получаем все продукты
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
     if (!telegramResponse.ok || !telegramData.ok) {
       return ApiResponse.error(
         telegramData.description || 'Failed to send file to Telegram',
-        { status: 500 }
+        500
       );
     }
 
