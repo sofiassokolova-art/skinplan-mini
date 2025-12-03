@@ -1,7 +1,10 @@
 // lib/api.ts
 // API клиент для работы с бэкендом
 
+import { handleNetworkError, fetchWithTimeout } from './network-utils';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const DEFAULT_TIMEOUT = 30000; // 30 секунд по умолчанию
 
 async function request<T>(
   endpoint: string,
@@ -54,10 +57,21 @@ async function request<T>(
     }
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  // Используем fetchWithTimeout для обработки таймаутов
+  // Для генерации плана используем больший таймаут
+  const timeout = endpoint.includes('/plan/generate') ? 60000 : DEFAULT_TIMEOUT;
+  
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    }, timeout);
+  } catch (error) {
+    // Обрабатываем сетевые ошибки
+    const errorMessage = handleNetworkError(error);
+    throw new Error(errorMessage);
+  }
 
   if (!response.ok) {
     // Для 401 ошибок добавляем более информативное сообщение

@@ -1239,6 +1239,14 @@ export async function GET(request: NextRequest) {
   const path = '/api/plan/generate';
   let userId: string | undefined;
   
+  // Таймаут для генерации плана (60 секунд)
+  const PLAN_GENERATION_TIMEOUT = 60000;
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error('Plan generation timeout after 60 seconds'));
+    }, PLAN_GENERATION_TIMEOUT);
+  });
+  
   try {
     // Получаем initData из заголовков
     // Получаем initData из заголовков (пробуем оба варианта)
@@ -1296,7 +1304,12 @@ export async function GET(request: NextRequest) {
     }
 
     logger.info('Starting plan generation', { userId });
-    const plan = await generate28DayPlan(userId);
+    
+    // Выполняем генерацию с таймаутом
+    const plan = await Promise.race([
+      generate28DayPlan(userId),
+      timeoutPromise,
+    ]) as Awaited<ReturnType<typeof generate28DayPlan>>;
     
     // Получаем актуальный профиль для сохранения RecommendationSession
     const currentProfile = await prisma.skinProfile.findFirst({

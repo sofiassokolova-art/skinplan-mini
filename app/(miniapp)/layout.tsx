@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
 import PageTransition from '@/components/PageTransition';
+import { NetworkStatus } from '@/components/NetworkStatus';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 
@@ -65,6 +66,7 @@ function LayoutContent({
 
   return (
     <>
+      <NetworkStatus />
       {/* Логотип наверху всех экранов (кроме главной) - как на главной странице */}
       {showLogo && (
         <div style={{

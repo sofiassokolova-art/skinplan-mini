@@ -30,6 +30,7 @@ export async function getUserIdFromInitData(initData: string | null): Promise<st
   const { user } = validation.data;
   
   // Создаем или обновляем пользователя
+  const now = new Date();
   const dbUser = await prisma.user.upsert({
     where: { telegramId: user.id.toString() },
     update: {
@@ -37,7 +38,8 @@ export async function getUserIdFromInitData(initData: string | null): Promise<st
       firstName: user.first_name,
       lastName: user.last_name,
       language: user.language_code || 'ru',
-      updatedAt: new Date(),
+      lastActive: now, // Обновляем lastActive при каждом запросе
+      updatedAt: now,
     },
     create: {
       telegramId: user.id.toString(),
@@ -45,6 +47,7 @@ export async function getUserIdFromInitData(initData: string | null): Promise<st
       firstName: user.first_name,
       lastName: user.last_name,
       language: user.language_code || 'ru',
+      lastActive: now, // Устанавливаем lastActive при создании
     },
   });
 
