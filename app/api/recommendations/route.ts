@@ -1,10 +1,12 @@
 // app/api/recommendations/route.ts
 // Получение рекомендаций продуктов на основе профиля
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { ApiResponse } from '@/lib/api-response';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { getCachedRecommendations, setCachedRecommendations } from '@/lib/cache';
+import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -125,20 +127,14 @@ export async function GET(request: NextRequest) {
                      request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
-      return NextResponse.json(
-        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
-        { status: 401 }
-      );
+      return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
     }
 
     // Получаем userId из initData
     const userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
+      return ApiResponse.unauthorized('Invalid or expired initData');
     }
 
     // Получаем последний профиль пользователя
@@ -148,20 +144,17 @@ export async function GET(request: NextRequest) {
     });
 
     if (!profile) {
-      console.log('⚠️ Profile not found for recommendations, returning 404', { userId });
-      return NextResponse.json(
-        { error: 'No skin profile found. Please complete the questionnaire first.' },
-        { status: 404 }
-      );
+      logger.warn('Profile not found for recommendations', { userId });
+      return ApiResponse.notFound('No skin profile found. Please complete the questionnaire first.', { userId });
     }
     
-    console.log('✅ Profile found for recommendations', { userId, profileId: profile.id, version: profile.version });
+    logger.info('Profile found for recommendations', { userId, profileId: profile.id, version: profile.version });
 
     // Проверяем кэш
     const cachedRecommendations = await getCachedRecommendations(userId, profile.version);
     if (cachedRecommendations) {
-      console.log('✅ Recommendations retrieved from cache');
-      return NextResponse.json(cachedRecommendations);
+      logger.info('Recommendations retrieved from cache', { userId, profileVersion: profile.version });
+      return ApiResponse.success(cachedRecommendations);
     }
 
     // Проверяем, есть ли уже сессия рекомендаций для этого профиля
@@ -365,7 +358,7 @@ export async function GET(request: NextRequest) {
       // Сохраняем в кэш
       await setCachedRecommendations(userId, profile.version, response);
       
-      return NextResponse.json(response);
+      return ApiResponse.success(response);
     }
 
     // Получаем все активные правила, отсортированные по приоритету
@@ -455,11 +448,11 @@ export async function GET(request: NextRequest) {
         // Сохраняем в кэш
         await setCachedRecommendations(userId, profile.version, response);
         
-        return NextResponse.json(response);
+        return ApiResponse.success(response);
       }
       
       // Если даже fallback не сработал, возвращаем пустой ответ, но не ошибку
-      return NextResponse.json({
+      return ApiResponse.success({
         profile_summary: {
           skinType: profile.skinType,
           sensitivityLevel: profile.sensitivityLevel,
@@ -528,17 +521,14 @@ export async function GET(request: NextRequest) {
     // Сохраняем в кэш
     await setCachedRecommendations(userId, profile.version, response);
 
-    return NextResponse.json(response);
-  } catch (error: any) {
-    console.error('❌ Error fetching recommendations:', {
+    return ApiResponse.success(response);
+  } catch (error: unknown) {
+    logger.error('Error fetching recommendations', {
       error,
-      message: error?.message,
-      stack: error?.stack,
-      name: error?.name,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
     });
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return ApiResponse.internalError(error, {});
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 
@@ -8,7 +8,7 @@ interface PageTransitionProps {
   children: ReactNode;
 }
 
-const pageVariants = {
+const pageVariants: Variants = {
   initial: {
     opacity: 0,
     y: 20,
@@ -20,7 +20,7 @@ const pageVariants = {
     scale: 1,
     transition: {
       duration: 0.3,
-      ease: [0.22, 1, 0.36, 1], // Плавная easing кривая как в Grok
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number], // Плавная easing кривая как в Grok (cubic-bezier)
     },
   },
   exit: {
@@ -29,7 +29,7 @@ const pageVariants = {
     scale: 0.98,
     transition: {
       duration: 0.25,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   },
 };

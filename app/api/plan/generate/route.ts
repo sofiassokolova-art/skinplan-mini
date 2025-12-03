@@ -1,7 +1,7 @@
 // app/api/plan/generate/route.ts
 // Генерация 28-дневного плана ухода за кожей (улучшенная версия по методике)
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCachedPlan, setCachedPlan } from '@/lib/cache';
 import { calculateSkinAxes, getDermatologistRecommendations, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
@@ -10,6 +10,9 @@ import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-pl
 import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
 import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { ApiResponse } from '@/lib/api-response';
+import { PLAN_DAYS_TOTAL, PLAN_WEEKS_TOTAL, PLAN_DAYS_PER_WEEK } from '@/lib/constants';
+import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
 
 export const runtime = 'nodejs';
 
@@ -163,22 +166,7 @@ function getFallbackStep(step: string): StepCategory | undefined {
   return undefined;
 }
 
-function getBaseStepFromStepCategory(stepCategory: StepCategory): string {
-  // Обратный маппинг: от StepCategory к базовому step
-  // Например: 'toner_hydrating' -> 'toner', 'serum_hydrating' -> 'serum'
-  if (stepCategory.startsWith('cleanser_')) return 'cleanser';
-  if (stepCategory.startsWith('toner_')) return 'toner';
-  if (stepCategory.startsWith('serum_')) return 'serum';
-  if (stepCategory.startsWith('treatment_')) return 'treatment';
-  if (stepCategory.startsWith('moisturizer_')) return 'moisturizer';
-  if (stepCategory.startsWith('eye_cream_')) return 'moisturizer';
-  if (stepCategory.startsWith('spf_')) return 'spf';
-  if (stepCategory.startsWith('mask_')) return 'mask';
-  if (stepCategory === 'spot_treatment') return 'treatment';
-  if (stepCategory === 'lip_care') return 'moisturizer';
-  if (stepCategory === 'balm_barrier_repair') return 'moisturizer';
-  return stepCategory; // Если не распознан, возвращаем как есть
-}
+// getBaseStepFromStepCategory теперь импортируется из lib/plan-helpers.ts
 
 /**
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
@@ -198,10 +186,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     throw new Error('No skin profile found');
   }
   
-  console.log(`✅ Skin profile found:`, {
+  logger.info('Skin profile found', {
     profileId: profile.id,
     skinType: profile.skinType,
     version: profile.version,
+    userId,
   });
 
   // Получаем ответы пользователя
@@ -803,10 +792,10 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
   
-  for (let weekNum = 1; weekNum <= 4; weekNum++) {
+  for (let weekNum = 1; weekNum <= PLAN_WEEKS_TOTAL; weekNum++) {
     const days: PlanDay[] = [];
     
-    for (let dayNum = 1; dayNum <= 7; dayNum++) {
+    for (let dayNum = 1; dayNum <= PLAN_DAYS_PER_WEEK; dayNum++) {
       const day = (weekNum - 1) * 7 + dayNum;
       
       const templateMorningBase = carePlanTemplate.morning;
@@ -1186,11 +1175,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (!initData) {
-      console.error('❌ No initData provided');
-      return NextResponse.json(
-        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
-        { status: 401 }
-      );
+      logger.error('No initData provided');
+      return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
     }
 
     // Получаем userId из initData (автоматически создает/обновляет пользователя)
@@ -1199,14 +1185,11 @@ export async function GET(request: NextRequest) {
     userId = userIdResult || undefined;
     
     if (!userId) {
-      console.error('❌ Invalid or expired initData');
-      return NextResponse.json(
-        { error: 'Invalid or expired Telegram initData' },
-        { status: 401 }
-      );
+      logger.error('Invalid or expired initData');
+      return ApiResponse.unauthorized('Invalid or expired Telegram initData');
     }
 
-    console.log('✅ User identified from initData, userId:', userId);
+    logger.info('User identified from initData', { userId });
     
     // Получаем профиль для версии
     const profile = await prisma.skinProfile.findFirst({
@@ -1217,10 +1200,7 @@ export async function GET(request: NextRequest) {
 
     if (!profile) {
       console.error(`❌ No skin profile found for user ${userId}`);
-      return NextResponse.json(
-        { error: 'No skin profile found' },
-        { status: 404 }
-      );
+      return ApiResponse.notFound('No skin profile found', { userId });
     }
 
     // Проверяем кэш
@@ -1230,22 +1210,23 @@ export async function GET(request: NextRequest) {
       // Проверяем, что кэшированный план содержит plan28 (новый формат)
       // Если нет - игнорируем кэш и генерируем новый план
       if (cachedPlan.plan28) {
-        console.log('✅ Plan retrieved from cache (with plan28)');
-        return NextResponse.json(cachedPlan);
+        logger.info('Plan retrieved from cache', { userId, profileVersion: profile.version });
+        return ApiResponse.success(cachedPlan);
       } else {
-        console.warn('⚠️ Cached plan found but missing plan28, regenerating...');
+        logger.warn('Cached plan found but missing plan28, regenerating', { userId, profileVersion: profile.version });
         // Продолжаем генерацию нового плана вместо возврата старого кэша
       }
     }
 
-    console.log('📋 Starting plan generation for userId:', userId);
+    logger.info('Starting plan generation', { userId });
     const plan = await generate28DayPlan(userId);
     
     // Сохраняем в кэш
-    console.log('💾 Caching plan...');
+    logger.info('Caching plan', { userId, profileVersion: profile.version });
     await setCachedPlan(userId, profile.version, plan);
     
-    console.log('✅ Plan generated successfully:', {
+    logger.info('Plan generated successfully', {
+      userId,
       weeksCount: plan.weeks?.length || 0,
       productsCount: plan.products?.length || 0,
       profile: plan.profile?.skinType || 'unknown',
@@ -1255,20 +1236,11 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId);
 
-    return NextResponse.json(plan);
-  } catch (error: any) {
+    return ApiResponse.success(plan);
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     logApiError(method, path, error, userId);
     
-    // Не возвращаем детали ошибки в production
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const errorMessage = isDevelopment 
-      ? error.message || 'Internal server error'
-      : 'Internal server error';
-
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return ApiResponse.internalError(error, { userId, method, path, duration });
   }
 }
