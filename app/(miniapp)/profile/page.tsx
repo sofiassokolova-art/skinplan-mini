@@ -135,9 +135,11 @@ export default function PersonalCabinet() {
         setSkinProfile(profile);
         
         // Пробуем загрузить план для вычисления текущего дня
+        // Не показываем ошибки, если план еще не готов - он может генерироваться в фоне
         try {
           const plan = await api.getPlan() as any;
-          if (plan?.weeks) {
+          // Проверяем наличие плана в новом или старом формате
+          if (plan && (plan.weeks || plan.plan28)) {
             const createdAt = new Date(profile.createdAt || Date.now());
             const now = new Date();
             const daysDiff = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -148,9 +150,20 @@ export default function PersonalCabinet() {
               totalDays: 28,
               started: true,
             });
+          } else {
+            // План еще не готов - это нормально, не показываем ошибку
+            console.log('Plan not yet generated, will be generated on demand');
           }
-        } catch (planErr) {
-          console.log('Plan not loaded:', planErr);
+        } catch (planErr: any) {
+          // Не показываем ошибки загрузки плана - он может генерироваться
+          // Показываем только если это не 404 (план просто еще не готов)
+          if (planErr?.status !== 404 && !planErr?.isNotFound && 
+              !planErr?.message?.includes('No skin profile') &&
+              !planErr?.message?.includes('Not found')) {
+            console.warn('Unexpected error loading plan:', planErr);
+          } else {
+            console.log('Plan not yet generated (this is normal)');
+          }
         }
       } catch (err: any) {
         if (!err?.message?.includes('No profile found') && !err?.message?.includes('404')) {

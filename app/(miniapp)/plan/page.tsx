@@ -147,39 +147,37 @@ export default function PlanPage() {
       
       // Проверяем наличие плана (новый формат plan28 или старый weeks)
       if (!plan || (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0))) {
-        if (retryCount < 3) {
-          console.log(`⏳ План пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
-          // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return loadPlan(retryCount + 1);
-        }
-        
-        // Проверяем наличие профиля перед показом ошибки
-        // Если план пустой, но есть профиль - возможно, план еще генерируется
+        // Сначала проверяем, есть ли профиль - если его нет, сразу показываем ошибку
+        let hasProfile = false;
         try {
           const profileCheck = await api.getCurrentProfile() as any;
-          if (profileCheck) {
-            // Профиль есть, но план еще не готов - план может генерироваться в фоне
-            // Пробуем еще раз с большей задержкой
-            console.log('Profile exists but plan is empty - trying to trigger plan generation');
-            if (retryCount < 5) {
-              // Ждем дольше для генерации плана (5 секунд)
-              console.log(`⏳ План генерируется, ждем 5 секунд... (попытка ${retryCount + 1}/5)`);
-              await new Promise(resolve => setTimeout(resolve, 5000));
-              return loadPlan(retryCount + 1);
-            }
-            // Если после всех попыток план все еще не готов, показываем ошибку
-            console.warn('Plan generation taking too long, showing error');
-            setError('plan_generating'); // Специальная ошибка для случая генерации плана
-            setLoading(false);
-            return;
-          }
+          hasProfile = !!profileCheck;
         } catch (profileCheckError) {
           // Профиля нет - это нормальная ситуация для нового пользователя
           console.log('Profile not found - user needs to complete questionnaire');
+          hasProfile = false;
         }
         
-        setError('no_profile');
+        if (!hasProfile) {
+          // Профиля нет - показываем ошибку сразу
+          setError('no_profile');
+          setLoading(false);
+          return;
+        }
+        
+        // Профиль есть - план может быть в процессе генерации или в кэше
+        // Проверяем кэш напрямую через RecommendationSession
+        // Если RecommendationSession есть, значит план был сгенерирован
+        if (retryCount < 2) {
+          console.log(`⏳ План не найден, проверяем RecommendationSession... (попытка ${retryCount + 1}/2)`);
+          // Небольшая задержка перед повтором (план может быть в процессе сохранения)
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return loadPlan(retryCount + 1);
+        }
+        
+        // Если после 2 попыток план все еще не найден, но профиль есть - показываем ошибку генерации
+        console.warn('Plan not found after retries, but profile exists - plan may be generating');
+        setError('plan_generating');
         setLoading(false);
         return;
       }

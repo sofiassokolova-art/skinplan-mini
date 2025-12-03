@@ -53,6 +53,10 @@ export default function BottomNavigation() {
     if (path === '/') {
       return pathname === '/';
     }
+    // Для /cart нужно точное совпадение или /cart/..., но не /cart-new
+    if (path === '/cart') {
+      return pathname === '/cart' || (pathname.startsWith('/cart/') && !pathname.startsWith('/cart-new'));
+    }
     return pathname.startsWith(path);
   };
 
