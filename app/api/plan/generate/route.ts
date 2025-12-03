@@ -1137,17 +1137,29 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps, routineComplexity as any);
     
     // Преобразуем morning steps
+    // ИСПРАВЛЕНО: всегда используем getProductsForStep для plan28, не полагаемся на dayData.products
+    // dayData.products может содержать только cleanser и SPF из-за фильтрации в старом формате
     const morningSteps: DayStep[] = dayData.morning.map((step: string) => {
       const stepCategory = step as StepCategory;
-      const product = dayData.products[step];
       const stepProducts = getProductsForStep(stepCategory);
       const alternatives = stepProducts
         .slice(1, 4) // Берем следующие 3 продукта как альтернативы
         .map(p => String(p.id));
       
+      // Логируем для отладки, если продукт не найден
+      if (stepProducts.length === 0 && process.env.NODE_ENV === 'development') {
+        logger.warn('No products found for step in plan28 morning', {
+          step: stepCategory,
+          dayIndex,
+          userId,
+        });
+      }
+      
+      // Всегда используем продукты из getProductsForStep, который использует productsByStepMap
+      // Это гарантирует, что будут использованы все найденные продукты для каждого шага
       return {
         stepCategory: stepCategory,
-        productId: product ? String(product.id) : (stepProducts.length > 0 ? String(stepProducts[0].id) : null),
+        productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
         alternatives,
       };
     });
@@ -1155,15 +1167,24 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     // Преобразуем evening steps
     const eveningSteps: DayStep[] = dayData.evening.map((step: string) => {
       const stepCategory = step as StepCategory;
-      const product = dayData.products[step];
       const stepProducts = getProductsForStep(stepCategory);
       const alternatives = stepProducts
         .slice(1, 4)
         .map(p => String(p.id));
       
+      // Логируем для отладки, если продукт не найден
+      if (stepProducts.length === 0 && process.env.NODE_ENV === 'development') {
+        logger.warn('No products found for step in plan28 evening', {
+          step: stepCategory,
+          dayIndex,
+          userId,
+        });
+      }
+      
+      // Всегда используем продукты из getProductsForStep
       return {
         stepCategory: stepCategory,
-        productId: product ? String(product.id) : (stepProducts.length > 0 ? String(stepProducts[0].id) : null),
+        productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
         alternatives,
       };
     });
