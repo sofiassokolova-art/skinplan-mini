@@ -75,6 +75,11 @@ export async function GET(request: NextRequest) {
     });
 
     // Параллельно проверяем кэш для всех предыдущих версий
+    // userId гарантированно string здесь (проверено выше)
+    if (!userId) {
+      return ApiResponse.notFound('User ID not found', {});
+    }
+    
     const previousVersions = previousProfiles.filter(p => p.version !== profile.version);
     const cacheChecks = previousVersions.map(prevProfile => getCachedPlan(userId, prevProfile.version));
 
