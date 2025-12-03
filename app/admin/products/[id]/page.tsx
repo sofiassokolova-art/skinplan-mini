@@ -8,6 +8,8 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ChevronDown, Plus, X, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SelectWithSearch } from '@/components/admin/SelectWithSearch';
+import { MultiSelectWithSearch } from '@/components/admin/MultiSelectWithSearch';
 
 interface Brand {
   id: number;
@@ -286,34 +288,29 @@ export default function EditProductPage() {
 
               {/* Бренд */}
           <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Бренд *
-                </label>
                 <div className="space-y-2">
-                  <div className="relative">
-            <select
-              required
-              value={form.brandId}
-                      onChange={(e) => {
-                        if (e.target.value === 'new') {
-                          setShowNewBrandInput(true);
-                        } else {
-                          setForm({ ...form, brandId: e.target.value });
-                          setShowNewBrandInput(false);
-                        }
-                      }}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
-            >
-                      <option value="">Выберите бренд</option>
-              {brands.map((b) => (
-                        <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-                      <option value="new">+ Завести новый бренд</option>
-            </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                  </div>
+                  <SelectWithSearch
+                    label="Бренд"
+                    required
+                    value={form.brandId}
+                    onChange={(value) => {
+                      if (value === 'new') {
+                        setShowNewBrandInput(true);
+                      } else {
+                        setForm({ ...form, brandId: value });
+                        setShowNewBrandInput(false);
+                      }
+                    }}
+                    options={[
+                      ...brands.map((b) => ({
+                        value: String(b.id),
+                        label: b.name,
+                      })),
+                      { value: 'new', label: '+ Завести новый бренд' },
+                    ]}
+                    placeholder="Выберите бренд"
+                    allowClear
+                  />
                   {showNewBrandInput && (
                     <div className="flex gap-2">
                       <input
@@ -490,73 +487,47 @@ export default function EditProductPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Тип кожи */}
           <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-4">Тип кожи</label>
-                <div className="space-y-3">
-              {SKIN_TYPES.map((t) => (
-                    <label key={t.value} className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={form.skinTypes.includes(t.value)}
-                    onChange={(e) => {
-                      setForm((prev) => ({
-                        ...prev,
-                        skinTypes: e.target.checked
-                          ? [...prev.skinTypes, t.value]
-                          : prev.skinTypes.filter((x) => x !== t.value),
-                      }));
-                    }}
-                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                  />
-                      <span className="text-gray-700 group-hover:text-gray-900">{t.label}</span>
-                </label>
-              ))}
-            </div>
+                <MultiSelectWithSearch
+                  label="Тип кожи"
+                  value={form.skinTypes}
+                  onChange={(value) => setForm({ ...form, skinTypes: value })}
+                  options={SKIN_TYPES.map((t) => ({
+                    value: t.value,
+                    label: t.label,
+                  }))}
+                  placeholder="Выберите типы кожи"
+                  maxDisplay={3}
+                />
           </div>
 
               {/* Проблемы кожи */}
           <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-4">Проблемы кожи</label>
-                <div className="space-y-3">
-              {CONCERNS.map((c) => (
-                    <label key={c.value} className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={form.concerns.includes(c.value)}
-                    onChange={(e) => {
-                      setForm((prev) => ({
-                        ...prev,
-                        concerns: e.target.checked
-                          ? [...prev.concerns, c.value]
-                          : prev.concerns.filter((x) => x !== c.value),
-                      }));
-                    }}
-                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                  />
-                      <span className="text-gray-700 group-hover:text-gray-900">{c.label}</span>
-                </label>
-              ))}
-            </div>
+                <MultiSelectWithSearch
+                  label="Проблемы кожи"
+                  value={form.concerns}
+                  onChange={(value) => setForm({ ...form, concerns: value })}
+                  options={CONCERNS.map((c) => ({
+                    value: c.value,
+                    label: c.label,
+                  }))}
+                  placeholder="Выберите проблемы кожи"
+                  maxDisplay={3}
+                />
           </div>
 
               {/* Шаг ухода */}
           <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Шаг ухода *</label>
-                <div className="relative">
-            <select
-              required
-              value={form.step}
-              onChange={(e) => setForm({ ...form, step: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
-            >
-                    <option value="">Выберите шаг</option>
-              {STEPS.map((s) => (
-                      <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                </div>
+                <SelectWithSearch
+                  label="Шаг ухода"
+                  required
+                  value={form.step}
+                  onChange={(value) => setForm({ ...form, step: value })}
+                  options={STEPS.map((s) => ({
+                    value: s.value,
+                    label: s.label,
+                  }))}
+                  placeholder="Выберите шаг"
+                />
           </div>
 
               {/* Активные ингредиенты */}
@@ -577,40 +548,17 @@ export default function EditProductPage() {
 
               {/* Избегать при */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-900 mb-4">Избегать при</label>
-                <div className="flex flex-wrap gap-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.avoidIf.includes('pregnant')}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        avoidIf: e.target.checked
-                          ? [...prev.avoidIf, 'pregnant']
-                          : prev.avoidIf.filter((x) => x !== 'pregnant'),
-                      }))
-                    }
-                      className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                  />
-                    <span className="text-gray-700">Беременность / ГВ</span>
-                </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.avoidIf.includes('retinol_allergy')}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        avoidIf: e.target.checked
-                          ? [...prev.avoidIf, 'retinol_allergy']
-                          : prev.avoidIf.filter((x) => x !== 'retinol_allergy'),
-                      }))
-                    }
-                      className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                  />
-                    <span className="text-gray-700">Аллергия на ретинол / кислоты</span>
-                </label>
+                <MultiSelectWithSearch
+                  label="Избегать при"
+                  value={form.avoidIf}
+                  onChange={(value) => setForm({ ...form, avoidIf: value })}
+                  options={[
+                    { value: 'pregnant', label: 'Беременность / ГВ' },
+                    { value: 'retinol_allergy', label: 'Аллергия на ретинол / кислоты' },
+                  ]}
+                  placeholder="Выберите противопоказания"
+                  maxDisplay={2}
+                />
               </div>
             </div>
 
@@ -655,7 +603,6 @@ export default function EditProductPage() {
                 </div>
               </div>
             </div>
-          </div>
         </form>
       </div>
 

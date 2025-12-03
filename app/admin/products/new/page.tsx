@@ -6,6 +6,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { SelectWithSearch } from '@/components/admin/SelectWithSearch';
+import { MultiSelectWithSearch } from '@/components/admin/MultiSelectWithSearch';
 
 interface Brand {
   id: number;
@@ -188,20 +190,17 @@ export default function NewProductPage() {
           />
         </div>
         <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">Бренд *</label>
-          <select
-            required
-            value={form.brandId}
-            onChange={(e) => setForm({ ...form, brandId: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
-          >
-                <option value="">Выберите бренд</option>
-            {brands.map((b) => (
-                  <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+              <SelectWithSearch
+                label="Бренд"
+                required
+                value={form.brandId}
+                onChange={(value) => setForm({ ...form, brandId: value })}
+                options={brands.map((b) => ({
+                  value: String(b.id),
+                  label: b.name,
+                }))}
+                placeholder="Выберите бренд"
+              />
       </div>
 
         <div>
@@ -360,20 +359,17 @@ export default function NewProductPage() {
         </div>
 
         <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">Шаг ухода *</label>
-            <select
-              required
-              value={form.step}
-              onChange={(e) => setForm({ ...form, step: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-300"
-            >
-                <option value="">Выберите шаг</option>
-              {STEPS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+              <SelectWithSearch
+                label="Шаг ухода"
+                required
+                value={form.step}
+                onChange={(value) => setForm({ ...form, step: value })}
+                options={STEPS.map((s) => ({
+                  value: s.value,
+                  label: s.label,
+                }))}
+                placeholder="Выберите шаг"
+              />
           </div>
 
           <div>
@@ -392,41 +388,17 @@ export default function NewProductPage() {
 
           <div className="md:col-span-2 space-y-4">
         <div>
-                <label className="block text-sm font-medium mb-3 text-gray-700">Избегать при</label>
-                <div className="flex gap-6 bg-gray-50 rounded-xl p-4 border border-gray-200">
-                  <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.avoidIf.includes('pregnant')}
-                    onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    avoidIf: e.target.checked
-                      ? [...prev.avoidIf, 'pregnant']
-                      : prev.avoidIf.filter((x) => x !== 'pregnant'),
-                      }))
-                    }
-                      className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-              />
-                    <span className="text-gray-900">Беременность / ГВ</span>
-            </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.avoidIf.includes('retinol_allergy')}
-                    onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    avoidIf: e.target.checked
-                      ? [...prev.avoidIf, 'retinol_allergy']
-                      : prev.avoidIf.filter((x) => x !== 'retinol_allergy'),
-                      }))
-                    }
-                      className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-              />
-                    <span className="text-gray-900">Аллергия на ретинол / кислоты</span>
-            </label>
-          </div>
+                <MultiSelectWithSearch
+                  label="Избегать при"
+                  value={form.avoidIf}
+                  onChange={(value) => setForm({ ...form, avoidIf: value })}
+                  options={[
+                    { value: 'pregnant', label: 'Беременность / ГВ' },
+                    { value: 'retinol_allergy', label: 'Аллергия на ретинол / кислоты' },
+                  ]}
+                  placeholder="Выберите противопоказания"
+                  maxDisplay={2}
+                />
         </div>
 
               <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4 border border-gray-200">

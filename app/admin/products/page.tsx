@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -17,7 +17,7 @@ import {
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table';
-import { Search, Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, EyeOff, Download, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Product {
@@ -113,6 +113,59 @@ export default function ProductsAdmin() {
                       console.error('Ошибка удаления:', err);
                       alert('Ошибка удаления продукта');
                     }
+  };
+
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    try {
+      setShowExportMenu(false);
+      const token = localStorage.getItem('admin_token');
+      
+      const response = await fetch(`/api/admin/products/export?format=${format}`, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка экспорта');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products-export-${new Date().toISOString().split('T')[0]}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Ошибка экспорта:', err);
+      alert('Ошибка экспорта продуктов');
+    }
   };
 
   const columns = useMemo<ColumnDef<Product>[]>(
@@ -307,17 +360,54 @@ export default function ProductsAdmin() {
             Всего: {products.length} {table.getFilteredRowModel().rows.length !== products.length && `(отфильтровано: ${table.getFilteredRowModel().rows.length})`}
           </p>
           </div>
-        <Link
-          href="/admin/products/new"
-          className={cn(
-            'px-6 py-3 bg-black text-white rounded-2xl font-bold hover:bg-gray-800',
-            'hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300',
-            'flex items-center gap-2'
-          )}
-        >
-          <Plus size={20} />
-          Добавить продукт
-        </Link>
+        <div className="flex items-center gap-3">
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className={cn(
+                'px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl font-semibold hover:bg-gray-200',
+                'transition-all duration-200 flex items-center gap-2'
+              )}
+            >
+              <Download size={18} />
+              Экспорт
+              <ChevronDown
+                size={16}
+                className={cn(
+                  'transition-transform',
+                  showExportMenu && 'transform rotate-180'
+                )}
+              />
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
+                <button
+                  onClick={() => handleExport('csv')}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-t-lg"
+                >
+                  📊 Экспорт в CSV
+                </button>
+                <button
+                  onClick={() => handleExport('json')}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100"
+                >
+                  📄 Экспорт в JSON
+                </button>
+              </div>
+            )}
+          </div>
+          <Link
+            href="/admin/products/new"
+            className={cn(
+              'px-6 py-3 bg-black text-white rounded-2xl font-bold hover:bg-gray-800',
+              'hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300',
+              'flex items-center gap-2'
+            )}
+          >
+            <Plus size={20} />
+            Добавить продукт
+          </Link>
+        </div>
       </div>
 
       {error && (
