@@ -137,78 +137,37 @@ export default function ProductsAdmin() {
     };
   }, [showExportMenu]);
 
+  const [exportLoading, setExportLoading] = useState(false);
+
   const handleExport = async (format: 'csv' | 'json') => {
     try {
       setShowExportMenu(false);
+      setExportLoading(true);
       const token = localStorage.getItem('admin_token');
       
-      // Создаем URL с токеном в query параметре (временное решение)
-      // Или используем fetch с сохранением в blob
-      const url = `/api/admin/products/export?format=${format}&_t=${Date.now()}`;
-      
-      // Альтернативный подход: использовать window.location напрямую
-      // Но это не сработает с авторизацией через заголовки
-      // Поэтому используем fetch + blob
-      
-      const response = await fetch(url, {
+      // Отправляем запрос на экспорт в Telegram
+      const response = await fetch('/api/admin/products/export', {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
+        body: JSON.stringify({ format }),
       });
 
       if (!response.ok) {
-        throw new Error('Ошибка экспорта');
+        const error = await response.json();
+        throw new Error(error.error || 'Ошибка экспорта');
       }
 
-      // Получаем имя файла
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `products-export-${new Date().toISOString().split('T')[0]}.${format}`;
-      
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
-        // Проверяем UTF-8 формат
-        const utf8Match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
-        if (utf8Match) {
-          try {
-            filename = decodeURIComponent(utf8Match[1]);
-          } catch {
-            // Игнорируем ошибку декодирования
-          }
-        }
-      }
-
-      // Создаем blob из ответа
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      
-      // Создаем видимую ссылку для скачивания
-      const downloadLink = document.createElement('a');
-      downloadLink.href = blobUrl;
-      downloadLink.download = filename;
-      downloadLink.style.position = 'fixed';
-      downloadLink.style.top = '-9999px';
-      downloadLink.style.left = '-9999px';
-      
-      // Добавляем в DOM
-      document.body.appendChild(downloadLink);
-      
-      // Имитируем клик пользователя
-      downloadLink.click();
-      
-      // Удаляем ссылку и освобождаем память после задержки
-      setTimeout(() => {
-        if (downloadLink.parentNode) {
-          document.body.removeChild(downloadLink);
-        }
-        window.URL.revokeObjectURL(blobUrl);
-      }, 1000);
+      const data = await response.json();
+      alert(`✅ ${data.message || 'Файл успешно отправлен в Telegram!'}`);
     } catch (err) {
       console.error('Ошибка экспорта:', err);
-      alert('Ошибка экспорта продуктов: ' + (err instanceof Error ? err.message : 'Неизвестная ошибка'));
+      alert('❌ Ошибка экспорта: ' + (err instanceof Error ? err.message : 'Неизвестная ошибка'));
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -427,15 +386,17 @@ export default function ProductsAdmin() {
               <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
                 <button
                   onClick={() => handleExport('csv')}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-t-lg"
+                  disabled={exportLoading}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-t-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  📊 Экспорт в CSV
+                  {exportLoading ? '⏳ Отправка...' : '📊 Экспорт в CSV'}
                 </button>
                 <button
                   onClick={() => handleExport('json')}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100"
+                  disabled={exportLoading}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  📄 Экспорт в JSON
+                  {exportLoading ? '⏳ Отправка...' : '📄 Экспорт в JSON'}
                 </button>
               </div>
             )}
