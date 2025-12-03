@@ -67,21 +67,17 @@ export async function GET(request: NextRequest) {
     });
     
     // Проверяем только последние 2 версии профиля (вместо 5)
+    // userId гарантированно string здесь (проверено выше на строке 33-36)
     const previousProfiles = await prisma.skinProfile.findMany({
-      where: { userId },
+      where: { userId: userId as string }, // TypeScript не видит проверку выше, поэтому используем type assertion
       orderBy: { createdAt: 'desc' },
       take: 2, // Уменьшено с 5 до 2 для ускорения
       select: { version: true },
     });
 
     // Параллельно проверяем кэш для всех предыдущих версий
-    // userId гарантированно string здесь (проверено выше)
-    if (!userId) {
-      return ApiResponse.notFound('User ID not found', {});
-    }
-    
     const previousVersions = previousProfiles.filter(p => p.version !== profile.version);
-    const cacheChecks = previousVersions.map(prevProfile => getCachedPlan(userId, prevProfile.version));
+    const cacheChecks = previousVersions.map(prevProfile => getCachedPlan(userId as string, prevProfile.version));
 
     const cachedPlans = await Promise.all(cacheChecks);
     

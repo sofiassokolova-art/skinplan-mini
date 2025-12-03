@@ -75,6 +75,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "@tanstack/react-query-devtools": "^5.91.1",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.7",
