@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Проверяем кэш - только кэш, без генерации
-    logger.debug('Checking cache for plan (no generation)', { userId });
+    logger.debug('Checking cache for plan (no generation)', { userId, profileVersion: profile.version });
     const cachedPlan = await getCachedPlan(userId, profile.version);
     
     if (cachedPlan && cachedPlan.plan28) {
@@ -58,9 +58,38 @@ export async function GET(request: NextRequest) {
       return ApiResponse.success(cachedPlan);
     }
 
-    // План не найден в кэше - возвращаем 404
-    // НЕ генерируем план автоматически - это должно быть явным действием
-    logger.info('Plan not found in cache', { userId, profileVersion: profile.version });
+    // Если план не найден в кэше, проверяем старые версии профиля (план мог быть сохранен под другой версией)
+    // Это может произойти, если профиль был обновлен, но план еще не регенерирован
+    logger.debug('Plan not found in cache for current version, checking previous versions', { 
+      userId, 
+      currentVersion: profile.version 
+    });
+    
+    // Проверяем предыдущие версии профиля (максимум последние 5 версий)
+    const previousProfiles = await prisma.skinProfile.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { version: true },
+    });
+
+    for (const prevProfile of previousProfiles) {
+      if (prevProfile.version === profile.version) continue; // Уже проверили
+      
+      const prevCachedPlan = await getCachedPlan(userId, prevProfile.version);
+      if (prevCachedPlan && prevCachedPlan.plan28) {
+        logger.info('Plan found in cache for previous profile version', { 
+          userId, 
+          profileVersion: prevProfile.version,
+          currentVersion: profile.version
+        });
+        // Возвращаем план из старой версии - он все еще валиден
+        return ApiResponse.success(prevCachedPlan);
+      }
+    }
+
+    // План не найден ни в текущем, ни в предыдущих версиях - возвращаем 404
+    logger.info('Plan not found in cache for any version', { userId, profileVersion: profile.version });
     return ApiResponse.notFound('Plan not found. Please generate a plan first.', { userId });
     
   } catch (error: unknown) {
