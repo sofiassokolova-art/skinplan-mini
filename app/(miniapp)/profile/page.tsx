@@ -135,7 +135,8 @@ export default function PersonalCabinet() {
         setSkinProfile(profile);
         
         // Пробуем загрузить план для вычисления текущего дня
-        // Не показываем ошибки, если план еще не готов - он может генерироваться в фоне
+        // Используем getPlan() который НЕ триггерит генерацию (только проверяет кэш)
+        // Не показываем ошибки, если план еще не готов
         try {
           const plan = await api.getPlan() as any;
           // Проверяем наличие плана в новом или старом формате
@@ -155,11 +156,12 @@ export default function PersonalCabinet() {
             console.log('Plan not yet generated, will be generated on demand');
           }
         } catch (planErr: any) {
-          // Не показываем ошибки загрузки плана - он может генерироваться
-          // Показываем только если это не 404 (план просто еще не готов)
+          // Не показываем ошибки загрузки плана - он может еще не быть сгенерирован
+          // getPlan() теперь НЕ триггерит генерацию, поэтому 404 - это нормально
           if (planErr?.status !== 404 && !planErr?.isNotFound && 
               !planErr?.message?.includes('No skin profile') &&
-              !planErr?.message?.includes('Not found')) {
+              !planErr?.message?.includes('Not found') &&
+              !planErr?.message?.includes('Plan not found')) {
             console.warn('Unexpected error loading plan:', planErr);
           } else {
             console.log('Plan not yet generated (this is normal)');

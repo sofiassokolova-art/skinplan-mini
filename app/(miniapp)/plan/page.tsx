@@ -175,11 +175,25 @@ export default function PlanPage() {
           return loadPlan(retryCount + 1);
         }
         
-        // Если после 2 попыток план все еще не найден, но профиль есть - показываем ошибку генерации
-        console.warn('Plan not found after retries, but profile exists - plan may be generating');
-        setError('plan_generating');
-        setLoading(false);
-        return;
+        // Если после 2 попыток план все еще не найден, но профиль есть - пытаемся явно сгенерировать план
+        console.warn('Plan not found after retries, but profile exists - generating plan explicitly');
+        try {
+          // Явно запускаем генерацию плана
+          console.log('🔄 Explicitly generating plan...');
+          plan = await api.generatePlan() as any;
+          console.log('✅ Plan generated successfully');
+          // Проверяем, что план действительно получен
+          if (!plan || (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0))) {
+            throw new Error('Plan generation returned empty plan');
+          }
+          // Продолжаем обработку плана ниже (не прерываем выполнение)
+        } catch (generateError: any) {
+          console.error('❌ Failed to generate plan:', generateError);
+          // Если генерация не удалась, показываем ошибку
+          setError('plan_generating');
+          setLoading(false);
+          return;
+        }
       }
 
       // Получаем профиль для scores и другой информации

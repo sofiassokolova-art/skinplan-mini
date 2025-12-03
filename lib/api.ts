@@ -183,8 +183,13 @@ export const api = {
     return request('/recommendations');
   },
 
-  // План ухода (28 дней)
+  // План ухода (28 дней) - получает план БЕЗ генерации (только из кэша)
   async getPlan() {
+    return request('/plan');
+  },
+
+  // Генерация плана ухода (28 дней) - явная генерация
+  async generatePlan() {
     return request('/plan/generate');
   },
 
