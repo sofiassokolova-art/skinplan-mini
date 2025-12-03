@@ -146,6 +146,12 @@ export function DayView({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {dayPlan.morning.map((step, index) => {
+            // Защита от undefined products
+            if (!products) {
+              console.error('DayView: products Map is undefined');
+              return null;
+            }
+            
             let product = step.productId ? products.get(Number(step.productId)) : null;
             
             // Если продукт не найден, пробуем альтернативы
@@ -215,6 +221,12 @@ export function DayView({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {dayPlan.evening.map((step, index) => {
+            // Защита от undefined products
+            if (!products) {
+              console.error('DayView: products Map is undefined');
+              return null;
+            }
+            
             let product = step.productId ? products.get(Number(step.productId)) : null;
             
             // Если продукт не найден, пробуем альтернативы
@@ -269,6 +281,12 @@ export function DayView({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {dayPlan.weekly.map((step, index) => {
+              // Защита от undefined products
+              if (!products) {
+                console.error('DayView: products Map is undefined');
+                return null;
+              }
+              
               let product = step.productId ? products.get(Number(step.productId)) : null;
               
               // Если продукт не найден, пробуем альтернативы

@@ -42,11 +42,13 @@ interface PlanPageClientNewProps {
 
 export function PlanPageClientNew({
   plan28,
-  products,
+  products: productsProp,
   wishlist,
   currentDay: initialCurrentDay,
   completedDays: initialCompletedDays,
 }: PlanPageClientNewProps) {
+  // Защита от undefined products
+  const products = productsProp || new Map();
   const router = useRouter();
   const [selectedDay, setSelectedDay] = useState(initialCurrentDay);
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set(wishlist));

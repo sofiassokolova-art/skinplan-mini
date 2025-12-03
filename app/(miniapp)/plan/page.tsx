@@ -203,41 +203,91 @@ export default function PlanPage() {
       // Используем новый формат plan28, если доступен
       let plan28 = plan.plan28 as Plan28 | undefined;
       
-      if (!plan28) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ plan28 not found in plan response, falling back to old format');
-        }
-      }
-      
       // Создаем Map продуктов для быстрого доступа
       const productsMap = new Map<number, {
         id: number;
         name: string;
         brand: { name: string };
-        price: number;
-        volume: string | null;
-        imageUrl: string | null;
-        step: string;
-        firstIntroducedDay: number;
+        price?: number;
+        imageUrl?: string | null;
+        description?: string;
       }>();
 
-      (plan.products || []).forEach((p: any) => {
-        productsMap.set(p.id, {
-          id: p.id,
-          name: p.name,
-          brand: { name: p.brand || 'Unknown' },
-          price: p.price || 0,
-          volume: p.volume || null,
-          imageUrl: p.imageUrl || null,
-          step: p.category || p.step || 'moisturizer',
-          firstIntroducedDay: 1,
+      if (plan28 && plan28.days) {
+        // Для нового формата plan28 собираем все productId из всех дней
+        const allProductIds = new Set<number>();
+        plan28.days.forEach(day => {
+          day.morning.forEach(step => {
+            if (step.productId) allProductIds.add(Number(step.productId));
+            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
+          });
+          day.evening.forEach(step => {
+            if (step.productId) allProductIds.add(Number(step.productId));
+            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
+          });
+          day.weekly.forEach(step => {
+            if (step.productId) allProductIds.add(Number(step.productId));
+            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
+          });
         });
-      });
+
+        // Загружаем продукты из API
+        if (allProductIds.size > 0 && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+          try {
+            const productIdsArray = Array.from(allProductIds);
+            const productsResponse = await fetch('/api/products/batch', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+              },
+              body: JSON.stringify({ productIds: productIdsArray }),
+            });
+
+            if (productsResponse.ok) {
+              const productsData = await productsResponse.json();
+              if (productsData.products && Array.isArray(productsData.products)) {
+                productsData.products.forEach((p: any) => {
+                  productsMap.set(p.id, {
+                    id: p.id,
+                    name: p.name,
+                    brand: { name: p.brand?.name || p.brand || 'Unknown' },
+                    price: p.price,
+                    imageUrl: p.imageUrl || null,
+                    description: p.description || p.descriptionUser || null,
+                  });
+                });
+              }
+            }
+          } catch (err) {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('Could not load products from batch endpoint:', err);
+            }
+          }
+        }
+      } else {
+        // Для старого формата используем plan.products
+        if (!plan28 && process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ plan28 not found in plan response, falling back to old format');
+        }
+
+        (plan.products || []).forEach((p: any) => {
+          productsMap.set(p.id, {
+            id: p.id,
+            name: p.name,
+            brand: { name: p.brand?.name || p.brand || 'Unknown' },
+            price: p.price,
+            imageUrl: p.imageUrl || null,
+            description: p.description || p.descriptionUser || null,
+          });
+        });
+      }
 
       setPlanData({
         plan28: plan28 || undefined,
         weeks: plan.weeks || [],
-        products: productsMap,
+        productsMap: productsMap, // Исправлено: используем productsMap вместо products
+        products: productsMap, // Также сохраняем в products для обратной совместимости
         profile: profile || undefined,
         scores,
         wishlist,
@@ -682,10 +732,35 @@ export default function PlanPage() {
 
   // Используем новый компонент, если есть plan28
   if ((planData as any).plan28) {
+    // Проверяем, что productsMap существует, иначе создаем пустой Map
+    const productsMap = (planData as any).productsMap || planData.products || new Map();
+    
+    // Проверяем, что это действительно Map
+    if (!(productsMap instanceof Map)) {
+      console.error('productsMap is not a Map instance:', typeof productsMap);
+      // Если это не Map, пытаемся создать Map из объекта
+      const mapFromObject = new Map();
+      if (productsMap && typeof productsMap === 'object') {
+        Object.entries(productsMap).forEach(([key, value]) => {
+          mapFromObject.set(Number(key), value);
+        });
+      }
+      
+      return (
+        <PlanPageClientNew
+          plan28={(planData as any).plan28}
+          products={mapFromObject}
+          wishlist={planData.wishlist}
+          currentDay={planData.currentDay}
+          completedDays={planData.progress?.completedDays || []}
+        />
+      );
+    }
+    
     return (
       <PlanPageClientNew
         plan28={(planData as any).plan28}
-        products={(planData as any).productsMap}
+        products={productsMap}
         wishlist={planData.wishlist}
         currentDay={planData.currentDay}
         completedDays={planData.progress?.completedDays || []}
