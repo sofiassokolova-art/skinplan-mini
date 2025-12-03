@@ -405,67 +405,74 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     });
   }
 
-  // Если используем продукты из RecommendationSession, пропускаем фильтрацию
-  // (они уже прошли фильтрацию при создании сессии)
-  // Иначе фильтруем продукты по критериям, СИНХРОНИЗИРОВАННЫМ с полями админки:
-  // - step (категория шага)
-  // - skinTypes (для каких типов кожи подходит)
-  // - concerns (активы / ключевые свойства)
-  // - avoidIf (беременность, аллергия на ретинол и т.п.)
-  const filteredProducts = recommendationProducts.length > 0 
-    ? allProducts // Используем продукты из RecommendationSession без дополнительной фильтрации
-    : allProducts.filter(product => {
-    const productPrice = (product as any).price as number | null | undefined;
-    const productSkinTypes: string[] = product.skinTypes || [];
-    const productConcerns: string[] = product.concerns || [];
-    const productAvoidIf: string[] = product.avoidIf || [];
+  // ВАЖНО: Если используем продукты из RecommendationSession, используем их ВСЕ без фильтрации
+  // Это гарантирует синхронизацию с главной страницей
+  // Продукты из RecommendationSession уже прошли все проверки и фильтрацию
+  let filteredProducts: any[];
+  
+  if (recommendationProducts.length > 0) {
+    // Используем все продукты из RecommendationSession - они уже отфильтрованы и синхронизированы с главной
+    filteredProducts = recommendationProducts;
+    logger.info('Using all products from RecommendationSession (no additional filtering)', {
+      count: filteredProducts.length,
+      userId
+    });
+  } else {
+    // Если нет RecommendationSession, фильтруем продукты по критериям
+    logger.info('No RecommendationSession - filtering products from scratch', { userId });
+    filteredProducts = allProducts.filter((product: any) => {
+      const productPrice = (product as any).price as number | null | undefined;
+      const productSkinTypes: string[] = product.skinTypes || [];
+      const productConcerns: string[] = product.concerns || [];
+      const productAvoidIf: string[] = product.avoidIf || [];
 
-    // SPF универсален для всех типов кожи - пропускаем проверку типа кожи
-    const isSPF = product.step === 'spf' || product.category === 'spf';
-    
-    // Проверка типа кожи (кроме SPF)
-    const skinTypeMatches =
-      isSPF ||
-      productSkinTypes.length === 0 ||
-      (profileClassification.skinType && productSkinTypes.includes(profileClassification.skinType));
+      // SPF универсален для всех типов кожи - пропускаем проверку типа кожи
+      const isSPF = product.step === 'spf' || product.category === 'spf';
+      
+      // Проверка типа кожи (кроме SPF)
+      const skinTypeMatches =
+        isSPF ||
+        productSkinTypes.length === 0 ||
+        (profileClassification.skinType && productSkinTypes.includes(profileClassification.skinType));
 
-    // Проверка бюджета (если указан)
-    const budgetMatches =
-      !profileClassification.budget ||
-      profileClassification.budget === 'любой' ||
-      !productPrice ||
-      getBudgetTier(productPrice) === profileClassification.budget;
+      // Проверка бюджета (если указан)
+      const budgetMatches =
+        !profileClassification.budget ||
+        profileClassification.budget === 'любой' ||
+        !productPrice ||
+        getBudgetTier(productPrice) === profileClassification.budget;
 
-    // Проверка исключенных ингредиентов (по admin-полю concerns + ответу exclude_ingredients)
-    const noExcludedIngredients = !containsExcludedIngredients(
-      productConcerns,
-      profileClassification.exclude || []
-    );
+      // Проверка исключенных ингредиентов (по admin-полю concerns + ответу exclude_ingredients)
+      const noExcludedIngredients = !containsExcludedIngredients(
+        productConcerns,
+        profileClassification.exclude || []
+      );
 
-    // Явные противопоказания из админки:
-    // - avoidIf: ['pregnant', 'retinol_allergy', ...]
-    // - беременность: profileClassification.pregnant (из профиля / ответов)
-    const safeForPregnancy =
-      !profileClassification.pregnant || !productAvoidIf.includes('pregnant');
+      // Явные противопоказания из админки:
+      // - avoidIf: ['pregnant', 'retinol_allergy', ...]
+      // - беременность: profileClassification.pregnant (из профиля / ответов)
+      const safeForPregnancy =
+        !profileClassification.pregnant || !productAvoidIf.includes('pregnant');
 
-    // Аллергия на ретинол / сильные кислоты:
-    // если в ответах пользователь исключил ретинол, то избегаем продуктов с avoidIf 'retinol_allergy'
-    const hasRetinolContraInAnswers = Array.isArray(profileClassification.exclude) && profileClassification.exclude.length > 0
-      ? profileClassification.exclude.some((ex: string) =>
-          ex.toLowerCase().includes('ретинол') || ex.toLowerCase().includes('retinol')
-        )
-      : false;
-    const safeForRetinolAllergy =
-      !hasRetinolContraInAnswers || !productAvoidIf.includes('retinol_allergy');
+      // Аллергия на ретинол / сильные кислоты:
+      // если в ответах пользователь исключил ретинол, то избегаем продуктов с avoidIf 'retinol_allergy'
+      const hasRetinolContraInAnswers = Array.isArray(profileClassification.exclude) && profileClassification.exclude.length > 0
+        ? profileClassification.exclude.some((ex: string) =>
+            ex.toLowerCase().includes('ретинол') || ex.toLowerCase().includes('retinol')
+          )
+        : false;
+      const safeForRetinolAllergy =
+        !hasRetinolContraInAnswers || !productAvoidIf.includes('retinol_allergy');
 
-    return (
-      skinTypeMatches &&
-      budgetMatches &&
-      noExcludedIngredients &&
-      safeForPregnancy &&
-      safeForRetinolAllergy
-    );
-  });
+      return (
+        skinTypeMatches &&
+        budgetMatches &&
+        noExcludedIngredients &&
+        safeForPregnancy &&
+        safeForRetinolAllergy
+      );
+    });
+  }
 
   // Сортируем продукты по релевантности (приоритет основному фокусу, затем isHero и priority)
   const sortedProducts = filteredProducts.sort((a, b) => {
@@ -485,11 +492,26 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     return bPriority - aPriority;
   });
 
-  // Если есть продукты из RecommendationSession, используем их все (не ограничиваем)
+  // ВАЖНО: Если используем продукты из RecommendationSession, используем их ВСЕ без ограничений
+  // Это гарантирует, что план будет содержать те же продукты, что и главная страница
   // Иначе ограничиваем количество продуктов (3 утро + 3 вечер = максимум 6)
-  let selectedProducts = recommendationProducts.length > 0 
-    ? sortedProducts // Используем все продукты из RecommendationSession
-    : sortedProducts.slice(0, 6); // Ограничиваем только если генерируем с нуля
+  let selectedProducts: any[];
+  
+  if (recommendationProducts.length > 0) {
+    // Используем ВСЕ продукты из RecommendationSession - не ограничиваем количество
+    selectedProducts = sortedProducts;
+    logger.info('Using ALL products from RecommendationSession for plan (no limit)', {
+      count: selectedProducts.length,
+      userId
+    });
+  } else {
+    // Ограничиваем только если генерируем с нуля
+    selectedProducts = sortedProducts.slice(0, 6);
+    logger.info('Limited products count (generating from scratch)', {
+      count: selectedProducts.length,
+      userId
+    });
+  }
   
   // Автозамена продуктов с неактивными брендами
   // Проверяем, перепроходил ли пользователь анкету (если нет - не заменяем)
@@ -603,6 +625,86 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     }
   };
 
+  // Функция для преобразования старого формата step/category в StepCategory
+  const mapStepToStepCategory = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
+    const stepStr = (step || category || '').toLowerCase();
+    const categories: StepCategory[] = [];
+    
+    // Маппинг старого формата в StepCategory
+    if (stepStr.startsWith('cleanser_gentle') || (stepStr === 'cleanser' && category === 'cleanser')) {
+      categories.push('cleanser_gentle');
+    } else if (stepStr.startsWith('cleanser_balancing') || stepStr.includes('balancing')) {
+      categories.push('cleanser_balancing');
+    } else if (stepStr.startsWith('cleanser_deep') || stepStr.includes('deep')) {
+      categories.push('cleanser_deep');
+    } else if (stepStr.startsWith('cleanser')) {
+      categories.push('cleanser_gentle'); // fallback
+    }
+    
+    if (stepStr.startsWith('toner_hydrating') || (stepStr === 'toner' && !stepStr.includes('soothing'))) {
+      categories.push('toner_hydrating');
+    } else if (stepStr.startsWith('toner_soothing') || stepStr.includes('soothing')) {
+      categories.push('toner_soothing');
+    } else if (stepStr === 'toner') {
+      categories.push('toner_hydrating'); // fallback
+    }
+    
+    if (stepStr.startsWith('serum_hydrating') || stepStr.includes('hydrating')) {
+      categories.push('serum_hydrating');
+    } else if (stepStr.startsWith('serum_niacinamide') || stepStr.includes('niacinamide')) {
+      categories.push('serum_niacinamide');
+    } else if (stepStr.startsWith('serum_vitc') || stepStr.includes('vitamin c') || stepStr.includes('vitc')) {
+      categories.push('serum_vitc');
+    } else if (stepStr.startsWith('serum_anti_redness') || stepStr.includes('anti-redness')) {
+      categories.push('serum_anti_redness');
+    } else if (stepStr.startsWith('serum_brightening') || stepStr.includes('brightening')) {
+      categories.push('serum_brightening_soft');
+    } else if (stepStr === 'serum') {
+      categories.push('serum_hydrating'); // fallback
+    }
+    
+    if (stepStr.startsWith('treatment_acne_bpo') || stepStr.includes('benzoyl peroxide')) {
+      categories.push('treatment_acne_bpo');
+    } else if (stepStr.startsWith('treatment_acne_azelaic') || stepStr.includes('azelaic')) {
+      categories.push('treatment_acne_azelaic');
+    } else if (stepStr.startsWith('treatment_acne_local') || stepStr.includes('spot treatment')) {
+      categories.push('treatment_acne_local');
+    } else if (stepStr.startsWith('treatment_exfoliant_mild') || (stepStr.includes('exfoliant') && !stepStr.includes('strong'))) {
+      categories.push('treatment_exfoliant_mild');
+    } else if (stepStr.startsWith('treatment_exfoliant_strong') || stepStr.includes('strong exfoliant')) {
+      categories.push('treatment_exfoliant_strong');
+    } else if (stepStr.startsWith('treatment_pigmentation') || stepStr.includes('pigmentation')) {
+      categories.push('treatment_pigmentation');
+    } else if (stepStr.startsWith('treatment_antiage') || stepStr.includes('antiage') || stepStr.includes('anti-age')) {
+      categories.push('treatment_antiage');
+    } else if (stepStr === 'treatment') {
+      categories.push('treatment_antiage'); // fallback
+    }
+    
+    if (stepStr.startsWith('moisturizer_light') || (stepStr === 'moisturizer' && !stepStr.includes('barrier'))) {
+      categories.push('moisturizer_light');
+    } else if (stepStr.startsWith('moisturizer_balancing') || stepStr.includes('balancing')) {
+      categories.push('moisturizer_balancing');
+    } else if (stepStr.startsWith('moisturizer_barrier') || stepStr.includes('barrier')) {
+      categories.push('moisturizer_barrier');
+    } else if (stepStr.startsWith('moisturizer_soothing') || stepStr.includes('soothing')) {
+      categories.push('moisturizer_soothing');
+    } else if (stepStr === 'moisturizer' || stepStr === 'cream') {
+      categories.push('moisturizer_light'); // fallback
+    }
+    
+    if (stepStr.startsWith('spf_50_face') || stepStr === 'spf' || category === 'spf') {
+      categories.push('spf_50_face');
+    } else if (stepStr.startsWith('spf_50_oily') || stepStr.includes('oily')) {
+      categories.push('spf_50_oily');
+    } else if (stepStr.startsWith('spf_50_sensitive') || stepStr.includes('sensitive')) {
+      categories.push('spf_50_sensitive');
+    }
+    
+    // Если ничего не найдено, возвращаем пустой массив
+    return categories.length > 0 ? categories : [];
+  };
+  
   selectedProducts.forEach((product) => {
     const productBrand = product.brand as any;
     const productWithBrand: ProductWithBrand = {
@@ -623,11 +725,30 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       published: product.published || false,
     };
     
-    const stepKey = (product.step || product.category || 'other') as StepCategory;
-    registerProductForStep(stepKey, productWithBrand);
-    const fallbackStep = getFallbackStep(stepKey);
-    if (fallbackStep && fallbackStep !== stepKey) {
-      registerProductForStep(fallbackStep, productWithBrand);
+    // Преобразуем старый формат step/category в StepCategory
+    const stepCategories = mapStepToStepCategory(product.step, product.category);
+    
+    if (stepCategories.length > 0) {
+      // Регистрируем продукт для всех подходящих StepCategory
+      stepCategories.forEach(stepCategory => {
+        registerProductForStep(stepCategory, productWithBrand);
+      });
+      
+      // Также регистрируем по базовому шагу для обратной совместимости
+      stepCategories.forEach(stepCategory => {
+        const baseStep = getBaseStepFromStepCategory(stepCategory);
+        if (baseStep !== stepCategory) {
+          registerProductForStep(baseStep as StepCategory, productWithBrand);
+        }
+      });
+    } else {
+      // Fallback: если не удалось распознать, пытаемся использовать напрямую
+      const stepKey = (product.step || product.category || 'other') as StepCategory;
+      registerProductForStep(stepKey, productWithBrand);
+      const fallbackStep = getFallbackStep(stepKey);
+      if (fallbackStep && fallbackStep !== stepKey) {
+        registerProductForStep(fallbackStep, productWithBrand);
+      }
     }
   });
 
