@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     // Поддержка нового формата (isRelevant, reasons, comment) и старого (rating, feedback)
     let rating: number;
     let feedbackText: string | null = null;
+    const feedbackType = body.type || 'plan_recommendations'; // 'plan_recommendations' | 'plan_general' | 'service'
     
     if (body.isRelevant !== undefined) {
       // Новый формат из анализа
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
         userId,
         rating,
         feedback: feedbackText,
+        type: feedbackType,
       },
     });
 
@@ -118,9 +120,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Получаем последний отзыв пользователя
+    // Получаем последний отзыв пользователя (по умолчанию plan_recommendations)
+    const feedbackType = searchParams.get('type') || 'plan_recommendations';
     const lastFeedback = await prisma.planFeedback.findFirst({
-      where: { userId },
+      where: { 
+        userId,
+        type: feedbackType,
+      },
       orderBy: { createdAt: 'desc' },
     });
 

@@ -277,6 +277,7 @@ export const api = {
     isRelevant: boolean;
     reasons?: string[];
     comment?: string;
+    type?: 'plan_recommendations' | 'plan_general' | 'service';
   }) {
     return request('/feedback', {
       method: 'POST',

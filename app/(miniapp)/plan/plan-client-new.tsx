@@ -104,7 +104,10 @@ export function PlanPageClientNew({
     comment?: string;
   }) => {
     try {
-      await api.submitAnalysisFeedback(feedback);
+      await api.submitAnalysisFeedback({
+        ...feedback,
+        type: 'plan_recommendations', // Указываем тип отзыва
+      });
     } catch (err: any) {
       console.error('Error submitting feedback:', err);
       toast.error(err?.message || 'Не удалось отправить отзыв');
@@ -327,7 +330,7 @@ export function PlanPageClientNew({
 
       {/* Блок обратной связи в конце страницы */}
       <div style={{ marginTop: '48px', marginBottom: '24px' }}>
-        <FeedbackBlock onSubmit={handleFeedbackSubmit} />
+        <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
       </div>
     </div>
   );

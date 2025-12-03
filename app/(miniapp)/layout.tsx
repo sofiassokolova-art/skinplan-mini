@@ -9,6 +9,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 import PageTransition from '@/components/PageTransition';
 import { NetworkStatus } from '@/components/NetworkStatus';
 import { QueryProvider } from '@/providers/QueryProvider';
+import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 
@@ -107,6 +108,8 @@ function LayoutContent({
         {children}
       </PageTransition>
       {!hideNav && <BottomNavigation />}
+      {/* Сервисный попап для отзывов (показывается раз в неделю) */}
+      <ServiceFeedbackPopup />
     </>
   );
 }

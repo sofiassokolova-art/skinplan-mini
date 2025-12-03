@@ -312,6 +312,7 @@ model PlanFeedback {
   userId    String   @map("user_id")
   rating    Int // 1-5 звезд
   feedback  String? // Опциональная обратная связь
+  type      String   @default("plan_recommendations") // 'plan_recommendations' | 'plan_general' | 'service'
   createdAt DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -319,6 +320,7 @@ model PlanFeedback {
   @@index([userId])
   @@index([createdAt])
   @@index([rating])
+  @@index([type])
   @@map("plan_feedback")
 }
 

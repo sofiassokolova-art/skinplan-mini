@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface FeedbackBlockProps {
   onSubmit: (feedback: {
@@ -11,6 +11,7 @@ interface FeedbackBlockProps {
     reasons?: string[];
     comment?: string;
   }) => Promise<void>;
+  feedbackType?: 'plan_recommendations' | 'service'; // Тип отзыва
 }
 
 const FEEDBACK_REASONS = [
@@ -20,21 +21,90 @@ const FEEDBACK_REASONS = [
   'Другое',
 ];
 
-export function FeedbackBlock({ onSubmit }: FeedbackBlockProps) {
+const LAST_FEEDBACK_KEY = 'last_plan_feedback_date';
+const FEEDBACK_COOLDOWN_DAYS = 7; // Показывать раз в неделю для сервисного отзыва
+
+export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' }: FeedbackBlockProps) {
   const [showFeedback, setShowFeedback] = useState(false);
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+
+  // Проверяем, нужно ли показывать виджет обратной связи
+  useEffect(() => {
+    if (feedbackType === 'plan_recommendations') {
+      // Для отзывов по рекомендациям плана - проверяем, был ли уже отправлен отзыв
+      const checkFeedbackSent = async () => {
+        try {
+          if (typeof window === 'undefined') return;
+          
+          const initData = window.Telegram?.WebApp?.initData;
+          if (!initData) return;
+
+          const response = await fetch(`/api/feedback?type=${feedbackType}`, {
+            headers: {
+              'X-Telegram-Init-Data': initData,
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            // Если есть последний отзыв нужного типа, скрываем виджет
+            if (data.lastFeedback) {
+              setIsVisible(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('Could not check feedback status:', err);
+        }
+      };
+
+      checkFeedbackSent();
+    } else if (feedbackType === 'service') {
+      // Для сервисного отзыва - показываем раз в неделю
+      const lastFeedbackDate = localStorage.getItem(LAST_FEEDBACK_KEY);
+      if (lastFeedbackDate) {
+        const lastDate = new Date(lastFeedbackDate);
+        const now = new Date();
+        const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
+          setIsVisible(false);
+        }
+      }
+    }
+  }, [feedbackType]);
+
+  // Если виджет скрыт, не рендерим его
+  if (!isVisible) {
+    return null;
+  }
 
   const handleYes = async () => {
     try {
       setIsSubmitting(true);
       await onSubmit({ isRelevant: true });
       setShowThankYou(true);
-      setTimeout(() => {
-        setShowThankYou(false);
-      }, 3000);
+      
+      // Сохраняем дату отправки для сервисного отзыва
+      if (feedbackType === 'service') {
+        localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+      }
+      
+      // Скрываем виджет после отправки для plan_recommendations
+      if (feedbackType === 'plan_recommendations') {
+        setTimeout(() => {
+          setIsVisible(false);
+        }, 3000);
+      } else {
+        setTimeout(() => {
+          setShowThankYou(false);
+          setIsVisible(false);
+        }, 3000);
+      }
     } catch (err) {
       console.error('Error submitting feedback:', err);
     } finally {
@@ -58,9 +128,23 @@ export function FeedbackBlock({ onSubmit }: FeedbackBlockProps) {
       setShowFeedback(false);
       setSelectedReasons([]);
       setComment('');
-      setTimeout(() => {
-        setShowThankYou(false);
-      }, 3000);
+      
+      // Сохраняем дату отправки для сервисного отзыва
+      if (feedbackType === 'service') {
+        localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+      }
+      
+      // Скрываем виджет после отправки для plan_recommendations
+      if (feedbackType === 'plan_recommendations') {
+        setTimeout(() => {
+          setIsVisible(false);
+        }, 3000);
+      } else {
+        setTimeout(() => {
+          setShowThankYou(false);
+          setIsVisible(false);
+        }, 3000);
+      }
     } catch (err) {
       console.error('Error submitting feedback:', err);
     } finally {
@@ -279,7 +363,7 @@ export function FeedbackBlock({ onSubmit }: FeedbackBlockProps) {
         color: '#0A5F59',
         marginBottom: '8px',
       }}>
-        Подошли ли вам рекомендации?
+        {feedbackType === 'service' ? 'Расскажите, как вам SkinIQ?' : 'Подошли ли вам рекомендации?'}
       </h3>
       <p style={{
         fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -288,7 +372,7 @@ export function FeedbackBlock({ onSubmit }: FeedbackBlockProps) {
         marginBottom: '20px',
         lineHeight: '1.5',
       }}>
-        Ваш ответ поможет улучшить алгоритм
+        {feedbackType === 'service' ? 'Ваше мнение очень важно для нас' : 'Ваш ответ поможет улучшить алгоритм'}
       </p>
 
       <div style={{
