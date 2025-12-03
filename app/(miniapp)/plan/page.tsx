@@ -12,13 +12,24 @@ import { PlanPageClient } from './plan-client';
 import type { Plan28 } from '@/lib/plan-types';
 
 interface PlanData {
-  user: {
+  // Новый формат (plan28)
+  plan28?: Plan28;
+  productsMap?: Map<number, {
+    id: number;
+    name: string;
+    brand: { name: string };
+    price?: number;
+    imageUrl?: string | null;
+    description?: string;
+  }>;
+  // Старый формат (для обратной совместимости)
+  user?: {
     id: string;
     telegramId: string;
     firstName: string | null;
     lastName: string | null;
   };
-  profile: {
+  profile?: {
     id: string;
     skinType: string;
     skinTypeRu: string;
@@ -27,7 +38,7 @@ interface PlanData {
     acneLevel: number | null;
     scores: any[];
   };
-  plan: {
+  plan?: {
     weeks: Array<{
       week: number;
       days: Array<{
@@ -36,14 +47,14 @@ interface PlanData {
       }>;
     }>;
   };
-  progress: {
+  progress?: {
     currentDay: number;
     completedDays: number[];
   };
   wishlist: number[];
   currentDay: number;
-  currentWeek: number;
-  todayProducts: Array<{
+  currentWeek?: number;
+  todayProducts?: Array<{
     id: number;
     name: string;
     brand: { name: string };
@@ -53,8 +64,12 @@ interface PlanData {
     step: string;
     firstIntroducedDay: number;
   }>;
-  todayMorning: number[];
-  todayEvening: number[];
+  todayMorning?: number[];
+  todayEvening?: number[];
+  // Общие поля
+  weeks?: any[];
+  products?: Map<number, any>;
+  scores?: any[];
 }
 
 export default function PlanPage() {
@@ -66,6 +81,180 @@ export default function PlanPage() {
   useEffect(() => {
     loadPlan();
   }, []);
+
+  // Функция для обработки данных плана (вынесена для переиспользования)
+  const processPlanData = async (plan: any) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Получаем профиль для scores и другой информации
+      // НЕ требуем профиль для показа плана, если план уже есть
+      let profile;
+      try {
+        profile = await api.getCurrentProfile() as any;
+      } catch (profileError: any) {
+        // Если профиль не найден, но план есть - это нормально, продолжаем с план28
+        // Профиль нужен только для старого формата плана
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Could not load profile, but plan exists - continuing with plan only');
+        }
+        profile = null;
+      }
+      
+      // Если план есть в новом формате plan28, можем продолжать без профиля
+      if (plan.plan28) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Using plan28 format, profile not required');
+        }
+        // Продолжаем дальше без проверки профиля
+      } else if (!profile && plan.weeks) {
+        // Для старого формата нужен профиль
+        setError('no_profile');
+        setLoading(false);
+        return;
+      }
+
+      // Получаем wishlist
+      let wishlist: number[] = [];
+      try {
+        const wishlistData = await api.getWishlist() as any;
+        wishlist = (wishlistData.items || []).map((item: any) => 
+          item.product?.id || item.productId
+        ).filter((id: any): id is number => typeof id === 'number');
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Could not load wishlist:', err);
+        }
+      }
+
+      // Загружаем прогресс плана из БД (синхронизация между устройствами)
+      let planProgress: { currentDay: number; completedDays: number[] } = {
+        currentDay: 1,
+        completedDays: [],
+      };
+
+      try {
+        const progressResponse = await api.getPlanProgress() as {
+          currentDay: number;
+          completedDays: number[];
+        };
+        if (
+          progressResponse &&
+          typeof progressResponse.currentDay === 'number' &&
+          Array.isArray(progressResponse.completedDays)
+        ) {
+          planProgress = {
+            currentDay:
+              progressResponse.currentDay < 1
+                ? 1
+                : progressResponse.currentDay > 28
+                ? 28
+                : progressResponse.currentDay,
+            completedDays: progressResponse.completedDays,
+          };
+        }
+      } catch (progressError: any) {
+        // Если ошибка авторизации — это означает, что initData не валиден,
+        // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Could not load plan progress, using defaults:', progressError);
+        }
+      }
+
+      // Обрабатываем данные для передачи в компонент
+      const currentDayGlobal = planProgress.currentDay || 1;
+      const currentWeek =
+        currentDayGlobal <= 7
+          ? 1
+          : currentDayGlobal <= 14
+          ? 2
+          : currentDayGlobal <= 21
+          ? 3
+          : 4;
+
+      const currentWeekIndex = Math.max(0, Math.min((plan.weeks?.length || 0) - 1, currentWeek - 1));
+      const currentWeekData = plan.weeks?.[currentWeekIndex];
+
+      const dayIndexWithinWeek = (currentDayGlobal - 1) % (currentWeekData?.days?.length || 7);
+      const currentDayData = currentWeekData?.days[dayIndexWithinWeek] || currentWeekData?.days[0];
+
+      const todayMorning = currentDayData?.morning || [];
+      const todayEvening = currentDayData?.evening || [];
+
+      // Получаем продукты для текущего дня
+      const todayProductIds = [...new Set([...todayMorning, ...todayEvening])].filter((id): id is number => typeof id === 'number');
+      
+      // Преобразуем продукты из плана
+      const todayProducts = (plan.products || []).filter((p: any) => todayProductIds.includes(p.id)).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        brand: { name: p.brand || 'Unknown' },
+        price: p.price || 0,
+        volume: p.volume || null,
+        imageUrl: p.imageUrl || null,
+        step: p.category || p.step || 'moisturizer',
+        firstIntroducedDay: 1,
+      }));
+
+      // Преобразуем scores из плана
+      const scores = plan.skinScores || [];
+
+      // Используем новый формат plan28, если доступен
+      let plan28 = plan.plan28 as Plan28 | undefined;
+      
+      if (!plan28) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ plan28 not found in plan response, falling back to old format');
+        }
+      }
+      
+      // Создаем Map продуктов для быстрого доступа
+      const productsMap = new Map<number, {
+        id: number;
+        name: string;
+        brand: { name: string };
+        price: number;
+        volume: string | null;
+        imageUrl: string | null;
+        step: string;
+        firstIntroducedDay: number;
+      }>();
+
+      (plan.products || []).forEach((p: any) => {
+        productsMap.set(p.id, {
+          id: p.id,
+          name: p.name,
+          brand: { name: p.brand || 'Unknown' },
+          price: p.price || 0,
+          volume: p.volume || null,
+          imageUrl: p.imageUrl || null,
+          step: p.category || p.step || 'moisturizer',
+          firstIntroducedDay: 1,
+        });
+      });
+
+      setPlanData({
+        plan28: plan28 || undefined,
+        weeks: plan.weeks || [],
+        products: productsMap,
+        profile: profile || undefined,
+        scores,
+        wishlist,
+        currentDay: currentDayGlobal,
+        currentWeek: currentWeekIndex,
+        todayProducts,
+        todayMorning,
+        todayEvening,
+      });
+
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Error processing plan data:', err);
+      setError('plan_generating');
+      setLoading(false);
+    }
+  };
 
   const loadPlan = async (retryCount = 0) => {
     try {
@@ -215,274 +404,20 @@ export default function PlanPage() {
         return;
       }
 
-      // Получаем wishlist
-      let wishlist: number[] = [];
-      try {
-        const wishlistData = await api.getWishlist() as any;
-        wishlist = (wishlistData.items || []).map((item: any) => 
-          item.product?.id || item.productId
-        ).filter((id: any): id is number => typeof id === 'number');
-      } catch (err) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Could not load wishlist:', err);
-        }
-      }
-
-      // Загружаем прогресс плана из БД (синхронизация между устройствами)
-      let planProgress: { currentDay: number; completedDays: number[] } = {
-        currentDay: 1,
-        completedDays: [],
-      };
-
-      try {
-        const progressResponse = await api.getPlanProgress() as {
-          currentDay: number;
-          completedDays: number[];
-        };
-        if (
-          progressResponse &&
-          typeof progressResponse.currentDay === 'number' &&
-          Array.isArray(progressResponse.completedDays)
-        ) {
-          planProgress = {
-            currentDay:
-              progressResponse.currentDay < 1
-                ? 1
-                : progressResponse.currentDay > 28
-                ? 28
-                : progressResponse.currentDay,
-            completedDays: progressResponse.completedDays,
-          };
-        }
-      } catch (progressError: any) {
-        // Если ошибка авторизации — это означает, что initData не валиден,
-        // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Could not load plan progress, using defaults:', progressError);
-        }
-      }
-
-      // Обрабатываем данные для передачи в компонент
-      const currentDayGlobal = planProgress.currentDay || 1;
-      const currentWeek =
-        currentDayGlobal <= 7
-          ? 1
-          : currentDayGlobal <= 14
-          ? 2
-          : currentDayGlobal <= 21
-          ? 3
-          : 4;
-
-      const currentWeekIndex = Math.max(0, Math.min(plan.weeks.length - 1, currentWeek - 1));
-      const currentWeekData = plan.weeks[currentWeekIndex];
-
-      const dayIndexWithinWeek = (currentDayGlobal - 1) % (currentWeekData?.days?.length || 7);
-      const currentDayData = currentWeekData?.days[dayIndexWithinWeek] || currentWeekData?.days[0];
-
-      const todayMorning = currentDayData?.morning || [];
-      const todayEvening = currentDayData?.evening || [];
-
-      // Получаем продукты для текущего дня
-      const todayProductIds = [...new Set([...todayMorning, ...todayEvening])].filter((id): id is number => typeof id === 'number');
-      
-      // Преобразуем продукты из плана
-      const todayProducts = (plan.products || []).filter((p: any) => todayProductIds.includes(p.id)).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        brand: { name: p.brand || 'Unknown' },
-        price: p.price || 0,
-        volume: p.volume || null,
-        imageUrl: p.imageUrl || null,
-        step: p.category || p.step || 'moisturizer',
-        firstIntroducedDay: 1,
-      }));
-
-      // Преобразуем scores из плана
-      const scores = plan.skinScores || [];
-
-      // Используем новый формат plan28, если доступен
-      let plan28 = plan.plan28 as Plan28 | undefined;
-      
-      if (!plan28) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ plan28 not found in plan response, falling back to old format');
-          console.warn('Plan keys:', Object.keys(plan || {}));
-          console.warn('⚠️ NOTE: Plan needs to be regenerated to use new format. Old format will be used.');
-        }
-      }
-      
-      // Создаем Map продуктов для быстрого доступа
-      const productsMap = new Map<number, {
-        id: number;
-        name: string;
-        brand: { name: string };
-        price?: number;
-        imageUrl?: string | null;
-        description?: string;
-      }>();
-      
-      if (plan28) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Using new plan28 format with', plan28.days?.length || 0, 'days');
-        }
-        // Собираем все productId из plan28
-        const allProductIds = new Set<number>();
-        plan28.days.forEach(day => {
-          day.morning.forEach(step => {
-            if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
-          });
-          day.evening.forEach(step => {
-            if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
-          });
-          day.weekly.forEach(step => {
-            if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
-          });
-        });
-
-        // Загружаем продукты из БД
-        try {
-          const productIdsArray = Array.from(allProductIds);
-          if (productIdsArray.length > 0) {
-            const productsResponse = await fetch('/api/products/batch', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': initData || '',
-              },
-              body: JSON.stringify({ productIds: productIdsArray }),
-            });
-
-            if (productsResponse.ok) {
-              const productsData = await productsResponse.json();
-              if (productsData.products && Array.isArray(productsData.products)) {
-                productsData.products.forEach((p: any) => {
-                  productsMap.set(p.id, {
-                    id: p.id,
-                    name: p.name,
-                    brand: { name: p.brand?.name || p.brand || 'Unknown' },
-                    price: p.price,
-                    imageUrl: p.imageUrl || null,
-                    description: p.description || p.descriptionUser || null,
-                  });
-                });
-              }
-            }
-          }
-        } catch (err) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Could not load products from batch endpoint, using plan.products:', err);
-          }
-          // Fallback на продукты из плана
-          if (plan.products && Array.isArray(plan.products)) {
-            plan.products.forEach((p: any) => {
-              productsMap.set(p.id, {
-                id: p.id,
-                name: p.name,
-                brand: { name: p.brand || 'Unknown' },
-                price: p.price,
-                imageUrl: p.imageUrl || null,
-                description: p.description,
-              });
-            });
-          }
-        }
-
-        // Если есть plan28, используем новый формат
-        setPlanData({
-          plan28,
-          productsMap,
-          wishlist,
-          currentDay: planProgress.currentDay,
-          completedDays: planProgress.completedDays,
-        } as any);
-        setLoading(false);
-        return;
-      }
-
-      // Иначе используем старый формат (для обратной совместимости)
-      setPlanData({
-        user: {
-          id: profile.id || '',
-          telegramId: '',
-          firstName: profile.firstName || null,
-          lastName: profile.lastName || null,
-        },
-        profile: {
-          id: profile.id || '',
-          skinType: profile.skinType || 'normal',
-          skinTypeRu: profile.skinTypeRu || 'Нормальная',
-          primaryConcernRu: profile.primaryConcernRu || 'Уход',
-          sensitivityLevel: profile.sensitivityLevel || null,
-          acneLevel: profile.acneLevel || null,
-          scores,
-        },
-        plan: {
-          weeks: plan.weeks.map((week: any) => ({
-            week: week.week,
-            days: week.days.map((day: any) => {
-              // Преобразуем morning/evening в массив ID продуктов
-              const morningIds = Array.isArray(day.morning) 
-                ? day.morning.map((stepOrId: any) => {
-                    if (typeof stepOrId === 'string' && day.products?.[stepOrId]?.id) {
-                      return day.products[stepOrId].id;
-                    }
-                    return typeof stepOrId === 'number' ? stepOrId : null;
-                  }).filter((id: any): id is number => id !== null)
-                : [];
-              
-              const eveningIds = Array.isArray(day.evening)
-                ? day.evening.map((stepOrId: any) => {
-                    if (typeof stepOrId === 'string' && day.products?.[stepOrId]?.id) {
-                      return day.products[stepOrId].id;
-                    }
-                    return typeof stepOrId === 'number' ? stepOrId : null;
-                  }).filter((id: any): id is number => id !== null)
-                : [];
-
-              return {
-                morning: morningIds,
-                evening: eveningIds,
-              };
-            }),
-          })),
-        },
-        progress: {
-          currentDay: currentDayGlobal,
-          completedDays: planProgress.completedDays,
-        },
-        wishlist,
-        currentDay: currentDayGlobal,
-        currentWeek,
-        todayProducts,
-        todayMorning,
-        todayEvening,
-      });
-
-      setLoading(false);
-    } catch (err: any) {
-      console.error('❌ Error loading plan:', err);
-      // Только показываем ошибку, если все retry попытки исчерпаны
-      // Если ошибка связана с генерацией плана (500), пробуем еще раз через retry
-      if (retryCount < 3 && (
-        err?.message?.includes('Internal server error') ||
-        err?.status === 500 ||
-        err?.status === 502 ||
-        err?.status === 503
-      )) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`⏳ Ошибка сервера, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
-        }
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        return loadPlan(retryCount + 1);
-      }
-      // Только после всех попыток показываем ошибку
-      setError(err?.message || 'Ошибка загрузки плана');
+      // Используем общую функцию обработки плана (избегаем дублирования кода)
+      await processPlanData(plan);
+      return;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error loading plan:', error);
+      setError('plan_generating');
       setLoading(false);
     }
   };
+
+  // Старый код обработки плана удален - теперь используется processPlanData
+
+  // Остальная часть UI компонента
 
   if (loading) {
     return (
@@ -623,12 +558,22 @@ export default function PlanPage() {
                 if (process.env.NODE_ENV === 'development') {
                   console.log('🔄 User requested plan generation...');
                 }
-                const plan = await api.generatePlan() as any;
+                const generatedPlan = await api.generatePlan() as any;
                 if (process.env.NODE_ENV === 'development') {
-                  console.log('✅ Plan generated successfully');
+                  console.log('✅ Plan generated successfully', {
+                    hasPlan28: !!generatedPlan?.plan28,
+                    hasWeeks: !!generatedPlan?.weeks,
+                  });
                 }
-                // Перезагружаем план после генерации
-                await loadPlan(0);
+                
+                // Используем план напрямую из ответа генерации, не перезагружаем из кэша
+                // Это избегает race condition, когда кэш еще не успел обновиться
+                if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+                  await processPlanData(generatedPlan);
+                } else {
+                  // Если план не в ожидаемом формате, все же пытаемся загрузить из кэша
+                  await loadPlan(0);
+                }
               } catch (generateError: any) {
                 console.error('❌ Failed to generate plan:', generateError);
                 setError('plan_generating');
@@ -731,6 +676,15 @@ export default function PlanPage() {
   }
 
   // Иначе используем старый компонент (для обратной совместимости)
+  // Проверяем, что все необходимые поля присутствуют
+  if (!planData.user || !planData.profile || !planData.plan || !planData.progress || !planData.todayProducts || planData.todayMorning === undefined || planData.todayEvening === undefined || planData.currentWeek === undefined) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <p>Ошибка: недостаточно данных для отображения плана</p>
+      </div>
+    );
+  }
+
   return (
     <PlanPageClient
       user={planData.user}
