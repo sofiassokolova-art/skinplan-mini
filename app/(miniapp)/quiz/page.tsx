@@ -83,6 +83,22 @@ export default function QuizPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+
+    if (showResumeScreen) {
+      url.searchParams.set('resume', 'true');
+    } else {
+      url.searchParams.delete('resume');
+    }
+
+    window.history.replaceState({}, '', url.toString());
+  }, [showResumeScreen]);
+
+  useEffect(() => {
     // Ждем готовности Telegram WebApp
     const waitForTelegram = (): Promise<void> => {
       return new Promise((resolve) => {
