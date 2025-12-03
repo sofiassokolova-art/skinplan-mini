@@ -50,6 +50,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         currentDay: 1,
         completedDays: [] as number[],
+        currentStreak: 0,
+        longestStreak: 0,
+        totalCompletedDays: 0,
       });
     }
 
@@ -59,6 +62,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       currentDay: progress.currentDay,
       completedDays: progress.completedDays,
+      currentStreak: progress.currentStreak || 0,
+      longestStreak: progress.longestStreak || 0,
+      totalCompletedDays: progress.totalCompletedDays || progress.completedDays.length,
     });
   } catch (error: any) {
     const duration = Date.now() - startTime;
@@ -123,16 +129,71 @@ export async function POST(request: NextRequest) {
     const safeCurrentDay =
       currentDay < 1 ? 1 : currentDay > 28 ? 28 : currentDay;
 
+    // Функция для подсчета стриков (последовательных дней)
+    const calculateStreaks = (days: number[]): { currentStreak: number; longestStreak: number } => {
+      if (days.length === 0) {
+        return { currentStreak: 0, longestStreak: 0 };
+      }
+
+      // Сортируем дни по возрастанию
+      const sortedDays = [...days].sort((a, b) => a - b);
+      
+      let currentStreak = 1; // Текущий стрик (последняя последовательность)
+      let longestStreak = 1; // Максимальный стрик за все время
+      let tempStreak = 1;
+
+      // Находим текущий стрик (последняя последовательность, идем с конца)
+      for (let i = sortedDays.length - 1; i > 0; i--) {
+        if (sortedDays[i] === sortedDays[i - 1] + 1) {
+          currentStreak++;
+        } else {
+          break; // Прерывание последовательности - это и есть текущий стрик
+        }
+      }
+
+      // Находим максимальный стрик (проходим весь массив)
+      tempStreak = 1;
+      for (let i = 1; i < sortedDays.length; i++) {
+        if (sortedDays[i] === sortedDays[i - 1] + 1) {
+          tempStreak++;
+          longestStreak = Math.max(longestStreak, tempStreak);
+        } else {
+          tempStreak = 1;
+        }
+      }
+
+      return { currentStreak, longestStreak };
+    };
+
+    // Получаем существующий прогресс для обновления стриков
+    const existingProgress = await prisma.planProgress.findUnique({
+      where: { userId },
+    });
+
+    const { currentStreak, longestStreak } = calculateStreaks(completedDays);
+    const totalCompletedDays = completedDays.length;
+
+    // Обновляем longestStreak только если новый стрик больше предыдущего
+    const finalLongestStreak = existingProgress
+      ? Math.max(existingProgress.longestStreak || 0, longestStreak)
+      : longestStreak;
+
     const progress = await prisma.planProgress.upsert({
       where: { userId },
       update: {
         currentDay: safeCurrentDay,
         completedDays,
+        currentStreak,
+        longestStreak: finalLongestStreak,
+        totalCompletedDays,
       },
       create: {
         userId,
         currentDay: safeCurrentDay,
         completedDays,
+        currentStreak,
+        longestStreak: finalLongestStreak,
+        totalCompletedDays,
       },
     });
 
@@ -142,6 +203,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       currentDay: progress.currentDay,
       completedDays: progress.completedDays,
+      currentStreak: progress.currentStreak || 0,
+      longestStreak: progress.longestStreak || 0,
+      totalCompletedDays: progress.totalCompletedDays || progress.completedDays.length,
     });
   } catch (error: any) {
     const duration = Date.now() - startTime;

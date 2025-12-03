@@ -244,14 +244,32 @@ export default function AnalysisPage() {
         padding: '20px',
         textAlign: 'center',
       }}>
-        <img
-          src="/skiniq-logo.png"
-          alt="SkinIQ"
+        <button
+          onClick={() => router.push('/')}
           style={{
-            height: '120px',
-            marginBottom: '8px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'inline-block',
           }}
-        />
+        >
+          <img
+            src="/skiniq-logo.png"
+            alt="SkinIQ"
+            style={{
+              height: '120px',
+              marginBottom: '8px',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          />
+        </button>
       </div>
 
       <h1 style={{

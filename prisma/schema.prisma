@@ -329,12 +329,15 @@ model PlanFeedback {
 // ============================================
 
 model PlanProgress {
-  id            String   @id @default(cuid())
-  userId        String   @map("user_id")
-  currentDay    Int      @default(1)
-  completedDays Int[]    @default([])
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  currentDay         Int      @default(1)
+  completedDays      Int[]    @default([]) @map("completed_days")
+  currentStreak      Int      @default(0) @map("current_streak") // Текущая последовательность дней подряд
+  longestStreak      Int      @default(0) @map("longest_streak") // Максимальная последовательность дней подряд
+  totalCompletedDays Int      @default(0) @map("total_completed_days") // Общее количество выполненных дней
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -14,66 +14,32 @@ interface FeedbackBlockProps {
   feedbackType?: 'plan_recommendations' | 'service'; // Тип отзыва
 }
 
-const FEEDBACK_REASONS = [
-  'Не подходят под мой тип кожи',
-  'Слишком дорогие',
-  'Уже пробовала — не помогло',
-  'Другое',
-];
-
 const LAST_FEEDBACK_KEY = 'last_plan_feedback_date';
 const FEEDBACK_COOLDOWN_DAYS = 7; // Показывать раз в неделю для сервисного отзыва
 
 export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' }: FeedbackBlockProps) {
   const [showFeedback, setShowFeedback] = useState(false);
-  const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
-  // Проверяем, нужно ли показывать виджет обратной связи
+  // Проверяем, нужно ли показывать виджет обратной связи (раз в неделю для всех типов)
   useEffect(() => {
-    if (feedbackType === 'plan_recommendations') {
-      // Для отзывов по рекомендациям плана - проверяем, был ли уже отправлен отзыв
-      const checkFeedbackSent = async () => {
-        try {
-          if (typeof window === 'undefined') return;
-          
-          const initData = window.Telegram?.WebApp?.initData;
-          if (!initData) return;
-
-          const response = await fetch(`/api/feedback?type=${feedbackType}`, {
-            headers: {
-              'X-Telegram-Init-Data': initData,
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            // Если есть последний отзыв нужного типа, скрываем виджет
-            if (data.lastFeedback) {
-              setIsVisible(false);
-              return;
-            }
-          }
-        } catch (err) {
-          console.warn('Could not check feedback status:', err);
-        }
-      };
-
-      checkFeedbackSent();
-    } else if (feedbackType === 'service') {
-      // Для сервисного отзыва - показываем раз в неделю
-      const lastFeedbackDate = localStorage.getItem(LAST_FEEDBACK_KEY);
-      if (lastFeedbackDate) {
-        const lastDate = new Date(lastFeedbackDate);
-        const now = new Date();
-        const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
-        
-        if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
-          setIsVisible(false);
-        }
+    if (typeof window === 'undefined') return;
+    
+    const feedbackKey = feedbackType === 'service' 
+      ? LAST_FEEDBACK_KEY 
+      : `last_${feedbackType}_feedback_date`;
+    
+    const lastFeedbackDate = localStorage.getItem(feedbackKey);
+    if (lastFeedbackDate) {
+      const lastDate = new Date(lastFeedbackDate);
+      const now = new Date();
+      const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      
+      if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
+        setIsVisible(false);
       }
     }
   }, [feedbackType]);
@@ -83,28 +49,24 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
     return null;
   }
 
-  const handleYes = async () => {
+  const handleThumbsUp = async () => {
     try {
       setIsSubmitting(true);
       await onSubmit({ isRelevant: true });
       setShowThankYou(true);
       
-      // Сохраняем дату отправки для сервисного отзыва
-      if (feedbackType === 'service') {
-        localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+      // Сохраняем дату отправки
+      if (typeof window !== 'undefined') {
+        const feedbackKey = feedbackType === 'service' 
+          ? LAST_FEEDBACK_KEY 
+          : `last_${feedbackType}_feedback_date`;
+        localStorage.setItem(feedbackKey, new Date().toISOString());
       }
       
-      // Скрываем виджет после отправки для plan_recommendations
-      if (feedbackType === 'plan_recommendations') {
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 3000);
-      } else {
-        setTimeout(() => {
-          setShowThankYou(false);
-          setIsVisible(false);
-        }, 3000);
-      }
+      // Скрываем виджет после отправки
+      setTimeout(() => {
+        setIsVisible(false);
+      }, 3000);
     } catch (err) {
       console.error('Error submitting feedback:', err);
     } finally {
@@ -112,7 +74,7 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
     }
   };
 
-  const handleNo = () => {
+  const handleThumbsDown = () => {
     setShowFeedback(true);
   };
 
@@ -121,30 +83,24 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       setIsSubmitting(true);
       await onSubmit({
         isRelevant: false,
-        reasons: selectedReasons,
         comment: comment.trim() || undefined,
       });
       setShowThankYou(true);
       setShowFeedback(false);
-      setSelectedReasons([]);
       setComment('');
       
-      // Сохраняем дату отправки для сервисного отзыва
-      if (feedbackType === 'service') {
-        localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+      // Сохраняем дату отправки
+      if (typeof window !== 'undefined') {
+        const feedbackKey = feedbackType === 'service' 
+          ? LAST_FEEDBACK_KEY 
+          : `last_${feedbackType}_feedback_date`;
+        localStorage.setItem(feedbackKey, new Date().toISOString());
       }
       
-      // Скрываем виджет после отправки для plan_recommendations
-      if (feedbackType === 'plan_recommendations') {
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 3000);
-      } else {
-        setTimeout(() => {
-          setShowThankYou(false);
-          setIsVisible(false);
-        }, 3000);
-      }
+      // Скрываем виджет после отправки
+      setTimeout(() => {
+        setIsVisible(false);
+      }, 3000);
     } catch (err) {
       console.error('Error submitting feedback:', err);
     } finally {
@@ -152,13 +108,6 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
     }
   };
 
-  const toggleReason = (reason: string) => {
-    setSelectedReasons(prev =>
-      prev.includes(reason)
-        ? prev.filter(r => r !== reason)
-        : [...prev, reason]
-    );
-  };
 
   if (showThankYou) {
     return (
@@ -217,7 +166,7 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
           color: '#0A5F59',
           marginBottom: '12px',
         }}>
-          Подошли ли вам рекомендации?
+          {feedbackType === 'service' ? 'Расскажите, что можно улучшить?' : 'Что не понравилось?'}
         </h3>
         <p style={{
           fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
@@ -226,63 +175,17 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
           marginBottom: '20px',
           lineHeight: '1.5',
         }}>
-          Ваш ответ поможет улучшить алгоритм
+          Ваш комментарий поможет нам стать лучше
         </p>
-
-        {/* Чекбоксы */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          marginBottom: '20px',
-        }}>
-          {FEEDBACK_REASONS.map((reason) => (
-            <label
-              key={reason}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                cursor: 'pointer',
-                padding: '12px',
-                borderRadius: '12px',
-                backgroundColor: selectedReasons.includes(reason)
-                  ? 'rgba(10, 95, 89, 0.08)'
-                  : 'transparent',
-                transition: 'background-color 0.2s',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={selectedReasons.includes(reason)}
-                onChange={() => toggleReason(reason)}
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  cursor: 'pointer',
-                  accentColor: '#0A5F59',
-                }}
-              />
-              <span style={{
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontSize: '14px',
-                color: '#0A5F59',
-                fontWeight: 500,
-              }}>
-                {reason}
-              </span>
-            </label>
-          ))}
-        </div>
 
         {/* Поле комментария */}
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Дополнительные комментарии (необязательно)"
+          placeholder="Напишите, что можно улучшить..."
           style={{
             width: '100%',
-            minHeight: '80px',
+            minHeight: '100px',
             padding: '12px',
             borderRadius: '12px',
             border: '1px solid rgba(10, 95, 89, 0.2)',
@@ -303,7 +206,6 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
           <button
             onClick={() => {
               setShowFeedback(false);
-              setSelectedReasons([]);
               setComment('');
             }}
             disabled={isSubmitting}
@@ -325,22 +227,22 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
           </button>
           <button
             onClick={handleSubmitFeedback}
-            disabled={isSubmitting || (selectedReasons.length === 0 && !comment.trim())}
+            disabled={isSubmitting || !comment.trim()}
             style={{
               flex: 1,
               padding: '12px 24px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: (selectedReasons.length === 0 && !comment.trim()) ? 'rgba(10, 95, 89, 0.3)' : '#0A5F59',
+              backgroundColor: !comment.trim() ? 'rgba(10, 95, 89, 0.3)' : '#0A5F59',
               color: 'white',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
               fontSize: '14px',
-              cursor: (isSubmitting || (selectedReasons.length === 0 && !comment.trim())) ? 'not-allowed' : 'pointer',
-              opacity: (isSubmitting || (selectedReasons.length === 0 && !comment.trim())) ? 0.5 : 1,
+              cursor: (isSubmitting || !comment.trim()) ? 'not-allowed' : 'pointer',
+              opacity: (isSubmitting || !comment.trim()) ? 0.5 : 1,
             }}
           >
-            {isSubmitting ? 'Отправка...' : 'Отправить отзыв'}
+            {isSubmitting ? 'Отправка...' : 'Отправить'}
           </button>
         </div>
       </div>
@@ -378,45 +280,74 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       <div style={{
         display: 'flex',
         gap: '12px',
+        justifyContent: 'center',
       }}>
         <button
-          onClick={handleNo}
+          onClick={handleThumbsDown}
           disabled={isSubmitting}
           style={{
-            flex: 1,
-            padding: '14px 24px',
-            borderRadius: '12px',
+            padding: '16px 32px',
+            borderRadius: '16px',
             border: '2px solid rgba(10, 95, 89, 0.3)',
             backgroundColor: 'rgba(255, 255, 255, 0.8)',
             color: '#0A5F59',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 600,
-            fontSize: '16px',
+            fontSize: '32px',
             cursor: isSubmitting ? 'not-allowed' : 'pointer',
             opacity: isSubmitting ? 0.5 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '80px',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            if (!isSubmitting) {
+              e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
-          Нет
+          👎
         </button>
         <button
-          onClick={handleYes}
+          onClick={handleThumbsUp}
           disabled={isSubmitting}
           style={{
-            flex: 1,
-            padding: '14px 24px',
-            borderRadius: '12px',
+            padding: '16px 32px',
+            borderRadius: '16px',
             border: 'none',
             backgroundColor: '#0A5F59',
             color: 'white',
             fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 600,
-            fontSize: '16px',
+            fontSize: '32px',
             cursor: isSubmitting ? 'not-allowed' : 'pointer',
             opacity: isSubmitting ? 0.5 : 1,
             boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '80px',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            if (!isSubmitting) {
+              e.currentTarget.style.backgroundColor = '#059669';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#0A5F59';
+            e.currentTarget.style.transform = 'scale(1)';
           }}
         >
-          Да
+          👍
         </button>
       </div>
     </div>

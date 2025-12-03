@@ -1360,7 +1360,13 @@ export default function HomePage() {
             📅 28-дневный план →
           </button>
           <button
-            onClick={() => router.push('/quiz')}
+            onClick={() => {
+              // Устанавливаем флаг о перепрохождении анкеты
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('is_retaking_quiz', 'true');
+              }
+              router.push('/quiz');
+            }}
             style={{
               marginTop: '16px',
               padding: '12px 24px',

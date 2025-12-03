@@ -872,6 +872,11 @@ export default function QuizPage() {
       const result = await api.submitAnswers(questionnaire.id, answerArray) as any;
       console.log('✅ Ответы отправлены, профиль создан:', result);
       
+      // Если это перепрохождение анкеты, устанавливаем флаг
+      if (isRetakingQuiz && typeof window !== 'undefined') {
+        localStorage.setItem('is_retaking_quiz', 'true');
+      }
+      
       // Если это дубликат отправки, все равно перенаправляем пользователя
       if (result.isDuplicate) {
         console.log('⚠️ Обнаружена повторная отправка, перенаправляем на результаты...');
@@ -1494,15 +1499,33 @@ export default function QuizPage() {
           padding: '20px',
           textAlign: 'center',
         }}>
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
+          <button
+            onClick={() => router.push('/')}
             style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              display: 'inline-block',
             }}
-          />
+          >
+            <img
+              src="/skiniq-logo.png"
+              alt="SkinIQ"
+              style={{
+                height: '140px',
+                marginTop: '8px',
+                marginBottom: '8px',
+                transition: 'transform 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            />
+          </button>
         </div>
 
         {/* Заголовок */}

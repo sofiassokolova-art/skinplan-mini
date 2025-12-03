@@ -23,6 +23,10 @@ function QuizUpdateResultContent() {
       const topicData = getTopicById(topicId);
       setTopic(topicData || null);
     }
+    // Устанавливаем флаг о перепрохождении анкеты
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('is_retaking_quiz', 'true');
+    }
   }, [topicId]);
 
   return (

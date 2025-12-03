@@ -4,6 +4,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface AnalysisLoadingProps {
   onComplete: () => void;
@@ -11,6 +12,7 @@ interface AnalysisLoadingProps {
 }
 
 export function AnalysisLoading({ onComplete, duration = 6000 }: AnalysisLoadingProps) {
+  const router = useRouter();
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -47,14 +49,32 @@ export function AnalysisLoading({ onComplete, duration = 6000 }: AnalysisLoading
         marginBottom: '48px',
         textAlign: 'center',
       }}>
-        <img
-          src="/skiniq-logo.png"
-          alt="SkinIQ"
+        <button
+          onClick={() => router.push('/')}
           style={{
-            height: '120px',
-            marginBottom: '24px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'inline-block',
           }}
-        />
+        >
+          <img
+            src="/skiniq-logo.png"
+            alt="SkinIQ"
+            style={{
+              height: '120px',
+              marginBottom: '24px',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          />
+        </button>
       </div>
 
       {/* Анимированный лоадер */}

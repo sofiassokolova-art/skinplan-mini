@@ -42,6 +42,11 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     if (typeof window !== 'undefined') {
       const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
       localStorage.setItem(paymentKey, 'true');
+      
+      // Очищаем флаг перепрохождения после оплаты
+      if (isRetaking) {
+        localStorage.removeItem('is_retaking_quiz');
+      }
     }
     
     setIsPaid(true);
