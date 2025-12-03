@@ -1204,7 +1204,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       sensitivityLevel: profile.sensitivityLevel || 'low',
       acneLevel: profile.acneLevel || null,
       primaryFocus,
-      concerns: concerns.slice(0, 3),
+      concerns: concerns, // Все concerns без ограничения - отображаем все ключевые проблемы
       ageGroup: profile.ageGroup || '25-34',
     },
     skinScores: skinScores.map(s => ({

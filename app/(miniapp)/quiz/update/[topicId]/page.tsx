@@ -47,9 +47,15 @@ export default function QuizTopicPage() {
       }
 
       // Получаем все вопросы из групп и отдельные вопросы
+      // Нормализуем структуру: API возвращает 'options', а компонент ожидает 'answerOptions'
+      const normalizeQuestion = (q: any) => ({
+        ...q,
+        answerOptions: q.answerOptions || q.options || [], // Поддержка обоих форматов
+      });
+      
       const allQuestions = [
-        ...(questionnaire.groups?.flatMap((g: any) => g.questions || []) || []),
-        ...(questionnaire.questions || []),
+        ...(questionnaire.groups?.flatMap((g: any) => (g.questions || []).map(normalizeQuestion)) || []),
+        ...(questionnaire.questions || []).map(normalizeQuestion),
       ];
 
       if (!Array.isArray(allQuestions) || allQuestions.length === 0) {
