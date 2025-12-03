@@ -231,38 +231,93 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // ПРОВЕРЯЕМ: если в сессии нет базовых продуктов, добавляем их
-      const requiredSteps = ['cleanser', 'moisturizer', 'spf'];
+      // ПРОВЕРЯЕМ: если в сессии нет необходимых шагов, добавляем их
+      // Утренние шаги: cleanser, toner, serum/essence, moisturizer, spf
+      // Вечерние шаги: cleanser (двойное очищение), serum/treatment, acid (опционально), moisturizer
+      const requiredMorningSteps = ['cleanser', 'toner', 'serum', 'moisturizer', 'spf'];
+      const requiredEveningSteps = ['cleanser', 'serum', 'moisturizer'];
+      const allRequiredSteps = [...new Set([...requiredMorningSteps, ...requiredEveningSteps])];
+      
       const missingSteps: string[] = [];
       
-      for (const requiredStep of requiredSteps) {
+      for (const requiredStep of allRequiredSteps) {
         if (!steps[requiredStep] || steps[requiredStep].length === 0) {
           missingSteps.push(requiredStep);
         }
       }
 
-      // Если не хватает базовых продуктов, добавляем их
+      // Если не хватает шагов, добавляем их
       if (missingSteps.length > 0) {
         console.log(`⚠️ Missing required steps in session: ${missingSteps.join(', ')}, adding fallback products...`);
         
         for (const missingStep of missingSteps) {
-          const fallbackProducts = await prisma.product.findMany({
-            where: {
-              published: true as any,
-              step: missingStep,
-              brand: {
-                isActive: true, // Только активные бренды
+          // Для поиска продуктов используем шаги, которые начинаются с базового шага
+          // Например: для 'toner' ищем 'toner_hydrating', 'toner_soothing' и т.д.
+          const stepPatterns: Record<string, string[]> = {
+            'cleanser': ['cleanser_gentle', 'cleanser_balancing', 'cleanser_deep'],
+            'toner': ['toner_hydrating', 'toner_soothing'],
+            'serum': ['serum_hydrating', 'serum_niacinamide', 'serum_vitc', 'serum_anti_redness', 'serum_brightening_soft'],
+            'moisturizer': ['moisturizer_light', 'moisturizer_balancing', 'moisturizer_barrier', 'moisturizer_soothing'],
+            'spf': ['spf_50_face', 'spf_50_oily', 'spf_50_sensitive'],
+          };
+          
+          const stepVariants = stepPatterns[missingStep] || [missingStep];
+          
+          let fallbackProducts: any[] = [];
+          
+          // Пробуем найти продукты по вариантам шага
+          for (const stepVariant of stepVariants) {
+            const products = await prisma.product.findMany({
+              where: {
+                published: true as any,
+                step: stepVariant,
+                brand: {
+                  isActive: true,
+                },
+                // SPF универсален, для остальных учитываем тип кожи
+                ...(missingStep !== 'spf' && profile.skinType ? {
+                  skinTypes: { has: profile.skinType },
+                } : {}),
+              } as any,
+              include: {
+                brand: true,
               },
-              // SPF универсален, для остальных учитываем тип кожи
-              ...(missingStep !== 'spf' && profile.skinType ? {
-                skinTypes: { has: profile.skinType },
-              } : {}),
-            } as any,
-            include: {
-              brand: true,
-            },
-            take: 3, // Берем больше для сортировки
-          });
+              take: 5,
+            });
+            
+            if (products.length > 0) {
+              fallbackProducts = products;
+              break; // Нашли продукты, выходим из цикла
+            }
+          }
+          
+          // Если не нашли по вариантам, ищем по базовому шагу (ищем все варианты, начинающиеся с базового)
+          if (fallbackProducts.length === 0) {
+            // Получаем все продукты с шагами, начинающимися с базового шага
+            const allProducts = await prisma.product.findMany({
+              where: {
+                published: true as any,
+                brand: {
+                  isActive: true,
+                },
+                ...(missingStep !== 'spf' && profile.skinType ? {
+                  skinTypes: { has: profile.skinType },
+                } : {}),
+              } as any,
+              include: {
+                brand: true,
+              },
+              take: 50, // Берем больше, чтобы отфильтровать в памяти
+            });
+            
+            // Фильтруем в памяти по шагам, начинающимся с базового
+            fallbackProducts = allProducts.filter((p: any) => {
+              const productStep = p.step || '';
+              return productStep.startsWith(missingStep) || 
+                     productStep === missingStep ||
+                     p.category === missingStep;
+            });
+          }
           
           // Сортируем в памяти
           fallbackProducts.sort((a: any, b: any) => {
@@ -271,23 +326,25 @@ export async function GET(request: NextRequest) {
             return b.createdAt.getTime() - a.createdAt.getTime();
           });
           
-          const sortedFallback = fallbackProducts.slice(0, 1);
+          // Берем до 3 продуктов для каждого шага (согласно ТЗ)
+          const sortedFallback = fallbackProducts.slice(0, 3);
 
           if (sortedFallback.length > 0) {
-            const product = sortedFallback[0];
-            const productBrand = (product as any).brand;
-            steps[missingStep] = [{
+            const productBrand = (sortedFallback[0] as any).brand;
+            steps[missingStep] = sortedFallback.map((product: any) => ({
               id: product.id,
               name: product.name,
-              brand: productBrand?.name || 'Unknown',
+              brand: product.brand?.name || productBrand?.name || 'Unknown',
               line: product.line,
               category: product.category,
               step: product.step,
               description: product.descriptionUser,
               marketLinks: product.marketLinks,
               imageUrl: product.imageUrl,
-            }];
-            console.log(`✅ Added fallback ${missingStep}: ${product.name}`);
+            }));
+            console.log(`✅ Added fallback ${missingStep}: ${sortedFallback.length} products`);
+          } else {
+            console.warn(`⚠️ Could not find fallback products for step: ${missingStep}`);
           }
         }
       }

@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Heart, ShoppingCart, RefreshCw } from 'lucide-react';
 import type { DayStep } from '@/lib/plan-types';
-import { getStepCategoryLabel } from '@/lib/plan-types';
+import { getStepCategoryLabel, getStepDescription } from '@/lib/plan-types';
 
 interface StepCardProps {
   step: DayStep;
@@ -22,6 +22,7 @@ interface StepCardProps {
   onToggleWishlist?: (productId: number) => void;
   onAddToCart?: (productId: number) => void;
   onReplace?: (step: DayStep, productId: number) => void;
+  skinIssues?: string[]; // ID проблем кожи для формирования описаний
 }
 
 export function StepCard({
@@ -31,8 +32,9 @@ export function StepCard({
   onToggleWishlist,
   onAddToCart,
   onReplace,
+  skinIssues,
 }: StepCardProps) {
-  const stepLabel = getStepCategoryLabel(step.stepCategory);
+  const stepDesc = getStepDescription(step.stepCategory, skinIssues);
 
   if (!product) {
     return (
@@ -43,7 +45,10 @@ export function StepCard({
         border: '1px solid #E5E7EB',
       }}>
         <div style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280', marginBottom: '8px' }}>
-          {stepLabel}
+          {stepDesc.name}
+        </div>
+        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px', fontStyle: 'italic' }}>
+          {stepDesc.subtitle}
         </div>
         <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
           Продукт не найден
@@ -63,11 +68,29 @@ export function StepCard({
       {/* Заголовок шага */}
       <div style={{ marginBottom: '12px' }}>
         <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A5F59', marginBottom: '4px' }}>
-          {stepLabel}
+          {stepDesc.name}
         </div>
-        {product.description && (
-          <div style={{ fontSize: '12px', color: '#6B7280' }}>
-            {product.description}
+        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px', fontStyle: 'italic' }}>
+          {stepDesc.subtitle}
+        </div>
+        {/* Теги шага */}
+        {stepDesc.tags.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+            {stepDesc.tags.map((tag, idx) => (
+              <span
+                key={idx}
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 8px',
+                  borderRadius: '8px',
+                  backgroundColor: '#E8F5E9',
+                  color: '#2E7D32',
+                  fontWeight: '500',
+                }}
+              >
+                {tag}
+              </span>
+            ))}
           </div>
         )}
       </div>

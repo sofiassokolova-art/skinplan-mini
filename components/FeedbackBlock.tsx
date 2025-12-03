@@ -241,19 +241,19 @@ export function FeedbackBlock({ onSubmit }: FeedbackBlockProps) {
           </button>
           <button
             onClick={handleSubmitFeedback}
-            disabled={isSubmitting || selectedReasons.length === 0}
+            disabled={isSubmitting || (selectedReasons.length === 0 && !comment.trim())}
             style={{
               flex: 1,
               padding: '12px 24px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: selectedReasons.length === 0 ? 'rgba(10, 95, 89, 0.3)' : '#0A5F59',
+              backgroundColor: (selectedReasons.length === 0 && !comment.trim()) ? 'rgba(10, 95, 89, 0.3)' : '#0A5F59',
               color: 'white',
               fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 600,
               fontSize: '14px',
-              cursor: (isSubmitting || selectedReasons.length === 0) ? 'not-allowed' : 'pointer',
-              opacity: (isSubmitting || selectedReasons.length === 0) ? 0.5 : 1,
+              cursor: (isSubmitting || (selectedReasons.length === 0 && !comment.trim())) ? 'not-allowed' : 'pointer',
+              opacity: (isSubmitting || (selectedReasons.length === 0 && !comment.trim())) ? 0.5 : 1,
             }}
           >
             {isSubmitting ? 'Отправка...' : 'Отправить отзыв'}

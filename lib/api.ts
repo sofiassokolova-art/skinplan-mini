@@ -81,6 +81,27 @@ async function request<T>(
       }
     }
     
+    // Для 301/302 редиректов - обычно означает, что запрос был перенаправлен
+    // Может происходить при повторной отправке формы или при изменении URL
+    if (response.status === 301 || response.status === 302) {
+      const location = response.headers.get('Location');
+      console.warn('⚠️ Redirect response:', { 
+        status: response.status, 
+        endpoint, 
+        location,
+        method: options.method || 'GET'
+      });
+      
+      // Для POST запросов редирект может означать проблему с повторной отправкой
+      if (options.method === 'POST') {
+        throw new Error('Форма уже была отправлена. Пожалуйста, обновите страницу и попробуйте снова.');
+      }
+      
+      // Для GET запросов можем попробовать следовать редиректу
+      const errorData = await response.json().catch(() => ({ error: `Redirected to ${location || 'unknown location'}` }));
+      throw new Error(errorData.error || `Запрос был перенаправлен`);
+    }
+    
     // Для 404 ошибок (Not Found) - обычно означает отсутствие профиля
     if (response.status === 404) {
       console.log('⚠️ 404 response from API:', endpoint);
@@ -212,10 +233,23 @@ export const api = {
   },
 
   // Отзывы о плане
+  // Старый метод (для совместимости)
   async submitPlanFeedback(rating: number, feedback?: string) {
     return request('/feedback', {
       method: 'POST',
       body: JSON.stringify({ rating, feedback }),
+    });
+  },
+
+  // Новый метод для анализа (поддержка isRelevant, reasons, comment)
+  async submitAnalysisFeedback(feedback: {
+    isRelevant: boolean;
+    reasons?: string[];
+    comment?: string;
+  }) {
+    return request('/feedback', {
+      method: 'POST',
+      body: JSON.stringify(feedback),
     });
   },
 

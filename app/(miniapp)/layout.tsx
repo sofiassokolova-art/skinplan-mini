@@ -6,6 +6,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
+import PageTransition from '@/components/PageTransition';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 
@@ -99,7 +100,9 @@ function LayoutContent({
           </button>
         </div>
       )}
-      {children}
+      <PageTransition>
+        {children}
+      </PageTransition>
       {!hideNav && <BottomNavigation />}
     </>
   );

@@ -37,38 +37,76 @@ function calculateSkinIssues(
     answersMap[questionCode] = value;
   }
 
-  // 1. Акне / высыпания
-  const acneLevel = profile.acneLevel || 0;
-  if (acneLevel >= 3) {
-    const hasDiagnosis = answersMap.diagnoses?.includes('acne') || 
+  // 1. Акне / высыпания (согласно ТЗ)
+  const acneConcern = answersMap.skin_concerns?.includes('acne') || 
+                      answersMap.skin_concerns?.includes('акне') ||
+                      answersMap.skin_concerns?.includes('высыпания');
+  const acneDiagnosis = answersMap.diagnoses?.includes('acne') || 
                         answersMap.diagnoses?.includes('акне');
-    const hasIsotretinoin = answersMap.current_medications?.includes('isotretinoin') ||
-                           answersMap.current_medications?.includes('изотретиноин');
+  const hasIsotretinoin = answersMap.current_medications?.includes('isotretinoin') ||
+                         answersMap.current_medications?.includes('изотретиноин');
+  const acneLevel = profile.acneLevel || 0;
+  const hasActiveInflammations = acneLevel >= 4;
+  
+  // Добавляем проблему акне согласно ТЗ
+  if (acneConcern || acneDiagnosis || acneLevel >= 3 || hasIsotretinoin) {
+    let severityLabel: string;
+    let description: string;
+    let tags: string[] = [];
+    
+    if (hasIsotretinoin || acneDiagnosis) {
+      severityLabel = 'критично';
+      description = 'Диагноз акне или применение изотретиноина требует особого подхода к уходу';
+      tags = ['воспаления', 'постакне'];
+    } else if (hasActiveInflammations && acneConcern) {
+      severityLabel = 'плохо';
+      description = 'Активные воспаления требуют специального ухода и лечения';
+      tags = ['воспаления', 'постакне'];
+    } else if (acneConcern) {
+      severityLabel = 'умеренно';
+      description = 'Умеренные высыпания, требующие внимательного подхода';
+      tags = ['акне'];
+    } else {
+      severityLabel = 'хорошо';
+      description = 'Минимальные проявления акне';
+      tags = [];
+    }
     
     issues.push({
       id: 'acne',
       name: 'Акне / высыпания',
-      severity_score: acneLevel * 20,
-      severity_label: (hasDiagnosis || hasIsotretinoin) ? 'критично' : 
-                     acneLevel >= 4 ? 'плохо' : 'умеренно',
-      description: acneLevel >= 4 
-        ? 'Активные воспаления требуют специального ухода и лечения'
-        : 'Умеренные высыпания, требующие внимательного подхода',
-      tags: ['воспаления', acneLevel >= 4 ? 'постакне' : 'акне'],
+      severity_score: hasIsotretinoin ? 95 : 
+                     (acneDiagnosis ? 90 : 
+                     (hasActiveInflammations ? 75 : 
+                     (acneLevel >= 3 ? 60 : 40))),
+      severity_label: severityLabel as any,
+      description,
+      tags,
     });
   }
 
-  // 2. Жирность и блеск кожи
+  // 2. Жирность и блеск кожи (согласно ТЗ)
   const oilinessScore = skinScores.find(s => s.axis === 'oiliness')?.value || 50;
+  const shineTime = answersMap.skin_shine_time;
+  
   if (oilinessScore >= 60) {
-    const shineTime = answersMap.skin_shine_time;
+    let severityLabel: string;
+    if (shineTime === '2-3_hours' || shineTime === '2–3 часа') {
+      severityLabel = 'плохо';
+    } else if (shineTime === 'evening' || shineTime === 'к вечеру') {
+      severityLabel = 'умеренно';
+    } else {
+      severityLabel = 'хорошо';
+    }
+    
     issues.push({
       id: 'oiliness',
       name: 'Жирность и блеск кожи',
       severity_score: oilinessScore,
-      severity_label: shineTime === '2-3_hours' ? 'плохо' : 
-                     shineTime === 'evening' ? 'умеренно' : 'хорошо',
-      description: 'Избыточное выделение кожного сала',
+      severity_label: severityLabel as any,
+      description: shineTime === '2-3_hours' || shineTime === '2–3 часа'
+        ? 'Блеск появляется через 2–3 часа, требуется контроль себума'
+        : 'Избыточное выделение кожного сала',
       tags: ['Т-зона', 'блеск'],
     });
   }
@@ -109,18 +147,23 @@ function calculateSkinIssues(
     });
   }
 
-  // 5. Морщины
+  // 5. Морщины (согласно ТЗ: возраст + жалоба)
   const ageGroup = profile.ageGroup || '';
-  const wrinklesScore = skinScores.find(s => s.axis === 'wrinkles')?.value || 50;
+  const photoagingScore = skinScores.find(s => s.axis === 'photoaging')?.value || 0;
   const hasWrinkleConcern = answersMap.skin_concerns?.includes('wrinkles') ||
                            answersMap.skin_concerns?.includes('морщины');
-  if ((ageGroup.includes('40') || ageGroup.includes('50') || wrinklesScore >= 40) && hasWrinkleConcern) {
+  
+  // Добавляем проблему морщин, если есть возраст + жалоба (согласно ТЗ)
+  if (hasWrinkleConcern) {
+    const isOlderAge = ageGroup.includes('40') || ageGroup.includes('50') || ageGroup.includes('45');
     issues.push({
       id: 'wrinkles',
       name: 'Морщины',
-      severity_score: wrinklesScore,
-      severity_label: wrinklesScore >= 60 ? 'плохо' : 'умеренно',
-      description: 'Признаки старения требуют антивозрастного ухода',
+      severity_score: Math.max(photoagingScore, isOlderAge ? 70 : 50),
+      severity_label: (isOlderAge && photoagingScore >= 60) ? 'плохо' : 'умеренно',
+      description: isOlderAge 
+        ? 'Признаки старения требуют интенсивного антивозрастного ухода'
+        : 'Признаки старения требуют антивозрастного ухода',
       tags: ['старение', 'антивозрастной уход'],
     });
   }
@@ -203,7 +246,27 @@ function calculateSkinIssues(
     });
   }
 
-  return issues;
+  // Сортируем проблемы по приоритету согласно ТЗ:
+  // 1. Сначала критичные проблемы (критично/плохо)
+  // 2. Затем умеренные (умеренно)
+  // 3. В конце те, что в норме (хорошо/отлично)
+  const severityOrder: Record<string, number> = {
+    'критично': 0,
+    'плохо': 1,
+    'умеренно': 2,
+    'хорошо': 3,
+    'отлично': 4,
+  };
+
+  return issues.sort((a, b) => {
+    const orderA = severityOrder[a.severity_label] ?? 5;
+    const orderB = severityOrder[b.severity_label] ?? 5;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    // Если severity одинаковый, сортируем по score (выше = важнее)
+    return b.severity_score - a.severity_score;
+  });
 }
 
 export async function GET(request: NextRequest) {

@@ -73,6 +73,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Проверяем, не отправлял ли пользователь ответы недавно (защита от повторной отправки)
+    // Если пользователь отправил ответы менее чем 5 секунд назад - считаем это дубликатом
+    const recentSubmission = await prisma.userAnswer.findFirst({
+      where: {
+        userId,
+        question: {
+          questionnaireId: questionnaire.id,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+      include: {
+        question: true,
+      },
+    });
+
+    if (recentSubmission) {
+      const timeSinceSubmission = Date.now() - new Date(recentSubmission.createdAt).getTime();
+      // Если ответ был отправлен менее чем 5 секунд назад - это вероятно дубликат
+      if (timeSinceSubmission < 5000) {
+        logger.warn('Possible duplicate submission detected', {
+          userId,
+          questionnaireId,
+          timeSinceSubmission,
+          lastSubmissionId: recentSubmission.id,
+        });
+        
+        // Возвращаем успешный ответ, чтобы избежать ошибки 301 и повторной обработки
+        // Но логируем это для мониторинга
+        const existingProfile = await prisma.skinProfile.findFirst({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+        });
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Answers already submitted',
+          profile: existingProfile ? {
+            id: existingProfile.id,
+            version: existingProfile.version,
+          } : null,
+          isDuplicate: true,
+        });
+      }
+    }
+
     // Сохраняем или обновляем ответы (upsert для избежания дубликатов)
     const savedAnswers = await Promise.all(
       answers.map(async (answer: AnswerInput) => {
@@ -158,9 +204,20 @@ export async function POST(request: NextRequest) {
     });
 
     // Подготавливаем данные для Prisma
+    // При повторном прохождении анкеты сохраняем некоторые данные из старого профиля
+    const existingMarkers = (existingProfile?.medicalMarkers as any) || {};
+    const mergedMarkers = {
+      ...existingMarkers,
+      ...(profileData.medicalMarkers ? (profileData.medicalMarkers as any) : {}),
+    };
+    // Сохраняем gender из старого профиля, если он был
+    if (existingMarkers?.gender) {
+      mergedMarkers.gender = existingMarkers.gender;
+    }
     const profileDataForPrisma = {
       ...profileData,
-      medicalMarkers: profileData.medicalMarkers ? (profileData.medicalMarkers as any) : null,
+      ageGroup: existingProfile?.ageGroup ?? profileData.ageGroup,
+      medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
     };
 
     const profile = existingProfile

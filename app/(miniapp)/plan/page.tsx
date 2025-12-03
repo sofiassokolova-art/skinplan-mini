@@ -69,8 +69,11 @@ export default function PlanPage() {
 
   const loadPlan = async (retryCount = 0) => {
     try {
-      setLoading(true);
-      setError(null);
+      // Сбрасываем ошибку только при первой попытке
+      if (retryCount === 0) {
+        setLoading(true);
+        setError(null);
+      }
 
       // Проверяем, что приложение открыто через Telegram
       if (typeof window === 'undefined' || !window.Telegram?.WebApp) {
@@ -118,12 +121,17 @@ export default function PlanPage() {
         });
       } catch (planError: any) {
         // Если профиль не найден и это первая/вторая попытка - ждем и повторяем
+        // НЕ показываем ошибку во время retry, только после всех попыток
         if (retryCount < 3 && (
           planError?.message?.includes('No skin profile') ||
           planError?.message?.includes('Skin profile not found') ||
-          planError?.message?.includes('404')
+          planError?.message?.includes('404') ||
+          planError?.message?.includes('Internal server error') ||
+          planError?.status === 404 ||
+          planError?.status === 500
         )) {
-          console.log(`⏳ Профиль еще не создан, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          console.log(`⏳ План еще не готов, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
@@ -134,6 +142,7 @@ export default function PlanPage() {
       if (!plan || (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0))) {
         if (retryCount < 3) {
           console.log(`⏳ План пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
@@ -148,11 +157,16 @@ export default function PlanPage() {
         profile = await api.getCurrentProfile() as any;
       } catch (profileError: any) {
         // Если профиль не найден и это первая/вторая попытка - ждем и повторяем
+        // НЕ показываем ошибку во время retry, только после всех попыток
         if (retryCount < 3 && (
           profileError?.message?.includes('No profile') ||
-          profileError?.message?.includes('404')
+          profileError?.message?.includes('404') ||
+          profileError?.message?.includes('Internal server error') ||
+          profileError?.status === 404 ||
+          profileError?.status === 500
         )) {
           console.log(`⏳ Профиль еще не создан, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
@@ -164,6 +178,7 @@ export default function PlanPage() {
       if (!profile) {
         if (retryCount < 3) {
           console.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+          // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
@@ -411,6 +426,19 @@ export default function PlanPage() {
       setLoading(false);
     } catch (err: any) {
       console.error('❌ Error loading plan:', err);
+      // Только показываем ошибку, если все retry попытки исчерпаны
+      // Если ошибка связана с генерацией плана (500), пробуем еще раз через retry
+      if (retryCount < 3 && (
+        err?.message?.includes('Internal server error') ||
+        err?.status === 500 ||
+        err?.status === 502 ||
+        err?.status === 503
+      )) {
+        console.log(`⏳ Ошибка сервера, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return loadPlan(retryCount + 1);
+      }
+      // Только после всех попыток показываем ошибку
       setError(err?.message || 'Ошибка загрузки плана');
       setLoading(false);
     }

@@ -28,11 +28,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { rating, feedback } = await request.json();
-
-    if (!rating || rating < 1 || rating > 5) {
+    const body = await request.json();
+    
+    // Поддержка нового формата (isRelevant, reasons, comment) и старого (rating, feedback)
+    let rating: number;
+    let feedbackText: string | null = null;
+    
+    if (body.isRelevant !== undefined) {
+      // Новый формат из анализа
+      rating = body.isRelevant ? 5 : 1; // Да = 5, Нет = 1
+      // Формируем текст обратной связи из reasons и comment
+      if (!body.isRelevant) {
+        const reasons = Array.isArray(body.reasons) ? body.reasons : [];
+        const comment = body.comment || '';
+        const parts: string[] = [];
+        if (reasons.length > 0) {
+          parts.push(`Причины: ${reasons.join(', ')}`);
+        }
+        if (comment.trim()) {
+          parts.push(`Комментарий: ${comment.trim()}`);
+        }
+        feedbackText = parts.length > 0 ? parts.join('\n') : null;
+      }
+    } else if (body.rating) {
+      // Старый формат (для совместимости)
+      rating = body.rating;
+      feedbackText = body.feedback || null;
+      
+      if (rating < 1 || rating > 5) {
+        return NextResponse.json(
+          { error: 'Rating must be between 1 and 5' },
+          { status: 400 }
+        );
+      }
+    } else {
       return NextResponse.json(
-        { error: 'Rating must be between 1 and 5' },
+        { error: 'Missing required field: either isRelevant or rating' },
         { status: 400 }
       );
     }
@@ -42,7 +73,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         rating,
-        feedback: feedback || null,
+        feedback: feedbackText,
       },
     });
 

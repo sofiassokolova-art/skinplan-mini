@@ -87,6 +87,19 @@ export default function AnalysisPage() {
         console.warn('Could not load wishlist:', err);
       }
 
+      // Загружаем выбранные продукты из localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          const savedRoutine = localStorage.getItem('routine_products');
+          if (savedRoutine) {
+            const routineProducts = JSON.parse(savedRoutine) as number[];
+            setInRoutineProducts(new Set(routineProducts));
+          }
+        } catch (err) {
+          console.warn('Could not load routine products from localStorage:', err);
+        }
+      }
+
       setAnalysisData(analysisData);
       setLoading(false);
     } catch (err: any) {
@@ -98,15 +111,23 @@ export default function AnalysisPage() {
 
   const handleAddToRoutine = async (productId: number) => {
     const newSet = new Set(inRoutineProducts);
-    if (newSet.has(productId)) {
+    const wasInRoutine = newSet.has(productId);
+    
+    if (wasInRoutine) {
       newSet.delete(productId);
     } else {
       newSet.add(productId);
     }
     setInRoutineProducts(newSet);
     
-    // TODO: Сохранить в БД через API
-    toast.success(newSet.has(productId) ? 'Добавлено в уход' : 'Удалено из ухода');
+    // Сохраняем в localStorage для сохранения состояния между сессиями
+    // План будет использовать выбранные продукты при генерации
+    if (typeof window !== 'undefined') {
+      const routineProducts = Array.from(newSet);
+      localStorage.setItem('routine_products', JSON.stringify(routineProducts));
+    }
+    
+    toast.success(wasInRoutine ? 'Удалено из ухода' : 'Добавлено в уход');
   };
 
   const handleToggleWishlist = async (productId: number) => {
@@ -137,9 +158,13 @@ export default function AnalysisPage() {
     reasons?: string[];
     comment?: string;
   }) => {
-    // TODO: Отправить обратную связь через API
-    console.log('Feedback submitted:', feedback);
-    // await api.submitFeedback(feedback);
+    try {
+      await api.submitAnalysisFeedback(feedback);
+      toast.success('Спасибо за обратную связь!');
+    } catch (err: any) {
+      console.error('Error submitting feedback:', err);
+      toast.error(err?.message || 'Не удалось отправить отзыв');
+    }
   };
 
 
