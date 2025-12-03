@@ -60,30 +60,35 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Автоматически удаляем логи старше недели (в фоне, не блокируем ответ)
+    // Автоматически удаляем логи старше 7 дней (в фоне, не блокируем ответ)
     // Используем setTimeout чтобы не блокировать ответ
-    setTimeout(async () => {
-      try {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        
-        const deleted = await prisma.clientLog.deleteMany({
-          where: {
-            createdAt: {
-              lt: weekAgo,
+    // Проверяем только раз в 100 запросов, чтобы не перегружать БД
+    const shouldCleanup = Math.random() < 0.01; // 1% вероятность при каждом запросе
+    
+    if (shouldCleanup) {
+      setTimeout(async () => {
+        try {
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          
+          const deleted = await prisma.clientLog.deleteMany({
+            where: {
+              createdAt: {
+                lt: weekAgo,
+              },
             },
-          },
-        });
-        
-        if (deleted.count > 0) {
-          logger.info(`Cleaned up ${deleted.count} old client logs`, {
-            olderThan: weekAgo.toISOString(),
           });
+          
+          if (deleted.count > 0) {
+            logger.info(`Cleaned up ${deleted.count} old client logs`, {
+              olderThan: weekAgo.toISOString(),
+            });
+          }
+        } catch (cleanupError) {
+          logger.error('Error cleaning up old logs', cleanupError);
         }
-      } catch (cleanupError) {
-        logger.error('Error cleaning up old logs', cleanupError);
-      }
-    }, 0);
+      }, 0);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -16,7 +16,8 @@ import {
   Send,
   Menu,
   X,
-  FileSearch
+  FileSearch,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -78,6 +79,7 @@ export default function AdminLayout({
     { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare },
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
     { href: '/admin/broadcasts', label: 'Рассылки', icon: Send },
+    { href: '/admin/funnel', label: 'Воронка конверсии', icon: TrendingUp },
     { href: '/admin/logs', label: 'Логи клиентов', icon: FileSearch },
   ];
 
