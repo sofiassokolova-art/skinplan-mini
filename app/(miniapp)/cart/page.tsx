@@ -70,36 +70,6 @@ export default function CartPage() {
     }
   };
 
-  const handleBuyAll = () => {
-    // Открываем все ссылки в новых вкладках
-    const links: string[] = [];
-    
-    wishlist.forEach((item) => {
-      const marketLinks = item.product.marketLinks as any || {};
-      if (marketLinks.ozon) links.push(marketLinks.ozon);
-      if (marketLinks.wildberries) links.push(marketLinks.wildberries);
-      if (marketLinks.apteka) links.push(marketLinks.apteka);
-      if (item.product.link && !marketLinks.ozon && !marketLinks.wildberries && !marketLinks.apteka) {
-        links.push(item.product.link);
-      }
-    });
-
-    // Открываем уникальные ссылки
-    const uniqueLinks = [...new Set(links)];
-    uniqueLinks.forEach((link) => {
-      window.open(link, '_blank');
-    });
-
-    if (uniqueLinks.length === 0) {
-      toast.error('Ссылки на покупку не найдены');
-    } else {
-      toast.success(`Открыто ${uniqueLinks.length} ссылок`);
-    }
-  };
-
-  const minPrice = wishlist.reduce((sum, item) => {
-    return sum + (item.product.price || 0);
-  }, 0);
 
   if (loading) {
     return (
@@ -124,7 +94,7 @@ export default function CartPage() {
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
         padding: '20px',
-        paddingBottom: wishlist.length > 0 ? '140px' : '120px',
+        paddingBottom: '120px',
       }}
     >
       {/* Логотип */}
@@ -213,52 +183,6 @@ export default function CartPage() {
             ))}
           </div>
 
-          {/* Кнопка "Купить всё" */}
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(28px)',
-              borderTop: '1px solid rgba(10, 95, 89, 0.1)',
-              padding: '20px',
-              boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.1)',
-              zIndex: 1000,
-            }}
-          >
-            <div style={{ maxWidth: '420px', margin: '0 auto' }}>
-              <button
-                onClick={handleBuyAll}
-                style={{
-                  width: '100%',
-                  padding: '20px',
-                  borderRadius: '24px',
-                  border: 'none',
-                  background: 'linear-gradient(to right, #8B5CF6, #EC4899)',
-                  color: 'white',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
-                  marginBottom: '12px',
-                }}
-              >
-                Купить всё в один клик ({wishlist.length} товара{wishlist.length > 1 ? '' : ''} • от {minPrice} ₽)
-              </button>
-              <p
-                style={{
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  color: '#475467',
-                  margin: 0,
-                }}
-              >
-                Откроем лучшие цены в аптеках и маркетплейсах
-              </p>
-            </div>
-          </div>
         </>
       )}
     </div>

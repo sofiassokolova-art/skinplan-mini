@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import PlanFeedbackPopup from '@/components/PlanFeedbackPopup';
+import toast from 'react-hot-toast';
 
 interface RoutineItem {
   id: string;
@@ -71,6 +72,14 @@ export default function HomePage() {
   const [hasPlan, setHasPlan] = useState(false);
   const [checkingPlan, setCheckingPlan] = useState(false);
   const planCheckDoneRef = useRef(false); // Защита от повторных проверок плана
+  const [currentDay, setCurrentDay] = useState(1); // Текущий день плана
+  const [completedSteps, setCompletedSteps] = useState<{
+    morning: Set<string>;
+    evening: Set<string>;
+  }>({
+    morning: new Set(),
+    evening: new Set(),
+  });
 
   // Проверка незавершённой анкеты (объявляем до использования)
   const checkIncompleteQuiz = async (): Promise<boolean> => {
@@ -797,8 +806,64 @@ export default function HomePage() {
     }
   };
 
-  const toggleItem = (itemId: string) => {
-    if (tab === 'AM') {
+  // Загружаем прогресс плана при монтировании
+  useEffect(() => {
+    const loadPlanProgress = async () => {
+      try {
+        const progress = await api.getPlanProgress() as {
+          currentDay: number;
+          completedDays: number[];
+        };
+        if (progress) {
+          setCurrentDay(progress.currentDay || 1);
+          
+          // Загружаем сохраненный прогресс шагов из localStorage
+          if (typeof window !== 'undefined') {
+            const savedSteps = localStorage.getItem(`plan_steps_${progress.currentDay || 1}`);
+            if (savedSteps) {
+              try {
+                const parsed = JSON.parse(savedSteps);
+                setCompletedSteps({
+                  morning: new Set(parsed.morning || []),
+                  evening: new Set(parsed.evening || []),
+                });
+                
+                // Обновляем состояние элементов рутины
+                setMorningItems((items) =>
+                  items.map((item) => ({
+                    ...item,
+                    done: parsed.morning?.includes(item.id) || false,
+                  }))
+                );
+                setEveningItems((items) =>
+                  items.map((item) => ({
+                    ...item,
+                    done: parsed.evening?.includes(item.id) || false,
+                  }))
+                );
+              } catch (e) {
+                console.warn('Could not parse saved steps:', e);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load plan progress:', err);
+      }
+    };
+    
+    if (mounted && recommendations) {
+      loadPlanProgress();
+    }
+  }, [mounted, recommendations]);
+
+  const toggleItem = async (itemId: string) => {
+    const isMorning = tab === 'AM';
+    const currentCompleted = isMorning ? completedSteps.morning : completedSteps.evening;
+    const isDone = currentCompleted.has(itemId);
+    
+    // Обновляем локальное состояние
+    if (isMorning) {
       setMorningItems((items) =>
         items.map((item) =>
           item.id === itemId ? { ...item, done: !item.done } : item
@@ -810,6 +875,76 @@ export default function HomePage() {
           item.id === itemId ? { ...item, done: !item.done } : item
         )
       );
+    }
+    
+    // Обновляем состояние выполненных шагов
+    const newCompletedSet = new Set(currentCompleted);
+    if (isDone) {
+      newCompletedSet.delete(itemId);
+    } else {
+      newCompletedSet.add(itemId);
+    }
+    
+    const newCompletedSteps = {
+      ...completedSteps,
+      [isMorning ? 'morning' : 'evening']: newCompletedSet,
+    };
+    setCompletedSteps(newCompletedSteps);
+    
+    // Сохраняем в localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        `plan_steps_${currentDay}`,
+        JSON.stringify({
+          morning: Array.from(newCompletedSteps.morning),
+          evening: Array.from(newCompletedSteps.evening),
+        })
+      );
+    }
+    
+    // Проверяем, все ли шаги утра/вечера выполнены
+    const currentItems = isMorning ? morningItems : eveningItems;
+    const allCompleted = currentItems.every((item) => {
+      if (item.id === itemId) {
+        return !isDone; // Проверяем новое состояние
+      }
+      return newCompletedSet.has(item.id);
+    });
+    
+    // Если все шаги выполнены, проверяем, нужно ли завершить день
+    if (allCompleted) {
+      const otherCompleted = isMorning ? completedSteps.evening : completedSteps.morning;
+      const otherItems = isMorning ? eveningItems : morningItems;
+      const otherAllCompleted = otherItems.every((item) => otherCompleted.has(item.id));
+      
+      // Если и утро, и вечер выполнены - день завершен
+      if (otherAllCompleted && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        try {
+          const progress = await api.getPlanProgress() as {
+            currentDay: number;
+            completedDays: number[];
+          };
+          
+          const completedDaysSet = new Set(progress?.completedDays || []);
+          if (!completedDaysSet.has(currentDay)) {
+            completedDaysSet.add(currentDay);
+            const nextDay = Math.min(currentDay + 1, 28);
+            
+            await api.savePlanProgress(nextDay, Array.from(completedDaysSet));
+            setCurrentDay(nextDay);
+            
+            // Очищаем прогресс шагов для нового дня
+            setCompletedSteps({ morning: new Set(), evening: new Set() });
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem(`plan_steps_${currentDay}`);
+            }
+            
+            toast.success('День завершен! ✨');
+          }
+        } catch (err) {
+          console.warn('Could not save completed day:', err);
+        }
+      }
     }
   };
 

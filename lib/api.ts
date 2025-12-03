@@ -253,6 +253,18 @@ export const api = {
     });
   },
 
+  // Универсальный метод для отправки фидбека (используется в плане)
+  async submitFeedback(
+    isRelevant: boolean,
+    reasons?: string[],
+    comment?: string | null
+  ) {
+    return request('/feedback', {
+      method: 'POST',
+      body: JSON.stringify({ isRelevant, reasons, comment }),
+    });
+  },
+
   async getLastPlanFeedback() {
     return request('/feedback');
   },

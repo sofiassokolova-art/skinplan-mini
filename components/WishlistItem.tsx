@@ -242,59 +242,68 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
                 <button
                   onClick={() => handleFeedback('bought_love')}
                   disabled={loading}
+                  title="Очень понравилось"
                   style={{
                     flex: 1,
-                    minWidth: '80px',
+                    minWidth: '60px',
                     padding: '10px',
                     borderRadius: '12px',
                     border: `2px solid ${feedback === 'bought_love' ? '#EC4899' : 'rgba(10, 95, 89, 0.2)'}`,
                     backgroundColor: feedback === 'bought_love' ? '#EC4899' : 'transparent',
                     color: feedback === 'bought_love' ? 'white' : '#0A5F59',
-                    fontSize: '12px',
-                    fontWeight: '600',
+                    fontSize: '20px',
                     cursor: loading ? 'not-allowed' : 'pointer',
                     opacity: loading ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  Love
+                  ❤️
                 </button>
                 <button
                   onClick={() => handleFeedback('bought_ok')}
                   disabled={loading}
+                  title="Нормально"
                   style={{
                     flex: 1,
-                    minWidth: '80px',
+                    minWidth: '60px',
                     padding: '10px',
                     borderRadius: '12px',
                     border: `2px solid ${feedback === 'bought_ok' ? '#3B82F6' : 'rgba(10, 95, 89, 0.2)'}`,
                     backgroundColor: feedback === 'bought_ok' ? '#3B82F6' : 'transparent',
                     color: feedback === 'bought_ok' ? 'white' : '#0A5F59',
-                    fontSize: '12px',
-                    fontWeight: '600',
+                    fontSize: '20px',
                     cursor: loading ? 'not-allowed' : 'pointer',
                     opacity: loading ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  OK
+                  ✓
                 </button>
                 <button
                   onClick={() => handleFeedback('bought_bad')}
                   disabled={loading}
+                  title="Не понравилось"
                   style={{
                     flex: 1,
-                    minWidth: '80px',
+                    minWidth: '60px',
                     padding: '10px',
                     borderRadius: '12px',
                     border: `2px solid ${feedback === 'bought_bad' ? '#374151' : 'rgba(10, 95, 89, 0.2)'}`,
                     backgroundColor: feedback === 'bought_bad' ? '#374151' : 'transparent',
                     color: feedback === 'bought_bad' ? 'white' : '#0A5F59',
-                    fontSize: '12px',
-                    fontWeight: '600',
+                    fontSize: '20px',
                     cursor: loading ? 'not-allowed' : 'pointer',
                     opacity: loading ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  Bad
+                  ✕
                 </button>
               </div>
               {feedback === 'not_bought' && (

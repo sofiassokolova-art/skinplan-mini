@@ -59,16 +59,25 @@ export default function QuizTopicPage() {
       }
 
       // Фильтруем вопросы по теме
+      // Приоритет: сначала по коду (более надежно), потом по ID
       const topicQuestions = allQuestions.filter((q: any) => {
         if (!q || !q.id) return false;
         
-        // Проверяем по ID
-        if (topicData.questionIds && topicData.questionIds.includes(q.id)) {
-          return true;
+        // Приоритет 1: Проверяем по коду (более надежно, т.к. коды не меняются)
+        if (topicData.questionCodes && q.code) {
+          const normalizedCode = q.code.toUpperCase().trim();
+          const matchingCode = topicData.questionCodes.some(code => 
+            normalizedCode === code.toUpperCase().trim() ||
+            normalizedCode.includes(code.toUpperCase().trim()) ||
+            code.toUpperCase().trim().includes(normalizedCode)
+          );
+          if (matchingCode) {
+            return true;
+          }
         }
         
-        // Проверяем по коду
-        if (topicData.questionCodes && q.code && topicData.questionCodes.includes(q.code)) {
+        // Приоритет 2: Проверяем по ID (если коды не совпали)
+        if (topicData.questionIds && topicData.questionIds.includes(q.id)) {
           return true;
         }
         
@@ -76,10 +85,25 @@ export default function QuizTopicPage() {
       });
 
       if (topicQuestions.length === 0) {
-        toast.error('Вопросы для выбранной темы не найдены');
+        console.error('No questions found for topic', {
+          topicId,
+          topicTitle: topicData.title,
+          topicQuestionCodes: topicData.questionCodes,
+          topicQuestionIds: topicData.questionIds,
+          allQuestionsCount: allQuestions.length,
+          allQuestionCodes: allQuestions.map((q: any) => ({ id: q.id, code: q.code, text: q.text?.substring(0, 50) })),
+        });
+        toast.error('Вопросы для выбранной темы не найдены. Проверьте консоль для подробностей.');
         setLoading(false);
         return;
       }
+
+      console.log('Questions found for topic', {
+        topicId,
+        topicTitle: topicData.title,
+        foundCount: topicQuestions.length,
+        questions: topicQuestions.map((q: any) => ({ id: q.id, code: q.code, text: q.text?.substring(0, 50) })),
+      });
 
       // Загружаем текущие ответы пользователя для предзаполнения
       let answersMap: Record<number, any> = {};

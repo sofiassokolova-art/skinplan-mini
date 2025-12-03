@@ -146,39 +146,47 @@ export default function PlanPage() {
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
+        
+        // Проверяем наличие профиля перед показом ошибки
+        // Если план пустой, но есть профиль - возможно, план еще генерируется
+        try {
+          const profileCheck = await api.getCurrentProfile() as any;
+          if (profileCheck) {
+            // Профиль есть, но план еще не готов - показываем ошибку генерации плана
+            console.warn('Profile exists but plan is empty - plan may be generating');
+            setError('no_profile'); // Показываем сообщение о необходимости пройти анкету (на самом деле план генерируется)
+            setLoading(false);
+            return;
+          }
+        } catch (profileCheckError) {
+          // Профиля нет - это нормальная ситуация для нового пользователя
+        }
+        
         setError('no_profile');
         setLoading(false);
         return;
       }
 
       // Получаем профиль для scores и другой информации
+      // НЕ требуем профиль для показа плана, если план уже есть
       let profile;
       try {
         profile = await api.getCurrentProfile() as any;
       } catch (profileError: any) {
-        // Если профиль не найден и это первая/вторая попытка - ждем и повторяем
-        // НЕ показываем ошибку во время retry, только после всех попыток
-        if (retryCount < 3 && (
-          profileError?.message?.includes('No profile') ||
-          profileError?.message?.includes('404') ||
-          profileError?.message?.includes('Internal server error') ||
-          profileError?.status === 404 ||
-          profileError?.status === 500
-        )) {
-          console.log(`⏳ Профиль еще не создан, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
-          // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return loadPlan(retryCount + 1);
-        }
-        setError('no_profile');
-        setLoading(false);
-        return;
+        // Если профиль не найден, но план есть - это нормально, продолжаем с план28
+        // Профиль нужен только для старого формата плана
+        console.warn('Could not load profile, but plan exists - continuing with plan only');
+        profile = null;
       }
       
-      if (!profile) {
+      // Если план есть в новом формате plan28, можем продолжать без профиля
+      if (plan.plan28) {
+        console.log('✅ Using plan28 format, profile not required');
+        // Продолжаем дальше без проверки профиля
+      } else if (!profile) {
+        // Для старого формата нужен профиль
         if (retryCount < 3) {
           console.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
-          // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
