@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
 import PageTransition from '@/components/PageTransition';
 import { NetworkStatus } from '@/components/NetworkStatus';
+import { QueryProvider } from '@/providers/QueryProvider';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 
@@ -116,8 +117,10 @@ export default function MiniappLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Suspense fallback={<>{children}</>}>
-      <LayoutContent>{children}</LayoutContent>
-    </Suspense>
+    <QueryProvider>
+      <Suspense fallback={<>{children}</>}>
+        <LayoutContent>{children}</LayoutContent>
+      </Suspense>
+    </QueryProvider>
   );
 }
