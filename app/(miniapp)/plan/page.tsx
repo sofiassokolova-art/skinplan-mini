@@ -235,7 +235,7 @@ export default function PlanPage() {
         if (allProductIds.size > 0 && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
           try {
             const productIdsArray = Array.from(allProductIds);
-            console.log('📦 Loading products from batch endpoint, count:', productIdsArray.length);
+            console.log('📦 Loading products from batch endpoint, count:', productIdsArray.length, 'IDs:', productIdsArray.slice(0, 10));
             const productsResponse = await fetch('/api/products/batch', {
               method: 'POST',
               headers: {
@@ -250,22 +250,38 @@ export default function PlanPage() {
               console.log('✅ Products loaded from batch:', productsData.products?.length || 0);
               if (productsData.products && Array.isArray(productsData.products)) {
                 productsData.products.forEach((p: any) => {
-                  productsMap.set(p.id, {
-                    id: p.id,
-                    name: p.name,
-                    brand: { name: p.brand?.name || p.brand || 'Unknown' },
-                    price: p.price,
-                    imageUrl: p.imageUrl || null,
-                    description: p.description || p.descriptionUser || null,
-                  });
+                  if (p && p.id) {
+                    productsMap.set(p.id, {
+                      id: p.id,
+                      name: p.name,
+                      brand: { name: p.brand?.name || p.brand || 'Unknown' },
+                      price: p.price,
+                      imageUrl: p.imageUrl || null,
+                      description: p.description || p.descriptionUser || null,
+                    });
+                  }
                 });
+                console.log('✅ Products added to map, total size:', productsMap.size);
+              } else {
+                console.warn('⚠️ productsData.products is not an array:', productsData);
               }
             } else {
-              console.error('❌ Failed to load products from batch endpoint:', productsResponse.status);
+              const errorText = await productsResponse.text().catch(() => '');
+              console.error('❌ Failed to load products from batch endpoint:', {
+                status: productsResponse.status,
+                statusText: productsResponse.statusText,
+                error: errorText.substring(0, 200),
+              });
             }
           } catch (err) {
             console.error('❌ Error loading products from batch endpoint:', err);
           }
+        } else {
+          console.warn('⚠️ Cannot load products:', {
+            hasProductIds: allProductIds.size > 0,
+            hasWindow: typeof window !== 'undefined',
+            hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
+          });
         }
 
         // Fallback: если продукты не загрузились из API, используем продукты из плана
@@ -307,10 +323,14 @@ export default function PlanPage() {
         console.log('📊 Products loaded from plan.products, map size:', productsMap.size);
       }
 
+      // Важно: Map не сериализуется в JSON, поэтому сохраняем как есть
+      // При передаче через setState Map сохраняется корректно
+      console.log('💾 Setting planData with productsMap size:', productsMap.size);
+      
       setPlanData({
         plan28: plan28 || undefined,
         weeks: plan.weeks || [],
-        productsMap: productsMap, // Исправлено: используем productsMap вместо products
+        productsMap: productsMap, // Map передается напрямую
         products: productsMap, // Также сохраняем в products для обратной совместимости
         profile: profile || undefined,
         scores,
