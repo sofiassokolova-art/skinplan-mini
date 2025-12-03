@@ -3,15 +3,27 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlanHeader } from '@/components/PlanHeader';
 import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import { GoalProgressInfographic } from '@/components/GoalProgressInfographic';
+import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
+import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
+
+interface SkinIssue {
+  id: string;
+  name: string;
+  severity_score: number;
+  severity_label: 'критично' | 'плохо' | 'умеренно' | 'хорошо' | 'отлично';
+  description: string;
+  tags: string[];
+  image_url?: string;
+}
 
 interface PlanPageClientNewProps {
   plan28: Plan28;
@@ -41,10 +53,46 @@ export function PlanPageClientNew({
   const [completedDays, setCompletedDays] = useState<Set<number>>(new Set(initialCompletedDays));
   const [completedMorning, setCompletedMorning] = useState(false);
   const [completedEvening, setCompletedEvening] = useState(false);
+  const [skinIssues, setSkinIssues] = useState<SkinIssue[]>([]);
+  const [loadingIssues, setLoadingIssues] = useState(true);
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
   }, [plan28.days, selectedDay]);
+
+  // Загружаем данные о проблемах кожи при монтировании
+  useEffect(() => {
+    loadSkinIssues();
+  }, []);
+
+  const loadSkinIssues = async () => {
+    try {
+      setLoadingIssues(true);
+      const analysisData = await api.getAnalysis() as { issues?: SkinIssue[] };
+      if (analysisData?.issues && Array.isArray(analysisData.issues)) {
+        setSkinIssues(analysisData.issues);
+      }
+    } catch (err) {
+      console.warn('Could not load skin issues:', err);
+      // Не показываем ошибку пользователю, просто оставляем пустой массив
+    } finally {
+      setLoadingIssues(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async (feedback: {
+    isRelevant: boolean;
+    reasons?: string[];
+    comment?: string;
+  }) => {
+    try {
+      await api.submitFeedback(feedback.isRelevant, feedback.reasons, feedback.comment);
+    } catch (err: any) {
+      console.error('Error submitting feedback:', err);
+      toast.error(err?.message || 'Не удалось отправить отзыв');
+      throw err; // Пробрасываем ошибку, чтобы FeedbackBlock мог обработать её
+    }
+  };
 
   const toggleWishlist = async (productId: number) => {
     try {
@@ -204,6 +252,22 @@ export function PlanPageClientNew({
       {/* Header с целями */}
       <PlanHeader mainGoals={plan28.mainGoals} />
 
+      {/* Блок проблем кожи - горизонтальный карусель */}
+      <div style={{ marginBottom: '32px' }}>
+        {loadingIssues ? (
+          <div style={{ 
+            padding: '20px', 
+            textAlign: 'center', 
+            color: '#6B7280',
+            fontSize: '14px'
+          }}>
+            Загрузка проблем кожи...
+          </div>
+        ) : skinIssues.length > 0 ? (
+          <SkinIssuesCarousel issues={skinIssues} />
+        ) : null}
+      </div>
+
       {/* Инфографика прогресса по целям */}
       <GoalProgressInfographic
         goals={plan28.mainGoals}
@@ -228,11 +292,13 @@ export function PlanPageClientNew({
         onToggleWishlist={toggleWishlist}
         onAddToCart={handleAddToCart}
         onReplace={handleReplace}
-        completedMorning={completedMorning}
-        completedEvening={completedEvening}
-        onCompleteMorning={handleCompleteMorning}
-        onCompleteEvening={handleCompleteEvening}
+        // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
       />
+
+      {/* Блок обратной связи в конце страницы */}
+      <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+        <FeedbackBlock onSubmit={handleFeedbackSubmit} />
+      </div>
     </div>
   );
 }
