@@ -354,17 +354,23 @@ export default function PlanPage() {
       // Загружаем план через API с retry-логикой
       let plan;
       try {
+        console.log('🔄 Attempting to load plan from cache...');
         plan = await api.getPlan() as any;
-        // Логируем только в development
-        if (process.env.NODE_ENV === 'development') {
-          console.log('📋 Plan loaded:', {
-            hasPlan28: !!plan?.plan28,
-            hasWeeks: !!plan?.weeks,
-            weeksCount: plan?.weeks?.length || 0,
-            plan28DaysCount: plan?.plan28?.days?.length || 0,
-          });
-        }
+        console.log('✅ Plan loaded from cache:', {
+          hasPlan28: !!plan?.plan28,
+          hasWeeks: !!plan?.weeks,
+          weeksCount: plan?.weeks?.length || 0,
+          plan28DaysCount: plan?.plan28?.days?.length || 0,
+          planKeys: Object.keys(plan || {}),
+        });
       } catch (planError: any) {
+        console.error('❌ Error loading plan from cache:', {
+          status: planError?.status,
+          message: planError?.message,
+          error: planError,
+          stack: planError?.stack,
+        });
+        
         // Если это 404 (план не найден) - не делаем retry, сразу показываем ошибку
         // Только для ошибок сервера (500, 502, 503) делаем одну быструю попытку
         if (retryCount < 1 && (
@@ -373,17 +379,13 @@ export default function PlanPage() {
           planError?.status === 503 ||
           planError?.message?.includes('Internal server error')
         )) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`⏳ Ошибка сервера, повторяем через 500мс... (попытка ${retryCount + 1}/1)`);
-          }
+          console.log(`⏳ Ошибка сервера, повторяем через 500мс... (попытка ${retryCount + 1}/1)`);
           await new Promise(resolve => setTimeout(resolve, 500));
           return loadPlan(retryCount + 1);
         }
         
         // Для 404 или других ошибок - сразу показываем, не делаем retry
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Plan not found or error:', planError?.message || planError?.status);
-        }
+        console.log('⚠️ Plan not found in cache or error occurred');
         plan = null;
       }
       
@@ -412,27 +414,38 @@ export default function PlanPage() {
         // Профиль есть, но план не найден в кэше
         // Попробуем явно сгенерировать план один раз (возможно, кэш был очищен)
         if (retryCount === 0) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('Plan not found in cache, but profile exists - attempting to generate');
-          }
+          console.log('🔄 Plan not found in cache, but profile exists - attempting to generate...');
           try {
+            console.log('📞 Calling generatePlan API...');
             const generatedPlan = await api.generatePlan() as any;
+            console.log('📦 Generated plan response:', {
+              hasPlan28: !!generatedPlan?.plan28,
+              hasWeeks: !!generatedPlan?.weeks,
+              weeksCount: generatedPlan?.weeks?.length || 0,
+              plan28DaysCount: generatedPlan?.plan28?.days?.length || 0,
+              responseKeys: Object.keys(generatedPlan || {}),
+            });
+            
             if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
               // План успешно сгенерирован, обрабатываем его
+              console.log('✅ Plan generated successfully, processing...');
               await processPlanData(generatedPlan);
               return;
+            } else {
+              console.error('❌ Generated plan is empty or invalid:', generatedPlan);
             }
           } catch (generateError: any) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Failed to generate plan:', generateError);
-            }
+            console.error('❌ Failed to generate plan:', {
+              status: generateError?.status,
+              message: generateError?.message,
+              error: generateError,
+              stack: generateError?.stack,
+            });
           }
         }
         
         // Если генерация не помогла, показываем экран генерации
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Plan generation failed or returned empty - showing error');
-        }
+        console.error('❌ Plan generation failed or returned empty - showing error screen');
         setError('plan_generating');
         setLoading(false);
         return;
