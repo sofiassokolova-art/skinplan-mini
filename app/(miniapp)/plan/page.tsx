@@ -269,9 +269,9 @@ export default function PlanPage() {
         }
 
         // Fallback: если продукты не загрузились из API, используем продукты из плана
-        if (productsMap.size === 0 && plan28.products && Array.isArray(plan28.products)) {
-          console.log('⚠️ Using products from plan28 as fallback');
-          plan28.products.forEach((p: any) => {
+        if (productsMap.size === 0 && plan.products && Array.isArray(plan.products)) {
+          console.log('⚠️ Using products from plan as fallback');
+          plan.products.forEach((p: any) => {
             productsMap.set(p.id, {
               id: p.id,
               name: p.name,
