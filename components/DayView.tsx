@@ -152,14 +152,37 @@ export function DayView({
               return null;
             }
             
-            let product = step.productId ? products.get(Number(step.productId)) : null;
+            // Пробуем найти продукт по productId (может быть строка или число)
+            let product = null;
+            if (step.productId) {
+              const productIdNum = Number(step.productId);
+              product = products.get(productIdNum);
+              
+              // Если не нашли по числу, пробуем по строке
+              if (!product && !isNaN(productIdNum)) {
+                product = products.get(productIdNum);
+              }
+              
+              // Логируем, если продукт не найден
+              if (!product) {
+                console.warn('Product not found for step:', {
+                  stepCategory: step.stepCategory,
+                  productId: step.productId,
+                  productIdNum,
+                  productsMapSize: products.size,
+                  productIdsInMap: Array.from(products.keys()).slice(0, 10),
+                });
+              }
+            }
             
             // Если продукт не найден, пробуем альтернативы
             if (!product && step.alternatives.length > 0) {
               for (const altId of step.alternatives) {
-                const altProduct = products.get(Number(altId));
+                const altIdNum = Number(altId);
+                const altProduct = products.get(altIdNum);
                 if (altProduct) {
                   product = altProduct;
+                  console.log('Found product in alternatives:', altIdNum);
                   break;
                 }
               }
@@ -171,6 +194,7 @@ export function DayView({
                 step={step}
                 product={product || undefined}
                 isInWishlist={product ? wishlistProductIds.has(product.id) : false}
+                cartQuantity={product ? (cartQuantities.get(product.id) || 0) : 0}
                 onToggleWishlist={onToggleWishlist}
                 onAddToCart={onAddToCart}
                 onReplace={onReplace && product ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
@@ -227,14 +251,31 @@ export function DayView({
               return null;
             }
             
-            let product = step.productId ? products.get(Number(step.productId)) : null;
+            // Пробуем найти продукт по productId (может быть строка или число)
+            let product = null;
+            if (step.productId) {
+              const productIdNum = Number(step.productId);
+              product = products.get(productIdNum);
+              
+              // Логируем, если продукт не найден
+              if (!product) {
+                console.warn('Product not found for evening step:', {
+                  stepCategory: step.stepCategory,
+                  productId: step.productId,
+                  productIdNum,
+                  productsMapSize: products.size,
+                });
+              }
+            }
             
             // Если продукт не найден, пробуем альтернативы
             if (!product && step.alternatives.length > 0) {
               for (const altId of step.alternatives) {
-                const altProduct = products.get(Number(altId));
+                const altIdNum = Number(altId);
+                const altProduct = products.get(altIdNum);
                 if (altProduct) {
                   product = altProduct;
+                  console.log('Found product in alternatives:', altIdNum);
                   break;
                 }
               }
@@ -246,6 +287,7 @@ export function DayView({
                 step={step}
                 product={product || undefined}
                 isInWishlist={product ? wishlistProductIds.has(product.id) : false}
+                cartQuantity={product ? (cartQuantities.get(product.id) || 0) : 0}
                 onToggleWishlist={onToggleWishlist}
                 onAddToCart={onAddToCart}
                 onReplace={onReplace && product ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}

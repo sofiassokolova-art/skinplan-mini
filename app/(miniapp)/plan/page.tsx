@@ -284,12 +284,16 @@ export default function PlanPage() {
         }
 
         console.log('📊 Final productsMap size:', productsMap.size);
+        if (productsMap.size > 0) {
+          console.log('📦 Sample product IDs in map:', Array.from(productsMap.keys()).slice(0, 5));
+        }
       } else {
         // Для старого формата используем plan.products
         if (!plan28 && process.env.NODE_ENV === 'development') {
           console.warn('⚠️ plan28 not found in plan response, falling back to old format');
         }
 
+        console.log('📦 Loading products from plan.products, count:', (plan.products || []).length);
         (plan.products || []).forEach((p: any) => {
           productsMap.set(p.id, {
             id: p.id,
@@ -300,6 +304,7 @@ export default function PlanPage() {
             description: p.description || p.descriptionUser || null,
           });
         });
+        console.log('📊 Products loaded from plan.products, map size:', productsMap.size);
       }
 
       setPlanData({
