@@ -60,6 +60,7 @@ export function PlanPageClientNew({
   const [loadingIssues, setLoadingIssues] = useState(true);
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
   const [isRetaking, setIsRetaking] = useState(false);
+  const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
@@ -69,10 +70,14 @@ export function PlanPageClientNew({
   useEffect(() => {
     loadSkinIssues();
     loadCart();
-    // Проверяем, перепроходит ли пользователь анкету
+    // Проверяем статус оплаты
     if (typeof window !== 'undefined') {
+      const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
+      const hasRetakingPayment = localStorage.getItem('payment_retaking_completed') === 'true';
       const isRetakingFlag = localStorage.getItem('is_retaking_quiz') === 'true';
-      setIsRetaking(isRetakingFlag);
+      
+      setIsRetaking(isRetakingFlag && !hasRetakingPayment);
+      setNeedsFirstPayment(!hasFirstPayment);
     }
   }, []);
 
@@ -325,11 +330,11 @@ export function PlanPageClientNew({
         ) : null}
       </div>
 
-      {/* Основной контент плана - обернут в PaymentGate только при перепрохождении */}
-      {isRetaking ? (
+      {/* Основной контент плана - обернут в PaymentGate при первой оплате или перепрохождении */}
+      {needsFirstPayment || isRetaking ? (
         <PaymentGate
-          price={49}
-          isRetaking={true}
+          price={needsFirstPayment ? 199 : 49}
+          isRetaking={isRetaking}
           onPaymentComplete={() => {
             // После оплаты обновляем страницу
             if (typeof window !== 'undefined') {
