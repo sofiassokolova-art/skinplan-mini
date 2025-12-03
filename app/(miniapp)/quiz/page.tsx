@@ -11,6 +11,8 @@ import { api } from '@/lib/api';
 import { INFO_SCREENS, getInfoScreenAfterQuestion, type InfoScreen } from './info-screens';
 import { getAllTopics, type QuestionTopic } from '@/lib/questionnaire-topics';
 
+const LOCKED_CODES_AFTER_FIRST_PASS = new Set(['gender', 'age', 'age_group', 'agegroup', 'birth_year']);
+
 interface Question {
   id: number;
   code: string;
@@ -64,6 +66,22 @@ export default function QuizPage() {
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const retakeTopics = useMemo(() => getAllTopics(), []);
   
+  const handleRetakeTopicSelect = useCallback((topicId: string) => {
+    router.push(`/quiz/update/${topicId}`);
+  }, [router]);
+
+  const handleRetakeStartFull = useCallback(() => {
+    setRetakeLandingDismissed(true);
+    setForceFullRetakeMode(true);
+    setHasResumed(false);
+    setCurrentQuestionIndex(0);
+    setCurrentInfoScreenIndex(0);
+  }, []);
+
+  const handleRetakeLandingDismiss = useCallback(() => {
+    router.push('/plan');
+  }, [router]);
+
   // Функция для добавления логов (только в development)
   // ВАЖНО: оборачиваем в useCallback, чтобы функция не менялась между рендерами
   // и не вызывала лишние пересчеты в useMemo
@@ -129,17 +147,14 @@ export default function QuizPage() {
         console.log('✅ Questionnaire loaded');
       
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
-      // isRetakingQuiz будет установлен в отдельном useEffect после загрузки questionnaire
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
         try {
           const profile = await api.getCurrentProfile();
           if (profile && (profile as any).id) {
-            // Профиль существует - это повторное прохождение, пропускаем все info screens
             setIsRetakingQuiz(true);
-            console.log('✅ Повторное прохождение анкеты - профиль уже существует, пропускаем info screens');
+            console.log('✅ Повторное прохождение анкеты — показываем экран выбора тем');
           }
         } catch (err: any) {
-          // Профиля нет - это первое прохождение, показываем info screens как обычно
           console.log('ℹ️ Первое прохождение анкеты - профиля еще нет');
         }
       }
@@ -604,6 +619,10 @@ export default function QuizPage() {
     // Фильтруем вопросы на основе ответов
     // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
     const allQuestions = allQuestionsRaw.filter((question) => {
+      const normalizedCode = question.code?.toLowerCase() || '';
+      if (isRetakingQuiz && LOCKED_CODES_AFTER_FIRST_PASS.has(normalizedCode)) {
+        return false;
+      }
       // Проверяем, является ли это вопросом про беременность/кормление
       const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                   question.code === 'pregnancy' ||
@@ -1065,6 +1084,10 @@ export default function QuizPage() {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
     
     return allQuestionsRaw.filter((question) => {
+      const normalizedCode = question.code?.toLowerCase() || '';
+      if (isRetakingQuiz && LOCKED_CODES_AFTER_FIRST_PASS.has(normalizedCode)) {
+        return false;
+      }
         try {
     // Проверяем, является ли это вопросом про беременность/кормление
     const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
@@ -1218,6 +1241,10 @@ export default function QuizPage() {
     
     // Фильтруем вопросы на основе ответов
     const allQuestions = allQuestionsRaw.filter((question) => {
+      const normalizedCode = question.code?.toLowerCase() || '';
+      if (isRetakingQuiz && LOCKED_CODES_AFTER_FIRST_PASS.has(normalizedCode)) {
+        return false;
+      }
       const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                   question.code === 'pregnancy' ||
                                   question.text?.toLowerCase().includes('беременн') ||
@@ -1430,6 +1457,121 @@ export default function QuizPage() {
     );
   }
 
+  const renderRetakeLanding = () => (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      padding: '24px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '20px',
+    }}>
+      <div style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        borderRadius: '32px',
+        padding: '28px',
+        boxShadow: '0 16px 40px rgba(10, 95, 89, 0.12)',
+      }}>
+        <h1 style={{
+          fontSize: '28px',
+          fontWeight: 700,
+          color: '#0A5F59',
+          marginBottom: '12px',
+        }}>
+          Что хотите обновить?
+        </h1>
+        <p style={{
+          fontSize: '16px',
+          color: '#475467',
+          lineHeight: 1.5,
+          marginBottom: '20px',
+        }}>
+          Вы уже прошли анкету — можно обновить только нужные разделы. Мы пересоберём план автоматически.
+        </p>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}>
+          {retakeTopics.map((topic: QuestionTopic) => (
+            <button
+              key={topic.id}
+              onClick={() => handleRetakeTopicSelect(topic.id)}
+              style={{
+                textAlign: 'left',
+                border: '1px solid rgba(10, 95, 89, 0.15)',
+                borderRadius: '20px',
+                padding: '16px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '17px', fontWeight: 600, color: '#0A5F59' }}>
+                    {topic.title}
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#475467', marginTop: '4px' }}>
+                    {topic.description}
+                  </div>
+                </div>
+                <span style={{ color: '#0A5F59' }}>→</span>
+              </div>
+              {topic.requiresPlanRebuild && (
+                <div style={{ marginTop: '8px', fontSize: '12px', color: '#0A5F59' }}>
+                  После обновления пересоберём план
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          marginTop: '24px',
+        }}>
+          <button
+            onClick={handleRetakeStartFull}
+            style={{
+              padding: '14px 18px',
+              borderRadius: '16px',
+              backgroundColor: '#0A5F59',
+              border: 'none',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Перепройти всю анкету
+          </button>
+          <button
+            onClick={handleRetakeLandingDismiss}
+            style={{
+              padding: '14px 18px',
+              borderRadius: '16px',
+              backgroundColor: 'rgba(10, 95, 89, 0.08)',
+              border: 'none',
+              color: '#0A5F59',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Вернуться к плану
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const shouldShowRetakeLanding = isRetakingQuiz && !retakeLandingDismissed && !showResumeScreen && !forceFullRetakeMode;
+
+  if (shouldShowRetakeLanding) {
+    return renderRetakeLanding();
+  }
+
   // Экран продолжения анкеты
   if (showResumeScreen && savedProgress) {
     // Получаем все вопросы с фильтрацией
@@ -1440,6 +1582,10 @@ export default function QuizPage() {
     
     // Фильтруем вопросы на основе ответов
     const allQuestions = allQuestionsRaw.filter((question) => {
+      const normalizedCode = question.code?.toLowerCase() || '';
+      if (isRetakingQuiz && LOCKED_CODES_AFTER_FIRST_PASS.has(normalizedCode)) {
+        return false;
+      }
       const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                   question.code === 'pregnancy' ||
                                   question.text?.toLowerCase().includes('беременн') ||

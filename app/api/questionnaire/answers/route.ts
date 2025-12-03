@@ -158,9 +158,18 @@ export async function POST(request: NextRequest) {
     });
 
     // Подготавливаем данные для Prisma
+    const existingMarkers = (existingProfile?.medicalMarkers as any) || {};
+    const mergedMarkers = {
+      ...existingMarkers,
+      ...(profileData.medicalMarkers ? (profileData.medicalMarkers as any) : {}),
+    };
+    if (existingMarkers?.gender) {
+      mergedMarkers.gender = existingMarkers.gender;
+    }
     const profileDataForPrisma = {
       ...profileData,
-      medicalMarkers: profileData.medicalMarkers ? (profileData.medicalMarkers as any) : null,
+      ageGroup: existingProfile?.ageGroup ?? profileData.ageGroup,
+      medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
     };
 
     const profile = existingProfile

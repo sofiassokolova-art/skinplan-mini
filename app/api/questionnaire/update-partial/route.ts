@@ -170,7 +170,28 @@ export async function POST(request: NextRequest) {
       pigmentationRisk: currentProfile.pigmentationRisk,
       hasPregnancy: currentProfile.hasPregnancy,
       notes: currentProfile.notes,
+      ageGroup: currentProfile.ageGroup,
     } : {};
+
+    const existingMarkers = (currentProfile?.medicalMarkers as any) || {};
+    const mergedMarkers = {
+      ...existingMarkers,
+      mainGoals: newProfile.mainGoals,
+      secondaryGoals: newProfile.secondaryGoals,
+      diagnoses: newProfile.diagnoses,
+      contraindications: newProfile.contraindications,
+      gender: existingMarkers.gender ?? newProfile.gender,
+      seasonality: newProfile.seasonality,
+      pregnancyStatus: newProfile.pregnancyStatus,
+      spfHabit: newProfile.spfHabit,
+      makeupFrequency: newProfile.makeupFrequency,
+      lifestyleFactors: newProfile.lifestyleFactors,
+      carePreference: newProfile.carePreference,
+      routineComplexity: newProfile.routineComplexity,
+      budgetSegment: newProfile.budgetSegment,
+      currentTopicals: newProfile.currentTopicals,
+      currentOralMeds: newProfile.currentOralMeds,
+    };
 
     const updatedProfile = await prisma.skinProfile.create({
       data: {
@@ -179,24 +200,8 @@ export async function POST(request: NextRequest) {
         skinType: newProfile.skinType || null,
         sensitivityLevel: newProfile.sensitivity || null,
         ...currentProfileData,
-        medicalMarkers: {
-          mainGoals: newProfile.mainGoals,
-          secondaryGoals: newProfile.secondaryGoals,
-          diagnoses: newProfile.diagnoses,
-          contraindications: newProfile.contraindications,
-          ageGroup: newProfile.ageGroup,
-          gender: newProfile.gender,
-          seasonality: newProfile.seasonality,
-          pregnancyStatus: newProfile.pregnancyStatus,
-          spfHabit: newProfile.spfHabit,
-          makeupFrequency: newProfile.makeupFrequency,
-          lifestyleFactors: newProfile.lifestyleFactors,
-          carePreference: newProfile.carePreference,
-          routineComplexity: newProfile.routineComplexity,
-          budgetSegment: newProfile.budgetSegment,
-          currentTopicals: newProfile.currentTopicals,
-          currentOralMeds: newProfile.currentOralMeds,
-        } as any,
+        ageGroup: currentProfileData.ageGroup ?? newProfile.ageGroup ?? null,
+        medicalMarkers: mergedMarkers as any,
       },
     });
 
@@ -219,7 +224,14 @@ export async function POST(request: NextRequest) {
       await prisma.recommendationSession.deleteMany({
         where: { userId, profileId: updatedProfile.id },
       });
-
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/plan/generate`, {
+        method: 'GET',
+        headers: {
+          'X-Telegram-Init-Data': initData,
+        },
+      }).catch((err) => {
+        console.warn('Failed to trigger plan regeneration after partial update', err);
+      });
       planRebuilt = true;
     }
 
