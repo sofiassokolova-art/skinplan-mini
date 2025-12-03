@@ -121,6 +121,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Получаем последний отзыв пользователя (по умолчанию plan_recommendations)
+    const { searchParams } = new URL(request.url);
     const feedbackType = searchParams.get('type') || 'plan_recommendations';
     const lastFeedback = await prisma.planFeedback.findFirst({
       where: { 
