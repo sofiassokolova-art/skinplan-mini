@@ -235,6 +235,7 @@ export default function PlanPage() {
         if (allProductIds.size > 0 && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
           try {
             const productIdsArray = Array.from(allProductIds);
+            console.log('📦 Loading products from batch endpoint, count:', productIdsArray.length);
             const productsResponse = await fetch('/api/products/batch', {
               method: 'POST',
               headers: {
@@ -246,6 +247,7 @@ export default function PlanPage() {
 
             if (productsResponse.ok) {
               const productsData = await productsResponse.json();
+              console.log('✅ Products loaded from batch:', productsData.products?.length || 0);
               if (productsData.products && Array.isArray(productsData.products)) {
                 productsData.products.forEach((p: any) => {
                   productsMap.set(p.id, {
@@ -258,13 +260,30 @@ export default function PlanPage() {
                   });
                 });
               }
+            } else {
+              console.error('❌ Failed to load products from batch endpoint:', productsResponse.status);
             }
           } catch (err) {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn('Could not load products from batch endpoint:', err);
-            }
+            console.error('❌ Error loading products from batch endpoint:', err);
           }
         }
+
+        // Fallback: если продукты не загрузились из API, используем продукты из плана
+        if (productsMap.size === 0 && plan28.products && Array.isArray(plan28.products)) {
+          console.log('⚠️ Using products from plan28 as fallback');
+          plan28.products.forEach((p: any) => {
+            productsMap.set(p.id, {
+              id: p.id,
+              name: p.name,
+              brand: { name: p.brand?.name || p.brand || 'Unknown' },
+              price: p.price,
+              imageUrl: p.imageUrl || null,
+              description: p.description || p.descriptionUser || null,
+            });
+          });
+        }
+
+        console.log('📊 Final productsMap size:', productsMap.size);
       } else {
         // Для старого формата используем plan.products
         if (!plan28 && process.env.NODE_ENV === 'development') {
@@ -412,9 +431,37 @@ export default function PlanPage() {
         }
         
         // Профиль есть, но план не найден в кэше
-        // Попробуем явно сгенерировать план один раз (возможно, кэш был очищен)
+        // Это может быть временная проблема с кэшем или план действительно нужно сгенерировать
+        // Проверяем, был ли план сгенерирован ранее (есть ли progress)
+        let hasExistingProgress = false;
+        try {
+          const progressCheck = await api.getPlanProgress() as any;
+          hasExistingProgress = !!progressCheck && (progressCheck.completedDays?.length > 0 || progressCheck.currentDay > 1);
+        } catch (progressErr) {
+          // Игнорируем ошибки проверки прогресса
+        }
+
+        // Если план был сгенерирован ранее (есть прогресс), но не загружается из кэша,
+        // это временная проблема - показываем обычный лоадер, а не экран генерации
+        if (hasExistingProgress) {
+          console.log('⚠️ Plan exists (has progress) but not in cache - retrying load...');
+          // Делаем еще одну попытку загрузки через небольшую задержку
+          if (retryCount < 2) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return loadPlan(retryCount + 1);
+          }
+          // Если после повторных попыток план не загрузился, показываем обычный лоадер
+          // (не экран генерации, так как план уже существует)
+          console.error('❌ Plan exists but failed to load after retries - showing loading state');
+          setLoading(true);
+          setError(null);
+          return;
+        }
+
+        // План действительно нужно генерировать впервые
+        // Попробуем явно сгенерировать план один раз
         if (retryCount === 0) {
-          console.log('🔄 Plan not found in cache, but profile exists - attempting to generate...');
+          console.log('🔄 Plan not found in cache and no existing progress - attempting to generate...');
           try {
             console.log('📞 Calling generatePlan API...');
             const generatedPlan = await api.generatePlan() as any;
@@ -444,8 +491,8 @@ export default function PlanPage() {
           }
         }
         
-        // Если генерация не помогла, показываем экран генерации
-        console.error('❌ Plan generation failed or returned empty - showing error screen');
+        // Если генерация не помогла, показываем экран генерации только если план действительно нужно генерировать
+        console.error('❌ Plan generation failed or returned empty - showing generation screen');
         setError('plan_generating');
         setLoading(false);
         return;
