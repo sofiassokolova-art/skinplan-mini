@@ -70,39 +70,6 @@ export async function fetchWithTimeout(
   }
 }
 
-/**
- * Хук для отслеживания состояния сети (используется в компонентах)
- */
-export function useNetworkStatus() {
-  if (typeof window === 'undefined') {
-    return { isOnline: true };
-  }
-
-  const [isOnline, setIsOnline] = React.useState(navigator.onLine);
-
-  React.useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  return { isOnline };
-}
-
-// Импорт React для хука (если используется на клиенте)
-let React: any = null;
-if (typeof window !== 'undefined') {
-  try {
-    React = require('react');
-  } catch {
-    // React недоступен, хук не будет работать
-  }
-}
+// Примечание: Хук useNetworkStatus должен быть в отдельном клиентском компоненте
+// Используйте компонент NetworkStatus из components/NetworkStatus.tsx вместо этого хука
 
