@@ -69,12 +69,21 @@ export function PlanPageClientNew({
   useEffect(() => {
     loadSkinIssues();
     loadCart();
-    // Проверяем статус первой оплаты (перепрохождение оплачивается на странице анкеты)
+    // Проверяем статус первой оплаты
+    // Если план уже существует (был сгенерирован ранее), автоматически считаем первую оплату выполненной
     if (typeof window !== 'undefined') {
       const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
-      setNeedsFirstPayment(!hasFirstPayment);
+      
+      // Если флаг оплаты не установлен, но план уже существует - устанавливаем флаг автоматически
+      if (!hasFirstPayment && plan28 && plan28.days && plan28.days.length > 0) {
+        console.log('✅ Plan exists, automatically marking first payment as completed');
+        localStorage.setItem('payment_first_completed', 'true');
+        setNeedsFirstPayment(false);
+      } else {
+        setNeedsFirstPayment(!hasFirstPayment);
+      }
     }
-  }, []);
+  }, [plan28]);
 
   const loadCart = async () => {
     try {
