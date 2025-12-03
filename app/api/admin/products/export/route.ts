@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const adminTelegramId = decoded.telegramId;
     if (!adminTelegramId) {
-      return ApiResponse.error('Admin telegramId not found in token', { status: 404 }, undefined);
+      return ApiResponse.error('Admin telegramId not found in token', 404);
     }
 
     const body = await request.json();
