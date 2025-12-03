@@ -120,28 +120,21 @@ export default function PlanPage() {
           plan28DaysCount: plan?.plan28?.days?.length || 0,
         });
       } catch (planError: any) {
-        // Если ошибка 404 и это первая/вторая попытка - ждем и повторяем
-        // НЕ показываем ошибку во время retry, только после всех попыток
-        if (retryCount < 3 && (
-          planError?.message?.includes('No skin profile') ||
-          planError?.message?.includes('Skin profile not found') ||
-          planError?.message?.includes('404') ||
-          planError?.message?.includes('Internal server error') ||
-          planError?.message?.includes('Not found') ||
-          planError?.status === 404 ||
+        // Если это 404 (план не найден) - не делаем retry, сразу показываем ошибку
+        // Только для ошибок сервера (500, 502, 503) делаем одну быструю попытку
+        if (retryCount < 1 && (
           planError?.status === 500 ||
-          planError?.isNotFound
+          planError?.status === 502 ||
+          planError?.status === 503 ||
+          planError?.message?.includes('Internal server error')
         )) {
-          console.log(`⏳ План еще не готов, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
-          // Не сбрасываем loading, чтобы показать лоадер вместо ошибки
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.log(`⏳ Ошибка сервера, повторяем через 500мс... (попытка ${retryCount + 1}/1)`);
+          await new Promise(resolve => setTimeout(resolve, 500));
           return loadPlan(retryCount + 1);
         }
         
-        // Если после всех попыток план все еще не найден - это может быть нормально
-        // (например, пользователь еще не проходил анкету)
-        // НЕ выбрасываем ошибку, просто оставляем plan = null и продолжаем проверку
-        console.warn('Could not load plan after retries:', planError);
+        // Для 404 или других ошибок - сразу показываем, не делаем retry
+        console.log('Plan not found or error:', planError?.message || planError?.status);
         plan = null;
       }
       
@@ -165,20 +158,10 @@ export default function PlanPage() {
           return;
         }
         
-        // Профиль есть - план может быть в процессе генерации или в кэше
-        // Проверяем кэш напрямую через RecommendationSession
-        // Если RecommendationSession есть, значит план был сгенерирован
-        if (retryCount < 2) {
-          console.log(`⏳ План не найден, проверяем RecommendationSession... (попытка ${retryCount + 1}/2)`);
-          // Небольшая задержка перед повтором (план может быть в процессе сохранения)
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return loadPlan(retryCount + 1);
-        }
-        
-        // Если после 2 попыток план все еще не найден, но профиль есть - показываем ошибку
-        // НЕ генерируем план автоматически, чтобы не показывать долгую загрузку
-        // Пользователь может сам нажать кнопку "Обновить" для генерации
-        console.warn('Plan not found after retries, but profile exists - showing error');
+        // Профиль есть, но план не найден в кэше
+        // Не делаем retry - сразу показываем ошибку
+        // Пользователь может нажать кнопку "Обновить" для генерации
+        console.warn('Plan not found in cache, but profile exists - showing error');
         setError('plan_generating');
         setLoading(false);
         return;

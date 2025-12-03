@@ -60,27 +60,33 @@ export async function GET(request: NextRequest) {
 
     // Если план не найден в кэше, проверяем старые версии профиля (план мог быть сохранен под другой версией)
     // Это может произойти, если профиль был обновлен, но план еще не регенерирован
+    // ОПТИМИЗАЦИЯ: проверяем только последние 2 версии, чтобы не делать много запросов
     logger.debug('Plan not found in cache for current version, checking previous versions', { 
       userId, 
       currentVersion: profile.version 
     });
     
-    // Проверяем предыдущие версии профиля (максимум последние 5 версий)
+    // Проверяем только последние 2 версии профиля (вместо 5)
     const previousProfiles = await prisma.skinProfile.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: 5,
+      take: 2, // Уменьшено с 5 до 2 для ускорения
       select: { version: true },
     });
 
-    for (const prevProfile of previousProfiles) {
-      if (prevProfile.version === profile.version) continue; // Уже проверили
-      
-      const prevCachedPlan = await getCachedPlan(userId, prevProfile.version);
+    // Параллельно проверяем кэш для всех предыдущих версий
+    const previousVersions = previousProfiles.filter(p => p.version !== profile.version);
+    const cacheChecks = previousVersions.map(prevProfile => getCachedPlan(userId, prevProfile.version));
+
+    const cachedPlans = await Promise.all(cacheChecks);
+    
+    for (let i = 0; i < cachedPlans.length; i++) {
+      const prevCachedPlan = cachedPlans[i];
       if (prevCachedPlan && prevCachedPlan.plan28) {
+        const prevVersion = previousVersions[i]?.version;
         logger.info('Plan found in cache for previous profile version', { 
           userId, 
-          profileVersion: prevProfile.version,
+          profileVersion: prevVersion,
           currentVersion: profile.version
         });
         // Возвращаем план из старой версии - он все еще валиден
