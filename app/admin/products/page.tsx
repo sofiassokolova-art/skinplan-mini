@@ -142,7 +142,15 @@ export default function ProductsAdmin() {
       setShowExportMenu(false);
       const token = localStorage.getItem('admin_token');
       
-      const response = await fetch(`/api/admin/products/export?format=${format}`, {
+      // Создаем URL с токеном в query параметре (временное решение)
+      // Или используем fetch с сохранением в blob
+      const url = `/api/admin/products/export?format=${format}&_t=${Date.now()}`;
+      
+      // Альтернативный подход: использовать window.location напрямую
+      // Но это не сработает с авторизацией через заголовки
+      // Поэтому используем fetch + blob
+      
+      const response = await fetch(url, {
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
         },
@@ -153,7 +161,7 @@ export default function ProductsAdmin() {
         throw new Error('Ошибка экспорта');
       }
 
-      // Получаем имя файла из заголовка Content-Disposition или создаем дефолтное
+      // Получаем имя файла
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = `products-export-${new Date().toISOString().split('T')[0]}.${format}`;
       
@@ -162,25 +170,45 @@ export default function ProductsAdmin() {
         if (filenameMatch && filenameMatch[1]) {
           filename = filenameMatch[1].replace(/['"]/g, '');
         }
+        // Проверяем UTF-8 формат
+        const utf8Match = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (utf8Match) {
+          try {
+            filename = decodeURIComponent(utf8Match[1]);
+          } catch {
+            // Игнорируем ошибку декодирования
+          }
+        }
       }
 
+      // Создаем blob из ответа
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
+      const blobUrl = window.URL.createObjectURL(blob);
       
-      // Небольшая задержка перед удалением элемента
+      // Создаем видимую ссылку для скачивания
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = filename;
+      downloadLink.style.position = 'fixed';
+      downloadLink.style.top = '-9999px';
+      downloadLink.style.left = '-9999px';
+      
+      // Добавляем в DOM
+      document.body.appendChild(downloadLink);
+      
+      // Имитируем клик пользователя
+      downloadLink.click();
+      
+      // Удаляем ссылку и освобождаем память после задержки
       setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
+        if (downloadLink.parentNode) {
+          document.body.removeChild(downloadLink);
+        }
+        window.URL.revokeObjectURL(blobUrl);
+      }, 1000);
     } catch (err) {
       console.error('Ошибка экспорта:', err);
-      alert('Ошибка экспорта продуктов');
+      alert('Ошибка экспорта продуктов: ' + (err instanceof Error ? err.message : 'Неизвестная ошибка'));
     }
   };
 
