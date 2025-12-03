@@ -261,7 +261,7 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-32">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-48">
       <div className="max-w-5xl mx-auto">
         {/* Заголовок страницы */}
         <h1 className="text-4xl font-black text-gray-900 mb-2">Редактировать продукт</h1>
