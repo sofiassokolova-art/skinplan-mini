@@ -4,8 +4,18 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState } from 'react';
+
+// Динамический импорт devtools (опционально, только в development)
+let ReactQueryDevtools: any = null;
+if (process.env.NODE_ENV === 'development') {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    ReactQueryDevtools = require('@tanstack/react-query-devtools').ReactQueryDevtools;
+  } catch {
+    // Devtools не установлен, это нормально
+  }
+}
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
