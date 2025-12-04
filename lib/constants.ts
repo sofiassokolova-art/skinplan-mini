@@ -47,3 +47,7 @@ export const SEVERITY_SCORE_CRITICAL = 90;
 export const DEFAULT_ACNE_LEVEL = 0;
 export const DEFAULT_SENSITIVITY_LEVEL = 'low';
 
+// Recommendation Session
+export const MIN_PRODUCTS_IN_SESSION = 3; // Минимальное количество продуктов в сессии для использования в плане
+export const PROFILE_UPDATE_THRESHOLD_DAYS = 7; // Количество дней для определения недавнего обновления профиля
+

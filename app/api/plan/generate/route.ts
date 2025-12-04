@@ -379,18 +379,19 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // КРИТИЧНО: Если в сессии слишком мало продуктов (меньше 3), игнорируем её
   // Это предотвращает замкнутый круг, когда план использует только 2 продукта из сессии,
   // а затем перезаписывает сессию теми же 2 продуктами
-  const MIN_PRODUCTS_IN_SESSION = 3;
+  const { MIN_PRODUCTS_IN_SESSION } = await import('@/lib/constants');
+  const minProductsInSession = MIN_PRODUCTS_IN_SESSION;
 
   if (existingSession && existingSession.products && Array.isArray(existingSession.products)) {
     const productIds = existingSession.products as number[];
     
     // Проверяем, достаточно ли продуктов в сессии
-    if (productIds.length < MIN_PRODUCTS_IN_SESSION) {
+    if (productIds.length < minProductsInSession) {
       logger.warn('RecommendationSession has too few products, ignoring it', {
         userId,
         sessionId: existingSession.id,
         productCount: productIds.length,
-        minRequired: MIN_PRODUCTS_IN_SESSION,
+        minRequired: minProductsInSession,
         ruleId: existingSession.ruleId,
       });
       
@@ -588,9 +589,10 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     orderBy: { updatedAt: 'desc' },
   });
   
-  // Проверяем, был ли профиль обновлен недавно (7 дней) - это означает, что пользователь недавно проходил анкету
+  // Проверяем, был ли профиль обновлен недавно - это означает, что пользователь недавно проходил анкету
+  const { PROFILE_UPDATE_THRESHOLD_DAYS } = await import('@/lib/constants');
   const hasRecentProfileUpdate = latestProfile && 
-    new Date().getTime() - new Date(latestProfile.updatedAt).getTime() < 7 * 24 * 60 * 60 * 1000; // 7 дней
+    new Date().getTime() - new Date(latestProfile.updatedAt).getTime() < PROFILE_UPDATE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
   
   if (hasRecentProfileUpdate) {
     // Пользователь недавно проходил анкету - делаем автозамену продуктов с неактивными брендами

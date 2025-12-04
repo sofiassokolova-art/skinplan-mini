@@ -369,12 +369,18 @@ export async function POST(request: NextRequest) {
         
         const userPriceSegment = budgetMapping[userBudget] || null;
 
-        // Импортируем функцию getProductsForStep из recommendations/route.ts
+        // Импортируем функцию getProductsForStep из общего модуля
         // ВАЖНО: Используем ту же логику подбора продуктов, что и в /api/recommendations
         // Это гарантирует консистентность между главной страницей и планом
+        const { getProductsForStep: getProductsForStepFromLib } = await import('@/lib/product-selection');
         
-        // Определяем функцию getProductsForStep локально (та же логика, что в recommendations/route.ts)
+        // Обертка для совместимости с локальной сигнатурой
         const getProductsForStep = async (stepConfig: any) => {
+          return await getProductsForStepFromLib(stepConfig, userPriceSegment);
+        };
+        
+        // Старая локальная реализация (будет удалена после полного рефакторинга)
+        const getProductsForStepOld = async (stepConfig: any) => {
           const where: any = {
             published: true,
             brand: {
@@ -540,15 +546,10 @@ export async function POST(request: NextRequest) {
 
           // Дополнительная фильтрация по ингредиентам с частичным совпадением
           if (stepConfig.active_ingredients && Array.isArray(stepConfig.active_ingredients) && stepConfig.active_ingredients.length > 0 && products.length > 0) {
-            const normalizeIngredient = (ing: string): string => {
-              let normalized = ing.replace(/\s*\d+[–\-]\d+\s*%/gi, '');
-              normalized = normalized.replace(/\s*\d+\s*%/gi, '');
-              normalized = normalized.replace(/\s*%\s*/gi, '');
-              normalized = normalized.split('(')[0].split(',')[0].trim();
-              return normalized.toLowerCase().trim();
-            };
+            // Импортируем функцию нормализации из общего модуля
+            const { normalizeIngredientSimple } = await import('@/lib/ingredient-normalizer');
 
-            const normalizedRuleIngredients = stepConfig.active_ingredients.map(normalizeIngredient);
+            const normalizedRuleIngredients = stepConfig.active_ingredients.map(normalizeIngredientSimple);
             
             products = products.filter(product => {
               if (product.activeIngredients.length === 0) {
