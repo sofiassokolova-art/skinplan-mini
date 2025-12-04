@@ -362,8 +362,15 @@ export default function PlanPage() {
       setLoading(false);
     } catch (err: any) {
       console.error('Error processing plan data:', err);
-      setError('plan_generating');
-      setLoading(false);
+      // При ошибке обработки плана не показываем экран генерации
+      // Вместо этого пытаемся загрузить план заново или показываем обычный лоадер
+      console.error('❌ Error processing plan, attempting to reload...');
+      setLoading(true);
+      setError(null);
+      // Пробуем загрузить план еще раз
+      setTimeout(() => {
+        loadPlan();
+      }, 1000);
     }
   };
 
@@ -412,6 +419,26 @@ export default function PlanPage() {
         console.log('✅ initData available, length:', initData.length);
       }
 
+      // СНАЧАЛА проверяем наличие профиля и прогресса - это быстрее, чем загрузка плана
+      // Если есть профиль или прогресс, значит план должен существовать
+      let hasExistingProfile = false;
+      let hasExistingProgress = false;
+      
+      try {
+        // Параллельно проверяем профиль и прогресс для ускорения
+        const [profileCheck, progressCheck] = await Promise.allSettled([
+          api.getCurrentProfile() as Promise<any>,
+          api.getPlanProgress() as Promise<any>,
+        ]);
+        
+        hasExistingProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
+        hasExistingProgress = progressCheck.status === 'fulfilled' && 
+          !!progressCheck.value && 
+          (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
+      } catch (err) {
+        // Игнорируем ошибки проверки
+      }
+
       // Загружаем план через API с retry-логикой
       let plan;
       try {
@@ -431,6 +458,22 @@ export default function PlanPage() {
           error: planError,
           stack: planError?.stack,
         });
+        
+        // Если план не найден (404), но есть профиль или прогресс - план должен существовать
+        // Пробуем регенерировать сразу, без задержек
+        if (planError?.status === 404 && (hasExistingProfile || hasExistingProgress)) {
+          console.log('🔄 Plan not in cache but profile/progress exists - regenerating immediately...');
+          try {
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+              console.log('✅ Plan regenerated successfully, processing...');
+              await processPlanData(generatedPlan);
+              return;
+            }
+          } catch (generateError: any) {
+            console.error('❌ Failed to regenerate plan:', generateError);
+          }
+        }
         
         // Если это 404 (план не найден) - не делаем retry, сразу показываем ошибку
         // Только для ошибок сервера (500, 502, 503) делаем одну быструю попытку
@@ -452,60 +495,14 @@ export default function PlanPage() {
       
       // Проверяем наличие плана (новый формат plan28 или старый weeks)
       if (!plan || (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0))) {
-        // Сначала проверяем, есть ли профиль - если его нет, сразу показываем ошибку
-        let hasProfile = false;
-        try {
-          const profileCheck = await api.getCurrentProfile() as any;
-          hasProfile = !!profileCheck;
-        } catch (profileCheckError) {
-          // Профиля нет - это нормальная ситуация для нового пользователя
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Profile not found - user needs to complete questionnaire');
-          }
-          hasProfile = false;
-        }
-        
-        if (!hasProfile) {
-          // Профиля нет - показываем ошибку сразу
-          setError('no_profile');
-          setLoading(false);
-          return;
-        }
-        
-        // Профиль есть, но план не найден в кэше
-        // Проверяем, был ли план сгенерирован ранее (есть ли progress или профиль был создан ранее)
-        let hasExistingProgress = false;
-        let hasExistingProfile = false;
-        try {
-          const progressCheck = await api.getPlanProgress() as any;
-          hasExistingProgress = !!progressCheck && (progressCheck.completedDays?.length > 0 || progressCheck.currentDay > 1);
-          
-          // Также проверяем, есть ли профиль (если профиль есть, значит анкета уже пройдена)
-          const profileCheck = await api.getCurrentProfile() as any;
-          hasExistingProfile = !!profileCheck;
-        } catch (progressErr) {
-          // Игнорируем ошибки проверки прогресса
-        }
-
-        // Если план был сгенерирован ранее (есть прогресс ИЛИ профиль существует),
-        // но не загружается из кэша - это временная проблема
-        // Показываем обычный лоадер и пытаемся загрузить план, а не экран генерации
-        if (hasExistingProgress || hasExistingProfile) {
-          console.log('⚠️ Plan exists (has progress or profile) but not in cache - retrying load...', {
+        // Если план не найден, но есть профиль или прогресс - план должен существовать
+        // Пробуем регенерировать сразу
+        if (hasExistingProfile || hasExistingProgress) {
+          console.log('🔄 Plan not in cache but profile/progress exists - regenerating immediately...', {
             hasProgress: hasExistingProgress,
             hasProfile: hasExistingProfile,
-            retryCount,
           });
           
-          // Делаем еще одну попытку загрузки через небольшую задержку
-          if (retryCount < 3) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return loadPlan(retryCount + 1);
-          }
-          
-          // Если после повторных попыток план не загрузился, пытаемся сгенерировать его
-          // (возможно, кэш был очищен, но план нужно восстановить)
-          console.log('🔄 Plan exists but not in cache after retries - attempting to regenerate...');
           try {
             const generatedPlan = await api.generatePlan() as any;
             if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
@@ -515,21 +512,47 @@ export default function PlanPage() {
             }
           } catch (generateError: any) {
             console.error('❌ Failed to regenerate plan:', generateError);
+            // Если регенерация не удалась, но план должен существовать - показываем обычный лоадер
+            console.error('❌ Plan exists but failed to regenerate - showing loading state');
+            setLoading(true);
+            setError(null);
+            return;
+          }
+        }
+        
+        // Если нет ни профиля, ни прогресса - план нужно генерировать впервые
+        if (!hasExistingProfile && !hasExistingProgress) {
+          // Проверяем еще раз профиль для уверенности
+          try {
+            const profileCheck = await api.getCurrentProfile() as any;
+            if (profileCheck) {
+              // Профиль есть - пробуем регенерировать план
+              console.log('🔄 Profile found, regenerating plan...');
+              try {
+                const generatedPlan = await api.generatePlan() as any;
+                if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+                  console.log('✅ Plan regenerated successfully, processing...');
+                  await processPlanData(generatedPlan);
+                  return;
+                }
+              } catch (generateError: any) {
+                console.error('❌ Failed to regenerate plan:', generateError);
+              }
+            }
+          } catch (profileCheckError) {
+            // Профиля нет - это нормальная ситуация для нового пользователя
           }
           
-          // Если даже регенерация не помогла, показываем обычный лоадер
-          // (не экран генерации, так как план уже существует)
-          console.error('❌ Plan exists but failed to load/regenerate - showing loading state');
-          setLoading(true);
-          setError(null);
+          // Профиля нет - показываем ошибку
+          setError('no_profile');
+          setLoading(false);
           return;
         }
-
-        // План действительно нужно генерировать впервые (нет ни прогресса, ни профиля)
-        // Показываем экран генерации
-        console.log('🔄 Plan needs to be generated for the first time - showing generation screen');
-        setError('plan_generating');
-        setLoading(false);
+        
+        // Если дошли сюда - что-то пошло не так, показываем обычный лоадер
+        console.error('❌ Unexpected state - showing loading state');
+        setLoading(true);
+        setError(null);
         return;
       }
 
@@ -573,8 +596,42 @@ export default function PlanPage() {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error loading plan:', error);
-      setError('plan_generating');
-      setLoading(false);
+      
+      // При ошибке не показываем экран генерации
+      // Проверяем, есть ли профиль или прогресс - если есть, план должен существовать
+      try {
+        const [profileCheck, progressCheck] = await Promise.allSettled([
+          api.getCurrentProfile() as Promise<any>,
+          api.getPlanProgress() as Promise<any>,
+        ]);
+        
+        const hasProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
+        const hasProgress = progressCheck.status === 'fulfilled' && 
+          !!progressCheck.value && 
+          (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
+        
+        if (hasProfile || hasProgress) {
+          // План должен существовать - пробуем регенерировать
+          console.log('🔄 Plan should exist, attempting to regenerate...');
+          try {
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+              console.log('✅ Plan regenerated successfully, processing...');
+              await processPlanData(generatedPlan);
+              return;
+            }
+          } catch (generateError: any) {
+            console.error('❌ Failed to regenerate plan:', generateError);
+          }
+        }
+      } catch (checkError) {
+        console.error('❌ Error checking profile/progress:', checkError);
+      }
+      
+      // Если план не найден и нет профиля - показываем ошибку профиля
+      // Иначе показываем обычный лоадер
+      setLoading(true);
+      setError(null);
     }
   };
 
