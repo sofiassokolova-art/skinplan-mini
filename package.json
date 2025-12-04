@@ -39,7 +39,8 @@
     "backup:db": "tsx scripts/backup-db.ts",
     "restore:db": "tsx scripts/restore-db.ts",
     "clear:user": "tsx scripts/clear-all-user-data.ts",
-    "add:combo-rules": "tsx scripts/add-combo-skin-rules.ts"
+    "add:combo-rules": "tsx scripts/add-combo-skin-rules.ts",
+    "add:comprehensive-rules": "tsx scripts/add-comprehensive-rules.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
