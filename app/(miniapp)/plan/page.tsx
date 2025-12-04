@@ -239,6 +239,9 @@ export default function PlanPage() {
           try {
             const productIdsArray = Array.from(allProductIds);
             console.log('📦 Loading products from batch endpoint, count:', productIdsArray.length, 'IDs:', productIdsArray.slice(0, 10));
+            
+            // Используем api.getProductAlternatives или создаем отдельный метод для batch
+            // Пока используем fetch напрямую, но с улучшенной обработкой ошибок
             const productsResponse = await fetch('/api/products/batch', {
               method: 'POST',
               headers: {
@@ -251,23 +254,36 @@ export default function PlanPage() {
             if (productsResponse.ok) {
               const productsData = await productsResponse.json();
               console.log('✅ Products loaded from batch:', productsData.products?.length || 0);
+              
               if (productsData.products && Array.isArray(productsData.products)) {
+                let addedCount = 0;
                 productsData.products.forEach((p: any) => {
                   if (p && p.id) {
                     productsMap.set(p.id, {
                       id: p.id,
-                      name: p.name,
+                      name: p.name || 'Неизвестный продукт',
                       brand: { name: p.brand?.name || p.brand || 'Unknown' },
-                      price: p.price,
+                      price: p.price || null,
                       imageUrl: p.imageUrl || null,
                       description: p.description || p.descriptionUser || null,
                     });
+                    addedCount++;
                   }
                 });
                 productsLoadedFromAPI = productsMap.size > 0;
-                console.log('✅ Products added to map from API, total size:', productsMap.size);
+                console.log(`✅ Products added to map from API: ${addedCount}/${productsData.products.length}, total size: ${productsMap.size}`);
+                
+                if (productsMap.size === 0 && productsData.products.length > 0) {
+                  console.error('❌ CRITICAL: Products array is not empty but nothing was added to map!', {
+                    productsData: productsData.products.slice(0, 3),
+                  });
+                }
               } else {
-                console.warn('⚠️ productsData.products is not an array:', productsData);
+                console.warn('⚠️ productsData.products is not an array:', {
+                  type: typeof productsData.products,
+                  isArray: Array.isArray(productsData.products),
+                  data: productsData,
+                });
               }
             } else {
               const errorText = await productsResponse.text().catch(() => '');
@@ -275,16 +291,23 @@ export default function PlanPage() {
                 status: productsResponse.status,
                 statusText: productsResponse.statusText,
                 error: errorText.substring(0, 200),
+                productIdsCount: productIdsArray.length,
               });
             }
-          } catch (err) {
-            console.error('❌ Error loading products from batch endpoint:', err);
+          } catch (err: any) {
+            console.error('❌ Error loading products from batch endpoint:', {
+              error: err,
+              message: err?.message,
+              stack: err?.stack,
+              productIdsCount: allProductIds.size,
+            });
           }
         } else {
           console.warn('⚠️ Cannot load products from API:', {
             hasProductIds: allProductIds.size > 0,
             hasWindow: typeof window !== 'undefined',
             hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
+            initDataLength: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData?.length || 0,
           });
         }
 

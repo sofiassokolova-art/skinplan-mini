@@ -17,6 +17,7 @@ interface FeedbackBlockProps {
 
 const LAST_FEEDBACK_KEY = 'last_plan_feedback_date';
 const FEEDBACK_COOLDOWN_DAYS = 7; // Показывать раз в неделю для сервисного отзыва
+const PLAN_FEEDBACK_SENT_KEY = 'plan_recommendations_feedback_sent'; // Флаг отправки обратной связи по плану
 
 export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' }: FeedbackBlockProps) {
   const [showFeedback, setShowFeedback] = useState(false);
@@ -43,7 +44,7 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
     checkProfile();
   }, []);
 
-  // Проверяем, нужно ли показывать виджет обратной связи (раз в неделю для всех типов)
+  // Проверяем, нужно ли показывать виджет обратной связи
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (hasProfile === false) {
@@ -51,10 +52,21 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       return;
     }
     
-    const feedbackKey = feedbackType === 'service' 
-      ? LAST_FEEDBACK_KEY 
-      : `last_${feedbackType}_feedback_date`;
+    // Для plan_recommendations: показываем только один раз, если еще не отправляли
+    if (feedbackType === 'plan_recommendations') {
+      const feedbackSent = localStorage.getItem(PLAN_FEEDBACK_SENT_KEY);
+      if (feedbackSent === 'true') {
+        // Обратная связь уже отправлена - не показываем больше
+        setIsVisible(false);
+        return;
+      }
+      // Если еще не отправляли - показываем
+      setIsVisible(true);
+      return;
+    }
     
+    // Для service: показываем раз в неделю
+    const feedbackKey = LAST_FEEDBACK_KEY;
     const lastFeedbackDate = localStorage.getItem(feedbackKey);
     if (lastFeedbackDate) {
       const lastDate = new Date(lastFeedbackDate);
@@ -78,12 +90,15 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       await onSubmit({ isRelevant: true });
       setShowThankYou(true);
       
-      // Сохраняем дату отправки
+      // Сохраняем дату отправки и флаг отправки
       if (typeof window !== 'undefined') {
-        const feedbackKey = feedbackType === 'service' 
-          ? LAST_FEEDBACK_KEY 
-          : `last_${feedbackType}_feedback_date`;
-        localStorage.setItem(feedbackKey, new Date().toISOString());
+        if (feedbackType === 'plan_recommendations') {
+          // Для plan_recommendations: помечаем как отправленное, больше не показываем
+          localStorage.setItem(PLAN_FEEDBACK_SENT_KEY, 'true');
+        } else {
+          // Для service: сохраняем дату для cooldown
+          localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+        }
       }
       
       // Скрываем виджет после отправки
@@ -112,12 +127,15 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       setShowFeedback(false);
       setComment('');
       
-      // Сохраняем дату отправки
+      // Сохраняем дату отправки и флаг отправки
       if (typeof window !== 'undefined') {
-        const feedbackKey = feedbackType === 'service' 
-          ? LAST_FEEDBACK_KEY 
-          : `last_${feedbackType}_feedback_date`;
-        localStorage.setItem(feedbackKey, new Date().toISOString());
+        if (feedbackType === 'plan_recommendations') {
+          // Для plan_recommendations: помечаем как отправленное, больше не показываем
+          localStorage.setItem(PLAN_FEEDBACK_SENT_KEY, 'true');
+        } else {
+          // Для service: сохраняем дату для cooldown
+          localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+        }
       }
       
       // Скрываем виджет после отправки
