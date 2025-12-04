@@ -20,6 +20,16 @@ import {
   type ProductWithBrand
 } from '@/lib/product-fallback';
 import type { ProfileClassification } from '@/lib/plan-generation-helpers';
+import {
+  determineProtocol,
+  type DermatologyProtocol,
+} from '@/lib/dermatology-protocols';
+import {
+  filterProductsWithDermatologyLogic,
+  generateProductJustification,
+  generateProductWarnings,
+  type ProductSelectionContext,
+} from '@/lib/dermatology-product-filter';
 
 export const runtime = 'nodejs';
 
@@ -275,12 +285,14 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     )[0] || 'general', // Берем первую цель как основной фокус
     skinType: profile.skinType || 'normal',
     concerns: concerns,
+    diagnoses: Array.isArray(answers.diagnoses) ? answers.diagnoses : [],
     ageGroup: profile.ageGroup || '25-34',
     exclude: Array.isArray(answers.exclude_ingredients) ? answers.exclude_ingredients : [],
     budget: answers.budget || 'средний',
     pregnant: profile.hasPregnancy || false,
     stepsPreference: answers.care_steps || 'средний',
     allergies: Array.isArray(answers.allergies) ? answers.allergies : [],
+    sensitivityLevel: profile.sensitivityLevel || 'medium',
   };
 
   // Определяем основной фокус (приоритет по частоте упоминаний)
@@ -866,6 +878,20 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // Обеспечиваем продукты для всех обязательных шагов из шаблона (batch запрос - устраняет N+1)
   await ensureRequiredProductsForPlan();
 
+  // Определяем дерматологический протокол
+  const dermatologyProtocol = determineProtocol({
+    diagnoses: profileClassification.diagnoses || [],
+    concerns: profileClassification.concerns || [],
+    skinType: profileClassification.skinType || undefined,
+    sensitivityLevel: (profileClassification.sensitivityLevel || 'medium') as 'low' | 'medium' | 'high' | 'very_high',
+  });
+  
+  logger.info('Dermatology protocol determined', {
+    protocol: dermatologyProtocol.condition,
+    protocolName: dermatologyProtocol.name,
+    userId,
+  });
+
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
   
@@ -938,15 +964,119 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
       const dayProducts: Record<string, any> = {};
       const stepsForDay = [...morningSteps, ...eveningSteps];
-      stepsForDay.forEach((step) => {
+      
+      // Собираем уже выбранные продукты для проверки совместимости
+      const selectedProductsForDay: ProductWithBrand[] = [];
+      
+      // Сначала обрабатываем утренние шаги
+      morningSteps.forEach((step) => {
         const stepProducts = getProductsForStep(step);
         if (stepProducts.length > 0) {
-          dayProducts[step] = {
-            id: stepProducts[0].id,
-            name: stepProducts[0].name,
-            brand: stepProducts[0].brand.name,
-            step,
+          // Применяем дерматологическую фильтрацию
+          const context: ProductSelectionContext = {
+            timeOfDay: 'morning',
+            day,
+            week: weekNum,
+            alreadySelected: selectedProductsForDay,
+            protocol: dermatologyProtocol,
+            profileClassification,
           };
+          
+          const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
+          const compatibleProducts = filteredResults.filter(r => r.allowed);
+          
+          if (compatibleProducts.length > 0) {
+            const selectedProduct = compatibleProducts[0].product;
+            selectedProductsForDay.push(selectedProduct);
+            
+            const justification = generateProductJustification(
+              selectedProduct,
+              dermatologyProtocol,
+              profileClassification
+            );
+            const warnings = generateProductWarnings(
+              selectedProduct,
+              dermatologyProtocol,
+              profileClassification
+            );
+            
+            dayProducts[step] = {
+              id: selectedProduct.id,
+              name: selectedProduct.name,
+              brand: selectedProduct.brand.name,
+              step,
+              justification,
+              warnings: warnings.length > 0 ? warnings : undefined,
+            };
+          } else if (stepProducts.length > 0) {
+            // Если нет совместимых, используем первый доступный (fallback)
+            const fallbackProduct = stepProducts[0];
+            selectedProductsForDay.push(fallbackProduct);
+            
+            dayProducts[step] = {
+              id: fallbackProduct.id,
+              name: fallbackProduct.name,
+              brand: fallbackProduct.brand.name,
+              step,
+              warning: 'Продукт может требовать дополнительной проверки совместимости',
+            };
+          }
+        }
+      });
+      
+      // Затем обрабатываем вечерние шаги
+      eveningSteps.forEach((step) => {
+        const stepProducts = getProductsForStep(step);
+        if (stepProducts.length > 0) {
+          // Применяем дерматологическую фильтрацию
+          const context: ProductSelectionContext = {
+            timeOfDay: 'evening',
+            day,
+            week: weekNum,
+            alreadySelected: selectedProductsForDay,
+            protocol: dermatologyProtocol,
+            profileClassification,
+          };
+          
+          const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
+          const compatibleProducts = filteredResults.filter(r => r.allowed);
+          
+          if (compatibleProducts.length > 0) {
+            const selectedProduct = compatibleProducts[0].product;
+            selectedProductsForDay.push(selectedProduct);
+            
+            const justification = generateProductJustification(
+              selectedProduct,
+              dermatologyProtocol,
+              profileClassification
+            );
+            const warnings = generateProductWarnings(
+              selectedProduct,
+              dermatologyProtocol,
+              profileClassification
+            );
+            
+            dayProducts[step] = {
+              id: selectedProduct.id,
+              name: selectedProduct.name,
+              brand: selectedProduct.brand.name,
+              step,
+              justification,
+              warnings: warnings.length > 0 ? warnings : undefined,
+            };
+          } else if (stepProducts.length > 0) {
+            // Если нет совместимых, используем первый доступный (fallback)
+            const fallbackProduct = stepProducts[0];
+            selectedProductsForDay.push(fallbackProduct);
+            
+            dayProducts[step] = {
+              id: fallbackProduct.id,
+              name: fallbackProduct.name,
+              brand: fallbackProduct.brand.name,
+              step,
+              warning: 'Продукт может требовать дополнительной проверки совместимости',
+            };
+          }
         }
       });
 
@@ -1311,19 +1441,7 @@ export async function GET(request: NextRequest) {
 
     // Проверяем кэш
     logger.debug('Checking cache for plan', { userId });
-    const cachedPlan = await getCachedPlan(userId, profile.version);
-    if (cachedPlan) {
-      // Проверяем, что кэшированный план содержит plan28 (новый формат)
-      // Если нет - игнорируем кэш и генерируем новый план
-      if (cachedPlan.plan28) {
-        logger.info('Plan retrieved from cache', { userId, profileVersion: profile.version });
-        return ApiResponse.success(cachedPlan);
-      } else {
-        logger.warn('Cached plan found but missing plan28, regenerating', { userId, profileVersion: profile.version });
-        // Продолжаем генерацию нового плана вместо возврата старого кэша
-      }
-    }
-
+    
     logger.info('Starting plan generation', { userId });
     
     // Выполняем генерацию с таймаутом
