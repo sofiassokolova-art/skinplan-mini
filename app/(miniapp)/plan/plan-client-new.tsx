@@ -17,6 +17,7 @@ import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
+import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
 
 interface PlanPageClientNewProps {
   plan28: Plan28;
