@@ -187,8 +187,9 @@ export default function QuizPage() {
 
       // Загружаем прогресс с сервера (только если Telegram WebApp доступен)
       // Важно: загружаем после загрузки анкеты, чтобы правильно вычислить totalQuestions
-      // Проверка isStartingOver выполняется внутри loadSavedProgressFromServer
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      // Проверка isStartingOver и hasResumed выполняется внутри loadSavedProgressFromServer
+      // ВАЖНО: Не загружаем прогресс, если пользователь уже продолжил анкету
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !hasResumedRef.current && !hasResumed) {
         try {
           await loadSavedProgressFromServer();
           // loadSavedProgressFromServer сам устанавливает setShowResumeScreen(true) если есть прогресс
@@ -200,19 +201,25 @@ export default function QuizPage() {
           }
           // НЕ используем fallback на localStorage - прогресс должен быть синхронизирован с сервером
           // Если на сервере нет прогресса, значит его не должно быть и локально
+          // Но только если пользователь еще не продолжил анкету
+          if (!hasResumedRef.current && !hasResumed) {
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('quiz_progress');
+            }
+            setSavedProgress(null);
+            setShowResumeScreen(false);
+          }
+        }
+      } else {
+        // Если Telegram WebApp не доступен или пользователь уже продолжил, очищаем localStorage (прогресс должен быть на сервере)
+        // Но только если пользователь еще не продолжил анкету
+        if (!hasResumedRef.current && !hasResumed) {
           if (typeof window !== 'undefined') {
             localStorage.removeItem('quiz_progress');
           }
           setSavedProgress(null);
           setShowResumeScreen(false);
         }
-      } else {
-        // Если Telegram WebApp не доступен, очищаем localStorage (прогресс должен быть на сервере)
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('quiz_progress');
-        }
-        setSavedProgress(null);
-        setShowResumeScreen(false);
       }
       
       // Только после всех загрузок устанавливаем loading = false

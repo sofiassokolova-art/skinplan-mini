@@ -352,6 +352,9 @@ export default function HomePage() {
 
         // Если профиля нет - проверяем незавершенную анкету
         console.log('🔍 Step 2: No profile found, checking for incomplete quiz...');
+        // ВАЖНО: Устанавливаем loading = false ПЕРЕД проверкой незавершенной анкеты,
+        // чтобы не показывать "Загрузка плана..." когда профиля нет
+        setLoading(false);
         const hasIncompleteQuiz = await checkIncompleteQuiz();
         console.log('✅ checkIncompleteQuiz result:', hasIncompleteQuiz);
         
@@ -383,6 +386,8 @@ export default function HomePage() {
             err?.message?.includes('No skin profile') ||
             err?.message?.includes('Profile not found')) {
           console.log('ℹ️ Profile not found in initAndLoad, redirecting to quiz');
+          // ВАЖНО: Устанавливаем loading = false перед редиректом, чтобы не показывать "Загрузка плана..."
+          setLoading(false);
           router.push('/quiz');
           return;
         }
