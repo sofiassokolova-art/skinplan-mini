@@ -340,6 +340,12 @@ export default function QuizPage() {
       console.log('⏸️ loadSavedProgressFromServer: пропущено, так как isStartingOver = true');
       return;
     }
+    // Если пользователь уже нажал "Продолжить" (hasResumed = true), не загружаем прогресс снова
+    // Это предотвращает повторное появление экрана "Вы не завершили анкету"
+    if (hasResumed) {
+      console.log('⏸️ loadSavedProgressFromServer: пропущено, так как hasResumed = true (пользователь уже продолжил)');
+      return;
+    }
     // Проверяем, что Telegram WebApp доступен перед запросом
     if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
       console.warn('Telegram WebApp не доступен, пропускаем загрузку прогресса с сервера');
