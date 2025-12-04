@@ -74,7 +74,6 @@ export function PlanPageClientNew({
   const [completedEvening, setCompletedEvening] = useState(false);
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
   const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
-  const [showAllProducts, setShowAllProducts] = useState(true); // По умолчанию показываем все средства
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
