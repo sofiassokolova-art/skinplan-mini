@@ -484,17 +484,44 @@ export default function PlanPage() {
                 await processPlanData(generatedPlan);
                 return;
               }
+            } else {
+              // Профиль не найден - это нормально, если план уже есть в другом формате
+              // Пробуем загрузить план напрямую через generatePlan
+              console.log('🔄 Profile not found, trying to generate plan...');
+              try {
+                const generatedPlan = await api.generatePlan() as any;
+                if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+                  console.log('✅ Plan generated without profile, processing...');
+                  await processPlanData(generatedPlan);
+                  return;
+                }
+              } catch (genError) {
+                console.warn('Could not generate plan without profile:', genError);
+              }
             }
           } catch (generateError: any) {
             console.error('❌ Failed to regenerate plan:', generateError);
+            // Не показываем ошибку сразу - возможно план есть, но профиль недоступен
           }
         }
         
-        // Если план не найден и нет профиля - показываем ошибку
+        // Если план не найден и нет профиля - показываем ошибку только если это точно первое прохождение
         if (planError?.status === 404) {
-          setError('no_profile');
-          setLoading(false);
-          return;
+          // Проверяем еще раз, может быть план есть, но профиль недоступен
+          try {
+            const testPlan = await api.generatePlan() as any;
+            if (testPlan && (testPlan.plan28 || testPlan.weeks)) {
+              console.log('✅ Plan found via generatePlan, processing...');
+              await processPlanData(testPlan);
+              return;
+            }
+          } catch (testError) {
+            // Если и generatePlan не работает - показываем ошибку
+            console.log('❌ No plan available, showing error');
+            setError('no_profile');
+            setLoading(false);
+            return;
+          }
         }
         
         // Если это не 404 или регенерация не удалась - показываем ошибку

@@ -1478,9 +1478,12 @@ export default function QuizPage() {
   if (showRetakeScreen && isRetakingQuiz) {
     const retakeTopics = getAllTopics();
     
-    // Проверяем, оплатил ли пользователь перепрохождение
+    // Проверяем, оплатил ли пользователь перепрохождение (тема - 49₽, полное - 99₽)
     const hasRetakingPayment = typeof window !== 'undefined' 
       ? localStorage.getItem('payment_retaking_completed') === 'true'
+      : false;
+    const hasFullRetakePayment = typeof window !== 'undefined'
+      ? localStorage.getItem('payment_full_retake_completed') === 'true'
       : false;
     
     console.log('🔄 Retake screen check:', {
@@ -1507,16 +1510,17 @@ export default function QuizPage() {
     };
 
     const handleFullRetake = () => {
-      // Проверяем оплату перед полным перепрохождением
-      if (!hasRetakingPayment) {
-        console.log('⚠️ Payment not completed, blocking full retake');
+      // Для полного перепрохождения нужна отдельная оплата 99₽
+      if (!hasFullRetakePayment) {
+        console.log('⚠️ Full retake payment not completed, showing payment gate');
+        // Показываем PaymentGate для полного перепрохождения
         return;
       }
-      console.log('✅ Payment completed, allowing full retake');
-      // Сбрасываем флаг оплаты - полное перепрохождение использует одну оплату
+      console.log('✅ Full retake payment completed, allowing full retake');
+      // Сбрасываем флаг оплаты после использования
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('payment_retaking_completed');
-        console.log('🔄 Payment flag cleared after full retake');
+        localStorage.removeItem('payment_full_retake_completed');
+        console.log('🔄 Full retake payment flag cleared');
       }
       // Полное перепрохождение - скрываем экран выбора тем и показываем все вопросы
       setShowRetakeScreen(false);
@@ -1654,32 +1658,73 @@ export default function QuizPage() {
         </div>
 
         {/* Кнопка полного перепрохождения */}
-        <button
-          onClick={handleFullRetake}
-          style={{
-            width: '100%',
-            padding: '16px',
-            borderRadius: '16px',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            border: '2px solid #0A5F59',
-            color: '#0A5F59',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            marginTop: '8px',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#0A5F59';
-            e.currentTarget.style.color = 'white';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-            e.currentTarget.style.color = '#0A5F59';
-          }}
-        >
-          Пройти всю анкету заново
-        </button>
+        {!hasFullRetakePayment ? (
+          <PaymentGate
+            price={99}
+            isRetaking={true}
+            onPaymentComplete={() => {
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('payment_full_retake_completed', 'true');
+                // После оплаты разрешаем полное перепрохождение
+                setShowRetakeScreen(false);
+              }
+            }}
+          >
+            <div style={{ width: '100%', marginTop: '8px' }}>
+              <button
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                  border: '2px solid #0A5F59',
+                  color: '#0A5F59',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0A5F59';
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+                  e.currentTarget.style.color = '#0A5F59';
+                }}
+              >
+                Пройти всю анкету заново (99 ₽)
+              </button>
+            </div>
+          </PaymentGate>
+        ) : (
+          <button
+            onClick={handleFullRetake}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: '16px',
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              border: '2px solid #0A5F59',
+              color: '#0A5F59',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginTop: '8px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#0A5F59';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+              e.currentTarget.style.color = '#0A5F59';
+            }}
+          >
+            Пройти всю анкету заново
+          </button>
+        )}
 
         {/* Кнопка отмены */}
         <div style={{ textAlign: 'center', marginTop: '24px' }}>

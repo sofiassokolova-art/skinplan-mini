@@ -635,7 +635,8 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   logger.info('Products selected', { 
     count: selectedProducts.length, 
     source: recommendationProducts.length > 0 ? 'recommendationSession' : 'filtering',
-    userId 
+    userId,
+    productIds: selectedProducts.map((p: any) => ({ id: p.id, name: p.name, step: p.step, category: p.category })).slice(0, 10),
   });
 
   // Группируем продукты по шагам (используем Map для лучшей типизации)
@@ -649,6 +650,15 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     const existing = productsByStepMap.get(category) || [];
     if (!existing.some(p => p.id === product.id)) {
       productsByStepMap.set(category, [...existing, product]);
+      // Логируем для диагностики (особенно для пользователя 643160759)
+      if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+        logger.info('Product registered for step', {
+          productId: product.id,
+          productName: product.name,
+          step: category,
+          userId,
+        });
+      }
     }
   };
 
@@ -891,6 +901,20 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
 
   // Обеспечиваем продукты для всех обязательных шагов из шаблона (batch запрос - устраняет N+1)
   await ensureRequiredProductsForPlan();
+  
+  // Логируем итоговое состояние productsByStepMap для диагностики
+  if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+    const stepSummary = Array.from(productsByStepMap.entries()).map(([step, products]) => ({
+      step,
+      count: products.length,
+      productIds: products.map(p => p.id),
+    }));
+    logger.info('ProductsByStepMap summary after ensureRequiredProducts', {
+      userId,
+      totalSteps: productsByStepMap.size,
+      steps: stepSummary,
+    });
+  }
 
   // Определяем дерматологический протокол
   const dermatologyProtocol = determineProtocol({
