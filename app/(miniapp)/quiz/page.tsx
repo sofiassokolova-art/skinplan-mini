@@ -320,9 +320,22 @@ export default function QuizPage() {
   const loadSavedProgress = () => {
     if (typeof window === 'undefined') return;
     
+    // ВАЖНО: Если пользователь уже нажал "Продолжить", не загружаем прогресс
+    // Это предотвращает повторное появление экрана "Вы не завершили анкету"
+    if (hasResumedRef.current || hasResumed) {
+      console.log('⏸️ loadSavedProgress: пропущено, так как hasResumed = true (пользователь уже продолжил)');
+      return;
+    }
+    
     const saved = localStorage.getItem('quiz_progress');
     if (saved) {
       try {
+        // ВАЖНО: Еще раз проверяем hasResumedRef перед установкой состояний
+        if (hasResumedRef.current || hasResumed) {
+          console.log('⏸️ loadSavedProgress: пропущено перед установкой состояний, так как hasResumed = true');
+          return;
+        }
+        
         const progress = JSON.parse(saved);
         setSavedProgress(progress);
         // Показываем экран продолжения только если есть сохранённые ответы
@@ -1096,6 +1109,13 @@ export default function QuizPage() {
     setHasResumed(true);
     setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
     
+    // ВАЖНО: Очищаем localStorage СРАЗУ, чтобы предотвратить повторную загрузку прогресса
+    // из loadSavedProgress или loadSavedProgressFromServer
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('quiz_progress');
+      console.log('✅ localStorage очищен от quiz_progress');
+    }
+    
     // ВАЖНО: Сохраняем копию savedProgress перед очисткой, так как мы будем использовать его данные
     const progressToRestore = { ...savedProgress };
     
@@ -1126,7 +1146,7 @@ export default function QuizPage() {
       setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
     }
     
-    console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false, savedProgress = null');
+    console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false, savedProgress = null, localStorage очищен');
   };
 
   // Начать заново
@@ -2401,24 +2421,6 @@ export default function QuizPage() {
               }}
             >
               Продолжить с вопроса {savedProgress.questionIndex + 1} →
-            </button>
-            
-            <button
-              onClick={startOver}
-              style={{
-                width: '100%',
-                height: '48px',
-                background: 'transparent',
-                color: '#0A5F59',
-                border: '1px solid rgba(10, 95, 89, 0.3)',
-                borderRadius: '24px',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 500,
-                fontSize: '16px',
-                cursor: 'pointer',
-              }}
-            >
-              Начать заново
             </button>
           </div>
         </div>
