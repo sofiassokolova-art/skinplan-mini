@@ -1112,7 +1112,17 @@ export default function QuizPage() {
       hasResumedRef: hasResumedRef.current,
       isStartingOverRef: isStartingOverRef.current,
       loading: false,
+      currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+      questionnaireLoaded: !!questionnaire,
     });
+    
+    // ВАЖНО: Убеждаемся, что мы остаемся на странице анкеты
+    // Если по какой-то причине произошел редирект, возвращаемся на /quiz
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/quiz')) {
+      console.warn('⚠️ Обнаружен редирект с /quiz, возвращаемся на страницу анкеты');
+      window.location.href = '/quiz';
+      return;
+    }
     
     // НЕ сбрасываем isStartingOverRef сразу - оставляем его установленным навсегда
     // Это предотвратит повторную загрузку прогресса даже если компонент перерендерится
