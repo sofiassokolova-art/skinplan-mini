@@ -2866,8 +2866,25 @@ export default function QuizPage() {
           </button>
         )}
 
-        <div style={{ marginBottom: '16px', color: '#0A5F59', fontSize: '14px' }}>
-          Вопрос {currentQuestionIndex + 1} из {allQuestions.length}
+        {/* Прогресс-бар */}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{
+            width: '100%',
+            height: '6px',
+            backgroundColor: 'rgba(10, 95, 89, 0.1)',
+            borderRadius: '3px',
+            overflow: 'hidden',
+            position: 'relative',
+          }}>
+            <div style={{
+              width: `${((currentQuestionIndex + 1) / allQuestions.length) * 100}%`,
+              height: '100%',
+              backgroundColor: '#0A5F59',
+              borderRadius: '3px',
+              transition: 'width 0.3s ease',
+              boxShadow: '0 2px 8px rgba(10, 95, 89, 0.3)',
+            }} />
+          </div>
         </div>
 
         <h2 style={{ 
