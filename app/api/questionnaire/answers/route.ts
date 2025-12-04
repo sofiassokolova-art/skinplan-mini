@@ -544,7 +544,7 @@ export async function POST(request: NextRequest) {
               
               return product.activeIngredients.some(productIng => {
                 const normalizedProductIng = productIng.toLowerCase().trim();
-                return normalizedRuleIngredients.some(ruleIng => {
+                return normalizedRuleIngredients.some((ruleIng: string) => {
                   if (normalizedProductIng === ruleIng) return true;
                   if (normalizedProductIng.includes(ruleIng) || ruleIng.includes(normalizedProductIng)) return true;
                   const productIngNoUnderscore = normalizedProductIng.replace(/_/g, '');

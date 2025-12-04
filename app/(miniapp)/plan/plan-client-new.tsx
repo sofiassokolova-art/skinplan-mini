@@ -13,6 +13,7 @@ import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { PaymentGate } from '@/components/PaymentGate';
 import { ReplaceProductModal } from '@/components/ReplaceProductModal';
 import { AllProductsList } from '@/components/AllProductsList';
+import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
@@ -43,6 +44,25 @@ export function PlanPageClientNew({
   const products = productsProp || new Map();
   const router = useRouter();
   const searchParams = useSearchParams();
+  
+  // Состояние для проблем кожи
+  const [skinIssues, setSkinIssues] = useState<any[]>([]);
+  
+  // Загружаем проблемы кожи при монтировании
+  useEffect(() => {
+    const loadSkinIssues = async () => {
+      try {
+        const analysisData = await api.getAnalysis() as any;
+        if (analysisData?.issues && Array.isArray(analysisData.issues)) {
+          setSkinIssues(analysisData.issues);
+        }
+      } catch (err) {
+        // Игнорируем ошибки - проблемы не критичны для отображения плана
+        console.warn('Could not load skin issues:', err);
+      }
+    };
+    loadSkinIssues();
+  }, []);
   
   // Проверяем параметр day из URL
   const dayFromUrl = searchParams?.get('day');
@@ -276,6 +296,13 @@ export function PlanPageClientNew({
     }}>
       {/* Header с целями */}
       <PlanHeader mainGoals={plan28.mainGoals} />
+
+      {/* Основные проблемы кожи */}
+      {skinIssues.length > 0 && (
+        <div style={{ marginBottom: '24px' }}>
+          <SkinIssuesCarousel issues={skinIssues} />
+        </div>
+      )}
 
       {/* Инфографика плана */}
       <PlanInfographic plan28={plan28} products={products} />

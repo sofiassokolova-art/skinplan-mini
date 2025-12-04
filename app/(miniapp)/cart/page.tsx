@@ -176,14 +176,14 @@ export default function CartPage() {
             href="/plan"
             style={{
               display: 'inline-block',
-              backgroundColor: '#8B5CF6',
+              backgroundColor: '#0A5F59',
               color: 'white',
               padding: '16px 32px',
               borderRadius: '16px',
               textDecoration: 'none',
               fontSize: '16px',
               fontWeight: 'bold',
-              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
             }}
           >
             Открыть план ухода

@@ -59,53 +59,6 @@ export function PlanInfographic({ plan28, products }: PlanInfographicProps) {
       gap: '24px',
       marginBottom: '32px',
     }}>
-      {/* Что нужно вашей коже */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '24px',
-        padding: '24px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        border: '1px solid rgba(10, 95, 89, 0.1)',
-      }}>
-        <h2 style={{
-          fontSize: '22px',
-          fontWeight: 'bold',
-          color: '#0A5F59',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-        }}>
-          <span style={{ fontSize: '28px' }}>🎯</span>
-          Что нужно вашей коже
-        </h2>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-        }}>
-          {plan28.mainGoals.map((goal, index) => (
-            <div
-              key={goal}
-              style={{
-                padding: '16px',
-                backgroundColor: '#F5FFFC',
-                borderRadius: '12px',
-                border: '1px solid rgba(10, 95, 89, 0.2)',
-              }}
-            >
-              <div style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#0A5F59',
-              }}>
-                {goalLabels[goal] || goal}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Как мы будем работать */}
       <div style={{
         backgroundColor: 'white',
