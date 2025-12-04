@@ -61,6 +61,7 @@ export default function QuizPage() {
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [showRetakeScreen, setShowRetakeScreen] = useState(false); // Флаг: показывать экран выбора тем для повторного прохождения
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
+  const [isStartingOver, setIsStartingOver] = useState(false); // Флаг: пользователь нажал "Начать заново"
   const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
@@ -333,6 +334,11 @@ export default function QuizPage() {
 
   // Загружаем прогресс с сервера (синхронизация между устройствами)
   const loadSavedProgressFromServer = async () => {
+    // Если пользователь только что нажал "Начать заново", не загружаем прогресс
+    if (isStartingOver) {
+      console.log('⏸️ loadSavedProgressFromServer: пропущено, так как isStartingOver = true');
+      return;
+    }
     // Проверяем, что Telegram WebApp доступен перед запросом
     if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
       console.warn('Telegram WebApp не доступен, пропускаем загрузку прогресса с сервера');
@@ -1030,6 +1036,9 @@ export default function QuizPage() {
   const startOver = async () => {
     console.log('🔄 startOver: Начинаем сброс анкеты');
     
+    // Устанавливаем флаг, чтобы предотвратить загрузку прогресса после очистки
+    setIsStartingOver(true);
+    
     // Очищаем весь прогресс (локальный и серверный)
     await clearProgress();
     
@@ -1044,6 +1053,11 @@ export default function QuizPage() {
     setIsRetakingQuiz(false); // Сбрасываем флаг перепрохождения
     
     console.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран');
+    
+    // Сбрасываем флаг через небольшую задержку, чтобы дать время состояниям обновиться
+    setTimeout(() => {
+      setIsStartingOver(false);
+    }, 100);
   };
 
   // Лоадер при отправке ответов
