@@ -376,33 +376,62 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     orderBy: { createdAt: 'desc' },
   });
 
+  // КРИТИЧНО: Если в сессии слишком мало продуктов (меньше 3), игнорируем её
+  // Это предотвращает замкнутый круг, когда план использует только 2 продукта из сессии,
+  // а затем перезаписывает сессию теми же 2 продуктами
+  const MIN_PRODUCTS_IN_SESSION = 3;
+
   if (existingSession && existingSession.products && Array.isArray(existingSession.products)) {
-    logger.info('Using products from RecommendationSession for plan generation', { 
-      userId,
-      sessionId: existingSession.id,
-      productIdsCount: existingSession.products.length,
-      productIds: (existingSession.products as number[]).slice(0, 10), // Первые 10 для логов
-    });
     const productIds = existingSession.products as number[];
+    
+    // Проверяем, достаточно ли продуктов в сессии
+    if (productIds.length < MIN_PRODUCTS_IN_SESSION) {
+      logger.warn('RecommendationSession has too few products, ignoring it', {
+        userId,
+        sessionId: existingSession.id,
+        productCount: productIds.length,
+        minRequired: MIN_PRODUCTS_IN_SESSION,
+        ruleId: existingSession.ruleId,
+      });
+      
+      // Если сессия была создана из плана (ruleId = null), удаляем её, чтобы не мешала
+      if (existingSession.ruleId === null) {
+        logger.info('Deleting RecommendationSession created from plan (too few products)', {
+          userId,
+          sessionId: existingSession.id,
+        });
+        await prisma.recommendationSession.delete({
+          where: { id: existingSession.id },
+        });
+      }
+    } else {
+      logger.info('Using products from RecommendationSession for plan generation', { 
+        userId,
+        sessionId: existingSession.id,
+        productIdsCount: productIds.length,
+        productIds: productIds.slice(0, 10), // Первые 10 для логов
+        ruleId: existingSession.ruleId,
+      });
+      
     recommendationProducts = await prisma.product.findMany({
       where: {
         id: { in: productIds },
         published: true as any,
         brand: {
           isActive: true, // Только активные бренды
-        },
+      },
       } as any,
       include: { brand: true },
     });
-    
-    // Детальное логирование для диагностики
-    logger.info('Products loaded from RecommendationSession', {
-      userId,
-      requestedIds: productIds.length,
-      foundProducts: recommendationProducts.length,
-      missingIds: productIds.filter(id => !recommendationProducts.find(p => p.id === id)).slice(0, 10),
-      foundProductIds: recommendationProducts.map(p => p.id).slice(0, 10),
-    });
+      
+      // Детальное логирование для диагностики
+      logger.info('Products loaded from RecommendationSession', {
+        userId,
+        requestedIds: productIds.length,
+        foundProducts: recommendationProducts.length,
+        missingIds: productIds.filter(id => !recommendationProducts.find(p => p.id === id)).slice(0, 10),
+        foundProductIds: recommendationProducts.map(p => p.id).slice(0, 10),
+      });
     
     // Сортируем в памяти
     recommendationProducts.sort((a: any, b: any) => {
@@ -410,8 +439,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       return b.priority - a.priority;
     });
     logger.info('Products found from RecommendationSession', { count: recommendationProducts.length, userId });
-  } else {
-    logger.info('No RecommendationSession found, will generate products from scratch', { userId });
+    }
+  }
+  
+  if (recommendationProducts.length === 0) {
+    logger.info('No RecommendationSession with enough products found, will generate products from scratch', { userId });
   }
   
   // Если есть продукты из RecommendationSession, используем их
@@ -1718,7 +1750,7 @@ export async function GET(request: NextRequest) {
 
     // Проверяем кэш
     logger.debug('Checking cache for plan', { userId, profileVersion: profile.version });
-    
+
     logger.info('Starting plan generation', { userId });
     
     // Выполняем генерацию с таймаутом
