@@ -9,23 +9,12 @@ import { PlanHeader } from '@/components/PlanHeader';
 import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import { GoalProgressInfographic } from '@/components/GoalProgressInfographic';
-import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { PaymentGate } from '@/components/PaymentGate';
 import { ReplaceProductModal } from '@/components/ReplaceProductModal';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
-
-interface SkinIssue {
-  id: string;
-  name: string;
-  severity_score: number;
-  severity_label: 'критично' | 'плохо' | 'умеренно' | 'хорошо' | 'отлично';
-  description: string;
-  tags: string[];
-  image_url?: string;
-}
 
 interface PlanPageClientNewProps {
   plan28: Plan28;
@@ -57,8 +46,6 @@ export function PlanPageClientNew({
   const [completedDays, setCompletedDays] = useState<Set<number>>(new Set(initialCompletedDays));
   const [completedMorning, setCompletedMorning] = useState(false);
   const [completedEvening, setCompletedEvening] = useState(false);
-  const [skinIssues, setSkinIssues] = useState<SkinIssue[]>([]);
-  const [loadingIssues, setLoadingIssues] = useState(true);
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
   const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
 
@@ -66,9 +53,8 @@ export function PlanPageClientNew({
     return plan28.days.find(d => d.dayIndex === selectedDay);
   }, [plan28.days, selectedDay]);
 
-  // Загружаем данные о проблемах кожи и корзине при монтировании
+  // Загружаем данные корзине при монтировании
   useEffect(() => {
-    loadSkinIssues();
     loadCart();
     // Проверяем статус первой оплаты
     // Если план уже существует (был сгенерирован ранее), автоматически считаем первую оплату выполненной
@@ -100,20 +86,6 @@ export function PlanPageClientNew({
     }
   };
 
-  const loadSkinIssues = async () => {
-    try {
-      setLoadingIssues(true);
-      const analysisData = await api.getAnalysis() as { issues?: SkinIssue[] };
-      if (analysisData?.issues && Array.isArray(analysisData.issues)) {
-        setSkinIssues(analysisData.issues);
-      }
-    } catch (err) {
-      console.warn('Could not load skin issues:', err);
-      // Не показываем ошибку пользователю, просто оставляем пустой массив
-    } finally {
-      setLoadingIssues(false);
-    }
-  };
 
   const handleFeedbackSubmit = async (feedback: {
     isRelevant: boolean;
@@ -289,58 +261,8 @@ export function PlanPageClientNew({
       padding: '20px',
       paddingBottom: '100px',
     }}>
-      {/* Логотип */}
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-      }}>
-        <button
-          onClick={() => router.push('/')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            display: 'inline-block',
-          }}
-        >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
-        </button>
-      </div>
-
       {/* Header с целями */}
       <PlanHeader mainGoals={plan28.mainGoals} />
-
-      {/* Блок проблем кожи - горизонтальный карусель - показываем всегда без замыливания */}
-      <div style={{ marginBottom: '32px' }}>
-        {loadingIssues ? (
-          <div style={{ 
-            padding: '20px', 
-            textAlign: 'center', 
-            color: '#6B7280',
-            fontSize: '14px'
-          }}>
-            Загрузка проблем кожи...
-          </div>
-        ) : skinIssues.length > 0 ? (
-          <SkinIssuesCarousel issues={skinIssues} />
-        ) : null}
-      </div>
 
       {/* Основной контент плана - обернут в PaymentGate только при первой оплате */}
       {needsFirstPayment ? (

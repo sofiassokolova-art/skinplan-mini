@@ -474,6 +474,27 @@ export async function POST(request: NextRequest) {
             // ПРИМЕЧАНИЕ: В текущей схеме БД нет поля isNatural
             // Можно добавить проверку по composition, если нужно
           }
+          
+          // Фильтрация по активным ингредиентам (если указано в правиле)
+          // ВАЖНО: Если продуктов с указанными ингредиентами нет, не блокируем поиск - используем fallback
+          if (stepConfig.active_ingredients && Array.isArray(stepConfig.active_ingredients) && stepConfig.active_ingredients.length > 0) {
+            const activeIngredientsCondition = {
+              OR: [
+                // Продукты с указанными ингредиентами
+                ...stepConfig.active_ingredients.map((ingredient: string) => ({
+                  activeIngredients: { has: ingredient },
+                })),
+                // Также берем продукты без activeIngredients (fallback)
+                { activeIngredients: { isEmpty: true } },
+              ],
+            };
+            
+            if (where.AND) {
+              where.AND = Array.isArray(where.AND) ? [...where.AND, activeIngredientsCondition] : [where.AND, activeIngredientsCondition];
+            } else {
+              where.AND = [activeIngredientsCondition];
+            }
+          }
 
           // Первая попытка: точный поиск
           let products = await prisma.product.findMany({

@@ -22,6 +22,7 @@ interface RuleStep {
   is_fragrance_free?: boolean;
   budget?: 'бюджетный' | 'средний' | 'премиум' | 'любой'; // Бюджетный сегмент
   is_natural?: boolean; // Натуральный/органический состав
+  active_ingredients?: string[]; // Активные ингредиенты (для специальных правил)
   max_items?: number;
 }
 
