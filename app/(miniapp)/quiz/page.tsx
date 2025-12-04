@@ -407,6 +407,16 @@ export default function QuizPage() {
           return;
         }
         
+        // ВАЖНО: Еще раз проверяем hasResumedRef ПЕРЕД установкой состояний
+        // Это критично, так как запрос мог быть отправлен до установки hasResumedRef
+        if (hasResumedRef.current || hasResumed) {
+          console.log('⏸️ loadSavedProgressFromServer: пропущено перед установкой состояний, так как hasResumed = true', {
+            refValue: hasResumedRef.current,
+            stateValue: hasResumed,
+          });
+          return;
+        }
+        
         console.log('✅ Прогресс найден на сервере:', {
           answersCount: Object.keys(response.progress.answers).length,
           questionIndex: response.progress.questionIndex,
@@ -1064,32 +1074,37 @@ export default function QuizPage() {
     setHasResumed(true);
     setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
     
-    // Восстанавливаем прогресс
-    setAnswers(savedProgress.answers);
+    // ВАЖНО: Сохраняем копию savedProgress перед очисткой, так как мы будем использовать его данные
+    const progressToRestore = { ...savedProgress };
+    
+    // ВАЖНО: Очищаем savedProgress СРАЗУ, чтобы предотвратить показ экрана "Вы не завершили анкету"
+    // даже если loadSavedProgressFromServer установит setShowResumeScreen(true) позже
+    setSavedProgress(null);
+    
+    // Восстанавливаем прогресс из сохраненной копии
+    setAnswers(progressToRestore.answers);
     
     // ВАЖНО: Всегда пропускаем начальные экраны, если пользователь уже начал отвечать на вопросы
     // Если infoScreenIndex указывает на начальный экран, но вопрос уже начался - пропускаем начальные экраны
-    if (savedProgress.infoScreenIndex >= initialInfoScreens.length) {
+    if (progressToRestore.infoScreenIndex >= initialInfoScreens.length) {
       // Начальные экраны пройдены, переходим к вопросам
-      console.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к вопросу', savedProgress.questionIndex);
-      setCurrentQuestionIndex(savedProgress.questionIndex);
-      setCurrentInfoScreenIndex(savedProgress.infoScreenIndex);
-    } else if (savedProgress.questionIndex > 0 || Object.keys(savedProgress.answers).length > 0) {
+      console.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к вопросу', progressToRestore.questionIndex);
+      setCurrentQuestionIndex(progressToRestore.questionIndex);
+      setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
+    } else if (progressToRestore.questionIndex > 0 || Object.keys(progressToRestore.answers).length > 0) {
       // Пользователь уже начал отвечать, но infoScreenIndex еще на начальных экранах
       // Пропускаем все начальные экраны и переходим к сохранённому вопросу
-      console.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к вопросу', savedProgress.questionIndex);
-      setCurrentQuestionIndex(savedProgress.questionIndex);
+      console.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к вопросу', progressToRestore.questionIndex);
+      setCurrentQuestionIndex(progressToRestore.questionIndex);
       setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
     } else {
       // Пользователь еще не начал отвечать, начинаем с начальных экранов
       console.log('✅ resumeQuiz: Начинаем с начальных экранов');
       setCurrentQuestionIndex(0);
-      setCurrentInfoScreenIndex(savedProgress.infoScreenIndex);
+      setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
     }
     
-    // ВАЖНО: НЕ очищаем savedProgress, так как он может понадобиться для других проверок
-    // hasResumed и showResumeScreen уже установлены выше
-    console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false');
+    console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false, savedProgress = null');
   };
 
   // Начать заново
