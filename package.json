@@ -39,6 +39,8 @@
     "backup:db": "tsx scripts/backup-db.ts",
     "restore:db": "tsx scripts/restore-db.ts",
     "clear:user": "tsx scripts/clear-all-user-data.ts",
+    "test:rules": "tsx scripts/test-all-rules.ts",
+    "analyze:products": "tsx scripts/analyze-products-by-step.ts",
     "add:combo-rules": "tsx scripts/add-combo-skin-rules.ts",
     "add:comprehensive-rules": "tsx scripts/add-comprehensive-rules.ts"
   },
