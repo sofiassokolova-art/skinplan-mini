@@ -342,7 +342,7 @@ export async function POST(request: NextRequest) {
         const productIds: number[] = [];
 
         // Получаем бюджет пользователя из ответов (если есть)
-        const budgetAnswer = userAnswers.find(a => a.question?.code === 'budget');
+        const budgetAnswer = fullAnswers.find(a => a.question?.code === 'budget');
         const userBudget = budgetAnswer?.answerValue || 'любой';
         
         // Маппинг бюджета из ответов в формат для фильтрации
