@@ -31,12 +31,14 @@ export interface ProductWithBrand {
 
 /**
  * Ищет fallback продукт для базового шага
+ * ВАЖНО: Всегда пытается найти продукт, даже если нужно игнорировать тип кожи
  */
 export async function findFallbackProduct(
   baseStep: string,
   profileClassification: ProfileClassification
 ): Promise<ProductWithBrand | null> {
-  const whereClause: Prisma.ProductWhereInput = {
+  // Первая попытка: с учетом типа кожи
+  const whereClauseWithSkinType: Prisma.ProductWhereInput = {
     published: true,
     brand: {
       isActive: true,
@@ -45,23 +47,16 @@ export async function findFallbackProduct(
 
   // SPF универсален для всех типов кожи
   if (baseStep === 'spf') {
-    whereClause.OR = [
+    whereClauseWithSkinType.OR = [
       { step: 'spf' },
       { category: 'spf' },
     ];
   } else {
-    whereClause.step = baseStep;
+    whereClauseWithSkinType.step = baseStep;
 
     // Для других шагов учитываем тип кожи
     if (profileClassification.skinType && baseStep !== 'spf') {
-      const existingAND = Array.isArray(whereClause.AND) 
-        ? whereClause.AND 
-        : whereClause.AND 
-          ? [whereClause.AND] 
-          : [];
-      
-      whereClause.AND = [
-        ...existingAND,
+      whereClauseWithSkinType.AND = [
         {
           OR: [
             { skinTypes: { has: profileClassification.skinType } },
@@ -73,8 +68,9 @@ export async function findFallbackProduct(
   }
 
   try {
-    const product = await prisma.product.findFirst({
-      where: whereClause,
+    // Пробуем найти с учетом типа кожи
+    let product = await prisma.product.findFirst({
+      where: whereClauseWithSkinType,
       include: {
         brand: true,
       },
@@ -85,13 +81,78 @@ export async function findFallbackProduct(
       ],
     });
 
+    // Если не найдено с учетом типа кожи, пробуем без учета типа кожи
+    if (!product && profileClassification.skinType && baseStep !== 'spf') {
+      logger.info('Product not found with skin type filter, trying without skin type', {
+        baseStep,
+        skinType: profileClassification.skinType,
+      });
+      
+      const whereClauseWithoutSkinType: Prisma.ProductWhereInput = {
+        published: true,
+        brand: {
+          isActive: true,
+        },
+        step: baseStep,
+      };
+      
+      product = await prisma.product.findFirst({
+        where: whereClauseWithoutSkinType,
+        include: {
+          brand: true,
+        },
+        orderBy: [
+          { isHero: 'desc' },
+          { priority: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      });
+    }
+
+    // Если все еще не найдено, пробуем найти по частичному совпадению step
+    if (!product && baseStep !== 'spf') {
+      logger.info('Product not found with exact step match, trying partial match', {
+        baseStep,
+      });
+      
+      const whereClausePartial: Prisma.ProductWhereInput = {
+        published: true,
+        brand: {
+          isActive: true,
+        },
+        OR: [
+          { step: { contains: baseStep } },
+          { category: { contains: baseStep } },
+        ],
+      };
+      
+      product = await prisma.product.findFirst({
+        where: whereClausePartial,
+        include: {
+          brand: true,
+        },
+        orderBy: [
+          { isHero: 'desc' },
+          { priority: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      });
+    }
+
     if (!product) {
-      logger.warn('Fallback product not found', {
+      logger.error('CRITICAL: Fallback product not found after all attempts', {
         baseStep,
         skinType: profileClassification.skinType,
       });
       return null;
     }
+
+    logger.info('Fallback product found', {
+      baseStep,
+      productId: product.id,
+      productName: product.name,
+      skinType: profileClassification.skinType,
+    });
 
     return product as ProductWithBrand;
   } catch (error) {

@@ -104,6 +104,16 @@ export default function AnalysisPage() {
       setLoading(false);
     } catch (err: any) {
       console.error('Error loading analysis data:', err);
+      
+      // Если план еще не готов (404 или ошибка генерации), редиректим на /plan
+      // или показываем лоадер вместо ошибки
+      if (err?.status === 404 || err?.message?.includes('not found') || err?.message?.includes('не найден')) {
+        console.log('Analysis not ready, redirecting to plan page');
+        router.push('/plan');
+        return;
+      }
+      
+      // Для других ошибок показываем сообщение
       setError(err?.message || 'Ошибка загрузки данных анализа');
       setLoading(false);
     }
