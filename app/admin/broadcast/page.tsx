@@ -284,7 +284,7 @@ export default function BroadcastAdmin() {
   }, [filters.skinTypes, filters.concerns, filters.planDay, filters.lastActive, filters.hasPurchases]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto pb-32 pt-8">
+    <div className="w-full max-w-5xl mx-auto pb-32">
       {/* Основная карточка-контейнер */}
       <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-8 lg:p-12">
         {/* Шапка */}

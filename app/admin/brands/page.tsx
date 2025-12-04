@@ -231,7 +231,7 @@ export default function BrandsAdmin() {
   }
 
   return (
-    <div className="space-y-12 pt-8">
+    <div className="space-y-12">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Бренды</h1>
