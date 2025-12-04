@@ -259,6 +259,24 @@ export async function POST(request: NextRequest) {
           where: { userId },
         });
         logger.info('RecommendationSession deleted for plan regeneration', { userId });
+        
+        // Запускаем автоматическую регенерацию плана в фоне
+        // Это гарантирует, что план обновится при изменении типа кожи или других параметров
+        try {
+          const planRegenerateUrl = `${process.env.NEXT_PUBLIC_API_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/api/plan/generate`;
+          fetch(planRegenerateUrl, {
+            method: 'GET',
+            headers: {
+              'X-Telegram-Init-Data': initData || '',
+            },
+          }).catch(err => {
+            logger.warn('Background plan regeneration failed', { userId, error: err });
+            // Не критично - план пересоберется при следующем запросе
+          });
+          logger.info('Plan regeneration triggered in background', { userId, newVersion: profile.version });
+        } catch (regenerateError) {
+          logger.warn('Could not trigger plan regeneration', { userId, error: regenerateError });
+        }
       } catch (cacheError) {
         logger.warn('Failed to clear cache', { error: cacheError, userId });
       }
