@@ -235,6 +235,13 @@ export default function PlanPage() {
         // Сначала пробуем загрузить из API, если не получилось - используем fallback
         let productsLoadedFromAPI = false;
         
+        console.log('🔍 DEBUG: Starting product loading', {
+          allProductIdsSize: allProductIds.size,
+          allProductIds: Array.from(allProductIds).slice(0, 20),
+          hasWindow: typeof window !== 'undefined',
+          hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
+        });
+        
         if (allProductIds.size > 0 && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
           try {
             const productIdsArray = Array.from(allProductIds);
@@ -250,6 +257,8 @@ export default function PlanPage() {
               },
               body: JSON.stringify({ productIds: productIdsArray }),
             });
+            
+            console.log('📡 Batch API response status:', productsResponse.status, productsResponse.ok);
 
             if (productsResponse.ok) {
               const productsData = await productsResponse.json();

@@ -355,7 +355,7 @@ export default function ProductsAdmin() {
   }
 
   return (
-    <div className="space-y-6 pt-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Продукты</h1>

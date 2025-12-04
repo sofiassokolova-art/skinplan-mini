@@ -88,7 +88,7 @@ export default function FunnelAdmin() {
   }));
 
   return (
-    <div className="space-y-6 pt-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Аналитика воронки</h1>
         <p className="text-gray-600">Конверсия пользователей от открытия приложения до получения плана</p>

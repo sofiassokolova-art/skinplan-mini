@@ -162,7 +162,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="w-full pt-8">
+    <div className="w-full">
       {/* Заголовок */}
       <h1 className="text-4xl font-black text-gray-900 mb-10">
         SkinIQ Admin • {currentDate}
