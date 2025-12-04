@@ -1117,10 +1117,14 @@ export default function QuizPage() {
     setLoading(false);
     setError(null);
     
+    // ВАЖНО: НЕ сбрасываем initCompletedRef, чтобы предотвратить повторную инициализацию
+    // Это гарантирует, что useEffect с init не выполнится снова после startOver
+    
     console.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран', {
       hasResumedRef: hasResumedRef.current,
       isStartingOverRef: isStartingOverRef.current,
       loading: false,
+      initCompleted: initCompletedRef.current,
       currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
       questionnaireLoaded: !!questionnaire,
     });
