@@ -16,6 +16,7 @@ export default function FunnelAdmin() {
   const [loading, setLoading] = useState(true);
   const [funnelData, setFunnelData] = useState<any>(null);
   const [periodData, setPeriodData] = useState<any[]>([]);
+  const [screenConversions, setScreenConversions] = useState<any[]>([]);
 
   useEffect(() => {
     loadFunnelData();
@@ -45,6 +46,7 @@ export default function FunnelAdmin() {
       const data = await response.json();
       setFunnelData(data.funnel);
       setPeriodData(data.periodData || []);
+      setScreenConversions(data.screenConversions || []);
     } catch (error: any) {
       console.error('Error loading funnel data:', error);
     } finally {
@@ -238,6 +240,114 @@ export default function FunnelAdmin() {
           </table>
         </div>
       </div>
+
+      {/* Конверсия по экранам анкеты */}
+      {screenConversions.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Конверсия по экранам анкеты (41 экран)</h2>
+          <div className="overflow-x-auto">
+            <div className="mb-4 text-sm text-gray-600">
+              Всего начали анкету: {funnelData.startedQuiz} пользователей
+            </div>
+            <ResponsiveContainer width="100%" height={600}>
+              <BarChart data={screenConversions} layout="vertical" margin={{ top: 20, right: 30, left: 200, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis 
+                  type="number" 
+                  stroke="#6b7280"
+                  label={{ value: 'Конверсия (%)', position: 'insideBottom', offset: -10 }}
+                  domain={[0, 100]}
+                />
+                <YAxis 
+                  dataKey="screenNumber" 
+                  type="category" 
+                  stroke="#6b7280" 
+                  width={50}
+                  label={{ value: 'Экран', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '12px',
+                    color: '#fff',
+                  }}
+                  formatter={(value: any, name: string, props: any) => {
+                    if (name === 'conversion') {
+                      return [`${value.toFixed(1)}%`, 'Конверсия'];
+                    }
+                    if (name === 'reachedCount') {
+                      return [value, 'Дошли до экрана'];
+                    }
+                    return [value, name];
+                  }}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload[0]) {
+                      const data = payload[0].payload;
+                      return `Экран ${data.screenNumber}: ${data.screenTitle.substring(0, 50)}${data.screenTitle.length > 50 ? '...' : ''}`;
+                    }
+                    return `Экран ${label}`;
+                  }}
+                />
+                <Bar dataKey="conversion" fill="#8B5CF6" radius={[0, 8, 8, 0]}>
+                  {screenConversions.map((entry: any, index: number) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.screenType === 'question' ? '#8B5CF6' : '#EC4899'} 
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          
+          {/* Таблица с детальными данными */}
+          <div className="mt-6 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">№</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Тип</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Название экрана</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Дошли</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Конверсия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {screenConversions.map((screen: any, index: number) => (
+                  <tr 
+                    key={index} 
+                    className="border-b border-gray-100 hover:bg-gray-50"
+                    style={{
+                      backgroundColor: screen.screenType === 'question' ? '#F9FAFB' : 'white',
+                    }}
+                  >
+                    <td className="py-3 px-4 text-gray-900 font-medium">{screen.screenNumber}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        screen.screenType === 'question' 
+                          ? 'bg-purple-100 text-purple-700' 
+                          : 'bg-pink-100 text-pink-700'
+                      }`}>
+                        {screen.screenType === 'question' ? 'Вопрос' : 'Инфо'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-gray-700" style={{ maxWidth: '400px' }}>
+                      <div className="truncate" title={screen.screenTitle}>
+                        {screen.screenTitle}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right text-gray-700">{screen.reachedCount}</td>
+                    <td className="py-3 px-4 text-right text-green-600 font-medium">
+                      {screen.conversion.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Общая статистика */}
       <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-6 text-white">

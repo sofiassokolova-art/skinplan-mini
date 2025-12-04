@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import { getCachedPlan } from '@/lib/cache';
+import { INFO_SCREENS } from '@/app/(miniapp)/quiz/info-screens';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -166,6 +167,165 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Вычисляем конверсию по экранам анкеты (41 экран)
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      include: {
+        questions: {
+          include: {
+            answerOptions: true,
+          },
+          orderBy: [
+            { groupId: 'asc' },
+            { position: 'asc' },
+          ],
+        },
+      },
+    });
+
+    const screenConversions: Array<{
+      screenNumber: number;
+      screenId: string;
+      screenTitle: string;
+      screenType: 'info' | 'question';
+      reachedCount: number;
+      conversion: number;
+    }> = [];
+
+    if (activeQuestionnaire) {
+      // Строим полный список экранов (INFO_SCREENS + вопросы)
+      const allScreens: Array<{
+        id: string;
+        title: string;
+        type: 'info' | 'question';
+        questionCode?: string;
+        questionId?: number;
+      }> = [];
+
+      // Добавляем начальные инфо-экраны (без showAfterQuestionCode)
+      const initialInfoScreens = INFO_SCREENS.filter(s => !s.showAfterQuestionCode);
+      initialInfoScreens.forEach(screen => {
+        allScreens.push({
+          id: screen.id,
+          title: screen.title,
+          type: 'info',
+        });
+      });
+
+      // Добавляем вопросы и инфо-экраны между ними в правильном порядке
+      const questions = activeQuestionnaire.questions;
+      const infoScreensMap = new Map<string, typeof INFO_SCREENS[0]>();
+      INFO_SCREENS.forEach(screen => {
+        if (screen.showAfterQuestionCode) {
+          infoScreensMap.set(screen.showAfterQuestionCode, screen);
+        }
+      });
+
+      // Проходим по вопросам и добавляем их вместе с инфо-экранами
+      questions.forEach((question, index) => {
+        // Добавляем вопрос
+        allScreens.push({
+          id: `question_${question.id}`,
+          title: question.text,
+          type: 'question',
+          questionCode: question.code,
+          questionId: question.id,
+        });
+
+        // Проверяем, есть ли инфо-экран после этого вопроса
+        const infoScreen = infoScreensMap.get(question.code);
+        if (infoScreen) {
+          allScreens.push({
+            id: infoScreen.id,
+            title: infoScreen.title,
+            type: 'info',
+          });
+        }
+      });
+
+      // Вычисляем конверсию для каждого экрана
+      // Получаем всех пользователей, которые начали анкету
+      const usersWhoStarted = await prisma.userAnswer.groupBy({
+        by: ['userId'],
+        _max: {
+          createdAt: true,
+        },
+      });
+
+      const userIdsWhoStarted = new Set(usersWhoStarted.map(u => u.userId));
+
+      // Для каждого экрана считаем, сколько пользователей до него дошли
+      for (let i = 0; i < allScreens.length; i++) {
+        const screen = allScreens[i];
+        let reachedCount = 0;
+
+        if (screen.type === 'question' && screen.questionId) {
+          // Для вопроса: считаем пользователей, которые ответили на этот вопрос или на более поздние
+          const questionIndex = questions.findIndex(q => q.id === screen.questionId);
+          if (questionIndex >= 0) {
+            // Получаем все вопросы до текущего включительно
+            const questionsUpToThis = questions.slice(0, questionIndex + 1);
+            const questionIdsUpToThis = new Set(questionsUpToThis.map(q => q.id));
+
+            // Считаем пользователей, которые ответили хотя бы на один вопрос до текущего включительно
+            const answersUpToThis = await prisma.userAnswer.groupBy({
+              by: ['userId'],
+              where: {
+                questionId: { in: Array.from(questionIdsUpToThis) },
+                questionnaireId: activeQuestionnaire.id,
+              },
+            });
+
+            reachedCount = answersUpToThis.length;
+          }
+        } else if (screen.type === 'info') {
+          // Для инфо-экрана: считаем пользователей, которые дошли до предыдущего вопроса
+          // Если это начальный экран - считаем всех, кто начал анкету
+          if (i === 0) {
+            reachedCount = userIdsWhoStarted.size;
+          } else {
+            // Находим предыдущий вопрос
+            let prevQuestionIndex = i - 1;
+            while (prevQuestionIndex >= 0 && allScreens[prevQuestionIndex].type !== 'question') {
+              prevQuestionIndex--;
+            }
+
+            if (prevQuestionIndex >= 0) {
+              const prevQuestion = allScreens[prevQuestionIndex];
+              if (prevQuestion.questionId) {
+                const questionIndex = questions.findIndex(q => q.id === prevQuestion.questionId);
+                if (questionIndex >= 0) {
+                  const questionsUpToThis = questions.slice(0, questionIndex + 1);
+                  const questionIdsUpToThis = new Set(questionsUpToThis.map(q => q.id));
+
+                  const answersUpToThis = await prisma.userAnswer.groupBy({
+                    by: ['userId'],
+                    where: {
+                      questionId: { in: Array.from(questionIdsUpToThis) },
+                      questionnaireId: activeQuestionnaire.id,
+                    },
+                  });
+
+                  reachedCount = answersUpToThis.length;
+                }
+              }
+            }
+          }
+        }
+
+        const conversion = startedQuiz > 0 ? (reachedCount / startedQuiz) * 100 : 0;
+
+        screenConversions.push({
+          screenNumber: i + 1,
+          screenId: screen.id,
+          screenTitle: screen.title,
+          screenType: screen.type,
+          reachedCount,
+          conversion,
+        });
+      }
+    }
+
     return NextResponse.json({
       funnel: {
         totalUsers,
@@ -178,6 +338,7 @@ export async function GET(request: NextRequest) {
         overallConversion,
       },
       periodData,
+      screenConversions, // Конверсия по экранам анкеты
     });
   } catch (error: any) {
     console.error('Error fetching funnel data:', error);
