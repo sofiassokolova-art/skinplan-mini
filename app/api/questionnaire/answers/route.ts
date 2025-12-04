@@ -356,29 +356,88 @@ export async function POST(request: NextRequest) {
         
         const userPriceSegment = budgetMapping[userBudget] || null;
 
-        // Собираем ID продуктов из всех шагов
-        for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
-          const where: any = { published: true };
-          const step = stepConfig as any;
+        // Импортируем функцию getProductsForStep из recommendations/route.ts
+        // ВАЖНО: Используем ту же логику подбора продуктов, что и в /api/recommendations
+        // Это гарантирует консистентность между главной страницей и планом
+        
+        // Определяем функцию getProductsForStep локально (та же логика, что в recommendations/route.ts)
+        const getProductsForStep = async (stepConfig: any) => {
+          const where: any = {
+            published: true,
+            brand: {
+              isActive: true,
+            },
+          };
 
-          if (step.category && Array.isArray(step.category) && step.category.length > 0) {
-            where.category = { in: step.category };
+          // SPF универсален для всех типов кожи - не фильтруем по типу кожи
+          const isSPF = stepConfig.category?.includes('spf') || stepConfig.category?.some((c: string) => c.toLowerCase().includes('spf'));
+
+          // Строим условия для category/step
+          if (stepConfig.category && stepConfig.category.length > 0) {
+            const categoryConditions: any[] = [];
+            
+            for (const cat of stepConfig.category) {
+              // Точное совпадение по category
+              categoryConditions.push({ category: cat });
+              // Точное совпадение по step
+              categoryConditions.push({ step: cat });
+              // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
+              categoryConditions.push({ step: { startsWith: cat } });
+            }
+            
+            where.OR = categoryConditions;
           }
-          if (step.skin_types && Array.isArray(step.skin_types) && step.skin_types.length > 0) {
-            where.skinTypes = { hasSome: step.skin_types };
+
+          // Нормализуем skinTypes: combo -> combination_dry, combination_oily, или просто combo
+          if (stepConfig.skin_types && stepConfig.skin_types.length > 0 && !isSPF) {
+            const normalizedSkinTypes: string[] = [];
+            
+            for (const skinType of stepConfig.skin_types) {
+              normalizedSkinTypes.push(skinType);
+              // Если ищем 'combo', также ищем варианты
+              if (skinType === 'combo') {
+                normalizedSkinTypes.push('combination_dry');
+                normalizedSkinTypes.push('combination_oily');
+              }
+              // Если ищем 'dry', также ищем 'combination_dry'
+              if (skinType === 'dry') {
+                normalizedSkinTypes.push('combination_dry');
+              }
+              // Если ищем 'oily', также ищем 'combination_oily'
+              if (skinType === 'oily') {
+                normalizedSkinTypes.push('combination_oily');
+              }
+            }
+            
+            where.skinTypes = { hasSome: normalizedSkinTypes };
           }
-          if (step.concerns && Array.isArray(step.concerns) && step.concerns.length > 0) {
-            where.concerns = { hasSome: step.concerns };
+
+          // Concerns: если указаны, ищем по ним, но не блокируем, если не найдено
+          if (stepConfig.concerns && stepConfig.concerns.length > 0) {
+            const concernsCondition = {
+              OR: [
+                { concerns: { hasSome: stepConfig.concerns } },
+                { concerns: { isEmpty: true } }, // Также берем продукты без concerns
+              ],
+            };
+            
+            if (where.AND) {
+              where.AND = Array.isArray(where.AND) ? [...where.AND, concernsCondition] : [where.AND, concernsCondition];
+            } else {
+              where.AND = [concernsCondition];
+            }
           }
-          if (step.is_non_comedogenic === true) {
+
+          if (stepConfig.is_non_comedogenic === true) {
             where.isNonComedogenic = true;
           }
-          if (step.is_fragrance_free === true) {
+
+          if (stepConfig.is_fragrance_free === true) {
             where.isFragranceFree = true;
           }
-          
-          // Фильтрация по бюджету (если указан в правиле или у пользователя)
-          const ruleBudget = step.budget;
+
+          // Фильтрация по бюджету (priceSegment)
+          const ruleBudget = stepConfig.budget;
           if (ruleBudget && ruleBudget !== 'любой') {
             const budgetMapping: Record<string, string> = {
               'бюджетный': 'mass',
@@ -393,28 +452,81 @@ export async function POST(request: NextRequest) {
             // Если в правиле не указан бюджет, используем бюджет пользователя
             where.priceSegment = userPriceSegment;
           }
-          
-          // Фильтрация по натуральности (если указано в правиле)
-          if (step.is_natural === true) {
+
+          // Фильтрация по натуральности (если указано)
+          if (stepConfig.is_natural === true) {
             // ПРИМЕЧАНИЕ: В текущей схеме БД нет поля isNatural
             // Можно добавить проверку по composition, если нужно
           }
 
-          const products = await prisma.product.findMany({
+          // Первая попытка: точный поиск
+          let products = await prisma.product.findMany({
             where,
-            take: (step.max_items || 3) * 2,
+            include: {
+              brand: true,
+            },
+            take: (stepConfig.max_items || 3) * 2,
           });
-          
-          // Сортируем в памяти
-          products.sort((a: any, b: any) => {
+
+          // Если не нашли достаточно продуктов, делаем более мягкий поиск
+          if (products.length < (stepConfig.max_items || 3)) {
+            const fallbackWhere: any = {
+              published: true,
+              brand: {
+                isActive: true,
+              },
+            };
+
+            // Более мягкий поиск по category/step
+            if (stepConfig.category && stepConfig.category.length > 0) {
+              const fallbackConditions: any[] = [];
+              for (const cat of stepConfig.category) {
+                fallbackConditions.push({ category: { contains: cat } });
+                fallbackConditions.push({ step: { contains: cat } });
+              }
+              fallbackWhere.OR = fallbackConditions;
+            }
+
+            // Убираем фильтры по skinTypes и concerns для fallback
+            const fallbackProducts = await prisma.product.findMany({
+              where: fallbackWhere,
+              include: {
+                brand: true,
+              },
+              take: (stepConfig.max_items || 3) * 2,
+            });
+
+            // Объединяем результаты, убирая дубликаты
+            const existingIds = new Set(products.map(p => p.id));
+            const newProducts = fallbackProducts.filter(p => !existingIds.has(p.id));
+            products = [...products, ...newProducts];
+          }
+
+          // Сортируем в памяти по приоритету и isHero
+          const sorted = products.sort((a: any, b: any) => {
             if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
             if (a.priority !== b.priority) return b.priority - a.priority;
             return b.createdAt.getTime() - a.createdAt.getTime();
           });
-          
-          const sortedProducts = products.slice(0, step.max_items || 3);
 
-          productIds.push(...sortedProducts.map(p => p.id));
+          return sorted.slice(0, stepConfig.max_items || 3);
+        };
+
+        // Собираем ID продуктов из всех шагов, используя улучшенную логику
+        for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
+          const step = stepConfig as any;
+          
+          // Если в правиле не указан бюджет, используем бюджет пользователя
+          const stepWithBudget = {
+            ...step,
+            budget: step.budget || (userPriceSegment ? 
+              (userPriceSegment === 'mass' ? 'бюджетный' : 
+               userPriceSegment === 'mid' ? 'средний' : 
+               userPriceSegment === 'premium' ? 'премиум' : 'любой') : 'любой'),
+          };
+          
+          const products = await getProductsForStep(stepWithBudget);
+          productIds.push(...products.map(p => p.id));
         }
 
         // Создаем RecommendationSession
