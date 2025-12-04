@@ -490,6 +490,11 @@ export default function PlanPage() {
           }
         }
         
+        // Если это не 404 или регенерация не удалась - показываем ошибку
+        setError('plan_not_found');
+        setLoading(false);
+        return;
+        
         // Если план не найден и нет профиля - показываем ошибку
         if (planError?.status === 404) {
           setError('no_profile');
