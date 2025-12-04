@@ -871,18 +871,8 @@ export default function HomePage() {
     }
   };
 
-  // Устанавливаем query параметр для скрытия навигации (вынесено на верхний уровень)
-  useEffect(() => {
-    if (showResumeScreen && typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('resume', 'true');
-      window.history.replaceState({}, '', url.toString());
-    } else if (!showResumeScreen && typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('resume');
-      window.history.replaceState({}, '', url.toString());
-    }
-  }, [showResumeScreen]);
+  // УДАЛЕНО: useEffect для showResumeScreen больше не нужен
+  // Экран "Вы не завершили анкету" теперь только на странице анкеты
 
   // Вычисляем текущие элементы рутины через useMemo для стабильности
   const routineItems = useMemo(() => {
