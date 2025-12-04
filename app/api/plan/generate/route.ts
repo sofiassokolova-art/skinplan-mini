@@ -431,7 +431,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         foundProducts: recommendationProducts.length,
         missingIds: productIds.filter(id => !recommendationProducts.find(p => p.id === id)).slice(0, 10),
         foundProductIds: recommendationProducts.map(p => p.id).slice(0, 10),
-      });
+    });
     
     // Сортируем в памяти
     recommendationProducts.sort((a: any, b: any) => {
@@ -1759,37 +1759,13 @@ export async function GET(request: NextRequest) {
       timeoutPromise,
     ]) as Awaited<ReturnType<typeof generate28DayPlan>>;
     
-    // Получаем актуальный профиль для сохранения RecommendationSession
-    const currentProfile = await prisma.skinProfile.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
-    
-    // Создаем или обновляем RecommendationSession с продуктами из плана
-    if (currentProfile && plan.products && plan.products.length > 0) {
-      const productIds = plan.products.map((p: any) => p.id);
-      
-      // Удаляем старую сессию, если есть
-      await prisma.recommendationSession.deleteMany({
-        where: { userId },
-      });
-      
-      // Создаем новую сессию с продуктами из плана
-      await prisma.recommendationSession.create({
-        data: {
+    // ВАЖНО: RecommendationSession создается из правил рекомендаций (/api/recommendations),
+    // а НЕ из плана. План только читает из сессии, но не перезаписывает её.
+    // Это гарантирует, что план использует те же продукты, что показаны на главной странице.
+    logger.info('Plan generated - RecommendationSession should be created from recommendation rules, not from plan', {
           userId,
-          profileId: currentProfile.id,
-          ruleId: null,
-          products: productIds,
-        },
-      });
-      
-      logger.info('RecommendationSession created/updated with plan products', {
-        userId,
-        profileId: currentProfile.id,
-        productCount: productIds.length,
-      });
-    }
+      planProductsCount: plan.products?.length || 0,
+    });
     
     // Сохраняем в кэш
     logger.info('Caching plan', { userId, profileVersion: profile.version });

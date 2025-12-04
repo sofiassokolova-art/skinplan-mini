@@ -169,8 +169,14 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (existingSession && existingSession.products && Array.isArray(existingSession.products)) {
-      logger.info('Using existing recommendation session', { userId, sessionId: existingSession.id });
+    // ВАЖНО: Используем сессию только если она создана из правил (ruleId !== null)
+    // Если сессия создана из плана (ruleId = null), игнорируем её и создаем новую из правил
+    if (existingSession && existingSession.products && Array.isArray(existingSession.products) && existingSession.ruleId !== null) {
+      logger.info('Using existing recommendation session created from rules', { 
+        userId, 
+        sessionId: existingSession.id,
+        ruleId: existingSession.ruleId,
+      });
       
       // Получаем продукты из сессии
       const productIds = existingSession.products as number[];
