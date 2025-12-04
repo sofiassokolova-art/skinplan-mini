@@ -77,6 +77,7 @@ export default function HomePage() {
   const [dailyTip, setDailyTip] = useState<string | null>(null);
   const [loadingTip, setLoadingTip] = useState(false);
   const [redirectingToQuiz, setRedirectingToQuiz] = useState(false); // Флаг: редиректим на анкету
+  const [hasCheckedProfile, setHasCheckedProfile] = useState(false); // Флаг: проверили ли наличие профиля
 
   // УДАЛЕНО: Функция checkIncompleteQuiz больше не нужна
   // Если профиля нет, сразу редиректим на /quiz, где есть экран "Вы не завершили анкету"
@@ -131,6 +132,7 @@ export default function HomePage() {
 
         // СНАЧАЛА проверяем наличие профиля (самая надежная проверка)
         console.log('🔍 Step 1: Checking for existing profile...');
+        setHasCheckedProfile(true); // Помечаем, что начали проверку профиля
         let hasProfile = false;
         try {
           const profile = await api.getCurrentProfile();
@@ -151,11 +153,27 @@ export default function HomePage() {
           if (isNotFound) {
             console.log('ℹ️ Profile not found (expected for new users or incomplete quiz)');
             hasProfile = false;
+            // ВАЖНО: Если профиля нет, сразу редиректим на /quiz без показа "Загрузка плана..."
+            console.log('ℹ️ No profile found, redirecting to quiz immediately');
+            setRedirectingToQuiz(true);
+            setLoading(false);
+            router.push('/quiz');
+            return;
           } else {
             // Другая ошибка (сеть, авторизация и т.д.) - логируем, но продолжаем
             console.warn('⚠️ Error checking profile:', errorMessage);
             hasProfile = false;
           }
+        }
+        
+        // ВАЖНО: Если профиля нет после проверки, сразу редиректим на /quiz
+        // без показа "Загрузка плана..."
+        if (!hasProfile) {
+          console.log('ℹ️ No profile found after check, redirecting to quiz immediately');
+          setRedirectingToQuiz(true);
+          setLoading(false);
+          router.push('/quiz');
+          return;
         }
 
         // Если профиль есть - загружаем рекомендации
@@ -937,6 +955,10 @@ export default function HomePage() {
   }
 
   if (!mounted || loading) {
+    // Если мы уже проверили профиль и его нет, показываем "Загрузка анкеты..."
+    // Иначе показываем "Загрузка плана..." (если профиль есть)
+    const loadingText = hasCheckedProfile && !recommendations ? 'Загрузка анкеты...' : 'Загрузка плана...';
+    
     return (
       <div style={{ 
         display: 'flex', 
@@ -955,7 +977,7 @@ export default function HomePage() {
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
+        <div style={{ color: '#0A5F59', fontSize: '16px' }}>{loadingText}</div>
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
