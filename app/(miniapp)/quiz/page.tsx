@@ -94,6 +94,13 @@ export default function QuizPage() {
       return;
     }
     
+    // ВАЖНО: Если пользователь уже продолжил анкету (hasResumed), не выполняем повторную инициализацию
+    // Это предотвращает повторную загрузку прогресса после resumeQuiz
+    if (hasResumedRef.current || hasResumed) {
+      console.log('⏸️ useEffect init: пропущено, так как пользователь уже продолжил анкету (hasResumed = true)');
+      return;
+    }
+    
     // Если пользователь нажал "Начать заново", разрешаем повторную инициализацию
     // но с флагом isStartingOverRef = true, чтобы не загружать прогресс
     
@@ -1115,6 +1122,13 @@ export default function QuizPage() {
     hasResumedRef.current = true;
     setHasResumed(true);
     setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
+    
+    // ВАЖНО: Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
+    // после того, как пользователь продолжил анкету
+    if (!initCompletedRef.current) {
+      initCompletedRef.current = true;
+      console.log('✅ initCompletedRef установлен в resumeQuiz для предотвращения повторной инициализации');
+    }
     
     // ВАЖНО: Очищаем localStorage СРАЗУ, чтобы предотвратить повторную загрузку прогресса
     // из loadSavedProgress или loadSavedProgressFromServer
