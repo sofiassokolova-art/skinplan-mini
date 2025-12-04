@@ -38,7 +38,8 @@
     "generate:webhook-secret": "tsx scripts/generate-webhook-secret.ts",
     "backup:db": "tsx scripts/backup-db.ts",
     "restore:db": "tsx scripts/restore-db.ts",
-    "clear:user": "tsx scripts/clear-all-user-data.ts"
+    "clear:user": "tsx scripts/clear-all-user-data.ts",
+    "add:combo-rules": "tsx scripts/add-combo-skin-rules.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
