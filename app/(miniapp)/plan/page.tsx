@@ -490,6 +490,13 @@ export default function PlanPage() {
           }
         }
         
+        // Если план не найден и нет профиля - показываем ошибку
+        if (planError?.status === 404) {
+          setError('no_profile');
+          setLoading(false);
+          return;
+        }
+        
         // Если это 404 (план не найден) - не делаем retry, сразу показываем ошибку
         // Только для ошибок сервера (500, 502, 503) делаем одну быструю попытку
         if (retryCount < 1 && (
