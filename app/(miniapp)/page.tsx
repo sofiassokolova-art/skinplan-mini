@@ -401,6 +401,40 @@ export default function HomePage() {
         name: err?.name,
       });
       
+      // Обрабатываем ошибку более мягко - не показываем ошибку пользователю
+      // Вместо этого пытаемся перенаправить на план или анкету
+      if (err?.status === 404 || err?.isNotFound || 
+          err?.message?.includes('404') || 
+          err?.message?.includes('Not found') ||
+          err?.message?.includes('No skin profile') ||
+          err?.message?.includes('Profile not found')) {
+        console.log('ℹ️ Profile not found in catch, redirecting to quiz');
+        router.push('/quiz');
+        setLoading(false);
+        return;
+      }
+      
+      // Для других ошибок пытаемся загрузить план
+      try {
+        api.getPlan().then((plan: any) => {
+          if (plan && (plan.plan28 || plan.weeks)) {
+            console.log('✅ Plan exists despite error, redirecting to /plan');
+            router.push('/plan');
+          } else {
+            console.log('ℹ️ No plan found, redirecting to quiz');
+            router.push('/quiz');
+          }
+        }).catch(() => {
+          console.log('ℹ️ Could not load plan, redirecting to quiz');
+          router.push('/quiz');
+        });
+      } catch {
+        console.log('ℹ️ Error in error handler, redirecting to quiz');
+        router.push('/quiz');
+      }
+      
+      setLoading(false);
+      
       // Дополнительная обработка на случай, если промис отклонен
       // Если это 404 (профиль не найден), перенаправляем на анкету
       if (err?.status === 404 || err?.isNotFound || 
