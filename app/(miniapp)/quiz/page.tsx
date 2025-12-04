@@ -362,6 +362,13 @@ export default function QuizPage() {
         } | null;
       };
       if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+        // ВАЖНО: Не загружаем прогресс, если пользователь уже нажал "Продолжить"
+        // Это предотвращает повторное появление экрана "Вы не завершили анкету"
+        if (hasResumed) {
+          console.log('⏸️ loadSavedProgressFromServer: пропущено, так как hasResumed = true (пользователь уже продолжил)');
+          return;
+        }
+        
         console.log('✅ Прогресс найден на сервере:', {
           answersCount: Object.keys(response.progress.answers).length,
           questionIndex: response.progress.questionIndex,
@@ -1036,7 +1043,9 @@ export default function QuizPage() {
     }
     
     setShowResumeScreen(false);
-    console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true');
+    // ВАЖНО: НЕ очищаем savedProgress, так как он может понадобиться для других проверок
+    // Но устанавливаем hasResumed, чтобы предотвратить повторную загрузку прогресса
+    console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false');
   };
 
   // Начать заново
