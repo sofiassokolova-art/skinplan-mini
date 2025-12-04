@@ -594,19 +594,39 @@ export default function PlanPage() {
           if (profileCheck) {
             // Профиль есть - пробуем регенерировать план
             console.log('🔄 Plan not in cache but profile exists - regenerating immediately...');
-          try {
-            const generatedPlan = await api.generatePlan() as any;
-            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+            try {
+              const generatedPlan = await api.generatePlan() as any;
+              if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
                 console.log('✅ Plan regenerated successfully, processing...');
-              await processPlanData(generatedPlan);
-              return;
-            }
-          } catch (generateError: any) {
+                await processPlanData(generatedPlan);
+                return;
+              } else {
+                // План не сгенерировался - возможно еще обрабатывается, показываем лоадер
+                console.log('⏳ Plan generation returned empty result, waiting...');
+                setLoading(true);
+                setError(null);
+                // Пробуем еще раз через 3 секунды
+                setTimeout(() => {
+                  loadPlan(retryCount + 1);
+                }, 3000);
+                return;
+              }
+            } catch (generateError: any) {
               console.error('❌ Failed to regenerate plan:', generateError);
-              // Если регенерация не удалась, но план должен существовать - показываем обычный лоадер
-              console.error('❌ Plan exists but failed to regenerate - showing loading state');
+              // Если это ошибка 404 (нет профиля) - показываем ошибку
+              if (generateError?.status === 404 || generateError?.message?.includes('No skin profile') || generateError?.message?.includes('Profile not found')) {
+                setError('no_profile');
+                setLoading(false);
+                return;
+              }
+              // Другие ошибки - возможно план еще генерируется, показываем лоадер
+              console.log('⏳ Plan generation error, but profile exists - waiting and retrying...');
               setLoading(true);
               setError(null);
+              // Пробуем еще раз через 3 секунды
+              setTimeout(() => {
+                loadPlan(retryCount + 1);
+              }, 3000);
               return;
             }
           } else {
@@ -615,18 +635,21 @@ export default function PlanPage() {
             setLoading(false);
             return;
           }
-        } catch (profileCheckError) {
-          // Профиля нет - показываем ошибку
+        } catch (profileCheckError: any) {
+          console.error('❌ Error checking profile:', profileCheckError);
+          // Если ошибка проверки профиля - возможно временная проблема, пробуем еще раз
+          if (retryCount < 2) {
+            console.log('⏳ Profile check error, retrying...');
+            setLoading(true);
+            setError(null);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return loadPlan(retryCount + 1);
+          }
+          // После нескольких попыток - показываем ошибку
           setError('no_profile');
           setLoading(false);
           return;
         }
-        
-        // Если дошли сюда - что-то пошло не так, показываем обычный лоадер
-        console.error('❌ Unexpected state - showing loading state');
-        setLoading(true);
-        setError(null);
-        return;
       }
 
       // Получаем профиль для scores и другой информации
