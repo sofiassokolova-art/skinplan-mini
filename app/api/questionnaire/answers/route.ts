@@ -337,6 +337,19 @@ export async function POST(request: NextRequest) {
       }
 
       // Если найдено правило, создаем RecommendationSession
+      // ВАЖНО: Перед созданием новой сессии удаляем все старые сессии для этого профиля
+      // Это гарантирует, что при перепрохождении анкеты будут использоваться новые продукты
+      await prisma.recommendationSession.deleteMany({
+        where: {
+          userId,
+          profileId: profile.id,
+        },
+      });
+      logger.info('Old RecommendationSessions deleted before creating new one', {
+        userId,
+        profileId: profile.id,
+      });
+      
       if (matchedRule) {
         const stepsJson = matchedRule.stepsJson as any;
         const productIds: number[] = [];
@@ -634,6 +647,7 @@ export async function POST(request: NextRequest) {
         });
       } else {
         // Если правило не найдено, создаем fallback сессию с базовыми продуктами
+        // ВАЖНО: Старые сессии уже удалены выше
         logger.warn('No matching rule found, creating fallback session', {
           userId,
           profileId: profile.id,
