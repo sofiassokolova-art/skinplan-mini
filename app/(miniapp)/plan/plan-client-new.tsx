@@ -190,8 +190,8 @@ export function PlanPageClientNew({
     id: number;
     name: string;
     brand: { name: string };
-    price?: number;
-    imageUrl?: string | null;
+    price: number | null;
+    imageUrl: string | null;
   } | null>(null);
 
   const handleReplace = (stepCategory: string, oldProductId: number) => {
