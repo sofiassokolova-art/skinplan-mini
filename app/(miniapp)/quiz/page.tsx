@@ -87,6 +87,13 @@ export default function QuizPage() {
   }, []);
 
   useEffect(() => {
+    // ВАЖНО: Если инициализация уже завершена и пользователь нажал "Начать заново",
+    // не выполняем повторную инициализацию, чтобы избежать редиректов и проблем
+    if (initCompletedRef.current && isStartingOverRef.current) {
+      console.log('⏸️ useEffect init: пропущено, так как инициализация уже завершена и isStartingOverRef = true');
+      return;
+    }
+    
     // Ждем готовности Telegram WebApp
     const waitForTelegram = (): Promise<void> => {
       return new Promise((resolve) => {
@@ -1087,7 +1094,11 @@ export default function QuizPage() {
 
   // Начать заново
   const startOver = async () => {
-    console.log('🔄 startOver: Начинаем сброс анкеты');
+    console.log('🔄 startOver: Начинаем сброс анкеты', {
+      currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+      initCompleted: initCompletedRef.current,
+      isStartingOverRef: isStartingOverRef.current,
+    });
     
     // ВАЖНО: Устанавливаем флаг ПЕРЕД очисткой прогресса, чтобы предотвратить загрузку прогресса
     // Используем ref для синхронной установки, чтобы асинхронные функции сразу видели новое значение
@@ -1120,22 +1131,44 @@ export default function QuizPage() {
     // ВАЖНО: НЕ сбрасываем initCompletedRef, чтобы предотвратить повторную инициализацию
     // Это гарантирует, что useEffect с init не выполнится снова после startOver
     
+    // Проверяем путь после всех изменений состояния
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : 'unknown';
     console.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран', {
       hasResumedRef: hasResumedRef.current,
       isStartingOverRef: isStartingOverRef.current,
       loading: false,
       initCompleted: initCompletedRef.current,
-      currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+      currentPath,
       questionnaireLoaded: !!questionnaire,
+      showResumeScreen: false,
+      showRetakeScreen: false,
+      isRetakingQuiz: false,
     });
     
     // ВАЖНО: Убеждаемся, что мы остаемся на странице анкеты
     // Если по какой-то причине произошел редирект, возвращаемся на /quiz
-    if (typeof window !== 'undefined' && !window.location.pathname.includes('/quiz')) {
-      console.warn('⚠️ Обнаружен редирект с /quiz, возвращаемся на страницу анкеты');
+    if (typeof window !== 'undefined' && !currentPath.includes('/quiz')) {
+      console.warn('⚠️ Обнаружен редирект с /quiz, возвращаемся на страницу анкеты', {
+        currentPath,
+        expectedPath: '/quiz',
+      });
       window.location.href = '/quiz';
       return;
     }
+    
+    // Добавляем небольшую задержку и проверяем путь снова, чтобы убедиться, что редиректа не произошло
+    setTimeout(() => {
+      const pathAfterDelay = typeof window !== 'undefined' ? window.location.pathname : 'unknown';
+      if (pathAfterDelay !== currentPath && !pathAfterDelay.includes('/quiz')) {
+        console.warn('⚠️ Обнаружен редирект после задержки, возвращаемся на /quiz', {
+          pathAfterDelay,
+          originalPath: currentPath,
+        });
+        if (typeof window !== 'undefined') {
+          window.location.href = '/quiz';
+        }
+      }
+    }, 100);
     
     // НЕ сбрасываем isStartingOverRef сразу - оставляем его установленным навсегда
     // Это предотвратит повторную загрузку прогресса даже если компонент перерендерится
