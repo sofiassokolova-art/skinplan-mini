@@ -513,126 +513,35 @@ export function PlanPageClientNew({
         </div>
       </div>
 
-      {/* Ссылка на календарь */}
+      {/* Блок "День X из 28" */}
       <div style={{ marginBottom: '24px' }}>
-        <button
-          onClick={() => router.push('/plan/calendar')}
-          style={{
-            width: '100%',
-            padding: '20px',
-            backgroundColor: 'white',
-            borderRadius: '20px',
-            border: '2px solid #0A5F59',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F5FFFC';
-            e.currentTarget.style.transform = 'scale(1.02)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          <div>
-            <div style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#111827',
-              marginBottom: '4px',
-            }}>
-              День {selectedDay} из 28
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: '#6B7280',
-            }}>
-              Нажмите, чтобы выбрать другой день
-            </div>
-          </div>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '20px',
+          padding: '20px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(10, 95, 89, 0.1)',
+        }}>
           <div style={{
-            fontSize: '24px',
-            color: '#0A5F59',
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#111827',
+            textAlign: 'center',
           }}>
-            →
+            День {selectedDay} из 28
           </div>
-        </button>
+        </div>
       </div>
 
-          {/* Переключатель между днем и всеми продуктами */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '24px',
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '4px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-          }}>
-            <button
-              onClick={() => setShowAllProducts(false)}
-              style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: !showAllProducts ? '#0A5F59' : 'transparent',
-                color: !showAllProducts ? 'white' : '#6B7280',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              День {selectedDay}
-            </button>
-            <button
-              onClick={() => setShowAllProducts(true)}
-              style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: showAllProducts ? '#0A5F59' : 'transparent',
-                color: showAllProducts ? 'white' : '#6B7280',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              Все средства
-            </button>
-          </div>
-
-          {/* Отображение выбранного дня или всех продуктов */}
-          {showAllProducts ? (
-            <AllProductsList
-              plan28={plan28}
-              products={products}
-              wishlistProductIds={wishlistProductIds}
-              cartQuantities={cartQuantities}
-              onToggleWishlist={toggleWishlist}
-              onAddToCart={handleAddToCart}
-            />
-          ) : (
-      <DayView
-        dayPlan={currentDayPlan}
-        mainGoals={plan28.mainGoals}
+      {/* Все рекомендованные средства */}
+      <AllProductsList
+        plan28={plan28}
         products={products}
         wishlistProductIds={wishlistProductIds}
         cartQuantities={cartQuantities}
         onToggleWishlist={toggleWishlist}
         onAddToCart={handleAddToCart}
-        onReplace={handleReplace}
-        // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
       />
-          )}
 
       {/* Блок обратной связи в конце страницы */}
       <div style={{ marginTop: '48px', marginBottom: '24px' }}>

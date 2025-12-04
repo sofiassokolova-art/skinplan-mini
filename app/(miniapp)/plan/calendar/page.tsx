@@ -64,26 +64,34 @@ export default function PlanCalendarPage() {
       } catch (err: any) {
         console.error('📅 Calendar: Error loading plan', err);
         // Если план не найден (404), попробуем сгенерировать
-        if (err?.status === 404) {
+        if (err?.status === 404 || err?.isNotFound) {
           try {
-            const profile = await api.getCurrentProfile() as any;
-            if (profile) {
-              console.log('📅 Calendar: Profile found, generating plan...');
-              planData = await api.generatePlan() as any;
-              console.log('📅 Calendar: Plan generated', {
-                hasPlan: !!planData,
-                hasPlan28: !!planData?.plan28,
-              });
-            }
-          } catch (genErr) {
+            console.log('📅 Calendar: Plan not in cache, trying to generate...');
+            // Пробуем сгенерировать план напрямую
+            planData = await api.generatePlan() as any;
+            console.log('📅 Calendar: Plan generated', {
+              hasPlan: !!planData,
+              hasPlan28: !!planData?.plan28,
+              hasWeeks: !!planData?.weeks,
+            });
+          } catch (genErr: any) {
             console.error('📅 Calendar: Error generating plan', genErr);
-            toast.error('Не удалось загрузить план. Пожалуйста, пройдите анкету.');
-            router.push('/quiz');
+            // Если генерация не удалась из-за отсутствия профиля - редиректим на анкету
+            if (genErr?.status === 404 || genErr?.message?.includes('No skin profile') || genErr?.message?.includes('Profile not found')) {
+              toast.error('План не найден. Пожалуйста, пройдите анкету.');
+              router.push('/quiz');
+              return;
+            }
+            // Другие ошибки - показываем общую ошибку
+            toast.error('Не удалось загрузить план. Попробуйте позже.');
+            setLoading(false);
             return;
           }
         } else {
-          toast.error('Не удалось загрузить план');
-          router.push('/plan');
+          // Другие ошибки (не 404) - показываем общую ошибку
+          console.error('📅 Calendar: Unexpected error loading plan', err);
+          toast.error('Не удалось загрузить план. Попробуйте позже.');
+          setLoading(false);
           return;
         }
       }
@@ -93,8 +101,10 @@ export default function PlanCalendarPage() {
         console.error('📅 Calendar: Plan not found or invalid format', {
           hasPlan: !!planData,
           hasPlan28: !!planData?.plan28,
+          hasWeeks: !!planData?.weeks,
           planData: planData,
         });
+        // Если план все еще не найден после попытки генерации - редиректим на анкету
         toast.error('План не найден. Пожалуйста, пройдите анкету.');
         router.push('/quiz');
         return;
