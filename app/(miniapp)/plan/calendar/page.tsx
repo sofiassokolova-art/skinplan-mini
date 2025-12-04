@@ -63,6 +63,34 @@ export default function PlanCalendarPage() {
         });
       } catch (err: any) {
         console.error('📅 Calendar: Error loading plan', err);
+        
+        // Логируем ошибку в БД для техподдержки
+        try {
+          if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+            await fetch('/api/logs', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+              },
+              body: JSON.stringify({
+                level: 'error',
+                message: `Calendar: Failed to load plan - ${err?.message || 'Unknown error'}`,
+                context: {
+                  error: err?.message || String(err),
+                  status: err?.status,
+                  stack: err?.stack,
+                  url: window.location.href,
+                },
+                url: window.location.href,
+                userAgent: navigator.userAgent,
+              }),
+            }).catch(logErr => console.warn('Failed to log error:', logErr));
+          }
+        } catch (logError) {
+          console.warn('Failed to save error log:', logError);
+        }
+        
         // Если план не найден (404), попробуем сгенерировать
         if (err?.status === 404 || err?.isNotFound) {
           try {
@@ -76,6 +104,34 @@ export default function PlanCalendarPage() {
             });
           } catch (genErr: any) {
             console.error('📅 Calendar: Error generating plan', genErr);
+            
+            // Логируем ошибку генерации
+            try {
+              if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+                await fetch('/api/logs', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+                  },
+                  body: JSON.stringify({
+                    level: 'error',
+                    message: `Calendar: Failed to generate plan - ${genErr?.message || 'Unknown error'}`,
+                    context: {
+                      error: genErr?.message || String(genErr),
+                      status: genErr?.status,
+                      stack: genErr?.stack,
+                      url: window.location.href,
+                    },
+                    url: window.location.href,
+                    userAgent: navigator.userAgent,
+                  }),
+                }).catch(logErr => console.warn('Failed to log error:', logErr));
+              }
+            } catch (logError) {
+              console.warn('Failed to save error log:', logError);
+            }
+            
             // Если генерация не удалась из-за отсутствия профиля - редиректим на анкету
             if (genErr?.status === 404 || genErr?.message?.includes('No skin profile') || genErr?.message?.includes('Profile not found')) {
               toast.error('План не найден. Пожалуйста, пройдите анкету.');
