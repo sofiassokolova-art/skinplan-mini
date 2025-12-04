@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTelegram } from '@/lib/telegram-client';
@@ -61,7 +61,9 @@ export default function QuizPage() {
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [showRetakeScreen, setShowRetakeScreen] = useState(false); // Флаг: показывать экран выбора тем для повторного прохождения
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
+  const hasResumedRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
   const [isStartingOver, setIsStartingOver] = useState(false); // Флаг: пользователь нажал "Начать заново"
+  const isStartingOverRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
   const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
@@ -336,14 +338,22 @@ export default function QuizPage() {
   // Загружаем прогресс с сервера (синхронизация между устройствами)
   const loadSavedProgressFromServer = async () => {
     // Если пользователь только что нажал "Начать заново", не загружаем прогресс
-    if (isStartingOver) {
-      console.log('⏸️ loadSavedProgressFromServer: пропущено, так как isStartingOver = true');
+    // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
+    if (isStartingOverRef.current || isStartingOver) {
+      console.log('⏸️ loadSavedProgressFromServer: пропущено, так как isStartingOver = true', {
+        refValue: isStartingOverRef.current,
+        stateValue: isStartingOver,
+      });
       return;
     }
     // Если пользователь уже нажал "Продолжить" (hasResumed = true), не загружаем прогресс снова
     // Это предотвращает повторное появление экрана "Вы не завершили анкету"
-    if (hasResumed) {
-      console.log('⏸️ loadSavedProgressFromServer: пропущено, так как hasResumed = true (пользователь уже продолжил)');
+    // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
+    if (hasResumedRef.current || hasResumed) {
+      console.log('⏸️ loadSavedProgressFromServer: пропущено, так как hasResumed = true (пользователь уже продолжил)', {
+        refValue: hasResumedRef.current,
+        stateValue: hasResumed,
+      });
       return;
     }
     // Проверяем, что Telegram WebApp доступен перед запросом
@@ -364,8 +374,12 @@ export default function QuizPage() {
       if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
         // ВАЖНО: Не загружаем прогресс, если пользователь уже нажал "Продолжить"
         // Это предотвращает повторное появление экрана "Вы не завершили анкету"
-        if (hasResumed) {
-          console.log('⏸️ loadSavedProgressFromServer: пропущено, так как hasResumed = true (пользователь уже продолжил)');
+        // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
+        if (hasResumedRef.current || hasResumed) {
+          console.log('⏸️ loadSavedProgressFromServer: пропущено после получения ответа, так как hasResumed = true', {
+            refValue: hasResumedRef.current,
+            stateValue: hasResumed,
+          });
           return;
         }
         
@@ -1019,6 +1033,8 @@ export default function QuizPage() {
     
     // ВАЖНО: Сначала устанавливаем hasResumed и showResumeScreen СИНХРОННО,
     // чтобы предотвратить повторную загрузку прогресса и показ экрана "Вы не завершили анкету"
+    // Используем ref для синхронной установки, чтобы асинхронные функции сразу видели новое значение
+    hasResumedRef.current = true;
     setHasResumed(true);
     setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
     
@@ -1055,6 +1071,8 @@ export default function QuizPage() {
     console.log('🔄 startOver: Начинаем сброс анкеты');
     
     // Устанавливаем флаг, чтобы предотвратить загрузку прогресса после очистки
+    // Используем ref для синхронной установки, чтобы асинхронные функции сразу видели новое значение
+    isStartingOverRef.current = true;
     setIsStartingOver(true);
     
     // Очищаем весь прогресс (локальный и серверный)
@@ -1074,6 +1092,7 @@ export default function QuizPage() {
     
     // Сбрасываем флаг через небольшую задержку, чтобы дать время состояниям обновиться
     setTimeout(() => {
+      isStartingOverRef.current = false;
       setIsStartingOver(false);
     }, 100);
   };
