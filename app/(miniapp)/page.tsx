@@ -80,6 +80,8 @@ export default function HomePage() {
     morning: new Set(),
     evening: new Set(),
   });
+  const [dailyTip, setDailyTip] = useState<string | null>(null);
+  const [loadingTip, setLoadingTip] = useState(false);
 
   // Проверка незавершённой анкеты (объявляем до использования)
   const checkIncompleteQuiz = async (): Promise<boolean> => {
@@ -897,6 +899,67 @@ export default function HomePage() {
     }
   }, [mounted, recommendations]);
 
+  // Загружаем ежедневный совет
+  useEffect(() => {
+    const loadDailyTip = async () => {
+      if (!mounted || !recommendations || loadingTip) return;
+      
+      // Проверяем, загружали ли мы совет сегодня
+      if (typeof window !== 'undefined') {
+        const lastTipDate = localStorage.getItem('daily_tip_date');
+        const today = new Date().toDateString();
+        
+        if (lastTipDate === today) {
+          // Совет уже загружен сегодня, берем из localStorage
+          const savedTip = localStorage.getItem('daily_tip');
+          if (savedTip) {
+            setDailyTip(savedTip);
+            return;
+          }
+        }
+      }
+
+      try {
+        setLoadingTip(true);
+        const profile = await api.getCurrentProfile() as any;
+        const progress = await api.getPlanProgress() as any;
+        
+        const currentProducts = [
+          ...(recommendations.steps.cleanser?.[0]?.name || []),
+          ...(recommendations.steps.toner?.[0]?.name || []),
+          ...(recommendations.steps.serum?.[0]?.name || []),
+          ...(recommendations.steps.moisturizer?.[0]?.name || []),
+          ...(recommendations.steps.spf?.[0]?.name || []),
+        ].filter(Boolean);
+
+        const tipData = await api.getDailyTip({
+          currentDay: progress?.currentDay || 1,
+          skinType: profile?.skinType || recommendations?.profile_summary?.skinType,
+          concerns: (profile?.medicalMarkers as any)?.concerns || [],
+          currentProducts,
+        });
+
+        if (tipData?.tip) {
+          setDailyTip(tipData.tip);
+          // Сохраняем в localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('daily_tip', tipData.tip);
+            localStorage.setItem('daily_tip_date', new Date().toDateString());
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load daily tip:', err);
+        // Не критично - просто не показываем виджет
+      } finally {
+        setLoadingTip(false);
+      }
+    };
+
+    if (mounted && recommendations && !loading) {
+      loadDailyTip();
+    }
+  }, [mounted, recommendations, loading]);
+
   const toggleItem = async (itemId: string) => {
     const isMorning = tab === 'AM';
     const currentCompleted = isMorning ? completedSteps.morning : completedSteps.evening;
@@ -1349,6 +1412,57 @@ export default function HomePage() {
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
       paddingBottom: '120px',
     }}>
+      {/* Виджет ежедневного совета */}
+      {dailyTip && (
+        <div style={{
+          margin: '20px',
+          marginBottom: '24px',
+          padding: '20px',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '20px',
+          border: '1px solid rgba(10, 95, 89, 0.1)',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              backgroundColor: '#0A5F59',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              fontSize: '20px',
+            }}>
+              💡
+            </div>
+            <div style={{ flex: 1 }}>
+              <h3 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#0A5F59',
+                margin: '0 0 8px 0',
+              }}>
+                Совет дня
+              </h3>
+              <p style={{
+                fontSize: '14px',
+                lineHeight: '1.5',
+                color: '#475467',
+                margin: 0,
+              }}>
+                {dailyTip}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div style={{
         padding: '20px',

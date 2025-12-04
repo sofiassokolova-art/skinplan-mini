@@ -247,6 +247,14 @@ export const api = {
     });
   },
 
+  // Ежедневный совет
+  async getDailyTip(data: { currentDay?: number; skinType?: string; concerns?: string[]; currentProducts?: string[] }) {
+    return request<{ tip: string; source: string; day?: number }>('/api/ai/daily-tip', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   // Прогресс анкеты
   async getQuizProgress() {
     return request('/questionnaire/progress');
