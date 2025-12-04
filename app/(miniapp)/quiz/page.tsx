@@ -1483,16 +1483,41 @@ export default function QuizPage() {
       ? localStorage.getItem('payment_retaking_completed') === 'true'
       : false;
     
+    console.log('🔄 Retake screen check:', {
+      showRetakeScreen,
+      isRetakingQuiz,
+      hasRetakingPayment,
+      paymentKey: typeof window !== 'undefined' ? localStorage.getItem('payment_retaking_completed') : 'N/A',
+    });
+    
     const handleTopicSelect = (topic: QuizTopic) => {
       // Если оплата не пройдена, не позволяем выбрать тему
       if (!hasRetakingPayment) {
+        console.log('⚠️ Payment not completed, blocking topic selection');
         return; // PaymentGate покажет экран оплаты
+      }
+      console.log('✅ Payment completed, allowing topic selection:', topic.id);
+      // Сбрасываем флаг оплаты после выбора темы - каждая тема требует отдельной оплаты
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('payment_retaking_completed');
+        console.log('🔄 Payment flag cleared - next topic will require new payment');
       }
       // Перенаправляем на страницу обновления по теме только после оплаты
       router.push(`/quiz/update/${topic.id}`);
     };
 
     const handleFullRetake = () => {
+      // Проверяем оплату перед полным перепрохождением
+      if (!hasRetakingPayment) {
+        console.log('⚠️ Payment not completed, blocking full retake');
+        return;
+      }
+      console.log('✅ Payment completed, allowing full retake');
+      // Сбрасываем флаг оплаты - полное перепрохождение использует одну оплату
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('payment_retaking_completed');
+        console.log('🔄 Payment flag cleared after full retake');
+      }
       // Полное перепрохождение - скрываем экран выбора тем и показываем все вопросы
       setShowRetakeScreen(false);
       // Пропускаем все info screens при полном перепрохождении
@@ -1687,16 +1712,18 @@ export default function QuizPage() {
 
     // ВАЖНО: Если оплата не пройдена, показываем PaymentGate ПЕРЕД экраном выбора тем
     // Это гарантирует, что пользователь не сможет выбрать тему без оплаты
+    // Каждая тема требует отдельной оплаты 49₽
     if (!hasRetakingPayment) {
       return (
         <PaymentGate
           price={49}
           isRetaking={true}
           onPaymentComplete={() => {
-            // После оплаты сохраняем флаг и обновляем страницу
+            // После оплаты сохраняем флаг (будет сброшен после выбора темы)
             if (typeof window !== 'undefined') {
               localStorage.setItem('payment_retaking_completed', 'true');
-              window.location.reload();
+              // Не перезагружаем страницу, просто обновляем состояние
+              setShowRetakeScreen(true);
             }
           }}
         >

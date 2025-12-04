@@ -236,16 +236,29 @@ export async function POST(request: NextRequest) {
     
     // Очищаем кэш плана и рекомендаций при обновлении профиля (вне транзакции)
     if (existingProfile && existingProfile.version !== profile.version) {
-      logger.info('Profile updated, clearing cache', { 
+      logger.info('Profile updated, clearing cache and RecommendationSession', { 
         userId: userId || undefined, 
         oldVersion: existingProfile.version, 
-        newVersion: profile.version 
+        newVersion: profile.version,
+        isRetaking: !!existingProfile, // Это перепрохождение анкеты
       });
       try {
         const { invalidateCache } = await import('@/lib/cache');
         // Очищаем кэш для старой версии
         await invalidateCache(userId, existingProfile.version);
-        logger.info('Cache cleared for old profile version', { userId, version: existingProfile.version });
+        // Также очищаем кэш для новой версии, чтобы план перегенерировался
+        await invalidateCache(userId, profile.version);
+        logger.info('Cache cleared for old and new profile versions', { 
+          userId, 
+          oldVersion: existingProfile.version,
+          newVersion: profile.version,
+        });
+        
+        // Удаляем старую RecommendationSession, чтобы план перегенерировался с новыми продуктами
+        await prisma.recommendationSession.deleteMany({
+          where: { userId },
+        });
+        logger.info('RecommendationSession deleted for plan regeneration', { userId });
       } catch (cacheError) {
         logger.warn('Failed to clear cache', { error: cacheError, userId });
       }

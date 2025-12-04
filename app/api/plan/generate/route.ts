@@ -369,7 +369,12 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   });
 
   if (existingSession && existingSession.products && Array.isArray(existingSession.products)) {
-    logger.info('Using products from RecommendationSession for plan generation', { userId });
+    logger.info('Using products from RecommendationSession for plan generation', { 
+      userId,
+      sessionId: existingSession.id,
+      productIdsCount: existingSession.products.length,
+      productIds: (existingSession.products as number[]).slice(0, 10), // Первые 10 для логов
+    });
     const productIds = existingSession.products as number[];
     recommendationProducts = await prisma.product.findMany({
       where: {
@@ -377,9 +382,18 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         published: true as any,
         brand: {
           isActive: true, // Только активные бренды
-      },
+        },
       } as any,
       include: { brand: true },
+    });
+    
+    // Детальное логирование для диагностики
+    logger.info('Products loaded from RecommendationSession', {
+      userId,
+      requestedIds: productIds.length,
+      foundProducts: recommendationProducts.length,
+      missingIds: productIds.filter(id => !recommendationProducts.find(p => p.id === id)).slice(0, 10),
+      foundProductIds: recommendationProducts.map(p => p.id).slice(0, 10),
     });
     
     // Сортируем в памяти
@@ -1439,8 +1453,15 @@ export async function GET(request: NextRequest) {
       return ApiResponse.notFound('No skin profile found', { userId });
     }
 
+    // Детальное логирование для диагностики (особенно для пользователя 643160759)
+    logger.info('Plan generation request', {
+      userId,
+      profileVersion: profile.version,
+      timestamp: new Date().toISOString(),
+    });
+
     // Проверяем кэш
-    logger.debug('Checking cache for plan', { userId });
+    logger.debug('Checking cache for plan', { userId, profileVersion: profile.version });
     
     logger.info('Starting plan generation', { userId });
     
