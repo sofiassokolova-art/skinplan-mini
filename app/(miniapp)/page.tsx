@@ -261,8 +261,14 @@ export default function HomePage() {
       initDataLength: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData?.length || 0,
     });
     
-    initialize();
-    console.log('✅ Telegram WebApp initialized');
+    // Инициализируем Telegram с обработкой ошибок
+    try {
+      initialize();
+      console.log('✅ Telegram WebApp initialized');
+    } catch (err) {
+      console.error('❌ Error initializing Telegram:', err);
+      // Продолжаем работу даже при ошибке инициализации
+    }
     
     // Загружаем данные (пользователь идентифицируется автоматически через initData)
     const initAndLoad = async () => {
