@@ -115,6 +115,13 @@ export default function QuizPage() {
     };
 
     const init = async () => {
+      // ВАЖНО: Если инициализация уже завершена и пользователь нажал "Начать заново",
+      // не выполняем повторную инициализацию, чтобы избежать редиректов и проблем
+      if (initCompletedRef.current && isStartingOverRef.current) {
+        console.log('⏸️ init: пропущено, так как инициализация уже завершена и isStartingOverRef = true');
+        return;
+      }
+      
       try {
         // Инициализируем Telegram WebApp
         console.log('🔄 Initializing Telegram WebApp...');
@@ -189,6 +196,7 @@ export default function QuizPage() {
       // Только после всех загрузок устанавливаем loading = false
       console.log('✅ Initialization complete, setting loading = false');
       setLoading(false);
+      initCompletedRef.current = true; // Помечаем, что инициализация завершена
     } catch (initErr: any) {
         console.error('❌ Error in init function:', {
           error: initErr,
