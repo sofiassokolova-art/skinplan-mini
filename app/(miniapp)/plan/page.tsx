@@ -1056,7 +1056,7 @@ export default function PlanPage() {
 
   // Иначе используем старый компонент (для обратной совместимости)
   // Проверяем, что все необходимые поля присутствуют
-  if (!planData.user || !planData.profile || !planData.plan || !planData.progress || !planData.todayProducts || planData.todayMorning === undefined || planData.todayEvening === undefined || planData.currentWeek === undefined) {
+  if (!planData || !planData.user || !planData.profile || !planData.plan || !planData.progress || !planData.todayProducts || planData.todayMorning === undefined || planData.todayEvening === undefined || planData.currentWeek === undefined) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <p>Ошибка: недостаточно данных для отображения плана</p>
