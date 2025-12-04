@@ -64,6 +64,7 @@ export default function QuizPage() {
   const hasResumedRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
   const [isStartingOver, setIsStartingOver] = useState(false); // Флаг: пользователь нажал "Начать заново"
   const isStartingOverRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
+  const initCompletedRef = useRef(false); // Флаг: инициализация уже завершена
   const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
