@@ -65,12 +65,9 @@ export function PlanPageClientNew({
     loadSkinIssues();
   }, []);
   
-  // Проверяем параметр day из URL
-  const dayFromUrl = searchParams?.get('day');
-  const initialDay = dayFromUrl ? parseInt(dayFromUrl, 10) : initialCurrentDay;
-  const validInitialDay = (initialDay >= 1 && initialDay <= 28) ? initialDay : initialCurrentDay;
-  
-  const [selectedDay, setSelectedDay] = useState(validInitialDay);
+  // Инициализируем selectedDay без зависимости от searchParams в useState
+  // searchParams будет обработан в useEffect
+  const [selectedDay, setSelectedDay] = useState(initialCurrentDay);
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set(wishlist));
   const [completedDays, setCompletedDays] = useState<Set<number>>(new Set(initialCompletedDays));
   const [completedMorning, setCompletedMorning] = useState(false);
@@ -84,6 +81,7 @@ export function PlanPageClientNew({
   }, [plan28.days, selectedDay]);
 
   // Обновляем выбранный день при изменении параметра в URL
+  // ВАЖНО: Обрабатываем searchParams в useEffect, а не в useState, чтобы избежать проблем с порядком хуков
   useEffect(() => {
     const dayFromUrl = searchParams?.get('day');
     if (dayFromUrl) {
@@ -91,8 +89,11 @@ export function PlanPageClientNew({
       if (day >= 1 && day <= 28) {
         setSelectedDay(day);
       }
+    } else {
+      // Если параметра нет, используем initialCurrentDay
+      setSelectedDay(initialCurrentDay);
     }
-  }, [searchParams]);
+  }, [searchParams, initialCurrentDay]);
 
   // Загружаем данные корзине при монтировании
   useEffect(() => {
