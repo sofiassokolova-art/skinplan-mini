@@ -349,7 +349,10 @@ export function PlanPageClientNew({
         cartQuantities={cartQuantities}
         onToggleWishlist={toggleWishlist}
         onAddToCart={handleAddToCart}
-        onReplace={handleReplace}
+        onReplace={(product) => {
+          // Обертка для handleReplace - передаем только productId, stepCategory не нужен для PlanInfographic
+          handleReplace('', product.id);
+        }}
       />
 
       {/* Основной контент плана - обернут в PaymentGate только при первой оплате */}
