@@ -188,6 +188,32 @@ async function getProductsForStep(step: RuleStep) {
     // Например: where.composition = { contains: 'натуральный' } или проверка на органические ингредиенты
   }
 
+  // Фильтрация по активным ингредиентам (если указано в правиле)
+  // Это используется для специальных правил, например, для мелазмы нужна транексамовая кислота
+  // ВАЖНО: Если продуктов с указанными ингредиентами нет, не блокируем поиск - используем fallback
+  if (step.active_ingredients && step.active_ingredients.length > 0) {
+    // Ищем продукты, которые содержат указанные активные ингредиенты
+    // Проверяем поле activeIngredients в продукте
+    // Используем OR, чтобы не блокировать продукты без activeIngredients
+    const activeIngredientsCondition = {
+      OR: [
+        // Продукты с указанными ингредиентами
+        ...step.active_ingredients.map(ingredient => ({
+          activeIngredients: { has: ingredient },
+        })),
+        // Также берем продукты без activeIngredients (fallback)
+        { activeIngredients: { isEmpty: true } },
+      ],
+    };
+    
+    // Добавляем в AND условия
+    if (where.AND) {
+      where.AND = Array.isArray(where.AND) ? [...where.AND, activeIngredientsCondition] : [where.AND, activeIngredientsCondition];
+    } else {
+      where.AND = [activeIngredientsCondition];
+    }
+  }
+
   // Первая попытка: точный поиск
   let products = await prisma.product.findMany({
     where,
