@@ -641,9 +641,22 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        // Очищаем кэш рекомендаций для текущего профиля, чтобы новые рекомендации загрузились
+        try {
+          const { invalidateCache } = await import('@/lib/cache');
+          await invalidateCache(userId, profile.version);
+          logger.info('Recommendations cache invalidated after creating new session', {
+            userId,
+            profileVersion: profile.version,
+          });
+        } catch (cacheError) {
+          logger.warn('Failed to invalidate recommendations cache', { error: cacheError });
+        }
+
         logger.info('RecommendationSession created', {
           userId,
           productCount: productIds.length,
+          ruleId: matchedRule.id,
         });
       } else {
         // Если правило не найдено, создаем fallback сессию с базовыми продуктами
