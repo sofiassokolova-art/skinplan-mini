@@ -148,7 +148,8 @@ export default function QuizPage() {
 
       // Загружаем прогресс с сервера (только если Telegram WebApp доступен)
       // Важно: загружаем после загрузки анкеты, чтобы правильно вычислить totalQuestions
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      // НЕ загружаем, если пользователь только что нажал "Начать заново"
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !isStartingOver) {
         try {
           await loadSavedProgressFromServer();
           // loadSavedProgressFromServer сам устанавливает setShowResumeScreen(true) если есть прогресс
