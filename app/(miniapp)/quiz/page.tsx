@@ -2112,7 +2112,9 @@ export default function QuizPage() {
     return retakeScreenContent;
   }
 
-  if (showResumeScreen && savedProgress) {
+  // ВАЖНО: Не показываем экран "Вы не завершили анкету", если пользователь нажал "Начать заново"
+  // или уже продолжил анкету
+  if (showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current) {
     // Получаем все вопросы с фильтрацией
     const allQuestionsRaw = questionnaire ? [
       ...questionnaire.groups.flatMap((g) => g.questions),
