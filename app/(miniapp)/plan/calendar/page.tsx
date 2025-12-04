@@ -94,7 +94,8 @@ export default function PlanCalendarPage() {
                   brand: { name: p.brand?.name || p.brand || 'Unknown' },
                   price: p.price || null,
                   imageUrl: p.imageUrl || null,
-                  description: p.description || p.descriptionUser || null,
+                  // Используем descriptionUser для синхронизации с главной страницей
+                  description: p.descriptionUser || p.description || null,
                 });
               }
             });
