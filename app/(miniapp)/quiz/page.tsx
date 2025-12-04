@@ -1484,7 +1484,11 @@ export default function QuizPage() {
       : false;
     
     const handleTopicSelect = (topic: QuizTopic) => {
-      // Перенаправляем на страницу обновления по теме
+      // Если оплата не пройдена, не позволяем выбрать тему
+      if (!hasRetakingPayment) {
+        return; // PaymentGate покажет экран оплаты
+      }
+      // Перенаправляем на страницу обновления по теме только после оплаты
       router.push(`/quiz/update/${topic.id}`);
     };
 
@@ -1681,15 +1685,17 @@ export default function QuizPage() {
       </div>
     );
 
-    // Если оплата не пройдена, показываем PaymentGate
+    // ВАЖНО: Если оплата не пройдена, показываем PaymentGate ПЕРЕД экраном выбора тем
+    // Это гарантирует, что пользователь не сможет выбрать тему без оплаты
     if (!hasRetakingPayment) {
       return (
         <PaymentGate
           price={49}
           isRetaking={true}
           onPaymentComplete={() => {
-            // После оплаты обновляем страницу
+            // После оплаты сохраняем флаг и обновляем страницу
             if (typeof window !== 'undefined') {
+              localStorage.setItem('payment_retaking_completed', 'true');
               window.location.reload();
             }
           }}
@@ -1699,7 +1705,7 @@ export default function QuizPage() {
       );
     }
 
-    // Если оплата пройдена, показываем экран как обычно
+    // Если оплата пройдена, показываем экран выбора тем как обычно
     return retakeScreenContent;
   }
 

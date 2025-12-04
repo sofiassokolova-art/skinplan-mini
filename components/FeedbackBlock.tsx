@@ -4,6 +4,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
 interface FeedbackBlockProps {
   onSubmit: (feedback: {
@@ -23,10 +24,32 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null); // null = проверяется
+
+  // Проверяем наличие профиля перед показом виджета
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (typeof window === 'undefined') return;
+      
+      try {
+        const profile = await api.getCurrentProfile() as any;
+        setHasProfile(!!profile);
+      } catch (err) {
+        // Если профиль не найден, не показываем виджет
+        setHasProfile(false);
+      }
+    };
+    
+    checkProfile();
+  }, []);
 
   // Проверяем, нужно ли показывать виджет обратной связи (раз в неделю для всех типов)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (hasProfile === false) {
+      setIsVisible(false);
+      return;
+    }
     
     const feedbackKey = feedbackType === 'service' 
       ? LAST_FEEDBACK_KEY 
@@ -42,7 +65,7 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
         setIsVisible(false);
       }
     }
-  }, [feedbackType]);
+  }, [feedbackType, hasProfile]);
 
   // Если виджет скрыт, не рендерим его
   if (!isVisible) {

@@ -12,6 +12,7 @@ import { GoalProgressInfographic } from '@/components/GoalProgressInfographic';
 import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { PaymentGate } from '@/components/PaymentGate';
+import { ReplaceProductModal } from '@/components/ReplaceProductModal';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
@@ -185,37 +186,44 @@ export function PlanPageClientNew({
     }
   };
 
-  const handleReplace = async (stepCategory: string, oldProductId: number) => {
+  const [replaceProduct, setReplaceProduct] = useState<{
+    id: number;
+    name: string;
+    brand: { name: string };
+    price?: number;
+    imageUrl?: string | null;
+  } | null>(null);
+
+  const handleReplace = (stepCategory: string, oldProductId: number) => {
+    // Находим продукт в productsMap для показа в модалке
+    const product = products.get(oldProductId);
+    if (!product) {
+      toast.error('Продукт не найден');
+      return;
+    }
+    
+    // Показываем модалку замены
+    setReplaceProduct({
+      id: product.id,
+      name: product.name,
+      brand: product.brand,
+      price: product.price,
+      imageUrl: product.imageUrl,
+    });
+  };
+
+  const handleReplaceConfirm = async (oldProductId: number, newProductId: number) => {
     try {
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
         toast.error('Откройте приложение через Telegram Mini App');
         return;
       }
 
-      // Находим альтернативы для этого шага
-      const currentDayPlan = plan28.days.find(d => d.dayIndex === selectedDay);
-      if (!currentDayPlan) {
-        toast.error('День не найден');
-        return;
-      }
-
-      // Ищем шаг с этим stepCategory
-      const allSteps = [...currentDayPlan.morning, ...currentDayPlan.evening, ...currentDayPlan.weekly];
-      const step = allSteps.find(s => s.stepCategory === stepCategory && s.productId === String(oldProductId));
-      
-      if (!step || step.alternatives.length === 0) {
-        toast.error('Нет доступных альтернатив для замены');
-        return;
-      }
-
-      // Показываем модалку выбора (пока просто берем первую альтернативу)
-      // TODO: Создать компонент ReplaceProductModal для выбора из альтернатив
-      const newProductId = Number(step.alternatives[0]);
-      
       // Заменяем продукт через API
       await api.replaceProductInPlan(oldProductId, newProductId);
       
       toast.success('Продукт заменен');
+      setReplaceProduct(null);
       router.refresh();
     } catch (err: any) {
       console.error('Error replacing product:', err);
@@ -415,6 +423,14 @@ export function PlanPageClientNew({
           </div>
         </>
       )}
+
+      {/* Модалка замены продукта */}
+      <ReplaceProductModal
+        product={replaceProduct}
+        isOpen={!!replaceProduct}
+        onClose={() => setReplaceProduct(null)}
+        onReplace={handleReplaceConfirm}
+      />
     </div>
   );
 }

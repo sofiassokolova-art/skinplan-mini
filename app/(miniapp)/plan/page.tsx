@@ -231,7 +231,10 @@ export default function PlanPage() {
           });
         });
 
-        // Загружаем продукты из API
+        // Загружаем продукты из API - ОСНОВНАЯ ЛОГИКА
+        // Сначала пробуем загрузить из API, если не получилось - используем fallback
+        let productsLoadedFromAPI = false;
+        
         if (allProductIds.size > 0 && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
           try {
             const productIdsArray = Array.from(allProductIds);
@@ -261,7 +264,8 @@ export default function PlanPage() {
                     });
                   }
                 });
-                console.log('✅ Products added to map, total size:', productsMap.size);
+                productsLoadedFromAPI = productsMap.size > 0;
+                console.log('✅ Products added to map from API, total size:', productsMap.size);
               } else {
                 console.warn('⚠️ productsData.products is not an array:', productsData);
               }
@@ -277,7 +281,7 @@ export default function PlanPage() {
             console.error('❌ Error loading products from batch endpoint:', err);
           }
         } else {
-          console.warn('⚠️ Cannot load products:', {
+          console.warn('⚠️ Cannot load products from API:', {
             hasProductIds: allProductIds.size > 0,
             hasWindow: typeof window !== 'undefined',
             hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
@@ -285,17 +289,30 @@ export default function PlanPage() {
         }
 
         // Fallback: если продукты не загрузились из API, используем продукты из плана
-        if (productsMap.size === 0 && plan.products && Array.isArray(plan.products)) {
-          console.log('⚠️ Using products from plan as fallback');
+        // НО: это должно быть исключением, а не правилом
+        if (!productsLoadedFromAPI && plan.products && Array.isArray(plan.products)) {
+          console.log('⚠️ Using products from plan as fallback (API failed)');
           plan.products.forEach((p: any) => {
-            productsMap.set(p.id, {
-              id: p.id,
-              name: p.name,
-              brand: { name: p.brand?.name || p.brand || 'Unknown' },
-              price: p.price,
-              imageUrl: p.imageUrl || null,
-              description: p.description || p.descriptionUser || null,
-            });
+            if (p && p.id) {
+              productsMap.set(p.id, {
+                id: p.id,
+                name: p.name,
+                brand: { name: p.brand?.name || p.brand || 'Unknown' },
+                price: p.price,
+                imageUrl: p.imageUrl || null,
+                description: p.description || p.descriptionUser || null,
+              });
+            }
+          });
+          console.log('⚠️ Products loaded from plan fallback, map size:', productsMap.size);
+        }
+        
+        // Если после всех попыток продуктов все еще нет - это ошибка
+        if (productsMap.size === 0) {
+          console.error('❌ CRITICAL: No products loaded at all!', {
+            hasProductIds: allProductIds.size > 0,
+            hasPlanProducts: !!plan.products,
+            planProductsCount: plan.products?.length || 0,
           });
         }
 
