@@ -1014,10 +1014,13 @@ export default function QuizPage() {
       infoScreenIndex: savedProgress.infoScreenIndex,
       answersCount: Object.keys(savedProgress.answers).length,
       initialInfoScreensLength: initialInfoScreens.length,
+      currentHasResumed: hasResumed, // Логируем текущее состояние для отладки
     });
     
-    // ВАЖНО: Сначала устанавливаем hasResumed, чтобы предотвратить показ начальных экранов на следующем рендере
+    // ВАЖНО: Сначала устанавливаем hasResumed и showResumeScreen СИНХРОННО,
+    // чтобы предотвратить повторную загрузку прогресса и показ экрана "Вы не завершили анкету"
     setHasResumed(true);
+    setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
     
     // Восстанавливаем прогресс
     setAnswers(savedProgress.answers);
@@ -1042,9 +1045,8 @@ export default function QuizPage() {
       setCurrentInfoScreenIndex(savedProgress.infoScreenIndex);
     }
     
-    setShowResumeScreen(false);
     // ВАЖНО: НЕ очищаем savedProgress, так как он может понадобиться для других проверок
-    // Но устанавливаем hasResumed, чтобы предотвратить повторную загрузку прогресса
+    // hasResumed и showResumeScreen уже установлены выше
     console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false');
   };
 
