@@ -1093,10 +1093,17 @@ export default function QuizPage() {
     setSavedProgress(null);
     setPendingInfoScreen(null); // ВАЖНО: очищаем pendingInfoScreen
     setIsRetakingQuiz(false); // Сбрасываем флаг перепрохождения
+    setShowRetakeScreen(false); // Сбрасываем экран выбора тем
+    
+    // ВАЖНО: Убеждаемся, что loading = false, чтобы показать контент анкеты
+    // и error = null, чтобы не показывать ошибку
+    setLoading(false);
+    setError(null);
     
     console.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран', {
       hasResumedRef: hasResumedRef.current,
       isStartingOverRef: isStartingOverRef.current,
+      loading: false,
     });
     
     // НЕ сбрасываем isStartingOverRef сразу - оставляем его установленным навсегда
