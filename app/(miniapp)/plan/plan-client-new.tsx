@@ -12,6 +12,7 @@ import { GoalProgressInfographic } from '@/components/GoalProgressInfographic';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { PaymentGate } from '@/components/PaymentGate';
 import { ReplaceProductModal } from '@/components/ReplaceProductModal';
+import { AllProductsList } from '@/components/AllProductsList';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
@@ -284,18 +285,75 @@ export function PlanPageClientNew({
             />
           </div>
 
-          {/* Отображение выбранного дня */}
-          <DayView
-            dayPlan={currentDayPlan}
-            mainGoals={plan28.mainGoals}
-            products={products}
-            wishlistProductIds={wishlistProductIds}
-            cartQuantities={cartQuantities}
-            onToggleWishlist={toggleWishlist}
-            onAddToCart={handleAddToCart}
-            onReplace={handleReplace}
-            // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
-          />
+          {/* Переключатель между днем и всеми продуктами */}
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            marginBottom: '24px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '4px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+          }}>
+            <button
+              onClick={() => setShowAllProducts(false)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: !showAllProducts ? '#0A5F59' : 'transparent',
+                color: !showAllProducts ? 'white' : '#6B7280',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              День {selectedDay}
+            </button>
+            <button
+              onClick={() => setShowAllProducts(true)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: showAllProducts ? '#0A5F59' : 'transparent',
+                color: showAllProducts ? 'white' : '#6B7280',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              Все средства
+            </button>
+          </div>
+
+          {/* Отображение выбранного дня или всех продуктов */}
+          {showAllProducts ? (
+            <AllProductsList
+              plan28={plan28}
+              products={products}
+              wishlistProductIds={wishlistProductIds}
+              cartQuantities={cartQuantities}
+              onToggleWishlist={toggleWishlist}
+              onAddToCart={handleAddToCart}
+            />
+          ) : (
+            <DayView
+              dayPlan={currentDayPlan}
+              mainGoals={plan28.mainGoals}
+              products={products}
+              wishlistProductIds={wishlistProductIds}
+              cartQuantities={cartQuantities}
+              onToggleWishlist={toggleWishlist}
+              onAddToCart={handleAddToCart}
+              onReplace={handleReplace}
+              // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
+            />
+          )}
 
           {/* Блок обратной связи в конце страницы */}
           <div style={{ marginTop: '48px', marginBottom: '24px' }}>
@@ -319,18 +377,75 @@ export function PlanPageClientNew({
             />
           </div>
 
-          {/* Отображение выбранного дня */}
-          <DayView
-            dayPlan={currentDayPlan}
-            mainGoals={plan28.mainGoals}
-            products={products}
-            wishlistProductIds={wishlistProductIds}
-            cartQuantities={cartQuantities}
-            onToggleWishlist={toggleWishlist}
-            onAddToCart={handleAddToCart}
-            onReplace={handleReplace}
-            // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
-          />
+          {/* Переключатель между днем и всеми продуктами */}
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            marginBottom: '24px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '4px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+          }}>
+            <button
+              onClick={() => setShowAllProducts(false)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: !showAllProducts ? '#0A5F59' : 'transparent',
+                color: !showAllProducts ? 'white' : '#6B7280',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              День {selectedDay}
+            </button>
+            <button
+              onClick={() => setShowAllProducts(true)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: showAllProducts ? '#0A5F59' : 'transparent',
+                color: showAllProducts ? 'white' : '#6B7280',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              Все средства
+            </button>
+          </div>
+
+          {/* Отображение выбранного дня или всех продуктов */}
+          {showAllProducts ? (
+            <AllProductsList
+              plan28={plan28}
+              products={products}
+              wishlistProductIds={wishlistProductIds}
+              cartQuantities={cartQuantities}
+              onToggleWishlist={toggleWishlist}
+              onAddToCart={handleAddToCart}
+            />
+          ) : (
+            <DayView
+              dayPlan={currentDayPlan}
+              mainGoals={plan28.mainGoals}
+              products={products}
+              wishlistProductIds={wishlistProductIds}
+              cartQuantities={cartQuantities}
+              onToggleWishlist={toggleWishlist}
+              onAddToCart={handleAddToCart}
+              onReplace={handleReplace}
+              // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
+            />
+          )}
 
           {/* Блок обратной связи в конце страницы */}
           <div style={{ marginTop: '48px', marginBottom: '24px' }}>
