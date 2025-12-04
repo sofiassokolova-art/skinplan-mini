@@ -254,13 +254,33 @@ export async function GET(request: NextRequest) {
 
       const userIdsWhoStarted = new Set(usersWhoStarted.map(u => u.userId));
 
+      // Получаем все ответы пользователей для оптимизации
+      const allAnswers = await prisma.userAnswer.findMany({
+        where: {
+          questionnaireId: activeQuestionnaire.id,
+        },
+        select: {
+          userId: true,
+          questionId: true,
+        },
+      });
+
+      // Создаем карту: userId -> Set<questionId> (все вопросы, на которые ответил пользователь)
+      const userAnswersMap = new Map<string, Set<number>>();
+      allAnswers.forEach(answer => {
+        if (!userAnswersMap.has(answer.userId)) {
+          userAnswersMap.set(answer.userId, new Set());
+        }
+        userAnswersMap.get(answer.userId)!.add(answer.questionId);
+      });
+
       // Для каждого экрана считаем, сколько пользователей до него дошли
       for (let i = 0; i < allScreens.length; i++) {
         const screen = allScreens[i];
         let reachedCount = 0;
 
         if (screen.type === 'question' && screen.questionId) {
-          // Для вопроса: считаем пользователей, которые ответили на этот вопрос или на более поздние
+          // Для вопроса: считаем пользователей, которые ответили на этот вопрос
           const questionIndex = questions.findIndex(q => q.id === screen.questionId);
           if (questionIndex >= 0) {
             // Получаем все вопросы до текущего включительно
@@ -268,47 +288,51 @@ export async function GET(request: NextRequest) {
             const questionIdsUpToThis = new Set(questionsUpToThis.map(q => q.id));
 
             // Считаем пользователей, которые ответили хотя бы на один вопрос до текущего включительно
-            const answersUpToThis = await prisma.userAnswer.groupBy({
-              by: ['userId'],
-              where: {
-                questionId: { in: Array.from(questionIdsUpToThis) },
-                questionnaireId: activeQuestionnaire.id,
-              },
-            });
-
-            reachedCount = answersUpToThis.length;
+            for (const [userId, answeredQuestionIds] of userAnswersMap.entries()) {
+              // Проверяем, есть ли пересечение между отвеченными вопросами и вопросами до текущего
+              const hasAnsweredUpToThis = Array.from(questionIdsUpToThis).some(qId => 
+                answeredQuestionIds.has(qId)
+              );
+              if (hasAnsweredUpToThis) {
+                reachedCount++;
+              }
+            }
           }
         } else if (screen.type === 'info') {
-          // Для инфо-экрана: считаем пользователей, которые дошли до предыдущего вопроса
+          // Для инфо-экрана: считаем пользователей, которые дошли до следующего вопроса
           // Если это начальный экран - считаем всех, кто начал анкету
           if (i === 0) {
             reachedCount = userIdsWhoStarted.size;
           } else {
-            // Находим предыдущий вопрос
-            let prevQuestionIndex = i - 1;
-            while (prevQuestionIndex >= 0 && allScreens[prevQuestionIndex].type !== 'question') {
-              prevQuestionIndex--;
+            // Находим следующий вопрос после этого инфо-экрана
+            let nextQuestionIndex = i + 1;
+            while (nextQuestionIndex < allScreens.length && allScreens[nextQuestionIndex].type !== 'question') {
+              nextQuestionIndex++;
             }
 
-            if (prevQuestionIndex >= 0) {
-              const prevQuestion = allScreens[prevQuestionIndex];
-              if (prevQuestion.questionId) {
-                const questionIndex = questions.findIndex(q => q.id === prevQuestion.questionId);
+            if (nextQuestionIndex < allScreens.length) {
+              const nextQuestion = allScreens[nextQuestionIndex];
+              if (nextQuestion.questionId) {
+                const questionIndex = questions.findIndex(q => q.id === nextQuestion.questionId);
                 if (questionIndex >= 0) {
-                  const questionsUpToThis = questions.slice(0, questionIndex + 1);
-                  const questionIdsUpToThis = new Set(questionsUpToThis.map(q => q.id));
+                  // Пользователь дошел до инфо-экрана, если он ответил на следующий вопрос
+                  // или на любой вопрос до следующего включительно
+                  const questionsUpToNext = questions.slice(0, questionIndex + 1);
+                  const questionIdsUpToNext = new Set(questionsUpToNext.map(q => q.id));
 
-                  const answersUpToThis = await prisma.userAnswer.groupBy({
-                    by: ['userId'],
-                    where: {
-                      questionId: { in: Array.from(questionIdsUpToThis) },
-                      questionnaireId: activeQuestionnaire.id,
-                    },
-                  });
-
-                  reachedCount = answersUpToThis.length;
+                  for (const [userId, answeredQuestionIds] of userAnswersMap.entries()) {
+                    const hasAnsweredUpToNext = Array.from(questionIdsUpToNext).some(qId => 
+                      answeredQuestionIds.has(qId)
+                    );
+                    if (hasAnsweredUpToNext) {
+                      reachedCount++;
+                    }
+                  }
                 }
               }
+            } else {
+              // Если следующего вопроса нет (это последний экран), считаем всех, кто завершил анкету
+              reachedCount = completedQuizCount;
             }
           }
         }
