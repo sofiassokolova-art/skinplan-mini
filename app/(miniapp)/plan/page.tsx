@@ -1017,9 +1017,9 @@ export default function PlanPage() {
   }
 
   // Используем новый компонент, если есть plan28
-  if ((planData as any).plan28) {
+  if (planData && (planData as any).plan28) {
     // Проверяем, что productsMap существует, иначе создаем пустой Map
-    const productsMap = (planData as any).productsMap || planData.products || new Map();
+    const productsMap = (planData as any).productsMap || (planData as any).products || new Map();
     
     // Проверяем, что это действительно Map
     if (!(productsMap instanceof Map)) {
