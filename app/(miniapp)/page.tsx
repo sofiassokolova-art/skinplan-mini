@@ -62,12 +62,6 @@ export default function HomePage() {
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
   const [selectedItem, setSelectedItem] = useState<RoutineItem | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showResumeScreen, setShowResumeScreen] = useState(false);
-  const [savedProgress, setSavedProgress] = useState<{
-    answers: Record<number, string | string[]>;
-    questionIndex: number;
-    infoScreenIndex: number;
-  } | null>(null);
   const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
   const [hasPlan, setHasPlan] = useState(false);
   const [checkingPlan, setCheckingPlan] = useState(false);
@@ -82,172 +76,10 @@ export default function HomePage() {
   });
   const [dailyTip, setDailyTip] = useState<string | null>(null);
   const [loadingTip, setLoadingTip] = useState(false);
+  const [redirectingToQuiz, setRedirectingToQuiz] = useState(false); // Флаг: редиректим на анкету
 
-  // Проверка незавершённой анкеты (объявляем до использования)
-  const checkIncompleteQuiz = async (): Promise<boolean> => {
-    console.log('🔍 checkIncompleteQuiz started');
-    try {
-      // СНАЧАЛА проверяем, есть ли уже профиль кожи (анкета завершена)
-      // Это самая надежная проверка - если профиль есть, анкета точно завершена
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        console.log('🔍 Checking for existing profile...');
-        try {
-          // Пробуем загрузить профиль напрямую - это более надежный способ проверки
-          const profile = await api.getCurrentProfile();
-          console.log('✅ Profile check result:', { hasProfile: !!profile, profileId: (profile as any)?.id });
-          
-          // Если профиль загрузился, значит анкета завершена
-          // Очищаем весь прогресс (локально и состояние)
-          if (profile && (profile as any).id) {
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('quiz_progress');
-            }
-            setSavedProgress(null);
-            setShowResumeScreen(false);
-            console.log('✅ Quiz completed, profile exists:', (profile as any).id);
-            return false; // Анкета завершена, нет незавершенной анкеты
-          }
-        } catch (err: any) {
-          // Проверяем, какая именно ошибка
-          const errorMessage = err?.message || err?.toString() || '';
-          console.log('🔍 Profile check error:', { errorMessage, status: err?.status, isNotFound: err?.isNotFound });
-          
-          // Если 404 или "No skin profile" - значит анкета не завершена, продолжаем проверку прогресса
-          if (errorMessage.includes('404') || 
-              errorMessage.includes('No skin profile') ||
-              errorMessage.includes('Skin profile not found') ||
-              errorMessage.includes('Profile not found') ||
-              err?.status === 404 ||
-              err?.isNotFound) {
-            console.log('ℹ️ No profile found (expected for new users), checking for incomplete quiz...');
-            // Продолжаем проверку прогресса ниже
-          } else {
-            // Другая ошибка (сеть, авторизация и т.д.) - логируем
-            console.warn('⚠️ Error checking profile:', errorMessage);
-            // Продолжаем проверку прогресса, так как ошибка может быть временной
-          }
-        }
-      }
-
-      // Если профиля нет, проверяем незавершённую анкету
-      // Сначала очищаем localStorage, если там остался старый прогресс
-      if (typeof window !== 'undefined') {
-        const savedProgressStr = localStorage.getItem('quiz_progress');
-        if (savedProgressStr) {
-          try {
-            const progress = JSON.parse(savedProgressStr);
-            // Проверяем, не старый ли это прогресс (больше 24 часов)
-            if (progress.timestamp && Date.now() - progress.timestamp > 24 * 60 * 60 * 1000) {
-              localStorage.removeItem('quiz_progress');
-              console.log('🗑️ Removed old quiz progress from localStorage (>24h)');
-            } else if (progress.answers && Object.keys(progress.answers).length > 0) {
-              // Проверяем на сервере, есть ли уже профиль
-              // Если профиль есть, очищаем локальный прогресс
-              if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-                try {
-                  const serverProgress = await api.getQuizProgress() as {
-                    progress?: {
-                      answers: Record<number, string | string[]>;
-                      questionIndex: number;
-                      infoScreenIndex: number;
-                    } | null;
-                  };
-                  
-                  // Если сервер не возвращает прогресс (null), значит профиль есть или прогресс очищен
-                  if (!serverProgress?.progress) {
-                    localStorage.removeItem('quiz_progress');
-                    setSavedProgress(null);
-                    setShowResumeScreen(false);
-                    console.log('✅ Server has no progress, clearing local progress');
-                    return false;
-                  }
-                  
-                  // Если сервер возвращает прогресс, используем его (более актуальный)
-                  if (serverProgress.progress && serverProgress.progress.answers && Object.keys(serverProgress.progress.answers).length > 0) {
-                    setSavedProgress(serverProgress.progress);
-                    setShowResumeScreen(true);
-                    setLoading(false);
-                    return true; // Есть незавершенная анкета
-                  }
-                } catch (err) {
-                  // Игнорируем ошибки загрузки прогресса с сервера
-                }
-              }
-              
-              // Если серверный прогресс недоступен, используем локальный
-              setSavedProgress(progress);
-              setShowResumeScreen(true);
-              setLoading(false);
-              return true; // Есть незавершенная анкета
-            }
-          } catch (e) {
-            // Игнорируем ошибки парсинга
-            localStorage.removeItem('quiz_progress');
-          }
-        }
-      }
-
-      // Проверяем на сервере (только если Telegram WebApp доступен)
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        try {
-          // Сначала еще раз проверяем наличие профиля через API прогресса
-          // (API прогресса уже проверяет наличие профиля и возвращает null, если профиль есть)
-          const response = await api.getQuizProgress() as {
-            progress?: {
-              answers: Record<number, string | string[]>;
-              questionIndex: number;
-              infoScreenIndex: number;
-            } | null;
-          };
-          
-          // Если сервер не возвращает прогресс (null), значит профиль есть или прогресс очищен
-          // Это означает, что анкета завершена
-          if (!response || !response.progress) {
-            // Очищаем локальный прогресс тоже
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('quiz_progress');
-            }
-            setSavedProgress(null);
-            setShowResumeScreen(false);
-            console.log('✅ No progress from server - quiz completed or no progress');
-            return false; // Анкета завершена или нет прогресса
-          }
-          
-          // Если есть прогресс и есть ответы - показываем экран продолжения
-          if (response.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
-            // Сохраняем в localStorage для офлайн доступа
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('quiz_progress', JSON.stringify({
-                ...response.progress,
-                timestamp: Date.now(),
-              }));
-            }
-            setSavedProgress(response.progress);
-            setShowResumeScreen(true);
-            setLoading(false);
-            console.log('ℹ️ Incomplete quiz found:', Object.keys(response.progress.answers).length, 'answers');
-            return true; // Есть незавершенная анкета
-          }
-        } catch (err) {
-          // Игнорируем ошибки загрузки прогресса - продолжаем загрузку рекомендаций
-          console.warn('⚠️ Error loading quiz progress from server:', err);
-        }
-      }
-      
-      // Нет незавершенной анкеты, можно загружать рекомендации
-      // Очищаем локальный прогресс на всякий случай
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('quiz_progress');
-      }
-      setSavedProgress(null);
-      setShowResumeScreen(false);
-      return false;
-    } catch (err) {
-      // В случае ошибки продолжаем загрузку рекомендаций
-      console.error('❌ Error in checkIncompleteQuiz:', err);
-      return false;
-    }
-  };
+  // УДАЛЕНО: Функция checkIncompleteQuiz больше не нужна
+  // Если профиля нет, сразу редиректим на /quiz, где есть экран "Вы не завершили анкету"
 
   useEffect(() => {
     console.log('🚀 HomePage useEffect started');
@@ -289,6 +121,8 @@ export default function HomePage() {
         
         if (!hasInitData) {
           console.warn('⚠️ Telegram WebApp не доступен, перенаправляем на анкету');
+          setRedirectingToQuiz(true); // Устанавливаем флаг перед редиректом
+          setLoading(false);
           router.push('/quiz');
           return;
         }
@@ -350,22 +184,12 @@ export default function HomePage() {
           return; // Завершаем инициализацию
         }
 
-        // Если профиля нет - проверяем незавершенную анкету
-        console.log('🔍 Step 2: No profile found, checking for incomplete quiz...');
-        // ВАЖНО: Устанавливаем loading = false ПЕРЕД проверкой незавершенной анкеты,
-        // чтобы не показывать "Загрузка плана..." когда профиля нет
-        setLoading(false);
-        const hasIncompleteQuiz = await checkIncompleteQuiz();
-        console.log('✅ checkIncompleteQuiz result:', hasIncompleteQuiz);
-        
-        // Если есть незавершенная анкета, показываем экран продолжения
-        if (hasIncompleteQuiz) {
-          console.log('ℹ️ Incomplete quiz found, showing resume screen');
-          return;
-        }
-        
-        // Если нет профиля и нет прогресса - перенаправляем на анкету
-        console.log('ℹ️ No profile and no progress, redirecting to quiz');
+        // Если профиля нет - сразу перенаправляем на анкету
+        // НЕ показываем экран "Вы не завершили анкету" на главной странице
+        // Этот экран должен быть только на странице анкеты
+        console.log('ℹ️ No profile found, redirecting to quiz immediately');
+        setRedirectingToQuiz(true); // Устанавливаем флаг перед редиректом
+        setLoading(false); // Убеждаемся, что loading = false
         router.push('/quiz');
         return;
       } catch (err: any) {
@@ -387,6 +211,7 @@ export default function HomePage() {
             err?.message?.includes('Profile not found')) {
           console.log('ℹ️ Profile not found in initAndLoad, redirecting to quiz');
           // ВАЖНО: Устанавливаем loading = false перед редиректом, чтобы не показывать "Загрузка плана..."
+          setRedirectingToQuiz(true); // Устанавливаем флаг перед редиректом
           setLoading(false);
           router.push('/quiz');
           return;
@@ -536,18 +361,8 @@ export default function HomePage() {
     }
   };
 
-  const resumeQuiz = () => {
-    router.push('/quiz');
-  };
-
-  const startOver = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('quiz_progress');
-    }
-    setShowResumeScreen(false);
-    setSavedProgress(null);
-    router.push('/quiz');
-  };
+  // УДАЛЕНО: Функции resumeQuiz и startOver больше не нужны
+  // Экран "Вы не завершили анкету" теперь только на странице анкеты
 
   // Функция для формирования полного названия продукта с брендом
   const getProductFullName = (product?: { name: string; brand?: string }): string => {
@@ -1123,182 +938,12 @@ export default function HomePage() {
   }, [routineItemsLength, loading, checkingPlan, hasPlan]);
 
   // Экран незавершенной анкеты
-  if (showResumeScreen && savedProgress) {
-    const answeredCount = Object.keys(savedProgress.answers).length;
-    // Используем реальное количество вопросов из анкеты, если доступно, иначе 22
-    const totalQuestions = 22; // Можно улучшить, загрузив анкету
-    const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+  // УДАЛЕНО: Экран "Вы не завершили анкету" больше не показывается на главной странице
+  // Если профиля нет, сразу редиректим на /quiz, где этот экран уже есть
 
-    return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <div style={{
-          width: '88%',
-          maxWidth: '420px',
-          backgroundColor: 'rgba(255, 255, 255, 0.58)',
-          backdropFilter: 'blur(26px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '44px',
-          padding: '36px 28px 32px 28px',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
-        }}>
-          <h1 style={{
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '38px',
-            color: '#0A5F59',
-            margin: '0 0 16px 0',
-            textAlign: 'center',
-          }}>
-            Вы не завершили анкету
-          </h1>
-
-          <p style={{
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '18px',
-            lineHeight: '1.5',
-            color: '#475467',
-            margin: '0 0 24px 0',
-            textAlign: 'center',
-          }}>
-            Продолжите, чтобы получить персональный план ухода
-          </p>
-
-          <div style={{
-            marginBottom: '28px',
-            padding: '16px',
-            backgroundColor: 'rgba(10, 95, 89, 0.08)',
-            borderRadius: '16px',
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginBottom: '8px',
-              fontSize: '14px',
-              color: '#0A5F59',
-              fontWeight: 600,
-            }}>
-              <span>Прогресс</span>
-              <span>{answeredCount} из {totalQuestions} вопросов</span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: 'rgba(10, 95, 89, 0.2)',
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                width: `${progressPercent}%`,
-                height: '100%',
-                backgroundColor: '#0A5F59',
-                transition: 'width 0.3s ease',
-              }} />
-            </div>
-          </div>
-
-          <div style={{
-            marginBottom: '28px',
-            padding: '0',
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: '#0A5F59',
-              marginBottom: '12px',
-            }}>
-              Что вы получите:
-            </h3>
-            {[
-              'Персональный план ухода на 12 недель',
-              'Рекомендации от косметолога-дерматолога',
-              'Точная диагностика типа и состояния кожи',
-            ].map((benefit, index) => (
-              <div key={index} style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                marginBottom: index < 2 ? '12px' : '0',
-              }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
-                  backgroundColor: '#0A5F59',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  marginTop: '2px',
-                }}>
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <span style={{
-                  fontSize: '15px',
-                  color: '#1F2A44',
-                  lineHeight: '1.5',
-                }}>
-                  {benefit}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}>
-            <button
-              onClick={resumeQuiz}
-              style={{
-                width: '100%',
-                height: '64px',
-                background: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                borderRadius: '32px',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 500,
-                fontSize: '19px',
-                boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                cursor: 'pointer',
-              }}
-            >
-              Продолжить с вопроса {savedProgress.questionIndex + 1} →
-            </button>
-            
-            <button
-              onClick={startOver}
-              style={{
-                width: '100%',
-                height: '48px',
-                background: 'transparent',
-                color: '#0A5F59',
-                border: '1px solid rgba(10, 95, 89, 0.3)',
-                borderRadius: '24px',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 500,
-                fontSize: '16px',
-                cursor: 'pointer',
-              }}
-            >
-              Начать заново
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  // ВАЖНО: Если редиректим на анкету, не показываем никакой контент
+  if (redirectingToQuiz) {
+    return null; // Не показываем ничего во время редиректа
   }
 
   if (!mounted || loading) {
