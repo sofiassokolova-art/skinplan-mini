@@ -673,39 +673,48 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // Функция для преобразования старого формата step/category в StepCategory
   const mapStepToStepCategory = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
     const stepStr = (step || category || '').toLowerCase();
+    const categoryStr = (category || '').toLowerCase();
     const categories: StepCategory[] = [];
     
     // Маппинг старого формата в StepCategory
-    if (stepStr.startsWith('cleanser_gentle') || (stepStr === 'cleanser' && category === 'cleanser')) {
+    // Проверяем и step, и category для более точного маппинга
+    if (stepStr.startsWith('cleanser_gentle') || categoryStr.includes('gentle')) {
       categories.push('cleanser_gentle');
-    } else if (stepStr.startsWith('cleanser_balancing') || stepStr.includes('balancing')) {
+    } else if (stepStr.startsWith('cleanser_balancing') || stepStr.includes('balancing') || categoryStr.includes('balancing')) {
       categories.push('cleanser_balancing');
-    } else if (stepStr.startsWith('cleanser_deep') || stepStr.includes('deep')) {
+    } else if (stepStr.startsWith('cleanser_deep') || stepStr.includes('deep') || categoryStr.includes('deep')) {
       categories.push('cleanser_deep');
-    } else if (stepStr.startsWith('cleanser')) {
-      categories.push('cleanser_gentle'); // fallback
+    } else if (stepStr.startsWith('cleanser') || categoryStr === 'cleanser' || stepStr === 'cleanser') {
+      // Если просто 'cleanser' без уточнения, пробуем все варианты для максимальной совместимости
+      categories.push('cleanser_gentle');
+      categories.push('cleanser_balancing');
+      categories.push('cleanser_deep');
     }
     
-    if (stepStr.startsWith('toner_hydrating') || (stepStr === 'toner' && !stepStr.includes('soothing'))) {
+    if (stepStr.startsWith('toner_hydrating') || categoryStr.includes('hydrating')) {
       categories.push('toner_hydrating');
-    } else if (stepStr.startsWith('toner_soothing') || stepStr.includes('soothing')) {
+    } else if (stepStr.startsWith('toner_soothing') || stepStr.includes('soothing') || categoryStr.includes('soothing')) {
       categories.push('toner_soothing');
-    } else if (stepStr === 'toner') {
-      categories.push('toner_hydrating'); // fallback
+    } else if (stepStr === 'toner' || categoryStr === 'toner') {
+      // Если просто 'toner' без уточнения, пробуем оба варианта
+      categories.push('toner_hydrating');
+      categories.push('toner_soothing');
     }
     
-    if (stepStr.startsWith('serum_hydrating') || stepStr.includes('hydrating')) {
+    if (stepStr.startsWith('serum_hydrating') || categoryStr.includes('hydrating')) {
       categories.push('serum_hydrating');
-    } else if (stepStr.startsWith('serum_niacinamide') || stepStr.includes('niacinamide')) {
+    } else if (stepStr.startsWith('serum_niacinamide') || stepStr.includes('niacinamide') || categoryStr.includes('niacinamide')) {
       categories.push('serum_niacinamide');
-    } else if (stepStr.startsWith('serum_vitc') || stepStr.includes('vitamin c') || stepStr.includes('vitc')) {
+    } else if (stepStr.startsWith('serum_vitc') || stepStr.includes('vitamin c') || stepStr.includes('vitc') || categoryStr.includes('vitamin c')) {
       categories.push('serum_vitc');
-    } else if (stepStr.startsWith('serum_anti_redness') || stepStr.includes('anti-redness')) {
+    } else if (stepStr.startsWith('serum_anti_redness') || stepStr.includes('anti-redness') || categoryStr.includes('anti-redness')) {
       categories.push('serum_anti_redness');
-    } else if (stepStr.startsWith('serum_brightening') || stepStr.includes('brightening')) {
+    } else if (stepStr.startsWith('serum_brightening') || stepStr.includes('brightening') || categoryStr.includes('brightening')) {
       categories.push('serum_brightening_soft');
-    } else if (stepStr === 'serum') {
-      categories.push('serum_hydrating'); // fallback
+    } else if (stepStr === 'serum' || categoryStr === 'serum') {
+      // Если просто 'serum' без уточнения, пробуем основные варианты
+      categories.push('serum_hydrating');
+      categories.push('serum_niacinamide');
     }
     
     if (stepStr.startsWith('treatment_acne_bpo') || stepStr.includes('benzoyl peroxide')) {
@@ -726,16 +735,18 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       categories.push('treatment_antiage'); // fallback
     }
     
-    if (stepStr.startsWith('moisturizer_light') || (stepStr === 'moisturizer' && !stepStr.includes('barrier'))) {
+    if (stepStr.startsWith('moisturizer_light') || categoryStr.includes('light')) {
       categories.push('moisturizer_light');
-    } else if (stepStr.startsWith('moisturizer_balancing') || stepStr.includes('balancing')) {
+    } else if (stepStr.startsWith('moisturizer_balancing') || stepStr.includes('balancing') || categoryStr.includes('balancing')) {
       categories.push('moisturizer_balancing');
-    } else if (stepStr.startsWith('moisturizer_barrier') || stepStr.includes('barrier')) {
+    } else if (stepStr.startsWith('moisturizer_barrier') || stepStr.includes('barrier') || categoryStr.includes('barrier')) {
       categories.push('moisturizer_barrier');
-    } else if (stepStr.startsWith('moisturizer_soothing') || stepStr.includes('soothing')) {
+    } else if (stepStr.startsWith('moisturizer_soothing') || stepStr.includes('soothing') || categoryStr.includes('soothing')) {
       categories.push('moisturizer_soothing');
-    } else if (stepStr === 'moisturizer' || stepStr === 'cream') {
-      categories.push('moisturizer_light'); // fallback
+    } else if (stepStr === 'moisturizer' || stepStr === 'cream' || categoryStr === 'moisturizer' || categoryStr === 'cream') {
+      // Если просто 'moisturizer' или 'cream' без уточнения, пробуем основные варианты
+      categories.push('moisturizer_light');
+      categories.push('moisturizer_balancing');
     }
     
     if (stepStr.startsWith('spf_50_face') || stepStr === 'spf' || category === 'spf') {
@@ -787,10 +798,30 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     // Преобразуем старый формат step/category в StepCategory
     const stepCategories = mapStepToStepCategory(product.step, product.category);
     
+    // Детальное логирование для диагностики (особенно для пользователя 643160759)
+    if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+      logger.info('Mapping product to StepCategory', {
+        productId: product.id,
+        productName: product.name,
+        originalStep: product.step,
+        originalCategory: product.category,
+        mappedStepCategories: stepCategories,
+        userId,
+      });
+    }
+    
     if (stepCategories.length > 0) {
       // Регистрируем продукт для всех подходящих StepCategory
       stepCategories.forEach(stepCategory => {
         registerProductForStep(stepCategory, productWithBrand);
+        if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+          logger.info('Product registered for StepCategory', {
+            productId: product.id,
+            productName: product.name,
+            stepCategory,
+            userId,
+          });
+        }
       });
       
       // Также регистрируем по базовому шагу для обратной совместимости
@@ -798,6 +829,15 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         const baseStep = getBaseStepFromStepCategory(stepCategory);
         if (baseStep !== stepCategory) {
           registerProductForStep(baseStep as StepCategory, productWithBrand);
+          if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+            logger.info('Product also registered for base step', {
+              productId: product.id,
+              productName: product.name,
+              stepCategory,
+              baseStep,
+              userId,
+            });
+          }
         }
       });
     } else {
@@ -810,17 +850,15 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       }
       
       // Логируем, если продукт не был распознан
-      if (userId === '643160759' || process.env.NODE_ENV === 'development') {
-        logger.warn('Product not recognized, using fallback', {
-          productId: product.id,
-          productName: product.name,
-          step: product.step,
-          category: product.category,
-          stepKey,
-          fallbackStep,
-          userId,
-        });
-      }
+      logger.warn('Product not recognized by mapStepToStepCategory, using fallback', {
+        productId: product.id,
+        productName: product.name,
+        step: product.step,
+        category: product.category,
+        stepKey,
+        fallbackStep,
+        userId,
+      });
     }
   });
   
