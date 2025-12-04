@@ -25,7 +25,15 @@ interface PlanInfographicProps {
   onReplace?: (product: { id: number; name: string; brand: { name: string } }) => void;
 }
 
-export function PlanInfographic({ plan28, products }: PlanInfographicProps) {
+export function PlanInfographic({ 
+  plan28, 
+  products,
+  wishlistProductIds = new Set<number>(),
+  cartQuantities = new Map<number, number>(),
+  onToggleWishlist,
+  onAddToCart,
+  onReplace,
+}: PlanInfographicProps) {
   // Собираем категории с продуктами и их описаниями
   interface CategoryData {
     name: string;
