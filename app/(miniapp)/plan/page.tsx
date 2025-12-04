@@ -456,68 +456,61 @@ export default function PlanPage() {
         }
         
         // Профиль есть, но план не найден в кэше
-        // Это может быть временная проблема с кэшем или план действительно нужно сгенерировать
-        // Проверяем, был ли план сгенерирован ранее (есть ли progress)
+        // Проверяем, был ли план сгенерирован ранее (есть ли progress или профиль был создан ранее)
         let hasExistingProgress = false;
+        let hasExistingProfile = false;
         try {
           const progressCheck = await api.getPlanProgress() as any;
           hasExistingProgress = !!progressCheck && (progressCheck.completedDays?.length > 0 || progressCheck.currentDay > 1);
+          
+          // Также проверяем, есть ли профиль (если профиль есть, значит анкета уже пройдена)
+          const profileCheck = await api.getCurrentProfile() as any;
+          hasExistingProfile = !!profileCheck;
         } catch (progressErr) {
           // Игнорируем ошибки проверки прогресса
         }
 
-        // Если план был сгенерирован ранее (есть прогресс), но не загружается из кэша,
-        // это временная проблема - показываем обычный лоадер, а не экран генерации
-        if (hasExistingProgress) {
-          console.log('⚠️ Plan exists (has progress) but not in cache - retrying load...');
+        // Если план был сгенерирован ранее (есть прогресс ИЛИ профиль существует),
+        // но не загружается из кэша - это временная проблема
+        // Показываем обычный лоадер и пытаемся загрузить план, а не экран генерации
+        if (hasExistingProgress || hasExistingProfile) {
+          console.log('⚠️ Plan exists (has progress or profile) but not in cache - retrying load...', {
+            hasProgress: hasExistingProgress,
+            hasProfile: hasExistingProfile,
+            retryCount,
+          });
+          
           // Делаем еще одну попытку загрузки через небольшую задержку
-          if (retryCount < 2) {
+          if (retryCount < 3) {
             await new Promise(resolve => setTimeout(resolve, 1000));
             return loadPlan(retryCount + 1);
           }
-          // Если после повторных попыток план не загрузился, показываем обычный лоадер
+          
+          // Если после повторных попыток план не загрузился, пытаемся сгенерировать его
+          // (возможно, кэш был очищен, но план нужно восстановить)
+          console.log('🔄 Plan exists but not in cache after retries - attempting to regenerate...');
+          try {
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+              console.log('✅ Plan regenerated successfully, processing...');
+              await processPlanData(generatedPlan);
+              return;
+            }
+          } catch (generateError: any) {
+            console.error('❌ Failed to regenerate plan:', generateError);
+          }
+          
+          // Если даже регенерация не помогла, показываем обычный лоадер
           // (не экран генерации, так как план уже существует)
-          console.error('❌ Plan exists but failed to load after retries - showing loading state');
+          console.error('❌ Plan exists but failed to load/regenerate - showing loading state');
           setLoading(true);
           setError(null);
           return;
         }
 
-        // План действительно нужно генерировать впервые
-        // Попробуем явно сгенерировать план один раз
-        if (retryCount === 0) {
-          console.log('🔄 Plan not found in cache and no existing progress - attempting to generate...');
-          try {
-            console.log('📞 Calling generatePlan API...');
-            const generatedPlan = await api.generatePlan() as any;
-            console.log('📦 Generated plan response:', {
-              hasPlan28: !!generatedPlan?.plan28,
-              hasWeeks: !!generatedPlan?.weeks,
-              weeksCount: generatedPlan?.weeks?.length || 0,
-              plan28DaysCount: generatedPlan?.plan28?.days?.length || 0,
-              responseKeys: Object.keys(generatedPlan || {}),
-            });
-            
-            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-              // План успешно сгенерирован, обрабатываем его
-              console.log('✅ Plan generated successfully, processing...');
-              await processPlanData(generatedPlan);
-              return;
-            } else {
-              console.error('❌ Generated plan is empty or invalid:', generatedPlan);
-            }
-          } catch (generateError: any) {
-            console.error('❌ Failed to generate plan:', {
-              status: generateError?.status,
-              message: generateError?.message,
-              error: generateError,
-              stack: generateError?.stack,
-            });
-          }
-        }
-        
-        // Если генерация не помогла, показываем экран генерации только если план действительно нужно генерировать
-        console.error('❌ Plan generation failed or returned empty - showing generation screen');
+        // План действительно нужно генерировать впервые (нет ни прогресса, ни профиля)
+        // Показываем экран генерации
+        console.log('🔄 Plan needs to be generated for the first time - showing generation screen');
         setError('plan_generating');
         setLoading(false);
         return;
