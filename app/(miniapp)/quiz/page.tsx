@@ -133,19 +133,27 @@ export default function QuizPage() {
       
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
       // isRetakingQuiz будет установлен в отдельном useEffect после загрузки questionnaire
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      // ВАЖНО: Не проверяем профиль, если пользователь только что нажал "Начать заново"
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !isStartingOverRef.current) {
         try {
           const profile = await api.getCurrentProfile();
           if (profile && (profile as any).id) {
             // Профиль существует - это повторное прохождение
-            setIsRetakingQuiz(true);
-            setShowRetakeScreen(true); // Показываем экран выбора тем
-            console.log('✅ Повторное прохождение анкеты - профиль уже существует, показываем экран выбора тем');
+            // Но только если пользователь не нажал "Начать заново"
+            if (!isStartingOverRef.current) {
+              setIsRetakingQuiz(true);
+              setShowRetakeScreen(true); // Показываем экран выбора тем
+              console.log('✅ Повторное прохождение анкеты - профиль уже существует, показываем экран выбора тем');
+            } else {
+              console.log('⏸️ Пропущена проверка профиля, так как isStartingOverRef = true');
+            }
           }
         } catch (err: any) {
           // Профиля нет - это первое прохождение, показываем info screens как обычно
           console.log('ℹ️ Первое прохождение анкеты - профиля еще нет');
         }
+      } else if (isStartingOverRef.current) {
+        console.log('⏸️ Пропущена проверка профиля в init, так как isStartingOverRef = true');
       }
 
       // Загружаем прогресс с сервера (только если Telegram WebApp доступен)
