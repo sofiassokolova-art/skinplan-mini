@@ -207,8 +207,8 @@ export function PlanPageClientNew({
       id: product.id,
       name: product.name,
       brand: product.brand,
-      price: product.price,
-      imageUrl: product.imageUrl,
+      price: product.price ?? null, // Преобразуем undefined в null
+      imageUrl: product.imageUrl ?? null, // Преобразуем undefined в null
     });
   };
 
