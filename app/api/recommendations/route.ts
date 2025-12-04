@@ -20,6 +20,8 @@ interface RuleStep {
   skin_types?: string[];
   is_non_comedogenic?: boolean;
   is_fragrance_free?: boolean;
+  budget?: 'бюджетный' | 'средний' | 'премиум' | 'любой'; // Бюджетный сегмент
+  is_natural?: boolean; // Натуральный/органический состав
   max_items?: number;
 }
 
@@ -142,6 +144,31 @@ async function getProductsForStep(step: RuleStep) {
 
   if (step.is_fragrance_free === true) {
     where.isFragranceFree = true;
+  }
+
+  // Фильтрация по бюджету (priceSegment)
+  if (step.budget && step.budget !== 'любой') {
+    // Маппинг бюджетных сегментов: бюджетный -> mass, средний -> mid, премиум -> premium
+    const budgetMapping: Record<string, string> = {
+      'бюджетный': 'mass',
+      'средний': 'mid',
+      'премиум': 'premium',
+    };
+    
+    const priceSegment = budgetMapping[step.budget];
+    if (priceSegment) {
+      where.priceSegment = priceSegment;
+    }
+  }
+
+  // Фильтрация по натуральности (если указано)
+  // ПРИМЕЧАНИЕ: В текущей схеме БД нет поля isNatural/isOrganic
+  // Можно добавить проверку по composition на наличие натуральных ингредиентов
+  // Пока оставляем как есть, так как в схеме нет поля isNatural
+  // TODO: Добавить поле isNatural в схему Product при необходимости
+  if (step.is_natural === true) {
+    // Можно добавить проверку по composition, если нужно
+    // Например: where.composition = { contains: 'натуральный' } или проверка на органические ингредиенты
   }
 
   // Первая попытка: точный поиск
@@ -558,12 +585,45 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Получаем бюджет пользователя из ответов (если есть)
+    const userAnswers = await prisma.userAnswer.findMany({
+      where: {
+        userId,
+        questionnaireId: 2,
+        question: {
+          code: 'budget',
+        },
+      },
+      take: 1,
+    });
+    
+    const userBudget = userAnswers.length > 0 
+      ? (userAnswers[0].answerValue || 'любой')
+      : 'любой';
+    
+    // Маппинг бюджета из ответов в формат для фильтрации
+    const budgetMapping: Record<string, 'бюджетный' | 'средний' | 'премиум' | 'любой'> = {
+      'budget': 'бюджетный',
+      'medium': 'средний',
+      'premium': 'премиум',
+      'any': 'любой',
+      'любой': 'любой',
+    };
+    
+    const normalizedUserBudget = budgetMapping[userBudget] || 'любой';
+
     // Получаем продукты для каждого шага
     const stepsJson = matchedRule.stepsJson as Record<string, RuleStep>;
     const steps: Record<string, any[]> = {};
 
     for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
-      const products = await getProductsForStep(stepConfig);
+      // Если в правиле не указан бюджет, используем бюджет пользователя
+      const stepWithBudget: RuleStep = {
+        ...stepConfig,
+        budget: stepConfig.budget || normalizedUserBudget,
+      };
+      
+      const products = await getProductsForStep(stepWithBudget);
       if (products.length > 0) {
         // Нормализуем step: serum, treatment, essence -> serum для совместимости с главной страницей
         const normalizedStep = stepName === 'treatment' || stepName === 'essence' ? 'serum' : stepName;

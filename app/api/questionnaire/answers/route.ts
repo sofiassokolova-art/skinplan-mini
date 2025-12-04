@@ -341,6 +341,21 @@ export async function POST(request: NextRequest) {
         const stepsJson = matchedRule.stepsJson as any;
         const productIds: number[] = [];
 
+        // Получаем бюджет пользователя из ответов (если есть)
+        const budgetAnswer = userAnswers.find(a => a.question?.code === 'budget');
+        const userBudget = budgetAnswer?.answerValue || 'любой';
+        
+        // Маппинг бюджета из ответов в формат для фильтрации
+        const budgetMapping: Record<string, string> = {
+          'budget': 'mass',
+          'medium': 'mid',
+          'premium': 'premium',
+          'any': null as any,
+          'любой': null as any,
+        };
+        
+        const userPriceSegment = budgetMapping[userBudget] || null;
+
         // Собираем ID продуктов из всех шагов
         for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
           const where: any = { published: true };
@@ -360,6 +375,29 @@ export async function POST(request: NextRequest) {
           }
           if (step.is_fragrance_free === true) {
             where.isFragranceFree = true;
+          }
+          
+          // Фильтрация по бюджету (если указан в правиле или у пользователя)
+          const ruleBudget = step.budget;
+          if (ruleBudget && ruleBudget !== 'любой') {
+            const budgetMapping: Record<string, string> = {
+              'бюджетный': 'mass',
+              'средний': 'mid',
+              'премиум': 'premium',
+            };
+            const priceSegment = budgetMapping[ruleBudget];
+            if (priceSegment) {
+              where.priceSegment = priceSegment;
+            }
+          } else if (userPriceSegment) {
+            // Если в правиле не указан бюджет, используем бюджет пользователя
+            where.priceSegment = userPriceSegment;
+          }
+          
+          // Фильтрация по натуральности (если указано в правиле)
+          if (step.is_natural === true) {
+            // ПРИМЕЧАНИЕ: В текущей схеме БД нет поля isNatural
+            // Можно добавить проверку по composition, если нужно
           }
 
           const products = await prisma.product.findMany({
