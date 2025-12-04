@@ -1535,7 +1535,23 @@ export default function QuizPage() {
       return false;
     }
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
-    return currentInfoScreenIndex < initialInfoScreens.length;
+    const shouldShow = currentInfoScreenIndex < initialInfoScreens.length;
+    
+    // Логирование для отладки (только в development)
+    if (process.env.NODE_ENV === 'development' && shouldShow) {
+      console.log('📺 isShowingInitialInfoScreen: true', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        showResumeScreen,
+        hasSavedProgress: !!savedProgress,
+        hasResumed,
+        isRetakingQuiz,
+        currentQuestionIndex,
+        answersCount: Object.keys(answers).length,
+      });
+    }
+    
+    return shouldShow;
   }, [showResumeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
   
   const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
