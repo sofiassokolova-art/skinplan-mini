@@ -478,7 +478,9 @@ export default function QuizPage() {
     localStorage.removeItem('quiz_progress');
     setSavedProgress(null);
     setShowResumeScreen(false);
-    setHasResumed(false); // Сбрасываем флаг восстановления прогресса
+    // Сбрасываем флаги восстановления прогресса (и state, и ref)
+    hasResumedRef.current = false;
+    setHasResumed(false);
     
     // Также очищаем прогресс на сервере
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
