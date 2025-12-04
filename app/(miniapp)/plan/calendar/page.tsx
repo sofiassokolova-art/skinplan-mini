@@ -228,7 +228,30 @@ export default function PlanCalendarPage() {
                 });
               }
             });
+            
+            console.log('✅ Calendar: Products loaded from plan', {
+              requestedIds: allProductIds.size,
+              loadedProducts: productsMap.size,
+              missingProducts: Array.from(allProductIds).filter(id => !productsMap.has(id)),
+            });
+            
+            // Проверяем, что все продукты загружены
+            const missingProducts = Array.from(allProductIds).filter(id => !productsMap.has(id));
+            if (missingProducts.length > 0) {
+              console.warn('⚠️ Calendar: Some products not found in database', {
+                missingIds: missingProducts,
+              });
+            }
+            
             setProducts(productsMap);
+          } else {
+            const errorText = await productsResponse.text().catch(() => '');
+            console.error('❌ Calendar: Failed to load products from batch endpoint', {
+              status: productsResponse.status,
+              statusText: productsResponse.statusText,
+              error: errorText.substring(0, 200),
+            });
+            toast.error('Не удалось загрузить продукты. Попробуйте позже.');
           }
         }
       }

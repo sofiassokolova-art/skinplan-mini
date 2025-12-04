@@ -165,12 +165,13 @@ export function DayView({
               
               // Логируем, если продукт не найден
               if (!product) {
-                console.warn('Product not found for step:', {
+                console.error('❌ DayView: Product not found for step', {
                   stepCategory: step.stepCategory,
                   productId: step.productId,
                   productIdNum,
                   productsMapSize: products.size,
                   productIdsInMap: Array.from(products.keys()).slice(0, 10),
+                  dayIndex: dayPlan.dayIndex,
                 });
               }
             }

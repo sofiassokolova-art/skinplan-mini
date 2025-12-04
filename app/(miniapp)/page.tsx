@@ -442,7 +442,7 @@ export default function HomePage() {
       if (!currentDayPlan) {
         console.log('⚠️ Current day plan not found, redirecting to quiz');
         router.push('/quiz');
-        return;
+            return;
       }
       
       // Собираем все productId из текущего дня (утро, вечер, еженедельные)
@@ -457,7 +457,7 @@ export default function HomePage() {
         if (step.productId) allProductIds.add(Number(step.productId));
       });
       
-      // Загружаем детали продуктов
+      // Загружаем детали продуктов (используем ту же логику, что и в календаре)
       let productsMap = new Map<number, any>();
       if (allProductIds.size > 0) {
         try {
@@ -474,13 +474,46 @@ export default function HomePage() {
             const productsData = await productsResponse.json();
             productsData.products?.forEach((p: any) => {
               if (p && p.id) {
-                productsMap.set(p.id, p);
+                // Используем ту же структуру, что и в календаре для синхронизации
+                productsMap.set(p.id, {
+                  id: p.id,
+                  name: p.name || 'Неизвестный продукт',
+                  brand: { name: p.brand?.name || p.brand || 'Unknown' },
+                  price: p.price || null,
+                  imageUrl: p.imageUrl || null,
+                  // Используем descriptionUser для синхронизации с календарем
+                  description: p.descriptionUser || p.description || null,
+                });
               }
+            });
+            
+            console.log('✅ Home: Products loaded from plan', {
+              requestedIds: allProductIds.size,
+              loadedProducts: productsMap.size,
+              missingProducts: Array.from(allProductIds).filter(id => !productsMap.has(id)),
+            });
+            
+            // Проверяем, что все продукты загружены
+            const missingProducts = Array.from(allProductIds).filter(id => !productsMap.has(id));
+            if (missingProducts.length > 0) {
+              console.warn('⚠️ Home: Some products not found in database', {
+                missingIds: missingProducts,
+                currentDay,
+              });
+            }
+          } else {
+            const errorText = await productsResponse.text().catch(() => '');
+            console.error('❌ Home: Failed to load products from batch endpoint', {
+              status: productsResponse.status,
+              statusText: productsResponse.statusText,
+              error: errorText.substring(0, 200),
             });
           }
         } catch (err) {
-          console.warn('Could not load product details:', err);
+          console.error('❌ Home: Error loading product details', err);
         }
+      } else {
+        console.warn('⚠️ Home: No product IDs found for current day', { currentDay });
       }
       
       // Преобразуем шаги плана в RoutineItem[]
@@ -583,9 +616,9 @@ export default function HomePage() {
             subtitle: getProductName(productId),
             icon: getIconForStep(step.stepCategory),
             howto: getStepHowto(step.stepCategory, true),
-            done: false,
-          });
-        }
+          done: false,
+        });
+      }
       });
       
       // ВЕЧЕРНЯЯ РУТИНА
@@ -598,15 +631,15 @@ export default function HomePage() {
                            step.stepCategory.startsWith('moisturizer') ? 'Крем' :
                            'Средство';
           
-          evening.push({
+        evening.push({
             id: `evening-${step.stepCategory}-${index}`,
             title: stepTitle,
             subtitle: getProductName(productId),
             icon: getIconForStep(step.stepCategory),
             howto: getStepHowto(step.stepCategory, false),
-            done: false,
-          });
-        }
+          done: false,
+        });
+      }
       });
       
       // ЕЖЕНЕДЕЛЬНЫЕ СРЕДСТВА (добавляем в вечер, если они есть)
@@ -615,15 +648,15 @@ export default function HomePage() {
           const productId = Number(step.productId);
           const stepTitle = step.stepCategory.startsWith('mask') ? 'Маска' : 'Средство';
           
-          evening.push({
+        evening.push({
             id: `weekly-${step.stepCategory}-${index}`,
             title: stepTitle,
             subtitle: getProductName(productId),
             icon: getIconForStep(step.stepCategory),
             howto: getStepHowto(step.stepCategory, false),
-            done: false,
-          });
-        }
+          done: false,
+        });
+      }
       });
       
       // Создаем фиктивные рекомендации для совместимости с существующим кодом
