@@ -160,9 +160,9 @@ export default function QuizPage() {
         // Сначала загружаем анкету (публичный маршрут)
         // Но только если она еще не загружена
         if (!questionnaire) {
-          console.log('📥 Loading questionnaire...');
-          await loadQuestionnaire();
-          console.log('✅ Questionnaire loaded');
+        console.log('📥 Loading questionnaire...');
+        await loadQuestionnaire();
+        console.log('✅ Questionnaire loaded');
         } else {
           console.log('✅ Questionnaire already loaded, skipping');
         }
@@ -177,9 +177,9 @@ export default function QuizPage() {
             // Профиль существует - это повторное прохождение
             // Но только если пользователь не нажал "Начать заново"
             if (!isStartingOverRef.current) {
-              setIsRetakingQuiz(true);
-              setShowRetakeScreen(true); // Показываем экран выбора тем
-              console.log('✅ Повторное прохождение анкеты - профиль уже существует, показываем экран выбора тем');
+            setIsRetakingQuiz(true);
+            setShowRetakeScreen(true); // Показываем экран выбора тем
+            console.log('✅ Повторное прохождение анкеты - профиль уже существует, показываем экран выбора тем');
             } else {
               console.log('⏸️ Пропущена проверка профиля, так как isStartingOverRef = true');
             }
@@ -210,22 +210,22 @@ export default function QuizPage() {
           // Если на сервере нет прогресса, значит его не должно быть и локально
           // Но только если пользователь еще не продолжил анкету
           if (!hasResumedRef.current && !hasResumed) {
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('quiz_progress');
-            }
-            setSavedProgress(null);
-            setShowResumeScreen(false);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('quiz_progress');
+          }
+          setSavedProgress(null);
+          setShowResumeScreen(false);
           }
         }
       } else {
         // Если Telegram WebApp не доступен или пользователь уже продолжил, очищаем localStorage (прогресс должен быть на сервере)
         // Но только если пользователь еще не продолжил анкету
         if (!hasResumedRef.current && !hasResumed) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('quiz_progress');
-          }
-          setSavedProgress(null);
-          setShowResumeScreen(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('quiz_progress');
+        }
+        setSavedProgress(null);
+        setShowResumeScreen(false);
         }
       }
       
@@ -1064,13 +1064,13 @@ export default function QuizPage() {
       console.log('⏳ Ожидание создания профиля...');
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Редирект на страницу анализа
-      console.log('🔄 Редирект на /analysis');
+      // Редирект на страницу плана
+      console.log('🔄 Редирект на /plan');
       if (typeof window !== 'undefined') {
         // Используем window.location для гарантированного редиректа
-        window.location.href = '/analysis';
+        window.location.href = '/plan';
       } else {
-        router.push('/analysis');
+        router.push('/plan');
       }
     } catch (err: any) {
       console.error('❌ Ошибка при отправке ответов:', err);
@@ -1088,9 +1088,9 @@ export default function QuizPage() {
         // Автоматический редирект через небольшую задержку
         setTimeout(() => {
           if (typeof window !== 'undefined') {
-            window.location.href = '/analysis';
+            window.location.href = '/plan';
           } else {
-            router.push('/analysis');
+            router.push('/plan');
           }
         }, 2000);
       } else {
@@ -1936,13 +1936,13 @@ export default function QuizPage() {
               display: 'inline-block',
             }}
           >
-            <img
-              src="/skiniq-logo.png"
-              alt="SkinIQ"
-              style={{
-                height: '140px',
-                marginTop: '8px',
-                marginBottom: '8px',
+          <img
+            src="/skiniq-logo.png"
+            alt="SkinIQ"
+            style={{
+              height: '140px',
+              marginTop: '8px',
+              marginBottom: '8px',
                 transition: 'transform 0.2s',
               }}
               onMouseEnter={(e) => {
@@ -1950,8 +1950,8 @@ export default function QuizPage() {
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'scale(1)';
-              }}
-            />
+            }}
+          />
           </button>
         </div>
 
@@ -2086,32 +2086,32 @@ export default function QuizPage() {
             </div>
           </PaymentGate>
         ) : (
-          <button
-            onClick={handleFullRetake}
-            style={{
-              width: '100%',
-              padding: '16px',
-              borderRadius: '16px',
-              backgroundColor: 'rgba(255, 255, 255, 0.8)',
-              border: '2px solid #0A5F59',
-              color: '#0A5F59',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              marginTop: '8px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#0A5F59';
-              e.currentTarget.style.color = 'white';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-              e.currentTarget.style.color = '#0A5F59';
-            }}
-          >
-            Пройти всю анкету заново
-          </button>
+        <button
+          onClick={handleFullRetake}
+          style={{
+            width: '100%',
+            padding: '16px',
+            borderRadius: '16px',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            border: '2px solid #0A5F59',
+            color: '#0A5F59',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            marginTop: '8px',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#0A5F59';
+            e.currentTarget.style.color = 'white';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            e.currentTarget.style.color = '#0A5F59';
+          }}
+        >
+          Пройти всю анкету заново
+        </button>
         )}
 
         {/* Кнопка отмены */}

@@ -57,26 +57,26 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       const feedbackSent = localStorage.getItem(PLAN_FEEDBACK_SENT_KEY);
       if (feedbackSent === 'true') {
         // Обратная связь уже отправлена - не показываем больше
-        setIsVisible(false);
-        return;
-      }
+              setIsVisible(false);
+              return;
+            }
       // Если еще не отправляли - показываем
       setIsVisible(true);
       return;
-    }
+        }
     
     // Для service: показываем раз в неделю
     const feedbackKey = LAST_FEEDBACK_KEY;
     const lastFeedbackDate = localStorage.getItem(feedbackKey);
-    if (lastFeedbackDate) {
-      const lastDate = new Date(lastFeedbackDate);
-      const now = new Date();
-      const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
-      
-      if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
-        setIsVisible(false);
+      if (lastFeedbackDate) {
+        const lastDate = new Date(lastFeedbackDate);
+        const now = new Date();
+        const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
+          setIsVisible(false);
+        }
       }
-    }
   }, [feedbackType, hasProfile]);
 
   // Если виджет скрыт, не рендерим его
@@ -97,14 +97,14 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
           localStorage.setItem(PLAN_FEEDBACK_SENT_KEY, 'true');
         } else {
           // Для service: сохраняем дату для cooldown
-          localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+        localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
         }
       }
       
       // Скрываем виджет после отправки
-      setTimeout(() => {
-        setIsVisible(false);
-      }, 3000);
+        setTimeout(() => {
+          setIsVisible(false);
+        }, 3000);
     } catch (err) {
       console.error('Error submitting feedback:', err);
     } finally {
@@ -134,14 +134,14 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
           localStorage.setItem(PLAN_FEEDBACK_SENT_KEY, 'true');
         } else {
           // Для service: сохраняем дату для cooldown
-          localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+        localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
         }
       }
       
       // Скрываем виджет после отправки
-      setTimeout(() => {
-        setIsVisible(false);
-      }, 3000);
+        setTimeout(() => {
+          setIsVisible(false);
+        }, 3000);
     } catch (err) {
       console.error('Error submitting feedback:', err);
     } finally {
@@ -397,20 +397,20 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
         ) : (
           // Для обратной связи по плану - "Да"/"Нет"
           <>
-            <button
+        <button
               onClick={handleThumbsDown}
-              disabled={isSubmitting}
-              style={{
+          disabled={isSubmitting}
+          style={{
                 padding: '12px 24px',
-                borderRadius: '12px',
-                border: '2px solid rgba(10, 95, 89, 0.3)',
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                color: '#0A5F59',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600,
-                fontSize: '16px',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                opacity: isSubmitting ? 0.5 : 1,
+            borderRadius: '12px',
+            border: '2px solid rgba(10, 95, 89, 0.3)',
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            color: '#0A5F59',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 600,
+            fontSize: '16px',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            opacity: isSubmitting ? 0.5 : 1,
                 transition: 'all 0.2s',
               }}
               onMouseEnter={(e) => {
@@ -422,25 +422,25 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
                 e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              Нет
-            </button>
-            <button
+          }}
+        >
+          Нет
+        </button>
+        <button
               onClick={handleThumbsUp}
-              disabled={isSubmitting}
-              style={{
+          disabled={isSubmitting}
+          style={{
                 padding: '12px 24px',
-                borderRadius: '12px',
-                border: 'none',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600,
-                fontSize: '16px',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                opacity: isSubmitting ? 0.5 : 1,
-                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+            borderRadius: '12px',
+            border: 'none',
+            backgroundColor: '#0A5F59',
+            color: 'white',
+            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 600,
+            fontSize: '16px',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            opacity: isSubmitting ? 0.5 : 1,
+            boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
                 transition: 'all 0.2s',
               }}
               onMouseEnter={(e) => {
@@ -452,10 +452,10 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = '#0A5F59';
                 e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              Да
-            </button>
+          }}
+        >
+          Да
+        </button>
           </>
         )}
       </div>

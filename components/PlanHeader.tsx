@@ -35,21 +35,21 @@ export function PlanHeader({ mainGoals }: PlanHeaderProps) {
       border: '1px solid rgba(10, 95, 89, 0.1)',
     }}>
       <div>
-        <h1 style={{
-          fontSize: '28px',
-          fontWeight: 'bold',
-          color: '#0A5F59',
-          marginBottom: '8px',
-        }}>
-          Твой план ухода на 28 дней
-        </h1>
-        <p style={{
-          fontSize: '16px',
-          color: '#6B7280',
-          lineHeight: '1.6',
-        }}>
-          Цели: {goalsText}
-        </p>
+          <h1 style={{
+            fontSize: '28px',
+            fontWeight: 'bold',
+            color: '#0A5F59',
+            marginBottom: '8px',
+          }}>
+            Твой план ухода на 28 дней
+          </h1>
+          <p style={{
+            fontSize: '16px',
+            color: '#6B7280',
+            lineHeight: '1.6',
+          }}>
+            Цели: {goalsText}
+          </p>
       </div>
     </div>
   );

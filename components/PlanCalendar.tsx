@@ -116,12 +116,12 @@ export function PlanCalendar({
         </div>
       </div>
 
-      {/* Дни (горизонтальный скролл) */}
+      {/* Дни (горизонтальный скролл) - увеличенный размер */}
       <div style={{
         display: 'flex',
-        gap: '8px',
+        gap: '12px',
         overflowX: 'auto',
-        paddingBottom: '8px',
+        paddingBottom: '12px',
         scrollbarWidth: 'thin',
       }}>
         {days.map((day) => {
@@ -134,9 +134,9 @@ export function PlanCalendar({
               key={day}
               onClick={() => onDaySelect(day)}
               style={{
-                minWidth: '50px',
-                height: '50px',
-                borderRadius: '12px',
+                minWidth: '70px',
+                height: '70px',
+                borderRadius: '16px',
                 border: isCurrent
                   ? `3px solid #0A5F59`
                   : `2px solid ${PHASE_BORDER_COLORS[phase]}`,
@@ -150,8 +150,8 @@ export function PlanCalendar({
                   : isCurrent
                   ? '#0A5F59'
                   : '#374151',
-                fontSize: '14px',
-                fontWeight: isCurrent ? '600' : '500',
+                fontSize: '18px',
+                fontWeight: isCurrent ? '700' : '600',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 display: 'flex',
@@ -175,7 +175,7 @@ export function PlanCalendar({
             >
               <span>{day}</span>
               {isCompleted && (
-                <span style={{ fontSize: '12px' }}>✓</span>
+                <span style={{ fontSize: '16px' }}>✓</span>
               )}
             </button>
           );

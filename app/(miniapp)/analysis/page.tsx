@@ -264,12 +264,12 @@ export default function AnalysisPage() {
             display: 'inline-block',
           }}
         >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '120px',
-              marginBottom: '8px',
+        <img
+          src="/skiniq-logo.png"
+          alt="SkinIQ"
+          style={{
+            height: '120px',
+            marginBottom: '8px',
               transition: 'transform 0.2s',
             }}
             onMouseEnter={(e) => {
@@ -277,8 +277,8 @@ export default function AnalysisPage() {
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
+          }}
+        />
         </button>
       </div>
 

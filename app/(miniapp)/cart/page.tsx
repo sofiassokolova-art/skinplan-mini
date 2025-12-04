@@ -116,13 +116,13 @@ export default function CartPage() {
             display: 'inline-block',
           }}
         >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
+        <img
+          src="/skiniq-logo.png"
+          alt="SkinIQ"
+          style={{
+            height: '140px',
+            marginTop: '8px',
+            marginBottom: '8px',
               transition: 'transform 0.2s',
             }}
             onMouseEnter={(e) => {
@@ -130,8 +130,8 @@ export default function CartPage() {
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
+          }}
+        />
         </button>
       </div>
       {/* Header */}

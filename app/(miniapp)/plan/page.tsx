@@ -268,16 +268,16 @@ export default function PlanPage() {
                 let addedCount = 0;
                 productsData.products.forEach((p: any) => {
                   if (p && p.id) {
-                    productsMap.set(p.id, {
-                      id: p.id,
+                  productsMap.set(p.id, {
+                    id: p.id,
                       name: p.name || 'Неизвестный продукт',
-                      brand: { name: p.brand?.name || p.brand || 'Unknown' },
+                    brand: { name: p.brand?.name || p.brand || 'Unknown' },
                       price: p.price || null,
-                      imageUrl: p.imageUrl || null,
-                      description: p.description || p.descriptionUser || null,
-                    });
+                    imageUrl: p.imageUrl || null,
+                    description: p.description || p.descriptionUser || null,
+                  });
                     addedCount++;
-                  }
+              }
                 });
                 productsLoadedFromAPI = productsMap.size > 0;
                 console.log(`✅ Products added to map from API: ${addedCount}/${productsData.products.length}, total size: ${productsMap.size}`);
@@ -337,7 +337,7 @@ export default function PlanPage() {
             }
           });
           console.log('⚠️ Products loaded from plan fallback, map size:', productsMap.size);
-        }
+            }
         
         // Если после всех попыток продуктов все еще нет - это ошибка
         if (productsMap.size === 0) {
@@ -375,7 +375,7 @@ export default function PlanPage() {
       // Важно: Map не сериализуется в JSON, поэтому сохраняем как есть
       // При передаче через setState Map сохраняется корректно
       console.log('💾 Setting planData with productsMap size:', productsMap.size);
-      
+
       setPlanData({
         plan28: plan28 || undefined,
         weeks: plan.weeks || [],
@@ -458,12 +458,12 @@ export default function PlanPage() {
         console.log('🔄 Attempting to load plan from cache...');
         plan = await api.getPlan() as any;
         console.log('✅ Plan loaded from cache:', {
-          hasPlan28: !!plan?.plan28,
-          hasWeeks: !!plan?.weeks,
-          weeksCount: plan?.weeks?.length || 0,
-          plan28DaysCount: plan?.plan28?.days?.length || 0,
+            hasPlan28: !!plan?.plan28,
+            hasWeeks: !!plan?.weeks,
+            weeksCount: plan?.weeks?.length || 0,
+            plan28DaysCount: plan?.plan28?.days?.length || 0,
           planKeys: Object.keys(plan || {}),
-        });
+          });
       } catch (planError: any) {
         console.error('❌ Error loading plan from cache:', {
           status: planError?.status,
@@ -566,14 +566,14 @@ export default function PlanPage() {
           if (profileCheck) {
             // Профиль есть - пробуем регенерировать план
             console.log('🔄 Plan not in cache but profile exists - regenerating immediately...');
-            try {
-              const generatedPlan = await api.generatePlan() as any;
-              if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+          try {
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
                 console.log('✅ Plan regenerated successfully, processing...');
-                await processPlanData(generatedPlan);
-                return;
-              }
-            } catch (generateError: any) {
+              await processPlanData(generatedPlan);
+              return;
+            }
+          } catch (generateError: any) {
               console.error('❌ Failed to regenerate plan:', generateError);
               // Если регенерация не удалась, но план должен существовать - показываем обычный лоадер
               console.error('❌ Plan exists but failed to regenerate - showing loading state');
@@ -681,7 +681,7 @@ export default function PlanPage() {
         } else {
           // Профиля нет - показываем ошибку профиля
           setError('no_profile');
-          setLoading(false);
+      setLoading(false);
           return;
         }
       } catch (checkError) {

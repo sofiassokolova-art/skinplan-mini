@@ -538,14 +538,14 @@ export async function POST(request: NextRequest) {
             const newProducts = fallbackProducts.filter(p => !existingIds.has(p.id));
             products = [...products, ...newProducts];
           }
-
+          
           // Сортируем в памяти по приоритету и isHero
           const sorted = products.sort((a: any, b: any) => {
             if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
             if (a.priority !== b.priority) return b.priority - a.priority;
             return b.createdAt.getTime() - a.createdAt.getTime();
           });
-
+          
           return sorted.slice(0, stepConfig.max_items || 3);
         };
 

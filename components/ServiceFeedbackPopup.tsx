@@ -63,7 +63,7 @@ export function ServiceFeedbackPopup() {
       
       // Сохраняем дату отправки и флаг отправки через попап
       if (typeof window !== 'undefined') {
-        localStorage.setItem(LAST_SERVICE_FEEDBACK_KEY, new Date().toISOString());
+      localStorage.setItem(LAST_SERVICE_FEEDBACK_KEY, new Date().toISOString());
         localStorage.setItem(SERVICE_FEEDBACK_SENT_KEY, 'true');
       }
       
@@ -144,7 +144,7 @@ export function ServiceFeedbackPopup() {
         >
           ×
         </button>
-        <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="service" />
+      <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="service" />
       </div>
     </div>
   );

@@ -349,62 +349,62 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
 
             {/* Обратная связь - показывается только если еще не заполнена */}
             {!feedback || feedback === 'not_bought' ? (
-              <div style={{ marginTop: '16px' }}>
-                <div
+            <div style={{ marginTop: '16px' }}>
+              <div
+                style={{
+                  fontSize: '13px',
+                  color: '#475467',
+                  marginBottom: '8px',
+                }}
+              >
+                Как вам это средство?
+              </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => handleFeedback('bought_love')}
+                  disabled={loading}
+                    title="Понравилось"
                   style={{
-                    fontSize: '13px',
-                    color: '#475467',
-                    marginBottom: '8px',
+                      padding: '12px 24px',
+                    borderRadius: '12px',
+                      border: '2px solid rgba(10, 95, 89, 0.2)',
+                      backgroundColor: 'transparent',
+                      color: '#0A5F59',
+                      fontSize: '24px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
-                  Как вам это средство?
-                </div>
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                  <button
-                    onClick={() => handleFeedback('bought_love')}
-                    disabled={loading}
-                    title="Понравилось"
-                    style={{
-                      padding: '12px 24px',
-                      borderRadius: '12px',
-                      border: '2px solid rgba(10, 95, 89, 0.2)',
-                      backgroundColor: 'transparent',
-                      color: '#0A5F59',
-                      fontSize: '24px',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      opacity: loading ? 0.6 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!loading) {
-                        e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
                     👍
-                  </button>
-                  <button
-                    onClick={() => handleFeedback('bought_bad')}
-                    disabled={loading}
-                    title="Не понравилось"
-                    style={{
+                </button>
+                <button
+                  onClick={() => handleFeedback('bought_bad')}
+                  disabled={loading}
+                  title="Не понравилось"
+                  style={{
                       padding: '12px 24px',
-                      borderRadius: '12px',
+                    borderRadius: '12px',
                       border: '2px solid rgba(10, 95, 89, 0.2)',
                       backgroundColor: 'transparent',
                       color: '#0A5F59',
                       fontSize: '24px',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      opacity: loading ? 0.6 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                       transition: 'all 0.2s',
                     }}
                     onMouseEnter={(e) => {
@@ -414,10 +414,10 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
+                  }}
+                >
                     👎
-                  </button>
+                </button>
                 </div>
               </div>
             ) : null}

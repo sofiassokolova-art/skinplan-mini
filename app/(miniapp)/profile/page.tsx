@@ -345,13 +345,13 @@ export default function PersonalCabinet() {
             display: 'inline-block',
           }}
         >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
+        <img
+          src="/skiniq-logo.png"
+          alt="SkinIQ"
+          style={{
+            height: '140px',
+            marginTop: '8px',
+            marginBottom: '8px',
               transition: 'transform 0.2s',
             }}
             onMouseEnter={(e) => {
@@ -359,8 +359,8 @@ export default function PersonalCabinet() {
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
+          }}
+        />
         </button>
       </div>
 
@@ -627,14 +627,14 @@ export default function PersonalCabinet() {
               >
                 <button
                   onClick={() => setExpandedFAQ(expandedFAQ === index ? false : index)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
+                style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
                     padding: '8px 0',
                     textAlign: 'left',
                   }}
@@ -672,7 +672,7 @@ export default function PersonalCabinet() {
                 )}
               </div>
             ))}
-          </div>
+            </div>
         </div>
 
         {/* Поддержка */}

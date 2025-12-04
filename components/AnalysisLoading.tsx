@@ -59,12 +59,12 @@ export function AnalysisLoading({ onComplete, duration = 6000 }: AnalysisLoading
             display: 'inline-block',
           }}
         >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '120px',
-              marginBottom: '24px',
+        <img
+          src="/skiniq-logo.png"
+          alt="SkinIQ"
+          style={{
+            height: '120px',
+            marginBottom: '24px',
               transition: 'transform 0.2s',
             }}
             onMouseEnter={(e) => {
@@ -72,8 +72,8 @@ export function AnalysisLoading({ onComplete, duration = 6000 }: AnalysisLoading
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
+          }}
+        />
         </button>
       </div>
 

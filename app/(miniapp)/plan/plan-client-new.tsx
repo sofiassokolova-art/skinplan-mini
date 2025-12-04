@@ -4,11 +4,11 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PlanHeader } from '@/components/PlanHeader';
-import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import { GoalProgressInfographic } from '@/components/GoalProgressInfographic';
+import { PlanInfographic } from '@/components/PlanInfographic';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { PaymentGate } from '@/components/PaymentGate';
 import { ReplaceProductModal } from '@/components/ReplaceProductModal';
@@ -42,17 +42,36 @@ export function PlanPageClientNew({
   // Защита от undefined products
   const products = productsProp || new Map();
   const router = useRouter();
-  const [selectedDay, setSelectedDay] = useState(initialCurrentDay);
+  const searchParams = useSearchParams();
+  
+  // Проверяем параметр day из URL
+  const dayFromUrl = searchParams?.get('day');
+  const initialDay = dayFromUrl ? parseInt(dayFromUrl, 10) : initialCurrentDay;
+  const validInitialDay = (initialDay >= 1 && initialDay <= 28) ? initialDay : initialCurrentDay;
+  
+  const [selectedDay, setSelectedDay] = useState(validInitialDay);
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set(wishlist));
   const [completedDays, setCompletedDays] = useState<Set<number>>(new Set(initialCompletedDays));
   const [completedMorning, setCompletedMorning] = useState(false);
   const [completedEvening, setCompletedEvening] = useState(false);
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
   const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
+  const [showAllProducts, setShowAllProducts] = useState(false);
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
   }, [plan28.days, selectedDay]);
+
+  // Обновляем выбранный день при изменении параметра в URL
+  useEffect(() => {
+    const dayFromUrl = searchParams?.get('day');
+    if (dayFromUrl) {
+      const day = parseInt(dayFromUrl, 10);
+      if (day >= 1 && day <= 28) {
+        setSelectedDay(day);
+      }
+    }
+  }, [searchParams]);
 
   // Загружаем данные корзине при монтировании
   useEffect(() => {
@@ -184,7 +203,7 @@ export function PlanPageClientNew({
         toast.error('Откройте приложение через Telegram Mini App');
         return;
       }
-
+      
       // Заменяем продукт через API
       await api.replaceProductInPlan(oldProductId, newProductId);
       
@@ -258,6 +277,9 @@ export function PlanPageClientNew({
       {/* Header с целями */}
       <PlanHeader mainGoals={plan28.mainGoals} />
 
+      {/* Инфографика плана */}
+      <PlanInfographic plan28={plan28} products={products} />
+
       {/* Основной контент плана - обернут в PaymentGate только при первой оплате */}
       {needsFirstPayment ? (
         <PaymentGate
@@ -276,17 +298,59 @@ export function PlanPageClientNew({
             currentDay={selectedDay}
           />
 
-          {/* Календарная навигация */}
+          {/* Ссылка на календарь */}
           <div style={{ marginBottom: '24px' }}>
-            <PlanCalendar
-              currentDay={selectedDay}
-              completedDays={Array.from(completedDays)}
-              onDaySelect={setSelectedDay}
-            />
+            <button
+              onClick={() => router.push('/plan/calendar')}
+              style={{
+                width: '100%',
+                padding: '20px',
+                backgroundColor: 'white',
+                borderRadius: '20px',
+                border: '2px solid #0A5F59',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#F5FFFC';
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <div>
+                <div style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#111827',
+                  marginBottom: '4px',
+                }}>
+                  День {selectedDay} из 28
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: '#6B7280',
+                }}>
+                  Нажмите, чтобы выбрать другой день
+                </div>
+              </div>
+              <div style={{
+                fontSize: '24px',
+                color: '#0A5F59',
+              }}>
+                →
+              </div>
+            </button>
           </div>
 
           {/* Переключатель между днем и всеми продуктами */}
-          <div style={{
+          <div style={{ 
             display: 'flex',
             gap: '8px',
             marginBottom: '24px',
@@ -358,24 +422,66 @@ export function PlanPageClientNew({
           {/* Блок обратной связи в конце страницы */}
           <div style={{ marginTop: '48px', marginBottom: '24px' }}>
             <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
-          </div>
+      </div>
         </PaymentGate>
       ) : (
         <>
-          {/* Инфографика прогресса по целям */}
-          <GoalProgressInfographic
-            goals={plan28.mainGoals}
-            currentDay={selectedDay}
-          />
+      {/* Инфографика прогресса по целям */}
+      <GoalProgressInfographic
+        goals={plan28.mainGoals}
+        currentDay={selectedDay}
+      />
 
-          {/* Календарная навигация */}
-          <div style={{ marginBottom: '24px' }}>
-            <PlanCalendar
-              currentDay={selectedDay}
-              completedDays={Array.from(completedDays)}
-              onDaySelect={setSelectedDay}
-            />
+      {/* Ссылка на календарь */}
+      <div style={{ marginBottom: '24px' }}>
+        <button
+          onClick={() => router.push('/plan/calendar')}
+          style={{
+            width: '100%',
+            padding: '20px',
+            backgroundColor: 'white',
+            borderRadius: '20px',
+            border: '2px solid #0A5F59',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#F5FFFC';
+            e.currentTarget.style.transform = 'scale(1.02)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+        >
+          <div>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827',
+              marginBottom: '4px',
+            }}>
+              День {selectedDay} из 28
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: '#6B7280',
+            }}>
+              Нажмите, чтобы выбрать другой день
+            </div>
           </div>
+          <div style={{
+            fontSize: '24px',
+            color: '#0A5F59',
+          }}>
+            →
+          </div>
+        </button>
+      </div>
 
           {/* Переключатель между днем и всеми продуктами */}
           <div style={{
@@ -434,23 +540,23 @@ export function PlanPageClientNew({
               onAddToCart={handleAddToCart}
             />
           ) : (
-            <DayView
-              dayPlan={currentDayPlan}
-              mainGoals={plan28.mainGoals}
-              products={products}
-              wishlistProductIds={wishlistProductIds}
-              cartQuantities={cartQuantities}
-              onToggleWishlist={toggleWishlist}
-              onAddToCart={handleAddToCart}
-              onReplace={handleReplace}
-              // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
-            />
+      <DayView
+        dayPlan={currentDayPlan}
+        mainGoals={plan28.mainGoals}
+        products={products}
+        wishlistProductIds={wishlistProductIds}
+        cartQuantities={cartQuantities}
+        onToggleWishlist={toggleWishlist}
+        onAddToCart={handleAddToCart}
+        onReplace={handleReplace}
+        // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
+      />
           )}
 
-          {/* Блок обратной связи в конце страницы */}
-          <div style={{ marginTop: '48px', marginBottom: '24px' }}>
-            <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
-          </div>
+      {/* Блок обратной связи в конце страницы */}
+      <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+        <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
+      </div>
         </>
       )}
 

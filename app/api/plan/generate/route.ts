@@ -1765,7 +1765,7 @@ export async function GET(request: NextRequest) {
     logger.info('Plan generated - RecommendationSession should be created from recommendation rules, not from plan', {
           userId,
       planProductsCount: plan.products?.length || 0,
-    });
+      });
     
     // Сохраняем в кэш
     logger.info('Caching plan', { userId, profileVersion: profile.version });
