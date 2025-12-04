@@ -87,6 +87,15 @@ export default function PlanPage() {
     try {
       setLoading(true);
       setError(null);
+      
+      // Проверяем, что план валиден
+      if (!plan) {
+        throw new Error('Plan data is null or undefined');
+      }
+      
+      if (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0)) {
+        throw new Error('Plan has no valid data (no plan28 and no weeks)');
+      }
 
       // Получаем профиль для scores и другой информации
       // НЕ требуем профиль для показа плана, если план уже есть
@@ -394,16 +403,47 @@ export default function PlanPage() {
 
       setLoading(false);
     } catch (err: any) {
-      console.error('Error processing plan data:', err);
+      console.error('❌ Error processing plan data:', err);
+      console.error('   Error message:', err?.message);
+      console.error('   Error stack:', err?.stack);
+      
+      // Логируем ошибку в БД для техподдержки
+      try {
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+            },
+            body: JSON.stringify({
+              level: 'error',
+              message: `Plan: Error processing plan data - ${err?.message || 'Unknown error'}`,
+              context: {
+                error: err?.message || String(err),
+                stack: err?.stack,
+                planHasPlan28: !!plan?.plan28,
+                planHasWeeks: !!plan?.weeks,
+                url: window.location.href,
+              },
+              url: window.location.href,
+              userAgent: navigator.userAgent,
+            }),
+          }).catch(logErr => console.warn('Failed to log error:', logErr));
+        }
+      } catch (logError) {
+        console.warn('Failed to save error log:', logError);
+      }
+      
       // При ошибке обработки плана не показываем экран генерации
       // Вместо этого пытаемся загрузить план заново или показываем обычный лоадер
       console.error('❌ Error processing plan, attempting to reload...');
       setLoading(true);
       setError(null);
-      // Пробуем загрузить план еще раз
+      // Пробуем загрузить план еще раз через небольшую задержку
       setTimeout(() => {
-        loadPlan();
-      }, 1000);
+        loadPlan(0);
+      }, 2000);
     }
   };
 
