@@ -9,21 +9,15 @@ interface PlanHeaderProps {
 }
 
 export function PlanHeader({ mainGoals }: PlanHeaderProps) {
-
-  const goalsText = mainGoals.length > 0
-    ? mainGoals.map(goal => {
-        const goalLabels: Record<string, string> = {
-          acne: 'акне',
-          pores: 'поры',
-          pigmentation: 'пигментация',
-          barrier: 'барьер',
-          dehydration: 'обезвоженность',
-          wrinkles: 'морщины',
-          antiage: 'антиэйдж',
-        };
-        return goalLabels[goal] || goal;
-      }).join(', ')
-    : 'улучшение состояния кожи';
+  const goalLabels: Record<string, string> = {
+    acne: 'Акне',
+    pores: 'Поры',
+    pigmentation: 'Пигментация',
+    barrier: 'Барьер',
+    dehydration: 'Обезвоженность',
+    wrinkles: 'Морщины',
+    antiage: 'Антиэйдж',
+  };
 
   return (
     <div style={{
@@ -39,17 +33,34 @@ export function PlanHeader({ mainGoals }: PlanHeaderProps) {
             fontSize: '28px',
             fontWeight: 'bold',
             color: '#0A5F59',
-            marginBottom: '8px',
+            marginBottom: '16px',
           }}>
             Твой план ухода на 28 дней
           </h1>
-          <p style={{
-            fontSize: '16px',
-            color: '#6B7280',
-            lineHeight: '1.6',
-          }}>
-            Цели: {goalsText}
-          </p>
+          {mainGoals.length > 0 && (
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+            }}>
+              {mainGoals.map((goal) => (
+                <span
+                  key={goal}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '16px',
+                    backgroundColor: '#E8FBF7',
+                    color: '#0A5F59',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    border: '1px solid rgba(10, 95, 89, 0.2)',
+                  }}
+                >
+                  {goalLabels[goal] || goal}
+                </span>
+              ))}
+            </div>
+          )}
       </div>
     </div>
   );

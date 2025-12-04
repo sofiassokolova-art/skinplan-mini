@@ -76,7 +76,7 @@ export function PlanPageClientNew({
   const [completedEvening, setCompletedEvening] = useState(false);
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
   const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
-  const [showAllProducts, setShowAllProducts] = useState(false);
+  const [showAllProducts, setShowAllProducts] = useState(true); // По умолчанию показываем все средства
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
@@ -294,6 +294,41 @@ export function PlanPageClientNew({
       padding: '20px',
       paddingBottom: '100px',
     }}>
+      {/* Логотип */}
+      <div style={{
+        padding: '20px',
+        textAlign: 'center',
+        marginBottom: '20px',
+      }}>
+        <button
+          onClick={() => router.push('/')}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'inline-block',
+          }}
+        >
+          <img
+            src="/skiniq-logo.png"
+            alt="SkinIQ"
+            style={{
+              height: '140px',
+              marginTop: '8px',
+              marginBottom: '8px',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          />
+        </button>
+      </div>
+
       {/* Header с целями */}
       <PlanHeader mainGoals={plan28.mainGoals} />
 
@@ -422,8 +457,8 @@ export function PlanPageClientNew({
             </button>
           </div>
 
-          {/* Отображение выбранного дня или всех продуктов */}
-          {showAllProducts ? (
+          {/* Отображение только всех продуктов (детальная информация о дне только в календаре) */}
+          {showAllProducts && (
             <AllProductsList
               plan28={plan28}
               products={products}
@@ -432,18 +467,49 @@ export function PlanPageClientNew({
               onToggleWishlist={toggleWishlist}
               onAddToCart={handleAddToCart}
             />
-          ) : (
-            <DayView
-              dayPlan={currentDayPlan}
-              mainGoals={plan28.mainGoals}
-              products={products}
-              wishlistProductIds={wishlistProductIds}
-              cartQuantities={cartQuantities}
-              onToggleWishlist={toggleWishlist}
-              onAddToCart={handleAddToCart}
-              onReplace={handleReplace}
-              // Чекбоксы "Выполнено" не нужны на странице плана - они только на главной
-            />
+          )}
+          
+          {!showAllProducts && (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '24px',
+              padding: '24px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              border: '1px solid rgba(10, 95, 89, 0.1)',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#0A5F59',
+                marginBottom: '12px',
+              }}>
+                День {selectedDay}
+              </div>
+              <div style={{
+                fontSize: '14px',
+                color: '#6B7280',
+                marginBottom: '20px',
+              }}>
+                Для просмотра детальной информации о дне перейдите в календарь
+              </div>
+              <button
+                onClick={() => router.push('/plan/calendar')}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+                }}
+              >
+                Открыть календарь
+              </button>
+            </div>
           )}
 
           {/* Блок обратной связи в конце страницы */}
@@ -458,6 +524,31 @@ export function PlanPageClientNew({
         goals={plan28.mainGoals}
         currentDay={selectedDay}
       />
+
+      {/* Блок текущей стадии */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '24px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        border: '1px solid rgba(10, 95, 89, 0.1)',
+      }}>
+        <div style={{
+          fontSize: '16px',
+          color: '#6B7280',
+          marginBottom: '8px',
+        }}>
+          Сейчас вы на стадии:
+        </div>
+        <div style={{
+          fontSize: '20px',
+          fontWeight: 'bold',
+          color: '#0A5F59',
+        }}>
+          {getPhaseLabel(getPhaseForDay(selectedDay))}
+        </div>
+      </div>
 
       {/* Ссылка на календарь */}
       <div style={{ marginBottom: '24px' }}>

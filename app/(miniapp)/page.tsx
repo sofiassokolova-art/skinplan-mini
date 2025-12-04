@@ -1038,53 +1038,6 @@ export default function HomePage() {
         }}>
           Время заботиться о своей коже
         </div>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => {
-              try {
-                router.push('/plan');
-              } catch (err) {
-                console.error('Error navigating to plan:', err);
-                setError('Ошибка при переходе к плану');
-              }
-            }}
-            style={{
-              marginTop: '16px',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-            }}
-          >
-            📅 28-дневный план →
-          </button>
-          <button
-            onClick={() => {
-              // Устанавливаем флаг о перепрохождении анкеты
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('is_retaking_quiz', 'true');
-              }
-              router.push('/quiz');
-            }}
-            style={{
-              marginTop: '16px',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(10, 95, 89, 0.1)',
-              color: '#0A5F59',
-              border: '2px solid #0A5F59',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-            }}
-          >
-            🔄 Перепройти анкету
-          </button>
-        </div>
         {recommendations?.profile_summary && (
           <div style={{
             fontSize: '16px',
@@ -1319,6 +1272,62 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Кнопки внизу страницы */}
+      <div style={{
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        maxWidth: '600px',
+        margin: '0 auto',
+      }}>
+        <button
+          onClick={() => {
+            try {
+              router.push('/plan');
+            } catch (err) {
+              console.error('Error navigating to plan:', err);
+              setError('Ошибка при переходе к плану');
+            }
+          }}
+          style={{
+            width: '100%',
+            padding: '16px 24px',
+            borderRadius: '12px',
+            backgroundColor: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          }}
+        >
+          28-дневный план →
+        </button>
+        <button
+          onClick={() => {
+            // Устанавливаем флаг о перепрохождении анкеты
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('is_retaking_quiz', 'true');
+            }
+            router.push('/quiz');
+          }}
+          style={{
+            width: '100%',
+            padding: '16px 24px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(10, 95, 89, 0.1)',
+            color: '#0A5F59',
+            border: '2px solid #0A5F59',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          }}
+        >
+          Перепройти анкету
+        </button>
+      </div>
 
       {/* Поп-ап для оценки плана */}
       {showFeedbackPopup && (

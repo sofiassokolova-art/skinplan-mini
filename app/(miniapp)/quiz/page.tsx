@@ -60,6 +60,18 @@ export default function QuizPage() {
   } | null>(null);
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [showRetakeScreen, setShowRetakeScreen] = useState(false); // Флаг: показывать экран выбора тем для повторного прохождения
+  
+  // Проверяем флаг из localStorage при монтировании
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isRetakingFromStorage = localStorage.getItem('is_retaking_quiz') === 'true';
+      if (isRetakingFromStorage) {
+        setIsRetakingQuiz(true);
+        setShowRetakeScreen(true);
+        console.log('✅ Флаг перепрохождения найден в localStorage, показываем экран выбора тем');
+      }
+    }
+  }, []);
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
   const hasResumedRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
   const [isStartingOver, setIsStartingOver] = useState(false); // Флаг: пользователь нажал "Начать заново"

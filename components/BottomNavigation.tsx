@@ -58,6 +58,10 @@ export default function BottomNavigation() {
     if (path === '/cart') {
       return pathname === '/cart' || (pathname.startsWith('/cart/') && !pathname.startsWith('/cart-new'));
     }
+    // Для /plan не подсвечиваем, если открыт календарь
+    if (path === '/plan') {
+      return pathname === '/plan' || (pathname.startsWith('/plan/') && !pathname.startsWith('/plan/calendar'));
+    }
     return pathname.startsWith(path);
   };
 

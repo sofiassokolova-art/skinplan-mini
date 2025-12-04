@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Форматируем продукты для клиента
+    // ВАЖНО: Используем descriptionUser для синхронизации с главной страницей
+    // На главной странице (/api/recommendations) используется product.descriptionUser
     const formattedProducts = products.map(p => ({
       id: p.id,
       name: p.name,
@@ -72,7 +74,9 @@ export async function POST(request: NextRequest) {
       price: p.price,
       volume: p.volume,
       imageUrl: p.imageUrl,
-      description: p.description || p.descriptionUser,
+      // Приоритет descriptionUser для синхронизации с главной страницей
+      description: p.descriptionUser || p.description,
+      descriptionUser: p.descriptionUser, // Явно передаем descriptionUser
       step: p.step,
       category: p.category,
       skinTypes: p.skinTypes,

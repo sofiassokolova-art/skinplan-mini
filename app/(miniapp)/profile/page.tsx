@@ -230,7 +230,7 @@ export default function PersonalCabinet() {
 
   const handleOpenSupport = () => {
     // Открываем чат с ботом через Telegram
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'skiniq_bot';
+    const botUsername = 'skinplanned_bot';
     const supportUrl = `https://t.me/${botUsername}`;
     
     if (tg?.openTelegramLink) {

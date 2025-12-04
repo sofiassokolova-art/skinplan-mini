@@ -4,6 +4,8 @@
 'use client';
 
 import type { Plan28 } from '@/lib/plan-types';
+import { getStepDescription } from '@/lib/plan-types';
+import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
 
 interface PlanInfographicProps {
   plan28: Plan28;
@@ -18,29 +20,66 @@ interface PlanInfographicProps {
 }
 
 export function PlanInfographic({ plan28, products }: PlanInfographicProps) {
-  // Собираем уникальные категории продуктов из плана
-  const productCategories = new Set<string>();
-  const uniqueProducts = new Set<number>();
+  // Собираем категории с продуктами и их описаниями
+  interface CategoryData {
+    name: string;
+    description: string;
+    products: Array<{
+      name: string;
+      brand: string;
+    }>;
+  }
+  
+  // Маппинг базовых категорий на русские названия
+  const baseCategoryMap: Record<string, string> = {
+    cleanser: 'Очищение',
+    toner: 'Тоник',
+    serum: 'Сыворотка',
+    treatment: 'Лечение',
+    moisturizer: 'Увлажнение',
+    eye_cream: 'Крем для глаз',
+    spf: 'SPF защита',
+    mask: 'Маска',
+    lip_care: 'Уход за губами',
+  };
+
+  const categoryMap = new Map<string, CategoryData>();
   
   plan28.days.forEach(day => {
     [...day.morning, ...day.evening, ...day.weekly].forEach(step => {
       if (step.productId) {
-        uniqueProducts.add(Number(step.productId));
         const product = products.get(Number(step.productId));
         if (product) {
-          // Определяем категорию по описанию или названию
-          const name = product.name.toLowerCase();
-          if (name.includes('очищ') || name.includes('cleanser')) productCategories.add('Очищение');
-          if (name.includes('тоник') || name.includes('toner')) productCategories.add('Тонизирование');
-          if (name.includes('сыворотк') || name.includes('serum')) productCategories.add('Сыворотки');
-          if (name.includes('увлажн') || name.includes('moisturizer') || name.includes('крем')) productCategories.add('Увлажнение');
-          if (name.includes('spf') || name.includes('защит') || name.includes('солнце')) productCategories.add('Защита от солнца');
-          if (name.includes('маск') || name.includes('mask')) productCategories.add('Маски');
-          if (name.includes('пилинг') || name.includes('peel')) productCategories.add('Пилинги');
+          // Определяем базовую категорию
+          const baseStep = getBaseStepFromStepCategory(step.stepCategory);
+          const categoryName = baseCategoryMap[baseStep] || baseStep;
+          
+          // Получаем описание для первого шага этой категории
+          const stepDesc = getStepDescription(step.stepCategory);
+          
+          if (!categoryMap.has(categoryName)) {
+            categoryMap.set(categoryName, {
+              name: categoryName,
+              description: stepDesc.subtitle,
+              products: [],
+            });
+          }
+          
+          const categoryData = categoryMap.get(categoryName)!;
+          // Добавляем продукт, если его еще нет
+          const productKey = `${product.brand.name} ${product.name}`;
+          if (!categoryData.products.some(p => `${p.brand} ${p.name}` === productKey)) {
+            categoryData.products.push({
+              name: product.name,
+              brand: product.brand.name,
+            });
+          }
         }
       }
     });
   });
+  
+  const categories = Array.from(categoryMap.values());
 
   const goalLabels: Record<string, string> = {
     acne: 'Акне и высыпания',
@@ -176,43 +215,81 @@ export function PlanInfographic({ plan28, products }: PlanInfographicProps) {
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px',
+          gap: '16px',
         }}>
-          {Array.from(productCategories).map((category) => (
+          {categories.map((category) => (
             <div
-              key={category}
+              key={category.name}
               style={{
-                padding: '16px',
+                padding: '20px',
                 backgroundColor: '#F5FFFC',
                 borderRadius: '12px',
                 border: '1px solid rgba(10, 95, 89, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
               }}
             >
+              {/* Название категории и описание */}
               <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                backgroundColor: '#0A5F59',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: '20px',
-                fontWeight: 'bold',
-                flexShrink: 0,
+                alignItems: 'flex-start',
+                gap: '12px',
+                marginBottom: '12px',
               }}>
-                ✓
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  backgroundColor: '#0A5F59',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  flexShrink: 0,
+                }}>
+                  ✓
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#0A5F59',
+                    marginBottom: '4px',
+                  }}>
+                    {category.name}
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#6B7280',
+                    lineHeight: '1.5',
+                  }}>
+                    {category.description}
+                  </div>
+                </div>
               </div>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#0A5F59',
-              }}>
-                {category}
-              </div>
+              
+              {/* Продукты в этой категории */}
+              {category.products.length > 0 && (
+                <div style={{
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid rgba(10, 95, 89, 0.1)',
+                }}>
+                  {category.products.map((product, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        fontSize: '14px',
+                        color: '#374151',
+                        marginBottom: idx < category.products.length - 1 ? '8px' : '0',
+                      }}
+                    >
+                      <span style={{ fontWeight: '600' }}>{product.name}</span>
+                      <span style={{ color: '#6B7280' }}> · {product.brand}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
