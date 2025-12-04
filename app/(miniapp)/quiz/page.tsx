@@ -616,6 +616,62 @@ export default function QuizPage() {
         }
       }
       
+      // Проверяем, является ли это вопросом про реакцию на ретинол (retinoid_reaction)
+      // Этот вопрос должен показываться только если на вопрос retinoid_usage ответили "Да"
+      const isRetinoidReactionQuestion = question.code === 'retinoid_reaction' ||
+                                         question.text?.toLowerCase().includes('как кожа реагировала');
+      
+      if (isRetinoidReactionQuestion) {
+        // Ищем ответ на вопрос о использовании ретинола (retinoid_usage)
+        let retinoidUsageValue: string | undefined;
+        let retinoidUsageQuestion: Question | undefined;
+        
+        for (const q of allQuestionsRaw) {
+          if (q.code === 'retinoid_usage') {
+            retinoidUsageQuestion = q;
+            if (answers[q.id]) {
+              const answerValue = Array.isArray(answers[q.id]) 
+                ? (answers[q.id] as string[])[0] 
+                : (answers[q.id] as string);
+              
+              retinoidUsageValue = answerValue;
+              
+              // Если это не похоже на текст (может быть ID), ищем опцию
+              if (q.options && q.options.length > 0) {
+                const matchingOption = q.options.find(opt => 
+                  opt.id.toString() === answerValue || 
+                  opt.value === answerValue ||
+                  opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
+                  opt.label?.toLowerCase() === answerValue?.toLowerCase()
+                );
+                if (matchingOption) {
+                  retinoidUsageValue = matchingOption.value || matchingOption.label || answerValue;
+                }
+              }
+              break;
+            }
+          }
+        }
+        
+        // Показываем вопрос только если на вопрос о ретиноле ответили "Да"
+        const answeredYes = retinoidUsageValue?.toLowerCase().includes('да') ||
+                            retinoidUsageValue?.toLowerCase() === 'yes' ||
+                            retinoidUsageValue === 'Да' ||
+                            (retinoidUsageQuestion?.options?.some(opt => 
+                              (opt.value?.toLowerCase().includes('да') || 
+                               opt.label?.toLowerCase().includes('да')) &&
+                              (answers[retinoidUsageQuestion.id] === opt.value || 
+                               answers[retinoidUsageQuestion.id] === opt.id.toString() ||
+                               answers[retinoidUsageQuestion.id] === opt.label)
+                            ));
+        
+        const shouldShow = answeredYes === true;
+        if (!shouldShow) {
+          console.log('🚫 Question filtered out (retinoid_reaction without "Да" on retinoid_usage):', question.code);
+        }
+        return shouldShow;
+      }
+      
       // Проверяем, является ли это вопросом про беременность/кормление
       const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                   question.code === 'pregnancy' ||
@@ -1115,6 +1171,62 @@ export default function QuizPage() {
       }
     }
     
+    // Проверяем, является ли это вопросом про реакцию на ретинол (retinoid_reaction)
+    // Этот вопрос должен показываться только если на вопрос retinoid_usage ответили "Да"
+    const isRetinoidReactionQuestion = question.code === 'retinoid_reaction' ||
+                                       question.text?.toLowerCase().includes('как кожа реагировала');
+    
+    if (isRetinoidReactionQuestion) {
+      // Ищем ответ на вопрос о использовании ретинола (retinoid_usage)
+      let retinoidUsageValue: string | undefined;
+      let retinoidUsageQuestion: Question | undefined;
+      
+      for (const q of allQuestionsRaw) {
+        if (q.code === 'retinoid_usage') {
+          retinoidUsageQuestion = q;
+          if (answers[q.id]) {
+            const answerValue = Array.isArray(answers[q.id]) 
+              ? (answers[q.id] as string[])[0] 
+              : (answers[q.id] as string);
+            
+            retinoidUsageValue = answerValue;
+            
+            // Если это не похоже на текст (может быть ID), ищем опцию
+            if (q.options && q.options.length > 0) {
+              const matchingOption = q.options.find(opt => 
+                opt.id.toString() === answerValue || 
+                opt.value === answerValue ||
+                opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
+                opt.label?.toLowerCase() === answerValue?.toLowerCase()
+              );
+              if (matchingOption) {
+                retinoidUsageValue = matchingOption.value || matchingOption.label || answerValue;
+              }
+            }
+            break;
+          }
+        }
+      }
+      
+      // Показываем вопрос только если на вопрос о ретиноле ответили "Да"
+      const answeredYes = retinoidUsageValue?.toLowerCase().includes('да') ||
+                          retinoidUsageValue?.toLowerCase() === 'yes' ||
+                          retinoidUsageValue === 'Да' ||
+                          (retinoidUsageQuestion?.options?.some(opt => 
+                            (opt.value?.toLowerCase().includes('да') || 
+                             opt.label?.toLowerCase().includes('да')) &&
+                            (answers[retinoidUsageQuestion.id] === opt.value || 
+                             answers[retinoidUsageQuestion.id] === opt.id.toString() ||
+                             answers[retinoidUsageQuestion.id] === opt.label)
+                          ));
+      
+      const shouldShow = answeredYes === true;
+      if (!shouldShow) {
+        console.log('🚫 Question filtered out (retinoid_reaction without "Да" on retinoid_usage):', question.code);
+      }
+      return shouldShow;
+    }
+    
     // Проверяем, является ли это вопросом про беременность/кормление
     const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                 question.code === 'pregnancy' ||
@@ -1275,6 +1387,55 @@ export default function QuizPage() {
             question.text?.toLowerCase().includes('сколько вам лет')) {
           return false;
         }
+      }
+      
+      // Проверяем, является ли это вопросом про реакцию на ретинол (retinoid_reaction)
+      const isRetinoidReactionQuestion = question.code === 'retinoid_reaction' ||
+                                         question.text?.toLowerCase().includes('как кожа реагировала');
+      
+      if (isRetinoidReactionQuestion) {
+        // Ищем ответ на вопрос о использовании ретинола (retinoid_usage)
+        let retinoidUsageValue: string | undefined;
+        let retinoidUsageQuestion: Question | undefined;
+        
+        for (const q of allQuestionsRaw) {
+          if (q.code === 'retinoid_usage') {
+            retinoidUsageQuestion = q;
+            if (answers[q.id]) {
+              const answerValue = Array.isArray(answers[q.id]) 
+                ? (answers[q.id] as string[])[0] 
+                : (answers[q.id] as string);
+              
+              retinoidUsageValue = answerValue;
+              
+              if (q.options && q.options.length > 0) {
+                const matchingOption = q.options.find(opt => 
+                  opt.id.toString() === answerValue || 
+                  opt.value === answerValue ||
+                  opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
+                  opt.label?.toLowerCase() === answerValue?.toLowerCase()
+                );
+                if (matchingOption) {
+                  retinoidUsageValue = matchingOption.value || matchingOption.label || answerValue;
+                }
+              }
+              break;
+            }
+          }
+        }
+        
+        const answeredYes = retinoidUsageValue?.toLowerCase().includes('да') ||
+                            retinoidUsageValue?.toLowerCase() === 'yes' ||
+                            retinoidUsageValue === 'Да' ||
+                            (retinoidUsageQuestion?.options?.some(opt => 
+                              (opt.value?.toLowerCase().includes('да') || 
+                               opt.label?.toLowerCase().includes('да')) &&
+                              (answers[retinoidUsageQuestion.id] === opt.value || 
+                               answers[retinoidUsageQuestion.id] === opt.id.toString() ||
+                               answers[retinoidUsageQuestion.id] === opt.label)
+                            ));
+        
+        return answeredYes === true;
       }
       
       const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
@@ -1790,6 +1951,57 @@ export default function QuizPage() {
     
     // Фильтруем вопросы на основе ответов
     const allQuestions = allQuestionsRaw.filter((question) => {
+      // Проверяем, является ли это вопросом про реакцию на ретинол (retinoid_reaction)
+      const isRetinoidReactionQuestion = question.code === 'retinoid_reaction' ||
+                                         question.text?.toLowerCase().includes('как кожа реагировала');
+      
+      if (isRetinoidReactionQuestion) {
+        // Ищем ответ на вопрос о использовании ретинола (retinoid_usage)
+        // Используем все ответы, включая сохраненные из savedProgress
+        const allAnswers = { ...answers, ...(savedProgress?.answers || {}) };
+        let retinoidUsageValue: string | undefined;
+        let retinoidUsageQuestion: Question | undefined;
+        
+        for (const q of allQuestionsRaw) {
+          if (q.code === 'retinoid_usage') {
+            retinoidUsageQuestion = q;
+            if (allAnswers[q.id]) {
+              const answerValue = Array.isArray(allAnswers[q.id]) 
+                ? (allAnswers[q.id] as string[])[0] 
+                : (allAnswers[q.id] as string);
+              
+              retinoidUsageValue = answerValue;
+              
+              if (q.options && q.options.length > 0) {
+                const matchingOption = q.options.find(opt => 
+                  opt.id.toString() === answerValue || 
+                  opt.value === answerValue ||
+                  opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
+                  opt.label?.toLowerCase() === answerValue?.toLowerCase()
+                );
+                if (matchingOption) {
+                  retinoidUsageValue = matchingOption.value || matchingOption.label || answerValue;
+                }
+              }
+              break;
+            }
+          }
+        }
+        
+        const answeredYes = retinoidUsageValue?.toLowerCase().includes('да') ||
+                            retinoidUsageValue?.toLowerCase() === 'yes' ||
+                            retinoidUsageValue === 'Да' ||
+                            (retinoidUsageQuestion?.options?.some(opt => 
+                              (opt.value?.toLowerCase().includes('да') || 
+                               opt.label?.toLowerCase().includes('да')) &&
+                              (allAnswers[retinoidUsageQuestion.id] === opt.value || 
+                               allAnswers[retinoidUsageQuestion.id] === opt.id.toString() ||
+                               allAnswers[retinoidUsageQuestion.id] === opt.label)
+                            ));
+        
+        return answeredYes === true;
+      }
+      
       const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
                                   question.code === 'pregnancy' ||
                                   question.text?.toLowerCase().includes('беременн') ||
