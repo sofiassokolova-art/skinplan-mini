@@ -205,7 +205,7 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
                   padding: '12px',
                   borderRadius: '12px',
                   border: 'none',
-                  backgroundColor: isInCart ? '#10B981' : '#0A5F59',
+                  backgroundColor: '#0A5F59',
                   color: 'white',
                   fontSize: '14px',
                   fontWeight: '600',
@@ -347,106 +347,80 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
               </div>
             )}
 
-            {/* Обратная связь */}
-            <div style={{ marginTop: '16px' }}>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: '#475467',
-                  marginBottom: '8px',
-                }}
-              >
-                Как вам это средство?
-              </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => handleFeedback('bought_love')}
-                  disabled={loading}
-                  title="Очень понравилось"
+            {/* Обратная связь - показывается только если еще не заполнена */}
+            {!feedback || feedback === 'not_bought' ? (
+              <div style={{ marginTop: '16px' }}>
+                <div
                   style={{
-                    flex: 1,
-                    minWidth: '60px',
-                    padding: '10px',
-                    borderRadius: '12px',
-                    border: `2px solid ${feedback === 'bought_love' ? '#EC4899' : 'rgba(10, 95, 89, 0.2)'}`,
-                    backgroundColor: feedback === 'bought_love' ? '#EC4899' : 'transparent',
-                    color: feedback === 'bought_love' ? 'white' : '#0A5F59',
-                    fontSize: '20px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.6 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  ❤️
-                </button>
-                <button
-                  onClick={() => handleFeedback('bought_ok')}
-                  disabled={loading}
-                  title="Нормально"
-                  style={{
-                    flex: 1,
-                    minWidth: '60px',
-                    padding: '10px',
-                    borderRadius: '12px',
-                    border: `2px solid ${feedback === 'bought_ok' ? '#3B82F6' : 'rgba(10, 95, 89, 0.2)'}`,
-                    backgroundColor: feedback === 'bought_ok' ? '#3B82F6' : 'transparent',
-                    color: feedback === 'bought_ok' ? 'white' : '#0A5F59',
-                    fontSize: '20px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.6 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  ✓
-                </button>
-                <button
-                  onClick={() => handleFeedback('bought_bad')}
-                  disabled={loading}
-                  title="Не понравилось"
-                  style={{
-                    flex: 1,
-                    minWidth: '60px',
-                    padding: '10px',
-                    borderRadius: '12px',
-                    border: `2px solid ${feedback === 'bought_bad' ? '#374151' : 'rgba(10, 95, 89, 0.2)'}`,
-                    backgroundColor: feedback === 'bought_bad' ? '#374151' : 'transparent',
-                    color: feedback === 'bought_bad' ? 'white' : '#0A5F59',
-                    fontSize: '20px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.6 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-              {feedback === 'not_bought' && (
-                <button
-                  onClick={() => handleFeedback('bought_love')}
-                  disabled={loading}
-                  style={{
-                    marginTop: '8px',
-                    width: '100%',
-                    padding: '10px',
-                    borderRadius: '12px',
-                    border: '2px dashed rgba(139, 92, 246, 0.3)',
-                    backgroundColor: 'transparent',
-                    color: '#8B5CF6',
                     fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: loading ? 'not-allowed' : 'pointer',
+                    color: '#475467',
+                    marginBottom: '8px',
                   }}
                 >
-                  Я уже купил(а) это средство
-                </button>
-              )}
-            </div>
+                  Как вам это средство?
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <button
+                    onClick={() => handleFeedback('bought_love')}
+                    disabled={loading}
+                    title="Понравилось"
+                    style={{
+                      padding: '12px 24px',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(10, 95, 89, 0.2)',
+                      backgroundColor: 'transparent',
+                      color: '#0A5F59',
+                      fontSize: '24px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      opacity: loading ? 0.6 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    👍
+                  </button>
+                  <button
+                    onClick={() => handleFeedback('bought_bad')}
+                    disabled={loading}
+                    title="Не понравилось"
+                    style={{
+                      padding: '12px 24px',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(10, 95, 89, 0.2)',
+                      backgroundColor: 'transparent',
+                      color: '#0A5F59',
+                      fontSize: '24px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      opacity: loading ? 0.6 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    👎
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

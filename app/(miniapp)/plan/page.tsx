@@ -451,27 +451,8 @@ export default function PlanPage() {
         console.log('✅ initData available, length:', initData.length);
       }
 
-      // СНАЧАЛА проверяем наличие профиля и прогресса - это быстрее, чем загрузка плана
-      // Если есть профиль или прогресс, значит план должен существовать
-      let hasExistingProfile = false;
-      let hasExistingProgress = false;
-      
-      try {
-        // Параллельно проверяем профиль и прогресс для ускорения
-        const [profileCheck, progressCheck] = await Promise.allSettled([
-          api.getCurrentProfile() as Promise<any>,
-          api.getPlanProgress() as Promise<any>,
-        ]);
-        
-        hasExistingProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
-        hasExistingProgress = progressCheck.status === 'fulfilled' && 
-          !!progressCheck.value && 
-          (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
-      } catch (err) {
-        // Игнорируем ошибки проверки
-      }
-
-      // Загружаем план через API с retry-логикой
+      // Загружаем план через API - сначала пытаемся из кэша
+      // НЕ делаем лишних проверок профиля/прогресса - это замедляет загрузку
       let plan;
       try {
         console.log('🔄 Attempting to load plan from cache...');
@@ -491,16 +472,18 @@ export default function PlanPage() {
           stack: planError?.stack,
         });
         
-        // Если план не найден (404), но есть профиль или прогресс - план должен существовать
-        // Пробуем регенерировать сразу, без задержек
-        if (planError?.status === 404 && (hasExistingProfile || hasExistingProgress)) {
-          console.log('🔄 Plan not in cache but profile/progress exists - regenerating immediately...');
+        // Если план не найден (404), проверяем наличие профиля и регенерируем
+        if (planError?.status === 404) {
           try {
-            const generatedPlan = await api.generatePlan() as any;
-            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-              console.log('✅ Plan regenerated successfully, processing...');
-              await processPlanData(generatedPlan);
-              return;
+            const profile = await api.getCurrentProfile() as any;
+            if (profile) {
+              console.log('🔄 Plan not in cache but profile exists - regenerating immediately...');
+              const generatedPlan = await api.generatePlan() as any;
+              if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+                console.log('✅ Plan regenerated successfully, processing...');
+                await processPlanData(generatedPlan);
+                return;
+              }
             }
           } catch (generateError: any) {
             console.error('❌ Failed to regenerate plan:', generateError);
