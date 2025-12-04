@@ -63,29 +63,77 @@ function matchesRule(profile: any, rule: Rule): boolean {
 
 /**
  * Получает продукты по фильтрам шага
+ * Улучшенная версия с поддержкой частичного совпадения step и нормализацией skinTypes
  */
 async function getProductsForStep(step: RuleStep) {
   const where: any = {
-    published: true, // Используем published вместо status
+    published: true,
+    brand: {
+      isActive: true,
+    },
   };
-
-  if (step.category && step.category.length > 0) {
-    // Проверяем и category, и step (они могут совпадать)
-    where.OR = [
-      { category: { in: step.category } },
-      { step: { in: step.category } },
-    ];
-  }
 
   // SPF универсален для всех типов кожи - не фильтруем по типу кожи
   const isSPF = step.category?.includes('spf') || step.category?.some((c: string) => c.toLowerCase().includes('spf'));
-  
-  if (step.skin_types && step.skin_types.length > 0 && !isSPF) {
-    where.skinTypes = { hasSome: step.skin_types };
+
+  // Строим условия для category/step
+  if (step.category && step.category.length > 0) {
+    const categoryConditions: any[] = [];
+    
+    for (const cat of step.category) {
+      // Точное совпадение по category
+      categoryConditions.push({ category: cat });
+      // Точное совпадение по step
+      categoryConditions.push({ step: cat });
+      // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
+      categoryConditions.push({ step: { startsWith: cat } });
+    }
+    
+    where.OR = categoryConditions;
   }
 
+  // Нормализуем skinTypes: combo -> combination_dry, combination_oily, или просто combo
+  if (step.skin_types && step.skin_types.length > 0 && !isSPF) {
+    const normalizedSkinTypes: string[] = [];
+    
+    for (const skinType of step.skin_types) {
+      normalizedSkinTypes.push(skinType);
+      // Если ищем 'combo', также ищем варианты
+      if (skinType === 'combo') {
+        normalizedSkinTypes.push('combination_dry');
+        normalizedSkinTypes.push('combination_oily');
+      }
+      // Если ищем 'dry', также ищем 'combination_dry'
+      if (skinType === 'dry') {
+        normalizedSkinTypes.push('combination_dry');
+      }
+      // Если ищем 'oily', также ищем 'combination_oily'
+      if (skinType === 'oily') {
+        normalizedSkinTypes.push('combination_oily');
+      }
+    }
+    
+    where.skinTypes = { hasSome: normalizedSkinTypes };
+  }
+
+  // Concerns: если указаны, ищем по ним, но не блокируем, если не найдено
+  // (так как многие продукты могут не иметь concerns)
+  // ВАЖНО: concerns добавляем в AND, а не в OR, чтобы не нарушить логику поиска по category/step
   if (step.concerns && step.concerns.length > 0) {
-    where.concerns = { hasSome: step.concerns };
+    // Используем OR внутри AND для concerns, чтобы не блокировать продукты без concerns
+    const concernsCondition = {
+      OR: [
+        { concerns: { hasSome: step.concerns } },
+        { concerns: { isEmpty: true } }, // Также берем продукты без concerns
+      ],
+    };
+    
+    // Если уже есть AND, добавляем к нему, иначе создаем новый
+    if (where.AND) {
+      where.AND = Array.isArray(where.AND) ? [...where.AND, concernsCondition] : [where.AND, concernsCondition];
+    } else {
+      where.AND = [concernsCondition];
+    }
   }
 
   if (step.is_non_comedogenic === true) {
@@ -96,18 +144,48 @@ async function getProductsForStep(step: RuleStep) {
     where.isFragranceFree = true;
   }
 
-  const products = await prisma.product.findMany({
-    where: {
-      ...where,
-      brand: {
-        isActive: true, // Только активные бренды
-      },
-    },
+  // Первая попытка: точный поиск
+  let products = await prisma.product.findMany({
+    where,
     include: {
       brand: true,
     },
-    take: (step.max_items || 3) * 2, // Берем больше для сортировки
+    take: (step.max_items || 3) * 2,
   });
+
+  // Если не нашли достаточно продуктов, делаем более мягкий поиск
+  if (products.length < (step.max_items || 3)) {
+    const fallbackWhere: any = {
+      published: true,
+      brand: {
+        isActive: true,
+      },
+    };
+
+    // Более мягкий поиск по category/step
+    if (step.category && step.category.length > 0) {
+      const fallbackConditions: any[] = [];
+      for (const cat of step.category) {
+        fallbackConditions.push({ category: { contains: cat } });
+        fallbackConditions.push({ step: { contains: cat } });
+      }
+      fallbackWhere.OR = fallbackConditions;
+    }
+
+    // Убираем фильтры по skinTypes и concerns для fallback
+    const fallbackProducts = await prisma.product.findMany({
+      where: fallbackWhere,
+      include: {
+        brand: true,
+      },
+      take: (step.max_items || 3) * 2,
+    });
+
+    // Объединяем результаты, убирая дубликаты
+    const existingIds = new Set(products.map(p => p.id));
+    const newProducts = fallbackProducts.filter(p => !existingIds.has(p.id));
+    products = [...products, ...newProducts];
+  }
 
   // Сортируем в памяти по приоритету и isHero
   const sorted = products.sort((a: any, b: any) => {
