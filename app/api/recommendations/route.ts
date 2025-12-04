@@ -82,13 +82,29 @@ async function getProductsForStep(step: RuleStep) {
   if (step.category && step.category.length > 0) {
     const categoryConditions: any[] = [];
     
+    // Маппинг категорий из правил в категории БД
+    const categoryMapping: Record<string, string[]> = {
+      'cream': ['moisturizer'], // В правилах используется "cream", в БД - "moisturizer"
+      'moisturizer': ['moisturizer'],
+      'cleanser': ['cleanser'],
+      'serum': ['serum'],
+      'toner': ['toner'],
+      'treatment': ['treatment'],
+      'spf': ['spf'],
+      'mask': ['mask'],
+    };
+    
     for (const cat of step.category) {
-      // Точное совпадение по category
-      categoryConditions.push({ category: cat });
-      // Точное совпадение по step
-      categoryConditions.push({ step: cat });
-      // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
-      categoryConditions.push({ step: { startsWith: cat } });
+      const normalizedCats = categoryMapping[cat] || [cat];
+      
+      for (const normalizedCat of normalizedCats) {
+        // Точное совпадение по category
+        categoryConditions.push({ category: normalizedCat });
+        // Точное совпадение по step (на случай, если в БД step = category)
+        categoryConditions.push({ step: normalizedCat });
+        // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
+        categoryConditions.push({ step: { startsWith: normalizedCat } });
+      }
     }
     
     where.OR = categoryConditions;
