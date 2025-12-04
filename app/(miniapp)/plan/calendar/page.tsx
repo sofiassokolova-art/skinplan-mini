@@ -169,21 +169,37 @@ export default function PlanCalendarPage() {
       if (planData?.plan28) {
         setPlan28(planData.plan28);
         
-        // Загружаем продукты
+        // ВАЖНО: Календарь использует продукты из плана, раскиданные на 28 дней по логике фаз
+        // План уже содержит все продукты, распределенные по дням согласно фазам:
+        // - Дни 1-7: Адаптация (adaptation)
+        // - Дни 8-21: Активная фаза (active)
+        // - Дни 22-28: Поддержка (support)
+        // Продукты распределяются автоматически при генерации плана
+        
+        // Загружаем продукты из плана (все продукты из всех дней)
         const allProductIds = new Set<number>();
         planData.plan28.days.forEach((day: DayPlan) => {
+          // Утренние шаги
           day.morning.forEach(step => {
             if (step.productId) allProductIds.add(Number(step.productId));
             step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
           });
+          // Вечерние шаги
           day.evening.forEach(step => {
             if (step.productId) allProductIds.add(Number(step.productId));
             step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
           });
+          // Еженедельные шаги (маски, пилинги)
           day.weekly.forEach(step => {
             if (step.productId) allProductIds.add(Number(step.productId));
             step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
           });
+        });
+        
+        console.log('📅 Calendar: Products from plan', {
+          totalDays: planData.plan28.days.length,
+          totalProductIds: allProductIds.size,
+          productIds: Array.from(allProductIds).slice(0, 10),
         });
 
         if (allProductIds.size > 0) {
