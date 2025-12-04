@@ -21,7 +21,7 @@ interface SkinIssue {
 /**
  * Вычисляет проблемы кожи на основе профиля и ответов
  */
-function calculateSkinIssues(
+export function calculateSkinIssues(
   profile: any,
   userAnswers: any[],
   skinScores: any[]

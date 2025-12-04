@@ -260,8 +260,8 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // Вычисляем проблемы кожи для синхронизации ключевых проблем с /analysis
   const issues = calculateSkinIssues(profile, userAnswers, skinScores);
   const keyProblems = issues
-    .filter(i => i.severity_label === 'критично' || i.severity_label === 'плохо')
-    .map(i => i.name);
+    .filter((i: any) => i.severity_label === 'критично' || i.severity_label === 'плохо')
+    .map((i: any) => i.name);
   
   logger.debug('Skin analysis scores', { 
     scores: skinScores.map(s => ({ title: s.title, value: s.value, level: s.level })),
