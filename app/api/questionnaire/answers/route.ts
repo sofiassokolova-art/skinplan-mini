@@ -478,13 +478,33 @@ export async function POST(request: NextRequest) {
           // Фильтрация по активным ингредиентам (если указано в правиле)
           // ВАЖНО: Если продуктов с указанными ингредиентами нет, не блокируем поиск - используем fallback
           if (stepConfig.active_ingredients && Array.isArray(stepConfig.active_ingredients) && stepConfig.active_ingredients.length > 0) {
+            // Нормализуем названия ингредиентов: убираем проценты, дополнительные слова
+            const normalizeIngredient = (ing: string): string[] => {
+              let normalized = ing.replace(/\s*\d+[–\-]\d+\s*%/gi, '');
+              normalized = normalized.replace(/\s*\d+\s*%/gi, '');
+              normalized = normalized.replace(/\s*%\s*/gi, '');
+              normalized = normalized.split('(')[0].split(',')[0].trim();
+              normalized = normalized.toLowerCase().trim();
+              
+              const variants = [normalized];
+              if (normalized.includes('_')) {
+                variants.push(normalized.replace(/_/g, ''));
+              }
+              
+              return variants;
+            };
+            
+            const normalizedIngredients: string[] = [];
+            for (const ingredient of stepConfig.active_ingredients) {
+              const variants = normalizeIngredient(ingredient);
+              normalizedIngredients.push(...variants);
+            }
+            
             const activeIngredientsCondition = {
               OR: [
-                // Продукты с указанными ингредиентами
-                ...stepConfig.active_ingredients.map((ingredient: string) => ({
+                ...normalizedIngredients.map((ingredient: string) => ({
                   activeIngredients: { has: ingredient },
                 })),
-                // Также берем продукты без activeIngredients (fallback)
                 { activeIngredients: { isEmpty: true } },
               ],
             };
@@ -502,8 +522,40 @@ export async function POST(request: NextRequest) {
             include: {
               brand: true,
             },
-            take: (stepConfig.max_items || 3) * 2,
+            take: (stepConfig.max_items || 3) * 3,
           });
+
+          // Дополнительная фильтрация по ингредиентам с частичным совпадением
+          if (stepConfig.active_ingredients && Array.isArray(stepConfig.active_ingredients) && stepConfig.active_ingredients.length > 0 && products.length > 0) {
+            const normalizeIngredient = (ing: string): string => {
+              let normalized = ing.replace(/\s*\d+[–\-]\d+\s*%/gi, '');
+              normalized = normalized.replace(/\s*\d+\s*%/gi, '');
+              normalized = normalized.replace(/\s*%\s*/gi, '');
+              normalized = normalized.split('(')[0].split(',')[0].trim();
+              return normalized.toLowerCase().trim();
+            };
+
+            const normalizedRuleIngredients = stepConfig.active_ingredients.map(normalizeIngredient);
+            
+            products = products.filter(product => {
+              if (product.activeIngredients.length === 0) {
+                return true;
+              }
+              
+              return product.activeIngredients.some(productIng => {
+                const normalizedProductIng = productIng.toLowerCase().trim();
+                return normalizedRuleIngredients.some(ruleIng => {
+                  if (normalizedProductIng === ruleIng) return true;
+                  if (normalizedProductIng.includes(ruleIng) || ruleIng.includes(normalizedProductIng)) return true;
+                  const productIngNoUnderscore = normalizedProductIng.replace(/_/g, '');
+                  const ruleIngNoUnderscore = ruleIng.replace(/_/g, '');
+                  if (productIngNoUnderscore === ruleIngNoUnderscore) return true;
+                  if (productIngNoUnderscore.includes(ruleIngNoUnderscore) || ruleIngNoUnderscore.includes(productIngNoUnderscore)) return true;
+                  return false;
+                });
+              });
+            });
+          }
 
           // Если не нашли достаточно продуктов, делаем более мягкий поиск
           if (products.length < (stepConfig.max_items || 3)) {

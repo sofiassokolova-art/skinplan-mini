@@ -192,13 +192,44 @@ async function getProductsForStep(step: RuleStep) {
   // Это используется для специальных правил, например, для мелазмы нужна транексамовая кислота
   // ВАЖНО: Если продуктов с указанными ингредиентами нет, не блокируем поиск - используем fallback
   if (step.active_ingredients && step.active_ingredients.length > 0) {
+    // Нормализуем названия ингредиентов: убираем проценты, дополнительные слова
+    const normalizeIngredient = (ing: string): string[] => {
+      // Убираем проценты и диапазоны (например, "5–10%", "5%", "10%+")
+      let normalized = ing.replace(/\s*\d+[–\-]\d+\s*%/gi, '');
+      normalized = normalized.replace(/\s*\d+\s*%/gi, '');
+      normalized = normalized.replace(/\s*%\s*/gi, '');
+      
+      // Убираем дополнительные слова в скобках и после запятых
+      normalized = normalized.split('(')[0].split(',')[0].trim();
+      
+      // Убираем лишние пробелы и приводим к нижнему регистру
+      normalized = normalized.toLowerCase().trim();
+      
+      // Возвращаем массив возможных вариантов
+      const variants = [normalized];
+      
+      // Если есть подчеркивания, добавляем вариант без них
+      if (normalized.includes('_')) {
+        variants.push(normalized.replace(/_/g, ''));
+      }
+      
+      return variants;
+    };
+    
+    // Создаем список всех нормализованных вариантов ингредиентов
+    const normalizedIngredients: string[] = [];
+    for (const ingredient of step.active_ingredients) {
+      const variants = normalizeIngredient(ingredient);
+      normalizedIngredients.push(...variants);
+    }
+    
     // Ищем продукты, которые содержат указанные активные ингредиенты
-    // Проверяем поле activeIngredients в продукте
-    // Используем OR, чтобы не блокировать продукты без activeIngredients
+    // Используем частичное совпадение через фильтрацию в памяти
+    // (Prisma не поддерживает частичное совпадение для массивов)
     const activeIngredientsCondition = {
       OR: [
-        // Продукты с указанными ингредиентами
-        ...step.active_ingredients.map(ingredient => ({
+        // Продукты с указанными ингредиентами (точное совпадение)
+        ...normalizedIngredients.map(ingredient => ({
           activeIngredients: { has: ingredient },
         })),
         // Также берем продукты без activeIngredients (fallback)
@@ -220,8 +251,45 @@ async function getProductsForStep(step: RuleStep) {
     include: {
       brand: true,
     },
-    take: (step.max_items || 3) * 2,
+    take: (step.max_items || 3) * 3, // Берем больше для фильтрации
   });
+
+  // Дополнительная фильтрация по ингредиентам с частичным совпадением
+  if (step.active_ingredients && step.active_ingredients.length > 0 && products.length > 0) {
+    const normalizeIngredient = (ing: string): string => {
+      let normalized = ing.replace(/\s*\d+[–\-]\d+\s*%/gi, '');
+      normalized = normalized.replace(/\s*\d+\s*%/gi, '');
+      normalized = normalized.replace(/\s*%\s*/gi, '');
+      normalized = normalized.split('(')[0].split(',')[0].trim();
+      return normalized.toLowerCase().trim();
+    };
+
+    const normalizedRuleIngredients = step.active_ingredients.map(normalizeIngredient);
+    
+    // Фильтруем продукты: оставляем те, у которых есть хотя бы один совпадающий ингредиент
+    products = products.filter(product => {
+      if (product.activeIngredients.length === 0) {
+        return true; // Оставляем продукты без ингредиентов (fallback)
+      }
+      
+      // Проверяем частичное совпадение
+      return product.activeIngredients.some(productIng => {
+        const normalizedProductIng = productIng.toLowerCase().trim();
+        return normalizedRuleIngredients.some(ruleIng => {
+          // Точное совпадение
+          if (normalizedProductIng === ruleIng) return true;
+          // Частичное совпадение (ruleIng содержится в productIng или наоборот)
+          if (normalizedProductIng.includes(ruleIng) || ruleIng.includes(normalizedProductIng)) return true;
+          // Убираем подчеркивания и проверяем снова
+          const productIngNoUnderscore = normalizedProductIng.replace(/_/g, '');
+          const ruleIngNoUnderscore = ruleIng.replace(/_/g, '');
+          if (productIngNoUnderscore === ruleIngNoUnderscore) return true;
+          if (productIngNoUnderscore.includes(ruleIngNoUnderscore) || ruleIngNoUnderscore.includes(productIngNoUnderscore)) return true;
+          return false;
+        });
+      });
+    });
+  }
 
   // Если не нашли достаточно продуктов, делаем более мягкий поиск
   if (products.length < (step.max_items || 3)) {
