@@ -661,6 +661,11 @@ export default function HomePage() {
       
       // Создаем фиктивные рекомендации для совместимости с существующим кодом
       const fakeRecommendations: Recommendation = {
+        profile_summary: {
+          skinType: 'unknown',
+          sensitivityLevel: 'low',
+          notes: '',
+        },
         steps: {},
       };
       setRecommendations(fakeRecommendations);
