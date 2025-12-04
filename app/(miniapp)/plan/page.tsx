@@ -524,33 +524,37 @@ export default function PlanPage() {
           }
         }
         
-        // Если это не 404 или регенерация не удалась - показываем ошибку
-        setError('plan_not_found');
-        setLoading(false);
-        return;
-        
-        // Если план не найден и нет профиля - показываем ошибку
-        if (planError?.status === 404) {
-          setError('no_profile');
-          setLoading(false);
-          return;
-        }
-        
-        // Если это 404 (план не найден) - не делаем retry, сразу показываем ошибку
-        // Только для ошибок сервера (500, 502, 503) делаем одну быструю попытку
-        if (retryCount < 1 && (
+        // Если это не 404 или регенерация не удалась - пробуем еще раз или показываем лоадер
+        // Не показываем ошибку сразу - возможно план генерируется
+        if (retryCount < 2 && (
           planError?.status === 500 ||
           planError?.status === 502 ||
           planError?.status === 503 ||
-          planError?.message?.includes('Internal server error')
+          planError?.status === 504 ||
+          planError?.message?.includes('Internal server error') ||
+          planError?.message?.includes('timeout')
         )) {
-          console.log(`⏳ Ошибка сервера, повторяем через 500мс... (попытка ${retryCount + 1}/1)`);
-          await new Promise(resolve => setTimeout(resolve, 500));
+          console.log(`⏳ Ошибка сервера, повторяем через 1 секунду... (попытка ${retryCount + 1}/2)`);
+          setLoading(true);
+          setError(null);
+          await new Promise(resolve => setTimeout(resolve, 1000));
           return loadPlan(retryCount + 1);
         }
         
-        // Для 404 или других ошибок - сразу показываем, не делаем retry
-        console.log('⚠️ Plan not found in cache or error occurred');
+        // Если это не 404 и не серверная ошибка - показываем лоадер (возможно план генерируется)
+        if (planError?.status !== 404) {
+          console.log('⚠️ Unexpected error, showing loader (plan might be generating)');
+          setLoading(true);
+          setError(null);
+          // Пробуем еще раз через 2 секунды
+          setTimeout(() => {
+            loadPlan(retryCount + 1);
+          }, 2000);
+          return;
+        }
+        
+        // Для 404 - уже обработано выше
+        console.log('⚠️ Plan not found in cache');
         plan = null;
       }
       
@@ -638,7 +642,7 @@ export default function PlanPage() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error loading plan:', error);
       
-      // При ошибке не показываем экран генерации
+      // При ошибке не показываем экран ошибки - показываем лоадер
       // Проверяем, есть ли профиль или прогресс - если есть, план должен существовать
       try {
         const [profileCheck, progressCheck] = await Promise.allSettled([
@@ -654,6 +658,8 @@ export default function PlanPage() {
         if (hasProfile || hasProgress) {
           // План должен существовать - пробуем регенерировать
           console.log('🔄 Plan should exist, attempting to regenerate...');
+          setLoading(true);
+          setError(null);
           try {
             const generatedPlan = await api.generatePlan() as any;
             if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
@@ -663,16 +669,40 @@ export default function PlanPage() {
             }
           } catch (generateError: any) {
             console.error('❌ Failed to regenerate plan:', generateError);
+            // Продолжаем показывать лоадер - план может генерироваться
+            setLoading(true);
+            setError(null);
+            // Пробуем еще раз через 3 секунды
+            setTimeout(() => {
+              loadPlan(0);
+            }, 3000);
+            return;
           }
+        } else {
+          // Профиля нет - показываем ошибку профиля
+          setError('no_profile');
+          setLoading(false);
+          return;
         }
       } catch (checkError) {
         console.error('❌ Error checking profile/progress:', checkError);
+        // При ошибке проверки показываем лоадер (возможно временная проблема)
+        setLoading(true);
+        setError(null);
+        // Пробуем еще раз через 2 секунды
+        setTimeout(() => {
+          loadPlan(0);
+        }, 2000);
+        return;
       }
       
-      // Если план не найден и нет профиля - показываем ошибку профиля
-      // Иначе показываем обычный лоадер
+      // Если дошли сюда - показываем лоадер (план может генерироваться)
       setLoading(true);
       setError(null);
+      // Пробуем еще раз через 2 секунды
+      setTimeout(() => {
+        loadPlan(0);
+      }, 2000);
     }
   };
 
