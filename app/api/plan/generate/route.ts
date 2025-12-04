@@ -365,13 +365,13 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   
   // ВАЖНО: Сначала пытаемся получить продукты из RecommendationSession
   // Это гарантирует, что план использует те же продукты, что и главная страница
-  // Ищем сессию по userId (не по profileId), так как при обновлении профиля может быть новая версия
+  // Ищем сессию для текущего профиля, чтобы при перепрохождении анкеты использовались новые продукты
   let recommendationProducts: any[] = [];
   const existingSession = await prisma.recommendationSession.findFirst({
     where: {
       userId,
-      // Ищем сессию для текущего или любого профиля пользователя, 
-      // так как при обновлении профиля может быть новая версия с новым profileId
+      profileId: profile.id, // Только для текущего профиля
+      ruleId: { not: null }, // Только сессии, созданные из правил (не из плана)
     },
     orderBy: { createdAt: 'desc' },
   });

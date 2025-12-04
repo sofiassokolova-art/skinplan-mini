@@ -374,10 +374,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Проверяем, есть ли уже сессия рекомендаций для этого профиля
+    // ВАЖНО: При перепрохождении анкеты старые сессии должны быть удалены,
+    // поэтому ищем только сессии для текущего profileId
     const existingSession = await prisma.recommendationSession.findFirst({
       where: {
         userId,
-        profileId: profile.id,
+        profileId: profile.id, // Только для текущего профиля
+        ruleId: { not: null }, // Только сессии, созданные из правил
       },
       orderBy: { createdAt: 'desc' },
       include: {

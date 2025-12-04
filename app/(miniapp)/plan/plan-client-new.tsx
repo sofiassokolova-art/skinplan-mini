@@ -512,35 +512,56 @@ export function PlanPageClientNew({
         </div>
       </div>
 
-      {/* Блок "День X из 28" */}
+      {/* Кнопка перехода в календарь */}
       <div style={{ marginBottom: '24px' }}>
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '20px',
-          padding: '20px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-          border: '1px solid rgba(10, 95, 89, 0.1)',
-        }}>
-          <div style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: '#111827',
-            textAlign: 'center',
-          }}>
-            День {selectedDay} из 28
+        <button
+          onClick={() => router.push('/plan/calendar')}
+          style={{
+            width: '100%',
+            padding: '20px',
+            backgroundColor: 'white',
+            borderRadius: '20px',
+            border: '2px solid #0A5F59',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#F5FFFC';
+            e.currentTarget.style.transform = 'scale(1.02)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+        >
+          <div>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#0A5F59',
+              marginBottom: '4px',
+            }}>
+              Сейчас вы на дне {selectedDay}
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: '#6B7280',
+            }}>
+              Перейдите к календарю, чтобы посмотреть весь календарь
+            </div>
           </div>
-        </div>
+          <div style={{
+            fontSize: '24px',
+            color: '#0A5F59',
+          }}>
+            →
+          </div>
+        </button>
       </div>
-
-      {/* Все рекомендованные средства */}
-      <AllProductsList
-        plan28={plan28}
-        products={products}
-        wishlistProductIds={wishlistProductIds}
-        cartQuantities={cartQuantities}
-        onToggleWishlist={toggleWishlist}
-        onAddToCart={handleAddToCart}
-      />
 
       {/* Блок обратной связи в конце страницы */}
       <div style={{ marginTop: '48px', marginBottom: '24px' }}>
