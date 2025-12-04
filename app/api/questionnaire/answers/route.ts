@@ -720,6 +720,18 @@ export async function POST(request: NextRequest) {
               products: fallbackProductIds,
             },
           });
+
+          // Очищаем кэш рекомендаций для текущего профиля
+          try {
+            const { invalidateCache } = await import('@/lib/cache');
+            await invalidateCache(userId, profile.version);
+            logger.info('Recommendations cache invalidated after creating fallback session', {
+              userId,
+              profileVersion: profile.version,
+            });
+          } catch (cacheError) {
+            logger.warn('Failed to invalidate recommendations cache', { error: cacheError });
+          }
           
           logger.info('Fallback RecommendationSession created', {
             userId,
