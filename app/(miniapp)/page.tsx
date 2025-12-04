@@ -45,6 +45,7 @@ const ICONS: Record<string, string> = {
   cream: '/icons/cream.PNG',
   spf: '/icons/spf1.PNG',
   acid: '/icons/acid1.PNG',
+  mask: '/icons/cream.PNG', // Используем иконку крема для масок
 };
 
 export default function HomePage() {
@@ -391,7 +392,7 @@ export default function HomePage() {
 
   const loadRecommendations = async () => {
     try {
-      // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: проверяем наличие профиля перед загрузкой рекомендаций
+      // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: проверяем наличие профиля перед загрузкой
       console.log('🔍 loadRecommendations: Checking profile before loading...');
       try {
         const profile = await api.getCurrentProfile();
@@ -419,212 +420,220 @@ export default function HomePage() {
         console.warn('⚠️ loadRecommendations: Error checking profile, but continuing:', errorMessage);
       }
       
-      console.log('📥 Loading recommendations...');
-      let data: Recommendation;
-      try {
-        data = await api.getRecommendations() as Recommendation;
-        console.log('✅ Recommendations loaded:', { hasData: !!data, hasSteps: !!data?.steps });
-      } catch (recErr: any) {
-        console.error('❌ Error loading recommendations API:', recErr);
-        // Если ошибка при загрузке рекомендаций, проверяем план
-        try {
-          const plan = await api.getPlan() as any;
-          if (plan && (plan.plan28 || plan.weeks)) {
-            console.log('✅ Plan exists, redirecting to /plan');
-            // Устанавливаем loading в false перед редиректом
-            setLoading(false);
-            // Используем window.location для гарантированного редиректа
-            if (typeof window !== 'undefined') {
-              window.location.href = '/plan';
-            } else {
-              router.push('/plan');
-            }
-            return;
-          }
-        } catch (planError) {
-          console.warn('⚠️ Could not load plan:', planError);
-        }
-        // Если план не найден, пробрасываем ошибку дальше
-        throw recErr;
-      }
+      console.log('📥 Loading plan for current day...');
       
-      // Проверяем, что данные валидны и содержат хотя бы один шаг
-      if (!data || !data.steps || Object.keys(data.steps).length === 0) {
-        console.log('⚠️ Invalid or empty recommendations data:', { 
-          hasData: !!data, 
-          hasSteps: !!data?.steps, 
-          stepsCount: data?.steps ? Object.keys(data.steps).length : 0 
-        });
-        // Если рекомендации пустые, проверяем план
-        try {
-          const plan = await api.getPlan() as any;
-          if (plan && (plan.plan28 || plan.weeks)) {
-            console.log('✅ Plan exists, redirecting to /plan');
-            setLoading(false);
-            if (typeof window !== 'undefined') {
-              window.location.href = '/plan';
-            } else {
-              router.push('/plan');
-            }
-            return;
-          }
-        } catch (planError) {
-          console.warn('⚠️ Could not load plan:', planError);
-        }
-        // Если план тоже не найден, редиректим на анкету
+      // Загружаем план и прогресс
+      const [planData, progress] = await Promise.all([
+        api.getPlan() as Promise<any>,
+        api.getPlanProgress() as Promise<{ currentDay: number; completedDays: number[] }>,
+      ]);
+      
+      if (!planData || !planData.plan28) {
+        console.log('⚠️ Plan not found, redirecting to quiz');
         router.push('/quiz');
         return;
       }
       
-      setRecommendations(data);
-      setError(null); // Очищаем ошибку при успешной загрузке
-      planCheckDoneRef.current = true; // Помечаем, что рекомендации загружены, проверка плана не нужна
-      console.log('✅ Recommendations set in state');
+      const currentDay = progress?.currentDay || 1;
+      const plan28 = planData.plan28;
       
-      // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
+      // Находим день плана для текущего дня
+      const currentDayPlan = plan28.days.find((d: any) => d.dayIndex === currentDay);
+      if (!currentDayPlan) {
+        console.log('⚠️ Current day plan not found, redirecting to quiz');
+        router.push('/quiz');
+        return;
+      }
+      
+      // Собираем все productId из текущего дня (утро, вечер, еженедельные)
+      const allProductIds = new Set<number>();
+      currentDayPlan.morning.forEach((step: any) => {
+        if (step.productId) allProductIds.add(Number(step.productId));
+      });
+      currentDayPlan.evening.forEach((step: any) => {
+        if (step.productId) allProductIds.add(Number(step.productId));
+      });
+      currentDayPlan.weekly.forEach((step: any) => {
+        if (step.productId) allProductIds.add(Number(step.productId));
+      });
+      
+      // Загружаем детали продуктов
+      let productsMap = new Map<number, any>();
+      if (allProductIds.size > 0) {
+        try {
+          const productsResponse = await fetch('/api/products/batch', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData || '') : '',
+            },
+            body: JSON.stringify({ productIds: Array.from(allProductIds) }),
+          });
+          
+          if (productsResponse.ok) {
+            const productsData = await productsResponse.json();
+            productsData.products?.forEach((p: any) => {
+              if (p && p.id) {
+                productsMap.set(p.id, p);
+              }
+            });
+          }
+        } catch (err) {
+          console.warn('Could not load product details:', err);
+        }
+      }
+      
+      // Преобразуем шаги плана в RoutineItem[]
       const morning: RoutineItem[] = [];
       const evening: RoutineItem[] = [];
       
-      // УТРЕННЯЯ РУТИНА
-      if (data?.steps?.cleanser) {
-        morning.push({
-          id: 'morning-cleanser',
-          title: 'Очищение',
-          subtitle: getProductFullName(data.steps.cleanser[0]) || 'Очищающее средство',
-          icon: ICONS.cleanser,
-          howto: {
-            steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
-            volume: 'Гель: 1–2 пшика',
-            tip: 'Если кожа сухая утром — можно умыться только водой.',
-          },
-          done: false,
-        });
-      }
+      // Вспомогательная функция для получения названия продукта
+      const getProductName = (productId: number | string): string => {
+        const product = productsMap.get(Number(productId));
+        if (product) {
+          return `${product.name}${product.brand?.name ? `, ${product.brand.name}` : ''}`;
+        }
+        return 'Продукт';
+      };
       
-      if (data?.steps?.toner) {
-        morning.push({
-          id: 'morning-toner',
-          title: 'Тонер',
-          subtitle: getProductFullName(data.steps.toner[0]) || 'Тоник',
-          icon: ICONS.toner,
-          howto: {
+      // Вспомогательная функция для получения иконки по категории шага
+      const getIconForStep = (stepCategory: string): string => {
+        if (stepCategory.startsWith('cleanser')) return ICONS.cleanser;
+        if (stepCategory.startsWith('toner')) return ICONS.toner;
+        if (stepCategory.startsWith('serum') || stepCategory.startsWith('treatment')) return ICONS.serum;
+        if (stepCategory.startsWith('moisturizer')) return ICONS.cream;
+        if (stepCategory.startsWith('spf')) return ICONS.spf;
+        if (stepCategory.startsWith('mask')) return ICONS.mask;
+        return ICONS.cream;
+      };
+      
+      // Вспомогательная функция для получения описания шага
+      const getStepHowto = (stepCategory: string, isMorning: boolean): { steps: string[]; volume: string; tip: string } => {
+        if (stepCategory.startsWith('cleanser')) {
+          return {
+            steps: isMorning 
+              ? ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем']
+              : ['1) Масло: сухими руками распределить, эмульгировать водой', '2) Гель: умыть 30–40 сек, смыть'],
+            volume: isMorning ? 'Гель: 1–2 пшика' : '1–2 дозы масла + 1–2 пшика геля',
+            tip: isMorning ? 'Если кожа сухая утром — можно умыться только водой.' : 'Двойное очищение — в дни макияжа/кислот.',
+          };
+        }
+        if (stepCategory.startsWith('toner')) {
+          return {
             steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
             volume: '3–5 капель',
             tip: 'Избегайте ватных дисков — тратите меньше продукта.',
-          },
-          done: false,
-        });
-      }
-      
-      // Проверяем treatment, serum, или essence для утреннего актива
-      if (data?.steps?.treatment || data?.steps?.serum || data?.steps?.essence) {
-        const activeProduct = data.steps.treatment?.[0] || data.steps.serum?.[0] || data.steps.essence?.[0];
-        morning.push({
-          id: 'morning-active',
-          title: 'Актив',
-          subtitle: getProductFullName(activeProduct) || 'Активное средство',
-          icon: ICONS.serum,
-          howto: {
-            steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
-            volume: '4–6 капель',
-            tip: 'Если есть раздражение — пропустите актив на день.',
-          },
-          done: false,
-        });
-      }
-      
-      if (data?.steps?.moisturizer) {
-        morning.push({
-          id: 'morning-cream',
-          title: 'Крем',
-          subtitle: getProductFullName(data.steps.moisturizer[0]) || 'Увлажняющий крем',
-          icon: ICONS.cream,
-          howto: {
-            steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
+          };
+        }
+        if (stepCategory.startsWith('serum') || stepCategory.startsWith('treatment')) {
+          return {
+            steps: isMorning
+              ? ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема']
+              : ['3–6 капель', 'Равномерно нанести, дать впитаться 1 мин'],
+            volume: isMorning ? '4–6 капель' : '3–6 капель',
+            tip: isMorning ? 'Если есть раздражение — пропустите актив на день.' : 'В дни кислот сыворотка — без кислот/ретинола.',
+          };
+        }
+        if (stepCategory.startsWith('moisturizer')) {
+          return {
+            steps: isMorning
+              ? ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям']
+              : ['Горох крема', 'Распределить, не втирая сильно'],
             volume: 'Горошина',
-            tip: 'Не забывайте шею и линию подбородка.',
-          },
-          done: false,
-        });
-      }
-      
-      if (data?.steps?.spf) {
-        morning.push({
-          id: 'morning-spf',
-          title: 'SPF-защита',
-          subtitle: getProductFullName(data.steps.spf[0]) || 'SPF 50',
-          icon: ICONS.spf,
-          howto: {
+            tip: isMorning ? 'Не забывайте шею и линию подбородка.' : 'Если сухо — добавьте каплю масла локально.',
+          };
+        }
+        if (stepCategory.startsWith('spf')) {
+          return {
             steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
             volume: '~1.5–2 мл',
             tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
-          },
-          done: false,
-        });
-      }
+          };
+        }
+        if (stepCategory.startsWith('mask')) {
+          return {
+            steps: ['Нанести на очищенную кожу', 'Выдержать 10–20 минут', 'Смыть тёплой водой'],
+            volume: 'По инструкции',
+            tip: 'Используйте маску 1–2 раза в неделю.',
+          };
+        }
+        return {
+          steps: ['Нанести на кожу', 'Распределить равномерно'],
+          volume: 'По инструкции',
+          tip: '',
+        };
+      };
+      
+      // УТРЕННЯЯ РУТИНА
+      currentDayPlan.morning.forEach((step: any, index: number) => {
+        if (step.productId) {
+          const productId = Number(step.productId);
+          const product = productsMap.get(productId);
+          const stepTitle = step.stepCategory.startsWith('cleanser') ? 'Очищение' :
+                           step.stepCategory.startsWith('toner') ? 'Тонер' :
+                           step.stepCategory.startsWith('serum') ? 'Актив' :
+                           step.stepCategory.startsWith('treatment') ? 'Лечение' :
+                           step.stepCategory.startsWith('moisturizer') ? 'Крем' :
+                           step.stepCategory.startsWith('spf') ? 'SPF-защита' :
+                           'Средство';
+          
+          morning.push({
+            id: `morning-${step.stepCategory}-${index}`,
+            title: stepTitle,
+            subtitle: getProductName(productId),
+            icon: getIconForStep(step.stepCategory),
+            howto: getStepHowto(step.stepCategory, true),
+            done: false,
+          });
+        }
+      });
       
       // ВЕЧЕРНЯЯ РУТИНА
-      if (data?.steps?.cleanser) {
-        evening.push({
-          id: 'evening-cleanser',
-          title: 'Очищение',
-          subtitle: getProductFullName(data.steps.cleanser[0]) || 'Двойное очищение',
-          icon: ICONS.cleanser,
-          howto: {
-            steps: ['1) Масло: сухими руками распределить, эмульгировать водой', '2) Гель: умыть 30–40 сек, смыть'],
-            volume: '1–2 дозы масла + 1–2 пшика геля',
-            tip: 'Двойное очищение — в дни макияжа/кислот.',
-          },
-          done: false,
-        });
-      }
+      currentDayPlan.evening.forEach((step: any, index: number) => {
+        if (step.productId) {
+          const productId = Number(step.productId);
+          const stepTitle = step.stepCategory.startsWith('cleanser') ? 'Очищение' :
+                           step.stepCategory.startsWith('serum') ? 'Сыворотка' :
+                           step.stepCategory.startsWith('treatment') ? 'Лечение' :
+                           step.stepCategory.startsWith('moisturizer') ? 'Крем' :
+                           'Средство';
+          
+          evening.push({
+            id: `evening-${step.stepCategory}-${index}`,
+            title: stepTitle,
+            subtitle: getProductName(productId),
+            icon: getIconForStep(step.stepCategory),
+            howto: getStepHowto(step.stepCategory, false),
+            done: false,
+          });
+        }
+      });
       
-      if (data?.steps?.treatment || data?.steps?.acid) {
-        const acidProduct = data.steps?.treatment?.[0] || data.steps?.acid?.[0];
-        evening.push({
-          id: 'evening-acid',
-          title: 'Кислоты (по расписанию)',
-          subtitle: getProductFullName(acidProduct) || 'AHA/BHA/PHА пилинг',
-          icon: ICONS.acid,
-          howto: {
-            steps: ['Нанести тонким слоем на Т‑зону', 'Выдержать 5–10 минут (по переносимости)', 'Смыть/нейтрализовать, далее крем'],
-            volume: 'Тонкий слой',
-            tip: 'При покраснении — пауза 3–5 дней.',
-          },
-          done: false,
-        });
-      }
+      // ЕЖЕНЕДЕЛЬНЫЕ СРЕДСТВА (добавляем в вечер, если они есть)
+      currentDayPlan.weekly.forEach((step: any, index: number) => {
+        if (step.productId) {
+          const productId = Number(step.productId);
+          const stepTitle = step.stepCategory.startsWith('mask') ? 'Маска' : 'Средство';
+          
+          evening.push({
+            id: `weekly-${step.stepCategory}-${index}`,
+            title: stepTitle,
+            subtitle: getProductName(productId),
+            icon: getIconForStep(step.stepCategory),
+            howto: getStepHowto(step.stepCategory, false),
+            done: false,
+          });
+        }
+      });
       
-      if (data?.steps?.treatment || data?.steps?.serum) {
-        const serumProduct = data.steps?.treatment?.[0] || data.steps?.serum?.[0];
-        evening.push({
-          id: 'evening-serum',
-          title: 'Сыворотка',
-          subtitle: getProductFullName(serumProduct) || 'Пептидная / успокаивающая',
-          icon: ICONS.serum,
-          howto: {
-            steps: ['3–6 капель', 'Равномерно нанести, дать впитаться 1 мин'],
-            volume: '3–6 капель',
-            tip: 'В дни кислот сыворотка — без кислот/ретинола.',
-          },
-          done: false,
-        });
-      }
-      
-      if (data?.steps?.moisturizer) {
-        evening.push({
-          id: 'evening-cream',
-          title: 'Крем',
-          subtitle: getProductFullName(data.steps.moisturizer[0]) || 'Питательный крем',
-          icon: ICONS.cream,
-          howto: {
-            steps: ['Горох крема', 'Распределить, не втирая сильно'],
-            volume: 'Горошина',
-            tip: 'Если сухо — добавьте каплю масла локально.',
-          },
-          done: false,
-        });
-      }
+      // Создаем фиктивные рекомендации для совместимости с существующим кодом
+      const fakeRecommendations: Recommendation = {
+        steps: {},
+      };
+      setRecommendations(fakeRecommendations);
+      setError(null);
+      planCheckDoneRef.current = true;
+      console.log('✅ Plan loaded and converted to routine items');
       
       setMorningItems(morning);
       setEveningItems(evening);
