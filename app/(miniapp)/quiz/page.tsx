@@ -1085,18 +1085,25 @@ export default function QuizPage() {
     setCurrentQuestionIndex(0);
     setCurrentInfoScreenIndex(0);
     setShowResumeScreen(false);
+    // ВАЖНО: Сбрасываем и state, и ref для hasResumed
+    hasResumedRef.current = false;
     setHasResumed(false);
     setSavedProgress(null);
     setPendingInfoScreen(null); // ВАЖНО: очищаем pendingInfoScreen
     setIsRetakingQuiz(false); // Сбрасываем флаг перепрохождения
     
-    console.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран');
+    console.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран', {
+      hasResumedRef: hasResumedRef.current,
+      isStartingOverRef: isStartingOverRef.current,
+    });
     
     // Сбрасываем флаг через небольшую задержку, чтобы дать время состояниям обновиться
+    // Увеличиваем задержку до 500ms, чтобы гарантировать, что все асинхронные операции завершились
     setTimeout(() => {
       isStartingOverRef.current = false;
       setIsStartingOver(false);
-    }, 100);
+      console.log('✅ isStartingOverRef сброшен, можно загружать прогресс снова');
+    }, 500);
   };
 
   // Лоадер при отправке ответов
