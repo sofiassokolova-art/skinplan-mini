@@ -506,22 +506,49 @@ export default function PlanPage() {
           }
         }
         
-        // Если план не найден и нет профиля - показываем ошибку только если это точно первое прохождение
+        // Если план не найден (404), пробуем сгенерировать план
         if (planError?.status === 404) {
-          // Проверяем еще раз, может быть план есть, но профиль недоступен
+          // Проверяем еще раз, может быть план есть, но просто не в кэше
           try {
+            console.log('🔄 Plan not in cache, trying to generate...');
             const testPlan = await api.generatePlan() as any;
             if (testPlan && (testPlan.plan28 || testPlan.weeks)) {
               console.log('✅ Plan found via generatePlan, processing...');
               await processPlanData(testPlan);
               return;
+            } else {
+              // План не сгенерировался - возможно нет профиля
+              console.log('❌ Plan could not be generated, checking profile...');
+              try {
+                const profileCheck = await api.getCurrentProfile() as any;
+                if (!profileCheck) {
+                  // Нет профиля - показываем ошибку
+                  console.log('❌ No profile found, showing error');
+                  setError('no_profile');
+                  setLoading(false);
+                  return;
+                } else {
+                  // Профиль есть, но план не сгенерировался - это странно, пробуем еще раз
+                  console.log('⚠️ Profile exists but plan not generated, retrying...');
+                  // Не показываем ошибку сразу, возможно план генерируется
+                }
+              } catch (profileCheckError) {
+                // Не можем проверить профиль - не показываем ошибку, возможно это временная проблема
+                console.warn('Could not check profile:', profileCheckError);
+              }
             }
-          } catch (testError) {
-            // Если и generatePlan не работает - показываем ошибку
-            console.log('❌ No plan available, showing error');
-            setError('no_profile');
-            setLoading(false);
-            return;
+          } catch (testError: any) {
+            // Если generatePlan выбросил ошибку, проверяем причину
+            console.error('❌ Error generating plan:', testError);
+            if (testError?.status === 404 || testError?.message?.includes('No skin profile') || testError?.message?.includes('Profile not found')) {
+              // Нет профиля - показываем ошибку
+              console.log('❌ No profile found, showing error');
+              setError('no_profile');
+              setLoading(false);
+              return;
+            }
+            // Другие ошибки - не показываем ошибку, возможно это временная проблема
+            console.warn('Plan generation failed with non-404 error, not showing error screen');
           }
         }
         
@@ -898,7 +925,8 @@ export default function PlanPage() {
     );
   }
 
-  if (error === 'no_profile' || !planData) {
+  // Показываем ошибку только если точно нет профиля (не показываем если просто загрузка)
+  if (error === 'no_profile' && !loading) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -949,6 +977,40 @@ export default function PlanPage() {
           >
             Пройти анкету
           </a>
+        </div>
+      </div>
+    );
+  }
+  
+  // Если нет planData, но загрузка еще идет - показываем лоадер
+  if (!planData && loading) {
+    // Лоадер уже показан выше
+    return null;
+  }
+  
+  // Если нет planData и загрузка завершена, но нет ошибки - показываем лоадер
+  // (это не должно происходить, но на всякий случай)
+  if (!planData && !loading && !error) {
+    // Показываем лоадер
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid #E8FBF7',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px',
+          }} />
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
         </div>
       </div>
     );

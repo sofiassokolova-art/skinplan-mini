@@ -3,6 +3,7 @@
 
 'use client';
 
+import { Heart, ShoppingCart, RefreshCw } from 'lucide-react';
 import type { Plan28 } from '@/lib/plan-types';
 import { getStepDescription } from '@/lib/plan-types';
 import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
@@ -17,6 +18,11 @@ interface PlanInfographicProps {
     imageUrl?: string | null;
     description?: string;
   }>;
+  wishlistProductIds?: Set<number>;
+  cartQuantities?: Map<number, number>;
+  onToggleWishlist?: (productId: number) => void;
+  onAddToCart?: (productId: number) => void;
+  onReplace?: (product: { id: number; name: string; brand: { name: string } }) => void;
 }
 
 export function PlanInfographic({ plan28, products }: PlanInfographicProps) {
@@ -25,6 +31,7 @@ export function PlanInfographic({ plan28, products }: PlanInfographicProps) {
     name: string;
     description: string;
     products: Array<{
+      id: number;
       name: string;
       brand: string;
     }>;
@@ -68,8 +75,9 @@ export function PlanInfographic({ plan28, products }: PlanInfographicProps) {
           const categoryData = categoryMap.get(categoryName)!;
           // Добавляем продукт, если его еще нет
           const productKey = `${product.brand.name} ${product.name}`;
-          if (!categoryData.products.some(p => `${p.brand} ${p.name}` === productKey)) {
+          if (!categoryData.products.some(p => p.id === product.id)) {
             categoryData.products.push({
+              id: product.id,
               name: product.name,
               brand: product.brand.name,
             });
@@ -275,19 +283,154 @@ export function PlanInfographic({ plan28, products }: PlanInfographicProps) {
                   paddingTop: '12px',
                   borderTop: '1px solid rgba(10, 95, 89, 0.1)',
                 }}>
-                  {category.products.map((product, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        fontSize: '14px',
-                        color: '#374151',
-                        marginBottom: idx < category.products.length - 1 ? '8px' : '0',
-                      }}
-                    >
-                      <span style={{ fontWeight: '600' }}>{product.name}</span>
-                      <span style={{ color: '#6B7280' }}> · {product.brand}</span>
-                    </div>
-                  ))}
+                  {category.products.map((product, idx) => {
+                    const productId = product.id;
+                    const isInWishlist = wishlistProductIds.has(productId);
+                    const cartQuantity = cartQuantities.get(productId) || 0;
+                    const fullProduct = products.get(productId);
+                    
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '12px',
+                          backgroundColor: 'white',
+                          borderRadius: '8px',
+                          marginBottom: idx < category.products.length - 1 ? '12px' : '0',
+                          border: '1px solid rgba(10, 95, 89, 0.1)',
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'space-between',
+                          marginBottom: '8px',
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{
+                              fontSize: '15px',
+                              fontWeight: '600',
+                              color: '#374151',
+                              marginBottom: '4px',
+                            }}>
+                              {product.name}
+                            </div>
+                            <div style={{
+                              fontSize: '13px',
+                              color: '#6B7280',
+                            }}>
+                              {product.brand}
+                            </div>
+                            {fullProduct?.price && (
+                              <div style={{
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#0A5F59',
+                                marginTop: '4px',
+                              }}>
+                                {fullProduct.price} ₽
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Кнопки действий */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                          {onToggleWishlist && (
+                            <button
+                              onClick={() => onToggleWishlist(productId)}
+                              style={{
+                                flex: 1,
+                                padding: '10px',
+                                borderRadius: '12px',
+                                backgroundColor: isInWishlist ? '#FEE2E2' : '#F3F4F6',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                color: isInWishlist ? '#DC2626' : '#6B7280',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = isInWishlist ? '#FECACA' : '#E5E7EB';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = isInWishlist ? '#FEE2E2' : '#F3F4F6';
+                              }}
+                            >
+                              <Heart size={16} fill={isInWishlist ? '#DC2626' : 'none'} />
+                              {isInWishlist ? 'В избранном' : 'В избранное'}
+                            </button>
+                          )}
+
+                          {onAddToCart && (
+                            <button
+                              onClick={() => onAddToCart(productId)}
+                              style={{
+                                flex: 1,
+                                padding: '10px',
+                                borderRadius: '12px',
+                                backgroundColor: cartQuantity > 0 ? '#10B981' : '#0A5F59',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                color: 'white',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = cartQuantity > 0 ? '#059669' : '#065F46';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = cartQuantity > 0 ? '#10B981' : '#0A5F59';
+                              }}
+                            >
+                              <ShoppingCart size={16} />
+                              {cartQuantity > 0 ? `В корзине (${cartQuantity})` : 'В корзину'}
+                            </button>
+                          )}
+
+                          {onReplace && fullProduct && (
+                            <button
+                              onClick={() => onReplace(fullProduct)}
+                              style={{
+                                padding: '10px',
+                                borderRadius: '12px',
+                                backgroundColor: '#F3F4F6',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                color: '#6B7280',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#E5E7EB';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#F3F4F6';
+                              }}
+                            >
+                              <RefreshCw size={16} />
+                              Заменить
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

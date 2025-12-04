@@ -52,7 +52,54 @@ export default function PlanCalendarPage() {
       }
 
       // Загружаем план
-      const planData = await api.getPlan() as any;
+      let planData: any = null;
+      try {
+        planData = await api.getPlan() as any;
+        console.log('📅 Calendar: Plan loaded', {
+          hasPlan: !!planData,
+          hasPlan28: !!planData?.plan28,
+          hasWeeks: !!planData?.weeks,
+          planKeys: planData ? Object.keys(planData) : [],
+        });
+      } catch (err: any) {
+        console.error('📅 Calendar: Error loading plan', err);
+        // Если план не найден (404), попробуем сгенерировать
+        if (err?.status === 404) {
+          try {
+            const profile = await api.getCurrentProfile() as any;
+            if (profile) {
+              console.log('📅 Calendar: Profile found, generating plan...');
+              planData = await api.generatePlan() as any;
+              console.log('📅 Calendar: Plan generated', {
+                hasPlan: !!planData,
+                hasPlan28: !!planData?.plan28,
+              });
+            }
+          } catch (genErr) {
+            console.error('📅 Calendar: Error generating plan', genErr);
+            toast.error('Не удалось загрузить план. Пожалуйста, пройдите анкету.');
+            router.push('/quiz');
+            return;
+          }
+        } else {
+          toast.error('Не удалось загрузить план');
+          router.push('/plan');
+          return;
+        }
+      }
+      
+      // Проверяем наличие plan28
+      if (!planData || !planData.plan28) {
+        console.error('📅 Calendar: Plan not found or invalid format', {
+          hasPlan: !!planData,
+          hasPlan28: !!planData?.plan28,
+          planData: planData,
+        });
+        toast.error('План не найден. Пожалуйста, пройдите анкету.');
+        router.push('/quiz');
+        return;
+      }
+      
       if (planData?.plan28) {
         setPlan28(planData.plan28);
         

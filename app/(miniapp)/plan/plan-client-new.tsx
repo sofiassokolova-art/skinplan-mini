@@ -342,7 +342,15 @@ export function PlanPageClientNew({
       )}
 
       {/* Инфографика плана */}
-      <PlanInfographic plan28={plan28} products={products} />
+      <PlanInfographic 
+        plan28={plan28} 
+        products={products}
+        wishlistProductIds={wishlistProductIds}
+        cartQuantities={cartQuantities}
+        onToggleWishlist={toggleWishlist}
+        onAddToCart={handleAddToCart}
+        onReplace={handleReplace}
+      />
 
       {/* Основной контент плана - обернут в PaymentGate только при первой оплате */}
       {needsFirstPayment ? (
@@ -413,106 +421,56 @@ export function PlanPageClientNew({
             </button>
           </div>
 
-          {/* Переключатель между днем и всеми продуктами */}
-          <div style={{ 
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '24px',
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '4px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-          }}>
+          {/* Кнопка перехода в календарь */}
+          <div style={{ marginBottom: '24px' }}>
             <button
-              onClick={() => setShowAllProducts(false)}
+              onClick={() => router.push('/plan/calendar')}
               style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: !showAllProducts ? '#0A5F59' : 'transparent',
-                color: !showAllProducts ? 'white' : '#6B7280',
-                fontSize: '16px',
-                fontWeight: '600',
+                width: '100%',
+                padding: '20px',
+                backgroundColor: 'white',
+                borderRadius: '20px',
+                border: '2px solid #0A5F59',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                 transition: 'all 0.2s',
               }}
-            >
-              День {selectedDay}
-            </button>
-            <button
-              onClick={() => setShowAllProducts(true)}
-              style={{
-                flex: 1,
-                padding: '12px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: showAllProducts ? '#0A5F59' : 'transparent',
-                color: showAllProducts ? 'white' : '#6B7280',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#F5FFFC';
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              Все средства
+              <div>
+                <div style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#0A5F59',
+                  marginBottom: '4px',
+                }}>
+                  Открыть календарь плана
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: '#6B7280',
+                }}>
+                  Просмотр детальной информации по дням
+                </div>
+              </div>
+              <div style={{
+                fontSize: '24px',
+                color: '#0A5F59',
+              }}>
+                →
+              </div>
             </button>
           </div>
-
-          {/* Отображение только всех продуктов (детальная информация о дне только в календаре) */}
-          {showAllProducts && (
-            <AllProductsList
-              plan28={plan28}
-              products={products}
-              wishlistProductIds={wishlistProductIds}
-              cartQuantities={cartQuantities}
-              onToggleWishlist={toggleWishlist}
-              onAddToCart={handleAddToCart}
-            />
-          )}
-          
-          {!showAllProducts && (
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '24px',
-              padding: '24px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              border: '1px solid rgba(10, 95, 89, 0.1)',
-              textAlign: 'center',
-            }}>
-              <div style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#0A5F59',
-                marginBottom: '12px',
-              }}>
-                День {selectedDay}
-              </div>
-              <div style={{
-                fontSize: '14px',
-                color: '#6B7280',
-                marginBottom: '20px',
-              }}>
-                Для просмотра детальной информации о дне перейдите в календарь
-              </div>
-              <button
-                onClick={() => router.push('/plan/calendar')}
-                style={{
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
-                  border: 'none',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-                }}
-              >
-                Открыть календарь
-              </button>
-            </div>
-          )}
 
           {/* Блок обратной связи в конце страницы */}
           <div style={{ marginTop: '48px', marginBottom: '24px' }}>
