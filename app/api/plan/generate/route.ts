@@ -742,6 +742,20 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     return categories.length > 0 ? categories : [];
   };
   
+  // Логируем начальное состояние selectedProducts для диагностики
+  if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+    logger.info('Registering products in productsByStepMap', {
+      userId,
+      totalProducts: selectedProducts.length,
+      sampleProducts: selectedProducts.slice(0, 5).map(p => ({
+        id: p.id,
+        name: p.name,
+        step: p.step,
+        category: p.category,
+      })),
+    });
+  }
+  
   selectedProducts.forEach((product) => {
     const productBrand = product.brand as any;
     const productWithBrand: ProductWithBrand = {
@@ -786,8 +800,35 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       if (fallbackStep && fallbackStep !== stepKey) {
         registerProductForStep(fallbackStep, productWithBrand);
       }
+      
+      // Логируем, если продукт не был распознан
+      if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+        logger.warn('Product not recognized, using fallback', {
+          productId: product.id,
+          productName: product.name,
+          step: product.step,
+          category: product.category,
+          stepKey,
+          fallbackStep,
+          userId,
+        });
+      }
     }
   });
+  
+  // Логируем итоговое состояние productsByStepMap после регистрации
+  if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+    const stepSummary = Array.from(productsByStepMap.entries()).map(([step, products]) => ({
+      step,
+      count: products.length,
+      productIds: products.map(p => p.id).slice(0, 5),
+    }));
+    logger.info('ProductsByStepMap after registration', {
+      userId,
+      totalSteps: productsByStepMap.size,
+      steps: stepSummary,
+    });
+  }
 
   const getProductsForStep = (step: StepCategory): ProductWithBrand[] => {
     // Сначала пробуем найти по точному совпадению StepCategory
@@ -1010,54 +1051,90 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       morningSteps.forEach((step) => {
         const stepProducts = getProductsForStep(step);
         if (stepProducts.length > 0) {
-          // Применяем дерматологическую фильтрацию
-          const context: ProductSelectionContext = {
-            timeOfDay: 'morning',
-            day,
-            week: weekNum,
-            alreadySelected: selectedProductsForDay,
-            protocol: dermatologyProtocol,
-            profileClassification,
-          };
-          
-          const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
-          const compatibleProducts = filteredResults.filter(r => r.allowed);
-          
-          if (compatibleProducts.length > 0) {
-            const selectedProduct = compatibleProducts[0].product;
+          // ВАЖНО: Для очищения и SPF не применяем строгую дерматологическую фильтрацию
+          // Они должны быть всегда доступны
+          if (isCleanserStep(step) || isSPFStep(step)) {
+            // Для обязательных шагов используем первый доступный продукт без фильтрации
+            const selectedProduct = stepProducts[0];
             selectedProductsForDay.push(selectedProduct);
-            
-            const justification = generateProductJustification(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
-            const warnings = generateProductWarnings(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
             
             dayProducts[step] = {
               id: selectedProduct.id,
               name: selectedProduct.name,
               brand: selectedProduct.brand.name,
               step,
-              justification,
-              warnings: warnings.length > 0 ? warnings : undefined,
             };
-          } else if (stepProducts.length > 0) {
-            // Если нет совместимых, используем первый доступный (fallback)
-            const fallbackProduct = stepProducts[0];
-            selectedProductsForDay.push(fallbackProduct);
+          } else {
+            // Для остальных шагов применяем дерматологическую фильтрацию
+            const context: ProductSelectionContext = {
+              timeOfDay: 'morning',
+              day,
+              week: weekNum,
+              alreadySelected: selectedProductsForDay,
+              protocol: dermatologyProtocol,
+              profileClassification,
+            };
             
-            dayProducts[step] = {
-              id: fallbackProduct.id,
-              name: fallbackProduct.name,
-              brand: fallbackProduct.brand.name,
-              step,
-              warning: 'Продукт может требовать дополнительной проверки совместимости',
-            };
+            const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
+            const compatibleProducts = filteredResults.filter(r => r.allowed);
+            
+            // Логируем для диагностики, если нет совместимых продуктов
+            if (compatibleProducts.length === 0 && stepProducts.length > 0) {
+              logger.warn('No compatible products after dermatology filter (morning)', {
+                step,
+                day,
+                week: weekNum,
+                totalProducts: stepProducts.length,
+                filteredReasons: filteredResults.filter(r => !r.allowed).map(r => r.reason).slice(0, 3),
+                userId,
+              });
+            }
+            
+            if (compatibleProducts.length > 0) {
+              const selectedProduct = compatibleProducts[0].product;
+              selectedProductsForDay.push(selectedProduct);
+              
+              const justification = generateProductJustification(
+                selectedProduct,
+                dermatologyProtocol,
+                profileClassification
+              );
+              const warnings = generateProductWarnings(
+                selectedProduct,
+                dermatologyProtocol,
+                profileClassification
+              );
+              
+              dayProducts[step] = {
+                id: selectedProduct.id,
+                name: selectedProduct.name,
+                brand: selectedProduct.brand.name,
+                step,
+                justification,
+                warnings: warnings.length > 0 ? warnings : undefined,
+              };
+            } else if (stepProducts.length > 0) {
+              // Если нет совместимых, используем первый доступный (fallback)
+              // Это важно, чтобы план не был пустым
+              const fallbackProduct = stepProducts[0];
+              selectedProductsForDay.push(fallbackProduct);
+              
+              logger.info('Using fallback product (no compatible after filter)', {
+                step,
+                day,
+                productId: fallbackProduct.id,
+                productName: fallbackProduct.name,
+                userId,
+              });
+              
+              dayProducts[step] = {
+                id: fallbackProduct.id,
+                name: fallbackProduct.name,
+                brand: fallbackProduct.brand.name,
+                step,
+                warning: 'Продукт может требовать дополнительной проверки совместимости',
+              };
+            }
           }
         }
       });
@@ -1066,54 +1143,90 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       eveningSteps.forEach((step) => {
         const stepProducts = getProductsForStep(step);
         if (stepProducts.length > 0) {
-          // Применяем дерматологическую фильтрацию
-          const context: ProductSelectionContext = {
-            timeOfDay: 'evening',
-            day,
-            week: weekNum,
-            alreadySelected: selectedProductsForDay,
-            protocol: dermatologyProtocol,
-            profileClassification,
-          };
-          
-          const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
-          const compatibleProducts = filteredResults.filter(r => r.allowed);
-          
-          if (compatibleProducts.length > 0) {
-            const selectedProduct = compatibleProducts[0].product;
+          // ВАЖНО: Для очищения не применяем строгую дерматологическую фильтрацию
+          // Оно должно быть всегда доступно
+          if (isCleanserStep(step)) {
+            // Для обязательных шагов используем первый доступный продукт без фильтрации
+            const selectedProduct = stepProducts[0];
             selectedProductsForDay.push(selectedProduct);
-            
-            const justification = generateProductJustification(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
-            const warnings = generateProductWarnings(
-              selectedProduct,
-              dermatologyProtocol,
-              profileClassification
-            );
             
             dayProducts[step] = {
               id: selectedProduct.id,
               name: selectedProduct.name,
               brand: selectedProduct.brand.name,
               step,
-              justification,
-              warnings: warnings.length > 0 ? warnings : undefined,
             };
-          } else if (stepProducts.length > 0) {
-            // Если нет совместимых, используем первый доступный (fallback)
-            const fallbackProduct = stepProducts[0];
-            selectedProductsForDay.push(fallbackProduct);
+          } else {
+            // Для остальных шагов применяем дерматологическую фильтрацию
+            const context: ProductSelectionContext = {
+              timeOfDay: 'evening',
+              day,
+              week: weekNum,
+              alreadySelected: selectedProductsForDay,
+              protocol: dermatologyProtocol,
+              profileClassification,
+            };
             
-            dayProducts[step] = {
-              id: fallbackProduct.id,
-              name: fallbackProduct.name,
-              brand: fallbackProduct.brand.name,
-              step,
-              warning: 'Продукт может требовать дополнительной проверки совместимости',
-            };
+            const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);
+            const compatibleProducts = filteredResults.filter(r => r.allowed);
+            
+            // Логируем для диагностики, если нет совместимых продуктов
+            if (compatibleProducts.length === 0 && stepProducts.length > 0) {
+              logger.warn('No compatible products after dermatology filter (evening)', {
+                step,
+                day,
+                week: weekNum,
+                totalProducts: stepProducts.length,
+                filteredReasons: filteredResults.filter(r => !r.allowed).map(r => r.reason).slice(0, 3),
+                userId,
+              });
+            }
+            
+            if (compatibleProducts.length > 0) {
+              const selectedProduct = compatibleProducts[0].product;
+              selectedProductsForDay.push(selectedProduct);
+              
+              const justification = generateProductJustification(
+                selectedProduct,
+                dermatologyProtocol,
+                profileClassification
+              );
+              const warnings = generateProductWarnings(
+                selectedProduct,
+                dermatologyProtocol,
+                profileClassification
+              );
+              
+              dayProducts[step] = {
+                id: selectedProduct.id,
+                name: selectedProduct.name,
+                brand: selectedProduct.brand.name,
+                step,
+                justification,
+                warnings: warnings.length > 0 ? warnings : undefined,
+              };
+            } else if (stepProducts.length > 0) {
+              // Если нет совместимых, используем первый доступный (fallback)
+              // Это важно, чтобы план не был пустым
+              const fallbackProduct = stepProducts[0];
+              selectedProductsForDay.push(fallbackProduct);
+              
+              logger.info('Using fallback product (no compatible after filter)', {
+                step,
+                day,
+                productId: fallbackProduct.id,
+                productName: fallbackProduct.name,
+                userId,
+              });
+              
+              dayProducts[step] = {
+                id: fallbackProduct.id,
+                name: fallbackProduct.name,
+                brand: fallbackProduct.brand.name,
+                step,
+                warning: 'Продукт может требовать дополнительной проверки совместимости',
+              };
+            }
           }
         }
       });
