@@ -2761,7 +2761,8 @@ export default function QuizPage() {
               </div>
             ) : (
               // Не последний вопрос или есть инфо-экраны - показываем "Далее"
-              answers[currentQuestion.id] && (
+              // При первом прохождении (!isRetakingQuiz) для single_choice кнопка не нужна - есть автопереход
+              answers[currentQuestion.id] && isRetakingQuiz && (
                 <button
                   onClick={handleNext}
                   disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)}
