@@ -510,29 +510,16 @@ export default function HomePage() {
                           errorMessage.includes('not found');
         
         if (isNotFound) {
-          // План не найден - запускаем генерацию в фоне (не блокируем UI)
-          console.log('⚠️ Home: Plan not found (404), but profile exists. Triggering background plan generation...');
-          
-          // Запускаем генерацию плана асинхронно в фоне, не ждем завершения
-          // Это не блокирует UI, план будет готов позже
-          const generatePlanInBackground = async () => {
-            try {
-              await api.generatePlan();
-              console.log('✅ Home: Background plan generation completed');
-              // После генерации можно обновить страницу или показать уведомление
-              // Но не делаем это автоматически, чтобы не мешать пользователю
-            } catch (bgErr: any) {
-              console.error('❌ Home: Background plan generation failed:', bgErr);
-            }
-          };
-          
-          // Запускаем в фоне, не ждем
-          generatePlanInBackground().catch(() => {});
-          
-          // Показываем сообщение, что план генерируется
-          // Пользователь может обновить страницу позже или перейти на /plan
-          setError('План генерируется. Пожалуйста, подождите несколько секунд и обновите страницу, или перейдите на страницу плана.');
+          // План не найден, но профиль есть - перенаправляем на /plan
+          // Там есть логика для генерации плана при его отсутствии
+          console.log('⚠️ Home: Plan not found (404), but profile exists. Redirecting to /plan for generation...');
           setLoading(false);
+          // Перенаправляем на /plan, где есть логика lazy generation
+          if (typeof window !== 'undefined') {
+            window.location.href = '/plan';
+          } else {
+            router.push('/plan');
+          }
           return;
         } else {
           // Другая ошибка (сеть, сервер и т.д.)
