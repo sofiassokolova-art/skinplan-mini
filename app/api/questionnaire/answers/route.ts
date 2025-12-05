@@ -195,12 +195,27 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // ВАЖНО: Извлекаем diagnoses и другие данные из ответов напрямую
+      // createSkinProfile не извлекает diagnoses, поэтому делаем это здесь
+      const diagnosesAnswer = fullAnswers.find(a => a.question?.code === 'diagnoses' || a.question?.code === 'DIAGNOSES');
+      const concernsAnswer = fullAnswers.find(a => a.question?.code === 'skin_concerns' || a.question?.code === 'current_concerns');
+      
+      const extractedData: any = {};
+      if (diagnosesAnswer && Array.isArray(diagnosesAnswer.answerValues)) {
+        extractedData.diagnoses = diagnosesAnswer.answerValues;
+      }
+      if (concernsAnswer && Array.isArray(concernsAnswer.answerValues)) {
+        extractedData.mainGoals = concernsAnswer.answerValues;
+      }
+
       // Подготавливаем данные для Prisma
       // При повторном прохождении анкеты сохраняем некоторые данные из старого профиля
       const existingMarkers = (existingProfile?.medicalMarkers as any) || {};
       const mergedMarkers = {
         ...existingMarkers,
         ...(profileData.medicalMarkers ? (profileData.medicalMarkers as any) : {}),
+        // ВАЖНО: Перезаписываем diagnoses и mainGoals из новых ответов
+        ...extractedData,
       };
       // Сохраняем gender из старого профиля, если он был
       if (existingMarkers?.gender) {
