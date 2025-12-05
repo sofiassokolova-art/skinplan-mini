@@ -510,16 +510,33 @@ export default function HomePage() {
                           errorMessage.includes('not found');
         
         if (isNotFound) {
-          // План не найден - это нормально, если он еще не сгенерирован
-          // НЕ редиректим на анкету, так как профиль уже есть
-          console.log('⚠️ Home: Plan not found (404), but profile exists. This is expected if plan is not generated yet.');
-          setError('План не найден. Пожалуйста, пройдите анкету для генерации плана.');
+          // План не найден - пробуем регенерировать, если профиль есть
+          console.log('⚠️ Home: Plan not found (404), but profile exists. Attempting to generate plan...');
+          try {
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+              console.log('✅ Home: Plan generated successfully, using it');
+              planData = generatedPlan;
+              // Продолжаем обработку плана ниже
+            } else {
+              console.log('⚠️ Home: Plan generation returned empty result');
+              setError('План не найден. Пожалуйста, пройдите анкету для генерации плана.');
+              setLoading(false);
+              return;
+            }
+          } catch (generateErr: any) {
+            console.error('❌ Home: Failed to generate plan:', generateErr);
+            // Если генерация не удалась, показываем ошибку
+            setError('План не найден. Пожалуйста, пройдите анкету для генерации плана.');
+            setLoading(false);
+            return;
+          }
         } else {
           // Другая ошибка (сеть, сервер и т.д.)
           setError('Не удалось загрузить план. Попробуйте обновить страницу.');
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-        return;
       }
       
       // Загружаем прогресс (может быть ошибка, но это не критично)
