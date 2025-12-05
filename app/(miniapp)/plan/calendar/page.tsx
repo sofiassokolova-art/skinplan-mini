@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
@@ -97,58 +97,13 @@ export default function PlanCalendarPage() {
           console.warn('Failed to save error log:', logError);
         }
         
-        // Если план не найден (404), попробуем сгенерировать
+        // Если план не найден - показываем ошибку
+        // План должен генерироваться только при завершении анкеты, не автоматически
         if (err?.status === 404 || err?.isNotFound) {
-          try {
-            console.log('📅 Calendar: Plan not in cache, trying to generate...');
-            // Пробуем сгенерировать план напрямую
-            planData = await api.generatePlan() as any;
-            console.log('📅 Calendar: Plan generated', {
-              hasPlan: !!planData,
-              hasPlan28: !!planData?.plan28,
-              hasWeeks: !!planData?.weeks,
-            });
-          } catch (genErr: any) {
-            console.error('📅 Calendar: Error generating plan', genErr);
-            
-            // Логируем ошибку генерации
-            try {
-              if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-                await fetch('/api/logs', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
-                  },
-                  body: JSON.stringify({
-                    level: 'error',
-                    message: `Calendar: Failed to generate plan - ${genErr?.message || 'Unknown error'}`,
-                    context: {
-                      error: genErr?.message || String(genErr),
-                      status: genErr?.status,
-                      stack: genErr?.stack,
-                      url: window.location.href,
-                    },
-                    url: window.location.href,
-                    userAgent: navigator.userAgent,
-                  }),
-                }).catch(logErr => console.warn('Failed to log error:', logErr));
-              }
-            } catch (logError) {
-              console.warn('Failed to save error log:', logError);
-            }
-            
-            // Если генерация не удалась из-за отсутствия профиля - редиректим на анкету
-            if (genErr?.status === 404 || genErr?.message?.includes('No skin profile') || genErr?.message?.includes('Profile not found')) {
-              toast.error('План не найден. Пожалуйста, пройдите анкету.');
-              router.push('/quiz');
-              return;
-            }
-            // Другие ошибки - показываем общую ошибку
-            toast.error('Не удалось загрузить план. Попробуйте позже.');
-            setLoading(false);
-            return;
-          }
+          console.log('📅 Calendar: Plan not found, showing error screen');
+          toast.error('План не найден. Пожалуйста, пройдите анкету.');
+          setLoading(false);
+          return;
         } else {
           // Другие ошибки (не 404) - показываем общую ошибку
           console.error('📅 Calendar: Unexpected error loading plan', err);
@@ -402,41 +357,6 @@ export default function PlanCalendarPage() {
       padding: '20px',
       paddingBottom: '100px',
     }}>
-      {/* Логотип */}
-      <div style={{
-        padding: '20px',
-        textAlign: 'center',
-        marginBottom: '20px',
-      }}>
-        <button
-          onClick={() => router.push('/')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            display: 'inline-block',
-          }}
-        >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
-        </button>
-      </div>
-
       {/* Блок текущей стадии */}
       <div style={{
         backgroundColor: 'white',

@@ -420,26 +420,11 @@ export default function HomePage() {
         });
       } catch (planErr: any) {
         console.error('❌ Home: Error loading plan', planErr);
-        // Если план не найден (404), пробуем сгенерировать
-        if (planErr?.status === 404 || planErr?.isNotFound) {
-          console.log('📥 Home: Plan not in cache, trying to generate...');
-          try {
-            planData = await api.generatePlan() as any;
-            console.log('✅ Home: Plan generated', {
-              hasPlan: !!planData,
-              hasPlan28: !!planData?.plan28,
-            });
-          } catch (genErr: any) {
-            console.error('❌ Home: Error generating plan', genErr);
-            // Если генерация не удалась - показываем экран с кнопкой
-            setLoading(false);
-            return;
-          }
-        } else {
-          // Другая ошибка - показываем экран с кнопкой
-          setLoading(false);
-          return;
-        }
+        // Если план не найден - показываем экран с кнопкой "Пройти анкету"
+        // План должен генерироваться только при завершении анкеты, не автоматически
+        console.log('⚠️ Home: Plan not found, showing "Start quiz" screen');
+        setLoading(false);
+        return;
       }
       
       // Загружаем прогресс (может быть ошибка, но это не критично)
