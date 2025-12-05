@@ -65,10 +65,32 @@ export default function QuizPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const isRetakingFromStorage = localStorage.getItem('is_retaking_quiz') === 'true';
+      const fullRetakeFromHome = localStorage.getItem('full_retake_from_home') === 'true';
+      
       if (isRetakingFromStorage) {
         setIsRetakingQuiz(true);
-        setShowRetakeScreen(true);
-        console.log('✅ Флаг перепрохождения найден в localStorage, показываем экран выбора тем');
+        
+        // Если это полное перепрохождение с главной страницы - пропускаем экран выбора тем и инфо-экраны
+        if (fullRetakeFromHome) {
+          setShowRetakeScreen(false);
+          // Очищаем флаг после использования
+          localStorage.removeItem('full_retake_from_home');
+          // Пропускаем все начальные инфо-экраны сразу
+          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+          setCurrentInfoScreenIndex(initialInfoScreens.length);
+          setCurrentQuestionIndex(0);
+          setPendingInfoScreen(null);
+          // Очищаем ответы для нового прохождения
+          setAnswers({});
+          // Очищаем сохраненный прогресс
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('quiz_progress');
+          }
+          console.log('✅ Полное перепрохождение с главной страницы - пропускаем экран выбора тем и все инфо-экраны');
+        } else {
+          setShowRetakeScreen(true);
+          console.log('✅ Флаг перепрохождения найден в localStorage, показываем экран выбора тем');
+        }
       }
     }
   }, []);
@@ -1800,13 +1822,18 @@ export default function QuizPage() {
       return !isMale;
     });
     
-    if (allQuestions.length > 0) {
-      // Переходим сразу к первому вопросу только если мы на начальных экранах
+    // ВАЖНО: При полном перепрохождении (isRetakingQuiz && !showRetakeScreen) пропускаем все инфо-экраны
+    // Это включает как начальные инфо-экраны, так и инфо-экраны между вопросами
+    if (allQuestions.length > 0 && isRetakingQuiz && !showRetakeScreen) {
+      // Переходим сразу к первому вопросу, пропуская все начальные инфо-экраны
       if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreens.length) {
         setCurrentInfoScreenIndex(initialInfoScreens.length);
+        setCurrentQuestionIndex(0);
+        setPendingInfoScreen(null); // Очищаем pending info screen
+        console.log('✅ Full retake: Skipping all initial info screens, starting from first question');
       }
     }
-  }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers]);
+  }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen, initialInfoScreens.length]);
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
   const initialInfoScreens = useMemo(() => INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode), []);
@@ -2013,6 +2040,8 @@ export default function QuizPage() {
       setShowRetakeScreen(false);
       // ВАЖНО: Устанавливаем флаг перепрохождения, чтобы пропустить все info screens
       setIsRetakingQuiz(true);
+      // Очищаем ответы для нового прохождения
+      setAnswers({});
       // Пропускаем все начальные info screens - переходим сразу к вопросам
       if (questionnaire) {
         const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
@@ -2020,6 +2049,10 @@ export default function QuizPage() {
         setCurrentQuestionIndex(0);
         // Очищаем pending info screen, если он был установлен
         setPendingInfoScreen(null);
+        // Очищаем сохраненный прогресс
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('quiz_progress');
+        }
         console.log('✅ Full retake: Skipping all info screens, starting from first question');
       }
     };

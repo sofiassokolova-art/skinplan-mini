@@ -1506,9 +1506,11 @@ export default function HomePage() {
         </button>
         <button
           onClick={() => {
-            // Устанавливаем флаг о перепрохождении анкеты
+            // Устанавливаем флаг о полном перепрохождении анкеты с главной страницы
+            // Это означает, что нужно пропустить экран выбора тем и сразу начать полное перепрохождение
             if (typeof window !== 'undefined') {
               localStorage.setItem('is_retaking_quiz', 'true');
+              localStorage.setItem('full_retake_from_home', 'true'); // Флаг для полного перепрохождения с главной
             }
             router.push('/quiz');
           }}
