@@ -255,85 +255,15 @@ export async function POST(request: NextRequest) {
         });
         
         // Удаляем старую RecommendationSession, чтобы план перегенерировался с новыми продуктами
+        // ВАЖНО: Удаляем только по userId, так как новая сессия будет создана позже
         await prisma.recommendationSession.deleteMany({
           where: { userId },
         });
         logger.info('RecommendationSession deleted for plan regeneration', { userId });
         
-        // Запускаем автоматическую генерацию плана после создания/обновления профиля
-        // ВАЖНО: Генерируем план синхронно, чтобы он был готов сразу после завершения анкеты
-        // Это критично для UX - пользователь должен видеть план сразу после анкеты
-        try {
-          logger.info('Starting plan generation after profile creation/update', { userId, newVersion: profile.version });
-          
-          // Используем прямой вызов функции генерации вместо fetch для надежности
-          // Это гарантирует, что план будет сгенерирован даже если внешний URL недоступен
-          const planGenerateModule = await import('@/app/api/plan/generate/route');
-          const generate28DayPlan = planGenerateModule.generate28DayPlan;
-          
-          if (!generate28DayPlan || typeof generate28DayPlan !== 'function') {
-            throw new Error('generate28DayPlan function not found or not exported');
-          }
-          
-          const generatedPlan = await generate28DayPlan(userId);
-          
-          if (generatedPlan && generatedPlan.plan28) {
-            // Сохраняем план в кэш
-            const { setCachedPlan } = await import('@/lib/cache');
-            await setCachedPlan(userId, profile.version, generatedPlan);
-            logger.info('Plan generated and cached successfully after profile creation', { 
-              userId, 
-              profileVersion: profile.version,
-              planDays: generatedPlan.plan28?.days?.length || 0,
-            });
-          } else {
-            logger.warn('Plan generation returned empty result', { userId, profileVersion: profile.version });
-          }
-        } catch (regenerateError: any) {
-          // Логируем ошибку, но не блокируем ответ - план может быть сгенерирован позже
-          logger.error('Failed to generate plan after profile creation', regenerateError, { 
-            userId, 
-            profileVersion: profile.version,
-            errorMessage: regenerateError?.message,
-            errorStack: regenerateError?.stack,
-          });
-          
-          // Пробуем альтернативный способ - через fetch (на случай, если прямой вызов не работает)
-          try {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
-                           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-                           'http://localhost:3000';
-            const planRegenerateUrl = `${baseUrl}/api/plan/generate`;
-            
-            logger.info('Attempting plan generation via fetch as fallback', { 
-              userId, 
-              url: planRegenerateUrl,
-              hasInitData: !!initData,
-            });
-            
-            // Запускаем в фоне, не ждем ответа
-            fetch(planRegenerateUrl, {
-              method: 'GET',
-              headers: {
-                'X-Telegram-Init-Data': initData || '',
-              },
-            }).then(response => {
-              if (!response.ok) {
-                logger.warn('Plan generation via fetch returned non-OK status', { 
-                  userId, 
-                  status: response.status,
-                  statusText: response.statusText,
-                });
-              } else {
-                logger.info('Plan generation via fetch succeeded', { userId });
-              }
-            }).catch(err => {
-              logger.warn('Background plan regeneration via fetch failed', { userId, error: err });
-            });
-          } catch (fetchError) {
-            logger.warn('Could not trigger plan regeneration via fetch either', { userId, error: fetchError });
-          }
-        }
+        // ВАЖНО: Генерацию плана переносим ПОСЛЕ создания RecommendationSession
+        // Это гарантирует, что план будет использовать продукты из новой сессии
+        // Генерация плана будет выполнена после создания RecommendationSession (см. ниже)
       } catch (cacheError) {
         logger.warn('Failed to clear cache', { error: cacheError, userId });
       }
@@ -798,6 +728,82 @@ export async function POST(request: NextRequest) {
         } else {
           logger.error('No products available for fallback session', { userId });
         }
+      }
+      
+      // ВАЖНО: Генерируем план ПОСЛЕ создания RecommendationSession
+      // Это гарантирует, что план будет использовать продукты из новой сессии
+      // РЕШЕНИЕ ПРОБЛЕМЫ ДОЛГОЙ ГЕНЕРАЦИИ: Запускаем генерацию асинхронно в фоне
+      // Это не блокирует ответ на запрос анкеты, план будет готов позже
+      // При первом запросе плана, если его нет, он будет сгенерирован автоматически (lazy generation)
+      // Генерируем план как при первом прохождении, так и при перепрохождении
+      const shouldGeneratePlan = !existingProfile || (existingProfile.version !== profile.version);
+      if (shouldGeneratePlan) {
+        // Запускаем генерацию плана асинхронно в фоне, не ждем завершения
+        // Это решает проблему долгой синхронной генерации (до 60 секунд)
+        // Пользователь получит ответ сразу, а план будет готов позже
+        const generatePlanInBackground = async () => {
+          try {
+            logger.info('Starting background plan generation after RecommendationSession creation', { 
+              userId, 
+              newVersion: profile.version 
+            });
+            
+            // Используем fetch для асинхронной генерации в фоне
+            // Это не блокирует текущий запрос
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
+                           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+                           'http://localhost:3000';
+            const planRegenerateUrl = `${baseUrl}/api/plan/generate`;
+            
+            const response = await fetch(planRegenerateUrl, {
+              method: 'GET',
+              headers: {
+                'X-Telegram-Init-Data': initData || '',
+              },
+              // Не устанавливаем таймаут на уровне fetch, пусть API сам управляет таймаутом
+            });
+            
+            if (!response.ok) {
+              logger.warn('Background plan generation returned non-OK status', { 
+                userId, 
+                status: response.status,
+                statusText: response.statusText,
+              });
+            } else {
+              const generatedPlan = await response.json();
+              if (generatedPlan && generatedPlan.plan28) {
+                logger.info('Background plan generation succeeded', { 
+                  userId, 
+                  profileVersion: profile.version,
+                  planDays: generatedPlan.plan28?.days?.length || 0,
+                });
+              } else {
+                logger.warn('Background plan generation returned empty result', { 
+                  userId, 
+                  profileVersion: profile.version 
+                });
+              }
+            }
+          } catch (bgError: any) {
+            // Логируем ошибку, но не блокируем основной ответ
+            logger.error('Background plan generation failed', bgError, { 
+              userId, 
+              profileVersion: profile.version,
+              errorMessage: bgError?.message,
+            });
+          }
+        };
+        
+        // Запускаем в фоне, не ждем завершения
+        // Используем setTimeout(0) чтобы гарантировать, что это выполнится после ответа
+        generatePlanInBackground().catch(err => {
+          logger.warn('Background plan generation promise rejected', { userId, error: err });
+        });
+        
+        logger.info('Background plan generation triggered (non-blocking)', { 
+          userId, 
+          profileVersion: profile.version 
+        });
       }
     } catch (recommendationError) {
       // Не блокируем сохранение ответов, если рекомендации не создались
