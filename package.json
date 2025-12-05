@@ -43,6 +43,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:profile": "vitest tests/profile-generation.test.ts",
+    "test:100-users": "tsx scripts/test-100-users.ts",
     "test:rules": "tsx scripts/test-all-rules.ts",
     "test:client": "tsx scripts/test-client-paths.ts",
     "test:flow": "tsx scripts/test-full-product-flow.ts",
