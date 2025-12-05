@@ -37,11 +37,25 @@ export async function getCachedPlan(
   try {
     const key = `plan:${userId}:${profileVersion}`;
     const cached = await kv.get(key);
-    return cached ? JSON.parse(cached as string) : null;
+    if (!cached) {
+      return null;
+    }
+    // Проверяем тип - если это уже объект, возвращаем как есть
+    // Если это строка, парсим JSON
+    if (typeof cached === 'string') {
+      try {
+        return JSON.parse(cached);
+      } catch (parseError) {
+        console.error('Error parsing cached plan JSON:', parseError, 'Raw value:', cached);
+        return null;
+      }
+    }
+    // Если это уже объект, возвращаем как есть
+    return cached;
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
-    console.error('Error getting cached plan:', error);
+      console.error('Error getting cached plan:', error);
     }
     return null;
   }
@@ -85,11 +99,25 @@ export async function getCachedRecommendations(
   try {
     const key = `recommendations:${userId}:${profileVersion}`;
     const cached = await kv.get(key);
-    return cached ? JSON.parse(cached as string) : null;
+    if (!cached) {
+      return null;
+    }
+    // Проверяем тип - если это уже объект, возвращаем как есть
+    // Если это строка, парсим JSON
+    if (typeof cached === 'string') {
+      try {
+        return JSON.parse(cached);
+      } catch (parseError) {
+        console.error('Error parsing cached recommendations JSON:', parseError, 'Raw value:', cached);
+        return null;
+      }
+    }
+    // Если это уже объект, возвращаем как есть
+    return cached;
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
-    console.error('Error getting cached recommendations:', error);
+      console.error('Error getting cached recommendations:', error);
     }
     return null;
   }

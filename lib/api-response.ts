@@ -63,12 +63,24 @@ export class ApiResponse {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     const errorStack = error instanceof Error ? error.stack : undefined;
-
-    logger.error('Internal server error', {
+    
+    // Правильно сериализуем ошибку для логирования
+    let errorDetails: any = {
       error: errorMessage,
       stack: errorStack,
       ...context,
-    });
+    };
+    
+    // Если это не Error, пытаемся сериализовать как JSON
+    if (!(error instanceof Error)) {
+      try {
+        errorDetails.errorDetails = JSON.stringify(error);
+      } catch {
+        errorDetails.errorDetails = String(error);
+      }
+    }
+
+    logger.error('Internal server error', errorDetails);
 
     return ApiResponse.error(
       errorMessage,
