@@ -1896,7 +1896,7 @@ export default function QuizPage() {
         }}>
           <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка</h1>
           <p style={{ color: '#475467', marginBottom: '24px' }}>
-            {typeof error === 'string' ? error : error?.message || error?.toString() || 'Произошла неизвестная ошибка'}
+            {error || 'Произошла неизвестная ошибка'}
           </p>
           <button
             onClick={() => {
@@ -2484,7 +2484,7 @@ export default function QuizPage() {
                   color: '#1F2A44',
                   lineHeight: '1.5',
                 }}>
-                  {typeof benefit === 'string' ? benefit : benefit?.toString() || ''}
+                  {String(benefit || '')}
                 </span>
               </div>
             ))}
@@ -2622,7 +2622,7 @@ export default function QuizPage() {
             margin: '0 0 16px 0',
             textAlign: 'center',
           }}>
-            {typeof screen.title === 'string' ? screen.title : screen.title?.toString() || ''}
+            {String(screen.title || '')}
           </h1>
 
           {/* Подзаголовок - многострочный */}
@@ -2637,7 +2637,7 @@ export default function QuizPage() {
                   textAlign: 'center',
                   whiteSpace: 'pre-line',
                 }}>
-                  {typeof screen.subtitle === 'string' ? screen.subtitle : screen.subtitle?.toString() || ''}
+                  {String(screen.subtitle || '')}
                 </div>
               )}
 
@@ -2664,7 +2664,7 @@ export default function QuizPage() {
                     fontSize: '14px',
                     lineHeight: '1.4',
                   }}>
-                    {typeof error === 'string' ? error : error?.message || error?.toString() || 'Произошла ошибка'}
+                    {error || 'Произошла ошибка'}
                   </div>
                 </div>
               )}
@@ -2694,10 +2694,10 @@ export default function QuizPage() {
                     {'⭐'.repeat(testimonial.stars || 5)}
                   </div>
                   <p style={{ fontSize: '14px', color: '#475467', marginBottom: '16px', lineHeight: '1.5' }}>
-                    "{typeof testimonial.text === 'string' ? testimonial.text : testimonial.text?.toString() || ''}"
+                    "{String(testimonial.text || '')}"
                   </p>
                   <p style={{ fontSize: '12px', color: '#0A5F59', fontWeight: 600 }}>
-                    — {typeof testimonial.author === 'string' ? testimonial.author : testimonial.author?.toString() || 'Пользователь'}
+                    — {String(testimonial.author || 'Пользователь')}
                   </p>
                 </div>
               ))}
@@ -2721,10 +2721,10 @@ export default function QuizPage() {
                     <img src={product.icon} alt={product.name} style={{ width: '60px', height: '60px', marginBottom: '8px', objectFit: 'contain' }} />
                   )}
                   <div style={{ fontSize: '12px', fontWeight: 600, color: '#0A5F59', marginBottom: '4px' }}>
-                    {typeof product.name === 'string' ? product.name : product.name?.toString() || 'Продукт'}
+                    {String(product.name || 'Продукт')}
                   </div>
                   <div style={{ fontSize: '10px', color: '#475467' }}>
-                    {typeof product.desc === 'string' ? product.desc : product.desc?.toString() || ''}
+                    {String(product.desc || '')}
                   </div>
                 </div>
               ))}
@@ -2966,7 +2966,7 @@ export default function QuizPage() {
                     marginTop: '20px',
                   }}
                 >
-                  {typeof screen.ctaText === 'string' ? screen.ctaText : screen.ctaText?.toString() || 'Продолжить'} →
+                  {String(screen.ctaText || 'Продолжить')} →
                 </button>
               ) : null
             );
