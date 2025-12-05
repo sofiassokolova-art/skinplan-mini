@@ -216,10 +216,21 @@ export default function QuizPage() {
                 const isCompleted = progress && (progress as any).isCompleted;
                 
                 if (hasAnswers && isCompleted) {
-                  // Анкета полностью завершена - это повторное прохождение, показываем экран выбора тем
-                  setIsRetakingQuiz(true);
-                  setShowRetakeScreen(true);
-                  console.log('✅ Повторное прохождение анкеты - профиль и завершенная анкета существуют, показываем экран выбора тем');
+                  // Анкета полностью завершена - проверяем, хочет ли пользователь перепроходить
+                  // ВАЖНО: Проверяем флаг из localStorage, установленный при нажатии "Перепройти анкету"
+                  const isRetakingFromStorage = typeof window !== 'undefined' && localStorage.getItem('is_retaking_quiz') === 'true';
+                  if (isRetakingFromStorage) {
+                    // Пользователь нажал "Перепройти анкету" - показываем экран выбора тем
+                    setIsRetakingQuiz(true);
+                    setShowRetakeScreen(true);
+                    console.log('✅ Повторное прохождение анкеты - профиль и завершенная анкета существуют + флаг перепрохождения установлен, показываем экран выбора тем');
+                  } else {
+                    // Профиль есть, анкета завершена, но пользователь не хочет перепроходить
+                    // Это может быть обычное продолжение или просто заход на страницу
+                    console.log('ℹ️ Профиль и завершенная анкета существуют, но флаг перепрохождения не установлен');
+                    setIsRetakingQuiz(false);
+                    setShowRetakeScreen(false);
+                  }
                 } else {
                   // Профиль есть, но анкета не завершена - показываем полную анкету
                   console.log('ℹ️ Профиль есть, но анкета не завершена - показываем полную анкету', {
