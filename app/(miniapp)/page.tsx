@@ -510,27 +510,30 @@ export default function HomePage() {
                           errorMessage.includes('not found');
         
         if (isNotFound) {
-          // План не найден - пробуем регенерировать, если профиль есть
-          console.log('⚠️ Home: Plan not found (404), but profile exists. Attempting to generate plan...');
-          try {
-            const generatedPlan = await api.generatePlan() as any;
-            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-              console.log('✅ Home: Plan generated successfully, using it');
-              planData = generatedPlan;
-              // Продолжаем обработку плана ниже
-            } else {
-              console.log('⚠️ Home: Plan generation returned empty result');
-              setError('План не найден. Пожалуйста, пройдите анкету для генерации плана.');
-              setLoading(false);
-              return;
+          // План не найден - запускаем генерацию в фоне (не блокируем UI)
+          console.log('⚠️ Home: Plan not found (404), but profile exists. Triggering background plan generation...');
+          
+          // Запускаем генерацию плана асинхронно в фоне, не ждем завершения
+          // Это не блокирует UI, план будет готов позже
+          const generatePlanInBackground = async () => {
+            try {
+              await api.generatePlan();
+              console.log('✅ Home: Background plan generation completed');
+              // После генерации можно обновить страницу или показать уведомление
+              // Но не делаем это автоматически, чтобы не мешать пользователю
+            } catch (bgErr: any) {
+              console.error('❌ Home: Background plan generation failed:', bgErr);
             }
-          } catch (generateErr: any) {
-            console.error('❌ Home: Failed to generate plan:', generateErr);
-            // Если генерация не удалась, показываем ошибку
-            setError('План не найден. Пожалуйста, пройдите анкету для генерации плана.');
-            setLoading(false);
-            return;
-          }
+          };
+          
+          // Запускаем в фоне, не ждем
+          generatePlanInBackground().catch(() => {});
+          
+          // Показываем сообщение, что план генерируется
+          // Пользователь может обновить страницу позже или перейти на /plan
+          setError('План генерируется. Пожалуйста, подождите несколько секунд и обновите страницу, или перейдите на страницу плана.');
+          setLoading(false);
+          return;
         } else {
           // Другая ошибка (сеть, сервер и т.д.)
           setError('Не удалось загрузить план. Попробуйте обновить страницу.');
