@@ -220,3 +220,37 @@ export async function invalidateCache(userId: string, profileVersion: number): P
   }
 }
 
+/**
+ * Инвалидировать весь кэш пользователя (все версии профилей)
+ * Используется при полной очистке данных пользователя
+ */
+export async function invalidateAllUserCache(userId: string): Promise<void> {
+  if (!kvAvailable || !kv) {
+    return; // Кеш недоступен, просто выходим
+  }
+  
+  try {
+    // Получаем все ключи, начинающиеся с plan:userId: или recommendations:userId:
+    // ВАЖНО: Vercel KV не поддерживает SCAN напрямую, поэтому используем паттерн
+    // Для полной очистки удаляем все возможные версии (1-100)
+    const keysToDelete: string[] = [];
+    
+    for (let version = 1; version <= 100; version++) {
+      keysToDelete.push(`plan:${userId}:${version}`);
+      keysToDelete.push(`recommendations:${userId}:${version}`);
+    }
+    
+    // Удаляем все ключи параллельно
+    await Promise.all(keysToDelete.map(key => kv.del(key).catch(() => {
+      // Игнорируем ошибки удаления отдельных ключей (они могут не существовать)
+    })));
+    
+    console.log(`✅ Очищен весь кэш для пользователя ${userId} (все версии 1-100)`);
+  } catch (error) {
+    // Логируем только если это не ошибка отсутствия переменных окружения
+    if (!(error as any)?.message?.includes('Missing required environment variables')) {
+      console.error('Error invalidating all user cache:', error);
+    }
+  }
+}
+

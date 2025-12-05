@@ -1217,34 +1217,33 @@ export default function QuizPage() {
         return;
       }
       
-      setIsSubmitting(false);
+      // ВАЖНО: Вместо показа ошибки продолжаем показывать лоадер и редиректим на /plan
+      // Это обеспечивает лучший UX - пользователь видит лоадер, а не экран ошибки
+      // План может генерироваться в фоне, даже если отправка ответов вернула ошибку
+      console.log('⚠️ Ошибка при отправке ответов, но продолжаем показывать лоадер и редиректим на /plan');
       
-      // Обработка различных типов ошибок
+      // Обработка различных типов ошибок - но все равно редиректим
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401') || err?.message?.includes('initData')) {
-        if (isMountedRef.current) {
-          setError('Ошибка идентификации. Пожалуйста, откройте приложение через Telegram и обновите страницу.');
-        }
+        console.warn('⚠️ Ошибка авторизации, но продолжаем редирект');
       } else if (err?.message?.includes('уже была отправлена') || err?.message?.includes('301') || err?.message?.includes('302') || err?.status === 301 || err?.status === 302) {
-        // Ошибка 301/302 - форма уже была отправлена
-        if (isMountedRef.current) {
-          setError('Форма уже была отправлена. Перенаправляем на страницу результатов...');
-        }
-        // Автоматический редирект через небольшую задержку
-        setTimeout(() => {
-          if (typeof window !== 'undefined') {
-            // Используем replace вместо href
-            window.location.replace('/plan');
-          } else {
-            router.push('/plan');
-          }
-        }, 2000);
+        // Ошибка 301/302 - форма уже была отправлена - это нормально, редиректим
+        console.log('✅ Форма уже была отправлена, редиректим на /plan');
       } else {
-        // Убеждаемся, что error всегда строка
-        const errorMessage = String(err?.message || err?.error || 'Ошибка сохранения ответов. Попробуйте еще раз.');
-        if (isMountedRef.current) {
-          setError(errorMessage);
-        }
+        // Другие ошибки - логируем, но все равно редиректим
+        console.warn('⚠️ Ошибка при отправке ответов, но продолжаем редирект на /plan:', err?.message || err?.error);
       }
+      
+      // ВАЖНО: НЕ устанавливаем setIsSubmitting(false) и НЕ устанавливаем setError
+      // Продолжаем показывать лоадер и редиректим на /plan
+      // План может генерироваться в фоне, даже если отправка ответов вернула ошибку
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          // Используем replace вместо href
+          window.location.replace('/plan');
+        } else {
+          router.push('/plan');
+        }
+      }, 1500); // Небольшая задержка, чтобы пользователь увидел лоадер
     }
   };
 
