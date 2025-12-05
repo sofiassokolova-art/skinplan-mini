@@ -620,6 +620,18 @@ export async function POST(request: NextRequest) {
         }
 
         // Создаем RecommendationSession
+        // ВАЖНО: Логируем для диагностики, особенно при перепрохождении
+        logger.info('Creating RecommendationSession with products', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+          ruleId: matchedRule.id,
+          productCount: productIds.length,
+          productIds: productIds.slice(0, 10), // Первые 10 для логирования
+          isRetaking: !!existingProfile,
+          oldProfileVersion: existingProfile?.version,
+        });
+        
         await prisma.recommendationSession.create({
           data: {
             userId,
