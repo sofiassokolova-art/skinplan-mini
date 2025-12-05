@@ -1976,7 +1976,17 @@ export default function QuizPage() {
       }
       // Полное перепрохождение - скрываем экран выбора тем и показываем все вопросы
       setShowRetakeScreen(false);
-      // Пропускаем все info screens при полном перепрохождении
+      // ВАЖНО: Устанавливаем флаг перепрохождения, чтобы пропустить все info screens
+      setIsRetakingQuiz(true);
+      // Пропускаем все начальные info screens - переходим сразу к вопросам
+      if (questionnaire) {
+        const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+        setCurrentInfoScreenIndex(initialInfoScreens.length);
+        setCurrentQuestionIndex(0);
+        // Очищаем pending info screen, если он был установлен
+        setPendingInfoScreen(null);
+        console.log('✅ Full retake: Skipping all info screens, starting from first question');
+      }
     };
 
     const retakeScreenContent = (
@@ -2119,6 +2129,16 @@ export default function QuizPage() {
                 localStorage.setItem('payment_full_retake_completed', 'true');
                 // После оплаты разрешаем полное перепрохождение
                 setShowRetakeScreen(false);
+                // Устанавливаем флаг перепрохождения, чтобы пропустить все info screens
+                setIsRetakingQuiz(true);
+                // Пропускаем все начальные info screens - переходим сразу к вопросам
+                if (questionnaire) {
+                  const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+                  setCurrentInfoScreenIndex(initialInfoScreens.length);
+                  setCurrentQuestionIndex(0);
+                  setPendingInfoScreen(null);
+                  console.log('✅ Full retake payment: Skipping all info screens, starting from first question');
+                }
               }
             }}
           >
