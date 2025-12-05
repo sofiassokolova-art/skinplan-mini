@@ -187,8 +187,10 @@ function getFallbackStep(step: string): StepCategory | undefined {
 
 /**
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
+ * ВАЖНО: Не экспортируем эту функцию, так как Next.js Route файлы могут экспортировать только GET, POST и т.д.
+ * Для вызова из других модулей используйте fetch к /api/plan/generate
  */
-export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
+async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     logger.info('Generating plan', { userId });
   
   // Получаем профиль кожи
