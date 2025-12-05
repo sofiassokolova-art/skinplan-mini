@@ -70,27 +70,18 @@ export default function QuizPage() {
       if (isRetakingFromStorage) {
         setIsRetakingQuiz(true);
         
-        // Если это полное перепрохождение с главной страницы - пропускаем экран выбора тем и инфо-экраны
+        // ВАЖНО: При переходе с главной страницы показываем экран выбора тем с PaymentGate
+        // НЕ пропускаем его, чтобы пользователь мог оплатить 49₽ или 99₽
+        // Флаг full_retake_from_home используется только для логики, но экран выбора тем показываем
         if (fullRetakeFromHome) {
-          setShowRetakeScreen(false);
-          // Очищаем флаг после использования
+          // Очищаем флаг после использования (он больше не нужен)
           localStorage.removeItem('full_retake_from_home');
-          // Пропускаем все начальные инфо-экраны сразу
-          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
-          setCurrentInfoScreenIndex(initialInfoScreens.length);
-          setCurrentQuestionIndex(0);
-          setPendingInfoScreen(null);
-          // Очищаем ответы для нового прохождения
-          setAnswers({});
-          // Очищаем сохраненный прогресс
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('quiz_progress');
-          }
-          console.log('✅ Полное перепрохождение с главной страницы - пропускаем экран выбора тем и все инфо-экраны');
-        } else {
-          setShowRetakeScreen(true);
-          console.log('✅ Флаг перепрохождения найден в localStorage, показываем экран выбора тем');
+          console.log('✅ Полное перепрохождение с главной страницы - показываем экран выбора тем с оплатой');
         }
+        
+        // Всегда показываем экран выбора тем при перепрохождении
+        setShowRetakeScreen(true);
+        console.log('✅ Флаг перепрохождения найден в localStorage, показываем экран выбора тем');
       }
     }
   }, []);
