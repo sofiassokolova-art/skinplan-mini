@@ -1159,9 +1159,13 @@ export default function QuizPage() {
       const result = await api.submitAnswers(questionnaire.id, answerArray) as any;
       console.log('✅ Ответы отправлены, профиль создан:', result);
       
-      // Если это перепрохождение анкеты, устанавливаем флаг
+      // ВАЖНО: При перепрохождении анкеты НЕ устанавливаем флаг is_retaking_quiz в localStorage
+      // Флаг должен быть очищен после успешной отправки, чтобы при следующем заходе показывалась обычная анкета
+      // Если это перепрохождение анкеты, очищаем флаг после успешной отправки
       if (isRetakingQuiz && typeof window !== 'undefined') {
-        localStorage.setItem('is_retaking_quiz', 'true');
+        localStorage.removeItem('is_retaking_quiz');
+        localStorage.removeItem('full_retake_from_home');
+        console.log('✅ Флаги перепрохождения очищены после успешной отправки ответов');
       }
       
       // Если это дубликат отправки, все равно перенаправляем пользователя
