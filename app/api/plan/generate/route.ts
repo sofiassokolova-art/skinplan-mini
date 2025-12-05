@@ -1021,6 +1021,21 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   }
 
   // Обеспечиваем продукты для всех обязательных шагов из шаблона (batch запрос - устраняет N+1)
+  // Логируем состояние ДО ensureRequiredProducts
+  if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+    const beforeSummary = Array.from(productsByStepMap.entries()).map(([step, products]) => ({
+      step,
+      count: products.length,
+      productIds: products.map(p => p.id),
+    }));
+    logger.info('ProductsByStepMap BEFORE ensureRequiredProducts', {
+      userId,
+      requiredSteps: Array.from(requiredStepCategories),
+      totalSteps: productsByStepMap.size,
+      steps: beforeSummary,
+    });
+  }
+  
   await ensureRequiredProductsForPlan();
   
   // Логируем итоговое состояние productsByStepMap для диагностики
@@ -1029,11 +1044,15 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       step,
       count: products.length,
       productIds: products.map(p => p.id),
+      productNames: products.map(p => p.name).slice(0, 3),
     }));
-    logger.info('ProductsByStepMap summary after ensureRequiredProducts', {
+    logger.info('ProductsByStepMap summary AFTER ensureRequiredProducts', {
       userId,
+      requiredSteps: Array.from(requiredStepCategories),
       totalSteps: productsByStepMap.size,
       steps: stepSummary,
+      selectedProductsCount: selectedProducts.length,
+      selectedProductIds: selectedProducts.map((p: any) => p.id),
     });
   }
 

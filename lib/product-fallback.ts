@@ -307,12 +307,29 @@ export async function ensureRequiredProducts(
   // Определяем, какие шаги нужны
   const missingSteps = requiredSteps.filter((step) => {
     const existing = result.get(step);
-    return !existing || existing.length < MIN_PRODUCTS_FOR_STEP;
+    const hasEnough = existing && existing.length >= MIN_PRODUCTS_FOR_STEP;
+    if (!hasEnough) {
+      logger.info('Missing step detected', {
+        step,
+        existingCount: existing?.length || 0,
+        minRequired: MIN_PRODUCTS_FOR_STEP,
+      });
+    }
+    return !hasEnough;
   });
 
   if (missingSteps.length === 0) {
+    logger.info('All required steps have products', {
+      requiredSteps: requiredSteps.length,
+    });
     return result;
   }
+  
+  logger.info('Missing steps that need fallback products', {
+    missingSteps,
+    totalRequired: requiredSteps.length,
+    missingCount: missingSteps.length,
+  });
 
   // Группируем по baseStep для batch запроса
   const baseStepsMap = new Map<string, Set<StepCategory>>();
