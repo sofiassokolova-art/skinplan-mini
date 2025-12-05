@@ -73,6 +73,8 @@ export default function QuizPage() {
         // ВАЖНО: При переходе с главной страницы показываем экран выбора тем с PaymentGate
         // НЕ пропускаем его, чтобы пользователь мог оплатить 49₽ или 99₽
         // Флаг full_retake_from_home используется только для логики, но экран выбора тем показываем
+        // ВАЖНО: НЕ очищаем прогресс при установке флага перепрохождения
+        // Прогресс должен сохраняться, если пользователь просто зашел на страницу анкеты
         if (fullRetakeFromHome) {
           // Очищаем флаг после использования (он больше не нужен)
           localStorage.removeItem('full_retake_from_home');
@@ -82,6 +84,7 @@ export default function QuizPage() {
         // Всегда показываем экран выбора тем при перепрохождении
         setShowRetakeScreen(true);
         console.log('✅ Флаг перепрохождения найден в localStorage, показываем экран выбора тем');
+        // ВАЖНО: НЕ очищаем quiz_progress здесь - прогресс должен сохраняться
       }
     }
   }, []);
@@ -551,10 +554,27 @@ export default function QuizPage() {
         }
       } else {
         console.log('ℹ️ Прогресс на сервере не найден или пуст');
-        // Если прогресса нет на сервере, очищаем localStorage (чтобы не загружать старый прогресс)
-        // и не показываем экран "Продолжить"
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('quiz_progress');
+        // ВАЖНО: НЕ очищаем localStorage автоматически, если прогресс не найден на сервере
+        // Это может быть временная проблема с сервером, и локальный прогресс может быть валидным
+        // Очищаем только если это не перепрохождение анкеты
+        if (!isRetakingQuiz && typeof window !== 'undefined') {
+          // Проверяем, есть ли локальный прогресс, который может быть валидным
+          const localProgress = localStorage.getItem('quiz_progress');
+          if (localProgress) {
+            try {
+              const parsed = JSON.parse(localProgress);
+              // Если локальный прогресс старше 7 дней, очищаем его
+              if (parsed.timestamp && Date.now() - parsed.timestamp > 7 * 24 * 60 * 60 * 1000) {
+                console.log('⚠️ Локальный прогресс слишком старый, очищаем');
+                localStorage.removeItem('quiz_progress');
+              } else {
+                console.log('ℹ️ Оставляем локальный прогресс, так как он может быть валидным');
+              }
+            } catch (e) {
+              // Если не удалось распарсить, очищаем
+              localStorage.removeItem('quiz_progress');
+            }
+          }
         }
         setSavedProgress(null);
         setShowResumeScreen(false);
