@@ -101,7 +101,11 @@ export async function GET(request: NextRequest) {
     
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
-    logger.error('Error retrieving plan', { error, userId, duration });
+    // Правильно сериализуем ошибку для логирования
+    const errorDetails = error instanceof Error 
+      ? { message: error.message, stack: error.stack, name: error.name }
+      : { error: String(error) };
+    logger.error('Error retrieving plan', { ...errorDetails, userId, duration });
     
     return ApiResponse.internalError(error, { userId, method, path, duration });
   }

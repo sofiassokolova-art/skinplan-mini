@@ -1579,11 +1579,13 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         .slice(1, 4) // Берем следующие 3 продукта как альтернативы
         .map(p => String(p.id));
       
-      // Логируем для отладки, если продукт не найден
-      if (stepProducts.length === 0 && process.env.NODE_ENV === 'development') {
-        logger.warn('No products found for step in plan28 morning', {
+      // Логируем для отладки (особенно для пользователя 643160759)
+      if (stepProducts.length === 0 || userId === '643160759' || process.env.NODE_ENV === 'development') {
+        logger.warn('Products for step in plan28 morning', {
           step: stepCategory,
           dayIndex,
+          productsCount: stepProducts.length,
+          productIds: stepProducts.map(p => p.id).slice(0, 5),
           userId,
         });
       }
@@ -1605,11 +1607,13 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         .slice(1, 4)
         .map(p => String(p.id));
       
-      // Логируем для отладки, если продукт не найден
-      if (stepProducts.length === 0 && process.env.NODE_ENV === 'development') {
-        logger.warn('No products found for step in plan28 evening', {
+      // Логируем для отладки (особенно для пользователя 643160759)
+      if (stepProducts.length === 0 || userId === '643160759' || process.env.NODE_ENV === 'development') {
+        logger.warn('Products for step in plan28 evening', {
           step: stepCategory,
           dayIndex,
+          productsCount: stepProducts.length,
+          productIds: stepProducts.map(p => p.id).slice(0, 5),
           userId,
         });
       }

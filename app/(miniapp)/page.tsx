@@ -501,9 +501,23 @@ export default function HomePage() {
         });
       } catch (planErr: any) {
         console.error('❌ Home: Error loading plan', planErr);
-        // Если план не найден - показываем экран с кнопкой "Пройти анкету"
-        // План должен генерироваться только при завершении анкеты, не автоматически
-        console.log('⚠️ Home: Plan not found, showing "Start quiz" screen');
+        // Проверяем, какая именно ошибка
+        const errorMessage = planErr?.message || planErr?.toString() || '';
+        const isNotFound = planErr?.status === 404 || 
+                          planErr?.isNotFound ||
+                          errorMessage.includes('404') ||
+                          errorMessage.includes('Plan not found') ||
+                          errorMessage.includes('not found');
+        
+        if (isNotFound) {
+          // План не найден - это нормально, если он еще не сгенерирован
+          // НЕ редиректим на анкету, так как профиль уже есть
+          console.log('⚠️ Home: Plan not found (404), but profile exists. This is expected if plan is not generated yet.');
+          setError('План не найден. Пожалуйста, пройдите анкету для генерации плана.');
+        } else {
+          // Другая ошибка (сеть, сервер и т.д.)
+          setError('Не удалось загрузить план. Попробуйте обновить страницу.');
+        }
         setLoading(false);
         return;
       }
@@ -1029,7 +1043,9 @@ export default function HomePage() {
 
   if (!mounted || loading) {
     // Показываем лоадер во время загрузки
-    const loadingText = hasCheckedProfile && !recommendations ? 'Загрузка анкеты...' : 'Загрузка плана...';
+    // Не показываем "Загрузка анкеты..." если профиль уже проверен и есть
+    // Это может быть ошибка загрузки плана, а не отсутствие анкеты
+    const loadingText = 'Загрузка плана...';
     
     return (
       <div style={{ 
