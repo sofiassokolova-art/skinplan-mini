@@ -3170,11 +3170,129 @@ export default function QuizPage() {
   }
   
   // Если вопрос все еще не найден после всех проверок
+  // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
   if (!currentQuestion) {
+    // Если есть ошибка, показываем её
+    if (error) {
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '24px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <h1 style={{ color: '#DC2626', marginBottom: '16px', fontSize: '24px' }}>😔 Что-то пошло не так</h1>
+            <p style={{ color: '#475467', marginBottom: '24px', fontSize: '16px', lineHeight: '1.5' }}>
+              {String(error || 'Произошла неожиданная ошибка. Попробуйте обновить страницу.')}
+            </p>
+            <p style={{ color: '#6B7280', marginBottom: '24px', fontSize: '14px' }}>
+              Ошибка сохранена в системе. Техподдержка уже получила уведомление.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setError(null);
+                  submitAnswers().catch((err) => {
+                    console.error('Error submitting answers:', err);
+                    const errorMessage = String(err?.message || 'Ошибка отправки ответов');
+                    setError(errorMessage);
+                  });
+                }}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                }}
+              >
+                Попробовать снова
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '12px',
+                  backgroundColor: 'transparent',
+                  color: '#0A5F59',
+                  border: '1px solid #0A5F59',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                }}
+              >
+                Обновить страницу
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Если нет ошибки, но все вопросы пройдены - показываем экран завершения
     return (
-      <div style={{ padding: '20px' }}>
-        <h1>Анкета завершена</h1>
-        <button onClick={submitAnswers}>Отправить ответы</button>
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.56)',
+          backdropFilter: 'blur(28px)',
+          borderRadius: '24px',
+          padding: '32px',
+          maxWidth: '400px',
+          textAlign: 'center',
+        }}>
+          <h1 style={{ color: '#0A5F59', marginBottom: '16px', fontSize: '24px', fontWeight: 'bold' }}>
+            Анкета завершена
+          </h1>
+          <p style={{ color: '#475467', marginBottom: '24px', fontSize: '16px', lineHeight: '1.5' }}>
+            Все вопросы пройдены. Отправьте ответы, чтобы получить персональный план ухода.
+          </p>
+          <button
+            onClick={() => {
+              submitAnswers().catch((err) => {
+                console.error('Error submitting answers:', err);
+                const errorMessage = String(err?.message || 'Ошибка отправки ответов');
+                setError(errorMessage);
+              });
+            }}
+            disabled={isSubmitting}
+            style={{
+              width: '100%',
+              padding: '16px 24px',
+              borderRadius: '12px',
+              backgroundColor: isSubmitting ? '#9CA3AF' : '#0A5F59',
+              color: 'white',
+              border: 'none',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              opacity: isSubmitting ? 0.7 : 1,
+            }}
+          >
+            {isSubmitting ? 'Отправка...' : 'Отправить ответы'}
+          </button>
+        </div>
       </div>
     );
   }
