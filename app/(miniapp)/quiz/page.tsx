@@ -663,9 +663,7 @@ export default function QuizPage() {
         console.warn('Неожиданная ошибка авторизации при загрузке анкеты');
       }
       // Убеждаемся, что error всегда строка
-      const errorMessage = typeof err?.message === 'string' 
-        ? err.message 
-        : err?.message?.toString() || 'Ошибка загрузки анкеты';
+      const errorMessage = String(err?.message || 'Ошибка загрузки анкеты');
       setError(errorMessage);
       return null;
     }
@@ -1157,11 +1155,7 @@ export default function QuizPage() {
         }, 2000);
       } else {
         // Убеждаемся, что error всегда строка
-        const errorMessage = typeof err?.message === 'string' 
-          ? err.message 
-          : typeof err?.error === 'string' 
-            ? err.error 
-            : err?.message?.toString() || err?.error?.toString() || 'Ошибка сохранения ответов. Попробуйте еще раз.';
+        const errorMessage = String(err?.message || err?.error || 'Ошибка сохранения ответов. Попробуйте еще раз.');
         setError(errorMessage);
       }
     }
@@ -2756,9 +2750,7 @@ export default function QuizPage() {
                     submitAnswers().catch((err) => {
                       console.error('Error submitting answers:', err);
                       // Убеждаемся, что error всегда строка
-                      const errorMessage = typeof err?.message === 'string' 
-                        ? err.message 
-                        : err?.message?.toString() || 'Ошибка отправки ответов';
+                      const errorMessage = String(err?.message || 'Ошибка отправки ответов');
                       setError(errorMessage);
                       setIsSubmitting(false);
                     });
@@ -2845,9 +2837,7 @@ export default function QuizPage() {
                     }
                     
                     // Убеждаемся, что errorMessage всегда строка
-                    const safeErrorMessage = typeof errorMessage === 'string' 
-                      ? errorMessage 
-                      : errorMessage?.toString() || 'Ошибка отправки ответов. Попробуйте еще раз.';
+                    const safeErrorMessage = String(errorMessage || 'Ошибка отправки ответов. Попробуйте еще раз.');
                     setError(safeErrorMessage);
                     setIsSubmitting(false);
                   }
