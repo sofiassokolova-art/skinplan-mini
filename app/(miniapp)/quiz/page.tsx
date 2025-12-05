@@ -1999,15 +1999,22 @@ export default function QuizPage() {
     });
     
     const handleTopicSelect = (topic: QuizTopic) => {
-      // Если оплата не пройдена, не позволяем выбрать тему
-      if (!hasRetakingPayment) {
-        console.log('⚠️ Payment not completed, blocking topic selection');
-        return; // PaymentGate покажет экран оплаты
+      // Проверяем, оплатил ли пользователь перепрохождение темы
+      const topicPaymentKey = `payment_topic_${topic.id}_completed`;
+      const hasTopicPayment = typeof window !== 'undefined' 
+        ? localStorage.getItem(topicPaymentKey) === 'true'
+        : false;
+      
+      if (!hasTopicPayment) {
+        console.log('⚠️ Payment not completed for topic, showing payment gate');
+        // PaymentGate будет показан для этой темы
+        return;
       }
-      console.log('✅ Payment completed, allowing topic selection:', topic.id);
+      
+      console.log('✅ Payment completed for topic, allowing topic selection:', topic.id);
       // Сбрасываем флаг оплаты после выбора темы - каждая тема требует отдельной оплаты
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('payment_retaking_completed');
+        localStorage.removeItem(topicPaymentKey);
         console.log('🔄 Payment flag cleared - next topic will require new payment');
       }
       // Перенаправляем на страницу обновления по теме только после оплаты
@@ -2117,65 +2124,95 @@ export default function QuizPage() {
           gap: '16px',
           marginBottom: '24px',
         }}>
-          {retakeTopics.map((topic) => (
-            <button
-              key={topic.id}
-              onClick={() => handleTopicSelect(topic)}
-              style={{
-                padding: '20px',
-                borderRadius: '16px',
-                backgroundColor: 'white',
-                border: '1px solid #E5E7EB',
-                textAlign: 'left',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#0A5F59';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(10, 95, 89, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#E5E7EB';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{
-                  fontSize: '32px',
-                  width: '48px',
-                  height: '48px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  {topic.icon || '📝'}
-                </div>
-                <div style={{ flex: 1 }}>
+          {retakeTopics.map((topic) => {
+            const topicPaymentKey = `payment_topic_${topic.id}_completed`;
+            const hasTopicPayment = typeof window !== 'undefined' 
+              ? localStorage.getItem(topicPaymentKey) === 'true'
+              : false;
+            
+            const topicButton = (
+              <button
+                key={topic.id}
+                onClick={() => handleTopicSelect(topic)}
+                style={{
+                  padding: '20px',
+                  borderRadius: '16px',
+                  backgroundColor: 'white',
+                  border: '1px solid #E5E7EB',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+                  width: '100%',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#0A5F59';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(10, 95, 89, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#E5E7EB';
+                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#111827',
-                    marginBottom: '4px',
+                    fontSize: '32px',
+                    width: '48px',
+                    height: '48px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}>
-                    {topic.title}
+                    {topic.icon || '📝'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: '#111827',
+                      marginBottom: '4px',
+                    }}>
+                      {topic.title}
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#6B7280',
+                    }}>
+                      {topic.description}
+                    </div>
                   </div>
                   <div style={{
-                    fontSize: '14px',
-                    color: '#6B7280',
+                    fontSize: '24px',
+                    color: '#9CA3AF',
                   }}>
-                    {topic.description}
+                    →
                   </div>
                 </div>
-                <div style={{
-                  fontSize: '24px',
-                  color: '#9CA3AF',
-                }}>
-                  →
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+            
+            // Если оплата не пройдена, оборачиваем в PaymentGate
+            if (!hasTopicPayment) {
+              return (
+                <PaymentGate
+                  key={topic.id}
+                  price={49}
+                  isRetaking={true}
+                  onPaymentComplete={() => {
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem(topicPaymentKey, 'true');
+                      // После оплаты разрешаем выбор темы
+                      console.log('✅ Payment completed for topic, allowing selection');
+                    }
+                  }}
+                >
+                  {topicButton}
+                </PaymentGate>
+              );
+            }
+            
+            return topicButton;
+          })}
         </div>
 
         {/* Кнопка полного перепрохождения */}
@@ -2286,29 +2323,8 @@ export default function QuizPage() {
       </div>
     );
 
-    // ВАЖНО: Если оплата не пройдена, показываем PaymentGate ПЕРЕД экраном выбора тем
-    // Это гарантирует, что пользователь не сможет выбрать тему без оплаты
-    // Каждая тема требует отдельной оплаты 49₽
-    if (!hasRetakingPayment) {
-      return (
-        <PaymentGate
-          price={49}
-          isRetaking={true}
-          onPaymentComplete={() => {
-            // После оплаты сохраняем флаг (будет сброшен после выбора темы)
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('payment_retaking_completed', 'true');
-              // Не перезагружаем страницу, просто обновляем состояние
-              setShowRetakeScreen(true);
-            }
-          }}
-        >
-          {retakeScreenContent}
-        </PaymentGate>
-      );
-    }
-
-    // Если оплата пройдена, показываем экран выбора тем как обычно
+    // Показываем экран выбора тем
+    // Каждая тема и кнопка "Пройти всю анкету" обернуты в свой PaymentGate
     return retakeScreenContent;
   }
 
