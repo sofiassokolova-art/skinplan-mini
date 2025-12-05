@@ -1372,55 +1372,74 @@ export default function QuizPage() {
         alignItems: 'center', 
         height: '100vh',
         flexDirection: 'column',
-        gap: '24px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        gap: '40px',
+        background: '#FFFFFF',
         padding: '20px'
       }}>
+        {/* Анимированный лоадер */}
         <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.58)',
-          backdropFilter: 'blur(26px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '44px',
-          padding: '48px 36px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '24px',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
+          width: '60px',
+          height: '60px',
+          border: '3px solid #E5E7EB',
+          borderTop: '3px solid #000000',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        
+        {/* Заголовок */}
+        <div style={{
+          fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize: '24px',
+          fontWeight: 700,
+          color: '#000000',
+          textAlign: 'center',
+          lineHeight: '1.3'
         }}>
-          {/* Анимированный лоадер */}
-          <div style={{
-            width: '80px',
-            height: '80px',
-            border: '4px solid rgba(10, 95, 89, 0.1)',
-            borderTop: '4px solid #0A5F59',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <div style={{
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontSize: '20px',
-            fontWeight: 600,
-            color: '#0A5F59',
-            textAlign: 'center'
-          }}>
-            Формируем ваш план...
-          </div>
-          <div style={{
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontSize: '16px',
-            color: '#475467',
-            textAlign: 'center'
-          }}>
-            Это займёт всего несколько секунд
-          </div>
-          <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
+          Подбираем персональный уход
         </div>
+        
+        {/* Подзаголовок */}
+        <div style={{
+          fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize: '16px',
+          color: '#6B7280',
+          textAlign: 'center',
+          lineHeight: '1.5',
+          maxWidth: '320px'
+        }}>
+          Анализируем ваши ответы и состояние кожи, чтобы собрать план ухода по шагам.
+        </div>
+        
+        {/* Прогресс-бар */}
+        <div style={{
+          width: '100%',
+          maxWidth: '320px',
+          height: '4px',
+          backgroundColor: '#E5E7EB',
+          borderRadius: '2px',
+          overflow: 'hidden',
+          position: 'relative'
+        }}>
+          <div style={{
+            width: '35%',
+            height: '100%',
+            backgroundColor: '#000000',
+            borderRadius: '2px',
+            animation: 'progress 2s ease-in-out infinite'
+          }}></div>
+        </div>
+        
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          @keyframes progress {
+            0% { width: 30%; }
+            50% { width: 45%; }
+            100% { width: 30%; }
+          }
+        `}</style>
       </div>
     );
   }
