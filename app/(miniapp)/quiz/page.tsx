@@ -1875,6 +1875,10 @@ export default function QuizPage() {
   // Также пропускаем, если пользователь уже начал отвечать (currentQuestionIndex > 0 или есть ответы)
   // ВАЖНО: Если есть savedProgress, значит пользователь должен продолжить, и мы не должны показывать начальные экраны
   const isShowingInitialInfoScreen = useMemo(() => {
+    // Если показывается экран выбора тем при перепрохождении - не показываем начальные экраны
+    if (showRetakeScreen && isRetakingQuiz) {
+      return false;
+    }
     // Если показывается экран продолжения - не показываем начальные экраны
     if (showResumeScreen) {
       return false;
@@ -1888,8 +1892,13 @@ export default function QuizPage() {
     if (hasResumed) {
       return false;
     }
-    // Если повторное прохождение - не показываем начальные экраны
-    if (isRetakingQuiz) {
+    // ВАЖНО: Если повторное прохождение БЕЗ экрана выбора тем - не показываем начальные экраны
+    // Это означает, что пользователь уже выбрал "Пройти всю анкету заново" и оплатил
+    if (isRetakingQuiz && !showRetakeScreen) {
+      return false;
+    }
+    // Если currentInfoScreenIndex уже прошел все начальные экраны - не показываем их
+    if (currentInfoScreenIndex >= initialInfoScreens.length) {
       return false;
     }
     // Если пользователь уже начал отвечать - не показываем начальные экраны
@@ -1905,6 +1914,7 @@ export default function QuizPage() {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
         showResumeScreen,
+        showRetakeScreen,
         hasSavedProgress: !!savedProgress,
         hasResumed,
         isRetakingQuiz,
@@ -1914,7 +1924,7 @@ export default function QuizPage() {
     }
     
     return shouldShow;
-  }, [showResumeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
+  }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
   
   const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
   
@@ -2078,8 +2088,9 @@ export default function QuizPage() {
       setShowRetakeScreen(false);
       // ВАЖНО: Устанавливаем флаг перепрохождения, чтобы пропустить все info screens
       setIsRetakingQuiz(true);
-      // Очищаем ответы для нового прохождения
-      setAnswers({});
+      // ВАЖНО: НЕ очищаем ответы при перепрохождении - пользователь может хотеть изменить только часть ответов
+      // Очищаем только если пользователь явно выбрал "Пройти всю анкету заново"
+      // setAnswers({}); // УДАЛЕНО - не очищаем ответы
       // Пропускаем все начальные info screens - переходим сразу к вопросам
       if (questionnaire) {
         const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
@@ -2087,11 +2098,12 @@ export default function QuizPage() {
         setCurrentQuestionIndex(0);
         // Очищаем pending info screen, если он был установлен
         setPendingInfoScreen(null);
-        // Очищаем сохраненный прогресс
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('quiz_progress');
-        }
-        console.log('✅ Full retake: Skipping all info screens, starting from first question');
+        // ВАЖНО: НЕ очищаем сохраненный прогресс - он может содержать полезные данные
+        // Очищаем только если пользователь явно выбрал "Пройти всю анкету заново"
+        // if (typeof window !== 'undefined') {
+        //   localStorage.removeItem('quiz_progress');
+        // }
+        console.log('✅ Full retake: Skipping all info screens, starting from first question (answers preserved)');
       }
     };
 
