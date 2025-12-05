@@ -366,9 +366,23 @@ export async function ensureRequiredProducts(
       const existing = result.get(stepCategory) || [];
       if (existing.length === 0) {
         result.set(stepCategory, [fallbackProduct]);
+        logger.info('Fallback product assigned to step', {
+          stepCategory,
+          baseStep,
+          productId: fallbackProduct.id,
+          productName: fallbackProduct.name,
+        });
       }
     }
   }
+  
+  logger.info('ensureRequiredProducts completed', {
+    requiredSteps: requiredSteps.length,
+    missingSteps: missingSteps.length,
+    addedProducts: Array.from(result.entries())
+      .filter(([step, products]) => requiredSteps.includes(step) && products.length > 0)
+      .map(([step, products]) => ({ step, productId: products[0]?.id, productName: products[0]?.name })),
+  });
 
   return result;
 }
