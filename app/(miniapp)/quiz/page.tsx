@@ -1236,14 +1236,19 @@ export default function QuizPage() {
       // ВАЖНО: НЕ устанавливаем setIsSubmitting(false) и НЕ устанавливаем setError
       // Продолжаем показывать лоадер и редиректим на /plan
       // План может генерироваться в фоне, даже если отправка ответов вернула ошибку
-      setTimeout(() => {
-        if (typeof window !== 'undefined') {
-          // Используем replace вместо href
+      // ВАЖНО: Используем setTimeout с проверкой isMountedRef, чтобы избежать React Error #300
+      const redirectTimeout = setTimeout(() => {
+        // Проверяем, что компонент еще смонтирован перед редиректом
+        if (isMountedRef.current && typeof window !== 'undefined') {
+          // Используем replace вместо href для предотвращения React Error #300
           window.location.replace('/plan');
-        } else {
-          router.push('/plan');
         }
       }, 1500); // Небольшая задержка, чтобы пользователь увидел лоадер
+      
+      // Очищаем таймаут при размонтировании компонента
+      return () => {
+        clearTimeout(redirectTimeout);
+      };
     }
   };
 

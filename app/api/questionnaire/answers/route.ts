@@ -185,13 +185,14 @@ export async function POST(request: NextRequest) {
       );
 
       // Сохраняем или обновляем профиль
-      // Проверяем существующий профиль
-      const existingProfile = await tx.skinProfile.findUnique({
+      // ВАЖНО: Ищем последний профиль пользователя (не по questionnaire.version, а по последней версии)
+      // Это нужно для правильной обработки повторных отправок анкеты
+      const existingProfile = await tx.skinProfile.findFirst({
         where: {
-          userId_version: {
-            userId: userId!, // userId гарантированно string
-            version: questionnaire.version,
-          },
+          userId: userId!, // userId гарантированно string
+        },
+        orderBy: {
+          version: 'desc', // Берем последнюю версию
         },
       });
 
@@ -227,19 +228,54 @@ export async function POST(request: NextRequest) {
         medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
       };
 
+      // ВАЖНО: Используем upsert для избежания конфликтов уникальности при повторных отправках
+      // Если профиль существует, обновляем его с новой версией
+      // Если нет - создаем новый
+      const newVersion = existingProfile ? existingProfile.version + 1 : questionnaire.version;
+      
+      // Проверяем, не существует ли уже профиль с новой версией (защита от race condition)
+      const existingProfileWithNewVersion = await tx.skinProfile.findUnique({
+        where: {
+          userId_version: {
+            userId: userId!,
+            version: newVersion,
+          },
+        },
+      });
+      
+      // Если профиль с новой версией уже существует, используем его (повторная отправка)
+      if (existingProfileWithNewVersion) {
+        logger.warn('Profile with new version already exists, using existing profile', {
+          userId,
+          existingVersion: existingProfile?.version,
+          newVersion,
+          profileId: existingProfileWithNewVersion.id,
+        });
+        const profile = await tx.skinProfile.update({
+          where: { id: existingProfileWithNewVersion.id },
+          data: {
+            ...profileDataForPrisma,
+            updatedAt: new Date(),
+          },
+        });
+        return { savedAnswers, fullAnswers, profile, existingProfile };
+      }
+      
+      // Если существующий профиль есть, обновляем его с новой версией
+      // Если нет - создаем новый
       const profile = existingProfile
         ? await tx.skinProfile.update({
             where: { id: existingProfile.id },
             data: {
               ...profileDataForPrisma,
-              version: existingProfile.version + 1, // Инкрементируем версию при обновлении профиля
+              version: newVersion, // Инкрементируем версию при обновлении профиля
               updatedAt: new Date(),
             },
           })
         : await tx.skinProfile.create({
             data: {
               userId: userId!,
-              version: questionnaire.version,
+              version: newVersion,
               ...profileDataForPrisma,
             },
           });
