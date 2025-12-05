@@ -1061,11 +1061,17 @@ export default function QuizPage() {
 
   // Флаг для отслеживания монтирования компонента
   const isMountedRef = useRef(true);
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      // Очищаем таймаут редиректа при размонтировании компонента
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
+      }
     };
   }, []);
 
