@@ -169,6 +169,14 @@ function ensureStepPresence(
   fallback: StepCategory
 ): StepCategory[] {
   if (steps.some(predicate)) return steps;
+  // ВАЖНО: SPF всегда должен быть последним в утренней рутине
+  // Очищение всегда должно быть первым
+  if (isSPFStep(fallback)) {
+    return [...steps, fallback];
+  }
+  if (isCleanserStep(fallback)) {
+    return [fallback, ...steps];
+  }
   return [fallback, ...steps];
 }
 

@@ -236,21 +236,42 @@ export async function findFallbackProductsBatch(
     // Группируем продукты по baseStep
     for (const product of products) {
       const productStep = product.step || product.category || '';
+      const productCategory = product.category || '';
       
       // Находим соответствующий baseStep
       for (const baseStep of baseSteps) {
-        if (
-          baseStep === 'spf' && (productStep.toLowerCase().includes('spf') || product.category === 'spf')
-        ) {
-          if (!result.has(baseStep)) {
+        // Проверяем, не был ли уже найден продукт для этого baseStep
+        if (result.has(baseStep)) {
+          continue;
+        }
+        
+        // Для SPF используем специальную логику
+        if (baseStep === 'spf') {
+          if (
+            productStep.toLowerCase().includes('spf') || 
+            productCategory.toLowerCase().includes('spf') ||
+            productStep.toLowerCase().startsWith('spf')
+          ) {
             result.set(baseStep, product as ProductWithBrand);
+            break;
           }
-          break;
-        } else if (productStep.startsWith(baseStep) || product.step === baseStep) {
-          if (!result.has(baseStep)) {
+        } else {
+          // Для остальных шагов проверяем:
+          // 1. Точное совпадение step
+          // 2. step начинается с baseStep
+          // 3. step содержит baseStep (для подкатегорий типа serum_hydrating)
+          // 4. category совпадает с baseStep
+          // 5. category содержит baseStep
+          if (
+            productStep === baseStep ||
+            productStep.startsWith(`${baseStep}_`) ||
+            productStep.includes(baseStep) ||
+            productCategory === baseStep ||
+            productCategory.includes(baseStep)
+          ) {
             result.set(baseStep, product as ProductWithBrand);
+            break;
           }
-          break;
         }
       }
     }
