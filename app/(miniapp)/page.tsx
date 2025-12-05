@@ -1023,12 +1023,13 @@ export default function HomePage() {
             return;
           } else {
             console.log('ℹ️ Plan not found or empty');
-            planCheckDoneRef.current = false; // Разрешаем повторную проверку, если план не найден
+            // НЕ сбрасываем planCheckDoneRef, чтобы не делать повторные запросы
+            // План не найден - это нормально, не проверяем снова
           }
         } catch (err) {
           console.log('ℹ️ Plan check failed (expected if no plan):', err);
-          planCheckDoneRef.current = false; // Разрешаем повторную проверку при ошибке
-          // План не найден - это нормально, не показываем ошибку
+          // НЕ сбрасываем planCheckDoneRef, чтобы не делать повторные запросы
+          // План не найден - это нормально, не проверяем снова
         } finally {
           setCheckingPlan(false);
         }
