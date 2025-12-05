@@ -40,18 +40,43 @@ export async function getCachedPlan(
     if (!cached) {
       return null;
     }
-    // Проверяем тип - если это уже объект, возвращаем как есть
-    // Если это строка, парсим JSON
+    
+    // Если это уже объект (не строка), возвращаем как есть
+    if (typeof cached === 'object' && cached !== null) {
+      return cached;
+    }
+    
+    // Если это строка, пытаемся парсить JSON
     if (typeof cached === 'string') {
+      // Проверяем, не является ли это строкой "[object Object]" (невалидный JSON)
+      if (cached === '[object Object]' || cached.trim() === '[object Object]') {
+        console.warn('Invalid cached plan data (object stringified incorrectly), removing from cache', { userId, profileVersion });
+        // Удаляем невалидные данные из кэша
+        try {
+          await kv.del(key);
+        } catch (delError) {
+          // Игнорируем ошибки удаления
+        }
+        return null;
+      }
+      
       try {
         return JSON.parse(cached);
       } catch (parseError) {
-        console.error('Error parsing cached plan JSON:', parseError, 'Raw value:', cached);
+        console.error('Error parsing cached plan JSON:', parseError, 'Raw value type:', typeof cached, 'Raw value length:', cached?.length);
+        // Удаляем невалидные данные из кэша
+        try {
+          await kv.del(key);
+        } catch (delError) {
+          // Игнорируем ошибки удаления
+        }
         return null;
       }
     }
-    // Если это уже объект, возвращаем как есть
-    return cached;
+    
+    // Неожиданный тип - возвращаем null
+    console.warn('Unexpected cached plan type:', typeof cached, { userId, profileVersion });
+    return null;
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
@@ -102,18 +127,43 @@ export async function getCachedRecommendations(
     if (!cached) {
       return null;
     }
-    // Проверяем тип - если это уже объект, возвращаем как есть
-    // Если это строка, парсим JSON
+    
+    // Если это уже объект (не строка), возвращаем как есть
+    if (typeof cached === 'object' && cached !== null) {
+      return cached;
+    }
+    
+    // Если это строка, пытаемся парсить JSON
     if (typeof cached === 'string') {
+      // Проверяем, не является ли это строкой "[object Object]" (невалидный JSON)
+      if (cached === '[object Object]' || cached.trim() === '[object Object]') {
+        console.warn('Invalid cached recommendations data (object stringified incorrectly), removing from cache', { userId, profileVersion });
+        // Удаляем невалидные данные из кэша
+        try {
+          await kv.del(key);
+        } catch (delError) {
+          // Игнорируем ошибки удаления
+        }
+        return null;
+      }
+      
       try {
         return JSON.parse(cached);
       } catch (parseError) {
-        console.error('Error parsing cached recommendations JSON:', parseError, 'Raw value:', cached);
+        console.error('Error parsing cached recommendations JSON:', parseError, 'Raw value type:', typeof cached, 'Raw value length:', cached?.length);
+        // Удаляем невалидные данные из кэша
+        try {
+          await kv.del(key);
+        } catch (delError) {
+          // Игнорируем ошибки удаления
+        }
         return null;
       }
     }
-    // Если это уже объект, возвращаем как есть
-    return cached;
+    
+    // Неожиданный тип - возвращаем null
+    console.warn('Unexpected cached recommendations type:', typeof cached, { userId, profileVersion });
+    return null;
   } catch (error) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!(error as any)?.message?.includes('Missing required environment variables')) {
