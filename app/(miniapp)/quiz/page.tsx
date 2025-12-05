@@ -779,13 +779,17 @@ export default function QuizPage() {
   const handleNext = async () => {
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
 
-    // При повторном прохождении пропускаем все начальные info screens
-    if (isRetakingQuiz && currentInfoScreenIndex < initialInfoScreens.length) {
+    // ВАЖНО: При повторном прохождении (isRetakingQuiz && !showRetakeScreen) пропускаем все начальные info screens
+    // showRetakeScreen = true означает, что показывается экран выбора тем, и мы еще не начали перепрохождение
+    if (isRetakingQuiz && !showRetakeScreen && currentInfoScreenIndex < initialInfoScreens.length) {
       if (!questionnaire) return;
       const newInfoIndex = initialInfoScreens.length;
       setCurrentInfoScreenIndex(newInfoIndex);
-      setCurrentQuestionIndex(0);
-      await saveProgress(answers, 0, newInfoIndex);
+      // Если currentQuestionIndex = 0, начинаем с первого вопроса
+      if (currentQuestionIndex === 0) {
+        setCurrentQuestionIndex(0);
+      }
+      await saveProgress(answers, currentQuestionIndex, newInfoIndex);
       return;
     }
 
@@ -1857,11 +1861,17 @@ export default function QuizPage() {
     if (allQuestions.length > 0 && isRetakingQuiz && !showRetakeScreen) {
       // Переходим сразу к первому вопросу, пропуская все начальные инфо-экраны
       const initialInfoScreensCount = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode).length;
-      if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreensCount) {
+      // ВАЖНО: Всегда устанавливаем currentInfoScreenIndex в initialInfoScreensCount при перепрохождении
+      // Это гарантирует, что начальные инфо-экраны не будут показаны
+      if (currentInfoScreenIndex < initialInfoScreensCount) {
         setCurrentInfoScreenIndex(initialInfoScreensCount);
+        console.log('✅ Full retake: Setting currentInfoScreenIndex to skip all initial info screens');
+      }
+      // Если currentQuestionIndex = 0 и нет ответов, это начало перепрохождения
+      if (currentQuestionIndex === 0 && Object.keys(answers).length === 0) {
         setCurrentQuestionIndex(0);
         setPendingInfoScreen(null); // Очищаем pending info screen
-        console.log('✅ Full retake: Skipping all initial info screens, starting from first question');
+        console.log('✅ Full retake: Starting from first question, skipping all info screens');
       }
     }
   }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen]);
