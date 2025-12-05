@@ -193,9 +193,15 @@ export async function findFallbackProductsBatch(
         stepCondition.OR = [
           { step: 'spf' },
           { category: 'spf' },
+          { step: { startsWith: 'spf' } },
         ];
       } else {
-        stepCondition.step = baseStep;
+        // Ищем по точному совпадению И по частичному (startsWith)
+        stepCondition.OR = [
+          { step: baseStep },
+          { step: { startsWith: `${baseStep}_` } },
+          { category: baseStep },
+        ];
 
         if (profileClassification.skinType) {
           stepCondition.AND = [
