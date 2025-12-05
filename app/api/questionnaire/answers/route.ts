@@ -263,22 +263,82 @@ export async function POST(request: NextRequest) {
       
       // Если существующий профиль есть, обновляем его с новой версией
       // Если нет - создаем новый
-      const profile = existingProfile
-        ? await tx.skinProfile.update({
-            where: { id: existingProfile.id },
-            data: {
-              ...profileDataForPrisma,
-              version: newVersion, // Инкрементируем версию при обновлении профиля
-              updatedAt: new Date(),
-            },
-          })
-        : await tx.skinProfile.create({
-            data: {
-              userId: userId!,
-              version: newVersion,
-              ...profileDataForPrisma,
+      // ВАЖНО: Используем try-catch для обработки unique constraint ошибок при race condition
+      let profile;
+      try {
+        profile = existingProfile
+          ? await tx.skinProfile.update({
+              where: { id: existingProfile.id },
+              data: {
+                ...profileDataForPrisma,
+                version: newVersion, // Инкрементируем версию при обновлении профиля
+                updatedAt: new Date(),
+              },
+            })
+          : await tx.skinProfile.create({
+              data: {
+                userId: userId!,
+                version: newVersion,
+                ...profileDataForPrisma,
+              },
+            });
+      } catch (updateError: any) {
+        // Если возникла ошибка unique constraint, значит профиль с новой версией уже был создан
+        // (race condition - два запроса одновременно)
+        if (updateError?.code === 'P2002' && updateError?.meta?.target?.includes('user_id') && updateError?.meta?.target?.includes('version')) {
+          logger.warn('Unique constraint error during profile update (race condition), fetching existing profile', {
+            userId,
+            newVersion,
+            error: updateError.message,
+          });
+          
+          // Ищем профиль с новой версией, который был создан другим запросом
+          const raceConditionProfile = await tx.skinProfile.findUnique({
+            where: {
+              userId_version: {
+                userId: userId!,
+                version: newVersion,
+              },
             },
           });
+          
+          if (raceConditionProfile) {
+            // Обновляем существующий профиль без изменения версии
+            profile = await tx.skinProfile.update({
+              where: { id: raceConditionProfile.id },
+              data: {
+                ...profileDataForPrisma,
+                updatedAt: new Date(),
+              },
+            });
+            logger.info('Profile updated after race condition resolution', {
+              userId,
+              profileId: profile.id,
+              version: profile.version,
+            });
+          } else {
+            // Если профиль не найден, это странно - пробуем найти последний профиль
+            const lastProfile = await tx.skinProfile.findFirst({
+              where: { userId: userId! },
+              orderBy: { version: 'desc' },
+            });
+            if (lastProfile) {
+              profile = lastProfile;
+              logger.warn('Using last profile after race condition (profile with new version not found)', {
+                userId,
+                profileId: profile.id,
+                version: profile.version,
+              });
+            } else {
+              // Если ничего не найдено, пробуем создать снова (может быть другая ошибка)
+              throw updateError;
+            }
+          }
+        } else {
+          // Другая ошибка - пробрасываем дальше
+          throw updateError;
+        }
+      }
 
       return { savedAnswers, fullAnswers, profile, existingProfile };
     }, {

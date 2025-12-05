@@ -1237,18 +1237,22 @@ export default function QuizPage() {
       // Продолжаем показывать лоадер и редиректим на /plan
       // План может генерироваться в фоне, даже если отправка ответов вернула ошибку
       // ВАЖНО: Используем setTimeout с проверкой isMountedRef, чтобы избежать React Error #300
-      const redirectTimeout = setTimeout(() => {
-        // Проверяем, что компонент еще смонтирован перед редиректом
-        if (isMountedRef.current && typeof window !== 'undefined') {
-          // Используем replace вместо href для предотвращения React Error #300
-          window.location.replace('/plan');
+      // Сохраняем таймаут в ref для очистки при размонтировании
+      if (typeof window !== 'undefined') {
+        const redirectTimeout = setTimeout(() => {
+          // Проверяем, что компонент еще смонтирован перед редиректом
+          if (isMountedRef.current) {
+            // Используем replace вместо href для предотвращения React Error #300
+            window.location.replace('/plan');
+          }
+        }, 1500); // Небольшая задержка, чтобы пользователь увидел лоадер
+        
+        // Сохраняем таймаут в ref для очистки при размонтировании
+        // Это предотвращает React Error #300
+        if (!redirectTimeoutRef.current) {
+          redirectTimeoutRef.current = redirectTimeout;
         }
-      }, 1500); // Небольшая задержка, чтобы пользователь увидел лоадер
-      
-      // Очищаем таймаут при размонтировании компонента
-      return () => {
-        clearTimeout(redirectTimeout);
-      };
+      }
     }
   };
 
