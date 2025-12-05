@@ -662,7 +662,11 @@ export default function QuizPage() {
         // Анкета публичная, эта ошибка не должна возникать
         console.warn('Неожиданная ошибка авторизации при загрузке анкеты');
       }
-      setError(err?.message || 'Ошибка загрузки анкеты');
+      // Убеждаемся, что error всегда строка
+      const errorMessage = typeof err?.message === 'string' 
+        ? err.message 
+        : err?.message?.toString() || 'Ошибка загрузки анкеты';
+      setError(errorMessage);
       return null;
     }
     // НЕ вызываем setLoading(false) здесь - это сделает init() после всех загрузок
@@ -1152,7 +1156,13 @@ export default function QuizPage() {
           }
         }, 2000);
       } else {
-        setError(err?.message || err?.error || 'Ошибка сохранения ответов. Попробуйте еще раз.');
+        // Убеждаемся, что error всегда строка
+        const errorMessage = typeof err?.message === 'string' 
+          ? err.message 
+          : typeof err?.error === 'string' 
+            ? err.error 
+            : err?.message?.toString() || err?.error?.toString() || 'Ошибка сохранения ответов. Попробуйте еще раз.';
+        setError(errorMessage);
       }
     }
   };
@@ -1885,7 +1895,9 @@ export default function QuizPage() {
           textAlign: 'center',
         }}>
           <h1 style={{ color: '#0A5F59', marginBottom: '16px' }}>Ошибка</h1>
-          <p style={{ color: '#475467', marginBottom: '24px' }}>{error}</p>
+          <p style={{ color: '#475467', marginBottom: '24px' }}>
+            {typeof error === 'string' ? error : error?.message || error?.toString() || 'Произошла неизвестная ошибка'}
+          </p>
           <button
             onClick={() => {
               setError(null);
@@ -2472,7 +2484,7 @@ export default function QuizPage() {
                   color: '#1F2A44',
                   lineHeight: '1.5',
                 }}>
-                  {benefit}
+                  {typeof benefit === 'string' ? benefit : benefit?.toString() || ''}
                 </span>
               </div>
             ))}
@@ -2610,7 +2622,7 @@ export default function QuizPage() {
             margin: '0 0 16px 0',
             textAlign: 'center',
           }}>
-            {screen.title}
+            {typeof screen.title === 'string' ? screen.title : screen.title?.toString() || ''}
           </h1>
 
           {/* Подзаголовок - многострочный */}
@@ -2625,7 +2637,7 @@ export default function QuizPage() {
                   textAlign: 'center',
                   whiteSpace: 'pre-line',
                 }}>
-                  {screen.subtitle}
+                  {typeof screen.subtitle === 'string' ? screen.subtitle : screen.subtitle?.toString() || ''}
                 </div>
               )}
 
@@ -2652,7 +2664,7 @@ export default function QuizPage() {
                     fontSize: '14px',
                     lineHeight: '1.4',
                   }}>
-                    {error}
+                    {typeof error === 'string' ? error : error?.message || error?.toString() || 'Произошла ошибка'}
                   </div>
                 </div>
               )}
@@ -2682,10 +2694,10 @@ export default function QuizPage() {
                     {'⭐'.repeat(testimonial.stars || 5)}
                   </div>
                   <p style={{ fontSize: '14px', color: '#475467', marginBottom: '16px', lineHeight: '1.5' }}>
-                    "{testimonial.text}"
+                    "{typeof testimonial.text === 'string' ? testimonial.text : testimonial.text?.toString() || ''}"
                   </p>
                   <p style={{ fontSize: '12px', color: '#0A5F59', fontWeight: 600 }}>
-                    — {testimonial.author}
+                    — {typeof testimonial.author === 'string' ? testimonial.author : testimonial.author?.toString() || 'Пользователь'}
                   </p>
                 </div>
               ))}
@@ -2708,8 +2720,12 @@ export default function QuizPage() {
                   {product.icon && (
                     <img src={product.icon} alt={product.name} style={{ width: '60px', height: '60px', marginBottom: '8px', objectFit: 'contain' }} />
                   )}
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#0A5F59', marginBottom: '4px' }}>{product.name}</div>
-                  <div style={{ fontSize: '10px', color: '#475467' }}>{product.desc}</div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#0A5F59', marginBottom: '4px' }}>
+                    {typeof product.name === 'string' ? product.name : product.name?.toString() || 'Продукт'}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#475467' }}>
+                    {typeof product.desc === 'string' ? product.desc : product.desc?.toString() || ''}
+                  </div>
                 </div>
               ))}
             </div>
@@ -2739,7 +2755,11 @@ export default function QuizPage() {
                     if (isSubmitting) return;
                     submitAnswers().catch((err) => {
                       console.error('Error submitting answers:', err);
-                      setError(err?.message || 'Ошибка отправки ответов');
+                      // Убеждаемся, что error всегда строка
+                      const errorMessage = typeof err?.message === 'string' 
+                        ? err.message 
+                        : err?.message?.toString() || 'Ошибка отправки ответов';
+                      setError(errorMessage);
                       setIsSubmitting(false);
                     });
                   }}
@@ -2769,66 +2789,100 @@ export default function QuizPage() {
             if (isTinderScreen) {
               const isWantImproveScreen = screen.id === 'want_improve';
               
-              // Общий обработчик для кнопок want_improve
-              const handleWantImproveClick = async (answer: 'yes' | 'no') => {
-                console.log('🔘 handleWantImproveClick вызван с ответом:', answer);
-                
-                if (isSubmitting) {
-                  console.warn('⚠️ Уже отправляется');
-                  return;
-                }
-                
-                if (!questionnaire) {
-                  console.error('❌ Анкета не загружена');
-                  setError('Анкета не загружена. Пожалуйста, обновите страницу.');
-                  return;
-                }
-                
-                // Проверяем наличие initData перед отправкой
-                const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-                const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
-                
-                console.log('📱 Проверка Telegram перед отправкой:', {
-                  hasWindow: typeof window !== 'undefined',
-                  hasTelegram: isInTelegram,
-                  hasInitData: !!initData,
-                  initDataLength: initData?.length || 0,
-                });
-                
-                if (!isInTelegram || !initData) {
-                  console.error('❌ Telegram WebApp или initData недоступен');
-                  setError('Пожалуйста, откройте приложение через Telegram Mini App и обновите страницу.');
-                  return;
-                }
-                
-                console.log('🚀 Запуск submitAnswers...');
-                setIsSubmitting(true);
-                setError(null);
-                
-                try {
-                  await submitAnswers();
-                } catch (err: any) {
-                  console.error('❌ Ошибка в handleWantImproveClick:', err);
-                  console.error('   Error message:', err?.message);
-                  console.error('   Error stack:', err?.stack);
+              // Для экрана "Хотите улучшить состояние кожи?" показываем только одну кнопку "Получить план ухода"
+              if (isWantImproveScreen) {
+                const handleGetPlan = async () => {
+                  console.log('🔘 handleGetPlan вызван');
                   
-                  let errorMessage = 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.';
-                  
-                  if (err?.message?.includes('Unauthorized') || 
-                      err?.message?.includes('401') || 
-                      err?.message?.includes('initData') ||
-                      err?.message?.includes('авторизации')) {
-                    errorMessage = 'Ошибка авторизации. Пожалуйста, обновите страницу и убедитесь, что приложение открыто через Telegram Mini App.';
-                  } else if (err?.message) {
-                    errorMessage = err.message;
+                  if (isSubmitting) {
+                    console.warn('⚠️ Уже отправляется');
+                    return;
                   }
                   
-                  setError(errorMessage);
-                  setIsSubmitting(false);
-                }
-              };
+                  if (!questionnaire) {
+                    console.error('❌ Анкета не загружена');
+                    setError('Анкета не загружена. Пожалуйста, обновите страницу.');
+                    return;
+                  }
+                  
+                  // Проверяем наличие initData перед отправкой
+                  const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+                  const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
+                  
+                  console.log('📱 Проверка Telegram перед отправкой:', {
+                    hasWindow: typeof window !== 'undefined',
+                    hasTelegram: isInTelegram,
+                    hasInitData: !!initData,
+                    initDataLength: initData?.length || 0,
+                  });
+                  
+                  if (!isInTelegram || !initData) {
+                    console.error('❌ Telegram WebApp или initData недоступен');
+                    setError('Пожалуйста, откройте приложение через Telegram Mini App и обновите страницу.');
+                    return;
+                  }
+                  
+                  console.log('🚀 Запуск submitAnswers...');
+                  setIsSubmitting(true);
+                  setError(null);
+                  
+                  try {
+                    await submitAnswers();
+                  } catch (err: any) {
+                    console.error('❌ Ошибка в handleGetPlan:', err);
+                    console.error('   Error message:', err?.message);
+                    console.error('   Error stack:', err?.stack);
+                    
+                    let errorMessage = 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.';
+                    
+                    if (err?.message?.includes('Unauthorized') || 
+                        err?.message?.includes('401') || 
+                        err?.message?.includes('initData') ||
+                        err?.message?.includes('авторизации')) {
+                      errorMessage = 'Ошибка авторизации. Пожалуйста, обновите страницу и убедитесь, что приложение открыто через Telegram Mini App.';
+                    } else if (err?.message) {
+                      errorMessage = err.message;
+                    }
+                    
+                    // Убеждаемся, что errorMessage всегда строка
+                    const safeErrorMessage = typeof errorMessage === 'string' 
+                      ? errorMessage 
+                      : errorMessage?.toString() || 'Ошибка отправки ответов. Попробуйте еще раз.';
+                    setError(safeErrorMessage);
+                    setIsSubmitting(false);
+                  }
+                };
+                
+                return (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleGetPlan();
+                    }}
+                    disabled={isSubmitting}
+                    style={{
+                      width: '100%',
+                      height: '64px',
+                      background: '#0A5F59',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '32px',
+                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 600,
+                      fontSize: '18px',
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                      opacity: isSubmitting ? 0.7 : 1,
+                      marginTop: '20px',
+                    }}
+                  >
+                    {isSubmitting ? 'Отправка...' : 'Получить план ухода'}
+                  </button>
+                );
+              }
               
-              // Обработчик для других tinder-экранов
+              // Для других tinder-экранов оставляем старую логику
               const handleButtonClick = async () => {
                 if (isSubmitting) return;
                 if (!questionnaire) {
@@ -2844,11 +2898,7 @@ export default function QuizPage() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (isWantImproveScreen) {
-                        handleWantImproveClick('no');
-                      } else {
-                        handleButtonClick();
-                      }
+                      handleButtonClick();
                     }}
                     disabled={isSubmitting}
                     style={{
@@ -2872,11 +2922,7 @@ export default function QuizPage() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      if (isWantImproveScreen) {
-                        handleWantImproveClick('yes');
-                      } else {
-                        handleButtonClick();
-                      }
+                      handleButtonClick();
                     }}
                     disabled={isSubmitting}
                     style={{
@@ -2920,7 +2966,7 @@ export default function QuizPage() {
                     marginTop: '20px',
                   }}
                 >
-                  {screen.ctaText} →
+                  {typeof screen.ctaText === 'string' ? screen.ctaText : screen.ctaText?.toString() || 'Продолжить'} →
                 </button>
               ) : null
             );

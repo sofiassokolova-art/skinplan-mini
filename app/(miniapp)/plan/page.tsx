@@ -1082,29 +1082,35 @@ export default function PlanPage() {
   // Используем новый компонент, если есть plan28
   if (planData && (planData as any).plan28) {
     // Проверяем, что productsMap существует, иначе создаем пустой Map
-    const productsMap = (planData as any).productsMap || (planData as any).products || new Map();
+    let productsMap: Map<number, any> = new Map();
     
-    // Проверяем, что это действительно Map
-    if (!(productsMap instanceof Map)) {
-      console.error('productsMap is not a Map instance:', typeof productsMap);
-      // Если это не Map, пытаемся создать Map из объекта
-      const mapFromObject = new Map();
-      if (productsMap && typeof productsMap === 'object') {
-        Object.entries(productsMap).forEach(([key, value]) => {
-          mapFromObject.set(Number(key), value);
+    // Пытаемся получить productsMap из planData
+    const productsMapFromData = (planData as any).productsMap || (planData as any).products;
+    
+    // Если productsMap является Map, используем его
+    if (productsMapFromData instanceof Map) {
+      productsMap = productsMapFromData;
+    } else if (productsMapFromData && typeof productsMapFromData === 'object' && productsMapFromData !== null) {
+      // Если это объект, преобразуем в Map
+      console.log('⚠️ Converting productsMap from object to Map');
+      try {
+        Object.entries(productsMapFromData).forEach(([key, value]) => {
+          const numKey = parseInt(key);
+          if (!isNaN(numKey) && value) {
+            productsMap.set(numKey, value);
+          }
         });
+      } catch (err) {
+        console.error('❌ Error converting productsMap:', err);
+        productsMap = new Map();
       }
-      
-      return (
-        <PlanPageClientNew
-          plan28={(planData as any).plan28}
-          products={mapFromObject}
-          wishlist={planData.wishlist}
-          currentDay={planData.currentDay}
-          completedDays={planData.progress?.completedDays || []}
-        />
-      );
+    } else {
+      // Если productsMap не определен или не является объектом/Map, создаем пустой Map
+      console.warn('⚠️ productsMap is not available, using empty Map');
+      productsMap = new Map();
     }
+    
+    console.log('✅ Final productsMap size:', productsMap.size);
     
     return (
       <PlanPageClientNew

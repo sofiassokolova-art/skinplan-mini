@@ -23,6 +23,7 @@ function LayoutContent({
   const searchParams = useSearchParams();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(false); // Флаг: идет ли проверка профиля на главной странице
 
   useEffect(() => {
     try {
@@ -49,11 +50,50 @@ function LayoutContent({
     }
   }, [initData, isAuthorized, initialize]);
 
+  // Проверяем наличие профиля на главной странице, чтобы скрыть навигацию для новых пользователей
+  useEffect(() => {
+    if (pathname === '/' && initData) {
+      setIsCheckingProfile(true);
+      // Проверяем профиль асинхронно
+      const checkProfile = async () => {
+        try {
+          const profile = await api.getCurrentProfile();
+          if (profile && (profile as any).id) {
+            // Профиль есть - показываем навигацию после небольшой задержки
+            setTimeout(() => setIsCheckingProfile(false), 100);
+          } else {
+            // Профиля нет - скрываем навигацию (будет редирект на анкету)
+            setIsCheckingProfile(false);
+          }
+        } catch (err: any) {
+          // Профиля нет (404) - скрываем навигацию
+          const isNotFound = err?.status === 404 || 
+                            err?.message?.includes('404') || 
+                            err?.message?.includes('No profile') ||
+                            err?.message?.includes('Profile not found');
+          if (isNotFound) {
+            setIsCheckingProfile(false);
+          } else {
+            // Другая ошибка - через небольшую задержку показываем навигацию
+            setTimeout(() => setIsCheckingProfile(false), 500);
+          }
+        }
+      };
+      checkProfile();
+    } else if (pathname !== '/') {
+      // Не на главной странице - не проверяем профиль
+      setIsCheckingProfile(false);
+    }
+  }, [pathname, initData]);
+
   // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
   const isResumeScreen = searchParams?.get('resume') === 'true';
   
-  // Скрываем навигацию на определенных страницах и на экране прогресса
-  const hideNav = pathname === '/quiz' || pathname.startsWith('/quiz/') || isResumeScreen;
+  // Скрываем навигацию на определенных страницах, на экране прогресса и во время проверки профиля на главной
+  const hideNav = pathname === '/quiz' || 
+                  pathname.startsWith('/quiz/') || 
+                  isResumeScreen ||
+                  (pathname === '/' && isCheckingProfile); // Скрываем навигацию на главной во время проверки профиля
   
   // Скрываем логотип на главной странице, на странице незавершенной анкеты, на странице анкеты (там логотип на фоне), и на страницах плана, избранного и профиля (там логотип встроен в страницу)
   const showLogo = pathname !== '/' && 

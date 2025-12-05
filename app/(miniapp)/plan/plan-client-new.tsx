@@ -201,6 +201,13 @@ export function PlanPageClientNew({
   } | null>(null);
 
   const handleReplace = (stepCategory: string, oldProductId: number) => {
+    // Проверяем, что products является Map
+    if (!(products instanceof Map)) {
+      console.error('❌ products is not a Map instance:', typeof products);
+      toast.error('Ошибка: данные продуктов не загружены');
+      return;
+    }
+    
     // Находим продукт в productsMap для показа в модалке
     const product = products.get(oldProductId);
     if (!product) {

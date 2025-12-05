@@ -97,13 +97,41 @@ export default function PlanCalendarPage() {
           console.warn('Failed to save error log:', logError);
         }
         
-        // Если план не найден - показываем ошибку
-        // План должен генерироваться только при завершении анкеты, не автоматически
+        // Если план не найден - проверяем, есть ли профиль
+        // Если профиль есть, но план не найден - это ошибка, нужно регенерировать план
         if (err?.status === 404 || err?.isNotFound) {
-          console.log('📅 Calendar: Plan not found, showing error screen');
-          toast.error('План не найден. Пожалуйста, пройдите анкету.');
-          setLoading(false);
-          return;
+          console.log('📅 Calendar: Plan not found (404), checking if profile exists...');
+          
+          // Проверяем наличие профиля
+          try {
+            const profile = await api.getCurrentProfile();
+            if (profile && (profile as any).id) {
+              // Профиль есть, но план не найден - это странно, но не критично
+              // Показываем ошибку и предлагаем вернуться к плану или пройти анкету заново
+              console.warn('📅 Calendar: Profile exists but plan not found - plan may need regeneration');
+              toast.error('План не найден. Попробуйте обновить страницу или пройдите анкету заново.');
+              setLoading(false);
+              return;
+            } else {
+              // Профиля нет - редиректим на анкету
+              console.log('📅 Calendar: No profile found, redirecting to quiz');
+              toast.error('План не найден. Пожалуйста, пройдите анкету.');
+              setLoading(false);
+              setTimeout(() => {
+                router.push('/quiz');
+              }, 1500);
+              return;
+            }
+          } catch (profileErr: any) {
+            // Ошибка при проверке профиля - редиректим на анкету
+            console.error('📅 Calendar: Error checking profile:', profileErr);
+            toast.error('План не найден. Пожалуйста, пройдите анкету.');
+            setLoading(false);
+            setTimeout(() => {
+              router.push('/quiz');
+            }, 1500);
+            return;
+          }
         } else {
           // Другие ошибки (не 404) - показываем общую ошибку
           console.error('📅 Calendar: Unexpected error loading plan', err);
@@ -322,25 +350,57 @@ export default function PlanCalendarPage() {
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
         padding: '20px',
       }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '16px' }}>
+        <div style={{ textAlign: 'center', maxWidth: '400px' }}>
+          <div style={{ 
+            color: '#0A5F59', 
+            fontSize: '20px', 
+            fontWeight: '600',
+            marginBottom: '12px' 
+          }}>
             План не найден
           </div>
-          <button
-            onClick={() => router.push('/plan')}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
-          >
-            Вернуться к плану
-          </button>
+          <div style={{ 
+            color: '#6B7280', 
+            fontSize: '14px', 
+            marginBottom: '24px',
+            lineHeight: '1.5',
+          }}>
+            План еще не создан. Пожалуйста, пройдите анкету для создания персонального плана ухода.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button
+              onClick={() => router.push('/quiz')}
+              style={{
+                padding: '14px 24px',
+                borderRadius: '12px',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              Пройти анкету
+            </button>
+            <button
+              onClick={() => router.push('/plan')}
+              style={{
+                padding: '14px 24px',
+                borderRadius: '12px',
+                backgroundColor: 'transparent',
+                color: '#0A5F59',
+                border: '2px solid #0A5F59',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              Вернуться к плану
+            </button>
+          </div>
         </div>
       </div>
     );
