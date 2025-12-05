@@ -1817,14 +1817,15 @@ export default function QuizPage() {
     // Это включает как начальные инфо-экраны, так и инфо-экраны между вопросами
     if (allQuestions.length > 0 && isRetakingQuiz && !showRetakeScreen) {
       // Переходим сразу к первому вопросу, пропуская все начальные инфо-экраны
-      if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreens.length) {
-        setCurrentInfoScreenIndex(initialInfoScreens.length);
+      const initialInfoScreensCount = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode).length;
+      if (currentQuestionIndex === 0 && currentInfoScreenIndex < initialInfoScreensCount) {
+        setCurrentInfoScreenIndex(initialInfoScreensCount);
         setCurrentQuestionIndex(0);
         setPendingInfoScreen(null); // Очищаем pending info screen
         console.log('✅ Full retake: Skipping all initial info screens, starting from first question');
       }
     }
-  }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen, initialInfoScreens.length]);
+  }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen]);
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
   const initialInfoScreens = useMemo(() => INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode), []);
