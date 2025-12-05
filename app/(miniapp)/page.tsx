@@ -120,8 +120,14 @@ export default function HomePage() {
         });
         
         if (!hasInitData) {
-          console.warn('⚠️ Telegram WebApp не доступен');
+          console.warn('⚠️ Telegram WebApp не доступен, redirecting to quiz');
+          setRedirectingToQuiz(true);
           setLoading(false);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/quiz';
+          } else {
+            router.push('/quiz');
+          }
           return;
         }
         
@@ -150,8 +156,15 @@ export default function HomePage() {
           if (isNotFound) {
             console.log('ℹ️ Profile not found (expected for new users or incomplete quiz)');
             hasProfile = false;
-            // Если профиля нет, просто завершаем загрузку - покажем экран с кнопкой "Пройти анкету"
+            // Если профиля нет, сразу редиректим на анкету
+            console.log('ℹ️ No profile found, redirecting to quiz immediately');
+            setRedirectingToQuiz(true);
             setLoading(false);
+            if (typeof window !== 'undefined') {
+              window.location.href = '/quiz';
+            } else {
+              router.push('/quiz');
+            }
             return;
           } else {
             // Другая ошибка (сеть, авторизация и т.д.) - логируем, но продолжаем
@@ -160,10 +173,16 @@ export default function HomePage() {
           }
         }
         
-        // Если профиля нет после проверки, просто завершаем загрузку
+        // Если профиля нет после проверки, сразу редиректим на анкету
         if (!hasProfile) {
-          console.log('ℹ️ No profile found, showing "Start quiz" screen');
+          console.log('ℹ️ No profile found, redirecting to quiz immediately');
+          setRedirectingToQuiz(true);
           setLoading(false);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/quiz';
+          } else {
+            router.push('/quiz');
+          }
           return;
         }
 
@@ -208,14 +227,20 @@ export default function HomePage() {
         });
         
         // Обрабатываем любые необработанные ошибки
-        // НО: если это 404 (профиль не найден), не показываем ошибку, просто завершаем загрузку
+        // НО: если это 404 (профиль не найден), редиректим на анкету
         if (err?.status === 404 || err?.isNotFound || 
             err?.message?.includes('404') || 
             err?.message?.includes('Not found') ||
             err?.message?.includes('No skin profile') ||
             err?.message?.includes('Profile not found')) {
-          console.log('ℹ️ Profile not found in initAndLoad, showing "Start quiz" screen');
+          console.log('ℹ️ Profile not found in initAndLoad, redirecting to quiz');
+          setRedirectingToQuiz(true);
           setLoading(false);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/quiz';
+          } else {
+            router.push('/quiz');
+          }
           return;
         }
         
@@ -236,14 +261,20 @@ export default function HomePage() {
       });
       
       // Обрабатываем ошибку более мягко - не показываем ошибку пользователю
-      // Если профиль не найден, просто завершаем загрузку
+      // Если профиль не найден, редиректим на анкету
       if (err?.status === 404 || err?.isNotFound || 
           err?.message?.includes('404') || 
           err?.message?.includes('Not found') ||
           err?.message?.includes('No skin profile') ||
           err?.message?.includes('Profile not found')) {
-        console.log('ℹ️ Profile not found in catch, showing "Start quiz" screen');
+        console.log('ℹ️ Profile not found in catch, redirecting to quiz');
+        setRedirectingToQuiz(true);
         setLoading(false);
+        if (typeof window !== 'undefined') {
+          window.location.href = '/quiz';
+        } else {
+          router.push('/quiz');
+        }
         return;
       }
       
@@ -269,14 +300,20 @@ export default function HomePage() {
       setLoading(false);
       
       // Дополнительная обработка на случай, если промис отклонен
-      // Если это 404 (профиль не найден), просто завершаем загрузку
+      // Если это 404 (профиль не найден), редиректим на анкету
       if (err?.status === 404 || err?.isNotFound || 
           err?.message?.includes('404') || 
           err?.message?.includes('Not found') ||
           err?.message?.includes('No skin profile') ||
           err?.message?.includes('Profile not found')) {
-        console.log('ℹ️ Profile not found in catch, showing "Start quiz" screen');
+        console.log('ℹ️ Profile not found in catch, redirecting to quiz');
+        setRedirectingToQuiz(true);
         setLoading(false);
+        if (typeof window !== 'undefined') {
+          window.location.href = '/quiz';
+        } else {
+          router.push('/quiz');
+        }
         return;
       }
       
@@ -940,6 +977,11 @@ export default function HomePage() {
   // Экран незавершенной анкеты
   // УДАЛЕНО: Экран "Вы не завершили анкету" больше не показывается на главной странице
   // Если профиля нет, сразу редиректим на /quiz, где этот экран уже есть
+
+  // ВАЖНО: Если редиректим на анкету, не показываем никакой контент
+  if (redirectingToQuiz) {
+    return null; // Не показываем ничего во время редиректа
+  }
 
   if (!mounted || loading) {
     // Показываем лоадер во время загрузки
