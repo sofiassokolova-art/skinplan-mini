@@ -204,6 +204,20 @@ export default function HomePage() {
             }, 100);
           } catch (recError: any) {
             console.error('❌ Error in loadRecommendations:', recError);
+            // Если произошла ошибка загрузки плана (404) - редиректим на анкету
+            if (recError?.status === 404 || recError?.isNotFound || 
+                recError?.message?.includes('404') || 
+                recError?.message?.includes('Plan not found')) {
+              console.log('ℹ️ Plan not found after profile check, redirecting to quiz');
+              setRedirectingToQuiz(true);
+              setLoading(false);
+              if (typeof window !== 'undefined') {
+                window.location.href = '/quiz';
+              } else {
+                router.push('/quiz');
+              }
+              return;
+            }
             // loadRecommendations уже обработал ошибку и вызвал setLoading(false)
             // Если произошел редирект или установлена ошибка, просто завершаем
           }
@@ -415,14 +429,23 @@ export default function HomePage() {
     try {
       // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: проверяем наличие профиля перед загрузкой
       console.log('🔍 loadRecommendations: Checking profile before loading...');
+      let profileExists = false;
       try {
         const profile = await api.getCurrentProfile();
-        if (!profile || !(profile as any).id) {
+        if (profile && (profile as any).id) {
+          profileExists = true;
+          console.log('✅ loadRecommendations: Profile confirmed, proceeding...');
+        } else {
           console.log('⚠️ loadRecommendations: No profile found, redirecting to quiz');
-          router.push('/quiz');
+          setRedirectingToQuiz(true);
+          setLoading(false);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/quiz';
+          } else {
+            router.push('/quiz');
+          }
           return;
         }
-        console.log('✅ loadRecommendations: Profile confirmed, proceeding...');
       } catch (profileErr: any) {
         const errorMessage = profileErr?.message || profileErr?.toString() || '';
         const isNotFound = errorMessage.includes('404') || 
@@ -434,11 +457,32 @@ export default function HomePage() {
         
         if (isNotFound) {
           console.log('⚠️ loadRecommendations: Profile not found (404), redirecting to quiz');
-          router.push('/quiz');
+          setRedirectingToQuiz(true);
+          setLoading(false);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/quiz';
+          } else {
+            router.push('/quiz');
+          }
           return;
         }
         // Другая ошибка - логируем, но продолжаем (может быть временная проблема)
         console.warn('⚠️ loadRecommendations: Error checking profile, but continuing:', errorMessage);
+        // Если это не 404, но профиль не найден - все равно редиректим
+        profileExists = false;
+      }
+      
+      // Если профиля нет - не загружаем план
+      if (!profileExists) {
+        console.log('⚠️ loadRecommendations: Profile not confirmed, redirecting to quiz');
+        setRedirectingToQuiz(true);
+        setLoading(false);
+        if (typeof window !== 'undefined') {
+          window.location.href = '/quiz';
+        } else {
+          router.push('/quiz');
+        }
+        return;
       }
       
       console.log('📥 Loading plan for current day...');

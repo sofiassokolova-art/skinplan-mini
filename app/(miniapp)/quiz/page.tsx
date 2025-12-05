@@ -180,28 +180,74 @@ export default function QuizPage() {
         }
       
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
-      // isRetakingQuiz будет установлен в отдельном useEffect после загрузки questionnaire
       // ВАЖНО: Не проверяем профиль, если пользователь только что нажал "Начать заново"
+      // ВАЖНО: Для новых пользователей (без профиля) показываем полную анкету, а не экран выбора тем
+      // ВАЖНО: Экран "что хотите изменить?" показывается ТОЛЬКО если:
+      // 1. Профиль существует
+      // 2. Анкета полностью завершена (есть все ответы)
+      // 3. Пользователь не нажал "Начать заново"
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !isStartingOverRef.current) {
         try {
           const profile = await api.getCurrentProfile();
           if (profile && (profile as any).id) {
-            // Профиль существует - это повторное прохождение
-            // Но только если пользователь не нажал "Начать заново"
+            // Профиль существует - проверяем, завершена ли анкета
             if (!isStartingOverRef.current) {
-            setIsRetakingQuiz(true);
-            setShowRetakeScreen(true); // Показываем экран выбора тем
-            console.log('✅ Повторное прохождение анкеты - профиль уже существует, показываем экран выбора тем');
+              // Проверяем, есть ли ответы на анкету (завершена ли анкета)
+              try {
+                const progress = await api.getQuizProgress();
+                // Проверяем, что есть ответы И что анкета завершена (все вопросы отвечены)
+                const hasAnswers = progress && (progress as any).answers && Object.keys((progress as any).answers).length > 0;
+                const isCompleted = progress && (progress as any).isCompleted;
+                
+                if (hasAnswers && isCompleted) {
+                  // Анкета полностью завершена - это повторное прохождение, показываем экран выбора тем
+                  setIsRetakingQuiz(true);
+                  setShowRetakeScreen(true);
+                  console.log('✅ Повторное прохождение анкеты - профиль и завершенная анкета существуют, показываем экран выбора тем');
+                } else {
+                  // Профиль есть, но анкета не завершена - показываем полную анкету
+                  console.log('ℹ️ Профиль есть, но анкета не завершена - показываем полную анкету', {
+                    hasAnswers,
+                    isCompleted,
+                  });
+                  setIsRetakingQuiz(false);
+                  setShowRetakeScreen(false);
+                }
+              } catch (progressErr) {
+                // Не удалось загрузить прогресс - показываем полную анкету
+                console.log('ℹ️ Не удалось загрузить прогресс анкеты - показываем полную анкету', progressErr);
+                setIsRetakingQuiz(false);
+                setShowRetakeScreen(false);
+              }
             } else {
               console.log('⏸️ Пропущена проверка профиля, так как isStartingOverRef = true');
             }
           }
         } catch (err: any) {
-          // Профиля нет - это первое прохождение, показываем info screens как обычно
-          console.log('ℹ️ Первое прохождение анкеты - профиля еще нет');
+          // Профиля нет (404) - это первое прохождение, показываем полную анкету
+          const isNotFound = err?.status === 404 || 
+                            err?.message?.includes('404') || 
+                            err?.message?.includes('No profile') ||
+                            err?.message?.includes('Profile not found');
+          
+          if (isNotFound) {
+            console.log('ℹ️ Первое прохождение анкеты - профиля еще нет (404), показываем полную анкету');
+          } else {
+            console.log('ℹ️ Ошибка при проверке профиля, показываем полную анкету', err);
+          }
+          setIsRetakingQuiz(false);
+          setShowRetakeScreen(false);
         }
       } else if (isStartingOverRef.current) {
         console.log('⏸️ Пропущена проверка профиля в init, так как isStartingOverRef = true');
+        // При "Начать заново" показываем полную анкету
+        setIsRetakingQuiz(false);
+        setShowRetakeScreen(false);
+      } else {
+        // Telegram WebApp не доступен - показываем полную анкету
+        console.log('ℹ️ Telegram WebApp не доступен, показываем полную анкету');
+        setIsRetakingQuiz(false);
+        setShowRetakeScreen(false);
       }
 
       // Загружаем прогресс с сервера (только если Telegram WebApp доступен)
