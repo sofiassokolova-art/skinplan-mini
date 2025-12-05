@@ -260,22 +260,79 @@ export async function POST(request: NextRequest) {
         });
         logger.info('RecommendationSession deleted for plan regeneration', { userId });
         
-        // Запускаем автоматическую регенерацию плана в фоне
-        // Это гарантирует, что план обновится при изменении типа кожи или других параметров
+        // Запускаем автоматическую генерацию плана после создания/обновления профиля
+        // ВАЖНО: Генерируем план синхронно, чтобы он был готов сразу после завершения анкеты
+        // Это критично для UX - пользователь должен видеть план сразу после анкеты
         try {
-          const planRegenerateUrl = `${process.env.NEXT_PUBLIC_API_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/api/plan/generate`;
-          fetch(planRegenerateUrl, {
-            method: 'GET',
-            headers: {
-              'X-Telegram-Init-Data': initData || '',
-            },
-          }).catch(err => {
-            logger.warn('Background plan regeneration failed', { userId, error: err });
-            // Не критично - план пересоберется при следующем запросе
+          logger.info('Starting plan generation after profile creation/update', { userId, newVersion: profile.version });
+          
+          // Используем прямой вызов функции генерации вместо fetch для надежности
+          // Это гарантирует, что план будет сгенерирован даже если внешний URL недоступен
+          const planGenerateModule = await import('@/app/api/plan/generate/route');
+          const generate28DayPlan = planGenerateModule.generate28DayPlan;
+          
+          if (!generate28DayPlan || typeof generate28DayPlan !== 'function') {
+            throw new Error('generate28DayPlan function not found or not exported');
+          }
+          
+          const generatedPlan = await generate28DayPlan(userId);
+          
+          if (generatedPlan && generatedPlan.plan28) {
+            // Сохраняем план в кэш
+            const { setCachedPlan } = await import('@/lib/cache');
+            await setCachedPlan(userId, profile.version, generatedPlan);
+            logger.info('Plan generated and cached successfully after profile creation', { 
+              userId, 
+              profileVersion: profile.version,
+              planDays: generatedPlan.plan28?.days?.length || 0,
+            });
+          } else {
+            logger.warn('Plan generation returned empty result', { userId, profileVersion: profile.version });
+          }
+        } catch (regenerateError: any) {
+          // Логируем ошибку, но не блокируем ответ - план может быть сгенерирован позже
+          logger.error('Failed to generate plan after profile creation', regenerateError, { 
+            userId, 
+            profileVersion: profile.version,
+            errorMessage: regenerateError?.message,
+            errorStack: regenerateError?.stack,
           });
-          logger.info('Plan regeneration triggered in background', { userId, newVersion: profile.version });
-        } catch (regenerateError) {
-          logger.warn('Could not trigger plan regeneration', { userId, error: regenerateError });
+          
+          // Пробуем альтернативный способ - через fetch (на случай, если прямой вызов не работает)
+          try {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
+                           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+                           'http://localhost:3000';
+            const planRegenerateUrl = `${baseUrl}/api/plan/generate`;
+            
+            logger.info('Attempting plan generation via fetch as fallback', { 
+              userId, 
+              url: planRegenerateUrl,
+              hasInitData: !!initData,
+            });
+            
+            // Запускаем в фоне, не ждем ответа
+            fetch(planRegenerateUrl, {
+              method: 'GET',
+              headers: {
+                'X-Telegram-Init-Data': initData || '',
+              },
+            }).then(response => {
+              if (!response.ok) {
+                logger.warn('Plan generation via fetch returned non-OK status', { 
+                  userId, 
+                  status: response.status,
+                  statusText: response.statusText,
+                });
+              } else {
+                logger.info('Plan generation via fetch succeeded', { userId });
+              }
+            }).catch(err => {
+              logger.warn('Background plan regeneration via fetch failed', { userId, error: err });
+            });
+          } catch (fetchError) {
+            logger.warn('Could not trigger plan regeneration via fetch either', { userId, error: fetchError });
+          }
         }
       } catch (cacheError) {
         logger.warn('Failed to clear cache', { error: cacheError, userId });

@@ -188,7 +188,7 @@ function getFallbackStep(step: string): StepCategory | undefined {
 /**
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
  */
-async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
+export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     logger.info('Generating plan', { userId });
   
   // Получаем профиль кожи
