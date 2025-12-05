@@ -120,10 +120,8 @@ export default function HomePage() {
         });
         
         if (!hasInitData) {
-          console.warn('⚠️ Telegram WebApp не доступен, перенаправляем на анкету');
-          setRedirectingToQuiz(true); // Устанавливаем флаг перед редиректом
+          console.warn('⚠️ Telegram WebApp не доступен');
           setLoading(false);
-          router.push('/quiz');
           return;
         }
         
@@ -131,7 +129,7 @@ export default function HomePage() {
 
         // СНАЧАЛА проверяем наличие профиля (самая надежная проверка)
         console.log('🔍 Step 1: Checking for existing profile...');
-        setHasCheckedProfile(true); // Помечаем, что начали проверку профиля
+        setHasCheckedProfile(true); // Помечаем, что проверили профиль
         let hasProfile = false;
         try {
           const profile = await api.getCurrentProfile();
@@ -152,11 +150,8 @@ export default function HomePage() {
           if (isNotFound) {
             console.log('ℹ️ Profile not found (expected for new users or incomplete quiz)');
             hasProfile = false;
-            // ВАЖНО: Если профиля нет, сразу редиректим на /quiz без показа "Загрузка плана..."
-            console.log('ℹ️ No profile found, redirecting to quiz immediately');
-            setRedirectingToQuiz(true);
+            // Если профиля нет, просто завершаем загрузку - покажем экран с кнопкой "Пройти анкету"
             setLoading(false);
-            router.push('/quiz');
             return;
           } else {
             // Другая ошибка (сеть, авторизация и т.д.) - логируем, но продолжаем
@@ -165,13 +160,10 @@ export default function HomePage() {
           }
         }
         
-        // ВАЖНО: Если профиля нет после проверки, сразу редиректим на /quiz
-        // без показа "Загрузка плана..."
+        // Если профиля нет после проверки, просто завершаем загрузку
         if (!hasProfile) {
-          console.log('ℹ️ No profile found after check, redirecting to quiz immediately');
-          setRedirectingToQuiz(true);
+          console.log('ℹ️ No profile found, showing "Start quiz" screen');
           setLoading(false);
-          router.push('/quiz');
           return;
         }
 
@@ -201,13 +193,9 @@ export default function HomePage() {
           return; // Завершаем инициализацию
         }
 
-        // Если профиля нет - сразу перенаправляем на анкету
-        // НЕ показываем экран "Вы не завершили анкету" на главной странице
-        // Этот экран должен быть только на странице анкеты
-        console.log('ℹ️ No profile found, redirecting to quiz immediately');
-        setRedirectingToQuiz(true); // Устанавливаем флаг перед редиректом
-        setLoading(false); // Убеждаемся, что loading = false
-        router.push('/quiz');
+        // Если профиля нет - просто завершаем загрузку, покажем экран с кнопкой
+        console.log('ℹ️ No profile found, showing "Start quiz" screen');
+        setLoading(false);
         return;
       } catch (err: any) {
         console.error('❌ Error in initAndLoad:', {
@@ -220,17 +208,14 @@ export default function HomePage() {
         });
         
         // Обрабатываем любые необработанные ошибки
-        // НО: если это 404 (профиль не найден), не показываем ошибку, а перенаправляем
+        // НО: если это 404 (профиль не найден), не показываем ошибку, просто завершаем загрузку
         if (err?.status === 404 || err?.isNotFound || 
             err?.message?.includes('404') || 
             err?.message?.includes('Not found') ||
             err?.message?.includes('No skin profile') ||
             err?.message?.includes('Profile not found')) {
-          console.log('ℹ️ Profile not found in initAndLoad, redirecting to quiz');
-          // ВАЖНО: Устанавливаем loading = false перед редиректом, чтобы не показывать "Загрузка плана..."
-          setRedirectingToQuiz(true); // Устанавливаем флаг перед редиректом
+          console.log('ℹ️ Profile not found in initAndLoad, showing "Start quiz" screen');
           setLoading(false);
-          router.push('/quiz');
           return;
         }
         
@@ -251,14 +236,13 @@ export default function HomePage() {
       });
       
       // Обрабатываем ошибку более мягко - не показываем ошибку пользователю
-      // Вместо этого пытаемся перенаправить на план или анкету
+      // Если профиль не найден, просто завершаем загрузку
       if (err?.status === 404 || err?.isNotFound || 
           err?.message?.includes('404') || 
           err?.message?.includes('Not found') ||
           err?.message?.includes('No skin profile') ||
           err?.message?.includes('Profile not found')) {
-        console.log('ℹ️ Profile not found in catch, redirecting to quiz');
-        router.push('/quiz');
+        console.log('ℹ️ Profile not found in catch, showing "Start quiz" screen');
         setLoading(false);
         return;
       }
@@ -285,14 +269,14 @@ export default function HomePage() {
       setLoading(false);
       
       // Дополнительная обработка на случай, если промис отклонен
-      // Если это 404 (профиль не найден), перенаправляем на анкету
+      // Если это 404 (профиль не найден), просто завершаем загрузку
       if (err?.status === 404 || err?.isNotFound || 
           err?.message?.includes('404') || 
           err?.message?.includes('Not found') ||
           err?.message?.includes('No skin profile') ||
           err?.message?.includes('Profile not found')) {
-        console.log('ℹ️ Profile not found in catch, redirecting to quiz');
-        router.push('/quiz');
+        console.log('ℹ️ Profile not found in catch, showing "Start quiz" screen');
+        setLoading(false);
         return;
       }
       
@@ -423,14 +407,52 @@ export default function HomePage() {
       console.log('📥 Loading plan for current day...');
       
       // Загружаем план и прогресс
-      const [planData, progress] = await Promise.all([
-        api.getPlan() as Promise<any>,
-        api.getPlanProgress() as Promise<{ currentDay: number; completedDays: number[] }>,
-      ]);
+      let planData: any = null;
+      let progress: { currentDay: number; completedDays: number[] } | null = null;
+      
+      try {
+        // Пробуем загрузить план
+        planData = await api.getPlan() as any;
+        console.log('📥 Home: Plan loaded', {
+          hasPlan: !!planData,
+          hasPlan28: !!planData?.plan28,
+          hasWeeks: !!planData?.weeks,
+        });
+      } catch (planErr: any) {
+        console.error('❌ Home: Error loading plan', planErr);
+        // Если план не найден (404), пробуем сгенерировать
+        if (planErr?.status === 404 || planErr?.isNotFound) {
+          console.log('📥 Home: Plan not in cache, trying to generate...');
+          try {
+            planData = await api.generatePlan() as any;
+            console.log('✅ Home: Plan generated', {
+              hasPlan: !!planData,
+              hasPlan28: !!planData?.plan28,
+            });
+          } catch (genErr: any) {
+            console.error('❌ Home: Error generating plan', genErr);
+            // Если генерация не удалась - показываем экран с кнопкой
+            setLoading(false);
+            return;
+          }
+        } else {
+          // Другая ошибка - показываем экран с кнопкой
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Загружаем прогресс (может быть ошибка, но это не критично)
+      try {
+        progress = await api.getPlanProgress() as { currentDay: number; completedDays: number[] };
+      } catch (progressErr) {
+        console.warn('⚠️ Home: Error loading progress (non-critical)', progressErr);
+        progress = { currentDay: 1, completedDays: [] };
+      }
       
       if (!planData || !planData.plan28) {
-        console.log('⚠️ Plan not found, redirecting to quiz');
-        router.push('/quiz');
+        console.log('⚠️ Home: Plan not found after all attempts, showing "Start quiz" screen');
+        setLoading(false);
         return;
       }
       
@@ -934,14 +956,8 @@ export default function HomePage() {
   // УДАЛЕНО: Экран "Вы не завершили анкету" больше не показывается на главной странице
   // Если профиля нет, сразу редиректим на /quiz, где этот экран уже есть
 
-  // ВАЖНО: Если редиректим на анкету, не показываем никакой контент
-  if (redirectingToQuiz) {
-    return null; // Не показываем ничего во время редиректа
-  }
-
   if (!mounted || loading) {
-    // Если мы уже проверили профиль и его нет, показываем "Загрузка анкеты..."
-    // Иначе показываем "Загрузка плана..." (если профиль есть)
+    // Показываем лоадер во время загрузки
     const loadingText = hasCheckedProfile && !recommendations ? 'Загрузка анкеты...' : 'Загрузка плана...';
     
     return (
@@ -994,24 +1010,65 @@ export default function HomePage() {
       );
     }
     
+    // Если профиль не найден или нет рекомендаций - показываем экран с предложением пройти анкету
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h1>Нет рекомендаций</h1>
-        <p>Пройдите анкету, чтобы получить персональные рекомендации</p>
-        <button
-          onClick={() => router.push('/quiz')}
-          style={{
-            marginTop: '20px',
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          Пройти анкету
-        </button>
+      <div style={{ 
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '24px',
+          padding: '32px',
+          maxWidth: '500px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        }}>
+          <div style={{
+            fontSize: '48px',
+            marginBottom: '16px',
+          }}>
+            ✨
+          </div>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#0A5F59',
+            marginBottom: '12px',
+          }}>
+            Создайте свой план ухода
+          </h2>
+          <p style={{
+            color: '#475467',
+            marginBottom: '24px',
+            lineHeight: '1.6',
+          }}>
+            Пройдите анкету, чтобы получить персональные рекомендации по уходу за кожей
+          </p>
+          <button
+            onClick={() => router.push('/quiz')}
+            style={{
+              width: '100%',
+              padding: '16px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+            }}
+          >
+            Пройти анкету
+          </button>
+        </div>
       </div>
     );
   }

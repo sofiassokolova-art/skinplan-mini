@@ -39,11 +39,17 @@ export default function PlanCalendarPage() {
     try {
       setLoading(true);
       
-      // Загружаем прогресс
-      const progress = await api.getPlanProgress() as {
-        currentDay: number;
-        completedDays: number[];
-      };
+      // Загружаем прогресс (может быть ошибка, но это не критично)
+      let progress: { currentDay: number; completedDays: number[] } | null = null;
+      try {
+        progress = await api.getPlanProgress() as {
+          currentDay: number;
+          completedDays: number[];
+        };
+      } catch (progressErr) {
+        console.warn('📅 Calendar: Error loading progress (non-critical)', progressErr);
+        progress = { currentDay: 1, completedDays: [] };
+      }
       
       if (progress) {
         setCurrentDay(progress.currentDay || 1);
@@ -158,11 +164,11 @@ export default function PlanCalendarPage() {
           hasPlan: !!planData,
           hasPlan28: !!planData?.plan28,
           hasWeeks: !!planData?.weeks,
-          planData: planData,
+          planKeys: planData ? Object.keys(planData) : [],
         });
-        // Если план все еще не найден после попытки генерации - редиректим на анкету
-        toast.error('План не найден. Пожалуйста, пройдите анкету.');
-        router.push('/quiz');
+        // Если план все еще не найден после попытки генерации - показываем ошибку, но не редиректим
+        toast.error('План не найден. Попробуйте обновить страницу или вернуться к плану.');
+        setLoading(false);
         return;
       }
       

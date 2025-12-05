@@ -41,9 +41,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const progress = await prisma.planProgress.findUnique({
-      where: { userId },
-    });
+    let progress;
+    try {
+      progress = await prisma.planProgress.findUnique({
+        where: { userId },
+      });
+    } catch (dbError: any) {
+      // Если ошибка связана с отсутствием колонки - возвращаем дефолтное значение
+      if (dbError?.message?.includes('does not exist') || dbError?.message?.includes('column')) {
+        logger.warn('PlanProgress table schema mismatch, returning default values', { userId, error: dbError.message });
+        return NextResponse.json({
+          currentDay: 1,
+          completedDays: [] as number[],
+          currentStreak: 0,
+          longestStreak: 0,
+          totalCompletedDays: 0,
+        });
+      }
+      throw dbError;
+    }
 
     if (!progress) {
       // Если прогресса нет — возвращаем дефолтное значение
@@ -59,12 +75,17 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId);
 
+    // Безопасно получаем completedDays - может быть массивом или нужно преобразовать
+    const completedDays = Array.isArray(progress.completedDays) 
+      ? progress.completedDays 
+      : (progress as any).completed_days || [];
+
     return NextResponse.json({
       currentDay: progress.currentDay,
-      completedDays: progress.completedDays,
+      completedDays: completedDays,
       currentStreak: (progress as any).currentStreak || 0,
       longestStreak: (progress as any).longestStreak || 0,
-      totalCompletedDays: (progress as any).totalCompletedDays || progress.completedDays.length,
+      totalCompletedDays: (progress as any).totalCompletedDays || completedDays.length,
     });
   } catch (error: any) {
     const duration = Date.now() - startTime;
