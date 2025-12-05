@@ -301,7 +301,14 @@ export async function POST(request: NextRequest) {
         let matches = true;
 
         for (const [key, condition] of Object.entries(conditions)) {
-          const profileValue = (profile as any)[key];
+          // ВАЖНО: diagnoses хранятся в medicalMarkers, а не в корне профиля
+          let profileValue: any;
+          if (key === 'diagnoses') {
+            // Извлекаем diagnoses из medicalMarkers
+            profileValue = (profile.medicalMarkers as any)?.diagnoses || [];
+          } else {
+            profileValue = (profile as any)[key];
+          }
 
           if (Array.isArray(condition)) {
             if (!condition.includes(profileValue)) {
@@ -310,6 +317,20 @@ export async function POST(request: NextRequest) {
             }
           } else if (typeof condition === 'object' && condition !== null) {
             const conditionObj = condition as Record<string, unknown>;
+            
+            // Обработка hasSome для массивов (например, diagnoses: { hasSome: ["atopic_dermatitis"] })
+            if ('hasSome' in conditionObj && Array.isArray(conditionObj.hasSome)) {
+              const hasSomeArray = conditionObj.hasSome as any[];
+              const profileArray = Array.isArray(profileValue) ? profileValue : [];
+              // Проверяем, есть ли хотя бы один элемент из hasSome в profileValue
+              const hasMatch = hasSomeArray.some(item => profileArray.includes(item));
+              if (!hasMatch) {
+                matches = false;
+                break;
+              }
+              continue; // Переходим к следующему условию
+            }
+            
             if (typeof profileValue === 'number') {
               if ('gte' in conditionObj && typeof conditionObj.gte === 'number') {
                 const gteValue = conditionObj.gte as number;
