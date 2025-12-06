@@ -36,6 +36,7 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
     const categoryConditions: any[] = [];
     
     // Маппинг категорий из правил в категории БД
+    // ВАЖНО: Этот маппинг должен соответствовать категориям в БД и stepName в правилах
     const categoryMapping: Record<string, string[]> = {
       'cream': ['moisturizer'], // В правилах используется "cream", в БД - "moisturizer"
       'moisturizer': ['moisturizer'],
@@ -43,9 +44,9 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
       'cleanser_oil': ['cleanser'], // Гидрофильное масло ищется как cleanser с ключевыми словами
       'serum': ['serum'],
       'toner': ['toner'],
-      'treatment': ['treatment'],
+      'treatment': ['treatment'], // treatment в правилах -> treatment в БД (category)
       'spf': ['spf'],
-      'mask': ['mask'],
+      'mask': ['mask'], // mask в правилах -> mask в БД (category, если есть)
     };
     
     for (const cat of step.category) {
