@@ -222,6 +222,7 @@ async function checkProductCategoryMatch() {
       if (stepStr.includes('treatment_exfoliant_strong')) categories.push('treatment_exfoliant_strong');
       if (stepStr.includes('treatment_pigmentation')) categories.push('treatment_pigmentation');
       if (stepStr.includes('treatment_antiage') || stepStr.includes('antiage')) categories.push('treatment_antiage');
+      if (stepStr.includes('spot_treatment') || stepStr.includes('spot treatment')) categories.push('spot_treatment');
       // НЕ добавляем fallback для просто 'treatment'
       
       if (stepStr.includes('moisturizer_light')) categories.push('moisturizer_light');

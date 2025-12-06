@@ -815,6 +815,8 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       categories.push('treatment_pigmentation');
     } else if (stepStr.startsWith('treatment_antiage') || stepStr.includes('antiage') || stepStr.includes('anti-age')) {
       categories.push('treatment_antiage');
+    } else if (stepStr.startsWith('spot_treatment') || stepStr.includes('spot treatment')) {
+      categories.push('spot_treatment');
     } else if (stepStr === 'treatment' || categoryStr === 'treatment') {
       // Если просто 'treatment' без уточнения, НЕ добавляем fallback
       // Это позволяет использовать более специфичные фильтры (concerns, activeIngredients)
