@@ -50,7 +50,7 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
     
     for (const cat of step.category) {
       const normalizedCats = categoryMapping[cat] || [cat];
-      const isOilCleanser = cat === 'cleanser_oil';
+      const isOilCleanser = cat === 'cleanser_oil' || cat.includes('oil');
       
       for (const normalizedCat of normalizedCats) {
         if (isOilCleanser) {
@@ -64,9 +64,12 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
                 { name: { contains: 'гидрофильн', mode: 'insensitive' } },
                 { step: { contains: 'oil', mode: 'insensitive' } },
                 { description: { contains: 'масло', mode: 'insensitive' } },
+                { descriptionUser: { contains: 'масло', mode: 'insensitive' } },
               ]}
             ]
           });
+          // Также ищем просто по category/step для продуктов, которые уже помечены как oil
+          categoryConditions.push({ category: normalizedCat, step: { contains: 'oil', mode: 'insensitive' } });
         } else {
           // Точное совпадение по category
           categoryConditions.push({ category: normalizedCat });

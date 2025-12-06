@@ -735,8 +735,30 @@ export async function POST(request: NextRequest) {
         };
 
         // Собираем ID продуктов из всех шагов, используя улучшенную логику
+        const productIdsSet = new Set<number>(); // Используем Set для автоматической дедупликации
+        
         for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
           const step = stepConfig as any;
+          
+          // ВАЖНО: Если в правиле нет category, определяем его из имени шага
+          // Это нужно, чтобы treatment, serum и другие шаги корректно находили продукты
+          if (!step.category || step.category.length === 0) {
+            // Маппинг имени шага в категорию
+            const stepNameToCategory: Record<string, string[]> = {
+              'treatment': ['treatment'],
+              'serum': ['serum'],
+              'toner': ['toner'],
+              'cleanser': ['cleanser'],
+              'moisturizer': ['moisturizer'],
+              'cream': ['moisturizer'],
+              'spf': ['spf'],
+              'mask': ['mask'],
+            };
+            
+            if (stepNameToCategory[stepName]) {
+              step.category = stepNameToCategory[stepName];
+            }
+          }
           
           // Если в правиле не указан бюджет, используем бюджет пользователя
           const stepWithBudget = {
@@ -748,8 +770,28 @@ export async function POST(request: NextRequest) {
           };
           
           const products = await getProductsForStep(stepWithBudget);
-          productIds.push(...products.map(p => p.id));
+          logger.info(`Products selected for step ${stepName}`, {
+            stepName,
+            productCount: products.length,
+            productIds: products.map(p => p.id),
+            productNames: products.map(p => p.name),
+            stepConfig: stepWithBudget,
+            userId,
+          });
+          
+          // Добавляем продукты в Set (автоматически убирает дубликаты)
+          products.forEach(p => productIdsSet.add(p.id));
         }
+        
+        // Конвертируем Set обратно в массив
+        const productIds = Array.from(productIdsSet);
+        
+        logger.info('Final product selection summary', {
+          userId,
+          totalProductIds: productIds.length,
+          uniqueProductIds: productIds,
+          stepsCount: Object.keys(stepsJson).length,
+        });
 
         // Создаем RecommendationSession
         // ВАЖНО: Логируем для диагностики, особенно при перепрохождении
