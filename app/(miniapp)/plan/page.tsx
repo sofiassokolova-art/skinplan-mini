@@ -589,8 +589,8 @@ export default function PlanPage() {
                 if (!profileCheck) {
                   // Нет профиля - показываем ошибку
                   console.log('❌ No profile found, showing error');
-                  setError('no_profile');
-                  setLoading(false);
+                  safeSetError('no_profile');
+                  safeSetLoading(false);
                   return;
                 } else {
                   // Профиль есть, но план не сгенерировался - это странно, пробуем еще раз
@@ -608,8 +608,8 @@ export default function PlanPage() {
             if (testError?.status === 404 || testError?.message?.includes('No skin profile') || testError?.message?.includes('Profile not found')) {
               // Нет профиля - показываем ошибку
               console.log('❌ No profile found, showing error');
-              setError('no_profile');
-              setLoading(false);
+              safeSetError('no_profile');
+              safeSetLoading(false);
               return;
             }
             // Другие ошибки - не показываем ошибку, возможно это временная проблема
@@ -628,8 +628,8 @@ export default function PlanPage() {
           planError?.message?.includes('timeout')
         )) {
           console.log(`⏳ Ошибка сервера, повторяем через 1 секунду... (попытка ${retryCount + 1}/2)`);
-          setLoading(true);
-          setError(null);
+          safeSetLoading(true);
+          safeSetError(null);
           await new Promise(resolve => setTimeout(resolve, 1000));
           return loadPlan(retryCount + 1);
         }
@@ -637,8 +637,8 @@ export default function PlanPage() {
         // Если это не 404 и не серверная ошибка - показываем лоадер (возможно план генерируется)
         if (planError?.status !== 404) {
           console.log('⚠️ Unexpected error, showing loader (plan might be generating)');
-          setLoading(true);
-          setError(null);
+          safeSetLoading(true);
+          safeSetError(null);
           // Пробуем еще раз через 2 секунды
           setTimeout(() => {
             loadPlan(retryCount + 1);
@@ -668,8 +668,8 @@ export default function PlanPage() {
               } else {
                 // План не сгенерировался - возможно еще обрабатывается, показываем лоадер
                 console.log('⏳ Plan generation returned empty result, waiting...');
-                setLoading(true);
-                setError(null);
+                safeSetLoading(true);
+                safeSetError(null);
                 // Пробуем еще раз через 3 секунды
                 setTimeout(() => {
                   loadPlan(retryCount + 1);
@@ -680,14 +680,14 @@ export default function PlanPage() {
               console.error('❌ Failed to regenerate plan:', generateError);
               // Если это ошибка 404 (нет профиля) - показываем ошибку
               if (generateError?.status === 404 || generateError?.message?.includes('No skin profile') || generateError?.message?.includes('Profile not found')) {
-                setError('no_profile');
-                setLoading(false);
+                safeSetError('no_profile');
+                safeSetLoading(false);
                 return;
               }
               // Другие ошибки - возможно план еще генерируется, показываем лоадер
               console.log('⏳ Plan generation error, but profile exists - waiting and retrying...');
-              setLoading(true);
-              setError(null);
+              safeSetLoading(true);
+              safeSetError(null);
               // Пробуем еще раз через 3 секунды
               setTimeout(() => {
                 loadPlan(retryCount + 1);
@@ -696,8 +696,8 @@ export default function PlanPage() {
             }
           } else {
             // Профиля нет - показываем ошибку
-            setError('no_profile');
-            setLoading(false);
+            safeSetError('no_profile');
+            safeSetLoading(false);
             return;
           }
         } catch (profileCheckError: any) {
@@ -705,14 +705,14 @@ export default function PlanPage() {
           // Если ошибка проверки профиля - возможно временная проблема, пробуем еще раз
           if (retryCount < 2) {
             console.log('⏳ Profile check error, retrying...');
-            setLoading(true);
-            setError(null);
+            safeSetLoading(true);
+            safeSetError(null);
             await new Promise(resolve => setTimeout(resolve, 1000));
             return loadPlan(retryCount + 1);
           }
           // После нескольких попыток - показываем ошибку
-          setError('no_profile');
-          setLoading(false);
+          safeSetError('no_profile');
+          safeSetLoading(false);
           return;
         }
       }
@@ -774,8 +774,8 @@ export default function PlanPage() {
         if (hasProfile || hasProgress) {
           // План должен существовать - пробуем регенерировать
           console.log('🔄 Plan should exist, attempting to regenerate...');
-          setLoading(true);
-          setError(null);
+          safeSetLoading(true);
+          safeSetError(null);
           try {
             const generatedPlan = await api.generatePlan() as any;
             if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
@@ -786,8 +786,8 @@ export default function PlanPage() {
           } catch (generateError: any) {
             console.error('❌ Failed to regenerate plan:', generateError);
             // Продолжаем показывать лоадер - план может генерироваться
-            setLoading(true);
-            setError(null);
+            safeSetLoading(true);
+            safeSetError(null);
             // Пробуем еще раз через 3 секунды
             setTimeout(() => {
               loadPlan(0);
@@ -958,8 +958,8 @@ export default function PlanPage() {
           </p>
           <button
             onClick={async () => {
-              setError(null);
-              setLoading(true);
+              safeSetError(null);
+              safeSetLoading(true);
               try {
                 // Явно генерируем план
                 if (process.env.NODE_ENV === 'development') {
