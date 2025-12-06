@@ -37,6 +37,18 @@ export async function findFallbackProduct(
   baseStep: string,
   profileClassification: ProfileClassification
 ): Promise<ProductWithBrand | null> {
+  // Маппинг категорий из правил в категории БД (как в getProductsForStep)
+  const categoryMapping: Record<string, string[]> = {
+    'cream': ['moisturizer'], // В правилах используется "cream", в БД - "moisturizer"
+    'moisturizer': ['moisturizer'],
+    'cleanser': ['cleanser'],
+    'serum': ['serum'],
+    'toner': ['toner'],
+    'treatment': ['treatment'],
+    'spf': ['spf'],
+    'mask': ['mask'],
+  };
+
   // Первая попытка: с учетом типа кожи
   const whereClauseWithSkinType: Prisma.ProductWhereInput = {
     published: true,
@@ -50,9 +62,28 @@ export async function findFallbackProduct(
     whereClauseWithSkinType.OR = [
       { step: 'spf' },
       { category: 'spf' },
+      { step: { startsWith: 'spf' } },
     ];
   } else {
-    whereClauseWithSkinType.step = baseStep;
+    // Получаем нормализованные категории с учетом маппинга
+    const normalizedCats = categoryMapping[baseStep] || [baseStep];
+    const categoryConditions: Prisma.ProductWhereInput[] = [];
+    
+    for (const normalizedCat of normalizedCats) {
+      // Точное совпадение по category
+      categoryConditions.push({ category: normalizedCat });
+      // Точное совпадение по step
+      categoryConditions.push({ step: normalizedCat });
+      // Частичное совпадение по step
+      categoryConditions.push({ step: { startsWith: normalizedCat } });
+    }
+    
+    // Также добавляем поиск по исходному baseStep для обратной совместимости
+    categoryConditions.push({ step: baseStep });
+    categoryConditions.push({ step: { startsWith: `${baseStep}_` } });
+    categoryConditions.push({ category: baseStep });
+
+    whereClauseWithSkinType.OR = categoryConditions;
 
     // Для других шагов учитываем тип кожи
     if (profileClassification.skinType && baseStep !== 'spf') {
@@ -115,15 +146,26 @@ export async function findFallbackProduct(
         baseStep,
       });
       
+      // Получаем нормализованные категории с учетом маппинга
+      const normalizedCats = categoryMapping[baseStep] || [baseStep];
+      const partialConditions: Prisma.ProductWhereInput[] = [];
+      
+      // Добавляем условия для всех нормализованных категорий
+      for (const normalizedCat of normalizedCats) {
+        partialConditions.push({ step: { contains: normalizedCat } });
+        partialConditions.push({ category: { contains: normalizedCat } });
+      }
+      
+      // Также добавляем поиск по исходному baseStep
+      partialConditions.push({ step: { contains: baseStep } });
+      partialConditions.push({ category: { contains: baseStep } });
+      
       const whereClausePartial: Prisma.ProductWhereInput = {
         published: true,
         brand: {
           isActive: true,
         },
-        OR: [
-          { step: { contains: baseStep } },
-          { category: { contains: baseStep } },
-        ],
+        OR: partialConditions,
       };
       
       product = await prisma.product.findFirst({
@@ -178,6 +220,18 @@ export async function findFallbackProductsBatch(
   }
 
   try {
+    // Маппинг категорий из правил в категории БД (как в getProductsForStep)
+    const categoryMapping: Record<string, string[]> = {
+      'cream': ['moisturizer'], // В правилах используется "cream", в БД - "moisturizer"
+      'moisturizer': ['moisturizer'],
+      'cleanser': ['cleanser'],
+      'serum': ['serum'],
+      'toner': ['toner'],
+      'treatment': ['treatment'],
+      'spf': ['spf'],
+      'mask': ['mask'],
+    };
+
     // Создаем условия для всех шагов
     const conditions: Prisma.ProductWhereInput[] = [];
 
@@ -196,12 +250,25 @@ export async function findFallbackProductsBatch(
           { step: { startsWith: 'spf' } },
         ];
       } else {
-        // Ищем по точному совпадению И по частичному (startsWith)
-        stepCondition.OR = [
-          { step: baseStep },
-          { step: { startsWith: `${baseStep}_` } },
-          { category: baseStep },
-        ];
+        // Получаем нормализованные категории с учетом маппинга
+        const normalizedCats = categoryMapping[baseStep] || [baseStep];
+        const categoryConditions: Prisma.ProductWhereInput[] = [];
+        
+        for (const normalizedCat of normalizedCats) {
+          // Точное совпадение по category
+          categoryConditions.push({ category: normalizedCat });
+          // Точное совпадение по step (на случай, если в БД step = category)
+          categoryConditions.push({ step: normalizedCat });
+          // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
+          categoryConditions.push({ step: { startsWith: normalizedCat } });
+        }
+        
+        // Также добавляем поиск по исходному baseStep для обратной совместимости
+        categoryConditions.push({ step: baseStep });
+        categoryConditions.push({ step: { startsWith: `${baseStep}_` } });
+        categoryConditions.push({ category: baseStep });
+
+        stepCondition.OR = categoryConditions;
 
         if (profileClassification.skinType) {
           stepCondition.AND = [
@@ -235,8 +302,8 @@ export async function findFallbackProductsBatch(
 
     // Группируем продукты по baseStep
     for (const product of products) {
-      const productStep = product.step || product.category || '';
-      const productCategory = product.category || '';
+      const productStep = (product.step || '').toLowerCase();
+      const productCategory = (product.category || '').toLowerCase();
       
       // Находим соответствующий baseStep
       for (const baseStep of baseSteps) {
@@ -248,27 +315,50 @@ export async function findFallbackProductsBatch(
         // Для SPF используем специальную логику
         if (baseStep === 'spf') {
           if (
-            productStep.toLowerCase().includes('spf') || 
-            productCategory.toLowerCase().includes('spf') ||
-            productStep.toLowerCase().startsWith('spf')
+            productStep.includes('spf') || 
+            productCategory.includes('spf') ||
+            productStep.startsWith('spf')
           ) {
             result.set(baseStep, product as ProductWithBrand);
             break;
           }
         } else {
-          // Для остальных шагов проверяем:
-          // 1. Точное совпадение step
-          // 2. step начинается с baseStep
-          // 3. step содержит baseStep (для подкатегорий типа serum_hydrating)
-          // 4. category совпадает с baseStep
-          // 5. category содержит baseStep
+          // Получаем нормализованные категории с учетом маппинга
+          const normalizedCats = categoryMapping[baseStep] || [baseStep];
+          const baseStepLower = baseStep.toLowerCase();
+          
+          // Проверяем совпадение с baseStep и всеми нормализованными категориями
+          let matches = false;
+          
+          // Проверяем по исходному baseStep
           if (
-            productStep === baseStep ||
-            productStep.startsWith(`${baseStep}_`) ||
-            productStep.includes(baseStep) ||
-            productCategory === baseStep ||
-            productCategory.includes(baseStep)
+            productStep === baseStepLower ||
+            productStep.startsWith(`${baseStepLower}_`) ||
+            productStep.includes(baseStepLower) ||
+            productCategory === baseStepLower ||
+            productCategory.includes(baseStepLower)
           ) {
+            matches = true;
+          }
+          
+          // Проверяем по нормализованным категориям
+          if (!matches) {
+            for (const normalizedCat of normalizedCats) {
+              const normalizedCatLower = normalizedCat.toLowerCase();
+              if (
+                productStep === normalizedCatLower ||
+                productStep.startsWith(`${normalizedCatLower}_`) ||
+                productStep.includes(normalizedCatLower) ||
+                productCategory === normalizedCatLower ||
+                productCategory.includes(normalizedCatLower)
+              ) {
+                matches = true;
+                break;
+              }
+            }
+          }
+          
+          if (matches) {
             result.set(baseStep, product as ProductWithBrand);
             break;
           }

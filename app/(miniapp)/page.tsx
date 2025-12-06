@@ -510,16 +510,10 @@ export default function HomePage() {
                           errorMessage.includes('not found');
         
         if (isNotFound) {
-          // План не найден, но профиль есть - перенаправляем на /plan
-          // Там есть логика для генерации плана при его отсутствии
-          console.log('⚠️ Home: Plan not found (404), but profile exists. Redirecting to /plan for generation...');
+          // План не найден, но профиль есть - показываем экран без плана
+          // Пользователь может перейти на /plan вручную, если захочет
+          console.log('⚠️ Home: Plan not found (404), but profile exists. Showing home screen without plan.');
           setLoading(false);
-          // Перенаправляем на /plan, где есть логика lazy generation
-          if (typeof window !== 'undefined') {
-            window.location.href = '/plan';
-          } else {
-            router.push('/plan');
-          }
           return;
         } else {
           // Другая ошибка (сеть, сервер и т.д.)

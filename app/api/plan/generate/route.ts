@@ -722,7 +722,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     
     // Маппинг старого формата в StepCategory
     // Проверяем и step, и category для более точного маппинга
-    if (stepStr.startsWith('cleanser_gentle') || categoryStr.includes('gentle')) {
+    if (stepStr === 'cleanser_oil' || categoryStr.includes('oil') || stepStr.includes('oil')) {
+      categories.push('cleanser_oil');
+      // Также ищем по ключевым словам: гидрофильное, масло, oil, double cleans
+      categories.push('cleanser'); // Базовый поиск
+    } else if (stepStr.startsWith('cleanser_gentle') || categoryStr.includes('gentle')) {
       categories.push('cleanser_gentle');
     } else if (stepStr.startsWith('cleanser_balancing') || stepStr.includes('balancing') || categoryStr.includes('balancing')) {
       categories.push('cleanser_balancing');
@@ -1127,7 +1131,14 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
               Math.max(templateEveningAdditional.length - 1, 0)
         )
       );
+      // Проверяем, использует ли пользователь макияж ежедневно
+      // Если да, добавляем гидрофильное масло первым этапом очищения вечером
+      const makeupFrequency = medicalMarkers?.makeupFrequency as string | undefined;
+      const needsOilCleansing = makeupFrequency === 'daily';
+      
       const rawEveningSteps = dedupeSteps([
+        // Если используется макияж ежедневно, добавляем гидрофильное масло первым
+        ...(needsOilCleansing ? ['cleanser_oil' as StepCategory] : []),
         baseEveningCleanser,
         ...templateEveningAdditional.slice(0, eveningAdditionalLimit),
       ]);

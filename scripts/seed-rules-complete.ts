@@ -44,73 +44,104 @@ function convertRuleToPrismaFormat(rule: typeof RECOMMENDATION_RULES[0]) {
     },
   };
 
-  // Добавляем шаги в зависимости от активных ингредиентов
-  const hasAcne = rule.heroActives.some(a => 
-    a.includes('адапален') || a.includes('бензоила') || a.includes('азелаиновая') || a.includes('салициловая')
-  );
-  const hasPigmentation = rule.heroActives.some(a => 
-    a.includes('транексамовая') || a.includes('Melasyl') || a.includes('витамин С') || a.includes('гидрохинон')
-  );
-  const hasAntiAging = rule.heroActives.some(a => 
-    a.includes('ретинол') || a.includes('пептиды') || a.includes('бакучиол')
-  );
-  const hasHydration = rule.heroActives.some(a => 
-    a.includes('гиалурон') || a.includes('глицерин') || a.includes('пантенол')
-  );
-  const hasBarrier = rule.heroActives.some(a => 
-    a.includes('церамиды') || a.includes('липиды') || a.includes('масло ши') || a.includes('сквалан')
-  );
+  // Собираем ингредиенты по категориям
+  const acneIngredients: string[] = [];
+  const pigmentationIngredients: string[] = [];
+  const antiAgingIngredients: string[] = [];
+  const hydrationIngredients: string[] = [];
+  const barrierIngredients: string[] = [];
+  const serumIngredients: string[] = []; // Для ниацинамида, цинка и других универсальных ингредиентов
+  
+  for (const active of rule.heroActives) {
+    // Пропускаем null/undefined значения
+    if (!active || typeof active !== 'string') continue;
+    const lower = active.toLowerCase();
+    
+    // Акне ингредиенты (идут в treatment)
+    if (lower.includes('адапален') || lower.includes('бензоила') || 
+        lower.includes('азелаиновая') || lower.includes('салициловая') ||
+        lower.includes('lha') || lower.includes('гликолевая')) {
+      acneIngredients.push(active);
+    }
+    // Пигментация ингредиенты (идут в serum)
+    else if (lower.includes('транексамовая') || lower.includes('melasyl') || 
+             lower.includes('витамин с') || lower.includes('гидрохинон')) {
+      pigmentationIngredients.push(active);
+    }
+    // Anti-aging ингредиенты (идут в serum)
+    else if (lower.includes('ретинол') || lower.includes('пептиды') || 
+             lower.includes('бакучиол')) {
+      antiAgingIngredients.push(active);
+    }
+    // Увлажнение ингредиенты
+    else if (lower.includes('гиалурон') || lower.includes('глицерин') || 
+             lower.includes('пантенол') || lower.includes('сквалан')) {
+      hydrationIngredients.push(active);
+    }
+    // Барьер ингредиенты (идут в moisturizer)
+    else if (lower.includes('церамиды') || lower.includes('липиды') || 
+             lower.includes('масло ши') || lower.includes('центелла')) {
+      barrierIngredients.push(active);
+    }
+    // Универсальные ингредиенты для serum (ниацинамид, цинк и т.д.)
+    else if (lower.includes('ниацинамид') || lower.includes('цинк') ||
+             lower.includes('антиоксидант') || lower.includes('мадекассосид')) {
+      serumIngredients.push(active);
+    }
+  }
 
-  // Treatment/Serum для акне
-  if (hasAcne) {
+  // Treatment для акне
+  if (acneIngredients.length > 0) {
     stepsJson.treatment = {
       concerns: ['acne'],
-      active_ingredients: rule.heroActives.filter(a => 
-        a.includes('адапален') || a.includes('бензоила') || a.includes('азелаиновая') || a.includes('салициловая')
-      ),
+      active_ingredients: acneIngredients,
       max_items: 1,
     };
   }
 
-  // Serum для пигментации
-  if (hasPigmentation) {
+  // Serum - приоритет: пигментация > anti-aging > увлажнение > универсальные
+  const serumConcerns: string[] = [];
+  const serumActives: string[] = [];
+  
+  if (pigmentationIngredients.length > 0) {
+    serumConcerns.push('pigmentation');
+    serumActives.push(...pigmentationIngredients);
+  }
+  if (antiAgingIngredients.length > 0) {
+    serumConcerns.push('wrinkles');
+    serumActives.push(...antiAgingIngredients);
+  }
+  if (hydrationIngredients.length > 0 && serumActives.length === 0) {
+    serumConcerns.push('dehydration');
+    serumActives.push(...hydrationIngredients);
+  }
+  // Добавляем универсальные ингредиенты (ниацинамид, цинк) в serum
+  if (serumIngredients.length > 0) {
+    serumActives.push(...serumIngredients);
+    // Если нет других concerns, добавляем concerns на основе контекста
+    if (serumConcerns.length === 0) {
+      if (acneIngredients.length > 0) {
+        serumConcerns.push('acne');
+      } else {
+        serumConcerns.push('maintenance');
+      }
+    }
+  }
+  
+  if (serumActives.length > 0) {
     stepsJson.serum = {
-      concerns: ['pigmentation'],
-      active_ingredients: rule.heroActives.filter(a => 
-        a.includes('транексамовая') || a.includes('Melasyl') || a.includes('витамин С') || a.includes('гидрохинон')
-      ),
+      concerns: serumConcerns.length > 0 ? serumConcerns : ['maintenance'],
+      active_ingredients: serumActives,
       max_items: 1,
     };
   }
 
-  // Serum для anti-aging
-  if (hasAntiAging) {
-    stepsJson.serum = {
-      concerns: ['wrinkles'],
-      active_ingredients: rule.heroActives.filter(a => 
-        a.includes('ретинол') || a.includes('пептиды') || a.includes('бакучиол')
-      ),
-      max_items: 1,
-    };
-  }
-
-  // Toner для увлажнения
-  if (hasHydration && !hasAntiAging && !hasPigmentation) {
+  // Toner для увлажнения (только если нет serum с увлажнением)
+  if (hydrationIngredients.length > 0 && !stepsJson.serum) {
     stepsJson.toner = {
       concerns: ['dehydration'],
-      active_ingredients: rule.heroActives.filter(a => 
-        a.includes('гиалурон') || a.includes('глицерин')
-      ),
-      max_items: 1,
-    };
-  }
-
-  // Serum для увлажнения (если нет других serum)
-  if (hasHydration && !stepsJson.serum) {
-    stepsJson.serum = {
-      concerns: ['dehydration'],
-      active_ingredients: rule.heroActives.filter(a => 
-        a.includes('гиалурон') || a.includes('пантенол')
+      active_ingredients: hydrationIngredients.filter(a => 
+        a.toLowerCase().includes('гиалурон') || a.toLowerCase().includes('глицерин')
       ),
       max_items: 1,
     };

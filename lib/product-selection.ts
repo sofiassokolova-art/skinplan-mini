@@ -40,6 +40,7 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
       'cream': ['moisturizer'], // В правилах используется "cream", в БД - "moisturizer"
       'moisturizer': ['moisturizer'],
       'cleanser': ['cleanser'],
+      'cleanser_oil': ['cleanser'], // Гидрофильное масло ищется как cleanser с ключевыми словами
       'serum': ['serum'],
       'toner': ['toner'],
       'treatment': ['treatment'],
@@ -49,14 +50,31 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
     
     for (const cat of step.category) {
       const normalizedCats = categoryMapping[cat] || [cat];
+      const isOilCleanser = cat === 'cleanser_oil';
       
       for (const normalizedCat of normalizedCats) {
-        // Точное совпадение по category
-        categoryConditions.push({ category: normalizedCat });
-        // Точное совпадение по step (на случай, если в БД step = category)
-        categoryConditions.push({ step: normalizedCat });
-        // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
-        categoryConditions.push({ step: { startsWith: normalizedCat } });
+        if (isOilCleanser) {
+          // Для гидрофильного масла ищем по ключевым словам: oil, масло, гидрофильное
+          categoryConditions.push({ 
+            AND: [
+              { category: normalizedCat },
+              { OR: [
+                { name: { contains: 'oil', mode: 'insensitive' } },
+                { name: { contains: 'масл', mode: 'insensitive' } },
+                { name: { contains: 'гидрофильн', mode: 'insensitive' } },
+                { step: { contains: 'oil', mode: 'insensitive' } },
+                { description: { contains: 'масло', mode: 'insensitive' } },
+              ]}
+            ]
+          });
+        } else {
+          // Точное совпадение по category
+          categoryConditions.push({ category: normalizedCat });
+          // Точное совпадение по step (на случай, если в БД step = category)
+          categoryConditions.push({ step: normalizedCat });
+          // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
+          categoryConditions.push({ step: { startsWith: normalizedCat } });
+        }
       }
     }
     

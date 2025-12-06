@@ -5,6 +5,7 @@ import { SkinProfile } from './skinprofile-types';
 
 export type StepCategory =
   // Очищение
+  | "cleanser_oil" // Гидрофильное масло (первое очищение для снятия макияжа)
   | "cleanser_gentle"
   | "cleanser_balancing"
   | "cleanser_deep"
@@ -57,6 +58,12 @@ export type StepCategoryRule = {
 
 export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
   // --- Очищение ---
+  cleanser_oil: {
+    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: [],
+    preferGoals: ["maintenance", "dryness"],
+    avoidDiagnoses: []
+  },
   cleanser_gentle: {
     skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
     avoidIfContra: [],

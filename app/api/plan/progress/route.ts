@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
     let progress;
     try {
       progress = await prisma.planProgress.findUnique({
-        where: { userId },
-      });
+      where: { userId },
+    });
     } catch (dbError: any) {
       // Если ошибка связана с отсутствием колонки - возвращаем дефолтное значение
       if (dbError?.message?.includes('does not exist') || dbError?.message?.includes('column')) {

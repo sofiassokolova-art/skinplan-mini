@@ -8,6 +8,7 @@ import type { StepCategory } from './step-category-rules';
  * Например: 'toner_hydrating' -> 'toner', 'serum_niacinamide' -> 'serum'
  */
 export function getBaseStepFromStepCategory(stepCategory: StepCategory): string {
+  if (stepCategory === 'cleanser_oil') return 'cleanser_oil';
   if (stepCategory.startsWith('cleanser_')) return 'cleanser';
   if (stepCategory.startsWith('toner_')) return 'toner';
   if (stepCategory.startsWith('serum_')) return 'serum';
