@@ -645,11 +645,12 @@ export default function HomePage() {
         return;
       }
       
-      // Находим день плана для текущего дня
+      // ВАЖНО: Используем ту же логику, что и календарь - находим день по dayIndex
+      // Календарь использует: plan28.days.find(d => d.dayIndex === selectedDay)
       let currentDayPlan = plan28.days.find((d: any) => d.dayIndex === currentDay);
       if (!currentDayPlan) {
-        console.log('⚠️ Current day plan not found for day', currentDay, ', using day 1');
-        // Вместо редиректа на анкету, пробуем использовать день 1
+        console.log('⚠️ Home: Current day plan not found for day', currentDay, ', using day 1');
+        // Вместо редиректа на анкету, пробуем использовать день 1 (как в календаре)
         const day1Plan = plan28.days.find((d: any) => d.dayIndex === 1);
         if (!day1Plan) {
           console.error('❌ Home: No plan found for day 1 either');
@@ -660,16 +661,27 @@ export default function HomePage() {
         currentDayPlan = day1Plan;
       }
       
-      // Собираем все productId из текущего дня (утро, вечер, еженедельные)
+      // ВАЖНО: Собираем productId точно так же, как календарь (строки 170-186 в calendar/page.tsx)
+      // Календарь также собирает alternatives, но для главной страницы используем только основные продукты
       const allProductIds = new Set<number>();
       currentDayPlan.morning.forEach((step: any) => {
         if (step.productId) allProductIds.add(Number(step.productId));
+        // ВАЖНО: Календарь также собирает alternatives, но для главной достаточно основных продуктов
       });
       currentDayPlan.evening.forEach((step: any) => {
         if (step.productId) allProductIds.add(Number(step.productId));
       });
       currentDayPlan.weekly.forEach((step: any) => {
         if (step.productId) allProductIds.add(Number(step.productId));
+      });
+      
+      console.log('✅ Home: Using same logic as calendar - day plan found', {
+        currentDay,
+        dayIndex: currentDayPlan.dayIndex,
+        morningSteps: currentDayPlan.morning?.length || 0,
+        eveningSteps: currentDayPlan.evening?.length || 0,
+        weeklySteps: currentDayPlan.weekly?.length || 0,
+        totalProductIds: allProductIds.size,
       });
       
       // Загружаем детали продуктов (используем ту же логику, что и в календаре)
