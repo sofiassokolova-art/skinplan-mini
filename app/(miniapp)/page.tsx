@@ -510,11 +510,28 @@ export default function HomePage() {
                           errorMessage.includes('not found');
         
         if (isNotFound) {
-          // План не найден, но профиль есть - показываем экран без плана
-          // Пользователь может перейти на /plan вручную, если захочет
-          console.log('⚠️ Home: Plan not found (404), but profile exists. Showing home screen without plan.');
-          setLoading(false);
-          return;
+          // План не найден для текущей версии профиля - пробуем сгенерировать
+          console.log('⚠️ Home: Plan not found (404), but profile exists. Attempting to generate plan...');
+          try {
+            // Пробуем сгенерировать план (может быть для новой версии профиля после перепрохождения анкеты)
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && generatedPlan.plan28) {
+              console.log('✅ Home: Plan generated successfully, reloading...');
+              // Обновляем страницу, чтобы загрузить новый план
+              window.location.reload();
+              return;
+            } else {
+              // План не сгенерировался - показываем экран без плана
+              console.log('⚠️ Home: Plan could not be generated, showing home screen without plan.');
+              setLoading(false);
+              return;
+            }
+          } catch (genError) {
+            // Ошибка генерации - показываем экран без плана
+            console.warn('⚠️ Home: Error generating plan:', genError);
+            setLoading(false);
+            return;
+          }
         } else {
           // Другая ошибка (сеть, сервер и т.д.)
           setError('Не удалось загрузить план. Попробуйте обновить страницу.');
@@ -531,14 +548,44 @@ export default function HomePage() {
         progress = { currentDay: 1, completedDays: [] };
       }
       
-      if (!planData || !planData.plan28) {
-        console.log('⚠️ Home: Plan not found after all attempts, showing "Start quiz" screen');
+      // ВАЖНО: Проверяем оба формата - новый (plan28) и старый (weeks)
+      // План может быть в новом формате (plan28) или старом (weeks)
+      const hasPlan28 = planData?.plan28 && planData.plan28.days && planData.plan28.days.length > 0;
+      const hasWeeks = planData?.weeks && Array.isArray(planData.weeks) && planData.weeks.length > 0;
+      
+      console.log('📊 Home: Plan validation', {
+        hasPlanData: !!planData,
+        hasPlan28,
+        hasWeeks,
+        plan28DaysCount: planData?.plan28?.days?.length || 0,
+        weeksCount: planData?.weeks?.length || 0,
+        planDataKeys: planData ? Object.keys(planData) : [],
+      });
+      
+      if (!planData || (!hasPlan28 && !hasWeeks)) {
+        console.log('⚠️ Home: Plan not found or invalid format, showing "Start quiz" screen');
         setLoading(false);
         return;
       }
       
       const currentDay = progress?.currentDay || 1;
       const plan28 = planData.plan28;
+      
+      // Если план есть, но в старом формате - пытаемся сгенерировать новый
+      if (!hasPlan28 && hasWeeks) {
+        console.log('⚠️ Home: Plan in old format (weeks), attempting to regenerate...');
+        try {
+          const generatedPlan = await api.generatePlan() as any;
+          if (generatedPlan && generatedPlan.plan28) {
+            console.log('✅ Home: Plan regenerated, reloading...');
+            window.location.reload();
+            return;
+          }
+        } catch (regenerateError) {
+          console.warn('⚠️ Could not regenerate plan:', regenerateError);
+          // Продолжаем со старым форматом
+        }
+      }
       
       // Находим день плана для текущего дня
       const currentDayPlan = plan28.days.find((d: any) => d.dayIndex === currentDay);
