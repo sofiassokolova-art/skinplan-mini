@@ -466,7 +466,17 @@ export default function PlanPage() {
     }
   };
 
+  const MAX_RETRIES = 5;
+  
   const loadPlan = async (retryCount = 0) => {
+    // Защита от бесконечных попыток
+    if (retryCount >= MAX_RETRIES) {
+      console.error('❌ Max retries reached, stopping to prevent infinite loop');
+      safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+      safeSetLoading(false);
+      return;
+    }
+    
     try {
       // Проверяем, что компонент еще смонтирован
       if (!isMountedRef.current) {
@@ -785,12 +795,17 @@ export default function PlanPage() {
             }
           } catch (generateError: any) {
             console.error('❌ Failed to regenerate plan:', generateError);
-            // Продолжаем показывать лоадер - план может генерироваться
+            // Если слишком много попыток - показываем ошибку
+            if (retryCount >= MAX_RETRIES - 1) {
+              safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+              safeSetLoading(false);
+              return;
+            }
+            // Пробуем еще раз через 3 секунды, но увеличиваем счетчик попыток
             safeSetLoading(true);
             safeSetError(null);
-            // Пробуем еще раз через 3 секунды
             setTimeout(() => {
-              loadPlan(0);
+              loadPlan(retryCount + 1);
             }, 3000);
             return;
           }
@@ -802,22 +817,32 @@ export default function PlanPage() {
         }
       } catch (checkError) {
         console.error('❌ Error checking profile/progress:', checkError);
-        // При ошибке проверки показываем лоадер (возможно временная проблема)
+        // Если слишком много попыток - показываем ошибку
+        if (retryCount >= MAX_RETRIES - 1) {
+          safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+          safeSetLoading(false);
+          return;
+        }
+        // При ошибке проверки пробуем еще раз через 2 секунды, но увеличиваем счетчик попыток
         safeSetLoading(true);
         safeSetError(null);
-        // Пробуем еще раз через 2 секунды
         setTimeout(() => {
-          loadPlan(0);
+          loadPlan(retryCount + 1);
         }, 2000);
         return;
       }
       
-      // Если дошли сюда - показываем лоадер (план может генерироваться)
+      // Если дошли сюда - пробуем еще раз, но с ограничением попыток
+      if (retryCount >= MAX_RETRIES - 1) {
+        safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+        safeSetLoading(false);
+        return;
+      }
       safeSetLoading(true);
       safeSetError(null);
-      // Пробуем еще раз через 2 секунды
+      // Пробуем еще раз через 2 секунды с увеличенным счетчиком попыток
       setTimeout(() => {
-        loadPlan(0);
+        loadPlan(retryCount + 1);
       }, 2000);
     }
   };

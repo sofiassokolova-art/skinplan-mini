@@ -511,24 +511,42 @@ export default function HomePage() {
         
         if (isNotFound) {
           // План не найден для текущей версии профиля - пробуем сгенерировать
-          console.log('⚠️ Home: Plan not found (404), but profile exists. Attempting to generate plan...');
+          // Защита от бесконечных reload'ов: проверяем, сколько раз уже пытались генерировать
+          const generateAttemptsKey = 'plan_generate_attempts';
+          const generateAttempts = parseInt(sessionStorage.getItem(generateAttemptsKey) || '0', 10);
+          
+          if (generateAttempts >= 2) {
+            console.error('❌ Home: Too many plan generation attempts, stopping to prevent infinite loop');
+            sessionStorage.removeItem(generateAttemptsKey);
+            setError('Не удалось загрузить план. Попробуйте обновить страницу.');
+            setLoading(false);
+            return;
+          }
+          
+          console.log('⚠️ Home: Plan not found (404), but profile exists. Attempting to generate plan...', { attempt: generateAttempts + 1 });
+          sessionStorage.setItem(generateAttemptsKey, String(generateAttempts + 1));
+          
           try {
             // Пробуем сгенерировать план (может быть для новой версии профиля после перепрохождения анкеты)
             const generatedPlan = await api.generatePlan() as any;
             if (generatedPlan && generatedPlan.plan28) {
-              console.log('✅ Home: Plan generated successfully, reloading...');
-              // Обновляем страницу, чтобы загрузить новый план
-              window.location.reload();
+              console.log('✅ Home: Plan generated successfully');
+              // Очищаем счетчик попыток
+              sessionStorage.removeItem(generateAttemptsKey);
+              // Вместо reload - просто перезагружаем данные через функцию loadRecommendations
+              await loadRecommendations();
               return;
             } else {
               // План не сгенерировался - показываем экран без плана
               console.log('⚠️ Home: Plan could not be generated, showing home screen without plan.');
+              sessionStorage.removeItem(generateAttemptsKey);
               setLoading(false);
               return;
             }
           } catch (genError) {
             // Ошибка генерации - показываем экран без плана
             console.warn('⚠️ Home: Error generating plan:', genError);
+            sessionStorage.removeItem(generateAttemptsKey);
             setLoading(false);
             return;
           }
@@ -574,16 +592,31 @@ export default function HomePage() {
       // Если план есть, но в старом формате - пытаемся сгенерировать новый
       if (!hasPlan28 && hasWeeks) {
         console.log('⚠️ Home: Plan in old format (weeks), attempting to regenerate...');
-        try {
-          const generatedPlan = await api.generatePlan() as any;
-          if (generatedPlan && generatedPlan.plan28) {
-            console.log('✅ Home: Plan regenerated, reloading...');
-            window.location.reload();
-            return;
-          }
-        } catch (regenerateError) {
-          console.warn('⚠️ Could not regenerate plan:', regenerateError);
+        const regenerateAttemptsKey = 'plan_regenerate_attempts';
+        const regenerateAttempts = parseInt(sessionStorage.getItem(regenerateAttemptsKey) || '0', 10);
+        
+        if (regenerateAttempts >= 2) {
+          console.warn('⚠️ Too many regeneration attempts, continuing with old format');
+          sessionStorage.removeItem(regenerateAttemptsKey);
           // Продолжаем со старым форматом
+        } else {
+          try {
+            sessionStorage.setItem(regenerateAttemptsKey, String(regenerateAttempts + 1));
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && generatedPlan.plan28) {
+              console.log('✅ Home: Plan regenerated');
+              sessionStorage.removeItem(regenerateAttemptsKey);
+              // Вместо reload - просто перезагружаем данные
+              await loadRecommendations();
+              return;
+            } else {
+              sessionStorage.removeItem(regenerateAttemptsKey);
+            }
+          } catch (regenerateError) {
+            console.warn('⚠️ Could not regenerate plan:', regenerateError);
+            sessionStorage.removeItem(regenerateAttemptsKey);
+            // Продолжаем со старым форматом
+          }
         }
       }
       
