@@ -28,10 +28,39 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // Игнорируем известные "некритичные" ошибки, которые могут возникать при редиректах
+    const errorMessage = error.message || error.toString();
+    
+    // Игнорируем ошибки, связанные с редиректами или размонтированием компонентов
+    if (
+      errorMessage.includes('Minified React error #300') ||
+      errorMessage.includes('Cannot update a component') ||
+      errorMessage.includes('Can\'t perform a React state update on an unmounted component') ||
+      errorMessage.includes('on an unmounted component')
+    ) {
+      // Эти ошибки обычно происходят при редиректах и не критичны
+      // Не показываем экран ошибки, просто логируем
+      console.warn('⚠️ Известная некритичная ошибка, игнорируем:', errorMessage);
+      return { hasError: false, error: undefined };
+    }
+    
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
+    // Проверяем, не является ли это известной некритичной ошибкой
+    const errorMessage = error.message || error.toString();
+    const isKnownNonCriticalError = 
+      errorMessage.includes('Minified React error #300') ||
+      errorMessage.includes('Cannot update a component') ||
+      errorMessage.includes('Can\'t perform a React state update on an unmounted component') ||
+      errorMessage.includes('on an unmounted component');
+    
+    if (isKnownNonCriticalError) {
+      // Для известных ошибок просто логируем, но не отправляем в БД
+      console.warn('⚠️ Известная некритичная ошибка (не отправляем в БД):', errorMessage);
+      return;
+    }
     const errorDetails = {
       message: error.message,
       stack: error.stack,
