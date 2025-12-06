@@ -38,10 +38,12 @@ export async function GET(request: NextRequest) {
     logger.info('User identified from initData', { userId });
     
     // Получаем профиль для версии
+    // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
+    // При перепрохождении анкеты создается новая версия профиля, и план должен быть для новой версии
     const profile = await prisma.skinProfile.findFirst({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
-      select: { version: true },
+      orderBy: { version: 'desc' }, // Используем version вместо createdAt для корректной версии
+      select: { version: true, updatedAt: true },
     });
 
     if (!profile) {
@@ -58,42 +60,13 @@ export async function GET(request: NextRequest) {
       return ApiResponse.success(cachedPlan);
     }
 
-    // Если план не найден в кэше, проверяем старые версии профиля (план мог быть сохранен под другой версией)
-    // Это может произойти, если профиль был обновлен, но план еще не регенерирован
-    // ОПТИМИЗАЦИЯ: проверяем только последние 2 версии, чтобы не делать много запросов
-    logger.debug('Plan not found in cache for current version, checking previous versions', { 
+    // ВАЖНО: При перепрохождении анкеты НЕ возвращаем план из старой версии
+    // Пользователь должен получить план, соответствующий новым ответам
+    // Если план не найден для текущей версии - возвращаем 404, чтобы триггерить генерацию
+    logger.debug('Plan not found in cache for current version - will trigger generation', { 
       userId, 
       currentVersion: profile.version 
     });
-    
-    // Проверяем только последние 2 версии профиля (вместо 5)
-    // userId гарантированно string здесь (проверено выше на строке 33-36)
-    const previousProfiles = await prisma.skinProfile.findMany({
-      where: { userId: userId as string }, // TypeScript не видит проверку выше, поэтому используем type assertion
-      orderBy: { createdAt: 'desc' },
-      take: 2, // Уменьшено с 5 до 2 для ускорения
-      select: { version: true },
-    });
-
-    // Параллельно проверяем кэш для всех предыдущих версий
-    const previousVersions = previousProfiles.filter(p => p.version !== profile.version);
-    const cacheChecks = previousVersions.map(prevProfile => getCachedPlan(userId as string, prevProfile.version));
-
-    const cachedPlans = await Promise.all(cacheChecks);
-    
-    for (let i = 0; i < cachedPlans.length; i++) {
-      const prevCachedPlan = cachedPlans[i];
-      if (prevCachedPlan && prevCachedPlan.plan28) {
-        const prevVersion = previousVersions[i]?.version;
-        logger.info('Plan found in cache for previous profile version', { 
-          userId, 
-          profileVersion: prevVersion,
-          currentVersion: profile.version
-        });
-        // Возвращаем план из старой версии - он все еще валиден
-        return ApiResponse.success(prevCachedPlan);
-      }
-    }
 
     // План не найден ни в текущем, ни в предыдущих версиях - возвращаем 404
     logger.info('Plan not found in cache for any version', { userId, profileVersion: profile.version });

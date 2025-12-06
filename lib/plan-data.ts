@@ -69,10 +69,12 @@ export async function getUserPlanData(): Promise<PlanData> {
     throw new Error('User not found');
   }
 
-  // Получаем профиль кожи - используем самый последний
+  // Получаем профиль кожи - используем самый последний по версии
+  // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
+  // При перепрохождении анкеты создается новая версия профиля
   const profile = await prisma.skinProfile.findFirst({
     where: { userId: user.id },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { version: 'desc' }, // Используем version вместо createdAt для корректной версии
   });
 
   if (!profile) {

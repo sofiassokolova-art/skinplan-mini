@@ -203,9 +203,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   
   // Получаем профиль кожи
     logger.debug('Looking for skin profile', { userId });
+  // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
+  // При перепрохождении анкеты создается новая версия профиля, и план должен быть для новой версии
   const profile = await prisma.skinProfile.findFirst({
     where: { userId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { version: 'desc' }, // Используем version вместо createdAt для корректной версии
   });
 
   if (!profile) {
@@ -1776,9 +1778,11 @@ export async function GET(request: NextRequest) {
     logger.info('User identified from initData', { userId });
     
     // Получаем профиль для версии
+    // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
+    // При перепрохождении анкеты создается новая версия профиля, и план должен быть для новой версии
     const profile = await prisma.skinProfile.findFirst({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { version: 'desc' }, // Используем version вместо createdAt для корректной версии
       select: { version: true },
     });
 
