@@ -77,7 +77,7 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
     id: 'default_balanced',
     conditions: {},
     morning: ['cleanser_gentle', 'serum_hydrating', 'moisturizer_light', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_antiage', 'moisturizer_light'],
+    evening: ['cleanser_gentle', 'treatment_antiage', 'moisturizer_light'], // treatment_antiage будет заменено на подходящее лечение в зависимости от mainGoals
   },
 ];
 

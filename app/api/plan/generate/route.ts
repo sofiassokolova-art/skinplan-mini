@@ -359,16 +359,50 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   };
 
   const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
+  
+  // ВАЖНО: Заменяем treatment_antiage на подходящий treatment, если у пользователя нет проблем с морщинами
+  const hasWrinklesGoal = mainGoals.includes('wrinkles') || mainGoals.some(g => g.toLowerCase().includes('wrinkle'));
+  
+  const adjustTemplateSteps = (steps: StepCategory[]): StepCategory[] => {
+    return steps.flatMap((step) => {
+      // Если это treatment_antiage, но нет проблем с морщинами - заменяем на подходящее лечение
+      if (step === 'treatment_antiage' && !hasWrinklesGoal) {
+        // Ищем другие проблемы, для которых нужны treatments
+        if (mainGoals.includes('acne')) {
+          return ['treatment_acne_azelaic'];
+        } else if (mainGoals.includes('pigmentation')) {
+          return ['treatment_pigmentation'];
+        } else if (mainGoals.includes('pores') || mainGoals.includes('oiliness')) {
+          return ['treatment_exfoliant_mild'];
+        } else {
+          // Если нет специфических проблем - просто убираем treatment
+          return [];
+        }
+      }
+      return [step];
+    });
+  };
+  
+  const adjustedMorning = adjustTemplateSteps(carePlanTemplate.morning);
+  const adjustedEvening = adjustTemplateSteps(carePlanTemplate.evening);
+  const adjustedWeekly = carePlanTemplate.weekly ? adjustTemplateSteps(carePlanTemplate.weekly) : undefined;
+  
   const requiredStepCategories = new Set<StepCategory>();
-  carePlanTemplate.morning.forEach((step) => requiredStepCategories.add(step));
-  carePlanTemplate.evening.forEach((step) => requiredStepCategories.add(step));
-  carePlanTemplate.weekly?.forEach((step) => requiredStepCategories.add(step));
+  adjustedMorning.forEach((step) => requiredStepCategories.add(step));
+  adjustedEvening.forEach((step) => requiredStepCategories.add(step));
+  adjustedWeekly?.forEach((step) => requiredStepCategories.add(step));
+  
   logger.info('Selected care plan template', {
     templateId: carePlanTemplate.id,
     skinType: carePlanProfileInput.skinType,
     mainGoals: carePlanProfileInput.mainGoals,
+    hasWrinklesGoal,
     sensitivityLevel: carePlanProfileInput.sensitivityLevel,
     routineComplexity: carePlanProfileInput.routineComplexity,
+    originalMorning: carePlanTemplate.morning,
+    adjustedMorning,
+    originalEvening: carePlanTemplate.evening,
+    adjustedEvening,
     requiredSteps: Array.from(requiredStepCategories),
   });
 
@@ -1036,6 +1070,50 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     }
   }
 
+  // ВАЖНО: Гарантируем наличие крема (moisturizer) - это обязательный шаг для всех
+  const moisturizerSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => 
+    step.startsWith('moisturizer_') || step === 'moisturizer_light' || step === 'moisturizer_balancing' || 
+    step === 'moisturizer_barrier' || step === 'moisturizer_soothing'
+  );
+  if (moisturizerSteps.length > 0) {
+    const existingMoisturizer = moisturizerSteps.some(step => getProductsForStep(step).length > 0);
+    if (!existingMoisturizer) {
+      logger.warn('No moisturizer products found, searching for fallback', { userId, moisturizerSteps });
+      const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification);
+      if (fallbackMoisturizer) {
+        for (const step of moisturizerSteps) {
+          registerProductForStep(step, fallbackMoisturizer);
+        }
+        if (!selectedProducts.some((p: any) => p.id === fallbackMoisturizer.id)) {
+          selectedProducts.push(fallbackMoisturizer as any);
+        }
+        logger.info('Fallback moisturizer added', { 
+          productId: fallbackMoisturizer.id, 
+          productName: fallbackMoisturizer.name,
+          userId 
+        });
+      } else {
+        logger.error('CRITICAL: Could not find fallback moisturizer!', { userId });
+      }
+    }
+  } else {
+    // Если в шаблоне вообще нет moisturizer - добавляем его в requiredStepCategories
+    logger.warn('No moisturizer step in template, adding moisturizer_light as required', { userId });
+    requiredStepCategories.add('moisturizer_light');
+    const fallbackMoisturizer = await findFallbackProduct('moisturizer', profileClassification);
+    if (fallbackMoisturizer) {
+      registerProductForStep('moisturizer_light', fallbackMoisturizer);
+      if (!selectedProducts.some((p: any) => p.id === fallbackMoisturizer.id)) {
+        selectedProducts.push(fallbackMoisturizer as any);
+      }
+      logger.info('Added missing moisturizer to plan', { 
+        productId: fallbackMoisturizer.id, 
+        productName: fallbackMoisturizer.name,
+        userId 
+      });
+    }
+  }
+
   // Обеспечиваем продукты для всех обязательных шагов из шаблона (batch запрос - устраняет N+1)
   // Логируем состояние ДО ensureRequiredProducts
   if (userId === '643160759' || process.env.NODE_ENV === 'development') {
@@ -1095,8 +1173,9 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     for (let dayNum = 1; dayNum <= PLAN_DAYS_PER_WEEK; dayNum++) {
       const day = (weekNum - 1) * 7 + dayNum;
       
-      const templateMorningBase = carePlanTemplate.morning;
-      const templateEveningBase = carePlanTemplate.evening;
+      // Используем скорректированные шаги вместо оригинальных из шаблона
+      const templateMorningBase = adjustedMorning;
+      const templateEveningBase = adjustedEvening;
 
       const progressionFactor = (weekNum - 1) / 3;
 
