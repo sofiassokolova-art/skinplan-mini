@@ -21,11 +21,11 @@ function initializeRedisRateLimit() {
     const redis = getRedis();
 
     // Проверяем, есть ли Redis и переменные окружения для Upstash
-    if (
-      redis &&
-      process.env.UPSTASH_REDIS_REST_URL &&
-      process.env.UPSTASH_REDIS_REST_TOKEN
-    ) {
+    // Поддерживаем оба варианта: UPSTASH_REDIS_* и KV_* (Vercel создает KV_* для Upstash Redis)
+    const hasUpstashVars = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) ||
+                           (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+    
+    if (redis && hasUpstashVars) {
       // Динамический импорт, чтобы не падать, если пакеты не установлены
       const { Ratelimit } = require('@upstash/ratelimit');
 
