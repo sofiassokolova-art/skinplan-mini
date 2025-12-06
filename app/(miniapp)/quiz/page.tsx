@@ -3249,11 +3249,48 @@ export default function QuizPage() {
     if (questionnaire && allQuestions.length > 0) {
       // Проверяем, не выходит ли индекс за пределы
       if (currentQuestionIndex >= allQuestions.length) {
-        // Это последний вопрос - показываем экран завершения
+        // Это последний вопрос - автоматически показываем лоадер и отправляем ответы
+        // Не показываем экран "Анкета завершена. Отправить ответы?" - сразу лоадер
         return (
-          <div style={{ padding: '20px' }}>
-            <h1>Анкета завершена</h1>
-            <button onClick={submitAnswers}>Отправить ответы</button>
+          <div style={{ 
+            padding: '20px',
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+          }}>
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.56)',
+              backdropFilter: 'blur(28px)',
+              borderRadius: '24px',
+              padding: '48px',
+              maxWidth: '400px',
+              textAlign: 'center',
+            }}>
+              <style>{`
+                @keyframes spin {
+                  from { transform: rotate(0deg); }
+                  to { transform: rotate(360deg); }
+                }
+              `}</style>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                border: '4px solid #0A5F59',
+                borderTop: '4px solid transparent',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 24px',
+              }} />
+              <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+                Создаем ваш план ухода...
+              </h2>
+              <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+                Это займет несколько секунд
+              </p>
+            </div>
           </div>
         );
       }
@@ -3298,9 +3335,89 @@ export default function QuizPage() {
     );
   }
   
+  // ВАЖНО: Автоматически отправляем ответы когда все вопросы отвечены
+  // Это позволяет показывать лоадер и редиректить на /plan с PaymentGate
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
+  const autoSubmitTriggeredRef = useRef(false);
+  
+  useEffect(() => {
+    // Автоматически отправляем ответы, если все вопросы отвечены и ответы есть
+    if (!autoSubmitTriggeredRef.current && 
+        questionnaire && 
+        allQuestions.length > 0 && 
+        currentQuestionIndex >= allQuestions.length &&
+        Object.keys(answers).length > 0 &&
+        !isSubmitting &&
+        !hasResumed &&
+        !showResumeScreen &&
+        !error) {
+      
+      console.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...');
+      autoSubmitTriggeredRef.current = true;
+      setAutoSubmitTriggered(true);
+      
+      // Показываем лоадер 5 секунд перед отправкой
+      setIsSubmitting(true);
+      
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          submitAnswers().catch((err) => {
+            console.error('❌ Ошибка при автоматической отправке ответов:', err);
+            if (isMountedRef.current) {
+              autoSubmitTriggeredRef.current = false; // Разрешаем повторную попытку
+              setAutoSubmitTriggered(false);
+              setIsSubmitting(false);
+              setError(err?.message || 'Ошибка отправки ответов');
+            }
+          });
+        }
+      }, 5000); // 5 секунд лоадера
+    }
+  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error]);
+  
   // Если вопрос все еще не найден после всех проверок
   // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
   if (!currentQuestion) {
+    // Если автоматическая отправка запущена - показываем лоадер
+    if (isSubmitting && autoSubmitTriggered) {
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              border: '4px solid #0A5F59',
+              borderTop: '4px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 24px',
+            }} />
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Создаем ваш план ухода...
+            </h2>
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+              Это займет несколько секунд
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
     // Если есть ошибка, показываем её
     if (error) {
       return (
@@ -3372,7 +3489,8 @@ export default function QuizPage() {
       );
     }
     
-    // Если нет ошибки, но все вопросы пройдены - показываем экран завершения
+    // Если нет ошибки, но все вопросы пройдены - автоматически показываем лоадер и отправляем
+    // Это заменяет экран "Анкета завершена. Отправить ответы?" на автоматическую отправку
     return (
       <div style={{ 
         padding: '20px',
@@ -3387,40 +3505,37 @@ export default function QuizPage() {
           backgroundColor: 'rgba(255, 255, 255, 0.56)',
           backdropFilter: 'blur(28px)',
           borderRadius: '24px',
-          padding: '32px',
+          padding: '48px',
           maxWidth: '400px',
           textAlign: 'center',
         }}>
-          <h1 style={{ color: '#0A5F59', marginBottom: '16px', fontSize: '24px', fontWeight: 'bold' }}>
-            Анкета завершена
-          </h1>
-          <p style={{ color: '#475467', marginBottom: '24px', fontSize: '16px', lineHeight: '1.5' }}>
-            Все вопросы пройдены. Отправьте ответы, чтобы получить персональный план ухода.
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            border: '4px solid #0A5F59',
+            borderTop: '4px solid transparent',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 24px',
+          }} />
+          <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+            Создаем ваш план ухода...
+          </h2>
+          <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+            Это займет несколько секунд
           </p>
-          <button
-            onClick={() => {
-              submitAnswers().catch((err) => {
-                console.error('Error submitting answers:', err);
-                const errorMessage = String(err?.message || 'Ошибка отправки ответов');
-                setError(errorMessage);
-              });
-            }}
-            disabled={isSubmitting}
-            style={{
-              width: '100%',
-              padding: '16px 24px',
-              borderRadius: '12px',
-              backgroundColor: isSubmitting ? '#9CA3AF' : '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              opacity: isSubmitting ? 0.7 : 1,
-            }}
-          >
-            {isSubmitting ? 'Отправка...' : 'Отправить ответы'}
-          </button>
         </div>
       </div>
     );

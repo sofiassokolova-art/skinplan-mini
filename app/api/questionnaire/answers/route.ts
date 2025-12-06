@@ -354,12 +354,15 @@ export async function POST(request: NextRequest) {
         isRetaking: !!existingProfile, // Это перепрохождение анкеты
       });
       try {
-        const { invalidateCache } = await import('@/lib/cache');
+        const { invalidateCache, invalidateAllUserCache } = await import('@/lib/cache');
         // Очищаем кэш для старой версии
         await invalidateCache(userId, existingProfile.version);
         // Также очищаем кэш для новой версии, чтобы план перегенерировался
         await invalidateCache(userId, profile.version);
-        logger.info('Cache cleared for old and new profile versions', { 
+        // ВАЖНО: Также очищаем весь кэш пользователя для гарантии (все версии)
+        // Это предотвращает загрузку старого плана из кэша
+        await invalidateAllUserCache(userId);
+        logger.info('Cache cleared for old and new profile versions, plus all user cache', { 
           userId, 
           oldVersion: existingProfile.version,
           newVersion: profile.version,
@@ -371,6 +374,12 @@ export async function POST(request: NextRequest) {
           where: { userId },
         });
         logger.info('RecommendationSession deleted for plan regeneration', { userId });
+        
+        // ВАЖНО: Также удаляем старый прогресс плана, чтобы не было конфликтов
+        await prisma.planProgress.deleteMany({
+          where: { userId },
+        });
+        logger.info('PlanProgress deleted for plan regeneration', { userId });
         
         // ВАЖНО: Генерацию плана переносим ПОСЛЕ создания RecommendationSession
         // Это гарантирует, что план будет использовать продукты из новой сессии

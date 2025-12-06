@@ -1298,7 +1298,9 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       const templateMorningBase = adjustedMorning;
       const templateEveningBase = adjustedEvening;
 
-      const progressionFactor = (weekNum - 1) / 3;
+      // ВАЖНО: Все средства показываются с первого дня (прогрессия убрана)
+      // Это обеспечивает полную рутину сразу, а не постепенное добавление средств
+      const progressionFactor = Math.min(1, (weekNum - 1) / 3); // Используется для других параметров, но не для количества средств
 
       const baseMorningCleanser =
         templateMorningBase.find(isCleanserStep) ?? CLEANER_FALLBACK_STEP;
@@ -1306,17 +1308,11 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       const templateMorningAdditional = templateMorningBase.filter(
         (step) => !isCleanserStep(step) && !isSPFStep(step)
       );
-      const morningAdditionalLimit = Math.max(
-        0,
-        Math.round(
-          1 +
-            progressionFactor *
-              Math.max(templateMorningAdditional.length - 1, 0)
-        )
-      );
+      // ВАЖНО: Всегда показываем все дополнительные средства с первого дня
+      // Прогрессия больше не ограничивает количество средств
       const rawMorningSteps = dedupeSteps([
         baseMorningCleanser,
-        ...templateMorningAdditional.slice(0, morningAdditionalLimit),
+        ...templateMorningAdditional, // Всегда все средства с первого дня
         baseMorningSPF,
       ]);
 
@@ -1325,14 +1321,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       const templateEveningAdditional = templateEveningBase.filter(
         (step) => !isCleanserStep(step) && !isSPFStep(step)
       );
-      const eveningAdditionalLimit = Math.max(
-        0,
-        Math.round(
-          1 +
-            progressionFactor *
-              Math.max(templateEveningAdditional.length - 1, 0)
-        )
-      );
+      // ВАЖНО: Всегда показываем все дополнительные средства вечером с первого дня
       // Проверяем, использует ли пользователь макияж ежедневно
       // Если да, добавляем гидрофильное масло первым этапом очищения вечером
       const makeupFrequency = medicalMarkers?.makeupFrequency as string | undefined;
@@ -1342,7 +1331,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         // Если используется макияж ежедневно, добавляем гидрофильное масло первым
         ...(needsOilCleansing ? ['cleanser_oil' as StepCategory] : []),
         baseEveningCleanser,
-        ...templateEveningAdditional.slice(0, eveningAdditionalLimit),
+        ...templateEveningAdditional, // Всегда все средства с первого дня
       ]);
 
       const allowedMorningSteps = rawMorningSteps.filter((step) =>
