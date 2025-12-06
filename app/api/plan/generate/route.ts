@@ -1114,6 +1114,108 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     }
   }
 
+  // ВАЖНО: Гарантируем наличие всех остальных средств из шаблона
+  
+  // Проверяем и добавляем тонер (toner), если его нет
+  const tonerSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => 
+    step.startsWith('toner_')
+  );
+  if (tonerSteps.length > 0) {
+    const existingToner = tonerSteps.some(step => getProductsForStep(step).length > 0);
+    if (!existingToner) {
+      logger.warn('No toner products found, searching for fallback', { userId, tonerSteps });
+      const fallbackToner = await findFallbackProduct('toner', profileClassification);
+      if (fallbackToner) {
+        for (const step of tonerSteps) {
+          registerProductForStep(step, fallbackToner);
+        }
+        if (!selectedProducts.some((p: any) => p.id === fallbackToner.id)) {
+          selectedProducts.push(fallbackToner as any);
+        }
+        logger.info('Fallback toner added', { 
+          productId: fallbackToner.id, 
+          productName: fallbackToner.name,
+          userId 
+        });
+      }
+    }
+  }
+
+  // Проверяем и добавляем сыворотку (serum), если ее нет
+  const serumSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => 
+    step.startsWith('serum_')
+  );
+  if (serumSteps.length > 0) {
+    const existingSerum = serumSteps.some(step => getProductsForStep(step).length > 0);
+    if (!existingSerum) {
+      logger.warn('No serum products found, searching for fallback', { userId, serumSteps });
+      const fallbackSerum = await findFallbackProduct('serum', profileClassification);
+      if (fallbackSerum) {
+        for (const step of serumSteps) {
+          registerProductForStep(step, fallbackSerum);
+        }
+        if (!selectedProducts.some((p: any) => p.id === fallbackSerum.id)) {
+          selectedProducts.push(fallbackSerum as any);
+        }
+        logger.info('Fallback serum added', { 
+          productId: fallbackSerum.id, 
+          productName: fallbackSerum.name,
+          userId 
+        });
+      }
+    }
+  }
+
+  // Проверяем и добавляем лечение (treatment), если его нет
+  const treatmentSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => 
+    step.startsWith('treatment_') || step.startsWith('spot_treatment')
+  );
+  if (treatmentSteps.length > 0) {
+    const existingTreatment = treatmentSteps.some(step => getProductsForStep(step).length > 0);
+    if (!existingTreatment) {
+      logger.warn('No treatment products found, searching for fallback', { userId, treatmentSteps });
+      const fallbackTreatment = await findFallbackProduct('treatment', profileClassification);
+      if (fallbackTreatment) {
+        for (const step of treatmentSteps) {
+          registerProductForStep(step, fallbackTreatment);
+        }
+        if (!selectedProducts.some((p: any) => p.id === fallbackTreatment.id)) {
+          selectedProducts.push(fallbackTreatment as any);
+        }
+        logger.info('Fallback treatment added', { 
+          productId: fallbackTreatment.id, 
+          productName: fallbackTreatment.name,
+          userId 
+        });
+      }
+    }
+  }
+
+  // Проверяем и добавляем маску (mask), если ее нет (еженедельные средства)
+  const maskSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => 
+    step.startsWith('mask_')
+  );
+  if (maskSteps.length > 0) {
+    const existingMask = maskSteps.some(step => getProductsForStep(step).length > 0);
+    if (!existingMask) {
+      logger.warn('No mask products found, searching for fallback', { userId, maskSteps });
+      const fallbackMask = await findFallbackProduct('mask', profileClassification);
+      if (fallbackMask) {
+        for (const step of maskSteps) {
+          registerProductForStep(step, fallbackMask);
+        }
+        if (!selectedProducts.some((p: any) => p.id === fallbackMask.id)) {
+          selectedProducts.push(fallbackMask as any);
+        }
+        logger.info('Fallback mask added', { 
+          productId: fallbackMask.id, 
+          productName: fallbackMask.name,
+          userId 
+        });
+      }
+    }
+  }
+
   // Обеспечиваем продукты для всех обязательных шагов из шаблона (batch запрос - устраняет N+1)
   // Логируем состояние ДО ensureRequiredProducts
   if (userId === '643160759' || process.env.NODE_ENV === 'development') {
