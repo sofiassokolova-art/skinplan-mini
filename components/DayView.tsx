@@ -199,6 +199,7 @@ export function DayView({
                 onToggleWishlist={onToggleWishlist}
                 onAddToCart={onAddToCart}
                 onReplace={onReplace && product ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
+                showTags={false}
               />
             );
           })}
@@ -292,6 +293,7 @@ export function DayView({
                 onToggleWishlist={onToggleWishlist}
                 onAddToCart={onAddToCart}
                 onReplace={onReplace && product ? (s, pId) => onReplace(s.stepCategory, pId) : undefined}
+                showTags={false}
               />
             );
           })}

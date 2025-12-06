@@ -5,6 +5,7 @@
 
 import { useMemo } from 'react';
 import type { Plan28 } from '@/lib/plan-types';
+import { getStepDescription } from '@/lib/plan-types';
 
 interface Product {
   id: number;
@@ -302,6 +303,29 @@ export function AllProductsList({
                     }}>
                       {stepName}
                     </p>
+                    {/* Теги продукта */}
+                    {(() => {
+                      const stepDesc = getStepDescription(item.stepCategory as any);
+                      return stepDesc.tags.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                          {stepDesc.tags.map((tag, tagIdx) => (
+                            <span
+                              key={tagIdx}
+                              style={{
+                                fontSize: '10px',
+                                padding: '2px 8px',
+                                borderRadius: '8px',
+                                backgroundColor: '#E8F5E9',
+                                color: '#2E7D32',
+                                fontWeight: '500',
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                     {product.price && (
                       <p style={{
                         fontSize: '16px',

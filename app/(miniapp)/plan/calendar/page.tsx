@@ -43,9 +43,9 @@ export default function PlanCalendarPage() {
       let progress: { currentDay: number; completedDays: number[] } | null = null;
       try {
         progress = await api.getPlanProgress() as {
-          currentDay: number;
-          completedDays: number[];
-        };
+        currentDay: number;
+        completedDays: number[];
+      };
       } catch (progressErr) {
         console.warn('📅 Calendar: Error loading progress (non-critical)', progressErr);
         progress = { currentDay: 1, completedDays: [] };
@@ -118,7 +118,7 @@ export default function PlanCalendarPage() {
               toast.error('План не найден. Пожалуйста, пройдите анкету.');
               setLoading(false);
               setTimeout(() => {
-                router.push('/quiz');
+              router.push('/quiz');
               }, 1500);
               return;
             }
@@ -368,17 +368,17 @@ export default function PlanCalendarPage() {
             План еще не создан. Пожалуйста, пройдите анкету для создания персонального плана ухода.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <button
+          <button
               onClick={() => router.push('/quiz')}
-              style={{
+            style={{
                 padding: '14px 24px',
-                borderRadius: '12px',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
+              border: 'none',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
                 width: '100%',
               }}
             >
@@ -396,10 +396,10 @@ export default function PlanCalendarPage() {
                 fontWeight: '600',
                 cursor: 'pointer',
                 width: '100%',
-              }}
-            >
-              Вернуться к плану
-            </button>
+            }}
+          >
+            Вернуться к плану
+          </button>
           </div>
         </div>
       </div>
@@ -417,31 +417,6 @@ export default function PlanCalendarPage() {
       padding: '20px',
       paddingBottom: '100px',
     }}>
-      {/* Блок текущей стадии */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '24px',
-        padding: '20px',
-        marginBottom: '24px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        border: '1px solid rgba(10, 95, 89, 0.1)',
-      }}>
-        <div style={{
-          fontSize: '16px',
-          color: '#6B7280',
-          marginBottom: '8px',
-        }}>
-          Сейчас вы на стадии:
-        </div>
-        <div style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-          color: '#0A5F59',
-        }}>
-          {phaseLabel}
-        </div>
-      </div>
-
       {/* Календарь с увеличенным скроллом */}
       <div style={{
         backgroundColor: 'white',

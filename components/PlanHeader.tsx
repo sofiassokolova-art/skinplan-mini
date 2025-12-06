@@ -6,9 +6,15 @@
 interface PlanHeaderProps {
   mainGoals: string[];
   onEditGoals?: () => void;
+  userInfo?: {
+    gender?: string | null;
+    age?: string | null;
+    skinType?: string | null;
+    mainConcern?: string | null;
+  };
 }
 
-export function PlanHeader({ mainGoals }: PlanHeaderProps) {
+export function PlanHeader({ mainGoals, userInfo }: PlanHeaderProps) {
   const goalLabels: Record<string, string> = {
     acne: 'Акне',
     pores: 'Поры',
@@ -37,6 +43,76 @@ export function PlanHeader({ mainGoals }: PlanHeaderProps) {
           }}>
             Твой план ухода на 28 дней
           </h1>
+          {/* Информация о пользователе */}
+          {userInfo && (
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+              marginBottom: '16px',
+            }}>
+              {userInfo.gender && (
+                <span
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '16px',
+                    backgroundColor: '#E8FBF7',
+                    color: '#0A5F59',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    border: '1px solid rgba(10, 95, 89, 0.2)',
+                  }}
+                >
+                  {userInfo.gender}
+                </span>
+              )}
+              {userInfo.age && (
+                <span
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '16px',
+                    backgroundColor: '#E8FBF7',
+                    color: '#0A5F59',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    border: '1px solid rgba(10, 95, 89, 0.2)',
+                  }}
+                >
+                  {userInfo.age} {userInfo.age.includes('лет') ? '' : 'лет'}
+                </span>
+              )}
+              {userInfo.skinType && (
+                <span
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '16px',
+                    backgroundColor: '#E8FBF7',
+                    color: '#0A5F59',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    border: '1px solid rgba(10, 95, 89, 0.2)',
+                  }}
+                >
+                  Тип кожи: {userInfo.skinType}
+                </span>
+              )}
+              {userInfo.mainConcern && (
+                <span
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '16px',
+                    backgroundColor: '#E8FBF7',
+                    color: '#0A5F59',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    border: '1px solid rgba(10, 95, 89, 0.2)',
+                  }}
+                >
+                  Основной запрос: {userInfo.mainConcern}
+                </span>
+              )}
+            </div>
+          )}
           {mainGoals.length > 0 && (
             <div style={{
               display: 'flex',

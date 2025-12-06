@@ -7,6 +7,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PlanHeader } from '@/components/PlanHeader';
 import { DayView } from '@/components/DayView';
+import { PlanCalendar } from '@/components/PlanCalendar';
 import { GoalProgressInfographic } from '@/components/GoalProgressInfographic';
 import { PlanInfographic } from '@/components/PlanInfographic';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
@@ -49,7 +50,15 @@ export function PlanPageClientNew({
   // Состояние для проблем кожи
   const [skinIssues, setSkinIssues] = useState<any[]>([]);
   
-  // Загружаем проблемы кожи при монтировании
+  // Состояние для информации о пользователе
+  const [userInfo, setUserInfo] = useState<{
+    gender?: string | null;
+    age?: string | null;
+    skinType?: string | null;
+    mainConcern?: string | null;
+  } | null>(null);
+  
+  // Загружаем проблемы кожи и информацию о пользователе при монтировании
   useEffect(() => {
     const loadSkinIssues = async () => {
       try {
@@ -62,7 +71,32 @@ export function PlanPageClientNew({
         console.warn('Could not load skin issues:', err);
       }
     };
+    
+    const loadUserInfo = async () => {
+      try {
+        const profile = await api.getCurrentProfile() as any;
+        if (profile) {
+          // Получаем пол и возраст из ответов
+          const analysis = await api.getAnalysis() as any;
+          const gender = analysis?.gender || null;
+          const age = analysis?.age ? `${analysis.age} лет` : profile.ageGroup || null;
+          const skinType = profile.skinTypeRu || profile.skinType || null;
+          const mainConcern = plan28.mainGoals?.[0] || null;
+          
+          setUserInfo({
+            gender: gender === 'female' ? 'Девушка' : gender === 'male' ? 'Парень' : null,
+            age,
+            skinType,
+            mainConcern,
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load user info:', err);
+      }
+    };
+    
     loadSkinIssues();
+    loadUserInfo();
   }, []);
   
   // Инициализируем selectedDay без зависимости от searchParams в useState
@@ -338,7 +372,10 @@ export function PlanPageClientNew({
       </div>
 
       {/* Header с целями */}
-      <PlanHeader mainGoals={plan28.mainGoals} />
+      <PlanHeader 
+        mainGoals={plan28.mainGoals}
+        userInfo={userInfo || undefined}
+      />
 
       {/* Основные проблемы кожи */}
       {skinIssues.length > 0 && (
@@ -494,81 +531,39 @@ export function PlanPageClientNew({
         currentDay={selectedDay}
       />
 
-      {/* Блок текущей стадии */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '24px',
-        padding: '20px',
-        marginBottom: '24px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        border: '1px solid rgba(10, 95, 89, 0.1)',
-      }}>
-        <div style={{
-          fontSize: '16px',
-          color: '#6B7280',
-          marginBottom: '8px',
-        }}>
-          Сейчас вы на стадии:
-        </div>
-        <div style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
-          color: '#0A5F59',
-        }}>
-          {getPhaseLabel(getPhaseForDay(selectedDay))}
-        </div>
+      {/* Календарь */}
+      <div style={{ marginBottom: '24px' }}>
+        <PlanCalendar
+          currentDay={initialCurrentDay}
+          completedDays={Array.from(completedDays)}
+          onDaySelect={(day) => {
+            setSelectedDay(day);
+            // Прокручиваем к DayView при выборе дня
+            setTimeout(() => {
+              const dayViewElement = document.getElementById(`day-view-${day}`);
+              if (dayViewElement) {
+                dayViewElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 100);
+          }}
+        />
       </div>
 
-      {/* Кнопка перехода в календарь */}
-      <div style={{ marginBottom: '24px' }}>
-        <button
-          onClick={() => router.push('/plan/calendar')}
-          style={{
-            width: '100%',
-            padding: '20px',
-            backgroundColor: 'white',
-            borderRadius: '20px',
-            border: '2px solid #0A5F59',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#F5FFFC';
-            e.currentTarget.style.transform = 'scale(1.02)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          <div>
-            <div style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#0A5F59',
-              marginBottom: '4px',
-            }}>
-              Сейчас вы на дне {selectedDay}
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: '#6B7280',
-            }}>
-              Перейдите к календарю, чтобы посмотреть весь календарь
-            </div>
-          </div>
-          <div style={{
-            fontSize: '24px',
-            color: '#0A5F59',
-          }}>
-            →
-          </div>
-        </button>
-      </div>
+      {/* Отображение выбранного дня */}
+      {currentDayPlan && (
+        <div id={`day-view-${selectedDay}`} style={{ marginBottom: '24px' }}>
+          <DayView
+            dayPlan={currentDayPlan}
+            mainGoals={plan28.mainGoals}
+            products={products}
+            wishlistProductIds={wishlistProductIds}
+            cartQuantities={cartQuantities}
+            onToggleWishlist={toggleWishlist}
+            onAddToCart={handleAddToCart}
+            onReplace={handleReplace}
+          />
+        </div>
+      )}
 
       {/* Блок обратной связи в конце страницы */}
       <div style={{ marginTop: '48px', marginBottom: '24px' }}>

@@ -42,6 +42,7 @@ export function PlanInfographic({
       id: number;
       name: string;
       brand: string;
+      stepCategory: string; // Добавляем stepCategory для получения тегов
     }>;
   }
   
@@ -88,6 +89,7 @@ export function PlanInfographic({
               id: product.id,
               name: product.name,
               brand: product.brand.name,
+              stepCategory: step.stepCategory, // Сохраняем stepCategory для получения тегов
             });
           }
         }
@@ -114,100 +116,6 @@ export function PlanInfographic({
       gap: '24px',
       marginBottom: '32px',
     }}>
-      {/* Как мы будем работать */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '24px',
-        padding: '24px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        border: '1px solid rgba(10, 95, 89, 0.1)',
-      }}>
-        <h2 style={{
-          fontSize: '22px',
-          fontWeight: 'bold',
-          color: '#0A5F59',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-        }}>
-          <span style={{ fontSize: '28px' }}>🔬</span>
-          Как мы будем работать
-        </h2>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}>
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#FEF3C7',
-            borderRadius: '12px',
-            border: '1px solid #FCD34D',
-          }}>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#92400E',
-              marginBottom: '8px',
-            }}>
-              Фаза 1: Адаптация (дни 1-7)
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: '#78350F',
-              lineHeight: '1.6',
-            }}>
-              Мягкое внедрение ухода. Постепенно знакомим кожу с новыми средствами, минимизируя раздражение.
-            </div>
-          </div>
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#DBEAFE',
-            borderRadius: '12px',
-            border: '1px solid #60A5FA',
-          }}>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#1E40AF',
-              marginBottom: '8px',
-            }}>
-              Фаза 2: Активная работа (дни 8-21)
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: '#1E3A8A',
-              lineHeight: '1.6',
-            }}>
-              Подключаем активные ингредиенты для решения ваших задач. Интенсивная работа над улучшением состояния кожи.
-            </div>
-          </div>
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#D1FAE5',
-            borderRadius: '12px',
-            border: '1px solid #34D399',
-          }}>
-            <div style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#065F46',
-              marginBottom: '8px',
-            }}>
-              Фаза 3: Поддержка (дни 22-28)
-            </div>
-            <div style={{
-              fontSize: '14px',
-              color: '#064E3B',
-              lineHeight: '1.6',
-            }}>
-              Закрепляем достигнутые результаты и поддерживаем здоровье барьера кожи.
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* За счет каких средств */}
       <div style={{
         backgroundColor: 'white',
@@ -339,6 +247,29 @@ export function PlanInfographic({
                                 {fullProduct.price} ₽
                               </div>
                             )}
+                            {/* Теги продукта */}
+                            {(() => {
+                              const stepDesc = getStepDescription(product.stepCategory as any);
+                              return stepDesc.tags.length > 0 ? (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+                                  {stepDesc.tags.map((tag, tagIdx) => (
+                                    <span
+                                      key={tagIdx}
+                                      style={{
+                                        fontSize: '10px',
+                                        padding: '2px 8px',
+                                        borderRadius: '8px',
+                                        backgroundColor: '#E8F5E9',
+                                        color: '#2E7D32',
+                                        fontWeight: '500',
+                                      }}
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null;
+                            })()}
                           </div>
                         </div>
                         
@@ -459,6 +390,100 @@ export function PlanInfographic({
           }}>
             💡 Все средства подобраны индивидуально на основе вашего типа кожи и целей. 
             Каждый продукт работает в синергии с другими для максимальной эффективности.
+          </div>
+        </div>
+      </div>
+
+      {/* Как мы будем работать */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '24px',
+        padding: '24px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        border: '1px solid rgba(10, 95, 89, 0.1)',
+      }}>
+        <h2 style={{
+          fontSize: '22px',
+          fontWeight: 'bold',
+          color: '#0A5F59',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+        }}>
+          <span style={{ fontSize: '28px' }}>🔬</span>
+          Как мы будем работать
+        </h2>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+        }}>
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#FEF3C7',
+            borderRadius: '12px',
+            border: '1px solid #FCD34D',
+          }}>
+            <div style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#92400E',
+              marginBottom: '8px',
+            }}>
+              Фаза 1: Адаптация (дни 1-7)
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: '#78350F',
+              lineHeight: '1.6',
+            }}>
+              Мягкое внедрение ухода. Постепенно знакомим кожу с новыми средствами, минимизируя раздражение.
+            </div>
+          </div>
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#DBEAFE',
+            borderRadius: '12px',
+            border: '1px solid #60A5FA',
+          }}>
+            <div style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#1E40AF',
+              marginBottom: '8px',
+            }}>
+              Фаза 2: Активная работа (дни 8-21)
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: '#1E3A8A',
+              lineHeight: '1.6',
+            }}>
+              Подключаем активные ингредиенты для решения ваших задач. Интенсивная работа над улучшением состояния кожи.
+            </div>
+          </div>
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#D1FAE5',
+            borderRadius: '12px',
+            border: '1px solid #34D399',
+          }}>
+            <div style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#065F46',
+              marginBottom: '8px',
+            }}>
+              Фаза 3: Поддержка (дни 22-28)
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: '#064E3B',
+              lineHeight: '1.6',
+            }}>
+              Закрепляем достигнутые результаты и поддерживаем здоровье барьера кожи.
+            </div>
           </div>
         </div>
       </div>

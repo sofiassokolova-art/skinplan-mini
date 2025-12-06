@@ -24,6 +24,7 @@ interface StepCardProps {
   onAddToCart?: (productId: number) => void;
   onReplace?: (step: DayStep, productId: number) => void;
   skinIssues?: string[]; // ID проблем кожи для формирования описаний
+  showTags?: boolean; // Показывать ли теги (по умолчанию true)
 }
 
 export function StepCard({
@@ -35,6 +36,7 @@ export function StepCard({
   onAddToCart,
   onReplace,
   skinIssues,
+  showTags = true,
 }: StepCardProps) {
   const stepDesc = getStepDescription(step.stepCategory, skinIssues);
 
@@ -76,7 +78,7 @@ export function StepCard({
           {stepDesc.subtitle}
         </div>
         {/* Теги шага */}
-        {stepDesc.tags.length > 0 && (
+        {showTags && stepDesc.tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
             {stepDesc.tags.map((tag, idx) => (
               <span
