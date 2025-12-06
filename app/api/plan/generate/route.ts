@@ -844,6 +844,20 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       categories.push('spf_50_sensitive');
     }
     
+    // Маски
+    if (stepStr.startsWith('mask_clay') || stepStr.includes('clay')) {
+      categories.push('mask_clay');
+    } else if (stepStr.startsWith('mask_hydrating') || stepStr.includes('hydrating')) {
+      categories.push('mask_hydrating');
+    } else if (stepStr.startsWith('mask_soothing') || stepStr.includes('soothing')) {
+      categories.push('mask_soothing');
+    } else if (stepStr.startsWith('mask_sleeping') || stepStr.includes('sleeping')) {
+      categories.push('mask_sleeping');
+    } else if (stepStr === 'mask' || categoryStr === 'mask') {
+      // Если просто 'mask' без уточнения, пробуем все варианты
+      categories.push('mask_clay', 'mask_hydrating', 'mask_soothing', 'mask_sleeping');
+    }
+    
     // Если ничего не найдено, возвращаем пустой массив
     return categories.length > 0 ? categories : [];
   };

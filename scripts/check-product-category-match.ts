@@ -160,11 +160,180 @@ async function checkProductCategoryMatch() {
       console.log(`   ⚠️  Шаги в правилах без маппинга: ${unmappedSteps.join(', ')}`);
     }
 
-    // 6. Проверяем конкретную сессию (последнюю)
+    // 6. Проверяем маппинг всех продуктов в БД на все возможные шаги
+    console.log('\n🔍 6. Проверка маппинга всех продуктов:');
+    const allProductsForMapping = await prisma.product.findMany({
+      where: { published: true },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        step: true,
+      },
+    });
+
+    const mappingIssues: Array<{ product: string; step: string; category: string; issue: string }> = [];
+    const allStepCategories = [
+      'cleanser_gentle', 'cleanser_balancing', 'cleanser_deep', 'cleanser_oil',
+      'toner_hydrating', 'toner_soothing',
+      'serum_hydrating', 'serum_niacinamide', 'serum_vitc', 'serum_anti_redness', 'serum_brightening_soft',
+      'treatment_acne_bpo', 'treatment_acne_azelaic', 'treatment_acne_local',
+      'treatment_exfoliant_mild', 'treatment_exfoliant_strong',
+      'treatment_pigmentation', 'treatment_antiage',
+      'moisturizer_light', 'moisturizer_balancing', 'moisturizer_barrier', 'moisturizer_soothing',
+      'spf_50_face', 'spf_50_oily', 'spf_50_sensitive',
+      'mask_clay', 'mask_hydrating', 'mask_soothing', 'mask_sleeping',
+    ];
+
+    // Функция маппинга (копия из generate/route.ts)
+    const mapStepToStepCategory = (step: string | null | undefined, category: string | null | undefined): string[] => {
+      const stepStr = (step || category || '').toLowerCase();
+      const categoryStr = (category || '').toLowerCase();
+      const categories: string[] = [];
+      
+      // Упрощенная версия маппинга для проверки
+      if (stepStr.includes('cleanser_gentle') || categoryStr.includes('gentle')) categories.push('cleanser_gentle');
+      if (stepStr.includes('cleanser_balancing') || categoryStr.includes('balancing')) categories.push('cleanser_balancing');
+      if (stepStr.includes('cleanser_deep') || categoryStr.includes('deep')) categories.push('cleanser_deep');
+      if (stepStr.includes('oil') || stepStr.includes('масл')) categories.push('cleanser_oil');
+      if (stepStr.includes('cleanser') || categoryStr === 'cleanser') {
+        categories.push('cleanser_gentle', 'cleanser_balancing', 'cleanser_deep');
+      }
+      
+      if (stepStr.includes('toner_hydrating') || categoryStr.includes('hydrating')) categories.push('toner_hydrating');
+      if (stepStr.includes('toner_soothing') || categoryStr.includes('soothing')) categories.push('toner_soothing');
+      if (stepStr.includes('toner') || categoryStr === 'toner') {
+        categories.push('toner_hydrating', 'toner_soothing');
+      }
+      
+      if (stepStr.includes('serum_hydrating')) categories.push('serum_hydrating');
+      if (stepStr.includes('serum_niacinamide') || stepStr.includes('niacinamide')) categories.push('serum_niacinamide');
+      if (stepStr.includes('serum_vitc') || stepStr.includes('vitc')) categories.push('serum_vitc');
+      if (stepStr.includes('serum_anti_redness')) categories.push('serum_anti_redness');
+      if (stepStr.includes('serum_brightening')) categories.push('serum_brightening_soft');
+      if (stepStr.includes('serum') || categoryStr === 'serum') {
+        categories.push('serum_hydrating', 'serum_niacinamide');
+      }
+      
+      if (stepStr.includes('treatment_acne_bpo') || stepStr.includes('benzoyl')) categories.push('treatment_acne_bpo');
+      if (stepStr.includes('treatment_acne_azelaic') || stepStr.includes('azelaic')) categories.push('treatment_acne_azelaic');
+      if (stepStr.includes('treatment_acne_local')) categories.push('treatment_acne_local');
+      if (stepStr.includes('treatment_exfoliant_mild')) categories.push('treatment_exfoliant_mild');
+      if (stepStr.includes('treatment_exfoliant_strong')) categories.push('treatment_exfoliant_strong');
+      if (stepStr.includes('treatment_pigmentation')) categories.push('treatment_pigmentation');
+      if (stepStr.includes('treatment_antiage') || stepStr.includes('antiage')) categories.push('treatment_antiage');
+      // НЕ добавляем fallback для просто 'treatment'
+      
+      if (stepStr.includes('moisturizer_light')) categories.push('moisturizer_light');
+      if (stepStr.includes('moisturizer_balancing')) categories.push('moisturizer_balancing');
+      if (stepStr.includes('moisturizer_barrier')) categories.push('moisturizer_barrier');
+      if (stepStr.includes('moisturizer_soothing')) categories.push('moisturizer_soothing');
+      if (stepStr.includes('moisturizer') || stepStr.includes('cream') || categoryStr === 'moisturizer') {
+        categories.push('moisturizer_light', 'moisturizer_balancing');
+      }
+      
+      if (stepStr.includes('spf_50_face') || stepStr === 'spf' || categoryStr === 'spf') categories.push('spf_50_face');
+      if (stepStr.includes('spf_50_oily')) categories.push('spf_50_oily');
+      if (stepStr.includes('spf_50_sensitive')) categories.push('spf_50_sensitive');
+      
+      // Маски
+      if (stepStr.includes('mask_clay') || stepStr.includes('clay')) categories.push('mask_clay');
+      if (stepStr.includes('mask_hydrating') || stepStr.includes('hydrating')) categories.push('mask_hydrating');
+      if (stepStr.includes('mask_soothing') || stepStr.includes('soothing')) categories.push('mask_soothing');
+      if (stepStr.includes('mask_sleeping') || stepStr.includes('sleeping')) categories.push('mask_sleeping');
+      if (stepStr === 'mask' || categoryStr === 'mask') {
+        categories.push('mask_clay', 'mask_hydrating', 'mask_soothing', 'mask_sleeping');
+      }
+      
+      return [...new Set(categories)]; // Убираем дубликаты
+    };
+
+    let unmappedProducts = 0;
+    allProductsForMapping.forEach(product => {
+      const mappedCategories = mapStepToStepCategory(product.step, product.category);
+      if (mappedCategories.length === 0) {
+        unmappedProducts++;
+        mappingIssues.push({
+          product: product.name,
+          step: product.step || 'null',
+          category: product.category || 'null',
+          issue: 'Не маппится ни в один StepCategory',
+        });
+      }
+    });
+
+    console.log(`   Всего продуктов: ${allProductsForMapping.length}`);
+    console.log(`   Продуктов без маппинга: ${unmappedProducts}`);
+    if (mappingIssues.length > 0) {
+      console.log(`   Проблемные продукты (первые 10):`);
+      mappingIssues.slice(0, 10).forEach(issue => {
+        console.log(`     ❌ ${issue.product}: step="${issue.step}", category="${issue.category}" - ${issue.issue}`);
+      });
+    } else {
+      console.log(`   ✅ Все продукты успешно маппятся`);
+    }
+
+    // 7. Проверяем все правила на использование базовых шагов
+    console.log('\n📋 7. Анализ всех правил на использование базовых vs детальных шагов:');
+    const allRules = await prisma.recommendationRule.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        stepsJson: true,
+      },
+    });
+
+    const basicSteps = ['cleanser', 'toner', 'serum', 'treatment', 'moisturizer', 'cream', 'spf', 'mask'];
+    const detailedStepsMap: Record<string, string[]> = {
+      'cleanser': ['cleanser_gentle', 'cleanser_balancing', 'cleanser_deep'],
+      'toner': ['toner_hydrating', 'toner_soothing'],
+      'serum': ['serum_hydrating', 'serum_niacinamide', 'serum_vitc', 'serum_anti_redness', 'serum_brightening_soft'],
+      'treatment': ['treatment_acne_bpo', 'treatment_acne_azelaic', 'treatment_acne_local', 
+                   'treatment_exfoliant_mild', 'treatment_exfoliant_strong', 
+                   'treatment_pigmentation', 'treatment_antiage'],
+      'moisturizer': ['moisturizer_light', 'moisturizer_balancing', 'moisturizer_barrier', 'moisturizer_soothing'],
+      'cream': ['moisturizer_light', 'moisturizer_balancing', 'moisturizer_barrier', 'moisturizer_soothing'],
+      'spf': ['spf_50_face', 'spf_50_oily', 'spf_50_sensitive'],
+      'mask': ['mask_clay', 'mask_hydrating', 'mask_soothing', 'mask_sleeping'],
+    };
+
+    const rulesWithBasicSteps: Array<{ id: number; name: string; basicSteps: string[] }> = [];
+    
+    allRules.forEach(rule => {
+      const stepsJson = rule.stepsJson as Record<string, any>;
+      const ruleStepNames = Object.keys(stepsJson);
+      const usedBasicSteps = ruleStepNames.filter(step => basicSteps.includes(step));
+      
+      if (usedBasicSteps.length > 0) {
+        rulesWithBasicSteps.push({
+          id: rule.id,
+          name: rule.name,
+          basicSteps: usedBasicSteps,
+        });
+      }
+    });
+
+    console.log(`   Всего правил: ${allRules.length}`);
+    console.log(`   Правил с базовыми шагами: ${rulesWithBasicSteps.length}`);
+    
+    if (rulesWithBasicSteps.length > 0) {
+      console.log(`   Правила, требующие обновления (первые 10):`);
+      rulesWithBasicSteps.slice(0, 10).forEach(rule => {
+        console.log(`     ⚠️  "${rule.name}" (ID: ${rule.id}): использует ${rule.basicSteps.join(', ')}`);
+        rule.basicSteps.forEach(basicStep => {
+          console.log(`        → Может быть заменено на: ${detailedStepsMap[basicStep]?.join(', ') || 'неизвестно'}`);
+        });
+      });
+    } else {
+      console.log(`   ✅ Все правила используют детальные шаги`);
+    }
+
+    // 8. Проверяем конкретную сессию (последнюю) - оставляем для обратной совместимости
     if (sessions.length > 0) {
       const lastSession = sessions[0];
       if (lastSession.ruleId && Array.isArray(lastSession.products) && lastSession.products.length > 0) {
-        console.log('\n📦 6. Детали последней сессии:');
+        console.log('\n📦 8. Детали последней сессии:');
         
         const rule = await prisma.recommendationRule.findUnique({
           where: { id: lastSession.ruleId },
