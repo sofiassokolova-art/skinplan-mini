@@ -8,6 +8,9 @@ import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import PlanFeedbackPopup from '@/components/PlanFeedbackPopup';
+import { PlanCalendar } from '@/components/PlanCalendar';
+import { DayView } from '@/components/DayView';
+import type { Plan28, DayPlan } from '@/lib/plan-types';
 import toast from 'react-hot-toast';
 
 interface RoutineItem {
@@ -68,6 +71,19 @@ export default function HomePage() {
   const [checkingPlan, setCheckingPlan] = useState(false);
   const planCheckDoneRef = useRef(false); // Защита от повторных проверок плана
   const [currentDay, setCurrentDay] = useState(1); // Текущий день плана
+  const [selectedDay, setSelectedDay] = useState(1); // Выбранный день в календаре
+  const [completedDays, setCompletedDays] = useState<number[]>([]);
+  const [plan28, setPlan28] = useState<Plan28 | null>(null);
+  const [products, setProducts] = useState<Map<number, {
+    id: number;
+    name: string;
+    brand: { name: string };
+    price?: number;
+    imageUrl?: string | null;
+    description?: string;
+  }>>(new Map());
+  const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
+  const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
   const [completedSteps, setCompletedSteps] = useState<{
     morning: Set<string>;
     evening: Set<string>;
@@ -886,27 +902,93 @@ export default function HomePage() {
       }
       });
       
-      // Создаем фиктивные рекомендации для совместимости с существующим кодом
-      const fakeRecommendations: Recommendation = {
-        profile_summary: {
-          skinType: 'unknown',
-          sensitivityLevel: 'low',
-          notes: '',
-        },
-        steps: {},
-      };
-      setRecommendations(fakeRecommendations);
+      // ВАЖНО: Сохраняем plan28 и продукты для использования с PlanCalendar и DayView
+      // Как в календаре - загружаем ВСЕ продукты из всех дней плана
+      const allPlanProductIds = new Set<number>();
+      plan28.days.forEach((day: DayPlan) => {
+        day.morning.forEach(step => {
+          if (step.productId) allPlanProductIds.add(Number(step.productId));
+          step.alternatives.forEach(alt => allPlanProductIds.add(Number(alt)));
+        });
+        day.evening.forEach(step => {
+          if (step.productId) allPlanProductIds.add(Number(step.productId));
+          step.alternatives.forEach(alt => allPlanProductIds.add(Number(alt)));
+        });
+        day.weekly.forEach(step => {
+          if (step.productId) allPlanProductIds.add(Number(step.productId));
+          step.alternatives.forEach(alt => allPlanProductIds.add(Number(alt)));
+        });
+      });
+
+      // Загружаем все продукты из плана (как в календаре)
+      const allProductsMap = new Map<number, any>();
+      if (allPlanProductIds.size > 0) {
+        try {
+          const allProductsResponse = await fetch('/api/products/batch', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData || '') : '',
+            },
+            body: JSON.stringify({ productIds: Array.from(allPlanProductIds) }),
+          });
+
+          if (allProductsResponse.ok) {
+            const allProductsData = await allProductsResponse.json();
+            allProductsData.products?.forEach((p: any) => {
+              if (p && p.id) {
+                allProductsMap.set(p.id, {
+                  id: p.id,
+                  name: p.name || 'Неизвестный продукт',
+                  brand: { name: p.brand?.name || p.brand || 'Unknown' },
+                  price: p.price || null,
+                  imageUrl: p.imageUrl || null,
+                  description: p.descriptionUser || p.description || null,
+                });
+              }
+            });
+            console.log('✅ Home: All products loaded from plan (like calendar)', {
+              requestedIds: allPlanProductIds.size,
+              loadedProducts: allProductsMap.size,
+            });
+          }
+        } catch (err) {
+          console.error('❌ Home: Error loading all products', err);
+        }
+      }
+
+      // Сохраняем данные для календаря
+      setPlan28(plan28);
+      setProducts(allProductsMap);
+      setCurrentDay(currentDay);
+      setSelectedDay(currentDay);
+      setCompletedDays(progress?.completedDays || []);
+
+      // Загружаем wishlist и корзину (как в календаре)
+      try {
+        const wishlistData = await api.getWishlist() as any;
+        const wishlistIds = (wishlistData.items || []).map((item: any) => 
+          item.product?.id || item.productId
+        ).filter((id: any): id is number => typeof id === 'number');
+        setWishlistProductIds(new Set(wishlistIds));
+      } catch (err) {
+        console.warn('Could not load wishlist:', err);
+      }
+
+      try {
+        const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
+        const items = cart.items || [];
+        const quantitiesMap = new Map<number, number>();
+        items.forEach((item) => {
+          quantitiesMap.set(item.product.id, item.quantity);
+        });
+        setCartQuantities(quantitiesMap);
+      } catch (err) {
+        console.warn('Could not load cart:', err);
+      }
+
       setError(null);
       planCheckDoneRef.current = true;
-      console.log('✅ Plan loaded and converted to routine items', {
-        morningItemsCount: morning.length,
-        eveningItemsCount: evening.length,
-      });
-      
-      setMorningItems(morning);
-      setEveningItems(evening);
-      
-      // ВАЖНО: Устанавливаем hasPlan и останавливаем загрузку
       setHasPlan(true);
       setLoading(false);
     } catch (error: any) {
@@ -1327,6 +1409,103 @@ export default function HomePage() {
     );
   }
 
+  // Обработчики для календаря (как в calendar/page.tsx)
+  const handleDaySelect = (day: number) => {
+    setSelectedDay(day);
+  };
+
+  const toggleWishlist = async (productId: number) => {
+    try {
+      const isInWishlist = wishlistProductIds.has(productId);
+      
+      if (isInWishlist) {
+        await api.removeFromWishlist(productId);
+        setWishlistProductIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(productId);
+          return newSet;
+        });
+        toast.success('Удалено из избранного');
+      } else {
+        await api.addToWishlist(productId);
+        setWishlistProductIds(prev => new Set(prev).add(productId));
+        toast.success('Добавлено в избранное');
+      }
+    } catch (err: any) {
+      console.error('Error toggling wishlist:', err);
+      toast.error(err?.message || 'Не удалось изменить избранное');
+    }
+  };
+
+  const handleAddToCart = async (productId: number) => {
+    try {
+      await api.addToCart(productId, 1);
+      toast.success('Добавлено в корзину');
+      
+      setCartQuantities((prev) => {
+        const newMap = new Map(prev);
+        const currentQty = newMap.get(productId) || 0;
+        newMap.set(productId, currentQty + 1);
+        return newMap;
+      });
+    } catch (err: any) {
+      console.error('Error adding to cart:', err);
+      toast.error(err?.message || 'Не удалось добавить в корзину');
+    }
+  };
+
+  const handleReplace = async (stepCategory: string, productId: number) => {
+    // TODO: реализовать замену продукта
+    console.log('Replace product:', stepCategory, productId);
+  };
+
+  // Если план загружен - показываем календарь и DayView
+  if (plan28 && plan28.days) {
+    const selectedDayPlan = plan28.days.find(d => d.dayIndex === selectedDay);
+
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        padding: '20px',
+        paddingBottom: '100px',
+      }}>
+        {/* Календарь */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '24px',
+          padding: '24px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          border: '1px solid rgba(10, 95, 89, 0.1)',
+        }}>
+          <PlanCalendar
+            currentDay={currentDay}
+            completedDays={completedDays}
+            onDaySelect={handleDaySelect}
+          />
+        </div>
+
+        {/* Отображение выбранного дня */}
+        {selectedDayPlan && (
+          <div style={{ marginBottom: '24px' }}>
+            <DayView
+              dayPlan={selectedDayPlan}
+              mainGoals={plan28.mainGoals}
+              products={products}
+              wishlistProductIds={wishlistProductIds}
+              cartQuantities={cartQuantities}
+              onToggleWishlist={toggleWishlist}
+              onAddToCart={handleAddToCart}
+              onReplace={handleReplace}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Если план не загружен - показываем старый интерфейс (fallback)
   const completedCount = routineItems.filter((item) => item.done).length;
   const totalCount = routineItems.length;
 
