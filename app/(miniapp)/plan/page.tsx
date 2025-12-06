@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PlanPageClientNew } from './plan-client-new';
@@ -77,16 +77,33 @@ export default function PlanPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [planData, setPlanData] = useState<PlanData | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Безопасные обертки для setState (проверяют mounted перед обновлением)
+  const safeSetLoading = (value: boolean) => {
+    if (isMountedRef.current) setLoading(value);
+  };
+  const safeSetError = (value: string | null) => {
+    if (isMountedRef.current) setError(value);
+  };
+  const safeSetPlanData = (value: PlanData | null) => {
+    if (isMountedRef.current) setPlanData(value);
+  };
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadPlan();
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // Функция для обработки данных плана (вынесена для переиспользования)
   const processPlanData = async (plan: any) => {
     try {
-      setLoading(true);
-      setError(null);
+      safeSetLoading(true);
+      safeSetError(null);
       
       // Проверяем, что план валиден
       if (!plan) {
@@ -119,8 +136,8 @@ export default function PlanPage() {
         // Продолжаем дальше без проверки профиля
       } else if (!profile && plan.weeks) {
         // Для старого формата нужен профиль
-        setError('no_profile');
-        setLoading(false);
+        safeSetError('no_profile');
+        safeSetLoading(false);
         return;
       }
 
@@ -386,7 +403,7 @@ export default function PlanPage() {
       // При передаче через setState Map сохраняется корректно
       console.log('💾 Setting planData with productsMap size:', productsMap.size);
 
-      setPlanData({
+      safeSetPlanData({
         plan28: plan28 || undefined,
         weeks: plan.weeks || [],
         productsMap: productsMap, // Map передается напрямую
@@ -401,7 +418,7 @@ export default function PlanPage() {
         todayEvening,
       });
 
-      setLoading(false);
+      safeSetLoading(false);
     } catch (err: any) {
       console.error('❌ Error processing plan data:', err);
       console.error('   Error message:', err?.message);
@@ -438,27 +455,35 @@ export default function PlanPage() {
       // При ошибке обработки плана не показываем экран генерации
       // Вместо этого пытаемся загрузить план заново или показываем обычный лоадер
       console.error('❌ Error processing plan, attempting to reload...');
-      setLoading(true);
-      setError(null);
+      safeSetLoading(true);
+      safeSetError(null);
       // Пробуем загрузить план еще раз через небольшую задержку
       setTimeout(() => {
-        loadPlan(0);
+        if (isMountedRef.current) {
+          loadPlan(0);
+        }
       }, 2000);
     }
   };
 
   const loadPlan = async (retryCount = 0) => {
     try {
+      // Проверяем, что компонент еще смонтирован
+      if (!isMountedRef.current) {
+        console.warn('⚠️ Component unmounted, skipping loadPlan');
+        return;
+      }
+      
       // Сбрасываем ошибку только при первой попытке
       if (retryCount === 0) {
-        setLoading(true);
-        setError(null);
+        safeSetLoading(true);
+        safeSetError(null);
       }
 
       // Проверяем, что приложение открыто через Telegram
       if (typeof window === 'undefined' || !window.Telegram?.WebApp) {
-        setError('telegram_required');
-        setLoading(false);
+        safeSetError('telegram_required');
+        safeSetLoading(false);
         return;
       }
 
@@ -482,8 +507,8 @@ export default function PlanPage() {
 
       if (!initData) {
         console.error('❌ initData not available after waiting');
-        setError('telegram_required');
-        setLoading(false);
+        safeSetError('telegram_required');
+        safeSetLoading(false);
         return;
       }
 
@@ -721,8 +746,8 @@ export default function PlanPage() {
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
         }
-        setError('no_profile');
-        setLoading(false);
+        safeSetError('no_profile');
+        safeSetLoading(false);
         return;
       }
 
@@ -771,15 +796,15 @@ export default function PlanPage() {
           }
         } else {
           // Профиля нет - показываем ошибку профиля
-          setError('no_profile');
-      setLoading(false);
+          safeSetError('no_profile');
+      safeSetLoading(false);
           return;
         }
       } catch (checkError) {
         console.error('❌ Error checking profile/progress:', checkError);
         // При ошибке проверки показываем лоадер (возможно временная проблема)
-        setLoading(true);
-        setError(null);
+        safeSetLoading(true);
+        safeSetError(null);
         // Пробуем еще раз через 2 секунды
         setTimeout(() => {
           loadPlan(0);
@@ -788,8 +813,8 @@ export default function PlanPage() {
       }
       
       // Если дошли сюда - показываем лоадер (план может генерироваться)
-      setLoading(true);
-      setError(null);
+      safeSetLoading(true);
+      safeSetError(null);
       // Пробуем еще раз через 2 секунды
       setTimeout(() => {
         loadPlan(0);
@@ -958,8 +983,8 @@ export default function PlanPage() {
                 }
               } catch (generateError: any) {
                 console.error('❌ Failed to generate plan:', generateError);
-                setError('plan_generating');
-                setLoading(false);
+                safeSetError('plan_generating');
+                safeSetLoading(false);
               }
             }}
             style={{
