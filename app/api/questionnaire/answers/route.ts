@@ -471,7 +471,6 @@ export async function POST(request: NextRequest) {
       
       if (matchedRule) {
         const stepsJson = matchedRule.stepsJson as any;
-        const productIds: number[] = [];
 
         // Получаем бюджет пользователя из ответов (если есть)
         const budgetAnswer = fullAnswers.find(a => a.question?.code === 'budget');

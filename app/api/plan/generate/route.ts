@@ -725,7 +725,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     if (stepStr === 'cleanser_oil' || categoryStr.includes('oil') || stepStr.includes('oil')) {
       categories.push('cleanser_oil');
       // Также ищем по ключевым словам: гидрофильное, масло, oil, double cleans
-      categories.push('cleanser'); // Базовый поиск
+      categories.push('cleanser_gentle'); // Базовый поиск для совместимости
     } else if (stepStr.startsWith('cleanser_gentle') || categoryStr.includes('gentle')) {
       categories.push('cleanser_gentle');
     } else if (stepStr.startsWith('cleanser_balancing') || stepStr.includes('balancing') || categoryStr.includes('balancing')) {

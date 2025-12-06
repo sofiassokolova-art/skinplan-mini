@@ -143,6 +143,11 @@ export function getStepDescription(stepCategory: StepCategory, skinIssues?: stri
   
   const baseDescriptions: Record<StepCategory, { name: string; subtitle: string; defaultTags: string[] }> = {
     // Очищение
+    cleanser_oil: {
+      name: "Гидрофильное масло",
+      subtitle: "Первое очищение для снятия макияжа",
+      defaultTags: ["очищение", "масло", "макияж"],
+    },
     cleanser_gentle: {
       name: "Очищение (мягкое)",
       subtitle: "Удаляет загрязнения и макияж, не нарушая защитный барьер кожи",
