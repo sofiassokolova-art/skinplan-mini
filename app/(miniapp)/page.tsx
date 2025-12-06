@@ -586,46 +586,78 @@ export default function HomePage() {
         return;
       }
       
-      const currentDay = progress?.currentDay || 1;
-      const plan28 = planData.plan28;
-      
-      // Если план есть, но в старом формате - пытаемся сгенерировать новый
-      if (!hasPlan28 && hasWeeks) {
-        console.log('⚠️ Home: Plan in old format (weeks), attempting to regenerate...');
-        const regenerateAttemptsKey = 'plan_regenerate_attempts';
-        const regenerateAttempts = parseInt(sessionStorage.getItem(regenerateAttemptsKey) || '0', 10);
-        
-        if (regenerateAttempts >= 2) {
-          console.warn('⚠️ Too many regeneration attempts, continuing with old format');
-          sessionStorage.removeItem(regenerateAttemptsKey);
-          // Продолжаем со старым форматом
-        } else {
-          try {
-            sessionStorage.setItem(regenerateAttemptsKey, String(regenerateAttempts + 1));
-            const generatedPlan = await api.generatePlan() as any;
-            if (generatedPlan && generatedPlan.plan28) {
-              console.log('✅ Home: Plan regenerated');
-              sessionStorage.removeItem(regenerateAttemptsKey);
-              // Вместо reload - просто перезагружаем данные
-              await loadRecommendations();
-              return;
-            } else {
-              sessionStorage.removeItem(regenerateAttemptsKey);
-            }
-          } catch (regenerateError) {
-            console.warn('⚠️ Could not regenerate plan:', regenerateError);
+      // ВАЖНО: Проверяем, что plan28 существует перед использованием
+      if (!hasPlan28) {
+        // Если план есть, но в старом формате - пытаемся сгенерировать новый
+        if (hasWeeks) {
+          console.log('⚠️ Home: Plan in old format (weeks), attempting to regenerate...');
+          const regenerateAttemptsKey = 'plan_regenerate_attempts';
+          const regenerateAttempts = parseInt(sessionStorage.getItem(regenerateAttemptsKey) || '0', 10);
+          
+          if (regenerateAttempts >= 2) {
+            console.warn('⚠️ Too many regeneration attempts, showing old format or redirecting to quiz');
             sessionStorage.removeItem(regenerateAttemptsKey);
-            // Продолжаем со старым форматом
+            // Показываем экран "Start quiz" или можно показать старый формат
+            setLoading(false);
+            return;
+          } else {
+            try {
+              sessionStorage.setItem(regenerateAttemptsKey, String(regenerateAttempts + 1));
+              const generatedPlan = await api.generatePlan() as any;
+              if (generatedPlan && generatedPlan.plan28) {
+                console.log('✅ Home: Plan regenerated');
+                sessionStorage.removeItem(regenerateAttemptsKey);
+                // Вместо reload - просто перезагружаем данные
+                await loadRecommendations();
+                return;
+              } else {
+                sessionStorage.removeItem(regenerateAttemptsKey);
+                setLoading(false);
+                return;
+              }
+            } catch (regenerateError) {
+              console.warn('⚠️ Could not regenerate plan:', regenerateError);
+              sessionStorage.removeItem(regenerateAttemptsKey);
+              setLoading(false);
+              return;
+            }
           }
+        } else {
+          // План не в новом формате и не в старом - показываем экран "Start quiz"
+          console.log('⚠️ Home: Plan exists but has no valid format');
+          setLoading(false);
+          return;
         }
       }
       
+      // Теперь мы знаем, что plan28 существует
+      const currentDay = progress?.currentDay || 1;
+      const plan28 = planData.plan28;
+      
+      // Проверяем, что plan28 имеет структуру days
+      if (!plan28 || !plan28.days || !Array.isArray(plan28.days) || plan28.days.length === 0) {
+        console.error('❌ Home: plan28 has invalid structure', {
+          hasPlan28: !!plan28,
+          hasDays: !!plan28?.days,
+          daysLength: plan28?.days?.length || 0,
+        });
+        setLoading(false);
+        return;
+      }
+      
       // Находим день плана для текущего дня
-      const currentDayPlan = plan28.days.find((d: any) => d.dayIndex === currentDay);
+      let currentDayPlan = plan28.days.find((d: any) => d.dayIndex === currentDay);
       if (!currentDayPlan) {
-        console.log('⚠️ Current day plan not found, redirecting to quiz');
-        router.push('/quiz');
-            return;
+        console.log('⚠️ Current day plan not found for day', currentDay, ', using day 1');
+        // Вместо редиректа на анкету, пробуем использовать день 1
+        const day1Plan = plan28.days.find((d: any) => d.dayIndex === 1);
+        if (!day1Plan) {
+          console.error('❌ Home: No plan found for day 1 either');
+          setLoading(false);
+          return;
+        }
+        // Используем план дня 1
+        currentDayPlan = day1Plan;
       }
       
       // Собираем все productId из текущего дня (утро, вечер, еженедельные)
@@ -854,10 +886,17 @@ export default function HomePage() {
       setRecommendations(fakeRecommendations);
       setError(null);
       planCheckDoneRef.current = true;
-      console.log('✅ Plan loaded and converted to routine items');
+      console.log('✅ Plan loaded and converted to routine items', {
+        morningItemsCount: morning.length,
+        eveningItemsCount: evening.length,
+      });
       
       setMorningItems(morning);
       setEveningItems(evening);
+      
+      // ВАЖНО: Устанавливаем hasPlan и останавливаем загрузку
+      setHasPlan(true);
+      setLoading(false);
     } catch (error: any) {
       console.error('❌ Error loading recommendations:', {
         error,
