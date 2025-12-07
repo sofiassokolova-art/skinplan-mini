@@ -143,17 +143,23 @@ export async function GET(request: NextRequest) {
         }
         
         // Нормализуем базовые шаги для группировки
-        // Например: cleanser_gentle -> cleanser, spf_50_face -> spf
+        // Например: cleanser_gentle -> cleanser, cleanser_oil -> cleanser, spf_50_face -> spf
+        // ВАЖНО: Все расширенные названия нормализуются в базовые для проверки обязательных шагов
         let normalizedStep = step;
         if (step.startsWith('cleanser')) {
+          // Включает: cleanser_gentle, cleanser_balancing, cleanser_deep, cleanser_oil
           normalizedStep = 'cleanser';
         } else if (step.startsWith('spf')) {
+          // Включает: spf_50_face, spf_50_oily, spf_50_sensitive
           normalizedStep = 'spf';
         } else if (step.startsWith('moisturizer')) {
+          // Включает: moisturizer_light, moisturizer_balancing, moisturizer_barrier, moisturizer_soothing, moisturizer_rich
           normalizedStep = 'moisturizer';
         } else if (step.startsWith('toner')) {
+          // Включает: toner_hydrating, toner_soothing
           normalizedStep = 'toner';
-        } else if (step.startsWith('serum')) {
+        } else if (step.startsWith('serum') || step.startsWith('treatment')) {
+          // Включает: serum_*, treatment_* (treatment уже обработан выше, но на всякий случай)
           normalizedStep = 'serum';
         }
         
