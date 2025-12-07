@@ -1137,17 +1137,46 @@ export default function QuizPage() {
     };
   }, []);
 
+  // Вспомогательная функция для получения initData с ожиданием
+  const getInitData = async (): Promise<string | null> => {
+    // Сначала пробуем использовать initData из хука
+    if (initData) {
+      return initData;
+    }
+    
+    // Если не доступен, ждем его готовности
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      await new Promise((resolve) => {
+        let attempts = 0;
+        const maxAttempts = 10; // 10 * 100ms = 1 секунда
+        const checkInterval = setInterval(() => {
+          attempts++;
+          const data = window.Telegram?.WebApp?.initData || null;
+          if (data || attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            resolve(undefined);
+          }
+        }, 100);
+      });
+      return window.Telegram?.WebApp?.initData || null;
+    }
+    
+    return null;
+  };
+
   const submitAnswers = useCallback(async () => {
     console.log('🚀 submitAnswers вызвана');
     
     // ВАЖНО: Логируем вызов submitAnswers на сервер
     try {
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      const currentInitData = await getInitData();
+      
+      if (currentInitData) {
         await fetch('/api/logs', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+            'X-Telegram-Init-Data': currentInitData,
           },
           body: JSON.stringify({
             level: 'info',
@@ -1158,10 +1187,15 @@ export default function QuizPage() {
               answersCount: Object.keys(answers).length,
             },
           }),
-        }).catch(() => {});
+        }).catch((err) => {
+          console.warn('⚠️ Не удалось сохранить лог на сервер:', err);
+        });
+      } else {
+        console.warn('⚠️ initData не доступен для логирования');
       }
     } catch (logError) {
       // Игнорируем ошибки логирования
+      console.warn('⚠️ Ошибка при логировании:', logError);
     }
     
     // Сохраняем функцию в ref для использования в setTimeout
@@ -1346,26 +1380,31 @@ export default function QuizPage() {
       
       // ВАЖНО: Логируем проверку result на сервер
       try {
-        await fetch('/api/logs', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData || '',
-          },
-          body: JSON.stringify({
-            level: 'info',
-            message: 'Checking result before plan generation',
-            context: {
-              result,
-              success: result?.success,
-              hasResult: !!result,
-              resultKeys: result ? Object.keys(result) : [],
-              resultType: typeof result,
+        const currentInitData = await getInitData();
+        
+        if (currentInitData) {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
             },
-          }),
-        }).catch(() => {});
+            body: JSON.stringify({
+              level: 'info',
+              message: 'Checking result before plan generation',
+              context: {
+                result,
+                success: result?.success,
+                hasResult: !!result,
+                resultKeys: result ? Object.keys(result) : [],
+                resultType: typeof result,
+              },
+            }),
+          }).catch((err) => console.warn('⚠️ Не удалось сохранить лог:', err));
+        }
       } catch (logError) {
         // Игнорируем ошибки логирования
+        console.warn('⚠️ Ошибка при логировании:', logError);
       }
       
       if (result?.success !== false) {
@@ -1406,25 +1445,29 @@ export default function QuizPage() {
           
           // Логируем успешную генерацию на сервер
           try {
-            await fetch('/api/logs', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData || '',
-              },
-              body: JSON.stringify({
-                level: 'info',
-                message: 'Plan generated successfully',
-                context: { 
-                  hasPlan28: !!generatedPlan?.plan28,
-                  hasWeeks: !!generatedPlan?.weeks,
-                  plan28Days: generatedPlan?.plan28?.days?.length || 0,
-                  weeksCount: generatedPlan?.weeks?.length || 0,
+            const currentInitData = await getInitData();
+            if (currentInitData) {
+              await fetch('/api/logs', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'X-Telegram-Init-Data': currentInitData,
                 },
-              }),
-            }).catch(() => {}); // Игнорируем ошибки логирования
+                body: JSON.stringify({
+                  level: 'info',
+                  message: 'Plan generated successfully',
+                  context: { 
+                    hasPlan28: !!generatedPlan?.plan28,
+                    hasWeeks: !!generatedPlan?.weeks,
+                    plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                    weeksCount: generatedPlan?.weeks?.length || 0,
+                  },
+                }),
+              }).catch((err) => console.warn('⚠️ Не удалось сохранить лог:', err));
+            }
           } catch (logError) {
             // Игнорируем ошибки логирования
+            console.warn('⚠️ Ошибка при логировании:', logError);
           }
           
           // Логируем ошибку на сервер для диагностики
@@ -1432,20 +1475,24 @@ export default function QuizPage() {
             console.error('❌ План сгенерирован, но пустой:', generatedPlan);
             // Отправляем лог на сервер
             try {
-              await fetch('/api/logs', {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData || '',
-                },
-                body: JSON.stringify({
-                  level: 'error',
-                  message: 'Plan generated but empty',
-                  context: { generatedPlan },
-                }),
-              }).catch(() => {}); // Игнорируем ошибки логирования
+              const currentInitData = await getInitData();
+              if (currentInitData) {
+                await fetch('/api/logs', {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Telegram-Init-Data': currentInitData,
+                  },
+                  body: JSON.stringify({
+                    level: 'error',
+                    message: 'Plan generated but empty',
+                    context: { generatedPlan },
+                  }),
+                }).catch((err) => console.warn('⚠️ Не удалось сохранить лог:', err));
+              }
             } catch (logError) {
               // Игнорируем ошибки логирования
+              console.warn('⚠️ Ошибка при логировании:', logError);
             }
           }
         } catch (genError: any) {
