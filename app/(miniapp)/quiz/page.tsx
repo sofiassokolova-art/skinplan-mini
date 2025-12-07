@@ -1140,6 +1140,30 @@ export default function QuizPage() {
   const submitAnswers = useCallback(async () => {
     console.log('🚀 submitAnswers вызвана');
     
+    // ВАЖНО: Логируем вызов submitAnswers на сервер
+    try {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        await fetch('/api/logs', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': window.Telegram.WebApp.initData,
+          },
+          body: JSON.stringify({
+            level: 'info',
+            message: 'submitAnswers called',
+            context: {
+              timestamp: new Date().toISOString(),
+              hasQuestionnaire: !!questionnaire,
+              answersCount: Object.keys(answers).length,
+            },
+          }),
+        }).catch(() => {});
+      }
+    } catch (logError) {
+      // Игнорируем ошибки логирования
+    }
+    
     // Сохраняем функцию в ref для использования в setTimeout
     submitAnswersRef.current = submitAnswers;
     
