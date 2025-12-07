@@ -927,97 +927,27 @@ export async function POST(request: NextRequest) {
       // ВАЖНО: Генерируем план ПОСЛЕ создания RecommendationSession
       // Это гарантирует, что план будет использовать продукты из новой сессии
       // РЕШЕНИЕ ПРОБЛЕМЫ ДОЛГОЙ ГЕНЕРАЦИИ: Запускаем генерацию асинхронно в фоне
-      // Это не блокирует ответ на запрос анкеты, план будет готов позже
-      // При первом запросе плана, если его нет, он будет сгенерирован автоматически (lazy generation)
-      // Генерируем план как при первом прохождении, так и при перепрохождении
-      const shouldGeneratePlan = !existingProfile || (existingProfile.version !== profile.version);
-      if (shouldGeneratePlan) {
-        // Запускаем генерацию плана асинхронно в фоне, не ждем завершения
-        // Это решает проблему долгой синхронной генерации (до 60 секунд)
-        // Пользователь получит ответ сразу, а план будет готов позже
-        const generatePlanInBackground = async () => {
-          try {
-            logger.info('Starting background plan generation after RecommendationSession creation', { 
-              userId, 
-              newVersion: profile.version 
-            });
-            
-            // Используем fetch для асинхронной генерации в фоне
-            // Это не блокирует текущий запрос
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
-                           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-                           'http://localhost:3000';
-            const planRegenerateUrl = `${baseUrl}/api/plan/generate`;
-            
-            const response = await fetch(planRegenerateUrl, {
-              method: 'GET',
-              headers: {
-                'X-Telegram-Init-Data': initData || '',
-              },
-              // Не устанавливаем таймаут на уровне fetch, пусть API сам управляет таймаутом
-            });
-            
-            if (!response.ok) {
-              logger.warn('Background plan generation returned non-OK status', { 
-                userId, 
-                status: response.status,
-                statusText: response.statusText,
-              });
-            } else {
-              const generatedPlan = await response.json();
-              if (generatedPlan && generatedPlan.plan28) {
-                logger.info('Background plan generation succeeded', { 
-                  userId, 
-                  profileVersion: profile.version,
-                  planDays: generatedPlan.plan28?.days?.length || 0,
-                });
-              } else {
-                logger.warn('Background plan generation returned empty result', { 
-                  userId, 
-                  profileVersion: profile.version 
-                });
-              }
-            }
-          } catch (bgError: any) {
-            // Логируем ошибку, но не блокируем основной ответ
-            logger.error('Background plan generation failed', bgError, { 
-              userId, 
-              profileVersion: profile.version,
-              errorMessage: bgError?.message,
-            });
-          }
-        };
-        
-        // Запускаем в фоне, не ждем завершения
-        // Используем setTimeout(0) чтобы гарантировать, что это выполнится после ответа
-        generatePlanInBackground().catch(err => {
-          logger.warn('Background plan generation promise rejected', { userId, error: err });
-        });
-        
-        logger.info('Background plan generation triggered (non-blocking)', { 
-          userId, 
-          profileVersion: profile.version 
-        });
-      }
+      // ВАЖНО: НЕ запускаем генерацию плана здесь!
+      // Генерация плана запускается на клиенте в quiz/page.tsx после отправки ответов
+      // Это гарантирует, что:
+      // 1. План генерируется с правильными данными (ответы еще не удалены)
+      // 2. Пользователь видит лоадер во время генерации
+      // 3. Редирект происходит только когда план готов
+      // 4. Ответы удаляются только после успешной генерации плана
+      logger.info('Plan generation will be triggered by client after answers submission', { 
+        userId, 
+        profileVersion: profile.version 
+      });
     } catch (recommendationError) {
       // Не блокируем сохранение ответов, если рекомендации не создались
       logger.error('Error creating recommendations', recommendationError, { userId });
     }
 
-    // После успешного создания профиля, очищаем прогресс анкеты на сервере
-    // Прогресс больше не нужен, так как анкета завершена
-    try {
-      await prisma.userAnswer.deleteMany({
-        where: {
-          userId,
-          questionnaireId,
-        },
-      });
-      logger.info('Quiz progress cleared after profile creation', { userId });
-    } catch (clearError) {
-      // Не критично, если не удалось очистить - прогресс просто не будет показываться
-      logger.warn('Failed to clear quiz progress (non-critical)', { userId, error: clearError });
-    }
+    // ВАЖНО: НЕ удаляем ответы здесь!
+    // Ответы нужны для генерации плана, которая запускается на клиенте
+    // Ответы будут удалены только после успешной генерации плана в quiz/page.tsx
+    // Это гарантирует, что план будет сгенерирован с правильными данными
+    logger.info('Answers preserved for plan generation (will be cleared after plan is generated)', { userId });
 
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId || undefined);
