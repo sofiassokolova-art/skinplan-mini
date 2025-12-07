@@ -1843,6 +1843,7 @@ export default function QuizPage() {
     // Или ищем по коду вопроса gender
     let genderValue: string | undefined;
     let genderQuestion: Question | undefined;
+    let genderOption: { id: number; value: string; label: string } | undefined;
     
     for (const q of allQuestionsRaw) {
       if (q.code === 'gender') {
@@ -1850,21 +1851,26 @@ export default function QuizPage() {
         if (answers[q.id]) {
           const answerValue = Array.isArray(answers[q.id]) 
             ? (answers[q.id] as string[])[0] 
-            : (answers[q.id] as string);
+            : String(answers[q.id]);
           
-          // Проверяем, является ли ответ значением опции или ID опции
-          genderValue = answerValue;
-          
-          // Если это не похоже на текст (может быть ID), ищем опцию
+          // Ищем соответствующую опцию по ID, value или label
           if (q.options && q.options.length > 0) {
-            const matchingOption = q.options.find(opt => 
+            genderOption = q.options.find(opt => 
               opt.id.toString() === answerValue || 
+              String(opt.id) === answerValue ||
               opt.value === answerValue ||
-              opt.value?.toLowerCase() === answerValue?.toLowerCase()
+              opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
+              opt.label === answerValue ||
+              opt.label?.toLowerCase() === answerValue?.toLowerCase()
             );
-            if (matchingOption) {
-              genderValue = matchingOption.value || matchingOption.label || answerValue;
+            
+            if (genderOption) {
+              genderValue = genderOption.label || genderOption.value || answerValue;
+            } else {
+              genderValue = answerValue;
             }
+          } else {
+            genderValue = answerValue;
           }
           break;
         }
@@ -1872,54 +1878,49 @@ export default function QuizPage() {
     }
     
     // Если пол не выбран, показываем вопрос (на всякий случай)
-    // Если пол "мужчина" или "male", не показываем вопрос про беременность
     if (!genderValue && !genderQuestion) {
       // Пол еще не выбран - показываем вопрос (он будет скрыт позже, когда пол будет выбран)
       return true;
     }
     
-    // Проверяем все возможные варианты ответа
-    const normalizedGenderValue = genderValue?.toLowerCase().trim() || '';
-    const isMale = 
-      // Проверка по значению ответа
-      normalizedGenderValue.includes('мужск') || 
-      normalizedGenderValue.includes('male') ||
-      normalizedGenderValue === 'male' ||
-      normalizedGenderValue === 'мужской' ||
-      // Проверка по опциям вопроса (если ответ хранится как ID или value опции)
-      (genderQuestion?.options?.some(opt => {
-        const optValue = (opt.value || '').toLowerCase().trim();
-        const optLabel = (opt.label || '').toLowerCase().trim();
-        const isMaleOption = optValue.includes('мужск') || 
-                            optValue.includes('male') ||
-                            optLabel.includes('мужск') ||
-                            optLabel.includes('male');
-        
-        if (!isMaleOption) return false;
-        
-        // Проверяем, совпадает ли ответ с этой опцией
-        const answerValue = answers[genderQuestion.id];
-        if (!answerValue) return false;
-        
-        const normalizedAnswer = Array.isArray(answerValue) 
-          ? answerValue[0]?.toLowerCase().trim() 
-          : String(answerValue).toLowerCase().trim();
-        
-        return normalizedAnswer === optValue ||
-               normalizedAnswer === optLabel ||
-               normalizedAnswer === String(opt.id) ||
-               String(answerValue) === String(opt.id) ||
-               String(answerValue) === opt.value ||
-               String(answerValue) === opt.label;
-      }));
+    // Проверяем, является ли выбранный пол "мужской"
+    let isMale = false;
+    
+    if (genderOption) {
+      // Если нашли опцию, проверяем её label и value
+      const optLabel = (genderOption.label || '').toLowerCase().trim();
+      const optValue = (genderOption.value || '').toLowerCase().trim();
+      isMale = optLabel.includes('мужск') || 
+               optValue.includes('мужск') ||
+               optValue.includes('male') ||
+               optLabel.includes('male') ||
+               optValue === 'gender_2' || // Мужской вариант
+               optLabel === 'мужской';
+    } else if (genderValue) {
+      // Если опцию не нашли, проверяем значение напрямую
+      const normalizedValue = genderValue.toLowerCase().trim();
+      isMale = normalizedValue.includes('мужск') || 
+               normalizedValue.includes('male') ||
+               normalizedValue === 'male' ||
+               normalizedValue === 'мужской' ||
+               normalizedValue === 'gender_2' || // Мужской вариант
+               normalizedValue === '137'; // ID мужской опции
+    } else if (genderQuestion && answers[genderQuestion.id]) {
+      // Если не нашли опцию, но есть ответ, проверяем напрямую по ID/value
+      const answerValue = String(answers[genderQuestion.id]);
+      isMale = answerValue === '137' || // ID мужской опции
+               answerValue === 'gender_2' || // value мужской опции
+               answerValue.toLowerCase().includes('мужск') ||
+               answerValue.toLowerCase().includes('male');
+    }
     
     const shouldShow = !isMale; // Показываем только если не мужчина
     if (!shouldShow) {
       console.log('🚫 Question filtered out (pregnancy question for male):', question.code, {
         genderValue,
-        normalizedGenderValue,
-        genderQuestionId: genderQuestion?.id,
+        genderOption: genderOption ? { id: genderOption.id, value: genderOption.value, label: genderOption.label } : null,
         answerValue: genderQuestion ? answers[genderQuestion.id] : undefined,
+        isMale,
       });
     }
     return shouldShow;
