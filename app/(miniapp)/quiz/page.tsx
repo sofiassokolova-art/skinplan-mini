@@ -4270,18 +4270,18 @@ export default function QuizPage() {
               return (
                 <button
                   key={option.id}
-                  onClick={() => {
-                    handleAnswer(currentQuestion.id, option.value);
-                    // При повторном прохождении не делаем автопереход, только при первом прохождении
-                    if (!isRetakingQuiz) {
-                      if (isLastQuestion) {
-                        const infoScreenAfter = getInfoScreenAfterQuestion(currentQuestion.code);
-                        if (infoScreenAfter) {
-                          setTimeout(handleNext, 300);
-                        }
-                      } else {
-                        setTimeout(handleNext, 300);
+                  onClick={async () => {
+                    await handleAnswer(currentQuestion.id, option.value);
+                    // ВАЖНО: Всегда переходим к следующему вопросу после выбора ответа
+                    // (кроме последнего вопроса, где может быть инфо-экран)
+                    if (isLastQuestion) {
+                      const infoScreenAfter = getInfoScreenAfterQuestion(currentQuestion.code);
+                      if (infoScreenAfter) {
+                        setTimeout(() => handleNext(), 300);
                       }
+                    } else {
+                      // Переходим к следующему вопросу
+                      setTimeout(() => handleNext(), 300);
                     }
                   }}
                   style={{
