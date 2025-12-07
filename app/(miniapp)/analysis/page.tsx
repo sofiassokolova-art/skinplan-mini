@@ -67,6 +67,13 @@ export default function AnalysisPage() {
     loadAnalysisData();
   }, []);
 
+  // Останавливаем анимацию загрузки, если произошла ошибка
+  useEffect(() => {
+    if (error && showLoading) {
+      setShowLoading(false);
+    }
+  }, [error, showLoading]);
+
   const loadAnalysisData = async () => {
     try {
       setLoading(true);
@@ -178,50 +185,6 @@ export default function AnalysisPage() {
   };
 
 
-  // ВАЖНО: Проверяем ошибку ПЕРЕД показом анимации загрузки
-  // Это гарантирует, что ошибки видны сразу, даже если анимация активна
-  if (error) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        padding: '20px',
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '24px',
-          padding: '32px',
-          textAlign: 'center',
-          maxWidth: '400px',
-        }}>
-          <h2 style={{ color: '#0A5F59', marginBottom: '12px' }}>Ошибка</h2>
-          <p style={{ color: '#475467', marginBottom: '24px' }}>
-            {error}
-          </p>
-          <button
-            onClick={() => router.push('/plan')}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '600',
-            }}
-          >
-            Перейти к плану
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Показываем анимацию загрузки только если нет ошибки
   if (showLoading) {
     return (
       <AnalysisLoading
@@ -245,7 +208,7 @@ export default function AnalysisPage() {
     );
   }
 
-  if (!analysisData) {
+  if (error || !analysisData) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -393,4 +356,3 @@ export default function AnalysisPage() {
     </div>
   );
 }
-
