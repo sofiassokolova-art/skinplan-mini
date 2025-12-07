@@ -380,7 +380,9 @@ export default function QuizPage() {
         // ВАЖНО: Гарантируем, что loading всегда устанавливается в false в finally
         // Это предотвращает бесконечный лоадер, даже если произошла ошибка
         try {
+          console.log('🔧 finally блок: устанавливаем loading = false');
           setLoading(false);
+          console.log('✅ finally блок: loading установлен в false');
         } catch (stateError) {
           console.error('❌ Ошибка при установке loading = false в finally:', stateError);
         }
