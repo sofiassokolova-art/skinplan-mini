@@ -377,6 +377,13 @@ export default function QuizPage() {
       .finally(() => {
         // Очищаем таймаут, если init завершился успешно
         clearTimeout(initTimeout);
+        // ВАЖНО: Гарантируем, что loading всегда устанавливается в false в finally
+        // Это предотвращает бесконечный лоадер, даже если произошла ошибка
+        try {
+          setLoading(false);
+        } catch (stateError) {
+          console.error('❌ Ошибка при установке loading = false в finally:', stateError);
+        }
       });
     
     // Очищаем таймаут при размонтировании
