@@ -107,7 +107,20 @@ export function PlanPageClientNew({
   const [completedMorning, setCompletedMorning] = useState(false);
   const [completedEvening, setCompletedEvening] = useState(false);
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
-  const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
+  // ВАЖНО: Устанавливаем начальное значение needsFirstPayment сразу при инициализации
+  // Это гарантирует, что проверка происходит до первого рендера
+  const [needsFirstPayment, setNeedsFirstPayment] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
+      console.log('💳 Payment status check (initial):', {
+        hasFirstPayment,
+        needsFirstPayment: !hasFirstPayment,
+        paymentKey: 'payment_first_completed',
+      });
+      return !hasFirstPayment;
+    }
+    return false;
+  });
 
   const currentDayPlan = useMemo(() => {
     return plan28.days.find(d => d.dayIndex === selectedDay);
@@ -131,12 +144,12 @@ export function PlanPageClientNew({
   // Загружаем данные корзине при монтировании
   useEffect(() => {
     loadCart();
-    // Проверяем статус первой оплаты
+    // Проверяем статус первой оплаты (обновляем при изменении plan28)
     // ВАЖНО: НЕ устанавливаем автоматически payment_first_completed при наличии плана
     // Платеж должен быть показан при первом прохождении анкеты, даже если план уже сгенерирован
     if (typeof window !== 'undefined') {
       const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
-      console.log('💳 Payment status check:', {
+      console.log('💳 Payment status check (update):', {
         hasFirstPayment,
         needsFirstPayment: !hasFirstPayment,
         paymentKey: 'payment_first_completed',
