@@ -1320,6 +1320,30 @@ export default function QuizPage() {
         resultKeys: result ? Object.keys(result) : [],
       });
       
+      // ВАЖНО: Логируем проверку result на сервер
+      try {
+        await fetch('/api/logs', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData || '',
+          },
+          body: JSON.stringify({
+            level: 'info',
+            message: 'Checking result before plan generation',
+            context: {
+              result,
+              success: result?.success,
+              hasResult: !!result,
+              resultKeys: result ? Object.keys(result) : [],
+              resultType: typeof result,
+            },
+          }),
+        }).catch(() => {});
+      } catch (logError) {
+        // Игнорируем ошибки логирования
+      }
+      
       if (result?.success !== false) {
         console.log('🚀 Запуск генерации плана...');
         
@@ -1358,13 +1382,16 @@ export default function QuizPage() {
           
           // Логируем успешную генерацию на сервер
           try {
-            await fetch('/api/log', {
+            await fetch('/api/logs', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData || '',
+              },
               body: JSON.stringify({
                 level: 'info',
                 message: 'Plan generated successfully',
-                data: { 
+                context: { 
                   hasPlan28: !!generatedPlan?.plan28,
                   hasWeeks: !!generatedPlan?.weeks,
                   plan28Days: generatedPlan?.plan28?.days?.length || 0,
@@ -1381,13 +1408,16 @@ export default function QuizPage() {
             console.error('❌ План сгенерирован, но пустой:', generatedPlan);
             // Отправляем лог на сервер
             try {
-              await fetch('/api/log', {
+              await fetch('/api/logs', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData || '',
+                },
                 body: JSON.stringify({
                   level: 'error',
                   message: 'Plan generated but empty',
-                  data: { generatedPlan },
+                  context: { generatedPlan },
                 }),
               }).catch(() => {}); // Игнорируем ошибки логирования
             } catch (logError) {
@@ -1409,15 +1439,19 @@ export default function QuizPage() {
           
           // Отправляем лог на сервер для диагностики
           try {
-            await fetch('/api/log', {
+            await fetch('/api/logs', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData || '',
+              },
               body: JSON.stringify({
                 level: 'error',
                 message: 'Failed to generate plan after submitting answers',
-                data: {
+                context: {
                   error: genError?.message,
                   status: genError?.status,
+                  statusText: genError?.statusText,
                   stack: genError?.stack?.substring(0, 500), // Ограничиваем размер
                 },
               }),
