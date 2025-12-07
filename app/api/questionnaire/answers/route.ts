@@ -852,25 +852,58 @@ export async function POST(request: NextRequest) {
         
         // ГАРАНТИРУЕМ наличие обязательных шагов: cleanser, toner, moisturizer, spf
         // Остальное (serum, treatment и т.д.) только по потребностям (правилам)
+        // ВАЖНО: Используем расширенные названия шагов (cleanser_gentle, toner_hydrating и т.д.)
+        const stepPatterns: Record<string, string[]> = {
+          'cleanser': ['cleanser_gentle', 'cleanser_balancing', 'cleanser_deep'],
+          'toner': ['toner_hydrating', 'toner_soothing'],
+          'moisturizer': ['moisturizer_light', 'moisturizer_balancing', 'moisturizer_barrier', 'moisturizer_soothing'],
+          'spf': ['spf_50_face', 'spf_50_oily', 'spf_50_sensitive'],
+        };
+        
         const requiredSteps = ['cleanser', 'toner', 'moisturizer', 'spf'];
         
         for (const step of requiredSteps) {
-          const products = await prisma.product.findMany({
-            where: {
-              published: true,
-              step: step,
-              // SPF универсален, для остальных учитываем тип кожи
-              ...(step !== 'spf' && profile.skinType ? {
-                skinTypes: { has: profile.skinType },
-              } : {}),
-            },
-            take: 1,
-            orderBy: { createdAt: 'desc' },
-          });
+          const stepVariants = stepPatterns[step] || [step];
+          let foundProduct = false;
           
-          if (products.length > 0) {
-            fallbackProductIds.push(products[0].id);
-            logger.debug('Added fallback product', { userId, step, productName: products[0].name });
+          // Пробуем найти продукты по вариантам шага
+          for (const stepVariant of stepVariants) {
+            const products = await prisma.product.findMany({
+              where: {
+                published: true,
+                step: stepVariant,
+                brand: {
+                  isActive: true,
+                },
+                // SPF универсален, для остальных учитываем тип кожи
+                ...(step !== 'spf' && profile.skinType ? {
+                  skinTypes: { has: profile.skinType },
+                } : {}),
+              } as any,
+              take: 1,
+              orderBy: [
+                { isHero: 'desc' },
+                { priority: 'desc' },
+                { createdAt: 'desc' },
+              ],
+            });
+            
+            if (products.length > 0) {
+              fallbackProductIds.push(products[0].id);
+              logger.debug('Added fallback product', { 
+                userId, 
+                step, 
+                stepVariant,
+                productName: products[0].name,
+                productId: products[0].id,
+              });
+              foundProduct = true;
+              break; // Нашли продукт, переходим к следующему шагу
+            }
+          }
+          
+          if (!foundProduct) {
+            logger.warn('No fallback product found for required step', { userId, step, stepVariants });
           }
         }
         
