@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
                      request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
+      console.error('❌ /api/logs: Missing Telegram initData');
       return NextResponse.json(
         { error: 'Missing Telegram initData' },
         { status: 401 }
@@ -20,9 +21,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Получаем userId из initData
-    const userId = await getUserIdFromInitData(initData);
+    let userId: string | null = null;
+    try {
+      userId = await getUserIdFromInitData(initData);
+    } catch (userIdError: any) {
+      console.error('❌ /api/logs: Error getting userId from initData:', {
+        error: userIdError?.message,
+        stack: userIdError?.stack,
+      });
+      return NextResponse.json(
+        { error: 'Invalid or expired initData' },
+        { status: 401 }
+      );
+    }
     
     if (!userId) {
+      console.error('❌ /api/logs: userId is null after getUserIdFromInitData');
       return NextResponse.json(
         { error: 'Invalid or expired initData' },
         { status: 401 }
@@ -30,11 +44,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Парсим тело запроса
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (parseError: any) {
+      console.error('❌ /api/logs: Error parsing request body:', {
+        error: parseError?.message,
+        stack: parseError?.stack,
+      });
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+    
     const { level, message, context, userAgent, url } = body;
 
     // Валидация
     if (!level || !message) {
+      console.error('❌ /api/logs: Missing required fields', {
+        hasLevel: !!level,
+        hasMessage: !!message,
+        bodyKeys: Object.keys(body || {}),
+      });
       return NextResponse.json(
         { error: 'Missing required fields: level, message' },
         { status: 400 }
@@ -42,6 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!['debug', 'info', 'warn', 'error'].includes(level)) {
+      console.error('❌ /api/logs: Invalid level', { level });
       return NextResponse.json(
         { error: 'Invalid level. Must be one of: debug, info, warn, error' },
         { status: 400 }
@@ -49,16 +82,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Сохраняем лог в БД
-    await prisma.clientLog.create({
-      data: {
+    try {
+      await prisma.clientLog.create({
+        data: {
+          userId,
+          level,
+          message,
+          context: context || null,
+          userAgent: userAgent || null,
+          url: url || null,
+        },
+      });
+      console.log('✅ /api/logs: Log saved successfully', {
         userId,
         level,
-        message,
-        context: context || null,
-        userAgent: userAgent || null,
-        url: url || null,
-      },
-    });
+        message: message.substring(0, 50), // Первые 50 символов сообщения
+      });
+    } catch (dbError: any) {
+      console.error('❌ /api/logs: Database error saving log:', {
+        error: dbError?.message,
+        code: dbError?.code,
+        meta: dbError?.meta,
+        stack: dbError?.stack,
+        userId,
+        level,
+        message: message?.substring(0, 50),
+      });
+      throw dbError; // Пробрасываем ошибку дальше, чтобы она попала в catch блок
+    }
 
     // Автоматически удаляем логи старше 7 дней (в фоне, не блокируем ответ)
     // Используем setTimeout чтобы не блокировать ответ
@@ -91,10 +142,20 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ /api/logs: Unhandled error:', {
+      error: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      code: error?.code,
+      meta: error?.meta,
+    });
     logger.error('Error saving client log', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error?.message : undefined,
+      },
       { status: 500 }
     );
   }
