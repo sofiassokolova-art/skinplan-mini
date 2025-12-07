@@ -723,7 +723,13 @@ export default function QuizPage() {
 
   const loadQuestionnaire = async () => {
     try {
-      const data = await api.getActiveQuestionnaire();
+      // ВАЖНО: Добавляем таймаут для загрузки анкеты, чтобы не ждать бесконечно
+      const loadPromise = api.getActiveQuestionnaire();
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Таймаут загрузки анкеты (10 секунд)')), 10000);
+      });
+      
+      const data = await Promise.race([loadPromise, timeoutPromise]);
       const questionnaireData = data as Questionnaire;
       addDebugLog('📥 Questionnaire loaded', {
         questionnaireId: questionnaireData.id,
@@ -747,6 +753,10 @@ export default function QuizPage() {
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
         // Анкета публичная, эта ошибка не должна возникать
         console.warn('Неожиданная ошибка авторизации при загрузке анкеты');
+      }
+      // Если таймаут - это критическая ошибка, но не блокируем загрузку
+      if (err?.message?.includes('Таймаут')) {
+        console.error('❌ Таймаут загрузки анкеты - возможно, проблема с сетью или сервером');
       }
       // Убеждаемся, что error всегда строка
       const errorMessage = String(err?.message || 'Ошибка загрузки анкеты');
