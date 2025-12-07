@@ -25,11 +25,24 @@ async function checkPlanGenerationLogs(telegramId: string) {
 
     console.log(`✅ Пользователь: ${user.firstName} ${user.lastName || ''} (ID: ${user.id})\n`);
 
-    // Проверяем ответы на анкету
+    // Получаем активную анкету
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true, name: true, version: true },
+    });
+
+    if (!activeQuestionnaire) {
+      console.error('❌ Активная анкета не найдена');
+      process.exit(1);
+    }
+
+    console.log(`📋 Активная анкета: ID ${activeQuestionnaire.id}, версия ${activeQuestionnaire.version}, название: ${activeQuestionnaire.name}\n`);
+
+    // Проверяем ответы на анкету (для активной анкеты)
     const answers = await prisma.userAnswer.findMany({
       where: {
         userId: user.id,
-        questionnaireId: 2, // v2 анкета
+        questionnaireId: activeQuestionnaire.id, // Используем активную анкету
       },
       include: {
         question: {

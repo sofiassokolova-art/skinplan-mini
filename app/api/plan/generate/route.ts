@@ -222,11 +222,22 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     userId,
   });
 
-  // Получаем ответы пользователя
+  // Получаем активную анкету для определения questionnaireId
+  const activeQuestionnaire = await prisma.questionnaire.findFirst({
+    where: { isActive: true },
+    select: { id: true },
+  });
+
+  if (!activeQuestionnaire) {
+    logger.error('No active questionnaire found', { userId });
+    throw new Error('No active questionnaire found');
+  }
+
+  // Получаем ответы пользователя для активной анкеты
   const userAnswers = await prisma.userAnswer.findMany({
     where: {
       userId,
-      questionnaireId: 2, // v2 анкета
+      questionnaireId: activeQuestionnaire.id, // Используем активную анкету
     },
     include: {
       question: {

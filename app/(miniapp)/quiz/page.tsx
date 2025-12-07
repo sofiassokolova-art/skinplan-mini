@@ -1095,6 +1095,7 @@ export default function QuizPage() {
     if (isMountedRef.current) {
       setIsSubmitting(true);
       setError(null);
+      setLoading(false); // ВАЖНО: Устанавливаем loading = false, чтобы не показывался лоадер "Загрузка анкеты..."
     }
 
     try {
