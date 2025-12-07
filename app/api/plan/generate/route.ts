@@ -1035,6 +1035,15 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     // Сначала пробуем найти по точному совпадению StepCategory
     const exact = productsByStepMap.get(step);
     if (exact && exact.length > 0) {
+      // Детальное логирование для диагностики (особенно для пользователя 643160759)
+      if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+        logger.debug('Products found for step (exact match)', {
+          step,
+          count: exact.length,
+          productIds: exact.map(p => p.id),
+          userId,
+        });
+      }
       return exact;
     }
     
@@ -1043,6 +1052,16 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     if (baseStep !== step) {
       const base = productsByStepMap.get(baseStep as StepCategory);
       if (base && base.length > 0) {
+        // Детальное логирование для диагностики
+        if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+          logger.debug('Products found for step (base step match)', {
+            step,
+            baseStep,
+            count: base.length,
+            productIds: base.map(p => p.id),
+            userId,
+          });
+        }
         return base;
       }
     }
@@ -1052,6 +1071,16 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     if (fallback && fallback !== step) {
       const fallbackProducts = productsByStepMap.get(fallback);
       if (fallbackProducts && fallbackProducts.length > 0) {
+        // Детальное логирование для диагностики
+        if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+          logger.debug('Products found for step (fallback match)', {
+            step,
+            fallback,
+            count: fallbackProducts.length,
+            productIds: fallbackProducts.map(p => p.id),
+            userId,
+          });
+        }
         return fallbackProducts;
       }
       
@@ -1060,9 +1089,32 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
       if (fallbackBaseStep !== fallback) {
         const fallbackBase = productsByStepMap.get(fallbackBaseStep as StepCategory);
         if (fallbackBase && fallbackBase.length > 0) {
+          // Детальное логирование для диагностики
+          if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+            logger.debug('Products found for step (fallback base step match)', {
+              step,
+              fallback,
+              fallbackBaseStep,
+              count: fallbackBase.length,
+              productIds: fallbackBase.map(p => p.id),
+              userId,
+            });
+          }
           return fallbackBase;
         }
       }
+    }
+    
+    // Детальное логирование, если продукты не найдены
+    if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+      logger.warn('No products found for step in productsByStepMap', {
+        step,
+        baseStep,
+        fallback,
+        productsByStepMapSize: productsByStepMap.size,
+        productsByStepMapKeys: Array.from(productsByStepMap.keys()),
+        userId,
+      });
     }
     
     return [];
