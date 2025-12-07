@@ -80,7 +80,7 @@ export interface GeneratedPlan {
 }
 
 export interface ProfileResponse {
-  id: number | string;
+  id: string; // Всегда строка для совместимости с PlanData
   version: number;
   skinType: string;
   skinTypeRu?: string;

@@ -1122,6 +1122,7 @@ export default function QuizPage() {
         console.error('❌ Telegram WebApp доступен, но initData отсутствует (возможно, preview mode)');
         if (isMountedRef.current) {
           setError('Приложение открыто в режиме предпросмотра. Пожалуйста, откройте его через кнопку бота или используйте ссылку формата: https://t.me/your_bot?startapp=...');
+          isSubmittingRef.current = false;
           setIsSubmitting(false);
         }
         return;
@@ -1131,6 +1132,7 @@ export default function QuizPage() {
         console.error('❌ Telegram WebApp не доступен');
         if (isMountedRef.current) {
           setError('Пожалуйста, откройте приложение через Telegram Mini App (не просто по ссылке, а через кнопку бота).');
+          isSubmittingRef.current = false;
           setIsSubmitting(false);
         }
         return;
@@ -1140,6 +1142,7 @@ export default function QuizPage() {
         console.error('❌ Telegram WebApp initData не доступен');
         if (isMountedRef.current) {
           setError('Не удалось получить данные авторизации. Попробуйте обновить страницу.');
+          isSubmittingRef.current = false;
           setIsSubmitting(false);
         }
         return;
@@ -1172,6 +1175,7 @@ export default function QuizPage() {
         console.error('❌ Нет ответов для отправки');
         if (isMountedRef.current) {
           setError('Нет ответов для отправки. Пожалуйста, пройдите анкету.');
+          isSubmittingRef.current = false;
           setIsSubmitting(false);
         }
         return;
@@ -2209,7 +2213,8 @@ export default function QuizPage() {
             if (isMountedRef.current) {
               autoSubmitTriggeredRef.current = false; // Разрешаем повторную попытку
               setAutoSubmitTriggered(false);
-              setIsSubmitting(false);
+              isSubmittingRef.current = false;
+          setIsSubmitting(false);
               setError(err?.message || 'Ошибка отправки ответов');
             }
           });
@@ -3182,7 +3187,8 @@ export default function QuizPage() {
                       // Убеждаемся, что error всегда строка
                       const errorMessage = String(err?.message || 'Ошибка отправки ответов');
                       setError(errorMessage);
-                      setIsSubmitting(false);
+                      isSubmittingRef.current = false;
+          setIsSubmitting(false);
                     });
                   }}
                   disabled={isSubmitting}
@@ -3269,7 +3275,8 @@ export default function QuizPage() {
                     // Убеждаемся, что errorMessage всегда строка
                     const safeErrorMessage = String(errorMessage || 'Ошибка отправки ответов. Попробуйте еще раз.');
                     setError(safeErrorMessage);
-                    setIsSubmitting(false);
+                    isSubmittingRef.current = false;
+          setIsSubmitting(false);
                   }
                 };
                 
