@@ -2114,7 +2114,7 @@ export async function GET(request: NextRequest) {
       return ApiResponse.unauthorized('Invalid or expired Telegram initData');
     }
 
-    logger.info('User identified from initData', undefined, {
+    logger.info('User identified from initData', {
       userId,
       timestamp: new Date().toISOString(),
     });
@@ -2145,7 +2145,7 @@ export async function GET(request: NextRequest) {
       userId,
     });
 
-    logger.info('Starting plan generation', undefined, {
+    logger.info('Starting plan generation', {
       userId,
       profileVersion: profile.version,
       timestamp: new Date().toISOString(),
