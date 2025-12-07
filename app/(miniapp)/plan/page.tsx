@@ -9,7 +9,8 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PlanPageClientNew } from './plan-client-new';
 import { PlanPageClient } from './plan-client';
-import type { Plan28 } from '@/lib/plan-types';
+import type { Plan28, DayPlan } from '@/lib/plan-types';
+import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 
 interface PlanData {
   // Новый формат (plan28)
@@ -105,8 +106,53 @@ export default function PlanPage() {
     };
   }, []);
 
+  // Функция для генерации плана с проверкой профиля
+  // Унифицированная функция для замены дублирующейся логики
+  const tryGeneratePlan = async (options?: {
+    checkProfile?: boolean; // Проверять ли профиль перед генерацией
+    logPrefix?: string; // Префикс для логов
+  }): Promise<GeneratedPlan | null> => {
+    const { checkProfile = true, logPrefix = '' } = options || {};
+    
+    try {
+      // Опционально проверяем наличие профиля
+      if (checkProfile) {
+        const profile = await api.getCurrentProfile() as ProfileResponse | null;
+        if (!profile) {
+          console.log(`${logPrefix}❌ No profile found, cannot generate plan`);
+          return null;
+        }
+      }
+
+      // Пытаемся сгенерировать план
+      console.log(`${logPrefix}🔄 Attempting to generate plan...`);
+      const generatedPlan = await api.generatePlan() as GeneratedPlan;
+      
+      if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+        console.log(`${logPrefix}✅ Plan generated successfully`);
+        return generatedPlan;
+      }
+      
+      console.warn(`${logPrefix}⚠️ Plan generation returned empty result`);
+      return null;
+    } catch (error: any) {
+      console.error(`${logPrefix}❌ Error generating plan:`, error);
+      
+      // Проверяем, является ли ошибка связанной с отсутствием профиля
+      if (error?.status === 404 || 
+          error?.message?.includes('No skin profile') || 
+          error?.message?.includes('Profile not found')) {
+        console.log(`${logPrefix}❌ No profile found in error response`);
+        return null;
+      }
+      
+      // Другие ошибки - возвращаем null, но не показываем ошибку сразу
+      return null;
+    }
+  };
+
   // Функция для обработки данных плана (вынесена для переиспользования)
-  const processPlanData = async (plan: any) => {
+  const processPlanData = async (plan: GeneratedPlan) => {
     try {
       safeSetLoading(true);
       safeSetError(null);
@@ -124,7 +170,7 @@ export default function PlanPage() {
       // НЕ требуем профиль для показа плана, если план уже есть
       let profile;
       try {
-        profile = await api.getCurrentProfile() as any;
+        profile = await api.getCurrentProfile() as ProfileResponse | null;
       } catch (profileError: any) {
         // Если профиль не найден, но план есть - это нормально, продолжаем с план28
         // Профиль нужен только для старого формата плана
@@ -552,7 +598,7 @@ export default function PlanPage() {
       let plan;
       try {
         console.log('🔄 Attempting to load plan from cache...');
-        plan = await api.getPlan() as any;
+        plan = await api.getPlan() as GeneratedPlan | null;
         console.log('✅ Plan loaded from cache:', {
             hasPlan28: !!plan?.plan28,
             hasWeeks: !!plan?.weeks,
@@ -568,83 +614,30 @@ export default function PlanPage() {
           stack: planError?.stack,
         });
         
-        // Если план не найден (404), проверяем наличие профиля и регенерируем
-        if (planError?.status === 404) {
-          try {
-            const profile = await api.getCurrentProfile() as any;
-            if (profile) {
-              console.log('🔄 Plan not in cache but profile exists - regenerating immediately...');
-              const generatedPlan = await api.generatePlan() as any;
-              if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-                console.log('✅ Plan regenerated successfully, processing...');
-                await processPlanData(generatedPlan);
-                return;
-              }
-            } else {
-              // Профиль не найден - это нормально, если план уже есть в другом формате
-              // Пробуем загрузить план напрямую через generatePlan
-              console.log('🔄 Profile not found, trying to generate plan...');
-              try {
-                const generatedPlan = await api.generatePlan() as any;
-                if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-                  console.log('✅ Plan generated without profile, processing...');
-                  await processPlanData(generatedPlan);
-                  return;
-                }
-              } catch (genError) {
-                console.warn('Could not generate plan without profile:', genError);
-              }
-            }
-          } catch (generateError: any) {
-            console.error('❌ Failed to regenerate plan:', generateError);
-            // Не показываем ошибку сразу - возможно план есть, но профиль недоступен
-          }
-        }
-        
         // Если план не найден (404), пробуем сгенерировать план
         if (planError?.status === 404) {
-          // Проверяем еще раз, может быть план есть, но просто не в кэше
-          try {
-            console.log('🔄 Plan not in cache, trying to generate...');
-            const testPlan = await api.generatePlan() as any;
-            if (testPlan && (testPlan.plan28 || testPlan.weeks)) {
-              console.log('✅ Plan found via generatePlan, processing...');
-              await processPlanData(testPlan);
-              return;
-            } else {
-              // План не сгенерировался - возможно нет профиля
-              console.log('❌ Plan could not be generated, checking profile...');
-              try {
-                const profileCheck = await api.getCurrentProfile() as any;
-                if (!profileCheck) {
-                  // Нет профиля - показываем ошибку
-                  console.log('❌ No profile found, showing error');
-                  safeSetError('no_profile');
-                  safeSetLoading(false);
-                  return;
-                } else {
-                  // Профиль есть, но план не сгенерировался - это странно, пробуем еще раз
-                  console.log('⚠️ Profile exists but plan not generated, retrying...');
-                  // Не показываем ошибку сразу, возможно план генерируется
-                }
-              } catch (profileCheckError) {
-                // Не можем проверить профиль - не показываем ошибку, возможно это временная проблема
-                console.warn('Could not check profile:', profileCheckError);
-              }
-            }
-          } catch (testError: any) {
-            // Если generatePlan выбросил ошибку, проверяем причину
-            console.error('❌ Error generating plan:', testError);
-            if (testError?.status === 404 || testError?.message?.includes('No skin profile') || testError?.message?.includes('Profile not found')) {
-              // Нет профиля - показываем ошибку
-              console.log('❌ No profile found, showing error');
-              safeSetError('no_profile');
-              safeSetLoading(false);
-              return;
-            }
-            // Другие ошибки - не показываем ошибку, возможно это временная проблема
-            console.warn('Plan generation failed with non-404 error, not showing error screen');
+          const generatedPlan = await tryGeneratePlan({ 
+            checkProfile: true,
+            logPrefix: '🔄 Plan not in cache, '
+          });
+          
+          if (generatedPlan) {
+            await processPlanData(generatedPlan);
+            return;
           }
+          
+          // План не сгенерировался - проверяем, есть ли профиль
+          const profileCheck = await api.getCurrentProfile() as ProfileResponse | null;
+          if (!profileCheck) {
+            // Нет профиля - показываем ошибку
+            console.log('❌ No profile found, showing error');
+            safeSetError('no_profile');
+            safeSetLoading(false);
+            return;
+          }
+          
+          // Профиль есть, но план не сгенерировался - возможно еще обрабатывается
+          console.log('⚠️ Profile exists but plan not generated, will retry...');
         }
         
         // Если это не 404 или регенерация не удалась - пробуем еще раз или показываем лоадер
@@ -697,7 +690,7 @@ export default function PlanPage() {
             // Профиль есть - пробуем регенерировать план
             console.log('🔄 Plan not in cache but profile exists - regenerating immediately...');
             try {
-              const generatedPlan = await api.generatePlan() as any;
+              const generatedPlan = await api.generatePlan() as GeneratedPlan;
               if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
                 console.log('✅ Plan regenerated successfully, processing...');
                 await processPlanData(generatedPlan);
@@ -770,7 +763,7 @@ export default function PlanPage() {
       // НЕ требуем профиль для показа плана, если план уже есть
       let profile;
       try {
-        profile = await api.getCurrentProfile() as any;
+        profile = await api.getCurrentProfile() as ProfileResponse | null;
       } catch (profileError: any) {
         // Если профиль не найден, но план есть - это нормально, продолжаем с план28
         // Профиль нужен только для старого формата плана
@@ -1029,7 +1022,7 @@ export default function PlanPage() {
                 if (process.env.NODE_ENV === 'development') {
                   console.log('🔄 User requested plan generation...');
                 }
-                const generatedPlan = await api.generatePlan() as any;
+                const generatedPlan = await api.generatePlan() as GeneratedPlan;
                 if (process.env.NODE_ENV === 'development') {
                   console.log('✅ Plan generated successfully', {
                     hasPlan28: !!generatedPlan?.plan28,
