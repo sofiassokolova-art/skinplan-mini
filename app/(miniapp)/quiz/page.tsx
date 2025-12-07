@@ -1173,7 +1173,7 @@ export default function QuizPage() {
       const currentInitData = await getInitData();
       
       if (currentInitData) {
-        await fetch('/api/logs', {
+        const logResponse = await fetch('/api/logs', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -1188,9 +1188,18 @@ export default function QuizPage() {
               answersCount: Object.keys(answers).length,
             },
           }),
-        }).catch((err) => {
-          console.warn('⚠️ Не удалось сохранить лог на сервер:', err);
         });
+        
+        if (!logResponse.ok) {
+          const errorText = await logResponse.text().catch(() => 'Unknown error');
+          console.error('❌ Ошибка сохранения лога:', {
+            status: logResponse.status,
+            statusText: logResponse.statusText,
+            error: errorText,
+          });
+        } else {
+          console.log('✅ Лог успешно сохранен');
+        }
       } else {
         console.warn('⚠️ initData не доступен для логирования');
       }
@@ -1384,24 +1393,37 @@ export default function QuizPage() {
         const currentInitData = await getInitData();
         
         if (currentInitData) {
-          await fetch('/api/logs', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': currentInitData,
-            },
-            body: JSON.stringify({
-              level: 'info',
-              message: 'Checking result before plan generation',
-              context: {
-                result,
-                success: result?.success,
-                hasResult: !!result,
-                resultKeys: result ? Object.keys(result) : [],
-                resultType: typeof result,
+          try {
+            const logResponse = await fetch('/api/logs', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': currentInitData,
               },
-            }),
-          }).catch((err) => console.warn('⚠️ Не удалось сохранить лог:', err));
+              body: JSON.stringify({
+                level: 'info',
+                message: 'Checking result before plan generation',
+                context: {
+                  result,
+                  success: result?.success,
+                  hasResult: !!result,
+                  resultKeys: result ? Object.keys(result) : [],
+                  resultType: typeof result,
+                },
+              }),
+            });
+            
+            if (!logResponse.ok) {
+              const errorText = await logResponse.text().catch(() => 'Unknown error');
+              console.error('❌ Ошибка сохранения лога (checking result):', {
+                status: logResponse.status,
+                statusText: logResponse.statusText,
+                error: errorText,
+              });
+            }
+          } catch (fetchError) {
+            console.error('❌ Ошибка при вызове /api/logs (checking result):', fetchError);
+          }
         }
       } catch (logError) {
         // Игнорируем ошибки логирования
@@ -1448,23 +1470,36 @@ export default function QuizPage() {
           try {
             const currentInitData = await getInitData();
             if (currentInitData) {
-              await fetch('/api/logs', {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'X-Telegram-Init-Data': currentInitData,
-                },
-                body: JSON.stringify({
-                  level: 'info',
-                  message: 'Plan generated successfully',
-                  context: { 
-                    hasPlan28: !!generatedPlan?.plan28,
-                    hasWeeks: !!generatedPlan?.weeks,
-                    plan28Days: generatedPlan?.plan28?.days?.length || 0,
-                    weeksCount: generatedPlan?.weeks?.length || 0,
+              try {
+                const logResponse = await fetch('/api/logs', {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Telegram-Init-Data': currentInitData,
                   },
-                }),
-              }).catch((err) => console.warn('⚠️ Не удалось сохранить лог:', err));
+                  body: JSON.stringify({
+                    level: 'info',
+                    message: 'Plan generated successfully',
+                    context: { 
+                      hasPlan28: !!generatedPlan?.plan28,
+                      hasWeeks: !!generatedPlan?.weeks,
+                      plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                      weeksCount: generatedPlan?.weeks?.length || 0,
+                    },
+                  }),
+                });
+                
+                if (!logResponse.ok) {
+                  const errorText = await logResponse.text().catch(() => 'Unknown error');
+                  console.error('❌ Ошибка сохранения лога (plan generated):', {
+                    status: logResponse.status,
+                    statusText: logResponse.statusText,
+                    error: errorText,
+                  });
+                }
+              } catch (fetchError) {
+                console.error('❌ Ошибка при вызове /api/logs (plan generated):', fetchError);
+              }
             }
           } catch (logError) {
             // Игнорируем ошибки логирования
