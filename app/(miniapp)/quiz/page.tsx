@@ -1829,24 +1829,51 @@ export default function QuizPage() {
     }
     
     // Если пол "мужчина" или "male", не показываем вопрос про беременность
-    const isMale = genderValue?.toLowerCase().includes('мужчин') || 
-                   genderValue?.toLowerCase().includes('male') ||
-                   genderValue === 'male' ||
-                   genderValue === 'мужской' ||
-                   genderValue?.toLowerCase() === 'мужской' ||
-                   (genderQuestion?.options?.some(opt => 
-                     (opt.value?.toLowerCase().includes('мужчин') || 
-                      opt.label?.toLowerCase().includes('мужчин') ||
-                      opt.value?.toLowerCase().includes('male')) &&
-                     (answers[genderQuestion.id] === opt.value || 
-                      answers[genderQuestion.id] === opt.id.toString())
-                   ));
+    // Проверяем все возможные варианты ответа
+    const normalizedGenderValue = genderValue?.toLowerCase().trim() || '';
+    const isMale = 
+      // Проверка по значению ответа
+      normalizedGenderValue.includes('мужск') || 
+      normalizedGenderValue.includes('male') ||
+      normalizedGenderValue === 'male' ||
+      normalizedGenderValue === 'мужской' ||
+      // Проверка по опциям вопроса (если ответ хранится как ID или value опции)
+      (genderQuestion?.options?.some(opt => {
+        const optValue = (opt.value || '').toLowerCase().trim();
+        const optLabel = (opt.label || '').toLowerCase().trim();
+        const isMaleOption = optValue.includes('мужск') || 
+                            optValue.includes('male') ||
+                            optLabel.includes('мужск') ||
+                            optLabel.includes('male');
+        
+        if (!isMaleOption) return false;
+        
+        // Проверяем, совпадает ли ответ с этой опцией
+        const answerValue = answers[genderQuestion.id];
+        if (!answerValue) return false;
+        
+        const normalizedAnswer = Array.isArray(answerValue) 
+          ? answerValue[0]?.toLowerCase().trim() 
+          : String(answerValue).toLowerCase().trim();
+        
+        return normalizedAnswer === optValue ||
+               normalizedAnswer === optLabel ||
+               normalizedAnswer === String(opt.id) ||
+               String(answerValue) === String(opt.id) ||
+               String(answerValue) === opt.value ||
+               String(answerValue) === opt.label;
+      }));
     
-      const shouldShow = !isMale; // Показываем только если не мужчина
-      if (!shouldShow) {
-        console.log('🚫 Question filtered out (pregnancy question for male):', question.code);
-      }
-      return shouldShow;
+    const shouldShow = !isMale; // Показываем только если не мужчина
+    if (!shouldShow) {
+      console.log('🚫 Question filtered out (pregnancy question for male):', question.code, {
+        genderValue,
+        normalizedGenderValue,
+        genderQuestionId: genderQuestion?.id,
+        answerValue: genderQuestion ? answers[genderQuestion.id] : undefined,
+      });
+    }
+    return shouldShow;
         } catch (filterErr) {
           console.error('❌ Error filtering question:', filterErr, question);
           // В случае ошибки показываем вопрос (безопасный вариант)
