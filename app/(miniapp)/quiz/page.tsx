@@ -1394,9 +1394,10 @@ export default function QuizPage() {
       
       // ВАЖНО: При перепрохождении анкеты НЕ устанавливаем флаг is_retaking_quiz в localStorage
       // Флаг должен быть очищен после успешной отправки, чтобы при следующем заходе показывалась обычная анкета
-      // Если это перепрохождение анкеты, очищаем флаг после успешной отправки
+      // ВАЖНО: Очищаем флаг ПЕРЕД редиректом, чтобы при возврате на /quiz не показывался экран "что хотите изменить?"
       try {
-        if (isRetakingQuiz && typeof window !== 'undefined') {
+        if (typeof window !== 'undefined') {
+          // Очищаем флаги перепрохождения независимо от isRetakingQuiz, чтобы избежать показа экрана "что хотите изменить?" после редиректа
           localStorage.removeItem('is_retaking_quiz');
           localStorage.removeItem('full_retake_from_home');
           console.log('✅ Флаги перепрохождения очищены после успешной отправки ответов');
@@ -1673,6 +1674,17 @@ export default function QuizPage() {
         } else {
           console.log('⚠️ План не готов после ожидания, ответы сохранены для генерации на странице /plan');
         }
+      }
+      
+      // ВАЖНО: Очищаем флаги перепрохождения ПЕРЕД редиректом, чтобы при возврате на /quiz не показывался экран "что хотите изменить?"
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('is_retaking_quiz');
+          localStorage.removeItem('full_retake_from_home');
+          console.log('✅ Флаги перепрохождения очищены перед редиректом на /plan');
+        }
+      } catch (storageError) {
+        console.warn('⚠️ Ошибка при очистке localStorage перед редиректом (некритично):', storageError);
       }
       
       // ВАЖНО: Не обновляем состояние после редиректа, чтобы избежать React Error #300
