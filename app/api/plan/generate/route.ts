@@ -254,11 +254,23 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         },
       },
     },
-  });
+    });
 
-  // Парсим ответы в удобный формат
-  const answers: Record<string, any> = {};
-  userAnswers.forEach((answer) => {
+    logger.info('✅ User answers fetched', {
+      userId,
+      answersCount: userAnswers.length,
+      questionnaireId: activeQuestionnaire.id,
+    });
+
+    if (userAnswers.length === 0) {
+      logger.error('❌ No user answers found', { userId, questionnaireId: activeQuestionnaire.id });
+      throw new Error(`No user answers found for questionnaire ${activeQuestionnaire.id}`);
+    }
+
+    // Парсим ответы в удобный формат
+    logger.debug('📝 Parsing user answers', { userId, answersCount: userAnswers.length });
+    const answers: Record<string, any> = {};
+    userAnswers.forEach((answer) => {
     const code = answer.question.code;
     if (answer.answerValue) {
       answers[code] = answer.answerValue;
