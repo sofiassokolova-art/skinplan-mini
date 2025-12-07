@@ -1828,7 +1828,13 @@ export default function QuizPage() {
       }
     }
     
+    // Если пол не выбран, показываем вопрос (на всякий случай)
     // Если пол "мужчина" или "male", не показываем вопрос про беременность
+    if (!genderValue && !genderQuestion) {
+      // Пол еще не выбран - показываем вопрос (он будет скрыт позже, когда пол будет выбран)
+      return true;
+    }
+    
     // Проверяем все возможные варианты ответа
     const normalizedGenderValue = genderValue?.toLowerCase().trim() || '';
     const isMale = 
