@@ -72,6 +72,7 @@ export default function QuizPage() {
   const autoSubmitTriggeredRef = useRef(false);
   const isMountedRef = useRef(true);
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const submitAnswersRef = useRef<(() => Promise<void>) | null>(null);
   
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
   // Проверяем флаг из localStorage при монтировании
@@ -1308,6 +1309,25 @@ export default function QuizPage() {
         // Запускаем генерацию плана и ждем её завершения
         try {
           console.log('🚀 Начинаем генерацию плана...');
+          
+          // ВАЖНО: Логируем начало генерации на сервер для диагностики
+          try {
+            await fetch('/api/log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                level: 'info',
+                message: 'Starting plan generation after submitting answers',
+                data: { 
+                  timestamp: new Date().toISOString(),
+                  answersCount: Object.keys(answersToSubmit).length,
+                },
+              }),
+            }).catch(() => {}); // Игнорируем ошибки логирования
+          } catch (logError) {
+            // Игнорируем ошибки логирования
+          }
+          
           const generatedPlan = await api.generatePlan() as any;
           console.log('✅ План сгенерирован успешно:', {
             hasPlan28: !!generatedPlan?.plan28,
@@ -1315,6 +1335,26 @@ export default function QuizPage() {
             plan28Days: generatedPlan?.plan28?.days?.length || 0,
             weeksCount: generatedPlan?.weeks?.length || 0,
           });
+          
+          // Логируем успешную генерацию на сервер
+          try {
+            await fetch('/api/log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                level: 'info',
+                message: 'Plan generated successfully',
+                data: { 
+                  hasPlan28: !!generatedPlan?.plan28,
+                  hasWeeks: !!generatedPlan?.weeks,
+                  plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                  weeksCount: generatedPlan?.weeks?.length || 0,
+                },
+              }),
+            }).catch(() => {}); // Игнорируем ошибки логирования
+          } catch (logError) {
+            // Игнорируем ошибки логирования
+          }
           
           // Логируем ошибку на сервер для диагностики
           if (!generatedPlan || (!generatedPlan.plan28 && !generatedPlan.weeks)) {
@@ -2291,9 +2331,14 @@ export default function QuizPage() {
     return null;
   }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions]);
 
+  // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
+  useEffect(() => {
+    submitAnswersRef.current = submitAnswers;
+  }, [submitAnswers]);
+  
   // ВАЖНО: Автоматически отправляем ответы когда все вопросы отвечены
   // Этот useEffect должен быть ВСЕГДА вызван, даже если есть ранние return'ы, чтобы соблюдать порядок хуков
-  // ВАЖНО: submitAnswers объявлена позже, но это не проблема, так как useEffect выполняется после рендера
+  // ВАЖНО: Используем submitAnswersRef вместо submitAnswers в зависимостях, чтобы избежать проблем с порядком хуков
   useEffect(() => {
     // Автоматически отправляем ответы, если все вопросы отвечены и ответы есть
     if (!autoSubmitTriggeredRef.current && 
@@ -2315,9 +2360,10 @@ export default function QuizPage() {
       
       // Используем setTimeout, чтобы submitAnswers была доступна к моменту выполнения
       // ВАЖНО: Сохраняем ID таймера для очистки при размонтировании
+      // ВАЖНО: Используем ref для submitAnswers, чтобы избежать проблем с зависимостями useEffect
       const timeoutId = setTimeout(() => {
-        if (isMountedRef.current && typeof submitAnswers === 'function') {
-          submitAnswers().catch((err) => {
+        if (isMountedRef.current && submitAnswersRef.current) {
+          submitAnswersRef.current().catch((err) => {
             console.error('❌ Ошибка при автоматической отправке ответов:', err);
             if (isMountedRef.current) {
               autoSubmitTriggeredRef.current = false; // Разрешаем повторную попытку
@@ -2335,7 +2381,7 @@ export default function QuizPage() {
         clearTimeout(timeoutId);
       };
     }
-  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error, submitAnswers]);
+  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
