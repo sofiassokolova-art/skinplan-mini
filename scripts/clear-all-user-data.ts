@@ -1,6 +1,25 @@
 // scripts/clear-all-user-data.ts
 // Скрипт для полной очистки всех данных пользователя (как новый пользователь)
 
+// ВАЖНО: Загружаем переменные окружения ДО всех импортов
+// Это нужно для доступа к Redis/KV переменным, которые есть в Vercel
+import { createRequire } from 'module';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
+
+// Загружаем dotenv синхронно
+const dotenv = require('dotenv');
+
+// Загружаем .env.local (приоритет) или .env
+dotenv.config({ path: resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: resolve(process.cwd(), '.env') });
+
+// Теперь импортируем модули после загрузки переменных
 import { PrismaClient } from '@prisma/client';
 import { invalidateCache, invalidateAllUserCache } from '../lib/cache';
 

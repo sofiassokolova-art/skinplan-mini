@@ -6,30 +6,49 @@ import { getRedis } from './redis';
 let kv: any = null;
 let kvAvailable = false;
 let isUpstashRedis = false;
+let cacheInitialized = false; // Флаг инициализации
 
-// Пытаемся инициализировать кэш: сначала Upstash Redis, потом Vercel KV
-try {
-  // Приоритет 1: Upstash Redis (если настроен)
-  const upstashRedis = getRedis();
-  if (upstashRedis) {
-    kv = upstashRedis;
-    kvAvailable = true;
-    isUpstashRedis = true;
-    console.log('✅ Using Upstash Redis for cache');
-  } 
-  // Приоритет 2: Vercel KV (если Upstash не настроен, но есть Vercel KV)
-  else if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-    const kvModule = require('@vercel/kv');
-    kv = kvModule.kv;
-    kvAvailable = true;
-    isUpstashRedis = false;
-    console.log('✅ Using Vercel KV for cache');
-  } else {
-    console.warn('⚠️ Cache not available: missing environment variables (UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN)');
+/**
+ * Ленивая инициализация кэша
+ * Вызывается при первом использовании, а не при импорте модуля
+ * Это позволяет загрузить переменные окружения через dotenv до инициализации
+ */
+function initializeCache(): void {
+  // Если уже инициализирован, не делаем ничего
+  if (cacheInitialized) {
+    return;
   }
-} catch (error) {
-  console.warn('⚠️ Cache not available:', error);
-  kvAvailable = false;
+
+  cacheInitialized = true;
+
+  // Пытаемся инициализировать кэш: сначала Upstash Redis, потом Vercel KV
+  try {
+    // Приоритет 1: Upstash Redis (если настроен)
+    const upstashRedis = getRedis();
+    if (upstashRedis) {
+      kv = upstashRedis;
+      kvAvailable = true;
+      isUpstashRedis = true;
+      console.log('✅ Using Upstash Redis for cache');
+      return;
+    } 
+    
+    // Приоритет 2: Vercel KV (если Upstash не настроен, но есть Vercel KV)
+    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      const kvModule = require('@vercel/kv');
+      kv = kvModule.kv;
+      kvAvailable = true;
+      isUpstashRedis = false;
+      console.log('✅ Using Vercel KV for cache');
+      return;
+    }
+    
+    // Если ни один вариант не доступен
+    console.warn('⚠️ Cache not available: missing environment variables (UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN)');
+  } catch (error) {
+    console.warn('⚠️ Cache not available:', error);
+    kvAvailable = false;
+  }
 }
 
 const CACHE_TTL = {
@@ -58,6 +77,9 @@ export async function getCachedPlan(
   userId: string,
   profileVersion: number
 ): Promise<any | null> {
+  // Ленивая инициализация при первом использовании
+  initializeCache();
+  
   if (!kvAvailable || !kv) {
     return null; // Кеш недоступен, возвращаем null
   }
@@ -122,6 +144,9 @@ export async function setCachedPlan(
   profileVersion: number,
   plan: any
 ): Promise<void> {
+  // Ленивая инициализация при первом использовании
+  initializeCache();
+  
   if (!kvAvailable || !kv) {
     return; // Кеш недоступен, просто выходим
   }
@@ -145,6 +170,9 @@ export async function getCachedRecommendations(
   userId: string,
   profileVersion: number
 ): Promise<any | null> {
+  // Ленивая инициализация при первом использовании
+  initializeCache();
+  
   if (!kvAvailable || !kv) {
     return null; // Кеш недоступен, возвращаем null
   }
@@ -209,6 +237,9 @@ export async function setCachedRecommendations(
   profileVersion: number,
   recommendations: any
 ): Promise<void> {
+  // Ленивая инициализация при первом использовании
+  initializeCache();
+  
   if (!kvAvailable || !kv) {
     return; // Кеш недоступен, просто выходим
   }
@@ -229,6 +260,9 @@ export async function setCachedRecommendations(
  * Инвалидировать кэш (при обновлении профиля)
  */
 export async function invalidateCache(userId: string, profileVersion: number): Promise<void> {
+  // Ленивая инициализация при первом использовании
+  initializeCache();
+  
   if (!kvAvailable || !kv) {
     return; // Кеш недоступен, просто выходим
   }
@@ -253,6 +287,9 @@ export async function invalidateCache(userId: string, profileVersion: number): P
  * Используется при полной очистке данных пользователя
  */
 export async function invalidateAllUserCache(userId: string): Promise<void> {
+  // Ленивая инициализация при первом использовании
+  initializeCache();
+  
   if (!kvAvailable || !kv) {
     return; // Кеш недоступен, просто выходим
   }
