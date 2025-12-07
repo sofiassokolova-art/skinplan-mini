@@ -2158,13 +2158,13 @@ export async function GET(request: NextRequest) {
       // Возвращаем детальную ошибку клиенту
       return ApiResponse.error(
         `Failed to generate plan: ${error?.message || 'Unknown error'}`,
+        500,
         {
           userId,
           profileVersion: profile.version,
           error: error?.message,
           timestamp: new Date().toISOString(),
-        },
-        500
+        }
       );
     }
     
@@ -2180,12 +2180,12 @@ export async function GET(request: NextRequest) {
       
       return ApiResponse.error(
         'Plan generation returned empty result',
+        500,
         {
           userId,
           profileVersion: profile.version,
           timestamp: new Date().toISOString(),
-        },
-        500
+        }
       );
     }
     
