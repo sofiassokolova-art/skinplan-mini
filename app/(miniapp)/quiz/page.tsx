@@ -1399,8 +1399,12 @@ export default function QuizPage() {
           console.error('❌ Ошибка при генерации плана:', {
             message: genError?.message,
             status: genError?.status,
+            statusText: genError?.statusText,
             stack: genError?.stack,
             error: genError,
+            errorType: typeof genError,
+            errorString: String(genError),
+            errorKeys: genError ? Object.keys(genError) : [],
           });
           
           // Отправляем лог на сервер для диагностики
