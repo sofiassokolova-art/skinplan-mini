@@ -1345,12 +1345,15 @@ export default function QuizPage() {
             // Игнорируем ошибки логирования
           }
           
+          console.log('🔄 Вызываем api.generatePlan()...');
           const generatedPlan = await api.generatePlan() as any;
           console.log('✅ План сгенерирован успешно:', {
             hasPlan28: !!generatedPlan?.plan28,
             hasWeeks: !!generatedPlan?.weeks,
             plan28Days: generatedPlan?.plan28?.days?.length || 0,
             weeksCount: generatedPlan?.weeks?.length || 0,
+            generatedPlanKeys: generatedPlan ? Object.keys(generatedPlan) : [],
+            generatedPlanString: JSON.stringify(generatedPlan).substring(0, 500),
           });
           
           // Логируем успешную генерацию на сервер
