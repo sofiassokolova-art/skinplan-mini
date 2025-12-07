@@ -2137,11 +2137,57 @@ export async function GET(request: NextRequest) {
 
     logger.info('Starting plan generation', { userId });
     
-    // Выполняем генерацию с таймаутом
-    const plan = await Promise.race([
-      generate28DayPlan(userId),
-      timeoutPromise,
-    ]) as Awaited<ReturnType<typeof generate28DayPlan>>;
+    // Выполняем генерацию с таймаутом и детальной обработкой ошибок
+    let plan: Awaited<ReturnType<typeof generate28DayPlan>>;
+    try {
+      plan = await Promise.race([
+        generate28DayPlan(userId),
+        timeoutPromise,
+      ]) as Awaited<ReturnType<typeof generate28DayPlan>>;
+    } catch (error: any) {
+      // Детальное логирование ошибки генерации
+      logger.error('❌ Error during plan generation', error, {
+        userId,
+        profileVersion: profile.version,
+        errorMessage: error?.message,
+        errorStack: error?.stack,
+        errorName: error?.name,
+        errorCode: error?.code,
+      });
+      
+      // Возвращаем детальную ошибку клиенту
+      return ApiResponse.error(
+        `Failed to generate plan: ${error?.message || 'Unknown error'}`,
+        {
+          userId,
+          profileVersion: profile.version,
+          error: error?.message,
+          timestamp: new Date().toISOString(),
+        },
+        500
+      );
+    }
+    
+    // Проверяем, что план действительно сгенерирован
+    if (!plan || (!plan.plan28 && !plan.weeks)) {
+      logger.error('❌ Plan generation returned empty result', undefined, {
+        userId,
+        profileVersion: profile.version,
+        hasPlan28: !!plan?.plan28,
+        hasWeeks: !!plan?.weeks,
+        planKeys: plan ? Object.keys(plan) : [],
+      });
+      
+      return ApiResponse.error(
+        'Plan generation returned empty result',
+        {
+          userId,
+          profileVersion: profile.version,
+          timestamp: new Date().toISOString(),
+        },
+        500
+      );
+    }
     
     // ВАЖНО: RecommendationSession создается из правил рекомендаций (/api/recommendations),
     // а НЕ из плана. План только читает из сессии, но не перезаписывает её.
@@ -2152,8 +2198,16 @@ export async function GET(request: NextRequest) {
       });
     
     // Сохраняем в кэш
-    logger.info('Caching plan', { userId, profileVersion: profile.version });
-    await setCachedPlan(userId, profile.version, plan);
+    try {
+      logger.info('Caching plan', { userId, profileVersion: profile.version });
+      await setCachedPlan(userId, profile.version, plan);
+    } catch (cacheError: any) {
+      // Ошибка кэширования не должна блокировать возврат плана
+      logger.warn('Failed to cache plan (non-critical)', cacheError, {
+        userId,
+        profileVersion: profile.version,
+      });
+    }
     
     logger.info('Plan generated successfully', {
       userId,
