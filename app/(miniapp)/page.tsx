@@ -1371,7 +1371,16 @@ export default function HomePage() {
             Пройдите анкету, чтобы получить персональные рекомендации по уходу за кожей
           </p>
           <button
-            onClick={() => router.push('/quiz')}
+            onClick={() => {
+              // ВАЖНО: Очищаем флаги перепрохождения при нажатии "Пройти анкету" на главной
+              // Это гарантирует, что пользователь пройдет полную анкету, а не увидит экран "что хотите изменить?"
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('is_retaking_quiz');
+                localStorage.removeItem('full_retake_from_home');
+                console.log('✅ Флаги перепрохождения очищены перед переходом на /quiz');
+              }
+              router.push('/quiz');
+            }}
             style={{
               width: '100%',
               padding: '16px 24px',

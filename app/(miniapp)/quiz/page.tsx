@@ -125,6 +125,10 @@ export default function QuizPage() {
 
   // Флаг для предотвращения множественных вызовов init
   const initInProgressRef = useRef(false);
+  // Флаг для предотвращения повторных проверок профиля
+  const profileCheckInProgressRef = useRef(false);
+  // Флаг для предотвращения повторных загрузок прогресса
+  const progressLoadInProgressRef = useRef(false);
 
   useEffect(() => {
     // ВАЖНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
@@ -225,7 +229,9 @@ export default function QuizPage() {
       // 1. Профиль существует
       // 2. Анкета полностью завершена (есть все ответы)
       // 3. Пользователь не нажал "Начать заново"
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !isStartingOverRef.current) {
+      // ВАЖНО: Защита от повторных проверок профиля
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !isStartingOverRef.current && !profileCheckInProgressRef.current) {
+        profileCheckInProgressRef.current = true;
         try {
           const profile = await api.getCurrentProfile();
           if (profile && (profile as any).id) {
@@ -241,16 +247,33 @@ export default function QuizPage() {
                 if (hasAnswers && isCompleted) {
                   // Анкета полностью завершена - проверяем, хочет ли пользователь перепроходить
                   // ВАЖНО: Проверяем флаг из localStorage, установленный при нажатии "Перепройти анкету"
+                  // ВАЖНО: Также проверяем наличие плана - если плана нет, не показываем экран "что хотите изменить?"
                   const isRetakingFromStorage = typeof window !== 'undefined' && localStorage.getItem('is_retaking_quiz') === 'true';
-                  if (isRetakingFromStorage) {
-                    // Пользователь нажал "Перепройти анкету" - показываем экран выбора тем
+                  
+                  // Проверяем наличие плана - если плана нет, не показываем экран перепрохождения
+                  let hasPlan = false;
+                  try {
+                    const plan = await api.getPlan() as any;
+                    hasPlan = !!(plan && (plan.plan28 || plan.weeks));
+                  } catch (planErr) {
+                    // План не найден - это нормально для нового пользователя
+                    hasPlan = false;
+                  }
+                  
+                  if (isRetakingFromStorage && hasPlan) {
+                    // Пользователь нажал "Перепройти анкету" И план существует - показываем экран выбора тем
                     setIsRetakingQuiz(true);
                     setShowRetakeScreen(true);
-                    console.log('✅ Повторное прохождение анкеты - профиль и завершенная анкета существуют + флаг перепрохождения установлен, показываем экран выбора тем');
+                    console.log('✅ Повторное прохождение анкеты - профиль, завершенная анкета и план существуют + флаг перепрохождения установлен, показываем экран выбора тем');
                   } else {
-                    // Профиль есть, анкета завершена, но пользователь не хочет перепроходить
-                    // Это может быть обычное продолжение или просто заход на страницу
-                    console.log('ℹ️ Профиль и завершенная анкета существуют, но флаг перепрохождения не установлен');
+                    // Профиль есть, анкета завершена, но:
+                    // - либо пользователь не хочет перепроходить (флаг не установлен)
+                    // - либо плана нет (значит, нужно пройти анкету заново)
+                    console.log('ℹ️ Профиль и завершенная анкета существуют, но:', {
+                      isRetakingFromStorage,
+                      hasPlan,
+                      reason: !isRetakingFromStorage ? 'флаг перепрохождения не установлен' : 'план не найден',
+                    });
                     setIsRetakingQuiz(false);
                     setShowRetakeScreen(false);
                   }
@@ -287,6 +310,8 @@ export default function QuizPage() {
           }
           setIsRetakingQuiz(false);
           setShowRetakeScreen(false);
+        } finally {
+          profileCheckInProgressRef.current = false;
         }
       } else if (isStartingOverRef.current) {
         console.log('⏸️ Пропущена проверка профиля в init, так как isStartingOverRef = true');
@@ -304,7 +329,9 @@ export default function QuizPage() {
       // Важно: загружаем после загрузки анкеты, чтобы правильно вычислить totalQuestions
       // Проверка isStartingOver и hasResumed выполняется внутри loadSavedProgressFromServer
       // ВАЖНО: Не загружаем прогресс, если пользователь уже продолжил анкету
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !hasResumedRef.current && !hasResumed && !loadProgressInProgressRef.current) {
+      // ВАЖНО: Защита от повторных загрузок прогресса
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !hasResumedRef.current && !hasResumed && !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
+        progressLoadInProgressRef.current = true;
         try {
           await loadSavedProgressFromServer();
           // loadSavedProgressFromServer сам устанавливает setShowResumeScreen(true) если есть прогресс
@@ -324,6 +351,8 @@ export default function QuizPage() {
           setSavedProgress(null);
           setShowResumeScreen(false);
           }
+        } finally {
+          progressLoadInProgressRef.current = false;
         }
       } else {
         // Если Telegram WebApp не доступен или пользователь уже продолжил, очищаем localStorage (прогресс должен быть на сервере)
@@ -1116,7 +1145,11 @@ export default function QuizPage() {
           return;
         }
       }
+      // ВАЖНО: Если это последний вопрос и нет инфо-экрана, увеличиваем currentQuestionIndex
+      // чтобы сработала автоматическая отправка ответов (проверка currentQuestionIndex >= allQuestions.length)
       await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+      // Увеличиваем индекс, чтобы выйти за пределы массива вопросов и запустить автоматическую отправку
+      setCurrentQuestionIndex(allQuestions.length);
       return;
     }
 
@@ -4340,16 +4373,9 @@ export default function QuizPage() {
                   onClick={async () => {
                     await handleAnswer(currentQuestion.id, option.value);
                     // ВАЖНО: Всегда переходим к следующему вопросу после выбора ответа
-                    // (кроме последнего вопроса, где может быть инфо-экран)
-                    if (isLastQuestion) {
-                      const infoScreenAfter = getInfoScreenAfterQuestion(currentQuestion.code);
-                      if (infoScreenAfter) {
-                        setTimeout(() => handleNext(), 300);
-                      }
-                    } else {
-                      // Переходим к следующему вопросу
-                      setTimeout(() => handleNext(), 300);
-                    }
+                    // Для последнего вопроса: если есть инфо-экран, показываем его через handleNext
+                    // Если инфо-экрана нет, все равно вызываем handleNext, который обработает завершение анкеты
+                    setTimeout(() => handleNext(), 300);
                   }}
                   style={{
                     padding: '16px',
