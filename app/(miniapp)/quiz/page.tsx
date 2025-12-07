@@ -205,10 +205,20 @@ export default function QuizPage() {
         // Но только если она еще не загружена
         if (!questionnaire) {
         console.log('📥 Loading questionnaire...');
-        await loadQuestionnaire();
-        console.log('✅ Questionnaire loaded');
+        const loadedQuestionnaire = await loadQuestionnaire();
+        console.log('✅ Questionnaire loaded', { hasQuestionnaire: !!loadedQuestionnaire });
+        // ВАЖНО: Если анкета загружена, но loading все еще true, устанавливаем его в false
+        if (loadedQuestionnaire && loading) {
+          console.log('🔧 Анкета загружена, но loading = true, устанавливаем loading = false');
+          setLoading(false);
+        }
         } else {
           console.log('✅ Questionnaire already loaded, skipping');
+          // ВАЖНО: Если анкета уже загружена, но loading все еще true, устанавливаем его в false
+          if (loading) {
+            console.log('🔧 Анкета уже загружена, но loading = true, устанавливаем loading = false');
+            setLoading(false);
+          }
         }
       
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
