@@ -461,8 +461,13 @@ export default function PlanPage() {
         productsMap: productsMap, // Map передается напрямую
         products: productsMap, // Также сохраняем в products для обратной совместимости
         profile: profile ? {
-          ...profile,
           id: String(profile.id), // Преобразуем id в строку для совместимости
+          skinType: profile.skinType,
+          skinTypeRu: profile.skinTypeRu || profile.skinType, // Значение по умолчанию
+          primaryConcernRu: profile.primaryConcernRu || '', // Значение по умолчанию
+          sensitivityLevel: profile.sensitivityLevel || null,
+          acneLevel: profile.acneLevel || null,
+          scores: profile.scores || [], // Значение по умолчанию
         } : undefined,
         scores,
         wishlist,
