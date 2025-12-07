@@ -2095,7 +2095,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (!initData) {
-      logger.error('No initData provided');
+      logger.error('No initData provided', undefined, {
+        availableHeaders: Array.from(request.headers.keys()),
+      });
       return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
     }
 
@@ -2105,11 +2107,17 @@ export async function GET(request: NextRequest) {
     userId = userIdResult || undefined;
     
     if (!userId) {
-      logger.error('Invalid or expired initData');
+      logger.error('Invalid or expired initData', undefined, {
+        initDataLength: initData.length,
+        initDataPrefix: initData.substring(0, 50),
+      });
       return ApiResponse.unauthorized('Invalid or expired Telegram initData');
     }
 
-    logger.info('User identified from initData', { userId });
+    logger.info('User identified from initData', undefined, {
+      userId,
+      timestamp: new Date().toISOString(),
+    });
     
     // Получаем профиль для версии
     // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
@@ -2133,9 +2141,15 @@ export async function GET(request: NextRequest) {
     });
 
     // Проверяем кэш
-    logger.debug('Checking cache for plan', { userId, profileVersion: profile.version });
+    logger.debug('Checking cache for plan', undefined, {
+      userId,
+    });
 
-    logger.info('Starting plan generation', { userId });
+    logger.info('Starting plan generation', undefined, {
+      userId,
+      profileVersion: profile.version,
+      timestamp: new Date().toISOString(),
+    });
     
     // Выполняем генерацию с таймаутом и детальной обработкой ошибок
     let plan: Awaited<ReturnType<typeof generate28DayPlan>>;
@@ -2148,7 +2162,6 @@ export async function GET(request: NextRequest) {
       // Детальное логирование ошибки генерации
       logger.error('❌ Error during plan generation', error, {
         userId,
-        profileVersion: profile.version,
         errorMessage: error?.message,
         errorStack: error?.stack,
         errorName: error?.name,
