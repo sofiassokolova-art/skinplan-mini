@@ -16,12 +16,38 @@ export function ServiceFeedbackPopup() {
 
   useEffect(() => {
     // Проверяем, нужно ли показывать попап
-    const checkShouldShow = () => {
+    const checkShouldShow = async () => {
       if (typeof window === 'undefined') return;
 
       // Если пользователь уже отправил обратную связь через попап - больше не показываем
       const feedbackSent = localStorage.getItem(SERVICE_FEEDBACK_SENT_KEY);
       if (feedbackSent === 'true') {
+        setIsVisible(false);
+        return;
+      }
+
+      // ВАЖНО: Проверяем, прошло ли 3 дня с момента генерации плана
+      try {
+        const profile = await api.getCurrentProfile() as any;
+        if (profile && profile.createdAt) {
+          const profileCreatedAt = new Date(profile.createdAt);
+          const now = new Date();
+          const daysSincePlanGeneration = Math.floor((now.getTime() - profileCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // Поп-ап показывается только через 3 дня после генерации плана
+          if (daysSincePlanGeneration < 3) {
+            console.log(`⚠️ Plan generated ${daysSincePlanGeneration} days ago, need 3 days. Skipping service feedback popup.`);
+            setIsVisible(false);
+            return;
+          }
+        } else {
+          // Если профиль не найден, не показываем поп-ап
+          setIsVisible(false);
+          return;
+        }
+      } catch (profileError) {
+        // Если профиль не найден, не показываем поп-ап
+        console.log('⚠️ Profile not found, skipping service feedback popup');
         setIsVisible(false);
         return;
       }
@@ -38,7 +64,7 @@ export function ServiceFeedbackPopup() {
         }
       }
       
-      // Показываем попап
+      // Показываем попап (прошло 3+ дня и выполнены все условия)
       setIsVisible(true);
     };
 

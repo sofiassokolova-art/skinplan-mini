@@ -148,8 +148,8 @@ function LayoutContent({
         {children}
       </PageTransition>
       {!hideNav && <BottomNavigation />}
-      {/* Сервисный попап для отзывов (показывается раз в неделю) */}
-      <ServiceFeedbackPopup />
+      {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты) */}
+      {pathname !== '/quiz' && !pathname.startsWith('/quiz/') && <ServiceFeedbackPopup />}
     </>
   );
 }
