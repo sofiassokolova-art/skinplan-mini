@@ -161,9 +161,7 @@ export default function MiniappLayout({
 }) {
   return (
     <QueryProvider>
-      <Suspense fallback={<>{children}</>}>
-        <LayoutContent>{children}</LayoutContent>
-      </Suspense>
+      <LayoutContent>{children}</LayoutContent>
     </QueryProvider>
   );
 }

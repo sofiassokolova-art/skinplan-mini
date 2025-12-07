@@ -34,8 +34,8 @@ export default function BottomNavigation() {
       }
     };
     loadCartCount();
-    // Refresh cart count periodically
-    const interval = setInterval(loadCartCount, 5000);
+    // Refresh cart count periodically - reduced frequency to 30 seconds to avoid excessive API calls
+    const interval = setInterval(loadCartCount, 30000);
     return () => clearInterval(interval);
   }, []);
 

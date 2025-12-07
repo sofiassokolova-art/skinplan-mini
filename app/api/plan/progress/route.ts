@@ -49,7 +49,9 @@ export async function GET(request: NextRequest) {
     } catch (dbError: any) {
       // Если ошибка связана с отсутствием колонки - возвращаем дефолтное значение
       if (dbError?.message?.includes('does not exist') || dbError?.message?.includes('column')) {
-        logger.warn('PlanProgress table schema mismatch, returning default values', { userId, error: dbError.message });
+        // Это известная проблема схемы - база данных не синхронизирована с Prisma схемой
+        // Возвращаем дефолтные значения без логирования, так как это ожидаемое поведение
+        // при миграции или когда база данных еще не обновлена
         return NextResponse.json({
           currentDay: 1,
           completedDays: [] as number[],

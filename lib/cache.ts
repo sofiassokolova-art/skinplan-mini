@@ -190,10 +190,25 @@ export async function setCachedPlan(
   try {
     const key = `plan:${userId}:${profileVersion}`;
     await setWithTTL(key, JSON.stringify(plan), CACHE_TTL.plan);
-  } catch (error) {
+  } catch (error: any) {
     // Логируем только если это не ошибка отсутствия переменных окружения
-    if (!(error as any)?.message?.includes('Missing required environment variables')) {
-    console.error('Error caching plan:', error);
+    if (!error?.message?.includes('Missing required environment variables')) {
+      // NOPERM ошибки - это ожидаемо, если используется read-only токен
+      // Логируем как предупреждение, а не как ошибку
+      const errorMessage = error?.message || String(error || '');
+      const errorString = String(error || '');
+      const isPermissionError = 
+        errorMessage.includes('NOPERM') || 
+        errorMessage.includes('no permissions') ||
+        errorString.includes('NOPERM') ||
+        errorString.includes('no permissions');
+      
+      if (isPermissionError) {
+        // Тихо логируем как предупреждение - это ожидаемое поведение при read-only токене
+        console.warn('⚠️ Cache write failed (read-only token, non-critical):', errorMessage);
+      } else {
+        console.error('Error caching plan:', error);
+      }
     }
     // Не прерываем выполнение, если кэш не работает
   }
@@ -283,10 +298,25 @@ export async function setCachedRecommendations(
   try {
     const key = `recommendations:${userId}:${profileVersion}`;
     await setWithTTL(key, JSON.stringify(recommendations), CACHE_TTL.recommendations);
-  } catch (error) {
+  } catch (error: any) {
     // Логируем только если это не ошибка отсутствия переменных окружения
-    if (!(error as any)?.message?.includes('Missing required environment variables')) {
-    console.error('Error caching recommendations:', error);
+    if (!error?.message?.includes('Missing required environment variables')) {
+      // NOPERM ошибки - это ожидаемо, если используется read-only токен
+      // Логируем как предупреждение, а не как ошибку
+      const errorMessage = error?.message || String(error || '');
+      const errorString = String(error || '');
+      const isPermissionError = 
+        errorMessage.includes('NOPERM') || 
+        errorMessage.includes('no permissions') ||
+        errorString.includes('NOPERM') ||
+        errorString.includes('no permissions');
+      
+      if (isPermissionError) {
+        // Тихо логируем как предупреждение - это ожидаемое поведение при read-only токене
+        console.warn('⚠️ Cache write failed (read-only token, non-critical):', errorMessage);
+      } else {
+        console.error('Error caching recommendations:', error);
+      }
     }
     // Не прерываем выполнение, если кэш не работает
   }
@@ -315,8 +345,17 @@ export async function invalidateCache(userId: string, profileVersion: number): P
     if (!error?.message?.includes('Missing required environment variables')) {
       // NOPERM ошибки - это ожидаемо, если используется read-only токен
       // Логируем как предупреждение, а не как ошибку
-      if (error?.message?.includes('NOPERM') || error?.message?.includes('no permissions')) {
-        console.warn('⚠️ Cache invalidation failed (read-only token):', error?.message);
+      const errorMessage = error?.message || String(error || '');
+      const errorString = String(error || '');
+      const isPermissionError = 
+        errorMessage.includes('NOPERM') || 
+        errorMessage.includes('no permissions') ||
+        errorString.includes('NOPERM') ||
+        errorString.includes('no permissions');
+      
+      if (isPermissionError) {
+        // Тихо логируем как предупреждение - это ожидаемое поведение при read-only токене
+        console.warn('⚠️ Cache invalidation failed (read-only token, non-critical):', errorMessage);
       } else {
         console.error('Error invalidating cache:', error);
       }
@@ -358,8 +397,17 @@ export async function invalidateAllUserCache(userId: string): Promise<void> {
     if (!error?.message?.includes('Missing required environment variables')) {
       // NOPERM ошибки - это ожидаемо, если используется read-only токен
       // Логируем как предупреждение, а не как ошибку
-      if (error?.message?.includes('NOPERM') || error?.message?.includes('no permissions')) {
-        console.warn('⚠️ Cache invalidation failed (read-only token):', error?.message);
+      const errorMessage = error?.message || String(error || '');
+      const errorString = String(error || '');
+      const isPermissionError = 
+        errorMessage.includes('NOPERM') || 
+        errorMessage.includes('no permissions') ||
+        errorString.includes('NOPERM') ||
+        errorString.includes('no permissions');
+      
+      if (isPermissionError) {
+        // Тихо логируем как предупреждение - это ожидаемое поведение при read-only токене
+        console.warn('⚠️ Cache invalidation failed (read-only token, non-critical):', errorMessage);
       } else {
         console.error('Error invalidating all user cache:', error);
       }

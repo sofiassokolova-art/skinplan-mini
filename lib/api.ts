@@ -393,4 +393,11 @@ export const api = {
   async getAnalysis() {
     return request('/analysis');
   },
+
+  // Админские функции
+  async clearCache() {
+    return request('/admin/clear-cache', {
+      method: 'POST',
+    });
+  },
 };

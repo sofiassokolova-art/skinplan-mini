@@ -69,26 +69,6 @@ export async function GET(request: NextRequest) {
         createdAt: item.createdAt.toISOString(),
       })),
     });
-
-    return NextResponse.json({
-      items: cartItems.map(item => ({
-        id: item.id,
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          brand: {
-            id: item.product.brand.id,
-            name: item.product.brand.name,
-          },
-          price: item.product.price,
-          imageUrl: item.product.imageUrl,
-          link: item.product.link,
-          marketLinks: item.product.marketLinks,
-        },
-        quantity: item.quantity,
-        createdAt: item.createdAt.toISOString(),
-      })),
-    });
   } catch (error) {
     const duration = Date.now() - startTime;
     logApiError(method, path, error, userId);
@@ -172,26 +152,6 @@ export async function POST(request: NextRequest) {
             brand: true,
           },
         },
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      item: {
-        id: cartItem.id,
-        product: {
-          id: cartItem.product.id,
-          name: cartItem.product.name,
-          brand: {
-            id: cartItem.product.brand.id,
-            name: cartItem.product.brand.name,
-          },
-          price: cartItem.product.price,
-          imageUrl: cartItem.product.imageUrl,
-          link: cartItem.product.link,
-          marketLinks: cartItem.product.marketLinks,
-        },
-        quantity: cartItem.quantity,
       },
     });
 
