@@ -1280,14 +1280,63 @@ export default function QuizPage() {
         
         // Запускаем генерацию плана и ждем её завершения
         try {
+          console.log('🚀 Начинаем генерацию плана...');
           const generatedPlan = await api.generatePlan() as any;
           console.log('✅ План сгенерирован успешно:', {
             hasPlan28: !!generatedPlan?.plan28,
             hasWeeks: !!generatedPlan?.weeks,
+            plan28Days: generatedPlan?.plan28?.days?.length || 0,
+            weeksCount: generatedPlan?.weeks?.length || 0,
           });
+          
+          // Логируем ошибку на сервер для диагностики
+          if (!generatedPlan || (!generatedPlan.plan28 && !generatedPlan.weeks)) {
+            console.error('❌ План сгенерирован, но пустой:', generatedPlan);
+            // Отправляем лог на сервер
+            try {
+              await fetch('/api/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  level: 'error',
+                  message: 'Plan generated but empty',
+                  data: { generatedPlan },
+                }),
+              }).catch(() => {}); // Игнорируем ошибки логирования
+            } catch (logError) {
+              // Игнорируем ошибки логирования
+            }
+          }
         } catch (genError: any) {
+          // Детальное логирование ошибки
+          console.error('❌ Ошибка при генерации плана:', {
+            message: genError?.message,
+            status: genError?.status,
+            stack: genError?.stack,
+            error: genError,
+          });
+          
+          // Отправляем лог на сервер для диагностики
+          try {
+            await fetch('/api/log', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                level: 'error',
+                message: 'Failed to generate plan after submitting answers',
+                data: {
+                  error: genError?.message,
+                  status: genError?.status,
+                  stack: genError?.stack?.substring(0, 500), // Ограничиваем размер
+                },
+              }),
+            }).catch(() => {}); // Игнорируем ошибки логирования
+          } catch (logError) {
+            // Игнорируем ошибки логирования
+          }
+          
           // Если генерация не удалась, все равно редиректим - план перегенерируется на странице /plan
-          console.warn('⚠️ Ошибка при генерации плана (продолжаем редирект):', genError);
+          console.warn('⚠️ Ошибка при генерации плана (продолжаем редирект):', genError?.message || genError);
         }
         
         // Проверяем, готов ли план в кэше (может быть уже готов)

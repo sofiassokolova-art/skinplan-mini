@@ -199,46 +199,54 @@ function getFallbackStep(step: string): StepCategory | undefined {
  * Для вызова из других модулей используйте fetch к /api/plan/generate
  */
 async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
-    logger.info('Generating plan', { userId });
+  logger.info('🚀 Starting plan generation', { userId, timestamp: new Date().toISOString() });
   
-  // Получаем профиль кожи
-    logger.debug('Looking for skin profile', { userId });
-  // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
-  // При перепрохождении анкеты создается новая версия профиля, и план должен быть для новой версии
-  const profile = await prisma.skinProfile.findFirst({
-    where: { userId },
-    orderBy: { version: 'desc' }, // Используем version вместо createdAt для корректной версии
-  });
+  try {
+    // Получаем профиль кожи
+    logger.debug('🔍 Looking for skin profile', { userId });
+    // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
+    // При перепрохождении анкеты создается новая версия профиля, и план должен быть для новой версии
+    const profile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { version: 'desc' }, // Используем version вместо createdAt для корректной версии
+    });
 
-  if (!profile) {
-    logger.error('No skin profile found', undefined, { userId });
-    throw new Error('No skin profile found');
-  }
-  
-  logger.info('Skin profile found', {
-    profileId: profile.id,
-    skinType: profile.skinType,
-    version: profile.version,
-    userId,
-  });
-
-  // Получаем активную анкету для определения questionnaireId
-  const activeQuestionnaire = await prisma.questionnaire.findFirst({
-    where: { isActive: true },
-    select: { id: true },
-  });
-
-  if (!activeQuestionnaire) {
-    logger.error('No active questionnaire found', { userId });
-    throw new Error('No active questionnaire found');
-  }
-
-  // Получаем ответы пользователя для активной анкеты
-  const userAnswers = await prisma.userAnswer.findMany({
-    where: {
+    if (!profile) {
+      logger.error('❌ No skin profile found', undefined, { userId });
+      throw new Error('No skin profile found');
+    }
+    
+    logger.info('✅ Skin profile found', {
+      profileId: profile.id,
+      skinType: profile.skinType,
+      version: profile.version,
       userId,
-      questionnaireId: activeQuestionnaire.id, // Используем активную анкету
-    },
+    });
+
+    // Получаем активную анкету для определения questionnaireId
+    logger.debug('🔍 Looking for active questionnaire', { userId });
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    });
+
+    if (!activeQuestionnaire) {
+      logger.error('❌ No active questionnaire found', { userId });
+      throw new Error('No active questionnaire found');
+    }
+
+    logger.info('✅ Active questionnaire found', {
+      questionnaireId: activeQuestionnaire.id,
+      userId,
+    });
+
+    // Получаем ответы пользователя для активной анкеты
+    logger.debug('🔍 Fetching user answers', { userId, questionnaireId: activeQuestionnaire.id });
+    const userAnswers = await prisma.userAnswer.findMany({
+      where: {
+        userId,
+        questionnaireId: activeQuestionnaire.id, // Используем активную анкету
+      },
     include: {
       question: {
         include: {
@@ -420,18 +428,31 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   // Шаг 2: Фильтрация продуктов
   logger.debug('Filtering products', { primaryFocus, skinType: profileClassification.skinType, budget: profileClassification.budget, userId });
   
-  // ВАЖНО: Сначала пытаемся получить продукты из RecommendationSession
-  // Это гарантирует, что план использует те же продукты, что и главная страница
-  // Ищем сессию для текущего профиля, чтобы при перепрохождении анкеты использовались новые продукты
-  let recommendationProducts: any[] = [];
-  const existingSession = await prisma.recommendationSession.findFirst({
-    where: {
-      userId,
-      profileId: profile.id, // Только для текущего профиля
-      ruleId: { not: null }, // Только сессии, созданные из правил (не из плана)
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+    // ВАЖНО: Сначала пытаемся получить продукты из RecommendationSession
+    // Это гарантирует, что план использует те же продукты, что и главная страница
+    // Ищем сессию для текущего профиля, чтобы при перепрохождении анкеты использовались новые продукты
+    logger.debug('🔍 Looking for RecommendationSession', { userId, profileId: profile.id });
+    let recommendationProducts: any[] = [];
+    const existingSession = await prisma.recommendationSession.findFirst({
+      where: {
+        userId,
+        profileId: profile.id, // Только для текущего профиля
+        ruleId: { not: null }, // Только сессии, созданные из правил (не из плана)
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existingSession) {
+      logger.info('✅ RecommendationSession found', {
+        userId,
+        sessionId: existingSession.id,
+        ruleId: existingSession.ruleId,
+        productsCount: Array.isArray(existingSession.products) ? existingSession.products.length : 0,
+        products: Array.isArray(existingSession.products) ? existingSession.products.slice(0, 10) : [],
+      });
+    } else {
+      logger.warn('⚠️ No RecommendationSession found', { userId, profileId: profile.id });
+    }
 
   // КРИТИЧНО: Если в сессии слишком мало продуктов (меньше 3), игнорируем её
   // Это предотвращает замкнутый круг, когда план использует только 2 продукта из сессии,
@@ -1940,6 +1961,14 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
     // Новый формат плана Plan28
     plan28,
   };
+  } catch (error: unknown) {
+    logger.error('❌ Error in generate28DayPlan', error, {
+      userId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack?.substring(0, 500) : undefined,
+    });
+    throw error; // Пробрасываем ошибку дальше
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -2043,6 +2072,17 @@ export async function GET(request: NextRequest) {
     return ApiResponse.success(plan);
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
+    
+    // Детальное логирование ошибки
+    logger.error('❌ Plan generation failed', error, {
+      userId,
+      method,
+      path,
+      duration,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
+    
     logApiError(method, path, error, userId);
     
     return ApiResponse.internalError(error, { userId, method, path, duration });
