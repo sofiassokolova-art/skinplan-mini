@@ -125,6 +125,10 @@ export default function QuizPage() {
     // не выполняем повторную инициализацию
     if (initCompletedRef.current && !isStartingOverRef.current) {
       console.log('⏸️ useEffect init: пропущено, так как инициализация уже завершена');
+      // ВАЖНО: Гарантируем, что loading = false, если инициализация уже завершена
+      if (loading) {
+        setLoading(false);
+      }
       return;
     }
     
@@ -132,6 +136,10 @@ export default function QuizPage() {
     // Это предотвращает повторную загрузку прогресса после resumeQuiz
     if (hasResumedRef.current || hasResumed) {
       console.log('⏸️ useEffect init: пропущено, так как пользователь уже продолжил анкету (hasResumed = true)');
+      // ВАЖНО: Гарантируем, что loading = false, если пользователь уже продолжил
+      if (loading) {
+        setLoading(false);
+      }
       return;
     }
     
@@ -344,16 +352,35 @@ export default function QuizPage() {
       }
     };
     
-    init().catch((err) => {
-      console.error('❌ Unhandled error in init promise:', {
-        error: err,
-        message: (err as any)?.message,
-        stack: (err as any)?.stack,
-        name: (err as any)?.name,
+    // ВАЖНО: Добавляем таймаут для init(), чтобы гарантировать, что loading всегда будет false
+    const initTimeout = setTimeout(() => {
+      if (loading) {
+        console.warn('⚠️ Init timeout: forcing loading = false after 10 seconds');
+        setLoading(false);
+        setError('Таймаут загрузки. Пожалуйста, обновите страницу.');
+      }
+    }, 10000); // 10 секунд таймаут
+    
+    init()
+      .catch((err) => {
+        console.error('❌ Unhandled error in init promise:', {
+          error: err,
+          message: (err as any)?.message,
+          stack: (err as any)?.stack,
+          name: (err as any)?.name,
+        });
+        setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
+        setLoading(false);
+      })
+      .finally(() => {
+        // Очищаем таймаут, если init завершился успешно
+        clearTimeout(initTimeout);
       });
-      setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
-      setLoading(false);
-    });
+    
+    // Очищаем таймаут при размонтировании
+    return () => {
+      clearTimeout(initTimeout);
+    };
   }, []);
 
   // Загружаем предыдущие ответы при повторном прохождении анкеты
