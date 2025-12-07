@@ -1515,6 +1515,7 @@ export default function QuizPage() {
       
       // ВАЖНО: Не обновляем состояние после редиректа, чтобы избежать React Error #300
       // Сбрасываем флаг монтирования только перед редиректом
+      isMountedRef.current = false;
       
       // Редирект на страницу плана
       // План уже готов в кэше или будет загружен на странице /plan
@@ -2511,14 +2512,21 @@ export default function QuizPage() {
       // ВАЖНО: Используем ref для submitAnswers, чтобы избежать проблем с зависимостями useEffect
       const timeoutId = setTimeout(() => {
         if (isMountedRef.current && submitAnswersRef.current) {
+          // ВАЖНО: Не обновляем состояние после вызова submitAnswers, чтобы избежать React Error #300
           submitAnswersRef.current().catch((err) => {
             console.error('❌ Ошибка при автоматической отправке ответов:', err);
+            // ВАЖНО: Не обновляем состояние, если компонент размонтирован
             if (isMountedRef.current) {
-              autoSubmitTriggeredRef.current = false; // Разрешаем повторную попытку
-              setAutoSubmitTriggered(false);
-              isSubmittingRef.current = false;
-          setIsSubmitting(false);
-              setError(err?.message || 'Ошибка отправки ответов');
+              try {
+                autoSubmitTriggeredRef.current = false; // Разрешаем повторную попытку
+                setAutoSubmitTriggered(false);
+                isSubmittingRef.current = false;
+                setIsSubmitting(false);
+                setError(err?.message || 'Ошибка отправки ответов');
+              } catch (stateError) {
+                // Игнорируем ошибки обновления состояния после размонтирования
+                console.warn('⚠️ Не удалось обновить состояние (компонент размонтирован):', stateError);
+              }
             }
           });
         }
