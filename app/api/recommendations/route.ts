@@ -469,8 +469,22 @@ export async function GET(request: NextRequest) {
       
       const products = await getProductsForStep(stepWithBudget);
       if (products.length > 0) {
-        // Нормализуем step: serum, treatment, essence -> serum для совместимости с главной страницей
-        const normalizedStep = stepName === 'treatment' || stepName === 'essence' ? 'serum' : stepName;
+        // Нормализуем step для группировки
+        // ВАЖНО: Используем ту же логику нормализации, что и выше, для консистентности
+        let normalizedStep = stepName;
+        
+        // Нормализуем базовые шаги (как в части выше)
+        if (stepName.startsWith('cleanser')) {
+          normalizedStep = 'cleanser';
+        } else if (stepName.startsWith('spf')) {
+          normalizedStep = 'spf';
+        } else if (stepName.startsWith('moisturizer')) {
+          normalizedStep = 'moisturizer';
+        } else if (stepName.startsWith('toner')) {
+          normalizedStep = 'toner';
+        } else if (stepName.startsWith('serum') || stepName.startsWith('treatment') || stepName === 'essence') {
+          normalizedStep = 'serum';
+        }
         
         if (!steps[normalizedStep]) {
           steps[normalizedStep] = [];
