@@ -1450,31 +1450,14 @@ export default function QuizPage() {
         console.warn('⚠️ Ошибка при логировании:', logError);
       }
       
-      if (result?.success !== false) {
-        console.log('🚀 Запуск генерации плана...');
-        
+      // ВАЖНО: Проверяем, что result существует и не содержит ошибку
+      // ApiResponse.success() возвращает объект с данными напрямую, не обернутый в {success: true}
+      // Поэтому проверяем наличие result и отсутствие поля error
+      const shouldGeneratePlan = result && !result.error && (result.success !== false);
+      
+      if (shouldGeneratePlan) {
         // Запускаем генерацию плана и ждем её завершения
         try {
-          console.log('🚀 Начинаем генерацию плана...');
-          
-          // ВАЖНО: Логируем начало генерации на сервер для диагностики
-          try {
-            await fetch('/api/log', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                level: 'info',
-                message: 'Starting plan generation after submitting answers',
-                data: { 
-                  timestamp: new Date().toISOString(),
-                  answersCount: Object.keys(answersToSubmit).length,
-                },
-              }),
-            }).catch(() => {}); // Игнорируем ошибки логирования
-          } catch (logError) {
-            // Игнорируем ошибки логирования
-          }
-          
           console.log('🔄 Вызываем api.generatePlan()...');
           const generatedPlan = await api.generatePlan() as any;
           console.log('✅ План сгенерирован успешно:', {
