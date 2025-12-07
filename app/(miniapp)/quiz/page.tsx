@@ -1459,15 +1459,39 @@ export default function QuizPage() {
         // Запускаем генерацию плана и ждем её завершения
         try {
           console.log('🔄 Вызываем api.generatePlan()...');
-          const generatedPlan = await api.generatePlan() as any;
-          console.log('✅ План сгенерирован успешно:', {
-            hasPlan28: !!generatedPlan?.plan28,
-            hasWeeks: !!generatedPlan?.weeks,
-            plan28Days: generatedPlan?.plan28?.days?.length || 0,
-            weeksCount: generatedPlan?.weeks?.length || 0,
-            generatedPlanKeys: generatedPlan ? Object.keys(generatedPlan) : [],
-            generatedPlanString: JSON.stringify(generatedPlan).substring(0, 500),
-          });
+          let generatedPlan: any;
+          try {
+            generatedPlan = await api.generatePlan() as any;
+            
+            // ВАЖНО: Проверяем, что план действительно сгенерирован
+            // ApiResponse.success() возвращает данные напрямую, поэтому проверяем структуру плана
+            if (!generatedPlan || (!generatedPlan.plan28 && !generatedPlan.weeks)) {
+              console.error('❌ План не сгенерирован или пустой:', {
+                hasPlan: !!generatedPlan,
+                hasPlan28: !!generatedPlan?.plan28,
+                hasWeeks: !!generatedPlan?.weeks,
+                planKeys: generatedPlan ? Object.keys(generatedPlan) : [],
+                planType: typeof generatedPlan,
+                planString: generatedPlan ? JSON.stringify(generatedPlan).substring(0, 200) : 'null',
+              });
+              throw new Error('Plan generation returned empty result');
+            }
+            
+            console.log('✅ План сгенерирован успешно:', {
+              hasPlan28: !!generatedPlan?.plan28,
+              hasWeeks: !!generatedPlan?.weeks,
+              plan28Days: generatedPlan?.plan28?.days?.length || 0,
+              weeksCount: generatedPlan?.weeks?.length || 0,
+            });
+          } catch (planGenError: any) {
+            // Если это ошибка API (например, 500, 404), пробрасываем дальше
+            console.error('❌ Ошибка при вызове api.generatePlan():', {
+              message: planGenError?.message,
+              status: planGenError?.status,
+              error: planGenError,
+            });
+            throw planGenError;
+          }
           
           // Логируем успешную генерацию на сервер
           try {
