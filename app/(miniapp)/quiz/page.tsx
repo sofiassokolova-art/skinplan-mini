@@ -1513,9 +1513,21 @@ export default function QuizPage() {
       }
       
       // ВАЖНО: Проверяем, что result существует и не содержит ошибку
-      // ApiResponse.success() возвращает объект с данными напрямую, не обернутый в {success: true}
-      // Поэтому проверяем наличие result и отсутствие поля error
-      const shouldGeneratePlan = result && !result.error && (result.success !== false);
+      // ApiResponse.success() возвращает объект с данными напрямую
+      // В /api/questionnaire/answers возвращается {success: true, profile: {...}, answersCount: number}
+      // Поэтому проверяем наличие result, отсутствие поля error и наличие success: true
+      const shouldGeneratePlan = result && !result.error && result.success === true;
+      
+      // Логируем для диагностики
+      console.log('🔍 Проверка shouldGeneratePlan:', {
+        hasResult: !!result,
+        hasError: !!result?.error,
+        success: result?.success,
+        successType: typeof result?.success,
+        shouldGeneratePlan,
+        resultKeys: result ? Object.keys(result) : [],
+        resultPreview: result ? JSON.stringify(result).substring(0, 300) : 'null',
+      });
       
       if (shouldGeneratePlan) {
         // Запускаем генерацию плана и ждем её завершения
@@ -1706,6 +1718,29 @@ export default function QuizPage() {
           }
         } else {
           console.log('⚠️ План не готов после ожидания, ответы сохранены для генерации на странице /plan');
+        }
+      } else {
+        // ВАЖНО: Если shouldGeneratePlan = false, все равно пытаемся сгенерировать план
+        // Ответы уже отправлены и профиль создан, поэтому план должен быть сгенерирован
+        console.warn('⚠️ shouldGeneratePlan = false, но пытаемся сгенерировать план, так как ответы уже отправлены:', {
+          result,
+          hasResult: !!result,
+          hasError: !!result?.error,
+          success: result?.success,
+        });
+        
+        try {
+          console.log('🔄 Вызываем api.generatePlan() несмотря на shouldGeneratePlan = false...');
+          const generatedPlan = await api.generatePlan() as any;
+          
+          if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+            console.log('✅ План сгенерирован успешно (несмотря на shouldGeneratePlan = false)');
+          } else {
+            console.warn('⚠️ План не сгенерирован (несмотря на попытку), будет сгенерирован на странице /plan');
+          }
+        } catch (planGenError: any) {
+          console.warn('⚠️ Ошибка при генерации плана (несмотря на shouldGeneratePlan = false):', planGenError?.message);
+          // Продолжаем редирект - план будет сгенерирован на странице /plan
         }
       }
       
