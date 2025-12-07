@@ -303,7 +303,7 @@ export default function QuizPage() {
       // Важно: загружаем после загрузки анкеты, чтобы правильно вычислить totalQuestions
       // Проверка isStartingOver и hasResumed выполняется внутри loadSavedProgressFromServer
       // ВАЖНО: Не загружаем прогресс, если пользователь уже продолжил анкету
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !hasResumedRef.current && !hasResumed) {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !hasResumedRef.current && !hasResumed && !loadProgressInProgressRef.current) {
         try {
           await loadSavedProgressFromServer();
           // loadSavedProgressFromServer сам устанавливает setShowResumeScreen(true) если есть прогресс
@@ -528,7 +528,14 @@ export default function QuizPage() {
   };
 
   // Загружаем прогресс с сервера (синхронизация между устройствами)
+  const loadProgressInProgressRef = useRef(false);
+
   const loadSavedProgressFromServer = async () => {
+    // Защита от множественных вызовов
+    if (loadProgressInProgressRef.current) {
+      return;
+    }
+    loadProgressInProgressRef.current = true;
     // Если пользователь только что нажал "Начать заново", не загружаем прогресс
     // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
     if (isStartingOverRef.current || isStartingOver) {
@@ -644,6 +651,8 @@ export default function QuizPage() {
       }
       setSavedProgress(null);
       setShowResumeScreen(false);
+    } finally {
+      loadProgressInProgressRef.current = false;
     }
   };
 
