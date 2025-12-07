@@ -173,3 +173,4 @@ checkAndFixProducts()
     await prisma.$disconnect();
   });
 
+
