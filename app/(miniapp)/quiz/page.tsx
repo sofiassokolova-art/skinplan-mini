@@ -1209,13 +1209,24 @@ export default function QuizPage() {
         
         if (!logResponse.ok) {
           const errorText = await logResponse.text().catch(() => 'Unknown error');
-          console.error('❌ Ошибка сохранения лога:', {
+          let errorJson: any = null;
+          try {
+            errorJson = JSON.parse(errorText);
+          } catch {
+            // Не JSON, оставляем как текст
+          }
+          console.error('❌ Ошибка сохранения лога (submitAnswers called):', {
             status: logResponse.status,
             statusText: logResponse.statusText,
             error: errorText,
+            errorJson,
+            hasInitData: !!currentInitData,
+            initDataLength: currentInitData?.length || 0,
+            initDataPreview: currentInitData ? currentInitData.substring(0, 50) + '...' : null,
           });
         } else {
-          console.log('✅ Лог успешно сохранен');
+          const responseData = await logResponse.json().catch(() => null);
+          console.log('✅ Лог успешно сохранен (submitAnswers called):', responseData);
         }
       } else {
         console.warn('⚠️ initData не доступен для логирования');
