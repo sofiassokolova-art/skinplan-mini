@@ -1117,22 +1117,28 @@ export default function QuizPage() {
       // Если мы в Telegram, но initData нет - это может быть preview mode
       if (isInTelegram && !initData) {
         console.error('❌ Telegram WebApp доступен, но initData отсутствует (возможно, preview mode)');
-        setError('Приложение открыто в режиме предпросмотра. Пожалуйста, откройте его через кнопку бота или используйте ссылку формата: https://t.me/your_bot?startapp=...');
-        setIsSubmitting(false);
+        if (isMountedRef.current) {
+          setError('Приложение открыто в режиме предпросмотра. Пожалуйста, откройте его через кнопку бота или используйте ссылку формата: https://t.me/your_bot?startapp=...');
+          setIsSubmitting(false);
+        }
         return;
       }
 
       if (!isInTelegram) {
         console.error('❌ Telegram WebApp не доступен');
-        setError('Пожалуйста, откройте приложение через Telegram Mini App (не просто по ссылке, а через кнопку бота).');
-        setIsSubmitting(false);
+        if (isMountedRef.current) {
+          setError('Пожалуйста, откройте приложение через Telegram Mini App (не просто по ссылке, а через кнопку бота).');
+          setIsSubmitting(false);
+        }
         return;
       }
 
       if (!initData) {
         console.error('❌ Telegram WebApp initData не доступен');
-        setError('Не удалось получить данные авторизации. Попробуйте обновить страницу.');
-        setIsSubmitting(false);
+        if (isMountedRef.current) {
+          setError('Не удалось получить данные авторизации. Попробуйте обновить страницу.');
+          setIsSubmitting(false);
+        }
         return;
       }
 
@@ -1148,7 +1154,9 @@ export default function QuizPage() {
             const savedProgress = JSON.parse(savedProgressStr);
             if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
               answersToSubmit = savedProgress.answers;
-              setAnswers(savedProgress.answers);
+              if (isMountedRef.current) {
+                setAnswers(savedProgress.answers);
+              }
               console.log('✅ Загружены ответы из localStorage:', Object.keys(savedProgress.answers).length);
             }
           }
@@ -1159,8 +1167,10 @@ export default function QuizPage() {
 
       if (Object.keys(answersToSubmit).length === 0) {
         console.error('❌ Нет ответов для отправки');
-        setError('Нет ответов для отправки. Пожалуйста, пройдите анкету.');
-        setIsSubmitting(false);
+        if (isMountedRef.current) {
+          setError('Нет ответов для отправки. Пожалуйста, пройдите анкету.');
+          setIsSubmitting(false);
+        }
         return;
       }
 
@@ -1232,22 +1242,22 @@ export default function QuizPage() {
             window.location.replace('/plan');
           } catch (redirectError) {
             console.error('❌ Ошибка при редиректе:', redirectError);
-            // Если редирект не сработал, пробуем через router (но это может не сработать после размонтирования)
+            // Если редирект не сработал, пробуем через href (не используем router после размонтирования)
             try {
-              router.push('/plan');
-            } catch (routerError) {
-              console.error('❌ Ошибка при редиректе через router:', routerError);
-              // Последняя попытка - через href
               window.location.href = '/plan';
+            } catch (hrefError) {
+              console.error('❌ Все методы редиректа не сработали:', hrefError);
             }
           }
         }, 1500);
       } else {
-        // SSR режим - используем router
+        // SSR режим - используем window.location вместо router после размонтирования
         try {
-          router.push('/plan');
-        } catch (routerError) {
-          console.error('❌ Ошибка при редиректе через router (SSR):', routerError);
+          if (typeof window !== 'undefined') {
+            window.location.replace('/plan');
+          }
+        } catch (redirectError) {
+          console.error('❌ Ошибка при редиректе (SSR):', redirectError);
         }
       }
     } catch (err: any) {
@@ -1317,12 +1327,7 @@ export default function QuizPage() {
               try {
                 window.location.href = '/plan';
               } catch (hrefError) {
-                // Последняя попытка - через router (но это может не сработать после размонтирования)
-                try {
-                  router.push('/plan');
-                } catch (routerError) {
-                  console.error('❌ Все методы редиректа не сработали');
-                }
+                console.error('❌ Все методы редиректа не сработали:', hrefError);
               }
             }
           }, 1500); // Небольшая задержка, чтобы пользователь увидел лоадер
@@ -1335,10 +1340,12 @@ export default function QuizPage() {
           }
         }
       } else {
-        // SSR режим
+        // SSR режим - используем window.location вместо router после размонтирования
         try {
-          router.push('/plan');
-        } catch (routerError) {
+          if (typeof window !== 'undefined') {
+            window.location.replace('/plan');
+          }
+        } catch (redirectError) {
           // Игнорируем ошибки
         }
       }
