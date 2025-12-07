@@ -460,7 +460,10 @@ export default function PlanPage() {
         weeks: plan.weeks || [],
         productsMap: productsMap, // Map передается напрямую
         products: productsMap, // Также сохраняем в products для обратной совместимости
-        profile: profile || undefined,
+        profile: profile ? {
+          ...profile,
+          id: String(profile.id), // Преобразуем id в строку для совместимости
+        } : undefined,
         scores,
         wishlist,
         currentDay: currentDayGlobal,
