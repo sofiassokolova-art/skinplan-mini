@@ -466,7 +466,7 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         published: true as any,
         brand: {
           isActive: true, // Только активные бренды
-      },
+        },
       } as any,
       include: { brand: true },
     });
@@ -478,6 +478,14 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
         foundProducts: recommendationProducts.length,
         missingIds: productIds.filter(id => !recommendationProducts.find(p => p.id === id)).slice(0, 10),
         foundProductIds: recommendationProducts.map(p => p.id).slice(0, 10),
+        productDetails: recommendationProducts.map(p => ({
+          id: p.id,
+          name: p.name,
+          step: p.step,
+          category: p.category,
+          brandName: p.brand?.name,
+          brandActive: p.brand?.isActive,
+        })),
     });
     
     // Сортируем в памяти
