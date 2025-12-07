@@ -384,8 +384,14 @@ export async function POST(request: NextRequest) {
         // ВАЖНО: Генерацию плана переносим ПОСЛЕ создания RecommendationSession
         // Это гарантирует, что план будет использовать продукты из новой сессии
         // Генерация плана будет выполнена после создания RecommendationSession (см. ниже)
-      } catch (cacheError) {
-        logger.warn('Failed to clear cache', { error: cacheError, userId });
+      } catch (cacheError: any) {
+        // NOPERM ошибки - это ожидаемо, если используется read-only токен
+        // Не критично, так как кэш будет обновлен при следующей генерации плана
+        if (cacheError?.message?.includes('NOPERM') || cacheError?.message?.includes('no permissions')) {
+          logger.info('Cache invalidation skipped (read-only token, non-critical)', { userId });
+        } else {
+          logger.warn('Failed to clear cache', { error: cacheError, userId });
+        }
       }
     }
 
@@ -831,8 +837,14 @@ export async function POST(request: NextRequest) {
             userId,
             profileVersion: profile.version,
           });
-        } catch (cacheError) {
-          logger.warn('Failed to invalidate recommendations cache', { error: cacheError });
+        } catch (cacheError: any) {
+          // NOPERM ошибки - это ожидаемо, если используется read-only токен
+          // Не критично, так как кэш будет обновлен при следующей генерации плана
+          if (cacheError?.message?.includes('NOPERM') || cacheError?.message?.includes('no permissions')) {
+            // Не логируем NOPERM ошибки, так как они не критичны
+          } else {
+            logger.warn('Failed to invalidate recommendations cache', { error: cacheError });
+          }
         }
 
         logger.info('RecommendationSession created', {

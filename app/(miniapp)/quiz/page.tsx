@@ -1729,17 +1729,132 @@ export default function QuizPage() {
           success: result?.success,
         });
         
+        // Логируем на сервер для диагностики
+        try {
+          const currentInitData = await getInitData();
+          if (currentInitData) {
+            await fetch('/api/logs', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': currentInitData,
+              },
+              body: JSON.stringify({
+                level: 'warn',
+                message: 'shouldGeneratePlan = false, but attempting plan generation anyway',
+                context: {
+                  result,
+                  hasResult: !!result,
+                  hasError: !!result?.error,
+                  success: result?.success,
+                  resultKeys: result ? Object.keys(result) : [],
+                },
+              }),
+            }).catch(() => {});
+          }
+        } catch (logError) {
+          // Игнорируем ошибки логирования
+        }
+        
         try {
           console.log('🔄 Вызываем api.generatePlan() несмотря на shouldGeneratePlan = false...');
           const generatedPlan = await api.generatePlan() as any;
           
+          console.log('📊 Результат api.generatePlan():', {
+            hasPlan: !!generatedPlan,
+            hasPlan28: !!generatedPlan?.plan28,
+            hasWeeks: !!generatedPlan?.weeks,
+            planKeys: generatedPlan ? Object.keys(generatedPlan) : [],
+            planType: typeof generatedPlan,
+          });
+          
           if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
             console.log('✅ План сгенерирован успешно (несмотря на shouldGeneratePlan = false)');
+            
+            // Логируем успех на сервер
+            try {
+              const currentInitData = await getInitData();
+              if (currentInitData) {
+                await fetch('/api/logs', {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Telegram-Init-Data': currentInitData,
+                  },
+                  body: JSON.stringify({
+                    level: 'info',
+                    message: 'Plan generated successfully despite shouldGeneratePlan = false',
+                    context: {
+                      hasPlan28: !!generatedPlan?.plan28,
+                      hasWeeks: !!generatedPlan?.weeks,
+                    },
+                  }),
+                }).catch(() => {});
+              }
+            } catch (logError) {
+              // Игнорируем ошибки логирования
+            }
           } else {
             console.warn('⚠️ План не сгенерирован (несмотря на попытку), будет сгенерирован на странице /plan');
+            
+            // Логируем проблему на сервер
+            try {
+              const currentInitData = await getInitData();
+              if (currentInitData) {
+                await fetch('/api/logs', {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Telegram-Init-Data': currentInitData,
+                  },
+                  body: JSON.stringify({
+                    level: 'warn',
+                    message: 'Plan generation returned empty result despite shouldGeneratePlan = false',
+                    context: {
+                      hasPlan: !!generatedPlan,
+                      hasPlan28: !!generatedPlan?.plan28,
+                      hasWeeks: !!generatedPlan?.weeks,
+                      planKeys: generatedPlan ? Object.keys(generatedPlan) : [],
+                    },
+                  }),
+                }).catch(() => {});
+              }
+            } catch (logError) {
+              // Игнорируем ошибки логирования
+            }
           }
         } catch (planGenError: any) {
-          console.warn('⚠️ Ошибка при генерации плана (несмотря на shouldGeneratePlan = false):', planGenError?.message);
+          console.error('❌ Ошибка при генерации плана (несмотря на shouldGeneratePlan = false):', {
+            message: planGenError?.message,
+            status: planGenError?.status,
+            error: planGenError,
+          });
+          
+          // Логируем ошибку на сервер
+          try {
+            const currentInitData = await getInitData();
+            if (currentInitData) {
+              await fetch('/api/logs', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'X-Telegram-Init-Data': currentInitData,
+                },
+                body: JSON.stringify({
+                  level: 'error',
+                  message: 'Plan generation failed despite shouldGeneratePlan = false',
+                  context: {
+                    error: planGenError?.message,
+                    status: planGenError?.status,
+                    stack: planGenError?.stack?.substring(0, 500),
+                  },
+                }),
+              }).catch(() => {});
+            }
+          } catch (logError) {
+            // Игнорируем ошибки логирования
+          }
+          
           // Продолжаем редирект - план будет сгенерирован на странице /plan
         }
       }

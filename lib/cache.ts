@@ -310,10 +310,16 @@ export async function invalidateCache(userId: string, profileVersion: number): P
       kv.del(planKey),
       kv.del(recommendationsKey),
     ]);
-  } catch (error) {
+  } catch (error: any) {
     // Логируем только если это не ошибка отсутствия переменных окружения
-    if (!(error as any)?.message?.includes('Missing required environment variables')) {
-    console.error('Error invalidating cache:', error);
+    if (!error?.message?.includes('Missing required environment variables')) {
+      // NOPERM ошибки - это ожидаемо, если используется read-only токен
+      // Логируем как предупреждение, а не как ошибку
+      if (error?.message?.includes('NOPERM') || error?.message?.includes('no permissions')) {
+        console.warn('⚠️ Cache invalidation failed (read-only token):', error?.message);
+      } else {
+        console.error('Error invalidating cache:', error);
+      }
     }
   }
 }
@@ -347,10 +353,16 @@ export async function invalidateAllUserCache(userId: string): Promise<void> {
     })));
     
     console.log(`✅ Очищен весь кэш для пользователя ${userId} (все версии 1-100)`);
-  } catch (error) {
+  } catch (error: any) {
     // Логируем только если это не ошибка отсутствия переменных окружения
-    if (!(error as any)?.message?.includes('Missing required environment variables')) {
-      console.error('Error invalidating all user cache:', error);
+    if (!error?.message?.includes('Missing required environment variables')) {
+      // NOPERM ошибки - это ожидаемо, если используется read-only токен
+      // Логируем как предупреждение, а не как ошибку
+      if (error?.message?.includes('NOPERM') || error?.message?.includes('no permissions')) {
+        console.warn('⚠️ Cache invalidation failed (read-only token):', error?.message);
+      } else {
+        console.error('Error invalidating all user cache:', error);
+      }
     }
   }
 }
