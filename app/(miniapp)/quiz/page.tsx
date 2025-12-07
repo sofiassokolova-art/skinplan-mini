@@ -122,12 +122,13 @@ export default function QuizPage() {
     }
   }, []);
 
+  // Флаг для предотвращения множественных вызовов init
+  const initInProgressRef = useRef(false);
+
   useEffect(() => {
     // ВАЖНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
     // не выполняем повторную инициализацию
     if (initCompletedRef.current && !isStartingOverRef.current) {
-      console.log('⏸️ useEffect init: пропущено, так как инициализация уже завершена');
-      // ВАЖНО: Гарантируем, что loading = false, если инициализация уже завершена
       if (loading) {
         setLoading(false);
       }
@@ -137,13 +138,17 @@ export default function QuizPage() {
     // ВАЖНО: Если пользователь уже продолжил анкету (hasResumed), не выполняем повторную инициализацию
     // Это предотвращает повторную загрузку прогресса после resumeQuiz
     if (hasResumedRef.current || hasResumed) {
-      console.log('⏸️ useEffect init: пропущено, так как пользователь уже продолжил анкету (hasResumed = true)');
-      // ВАЖНО: Гарантируем, что loading = false, если пользователь уже продолжил
       if (loading) {
         setLoading(false);
       }
       return;
     }
+
+    // ВАЖНО: Предотвращаем множественные вызовы init
+    if (initInProgressRef.current) {
+      return;
+    }
+    initInProgressRef.current = true;
     
     // Если пользователь нажал "Начать заново", разрешаем повторную инициализацию
     // но с флагом isStartingOverRef = true, чтобы не загружать прогресс
@@ -204,21 +209,12 @@ export default function QuizPage() {
         // Сначала загружаем анкету (публичный маршрут)
         // Но только если она еще не загружена
         if (!questionnaire) {
-        console.log('📥 Loading questionnaire...');
-        const loadedQuestionnaire = await loadQuestionnaire();
-        console.log('✅ Questionnaire loaded', { hasQuestionnaire: !!loadedQuestionnaire });
-        // ВАЖНО: Если анкета загружена, но loading все еще true, устанавливаем его в false
-        if (loadedQuestionnaire && loading) {
-          console.log('🔧 Анкета загружена, но loading = true, устанавливаем loading = false');
-          setLoading(false);
-        }
-        } else {
-          console.log('✅ Questionnaire already loaded, skipping');
-          // ВАЖНО: Если анкета уже загружена, но loading все еще true, устанавливаем его в false
-          if (loading) {
-            console.log('🔧 Анкета уже загружена, но loading = true, устанавливаем loading = false');
+          const loadedQuestionnaire = await loadQuestionnaire();
+          if (loadedQuestionnaire && loading) {
             setLoading(false);
           }
+        } else if (loading) {
+          setLoading(false);
         }
       
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
@@ -341,9 +337,9 @@ export default function QuizPage() {
       }
       
       // Только после всех загрузок устанавливаем loading = false
-      console.log('✅ Initialization complete, setting loading = false');
       setLoading(false);
-      initCompletedRef.current = true; // Помечаем, что инициализация завершена
+      initCompletedRef.current = true;
+      initInProgressRef.current = false;
       
       // ВАЖНО: Если это была повторная инициализация после "Начать заново",
       // сбрасываем флаг isStartingOverRef, чтобы разрешить нормальную работу
@@ -353,14 +349,10 @@ export default function QuizPage() {
         setIsStartingOver(false);
       }
     } catch (initErr: any) {
-        console.error('❌ Error in init function:', {
-          error: initErr,
-          message: initErr?.message,
-          stack: initErr?.stack,
-          name: initErr?.name,
-        });
+        console.error('❌ Error in init function:', initErr?.message);
         setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
         setLoading(false);
+        initInProgressRef.current = false;
       }
     };
     
@@ -375,27 +367,15 @@ export default function QuizPage() {
     
     init()
       .catch((err) => {
-        console.error('❌ Unhandled error in init promise:', {
-          error: err,
-          message: (err as any)?.message,
-          stack: (err as any)?.stack,
-          name: (err as any)?.name,
-        });
+        console.error('❌ Unhandled error in init promise:', err?.message);
         setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
         setLoading(false);
+        initInProgressRef.current = false;
       })
       .finally(() => {
-        // Очищаем таймаут, если init завершился успешно
         clearTimeout(initTimeout);
-        // ВАЖНО: Гарантируем, что loading всегда устанавливается в false в finally
-        // Это предотвращает бесконечный лоадер, даже если произошла ошибка
-        try {
-          console.log('🔧 finally блок: устанавливаем loading = false');
-          setLoading(false);
-          console.log('✅ finally блок: loading установлен в false');
-        } catch (stateError) {
-          console.error('❌ Ошибка при установке loading = false в finally:', stateError);
-        }
+        setLoading(false);
+        initInProgressRef.current = false;
       });
     
     // Очищаем таймаут при размонтировании
