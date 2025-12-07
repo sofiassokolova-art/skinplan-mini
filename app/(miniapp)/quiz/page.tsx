@@ -1261,7 +1261,14 @@ export default function QuizPage() {
       let result: any;
       try {
         result = await api.submitAnswers(questionnaire.id, answerArray) as any;
-        console.log('✅ Ответы отправлены, профиль создан:', result);
+        console.log('✅ Ответы отправлены, профиль создан:', {
+          result,
+          success: result?.success,
+          hasResult: !!result,
+          resultType: typeof result,
+          resultKeys: result ? Object.keys(result) : [],
+          resultString: JSON.stringify(result).substring(0, 200),
+        });
       } catch (submitError: any) {
         // Если ошибка при отправке - это может быть нормально (дубликат, ошибка сети)
         // Все равно пытаемся редиректить, так как профиль мог быть создан
@@ -1306,6 +1313,13 @@ export default function QuizPage() {
       // Теперь запускаем генерацию плана и ждем её завершения
       // Пока план генерируется, показываем лоадер
       // Когда план готов, редиректим на /plan
+      console.log('🔍 Проверка result перед генерацией плана:', {
+        result,
+        success: result?.success,
+        hasResult: !!result,
+        resultKeys: result ? Object.keys(result) : [],
+      });
+      
       if (result?.success !== false) {
         console.log('🚀 Запуск генерации плана...');
         
