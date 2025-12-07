@@ -174,10 +174,10 @@ export async function GET(request: NextRequest) {
       }
 
       // ПРОВЕРЯЕМ: если в сессии нет необходимых шагов, добавляем их
-      // Утренние шаги: cleanser, toner, serum/essence, moisturizer, spf
-      // Вечерние шаги: cleanser (двойное очищение), serum/treatment, acid (опционально), moisturizer
-      const requiredMorningSteps = ['cleanser', 'toner', 'serum', 'moisturizer', 'spf'];
-      const requiredEveningSteps = ['cleanser', 'serum', 'moisturizer'];
+      // ОБЯЗАТЕЛЬНЫЕ шаги: cleanser, toner, moisturizer, spf
+      // Остальное (serum, treatment и т.д.) только по потребностям (правилам)
+      const requiredMorningSteps = ['cleanser', 'toner', 'moisturizer', 'spf'];
+      const requiredEveningSteps = ['cleanser', 'moisturizer'];
       const allRequiredSteps = [...new Set([...requiredMorningSteps, ...requiredEveningSteps])];
       
       const missingSteps: string[] = [];

@@ -361,16 +361,49 @@ async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   }
 
   // Маппим цели в mainGoals для CarePlanTemplate
+  // ВАЖНО: Используем keyProblems (вычисленные из ответов) вместо fallback значений
   const mainGoals: string[] = [];
-  if (primaryFocus === 'acne') mainGoals.push('acne');
-  if (primaryFocus === 'pigmentation') mainGoals.push('pigmentation');
-  if (primaryFocus === 'wrinkles') mainGoals.push('antiage');
-  if (concerns.includes('Барьер') || concerns.includes('Чувствительность')) {
-    mainGoals.push('barrier');
+  
+  // Маппим keyProblems в mainGoals
+  for (const problem of keyProblems) {
+    const problemLower = problem.toLowerCase();
+    if (problemLower.includes('акне') || problemLower.includes('acne') || problemLower.includes('высыпания')) {
+      if (!mainGoals.includes('acne')) mainGoals.push('acne');
+    }
+    if (problemLower.includes('пигментация') || problemLower.includes('pigmentation') || problemLower.includes('пятна')) {
+      if (!mainGoals.includes('pigmentation')) mainGoals.push('pigmentation');
+    }
+    if (problemLower.includes('морщин') || problemLower.includes('wrinkle') || problemLower.includes('старение') || problemLower.includes('age')) {
+      if (!mainGoals.includes('antiage')) mainGoals.push('antiage');
+    }
+    if (problemLower.includes('барьер') || problemLower.includes('barrier') || problemLower.includes('чувствительность') || problemLower.includes('sensitivity')) {
+      if (!mainGoals.includes('barrier')) mainGoals.push('barrier');
+    }
+    if (problemLower.includes('обезвоженность') || problemLower.includes('dehydration') || problemLower.includes('сухость') || problemLower.includes('dryness')) {
+      if (!mainGoals.includes('dehydration')) mainGoals.push('dehydration');
+    }
   }
-  if (concerns.includes('Обезвоженность') || concerns.includes('Сухость')) {
-    mainGoals.push('dehydration');
+  
+  // Если keyProblems пустые, используем fallback на основе primaryFocus и concerns
+  if (mainGoals.length === 0) {
+    if (primaryFocus === 'acne') mainGoals.push('acne');
+    if (primaryFocus === 'pigmentation') mainGoals.push('pigmentation');
+    if (primaryFocus === 'wrinkles') mainGoals.push('antiage');
+    if (concerns.includes('Барьер') || concerns.includes('Чувствительность')) {
+      mainGoals.push('barrier');
+    }
+    if (concerns.includes('Обезвоженность') || concerns.includes('Сухость')) {
+      mainGoals.push('dehydration');
+    }
   }
+  
+  logger.info('Main goals determined', {
+    userId,
+    keyProblems,
+    primaryFocus,
+    mainGoals,
+    concerns,
+  });
 
   // Определяем сложность рутины для CarePlanTemplate
   let routineComplexity: CarePlanProfileInput['routineComplexity'] = 'medium';

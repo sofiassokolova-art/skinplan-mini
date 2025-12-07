@@ -850,8 +850,9 @@ export async function POST(request: NextRequest) {
         
         const fallbackProductIds: number[] = [];
         
-        // ГАРАНТИРУЕМ наличие базовых шагов: cleanser, moisturizer, spf
-        const requiredSteps = ['cleanser', 'moisturizer', 'spf'];
+        // ГАРАНТИРУЕМ наличие обязательных шагов: cleanser, toner, moisturizer, spf
+        // Остальное (serum, treatment и т.д.) только по потребностям (правилам)
+        const requiredSteps = ['cleanser', 'toner', 'moisturizer', 'spf'];
         
         for (const step of requiredSteps) {
           const products = await prisma.product.findMany({
