@@ -353,13 +353,42 @@ export default function HomePage() {
     });
   }, [router]);
 
-  // Проверка, нужно ли показывать поп-ап с отзывом (раз в неделю)
+  // Проверка, нужно ли показывать поп-ап с отзывом (через 3 дня после генерации плана, раз в неделю)
   const checkFeedbackPopup = async () => {
     if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
       return;
     }
 
     try {
+      // ВАЖНО: Сначала проверяем, прошло ли 3 дня с момента генерации плана
+      // Получаем профиль, чтобы узнать дату создания плана
+      let profileCreatedAt: Date | null = null;
+      try {
+        const profile = await api.getCurrentProfile() as any;
+        if (profile && profile.createdAt) {
+          profileCreatedAt = new Date(profile.createdAt);
+        }
+      } catch (profileError) {
+        // Если профиль не найден, не показываем поп-ап
+        console.log('⚠️ Profile not found, skipping feedback popup');
+        return;
+      }
+
+      // Если профиль не найден или дата создания не определена, не показываем поп-ап
+      if (!profileCreatedAt) {
+        console.log('⚠️ Profile creation date not found, skipping feedback popup');
+        return;
+      }
+
+      const now = new Date();
+      const daysSincePlanGeneration = Math.floor((now.getTime() - profileCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // ВАЖНО: Поп-ап показывается только через 3 дня после генерации плана
+      if (daysSincePlanGeneration < 3) {
+        console.log(`⚠️ Plan generated ${daysSincePlanGeneration} days ago, need 3 days. Skipping feedback popup.`);
+        return;
+      }
+
       // Проверяем последний отзыв пользователя
       const response = await api.getLastPlanFeedback() as {
         lastFeedback?: {
@@ -371,33 +400,19 @@ export default function HomePage() {
       };
 
       const lastFeedback = response?.lastFeedback;
-      const now = new Date();
 
       if (!lastFeedback) {
-        // Если отзывов еще не было, показываем поп-ап через неделю после первого захода
-        const firstVisit = localStorage.getItem('first_visit_date');
-        if (!firstVisit) {
-          // Первый заход - сохраняем дату, но не показываем поп-ап
-          localStorage.setItem('first_visit_date', now.toISOString());
-          return;
-        }
-        
-        const firstVisitDate = new Date(firstVisit);
-        const daysSinceFirstVisit = Math.floor((now.getTime() - firstVisitDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Показываем поп-ап через 7 дней после первого захода
-        if (daysSinceFirstVisit >= 7) {
-          // Проверяем, не закрывал ли пользователь поп-ап сегодня
-          const closedToday = localStorage.getItem('feedback_popup_closed');
-          if (closedToday) {
-            const closedDate = new Date(closedToday);
-            const sameDay = closedDate.toDateString() === now.toDateString();
-            if (!sameDay) {
-              setShowFeedbackPopup(true);
-            }
-          } else {
+        // Если отзывов еще не было, показываем поп-ап (уже прошло 3+ дня)
+        // Проверяем, не закрывал ли пользователь поп-ап сегодня
+        const closedToday = localStorage.getItem('feedback_popup_closed');
+        if (closedToday) {
+          const closedDate = new Date(closedToday);
+          const sameDay = closedDate.toDateString() === now.toDateString();
+          if (!sameDay) {
             setShowFeedbackPopup(true);
           }
+        } else {
+          setShowFeedbackPopup(true);
         }
       } else {
         // Проверяем, прошла ли неделя с последнего отзыва
