@@ -536,32 +536,23 @@ export default function QuizPage() {
       return;
     }
     loadProgressInProgressRef.current = true;
-    // Если пользователь только что нажал "Начать заново", не загружаем прогресс
-    // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
-    if (isStartingOverRef.current || isStartingOver) {
-      console.log('⏸️ loadSavedProgressFromServer: пропущено, так как isStartingOver = true', {
-        refValue: isStartingOverRef.current,
-        stateValue: isStartingOver,
-      });
-      return;
-    }
-    // Если пользователь уже нажал "Продолжить" (hasResumed = true), не загружаем прогресс снова
-    // Это предотвращает повторное появление экрана "Вы не завершили анкету"
-    // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
-    if (hasResumedRef.current || hasResumed) {
-      console.log('⏸️ loadSavedProgressFromServer: пропущено, так как hasResumed = true (пользователь уже продолжил)', {
-        refValue: hasResumedRef.current,
-        stateValue: hasResumed,
-      });
-      return;
-    }
-    // Проверяем, что Telegram WebApp доступен перед запросом
-    if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-      console.warn('Telegram WebApp не доступен, пропускаем загрузку прогресса с сервера');
-      return;
-    }
 
     try {
+      // Если пользователь только что нажал "Начать заново", не загружаем прогресс
+      // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
+      if (isStartingOverRef.current || isStartingOver) {
+        return;
+      }
+      // Если пользователь уже нажал "Продолжить" (hasResumed = true), не загружаем прогресс снова
+      // Это предотвращает повторное появление экрана "Вы не завершили анкету"
+      // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
+      if (hasResumedRef.current || hasResumed) {
+        return;
+      }
+      // Проверяем, что Telegram WebApp доступен перед запросом
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        return;
+      }
       const response = await api.getQuizProgress() as {
         progress?: {
           answers: Record<number, string | string[]>;
