@@ -2205,7 +2205,7 @@ export async function GET(request: NextRequest) {
       // Ошибка кэширования не должна блокировать возврат плана
       logger.warn('Failed to cache plan (non-critical)', cacheError, {
         userId,
-        profileVersion: profile.version,
+        version: profile.version,
       });
     }
     
