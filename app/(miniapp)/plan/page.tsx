@@ -455,8 +455,10 @@ export default function PlanPage() {
       // При ошибке обработки плана не показываем экран генерации
       // Вместо этого пытаемся загрузить план заново или показываем обычный лоадер
       console.error('❌ Error processing plan, attempting to reload...');
-      safeSetLoading(true);
+      // ВАЖНО: Сбрасываем ошибку и показываем только лоадер
+      // Не показываем ошибку пользователю, так как план может еще генерироваться
       safeSetError(null);
+      safeSetLoading(true);
       // Пробуем загрузить план еще раз через небольшую задержку
       setTimeout(() => {
         if (isMountedRef.current) {
@@ -688,13 +690,15 @@ export default function PlanPage() {
               }
             } catch (generateError: any) {
               console.error('❌ Failed to regenerate plan:', generateError);
-              // Если это ошибка 404 (нет профиля) - показываем ошибку
-              if (generateError?.status === 404 || generateError?.message?.includes('No skin profile') || generateError?.message?.includes('Profile not found')) {
+              // ВАЖНО: При первой загрузке плана после завершения анкеты не показываем ошибку сразу
+              // План может еще генерироваться, поэтому показываем только лоадер
+              // Если это ошибка 404 (нет профиля) и это не первая попытка - показываем ошибку
+              if ((generateError?.status === 404 || generateError?.message?.includes('No skin profile') || generateError?.message?.includes('Profile not found')) && retryCount >= 2) {
                 safeSetError('no_profile');
                 safeSetLoading(false);
                 return;
               }
-              // Другие ошибки - возможно план еще генерируется, показываем лоадер
+              // Другие ошибки или первая попытка - возможно план еще генерируется, показываем лоадер
               console.log('⏳ Plan generation error, but profile exists - waiting and retrying...');
               safeSetLoading(true);
               safeSetError(null);
@@ -705,9 +709,19 @@ export default function PlanPage() {
               return;
             }
           } else {
-            // Профиля нет - показываем ошибку
-            safeSetError('no_profile');
-            safeSetLoading(false);
+            // Профиля нет - показываем ошибку только после нескольких попыток
+            if (retryCount >= 2) {
+              safeSetError('no_profile');
+              safeSetLoading(false);
+              return;
+            }
+            // При первой попытке показываем лоадер, возможно профиль еще создается
+            console.log('⏳ Profile not found, but might be creating - waiting and retrying...');
+            safeSetLoading(true);
+            safeSetError(null);
+            setTimeout(() => {
+              loadPlan(retryCount + 1);
+            }, 2000);
             return;
           }
         } catch (profileCheckError: any) {

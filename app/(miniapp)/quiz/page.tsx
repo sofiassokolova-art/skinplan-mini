@@ -96,6 +96,12 @@ export default function QuizPage() {
   const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
+  // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
+  // Автоматическая отправка ответов когда все вопросы отвечены
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
+  const autoSubmitTriggeredRef = useRef(false);
+  const isMountedRef = useRef(true);
+  
   // Функция для добавления логов (только в development)
   // ВАЖНО: оборачиваем в useCallback, чтобы функция не менялась между рендерами
   // и не вызывала лишние пересчеты в useMemo
@@ -1059,8 +1065,7 @@ export default function QuizPage() {
     }
   };
 
-  // Флаг для отслеживания монтирования компонента
-  const isMountedRef = useRef(true);
+  // Флаг для отслеживания монтирования компонента (уже объявлен выше)
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
@@ -2056,6 +2061,47 @@ export default function QuizPage() {
     }
     return null;
   }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions]);
+
+  // ВАЖНО: Автоматически отправляем ответы когда все вопросы отвечены
+  // Этот useEffect должен быть ВСЕГДА вызван, даже если есть ранние return'ы, чтобы соблюдать порядок хуков
+  // ВАЖНО: submitAnswers объявлена позже, но это не проблема, так как useEffect выполняется после рендера
+  useEffect(() => {
+    // Автоматически отправляем ответы, если все вопросы отвечены и ответы есть
+    if (!autoSubmitTriggeredRef.current && 
+        questionnaire && 
+        allQuestions.length > 0 && 
+        currentQuestionIndex >= allQuestions.length &&
+        Object.keys(answers).length > 0 &&
+        !isSubmitting &&
+        !hasResumed &&
+        !showResumeScreen &&
+        !error) {
+      
+      console.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...');
+      autoSubmitTriggeredRef.current = true;
+      setAutoSubmitTriggered(true);
+      
+      // Показываем лоадер 5 секунд перед отправкой
+      setIsSubmitting(true);
+      
+      // Используем setTimeout, чтобы submitAnswers была доступна к моменту выполнения
+      setTimeout(() => {
+        if (isMountedRef.current && typeof submitAnswers === 'function') {
+          submitAnswers().catch((err) => {
+            console.error('❌ Ошибка при автоматической отправке ответов:', err);
+            if (isMountedRef.current) {
+              autoSubmitTriggeredRef.current = false; // Разрешаем повторную попытку
+              setAutoSubmitTriggered(false);
+              setIsSubmitting(false);
+              setError(err?.message || 'Ошибка отправки ответов');
+            }
+          });
+        }
+      }, 5000); // 5 секунд лоадера
+    }
+    // ВАЖНО: Не включаем submitAnswers в зависимости, так как она объявлена позже
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
@@ -3334,46 +3380,6 @@ export default function QuizPage() {
       </div>
     );
   }
-  
-  // ВАЖНО: Автоматически отправляем ответы когда все вопросы отвечены
-  // Это позволяет показывать лоадер и редиректить на /plan с PaymentGate
-  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
-  const autoSubmitTriggeredRef = useRef(false);
-  
-  useEffect(() => {
-    // Автоматически отправляем ответы, если все вопросы отвечены и ответы есть
-    if (!autoSubmitTriggeredRef.current && 
-        questionnaire && 
-        allQuestions.length > 0 && 
-        currentQuestionIndex >= allQuestions.length &&
-        Object.keys(answers).length > 0 &&
-        !isSubmitting &&
-        !hasResumed &&
-        !showResumeScreen &&
-        !error) {
-      
-      console.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...');
-      autoSubmitTriggeredRef.current = true;
-      setAutoSubmitTriggered(true);
-      
-      // Показываем лоадер 5 секунд перед отправкой
-      setIsSubmitting(true);
-      
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          submitAnswers().catch((err) => {
-            console.error('❌ Ошибка при автоматической отправке ответов:', err);
-            if (isMountedRef.current) {
-              autoSubmitTriggeredRef.current = false; // Разрешаем повторную попытку
-              setAutoSubmitTriggered(false);
-              setIsSubmitting(false);
-              setError(err?.message || 'Ошибка отправки ответов');
-            }
-          });
-        }
-      }, 5000); // 5 секунд лоадера
-    }
-  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error]);
   
   // Если вопрос все еще не найден после всех проверок
   // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"

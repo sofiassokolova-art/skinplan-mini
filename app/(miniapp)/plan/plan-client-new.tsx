@@ -136,6 +136,11 @@ export function PlanPageClientNew({
     // Платеж должен быть показан при первом прохождении анкеты, даже если план уже сгенерирован
     if (typeof window !== 'undefined') {
       const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
+      console.log('💳 Payment status check:', {
+        hasFirstPayment,
+        needsFirstPayment: !hasFirstPayment,
+        paymentKey: 'payment_first_completed',
+      });
       setNeedsFirstPayment(!hasFirstPayment);
     }
   }, [plan28]);
