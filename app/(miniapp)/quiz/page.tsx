@@ -63,7 +63,8 @@ export default function QuizPage() {
   const [showRetakeScreen, setShowRetakeScreen] = useState(false); // Флаг: показывать экран выбора тем для повторного прохождения
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
   const hasResumedRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
-  const [isStartingOver, setIsStartingOver] = useState(false); // Флаг: пользователь нажал "Начать заново"
+  const [isStartingOver, setIsStartingOver] = useState(false);
+  const [daysSincePlanGeneration, setDaysSincePlanGeneration] = useState<number | null>(null); // Дней с момента генерации плана // Флаг: пользователь нажал "Начать заново"
   const isStartingOverRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
   const initCompletedRef = useRef(false); // Флаг: инициализация уже завершена
   const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
@@ -2582,7 +2583,8 @@ export default function QuizPage() {
       // ВАЖНО: Сохраняем ID таймера для очистки при размонтировании
       // ВАЖНО: Используем ref для submitAnswers, чтобы избежать проблем с зависимостями useEffect
       const timeoutId = setTimeout(() => {
-        if (isMountedRef.current && submitAnswersRef.current) {
+        // ВАЖНО: Проверяем, что компонент еще смонтирован и questionnaire существует
+        if (isMountedRef.current && submitAnswersRef.current && questionnaire) {
           // ВАЖНО: Не обновляем состояние после вызова submitAnswers, чтобы избежать React Error #300
           submitAnswersRef.current().catch((err) => {
             console.error('❌ Ошибка при автоматической отправке ответов:', err);
@@ -2600,6 +2602,8 @@ export default function QuizPage() {
               }
             }
           });
+        } else {
+          console.warn('⚠️ Пропускаем автоматическую отправку: компонент размонтирован или questionnaire отсутствует');
         }
       }, 5000); // 5 секунд лоадера
       
