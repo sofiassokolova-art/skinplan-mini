@@ -1080,7 +1080,7 @@ export default function QuizPage() {
     };
   }, []);
 
-  const submitAnswers = async () => {
+  const submitAnswers = useCallback(async () => {
     console.log('🚀 submitAnswers вызвана');
     
     if (!questionnaire) {
@@ -1350,7 +1350,7 @@ export default function QuizPage() {
         }
       }
     }
-  };
+  }, [questionnaire, answers, isSubmitting, isRetakingQuiz, isMountedRef, clearProgress]);
 
   // Продолжить с сохранённого места
   const resumeQuiz = () => {
@@ -2106,9 +2106,7 @@ export default function QuizPage() {
         }
       }, 5000); // 5 секунд лоадера
     }
-    // ВАЖНО: Не включаем submitAnswers в зависимости, так как она объявлена позже
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error]);
+  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error, submitAnswers]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков

@@ -64,14 +64,24 @@ async function checkLogs() {
       });
 
       if (user) {
+        // Фильтр для сегодняшних логов
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
         const userLogs = await prisma.clientLog.findMany({
           where: {
             userId: user.id,
+            createdAt: {
+              gte: today,
+              lt: tomorrow,
+            },
           },
           orderBy: {
             createdAt: 'desc',
           },
-          take: 50,
+          take: 100,
         });
 
         console.log(`Найдено ${userLogs.length} логов для пользователя ${user.firstName} ${user.lastName || ''}:\n`);
