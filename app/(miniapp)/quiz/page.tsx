@@ -60,7 +60,19 @@ export default function QuizPage() {
   } | null>(null);
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [showRetakeScreen, setShowRetakeScreen] = useState(false); // Флаг: показывать экран выбора тем для повторного прохождения
+  const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
+  const hasResumedRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
+  const [isStartingOver, setIsStartingOver] = useState(false); // Флаг: пользователь нажал "Начать заново"
+  const isStartingOverRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
+  const initCompletedRef = useRef(false); // Флаг: инициализация уже завершена
+  const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false); // Автоматическая отправка ответов когда все вопросы отвечены
+  const autoSubmitTriggeredRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
+  // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
   // Проверяем флаг из localStorage при монтировании
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -88,19 +100,6 @@ export default function QuizPage() {
       }
     }
   }, []);
-  const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
-  const hasResumedRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
-  const [isStartingOver, setIsStartingOver] = useState(false); // Флаг: пользователь нажал "Начать заново"
-  const isStartingOverRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
-  const initCompletedRef = useRef(false); // Флаг: инициализация уже завершена
-  const [debugLogs, setDebugLogs] = useState<Array<{ time: string; message: string; data?: any }>>([]);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
-  
-  // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
-  // Автоматическая отправка ответов когда все вопросы отвечены
-  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
-  const autoSubmitTriggeredRef = useRef(false);
-  const isMountedRef = useRef(true);
   
   // Функция для добавления логов (только в development)
   // ВАЖНО: оборачиваем в useCallback, чтобы функция не менялась между рендерами
@@ -1065,9 +1064,6 @@ export default function QuizPage() {
     }
   };
 
-  // Флаг для отслеживания монтирования компонента (уже объявлен выше)
-  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
