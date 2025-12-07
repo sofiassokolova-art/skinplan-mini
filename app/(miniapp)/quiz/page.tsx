@@ -1140,6 +1140,9 @@ export default function QuizPage() {
   const submitAnswers = useCallback(async () => {
     console.log('🚀 submitAnswers вызвана');
     
+    // Сохраняем функцию в ref для использования в setTimeout
+    submitAnswersRef.current = submitAnswers;
+    
     if (!questionnaire) {
       console.error('❌ Анкета не загружена');
       if (isMountedRef.current) {
