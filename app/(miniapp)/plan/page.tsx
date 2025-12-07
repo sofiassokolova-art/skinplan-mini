@@ -254,8 +254,8 @@ export default function PlanPage() {
       const currentWeekIndex = Math.max(0, Math.min((plan.weeks?.length || 0) - 1, currentWeek - 1));
       const currentWeekData = plan.weeks?.[currentWeekIndex];
 
-      const dayIndexWithinWeek = (currentDayGlobal - 1) % (currentWeekData?.days?.length || 7);
-      const currentDayData = currentWeekData?.days[dayIndexWithinWeek] || currentWeekData?.days[0];
+      const dayIndexWithinWeek = (currentDayGlobal - 1) % ((currentWeekData as any)?.days?.length || 7);
+      const currentDayData = (currentWeekData as any)?.days?.[dayIndexWithinWeek] || (currentWeekData as any)?.days?.[0];
 
       const todayMorning = currentDayData?.morning || [];
       const todayEvening = currentDayData?.evening || [];

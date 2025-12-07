@@ -52,6 +52,7 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [showResumeScreen, setShowResumeScreen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false); // Ref для синхронной проверки в асинхронных функциях
   const [pendingInfoScreen, setPendingInfoScreen] = useState<InfoScreen | null>(null); // Информационный экран между вопросами
   const [savedProgress, setSavedProgress] = useState<{
     answers: Record<number, string | string[]>;
@@ -1087,12 +1088,17 @@ export default function QuizPage() {
       return;
     }
 
-    if (isSubmitting) {
-      console.warn('⚠️ Уже отправляется, игнорируем повторный вызов');
+    // Защита от множественных вызовов: проверяем и ref, и state
+    if (isSubmitting || isSubmittingRef.current) {
+      console.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
+        isSubmitting,
+        isSubmittingRef: isSubmittingRef.current,
+      });
       return;
     }
 
     if (isMountedRef.current) {
+      isSubmittingRef.current = true; // Устанавливаем ref сразу для синхронной проверки
       setIsSubmitting(true);
       setError(null);
       setLoading(false); // ВАЖНО: Устанавливаем loading = false, чтобы не показывался лоадер "Загрузка анкеты..."

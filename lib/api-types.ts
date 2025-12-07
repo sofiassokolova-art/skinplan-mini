@@ -5,6 +5,7 @@ import type { Plan28 } from './plan-types';
 
 export interface PlanWeek {
   week: number;
+  days?: any[]; // Для совместимости со старым форматом
   summary: {
     focus: string[];
     productsCount: number;
@@ -79,12 +80,15 @@ export interface GeneratedPlan {
 }
 
 export interface ProfileResponse {
-  id: number;
+  id: number | string;
   version: number;
   skinType: string;
+  skinTypeRu?: string;
+  primaryConcernRu?: string;
   sensitivityLevel?: string | null;
   acneLevel?: number | null;
   ageGroup?: string | null;
+  scores?: any[];
   [key: string]: any;
 }
 
