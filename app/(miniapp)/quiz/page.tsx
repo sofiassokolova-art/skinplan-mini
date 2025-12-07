@@ -1254,7 +1254,8 @@ export default function QuizPage() {
         const startTime = Date.now();
         let planReady = false;
         
-        while (!planReady && (Date.now() - startTime) < MAX_WAIT_TIME) {
+        // ВАЖНО: Проверяем isMountedRef в цикле, чтобы остановиться при размонтировании
+        while (!planReady && (Date.now() - startTime) < MAX_WAIT_TIME && isMountedRef.current) {
           try {
             const plan = await api.getPlan() as any;
             if (plan && (plan.plan28 || plan.weeks)) {
@@ -1267,6 +1268,12 @@ export default function QuizPage() {
             if (planError?.status !== 404) {
               console.warn('⚠️ Ошибка при проверке плана:', planError);
             }
+          }
+          
+          // Проверяем, что компонент еще смонтирован перед следующей итерацией
+          if (!isMountedRef.current) {
+            console.log('⚠️ Компонент размонтирован, прерываем проверку плана');
+            break;
           }
           
           // Ждем перед следующей проверкой
@@ -2154,7 +2161,8 @@ export default function QuizPage() {
       setIsSubmitting(true);
       
       // Используем setTimeout, чтобы submitAnswers была доступна к моменту выполнения
-      setTimeout(() => {
+      // ВАЖНО: Сохраняем ID таймера для очистки при размонтировании
+      const timeoutId = setTimeout(() => {
         if (isMountedRef.current && typeof submitAnswers === 'function') {
           submitAnswers().catch((err) => {
             console.error('❌ Ошибка при автоматической отправке ответов:', err);
@@ -2167,6 +2175,11 @@ export default function QuizPage() {
           });
         }
       }, 5000); // 5 секунд лоадера
+      
+      // Очищаем таймер при размонтировании компонента
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
   }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error, submitAnswers]);
 

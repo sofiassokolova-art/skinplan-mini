@@ -78,6 +78,7 @@ export default function PlanPage() {
   const [error, setError] = useState<string | null>(null);
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const isMountedRef = useRef(true);
+  const loadPlanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Безопасные обертки для setState (проверяют mounted перед обновлением)
   const safeSetLoading = (value: boolean) => {
@@ -96,6 +97,11 @@ export default function PlanPage() {
     
     return () => {
       isMountedRef.current = false;
+      // Очищаем таймер при размонтировании
+      if (loadPlanTimeoutRef.current) {
+        clearTimeout(loadPlanTimeoutRef.current);
+        loadPlanTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -506,14 +512,26 @@ export default function PlanPage() {
         await new Promise<void>((resolve) => {
           let attempts = 0;
           const maxAttempts = 20; // 20 * 100ms = 2 секунды
-          const checkInterval = setInterval(() => {
-            attempts++;
-            initData = window.Telegram?.WebApp?.initData || undefined;
-            if (initData || attempts >= maxAttempts) {
+          let checkInterval: NodeJS.Timeout | null = null;
+          try {
+            checkInterval = setInterval(() => {
+              attempts++;
+              initData = window.Telegram?.WebApp?.initData || undefined;
+              if (initData || attempts >= maxAttempts) {
+                if (checkInterval) {
+                  clearInterval(checkInterval);
+                  checkInterval = null;
+                }
+                resolve();
+              }
+            }, 100);
+          } catch (error) {
+            // Гарантируем очистку интервала даже при ошибке
+            if (checkInterval) {
               clearInterval(checkInterval);
-              resolve();
             }
-          }, 100);
+            resolve();
+          }
         });
       }
 
@@ -652,8 +670,15 @@ export default function PlanPage() {
           safeSetLoading(true);
           safeSetError(null);
           // Пробуем еще раз через 2 секунды
-          setTimeout(() => {
-            loadPlan(retryCount + 1);
+          // ВАЖНО: Очищаем предыдущий таймер и сохраняем новый
+          if (loadPlanTimeoutRef.current) {
+            clearTimeout(loadPlanTimeoutRef.current);
+          }
+          loadPlanTimeoutRef.current = setTimeout(() => {
+            loadPlanTimeoutRef.current = null;
+            if (isMountedRef.current) {
+              loadPlan(retryCount + 1);
+            }
           }, 2000);
           return;
         }
