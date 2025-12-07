@@ -1253,9 +1253,8 @@ export default function QuizPage() {
       } else {
         // SSR режим - используем window.location вместо router после размонтирования
         try {
-          const win = typeof window !== 'undefined' ? window : null;
-          if (win?.location) {
-            win.location.replace('/plan');
+          if (typeof window !== 'undefined') {
+            (window as Window).location.replace('/plan');
           }
         } catch (redirectError) {
           console.error('❌ Ошибка при редиректе (SSR):', redirectError);
@@ -1343,9 +1342,8 @@ export default function QuizPage() {
       } else {
         // SSR режим - используем window.location вместо router после размонтирования
         try {
-          const win = typeof window !== 'undefined' ? window : null;
-          if (win?.location) {
-            win.location.replace('/plan');
+          if (typeof window !== 'undefined') {
+            (window as Window).location.replace('/plan');
           }
         } catch (redirectError) {
           // Игнорируем ошибки
