@@ -1652,6 +1652,10 @@ export default function QuizPage() {
       try {
         console.log('⚠️ Ошибка при отправке ответов, но продолжаем показывать лоадер и редиректим на /plan');
         
+        // ВАЖНО: Устанавливаем loading = false, чтобы не было бесконечного лоадера "Загрузка анкеты..."
+        setIsSubmitting(true); // Показываем лоадер "Создаем ваш план ухода..."
+        setLoading(false); // Скрываем лоадер "Загрузка анкеты..."
+        
         // Обработка различных типов ошибок - но все равно редиректим
         const errorMessage = err?.message || err?.error || '';
         if (errorMessage.includes('Unauthorized') || errorMessage.includes('401') || errorMessage.includes('initData')) {
