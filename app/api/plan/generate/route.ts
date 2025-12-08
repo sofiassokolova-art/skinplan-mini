@@ -110,17 +110,50 @@ export async function GET(request: NextRequest) {
     }
     
     // Проверяем, что план действительно сгенерирован
-    if (!plan || (!plan.plan28 && !plan.weeks)) {
+    // ИСПРАВЛЕНО: Проверяем не только наличие plan28, но и что в нем есть дни
+    const hasPlan28 = plan?.plan28 && plan.plan28.days && Array.isArray(plan.plan28.days) && plan.plan28.days.length > 0;
+    const hasWeeks = plan?.weeks && Array.isArray(plan.weeks) && plan.weeks.length > 0;
+    
+    if (!plan || (!hasPlan28 && !hasWeeks)) {
       logger.error('❌ Plan generation returned empty result', undefined, {
         userId,
         profileVersion: profile.version,
         hasPlan28: !!plan?.plan28,
+        hasPlan28Days: plan?.plan28?.days?.length || 0,
         hasWeeks: !!plan?.weeks,
+        weeksCount: plan?.weeks?.length || 0,
         planKeys: plan ? Object.keys(plan) : [],
+        plan28Structure: plan?.plan28 ? {
+          hasDays: !!plan.plan28.days,
+          daysType: typeof plan.plan28.days,
+          daysIsArray: Array.isArray(plan.plan28.days),
+          daysLength: Array.isArray(plan.plan28.days) ? plan.plan28.days.length : 'N/A',
+        } : null,
       });
       
       return ApiResponse.error(
         'Plan generation returned empty result',
+        500,
+        {
+          userId,
+          profileVersion: profile.version,
+          hasPlan28: !!plan?.plan28,
+          hasPlan28Days: plan?.plan28?.days?.length || 0,
+          timestamp: new Date().toISOString(),
+        }
+      );
+    }
+    
+    // ИСПРАВЛЕНО: Дополнительная проверка - план может быть сгенерирован, но с пустыми днями
+    if (hasPlan28 && plan.plan28.days.length === 0) {
+      logger.error('❌ Plan28 generated but has no days', undefined, {
+        userId,
+        profileVersion: profile.version,
+        plan28Keys: Object.keys(plan.plan28),
+      });
+      
+      return ApiResponse.error(
+        'Plan generation returned empty days',
         500,
         {
           userId,
