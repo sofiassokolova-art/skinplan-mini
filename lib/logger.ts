@@ -8,7 +8,7 @@ interface LogContext {
 }
 
 interface ClientLogOptions {
-  userId?: string;
+  userId?: string | null;
   userAgent?: string;
   url?: string;
   saveToDb?: boolean; // Сохранять ли в БД (по умолчанию только error и warn)
@@ -250,10 +250,10 @@ export function logApiError(
   logger.error('API Error', error, {
     method,
     path,
-    userId,
+    userId: userId || undefined,
   }, {
     ...options,
-    userId,
+    userId: userId || undefined,
   });
 }
 
