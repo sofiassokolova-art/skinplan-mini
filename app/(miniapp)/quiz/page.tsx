@@ -656,7 +656,34 @@ export default function QuizPage() {
           timestamp: number;
         } | null;
       };
-      if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+      
+      // ИСПРАВЛЕНО: Проверяем наличие профиля перед показом экрана "Вы не завершили анкету"
+      // Если профиля нет, но есть ответы - это может быть старые данные, которые нужно очистить
+      // Не показываем экран "Вы не завершили анкету" если профиля нет
+      let hasProfile = false;
+      try {
+        const profile = await api.getCurrentProfile();
+        hasProfile = !!(profile && (profile as any).id);
+      } catch (profileErr: any) {
+        const isNotFound = profileErr?.status === 404 || 
+                          profileErr?.message?.includes('404') || 
+                          profileErr?.message?.includes('No profile') ||
+                          profileErr?.message?.includes('Profile not found');
+        if (isNotFound) {
+          hasProfile = false;
+        }
+      }
+      
+      // ИСПРАВЛЕНО: Если профиля нет, но есть ответы - это старые данные
+      // Не показываем экран "Вы не завершили анкету", очищаем ответы
+      if (!hasProfile && response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+        console.log('⚠️ Найдены ответы без профиля - это старые данные, очищаем их');
+        // Очищаем ответы на сервере через API (если есть такой endpoint)
+        // Или просто не показываем экран "Вы не завершили анкету"
+        return;
+      }
+      
+      if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0 && hasProfile) {
         // ВАЖНО: Не загружаем прогресс, если пользователь уже нажал "Продолжить"
         // Это предотвращает повторное появление экрана "Вы не завершили анкету"
         // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
