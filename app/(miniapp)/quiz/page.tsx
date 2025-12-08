@@ -261,9 +261,10 @@ export default function QuizPage() {
       }
     }
     
-    // ВАЖНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
+    // ИСПРАВЛЕНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
     // не выполняем повторную инициализацию
-    if (initCompletedRef.current && !isStartingOverRef.current) {
+    // ВАЖНО: НЕ блокируем, если показывается pendingInfoScreen - это нормальный ход анкеты
+    if (initCompletedRef.current && !isStartingOverRef.current && !pendingInfoScreen) {
       if (loading) {
         setLoading(false);
       }
@@ -1311,12 +1312,16 @@ export default function QuizPage() {
       // Если нет следующего info screen, закрываем pending и переходим к следующему вопросу
       setPendingInfoScreen(null);
       
-      // Проверяем, не последний ли это вопрос
+      // ИСПРАВЛЕНО: Проверяем, не последний ли это вопрос ДО закрытия инфо-экрана
       const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
       if (isLastQuestion) {
         // ИСПРАВЛЕНО: После закрытия последнего инфо-экрана увеличиваем индекс для запуска автоотправки
-        setCurrentQuestionIndex(allQuestions.length);
+        // ВАЖНО: Сначала сохраняем прогресс, потом увеличиваем индекс, чтобы избежать проблем с редиректом
         await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        // Устанавливаем индекс ПОСЛЕ сохранения прогресса, чтобы не вызвать повторную инициализацию
+        setTimeout(() => {
+          setCurrentQuestionIndex(allQuestions.length);
+        }, 0);
         return;
       }
       
@@ -1351,6 +1356,8 @@ export default function QuizPage() {
           // ИСПРАВЛЕНО: НЕ увеличиваем currentQuestionIndex, чтобы не запустить автоотправку
           // Автоотправка запустится только после закрытия инфо-экрана или при нажатии кнопки "Получить план"
           await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+          // ВАЖНО: Устанавливаем флаг, чтобы предотвратить редирект во время показа инфо-экрана
+          initCompletedRef.current = true;
           return;
         }
       }
