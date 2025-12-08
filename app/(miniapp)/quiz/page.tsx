@@ -562,7 +562,11 @@ export default function QuizPage() {
       // ВАЖНО: Не загружаем прогресс, если пользователь уже продолжил анкету
       // ВАЖНО: Защита от повторных загрузок прогресса
       // ИСПРАВЛЕНО: Загружаем прогресс ДО установки loading = false, чтобы экран resume показался вовремя
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !hasResumedRef.current && !hasResumed && !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
+      // ИСПРАВЛЕНО: Добавлена дополнительная проверка initCompletedRef, чтобы предотвратить повторные вызовы после инициализации
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
+          !hasResumedRef.current && !hasResumed && 
+          !loadProgressInProgressRef.current && !progressLoadInProgressRef.current &&
+          !initCompletedRef.current) { // ИСПРАВЛЕНО: Не загружаем прогресс, если инициализация уже завершена
         progressLoadInProgressRef.current = true;
         try {
           clientLogger.log('🔄 Загружаем прогресс с сервера...');
