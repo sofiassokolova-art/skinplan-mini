@@ -173,8 +173,8 @@ export default function QuizPage() {
     }
     
     // ИСПРАВЛЕНО: Проверяем, есть ли уже профиль (анкета завершена)
-    // Если профиль есть, не показываем начало анкеты, а редиректим на /plan
-    // ВАЖНО: НЕ проверяем профиль, если установлен флаг перепрохождения - это может быть ложный срабатывание
+    // Если профиль есть и анкета завершена, не показываем начало анкеты, а редиректим на /plan
+    // ВАЖНО: Проверяем синхронно, чтобы предотвратить показ первого экрана
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current) {
       // ИСПРАВЛЕНО: Проверяем флаги перепрохождения ПЕРЕД проверкой профиля
       const isRetakingFromStorage = localStorage.getItem('is_retaking_quiz') === 'true';
@@ -210,17 +210,35 @@ export default function QuizPage() {
         };
         checkProfile().catch(() => {});
       } else {
-        // Флагов перепрохождения нет - проверяем профиль как обычно
-        const checkProfile = async () => {
+        // Флагов перепрохождения нет - проверяем профиль и завершенность анкеты
+        // ИСПРАВЛЕНО: Проверяем не только наличие профиля, но и завершенность анкеты
+        const checkProfileAndRedirect = async () => {
           try {
             const profile = await api.getCurrentProfile();
             if (profile && (profile as any).id) {
-              // Профиль существует - анкета уже завершена
-              clientLogger.log('✅ Профиль существует, анкета завершена - редиректим на /plan');
-              initCompletedRef.current = true;
-              setLoading(false);
-              window.location.replace('/plan');
-              return;
+              // Профиль существует - проверяем, завершена ли анкета
+              try {
+                const progress = await api.getQuizProgress();
+                const hasAnswers = progress && (progress as any).answers && Object.keys((progress as any).answers).length > 0;
+                const isCompleted = progress && (progress as any).isCompleted;
+                
+                // Если анкета завершена и нет флага перепрохождения - редиректим на /plan
+                if (hasAnswers && isCompleted && !isRetakingFromStorage && !fullRetakeFromHome) {
+                  clientLogger.log('✅ Профиль существует и анкета завершена - редиректим на /plan');
+                  initCompletedRef.current = true;
+                  setLoading(false);
+                  window.location.replace('/plan');
+                  return;
+                }
+              } catch (progressErr) {
+                // Если не удалось проверить прогресс, но профиль есть - все равно редиректим
+                // Это может быть сразу после отправки ответов, когда прогресс еще не обновился
+                clientLogger.log('✅ Профиль существует (прогресс не проверен) - редиректим на /plan');
+                initCompletedRef.current = true;
+                setLoading(false);
+                window.location.replace('/plan');
+                return;
+              }
             }
           } catch (err: any) {
             // Профиля нет - это нормально, продолжаем инициализацию
@@ -234,7 +252,7 @@ export default function QuizPage() {
           }
         };
         // Выполняем проверку асинхронно, но не блокируем инициализацию
-        checkProfile().catch(() => {});
+        checkProfileAndRedirect().catch(() => {});
       }
     }
     
