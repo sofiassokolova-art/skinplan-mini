@@ -78,17 +78,32 @@ export async function POST(request: NextRequest) {
 
     // ИСПРАВЛЕНО: Сохраняем в Upstash KV как основное хранилище
     let kvSaved = false;
-    const redis = getRedis();
     
     // ИСПРАВЛЕНО: Проверяем наличие переменных окружения для диагностики
     const hasKVUrl = !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL);
-    const hasKVToken = !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN);
+    const writeToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    const readOnlyToken = process.env.KV_REST_API_READ_ONLY_TOKEN;
+    const hasKVToken = !!writeToken;
+    const tokensMatch = readOnlyToken && writeToken && writeToken === readOnlyToken;
+    
+    // ИСПРАВЛЕНО: Проверяем, не используется ли read-only токен вместо write token
+    if (tokensMatch) {
+      console.error('❌ /api/logs: KV_REST_API_TOKEN и KV_REST_API_READ_ONLY_TOKEN совпадают! Нужен write token!');
+    }
+    
+    if (!hasKVToken && readOnlyToken) {
+      console.error('❌ /api/logs: Only KV_REST_API_READ_ONLY_TOKEN is set, but KV_REST_API_TOKEN is missing!');
+    }
+    
+    const redis = getRedis();
     
     if (!redis && (hasKVUrl && hasKVToken)) {
       // Если переменные есть, но Redis не инициализирован - это проблема
       console.warn('⚠️ /api/logs: Redis variables set but getRedis() returned null', {
         hasKVUrl,
         hasKVToken,
+        tokensMatch,
+        hasReadOnlyToken: !!readOnlyToken,
         kvUrl: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
       });
     }
