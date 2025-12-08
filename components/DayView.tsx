@@ -189,9 +189,11 @@ export function DayView({
               }
             }
             
+            // ИСПРАВЛЕНО: Всегда показываем шаг, даже если продукт не найден
+            // StepCard сам обработает отсутствие продукта и покажет заглушку
             return (
               <StepCard
-                key={`${step.stepCategory}-${index}`}
+                key={`morning-${step.stepCategory}-${index}-${step.productId || 'no-product'}`}
                 step={step}
                 product={product || undefined}
                 isInWishlist={product ? wishlistProductIds.has(product.id) : false}
@@ -283,9 +285,11 @@ export function DayView({
               }
             }
             
+            // ИСПРАВЛЕНО: Всегда показываем шаг, даже если продукт не найден
+            // StepCard сам обработает отсутствие продукта и покажет заглушку
             return (
               <StepCard
-                key={`${step.stepCategory}-${index}`}
+                key={`evening-${step.stepCategory}-${index}-${step.productId || 'no-product'}`}
                 step={step}
                 product={product || undefined}
                 isInWishlist={product ? wishlistProductIds.has(product.id) : false}
