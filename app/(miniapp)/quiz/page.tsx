@@ -1314,6 +1314,8 @@ export default function QuizPage() {
       // Проверяем, не последний ли это вопрос
       const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
       if (isLastQuestion) {
+        // ИСПРАВЛЕНО: После закрытия последнего инфо-экрана увеличиваем индекс для запуска автоотправки
+        setCurrentQuestionIndex(allQuestions.length);
         await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         return;
       }
@@ -1346,9 +1348,8 @@ export default function QuizPage() {
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
         if (infoScreen) {
           setPendingInfoScreen(infoScreen);
-          // ВАЖНО: Устанавливаем currentQuestionIndex >= allQuestions.length, чтобы автоотправка сработала
-          // даже если показывается info screen после последнего вопроса
-          setCurrentQuestionIndex(allQuestions.length);
+          // ИСПРАВЛЕНО: НЕ увеличиваем currentQuestionIndex, чтобы не запустить автоотправку
+          // Автоотправка запустится только после закрытия инфо-экрана или при нажатии кнопки "Получить план"
           await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
           return;
         }
@@ -4468,13 +4469,15 @@ export default function QuizPage() {
 
   // Если вопрос не найден, но пользователь восстановил прогресс - это может быть временное состояние
   // Даем время на обновление состояния после resumeQuiz
-  if (!currentQuestion && !hasResumed && !showResumeScreen) {
+  // ИСПРАВЛЕНО: Не проверяем это условие, если показывается pendingInfoScreen
+  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
       // Проверяем, не выходит ли индекс за пределы
       if (currentQuestionIndex >= allQuestions.length) {
         // Это последний вопрос - автоматически показываем лоадер и отправляем ответы
         // Не показываем экран "Анкета завершена. Отправить ответы?" - сразу лоадер
+        // ИСПРАВЛЕНО: Но только если нет pendingInfoScreen (инфо-экран должен показаться первым)
         return (
           <div style={{ 
             padding: '20px',
