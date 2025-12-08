@@ -9,14 +9,15 @@ const sendLogToServer = async (
   message: string,
   context?: any
 ) => {
-  // Отправляем только error и warn в production, все логи в development
-  if (!isDevelopment && level !== 'error' && level !== 'warn') {
-    return;
-  }
-
-  // Отправляем асинхронно, не блокируя основной поток
+  // ИСПРАВЛЕНО: Всегда отправляем error и warn, в development отправляем все
+  // Но не отправляем в SSR
   if (typeof window === 'undefined') {
     return; // SSR - не отправляем
+  }
+
+  // В production отправляем только error и warn
+  if (!isDevelopment && level !== 'error' && level !== 'warn') {
+    return;
   }
 
   try {
@@ -30,11 +31,16 @@ const sendLogToServer = async (
       userAgent: navigator.userAgent,
     };
 
+    // ИСПРАВЛЕНО: Логируем в консоль для отладки (только в development)
+    if (isDevelopment) {
+      console.debug('📤 Sending log to server:', { level, message: message.substring(0, 50) });
+    }
+
     // Отправляем с таймаутом, чтобы не блокировать
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 секунды таймаут
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // Увеличено до 5 секунд
 
-    fetch('/api/logs', {
+    const response = await fetch('/api/logs', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -42,15 +48,23 @@ const sendLogToServer = async (
       },
       body: JSON.stringify(logPayload),
       signal: controller.signal,
-    })
-      .catch(() => {
-        // Игнорируем ошибки отправки логов, чтобы не создавать бесконечный цикл
-      })
-      .finally(() => {
-        clearTimeout(timeoutId);
-      });
-  } catch (err) {
-    // Игнорируем ошибки отправки логов
+    });
+
+    if (isDevelopment) {
+      if (response.ok) {
+        const result = await response.json();
+        console.debug('✅ Log sent successfully:', result);
+      } else {
+        console.warn('⚠️ Failed to send log:', response.status, response.statusText);
+      }
+    }
+  } catch (err: any) {
+    // ИСПРАВЛЕНО: Логируем ошибки отправки (но не создаем бесконечный цикл)
+    if (isDevelopment) {
+      if (err?.name !== 'AbortError') {
+        console.warn('⚠️ Error sending log to server:', err?.message || err);
+      }
+    }
   }
 };
 
