@@ -97,8 +97,18 @@ export async function POST(request: NextRequest) {
       try {
         // Создаем уникальный ключ: logs:{userId}:{timestamp}:{random}
         const logKey = `logs:${userId || 'anonymous'}:${Date.now()}:${Math.random().toString(36).substring(7)}`;
+        
+        // ИСПРАВЛЕНО: Детальное логирование для диагностики (даже в production)
+        console.log('🔄 /api/logs: Attempting to save to KV', {
+          logKey,
+          userId: userId || 'anonymous',
+          level,
+          hasRedis: !!redis,
+        });
+        
         // Сохраняем с TTL 30 дней
-        await redis.set(logKey, JSON.stringify(logData), { ex: 30 * 24 * 60 * 60 });
+        const setResult = await redis.set(logKey, JSON.stringify(logData), { ex: 30 * 24 * 60 * 60 });
+        console.log('✅ /api/logs: redis.set completed', { logKey, setResult });
         
         // Также добавляем в список последних логов пользователя (храним последние 100)
         if (userId) {
@@ -106,6 +116,7 @@ export async function POST(request: NextRequest) {
           await redis.lpush(userLogsKey, logKey);
           await redis.ltrim(userLogsKey, 0, 99); // Храним только последние 100 логов
           await redis.expire(userLogsKey, 30 * 24 * 60 * 60); // TTL 30 дней
+          console.log('✅ /api/logs: Added to user logs list', { userLogsKey, logKey });
         }
         
         // Для ошибок также добавляем в общий список ошибок
@@ -114,25 +125,39 @@ export async function POST(request: NextRequest) {
           await redis.lpush(errorsKey, logKey);
           await redis.ltrim(errorsKey, 0, 999); // Последние 1000 ошибок
           await redis.expire(errorsKey, 7 * 24 * 60 * 60); // TTL 7 дней
+          console.log('✅ /api/logs: Added to errors list', { errorsKey, logKey });
         }
         
         kvSaved = true;
-        if (process.env.NODE_ENV === 'development') {
-          console.log('✅ /api/logs: Log saved to Upstash KV', {
-            userId: userId || 'anonymous',
-            level,
-            message: message.substring(0, 50),
-            logKey,
-          });
-        }
+        console.log('✅ /api/logs: Log saved to Upstash KV successfully', {
+          userId: userId || 'anonymous',
+          level,
+          message: message.substring(0, 50),
+          logKey,
+        });
       } catch (kvError: any) {
+        // ИСПРАВЛЕНО: Детальное логирование ошибки (даже в production)
         console.error('❌ /api/logs: Upstash KV error (will try PostgreSQL fallback):', {
           error: kvError?.message,
           errorCode: kvError?.code,
+          errorName: kvError?.name,
+          errorStack: kvError?.stack?.substring(0, 500),
           hasRedis: !!redis,
           hasKVUrl,
           hasKVToken,
+          kvUrl: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
+          kvUrlLength: (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL)?.length || 0,
+          tokenLength: (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN)?.length || 0,
+          isReadOnlyToken: kvError?.message?.includes('NOPERM') || kvError?.message?.includes('read-only'),
         });
+        
+        // Если это ошибка read-only токена, логируем отдельно
+        if (kvError?.message?.includes('NOPERM') || kvError?.message?.includes('read-only')) {
+          console.error('❌ /api/logs: READ-ONLY TOKEN ERROR! KV_REST_API_TOKEN is read-only token, not write token!', {
+            kvUrl: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
+            hasKVToken: hasKVToken,
+          });
+        }
       }
     } else if (!hasKVUrl || !hasKVToken) {
       // Если Redis не настроен - это нормально, используем только PostgreSQL
@@ -207,10 +232,23 @@ export async function POST(request: NextRequest) {
       }, 0);
     }
 
+    // ИСПРАВЛЕНО: Логируем результат сохранения (даже в production для диагностики)
+    console.log('📊 /api/logs: Save result', {
+      kvSaved,
+      storedIn: kvSaved ? 'kv' : (userId ? 'postgres' : 'none'),
+      userId: userId || 'anonymous',
+      level,
+      hasKVUrl,
+      hasKVToken,
+    });
+    
     // Если хотя бы одно хранилище успешно - возвращаем успех
     return NextResponse.json({ 
       success: true,
       storedIn: kvSaved ? 'kv' : (userId ? 'postgres' : 'none'),
+      kvSaved,
+      hasKVUrl,
+      hasKVToken,
     });
   } catch (error: any) {
     console.error('❌ /api/logs: Unhandled error:', {
