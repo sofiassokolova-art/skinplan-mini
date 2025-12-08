@@ -77,30 +77,53 @@ export default function QuizPage() {
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Дебаунсинг для сохранения метаданных позиции
   
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
-  // Проверяем флаг из localStorage при монтировании
+  // ИСПРАВЛЕНО: Проверяем флаг из localStorage при монтировании
+  // ВАЖНО: Проверяем наличие профиля перед показом экрана перепрохождения
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       const isRetakingFromStorage = localStorage.getItem('is_retaking_quiz') === 'true';
       const fullRetakeFromHome = localStorage.getItem('full_retake_from_home') === 'true';
       
-      if (isRetakingFromStorage) {
-        setIsRetakingQuiz(true);
+      if (isRetakingFromStorage || fullRetakeFromHome) {
+        // ИСПРАВЛЕНО: Проверяем наличие профиля перед показом экрана перепрохождения
+        // Если профиля нет, но флаги установлены - это ошибка, очищаем флаги
+        const checkProfileAndShowRetake = async () => {
+          try {
+            const profile = await api.getCurrentProfile();
+            if (profile && (profile as any).id) {
+              // Профиль есть - это нормальное перепрохождение
+              setIsRetakingQuiz(true);
+              
+              if (fullRetakeFromHome) {
+                localStorage.removeItem('full_retake_from_home');
+                console.log('✅ Полное перепрохождение с главной страницы - показываем экран выбора тем с оплатой');
+              }
+              
+              setShowRetakeScreen(true);
+              console.log('✅ Флаг перепрохождения найден и профиль существует - показываем экран выбора тем');
+            } else {
+              // Профиля нет, но флаги установлены - это ошибка, очищаем флаги
+              console.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
+              localStorage.removeItem('is_retaking_quiz');
+              localStorage.removeItem('full_retake_from_home');
+            }
+          } catch (err: any) {
+            // Профиля нет - очищаем флаги
+            const isNotFound = err?.status === 404 || 
+                              err?.message?.includes('404') || 
+                              err?.message?.includes('No profile') ||
+                              err?.message?.includes('Profile not found');
+            if (isNotFound) {
+              console.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
+              localStorage.removeItem('is_retaking_quiz');
+              localStorage.removeItem('full_retake_from_home');
+            } else {
+              console.warn('⚠️ Ошибка при проверке профиля для перепрохождения:', err);
+            }
+          }
+        };
         
-        // ВАЖНО: При переходе с главной страницы показываем экран выбора тем с PaymentGate
-        // НЕ пропускаем его, чтобы пользователь мог оплатить 49₽ или 99₽
-        // Флаг full_retake_from_home используется только для логики, но экран выбора тем показываем
-        // ВАЖНО: НЕ очищаем прогресс при установке флага перепрохождения
-        // Прогресс должен сохраняться, если пользователь просто зашел на страницу анкеты
-        if (fullRetakeFromHome) {
-          // Очищаем флаг после использования (он больше не нужен)
-          localStorage.removeItem('full_retake_from_home');
-          console.log('✅ Полное перепрохождение с главной страницы - показываем экран выбора тем с оплатой');
-        }
-        
-        // Всегда показываем экран выбора тем при перепрохождении
-        setShowRetakeScreen(true);
-        console.log('✅ Флаг перепрохождения найден в localStorage, показываем экран выбора тем');
-        // ВАЖНО: НЕ очищаем quiz_progress здесь - прогресс должен сохраняться
+        checkProfileAndShowRetake().catch(() => {});
       }
     }
   }, []);
