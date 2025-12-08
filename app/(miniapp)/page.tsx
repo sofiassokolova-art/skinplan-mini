@@ -95,6 +95,7 @@ export default function HomePage() {
   const [redirectingToQuiz, setRedirectingToQuiz] = useState(false); // Флаг: редиректим на анкету
   const [hasCheckedProfile, setHasCheckedProfile] = useState(false); // Флаг: проверили ли наличие профиля
   const profileCheckInProgressRef = useRef(false); // Защита от множественных запросов к getCurrentProfile
+  const progressLoadInProgressRef = useRef(false); // ИСПРАВЛЕНО: Защита от множественных запросов к getPlanProgress
 
   // УДАЛЕНО: Функция checkIncompleteQuiz больше не нужна
   // Если профиля нет, сразу редиректим на /quiz, где есть экран "Вы не завершили анкету"
@@ -102,7 +103,8 @@ export default function HomePage() {
   useEffect(() => {
     clientLogger.log('🚀 HomePage useEffect started');
     setMounted(true);
-    planCheckDoneRef.current = false; // Сбрасываем флаг проверки плана при монтировании
+    // ИСПРАВЛЕНО: НЕ сбрасываем planCheckDoneRef при монтировании, чтобы избежать повторных проверок
+    // Флаг будет установлен при первой проверке плана
     
     // Проверяем доступность Telegram WebApp
     clientLogger.log('📱 Checking Telegram WebApp:', {
@@ -158,8 +160,9 @@ export default function HomePage() {
           return;
         }
         
-        clientLogger.log('🔍 Step 1: Checking for existing profile...');
+        // ИСПРАВЛЕНО: Устанавливаем флаг СРАЗУ, чтобы предотвратить повторные вызовы
         profileCheckInProgressRef.current = true;
+        clientLogger.log('🔍 Step 1: Checking for existing profile...');
         setHasCheckedProfile(true); // Помечаем, что проверили профиль
         let hasProfile = false;
         try {
@@ -514,26 +517,54 @@ export default function HomePage() {
           sessionStorage.setItem(generateAttemptsKey, String(generateAttempts + 1));
           
           try {
+            // ИСПРАВЛЕНО: Показываем лоадер во время генерации плана
+            setCheckingPlan(true);
+            clientLogger.log('🔄 Home: Generating plan...');
+            
             // Пробуем сгенерировать план (может быть для новой версии профиля после перепрохождения анкеты)
             const generatedPlan = await api.generatePlan() as any;
-            if (generatedPlan && generatedPlan.plan28) {
-              clientLogger.log('✅ Home: Plan generated successfully');
+            
+            // ИСПРАВЛЕНО: Проверяем оба формата плана (plan28 и weeks)
+            const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
+            const hasWeeks = generatedPlan?.weeks && Array.isArray(generatedPlan.weeks) && generatedPlan.weeks.length > 0;
+            
+            if (generatedPlan && (hasPlan28 || hasWeeks)) {
+              clientLogger.log('✅ Home: Plan generated successfully', {
+                hasPlan28,
+                hasWeeks,
+                plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                weeksCount: generatedPlan?.weeks?.length || 0,
+              });
               // Очищаем счетчик попыток
               sessionStorage.removeItem(generateAttemptsKey);
+              setCheckingPlan(false);
               // Вместо reload - просто перезагружаем данные через функцию loadRecommendations
               await loadRecommendations();
               return;
             } else {
               // План не сгенерировался - показываем экран без плана
-              clientLogger.log('⚠️ Home: Plan could not be generated, showing home screen without plan.');
+              clientLogger.warn('⚠️ Home: Plan could not be generated or is empty', {
+                hasPlan: !!generatedPlan,
+                hasPlan28,
+                hasWeeks,
+                planKeys: generatedPlan ? Object.keys(generatedPlan) : [],
+              });
               sessionStorage.removeItem(generateAttemptsKey);
+              setCheckingPlan(false);
+              setError('Не удалось создать план. Попробуйте обновить страницу или пройдите анкету заново.');
               setLoading(false);
               return;
             }
-          } catch (genError) {
+          } catch (genError: any) {
             // Ошибка генерации - показываем экран без плана
-            clientLogger.warn('⚠️ Home: Error generating plan:', genError);
+            clientLogger.warn('⚠️ Home: Error generating plan:', {
+              error: genError?.message,
+              status: genError?.status,
+              stack: genError?.stack?.substring(0, 200),
+            });
             sessionStorage.removeItem(generateAttemptsKey);
+            setCheckingPlan(false);
+            setError('Ошибка при создании плана. Попробуйте обновить страницу.');
             setLoading(false);
             return;
           }
@@ -546,10 +577,19 @@ export default function HomePage() {
       }
       
       // Загружаем прогресс (может быть ошибка, но это не критично)
-      try {
-        progress = await api.getPlanProgress() as { currentDay: number; completedDays: number[] };
-      } catch (progressErr) {
-        clientLogger.warn('⚠️ Home: Error loading progress (non-critical)', progressErr);
+      // ИСПРАВЛЕНО: Защита от множественных вызовов
+      if (!progressLoadInProgressRef.current) {
+        progressLoadInProgressRef.current = true;
+        try {
+          progress = await api.getPlanProgress() as { currentDay: number; completedDays: number[] };
+        } catch (progressErr) {
+          clientLogger.warn('⚠️ Home: Error loading progress (non-critical)', progressErr);
+          progress = { currentDay: 1, completedDays: [] };
+        } finally {
+          progressLoadInProgressRef.current = false;
+        }
+      } else {
+        // Если уже загружается, используем дефолтные значения
         progress = { currentDay: 1, completedDays: [] };
       }
       
@@ -589,11 +629,26 @@ export default function HomePage() {
             return;
           } else {
             try {
+              // ИСПРАВЛЕНО: Показываем лоадер во время регенерации плана
+              setCheckingPlan(true);
+              clientLogger.log('🔄 Home: Regenerating plan from old format...');
+              
               sessionStorage.setItem(regenerateAttemptsKey, String(regenerateAttempts + 1));
               const generatedPlan = await api.generatePlan() as any;
-              if (generatedPlan && generatedPlan.plan28) {
-                clientLogger.log('✅ Home: Plan regenerated');
+              
+              // ИСПРАВЛЕНО: Проверяем оба формата плана
+              const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
+              const hasWeeks = generatedPlan?.weeks && Array.isArray(generatedPlan.weeks) && generatedPlan.weeks.length > 0;
+              
+              if (generatedPlan && (hasPlan28 || hasWeeks)) {
+                clientLogger.log('✅ Home: Plan regenerated', {
+                  hasPlan28,
+                  hasWeeks,
+                  plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                  weeksCount: generatedPlan?.weeks?.length || 0,
+                });
                 sessionStorage.removeItem(regenerateAttemptsKey);
+                setCheckingPlan(false);
                 // Вместо reload - просто перезагружаем данные
                 await loadRecommendations();
                 return;
@@ -1020,6 +1075,12 @@ export default function HomePage() {
 
   // Загружаем прогресс плана при монтировании
   useEffect(() => {
+    // ИСПРАВЛЕНО: Защита от множественных вызовов
+    if (progressLoadInProgressRef.current) {
+      return;
+    }
+    progressLoadInProgressRef.current = true;
+    
     const loadPlanProgress = async () => {
       try {
         const progress = await api.getPlanProgress() as {
@@ -1061,13 +1122,18 @@ export default function HomePage() {
         }
       } catch (err) {
         clientLogger.warn('Could not load plan progress:', err);
+      } finally {
+        progressLoadInProgressRef.current = false;
       }
     };
     
-    if (mounted && recommendations) {
+    // ИСПРАВЛЕНО: Защита от множественных вызовов
+    if (mounted && recommendations && !loading) {
       loadPlanProgress();
+    } else {
+      progressLoadInProgressRef.current = false;
     }
-  }, [mounted, recommendations]);
+  }, [mounted, recommendations, loading]);
 
 
   const toggleItem = async (itemId: string) => {
@@ -1131,7 +1197,9 @@ export default function HomePage() {
       const otherAllCompleted = otherItems.every((item) => otherCompleted.has(item.id));
       
       // Если и утро, и вечер выполнены - день завершен
-      if (otherAllCompleted && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+      // ИСПРАВЛЕНО: Защита от множественных вызовов
+      if (otherAllCompleted && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !progressLoadInProgressRef.current) {
+        progressLoadInProgressRef.current = true;
         try {
           const progress = await api.getPlanProgress() as {
             currentDay: number;
@@ -1176,14 +1244,13 @@ export default function HomePage() {
   // Проверяем наличие плана, если рекомендации не загрузились
   // ВАЖНО: Этот useEffect должен быть ПЕРЕД всеми ранними return'ами!
   useEffect(() => {
-    // Защита от повторных проверок: если уже проверяли, не проверяем снова
-    if (planCheckDoneRef.current) {
+    // ИСПРАВЛЕНО: Защита от повторных проверок и множественных вызовов
+    if (planCheckDoneRef.current || checkingPlan || hasPlan) {
       return;
     }
     
-    // Проверяем наличие плана, если рекомендации не загружены или пустые
-    // ВАЖНО: Проверяем план всегда, не только если нет рекомендаций
-    // Это гарантирует, что если план есть, пользователь будет перенаправлен на /plan
+    // ИСПРАВЛЕНО: Проверяем план только если рекомендации не загружены И нет загрузки
+    // Это предотвращает множественные вызовы при изменении состояния
     if ((routineItemsLength === 0 || (routineItemsLength > 0 && !recommendations)) && !loading && !checkingPlan && !hasPlan) {
       clientLogger.log('🔍 Checking if plan exists...');
       planCheckDoneRef.current = true; // Помечаем, что проверка началась
@@ -1191,7 +1258,14 @@ export default function HomePage() {
       const checkPlan = async () => {
         setCheckingPlan(true);
         try {
-          const plan = await api.getPlan() as any;
+          // ИСПРАВЛЕНО: Добавляем таймаут для проверки плана, чтобы не ждать бесконечно
+          const PLAN_CHECK_TIMEOUT = 10000; // 10 секунд
+          const checkPromise = api.getPlan() as Promise<any>;
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Plan check timeout')), PLAN_CHECK_TIMEOUT)
+          );
+          
+          const plan = await Promise.race([checkPromise, timeoutPromise]) as any;
           if (plan && (plan.plan28 || plan.weeks)) {
             clientLogger.log('✅ Plan found, redirecting to /plan');
             setHasPlan(true);
@@ -1206,8 +1280,14 @@ export default function HomePage() {
             // НЕ сбрасываем planCheckDoneRef, чтобы не делать повторные запросы
             // План не найден - это нормально, не проверяем снова
           }
-        } catch (err) {
-          clientLogger.log('ℹ️ Plan check failed (expected if no plan):', err);
+        } catch (err: any) {
+          // ИСПРАВЛЕНО: Если таймаут или план не найден, не показываем ошибку
+          // Просто завершаем проверку
+          if (err?.message?.includes('timeout')) {
+            clientLogger.warn('⚠️ Plan check timeout - plan may still be generating');
+          } else {
+            clientLogger.log('ℹ️ Plan check failed (expected if no plan):', err?.message || err);
+          }
           // НЕ сбрасываем planCheckDoneRef, чтобы не делать повторные запросы
           // План не найден - это нормально, не проверяем снова
         } finally {

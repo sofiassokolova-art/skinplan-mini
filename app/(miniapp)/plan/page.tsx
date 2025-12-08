@@ -208,16 +208,21 @@ export default function PlanPage() {
       }
 
       // Загружаем прогресс плана из БД (синхронизация между устройствами)
+      // ИСПРАВЛЕНО: Защита от множественных вызовов - используем локальный ref в функции
       let planProgress: { currentDay: number; completedDays: number[] } = {
         currentDay: 1,
         completedDays: [],
       };
 
-      try {
-        const progressResponse = await api.getPlanProgress() as {
-          currentDay: number;
-          completedDays: number[];
-        };
+      // ИСПРАВЛЕНО: Защита от множественных вызовов - проверяем через замыкание
+      let progressLoadInProgress = false;
+      if (!progressLoadInProgress) {
+        progressLoadInProgress = true;
+        try {
+          const progressResponse = await api.getPlanProgress() as {
+            currentDay: number;
+            completedDays: number[];
+          };
         if (
           progressResponse &&
           typeof progressResponse.currentDay === 'number' &&
@@ -233,11 +238,14 @@ export default function PlanPage() {
             completedDays: progressResponse.completedDays,
           };
         }
-      } catch (progressError: any) {
-        // Если ошибка авторизации — это означает, что initData не валиден,
-        // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
-        if (process.env.NODE_ENV === 'development') {
-          clientLogger.warn('Could not load plan progress, using defaults:', progressError);
+        } catch (progressError: any) {
+          // Если ошибка авторизации — это означает, что initData не валиден,
+          // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
+          if (process.env.NODE_ENV === 'development') {
+            clientLogger.warn('Could not load plan progress, using defaults:', progressError);
+          }
+        } finally {
+          progressLoadInProgress = false;
         }
       }
 
@@ -811,53 +819,64 @@ export default function PlanPage() {
       
       // При ошибке не показываем экран ошибки - показываем лоадер
       // Проверяем, есть ли профиль или прогресс - если есть, план должен существовать
+      // ИСПРАВЛЕНО: Защита от множественных вызовов - используем локальную переменную
+      let progressCheckInProgress = false;
       try {
-        const [profileCheck, progressCheck] = await Promise.allSettled([
-          api.getCurrentProfile() as Promise<any>,
-          api.getPlanProgress() as Promise<any>,
-        ]);
+        if (!progressCheckInProgress) {
+          progressCheckInProgress = true;
+          const [profileCheck, progressCheck] = await Promise.allSettled([
+            api.getCurrentProfile() as Promise<any>,
+            api.getPlanProgress() as Promise<any>,
+          ]);
         
-        const hasProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
-        const hasProgress = progressCheck.status === 'fulfilled' && 
-          !!progressCheck.value && 
-          (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
+          const hasProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
+          const hasProgress = progressCheck.status === 'fulfilled' && 
+            !!progressCheck.value && 
+            (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
         
-        if (hasProfile || hasProgress) {
-          // План должен существовать - пробуем регенерировать
-          clientLogger.log('🔄 Plan should exist, attempting to regenerate...');
-          safeSetLoading(true);
-          safeSetError(null);
-          try {
-            const generatedPlan = await api.generatePlan() as any;
-            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-              clientLogger.log('✅ Plan regenerated successfully, processing...');
-              await processPlanData(generatedPlan);
-              return;
-            }
-          } catch (generateError: any) {
-            console.error('❌ Failed to regenerate plan:', generateError);
-            // Если слишком много попыток - показываем ошибку
-            if (retryCount >= MAX_RETRIES - 1) {
-              safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
-              safeSetLoading(false);
-              return;
-            }
-            // Пробуем еще раз через 3 секунды, но увеличиваем счетчик попыток
+          if (hasProfile || hasProgress) {
+            // План должен существовать - пробуем регенерировать
+            clientLogger.log('🔄 Plan should exist, attempting to regenerate...');
             safeSetLoading(true);
             safeSetError(null);
-            setTimeout(() => {
-              loadPlan(retryCount + 1);
-            }, 3000);
+            try {
+              const generatedPlan = await api.generatePlan() as any;
+              if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+                clientLogger.log('✅ Plan regenerated successfully, processing...');
+                await processPlanData(generatedPlan);
+                progressCheckInProgress = false;
+                return;
+              }
+            } catch (generateError: any) {
+              console.error('❌ Failed to regenerate plan:', generateError);
+              // Если слишком много попыток - показываем ошибку
+              if (retryCount >= MAX_RETRIES - 1) {
+                safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+                safeSetLoading(false);
+                progressCheckInProgress = false;
+                return;
+              }
+              // Пробуем еще раз через 3 секунды, но увеличиваем счетчик попыток
+              safeSetLoading(true);
+              safeSetError(null);
+              progressCheckInProgress = false;
+              setTimeout(() => {
+                loadPlan(retryCount + 1);
+              }, 3000);
+              return;
+            }
+          } else {
+            // Профиля нет - показываем ошибку профиля
+            safeSetError('no_profile');
+            safeSetLoading(false);
+            progressCheckInProgress = false;
             return;
           }
-        } else {
-          // Профиля нет - показываем ошибку профиля
-          safeSetError('no_profile');
-      safeSetLoading(false);
-          return;
+          progressCheckInProgress = false;
         }
       } catch (checkError) {
         console.error('❌ Error checking profile/progress:', checkError);
+        progressCheckInProgress = false;
         // Если слишком много попыток - показываем ошибку
         if (retryCount >= MAX_RETRIES - 1) {
           safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
@@ -872,19 +891,6 @@ export default function PlanPage() {
         }, 2000);
         return;
       }
-      
-      // Если дошли сюда - пробуем еще раз, но с ограничением попыток
-      if (retryCount >= MAX_RETRIES - 1) {
-        safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
-        safeSetLoading(false);
-        return;
-      }
-      safeSetLoading(true);
-      safeSetError(null);
-      // Пробуем еще раз через 2 секунды с увеличенным счетчиком попыток
-      setTimeout(() => {
-        loadPlan(retryCount + 1);
-      }, 2000);
     }
   };
 

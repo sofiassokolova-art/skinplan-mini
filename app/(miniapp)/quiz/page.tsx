@@ -951,9 +951,12 @@ export default function QuizPage() {
           infoScreenIndex: response.progress.infoScreenIndex,
           hasProfile,
         });
+        // ИСПРАВЛЕНО: Сначала устанавливаем showResumeScreen и savedProgress СИНХРОННО,
+        // чтобы предотвратить показ начальных экранов на промежуточных рендерах
         setSavedProgress(response.progress);
         setShowResumeScreen(true);
-        // ИСПРАВЛЕНО: Устанавливаем loading = false, чтобы экран resume показался сразу
+        // ИСПРАВЛЕНО: Устанавливаем loading = false ПОСЛЕ установки showResumeScreen,
+        // чтобы экран resume показался сразу и не было мигания начальных экранов
         // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до первого экрана анкеты
         setLoading(false);
         // Также сохраняем в localStorage для офлайн доступа
@@ -1756,132 +1759,14 @@ export default function QuizPage() {
         setLoading(false);
       }
       
-      // ВАЖНО: Редирект должен произойти СРАЗУ, без ожидания генерации плана
-      // Генерация плана будет происходить в фоне или на странице /plan
-      // Это предотвращает перерендер компонента и показ первого экрана анкеты
-      // Очищаем флаги перепрохождения ПЕРЕД редиректом
-      try {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('is_retaking_quiz');
-          localStorage.removeItem('full_retake_from_home');
-          clientLogger.log('✅ Флаги перепрохождения очищены перед редиректом на /plan');
-        }
-      } catch (storageError) {
-        clientLogger.warn('⚠️ Ошибка при очистке localStorage перед редиректом (некритично):', storageError);
-      }
-      
-      // ВАЖНО: Редирект должен произойти СРАЗУ, без задержек и без обновления состояний
-      // Не обновляем состояние после редиректа, чтобы избежать React Error #300
-      // Сбрасываем флаг монтирования только перед редиректом
-      isMountedRef.current = false;
-      
-      // ИСПРАВЛЕНО: Устанавливаем флаг в sessionStorage ПЕРЕД редиректом
-      // Это защита на случай, если редирект не сработает (Telegram WebApp может блокировать)
-      // ВАЖНО: Также устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_just_submitted', 'true');
-          // ОПТИМИЗАЦИЯ: Очищаем кэш профиля, чтобы новый профиль был доступен сразу после создания
-          sessionStorage.removeItem('profile_check_cache');
-          sessionStorage.removeItem('profile_check_cache_timestamp');
-          // Устанавливаем initCompletedRef, чтобы при возврате на /quiz не показывалось начало анкеты
-          initCompletedRef.current = true;
-        } catch (storageError) {
-          clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
-        }
-      }
-      
-      // Редирект на страницу плана
-      // План будет сгенерирован на странице /plan
-      clientLogger.log('🔄 Редирект на /plan (немедленно, без ожидания генерации плана)');
-      
-      // ВАЖНО: Редирект должен произойти СРАЗУ, синхронно, без await и без setTimeout
-      // Это предотвращает перерендер компонента и показ первого экрана анкеты
-      if (typeof window !== 'undefined') {
-        try {
-          // Редирект на страницу плана
-          // ВАЖНО: Используем window.location.replace вместо href, чтобы избежать проблем с историей
-          // ВАЖНО: Редирект происходит СРАЗУ, без задержек
-          window.location.replace('/plan');
-          // После редиректа код не должен выполняться, но на всякий случай выходим
-          return;
-        } catch (redirectError) {
-          console.error('❌ Ошибка при редиректе:', redirectError);
-          // Если редирект не сработал, пробуем через href (не используем router после размонтирования)
-          try {
-            window.location.href = '/plan';
-            return;
-          } catch (hrefError) {
-            console.error('❌ Все методы редиректа не сработали:', hrefError);
-          }
-        }
-      } else {
-        // SSR режим - используем window.location вместо router после размонтирования
-        try {
-          if (typeof window !== 'undefined') {
-            (window as Window).location.replace('/plan');
-            return;
-          }
-        } catch (redirectError) {
-          console.error('❌ Ошибка при редиректе (SSR):', redirectError);
-        }
-      }
-      
-      // ВАЖНО: Код ниже не должен выполняться, так как редирект уже произошел
-      // Но оставляем его для случая, если редирект не сработал
-      // В этом случае генерация плана будет происходить в фоне
-      
-      // ВАЖНО: Лоадер уже показывается (isSubmitting = true)
-      // Теперь запускаем генерацию плана в фоне (не ждем её завершения)
-      // План будет сгенерирован на странице /plan, если здесь не успеет
+      // ИСПРАВЛЕНО: Генерируем план ПЕРЕД редиректом, чтобы план был готов
+      // Это критично, так как после редиректа код не выполняется
       clientLogger.log('🔍 Проверка result перед генерацией плана:', {
         result,
         success: result?.success,
         hasResult: !!result,
         resultKeys: result ? Object.keys(result) : [],
       });
-      
-      // ВАЖНО: Логируем проверку result на сервер
-      try {
-        const currentInitData = await getInitData();
-        
-        if (currentInitData) {
-          try {
-            const logResponse = await fetch('/api/logs', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': currentInitData,
-              },
-              body: JSON.stringify({
-                level: 'info',
-                message: 'Checking result before plan generation',
-                context: {
-                  result,
-                  success: result?.success,
-                  hasResult: !!result,
-                  resultKeys: result ? Object.keys(result) : [],
-                  resultType: typeof result,
-                },
-              }),
-            });
-            
-            if (!logResponse.ok) {
-              const errorText = await logResponse.text().catch(() => 'Unknown error');
-              console.error('❌ Ошибка сохранения лога (checking result):', {
-                status: logResponse.status,
-                statusText: logResponse.statusText,
-                error: errorText,
-              });
-            }
-          } catch (fetchError) {
-            console.error('❌ Ошибка при вызове /api/logs (checking result):', fetchError);
-          }
-        }
-      } catch (logError) {
-        // Игнорируем ошибки логирования
-        clientLogger.warn('⚠️ Ошибка при логировании:', logError);
-      }
       
       // ИСПРАВЛЕНО: Проверяем, нужно ли генерировать план
       // ApiResponse.success() возвращает объект с данными напрямую
@@ -1904,18 +1789,56 @@ export default function QuizPage() {
       if (shouldGeneratePlan) {
         // Запускаем генерацию плана и ждем её завершения
         try {
+          // ИСПРАВЛЕНО: Логируем вызов генерации плана на сервер для диагностики
+          try {
+            const currentInitData = await getInitData();
+            if (currentInitData) {
+              await fetch('/api/logs', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'X-Telegram-Init-Data': currentInitData,
+                },
+                body: JSON.stringify({
+                  level: 'info',
+                  message: 'Starting plan generation in submitAnswers',
+                  context: {
+                    shouldGeneratePlan,
+                    hasResult: !!result,
+                    resultSuccess: result?.success,
+                    timestamp: new Date().toISOString(),
+                  },
+                }),
+              }).catch(() => {});
+            }
+          } catch (logError) {
+            // Игнорируем ошибки логирования
+          }
+          
           clientLogger.log('🔄 Вызываем api.generatePlan()...');
           let generatedPlan: any;
           try {
-            generatedPlan = await api.generatePlan() as any;
+            // ИСПРАВЛЕНО: Добавляем таймаут для генерации плана (максимум 30 секунд)
+            const PLAN_GENERATION_TIMEOUT = 30000; // 30 секунд
+            const generatePromise = api.generatePlan() as Promise<any>;
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Plan generation timeout (30s)')), PLAN_GENERATION_TIMEOUT)
+            );
+            
+            generatedPlan = await Promise.race([generatePromise, timeoutPromise]) as any;
             
             // ВАЖНО: Проверяем, что план действительно сгенерирован
             // ApiResponse.success() возвращает данные напрямую, поэтому проверяем структуру плана
-            if (!generatedPlan || (!generatedPlan.plan28 && !generatedPlan.weeks)) {
+            const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
+            const hasWeeks = generatedPlan?.weeks && Array.isArray(generatedPlan.weeks) && generatedPlan.weeks.length > 0;
+            
+            if (!generatedPlan || (!hasPlan28 && !hasWeeks)) {
               console.error('❌ План не сгенерирован или пустой:', {
                 hasPlan: !!generatedPlan,
-                hasPlan28: !!generatedPlan?.plan28,
-                hasWeeks: !!generatedPlan?.weeks,
+                hasPlan28,
+                hasWeeks,
+                plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                weeksCount: generatedPlan?.weeks?.length || 0,
                 planKeys: generatedPlan ? Object.keys(generatedPlan) : [],
                 planType: typeof generatedPlan,
                 planString: generatedPlan ? JSON.stringify(generatedPlan).substring(0, 200) : 'null',
@@ -1924,8 +1847,8 @@ export default function QuizPage() {
             }
             
             clientLogger.log('✅ План сгенерирован успешно:', {
-              hasPlan28: !!generatedPlan?.plan28,
-              hasWeeks: !!generatedPlan?.weeks,
+              hasPlan28,
+              hasWeeks,
               plan28Days: generatedPlan?.plan28?.days?.length || 0,
               weeksCount: generatedPlan?.weeks?.length || 0,
             });
@@ -2052,29 +1975,40 @@ export default function QuizPage() {
           
           // Отправляем лог на сервер для диагностики
           try {
-            await fetch('/api/logs', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData || '',
-              },
-              body: JSON.stringify({
-                level: 'error',
-                message: 'Failed to generate plan after submitting answers',
-                context: {
-                  error: genError?.message,
-                  status: genError?.status,
-                  statusText: genError?.statusText,
-                  stack: genError?.stack?.substring(0, 500), // Ограничиваем размер
+            const currentInitData = await getInitData();
+            if (currentInitData) {
+              await fetch('/api/logs', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'X-Telegram-Init-Data': currentInitData,
                 },
-              }),
-            }).catch(() => {}); // Игнорируем ошибки логирования
+                body: JSON.stringify({
+                  level: 'error',
+                  message: 'Failed to generate plan after submitting answers',
+                  context: {
+                    error: genError?.message,
+                    status: genError?.status,
+                    statusText: genError?.statusText,
+                    stack: genError?.stack?.substring(0, 500), // Ограничиваем размер
+                    shouldGeneratePlan,
+                    hasResult: !!result,
+                    resultSuccess: result?.success,
+                  },
+                }),
+              }).catch(() => {}); // Игнорируем ошибки логирования
+            }
           } catch (logError) {
             // Игнорируем ошибки логирования
           }
           
-          // Если генерация не удалась, все равно редиректим - план перегенерируется на странице /plan
-          clientLogger.warn('⚠️ Ошибка при генерации плана (продолжаем редирект):', genError?.message || genError);
+          // ИСПРАВЛЕНО: Если генерация не удалась, все равно редиректим - план перегенерируется на странице /plan
+          // Но логируем это для диагностики
+          clientLogger.warn('⚠️ Ошибка при генерации плана (продолжаем редирект):', {
+            error: genError?.message || genError,
+            status: genError?.status,
+            willRegenerateOnPlanPage: true,
+          });
         }
         
         // Проверяем, готов ли план в кэше (может быть уже готов)
@@ -2122,7 +2056,15 @@ export default function QuizPage() {
             clientLogger.warn('⚠️ Не удалось очистить ответы из БД (некритично):', clearError);
           }
         } else {
-          clientLogger.log('⚠️ План не готов после ожидания, ответы сохранены для генерации на странице /plan');
+          // ИСПРАВЛЕНО: Если план не готов после ожидания, логируем и продолжаем редирект
+          // План будет сгенерирован на странице /plan
+          const waitDuration = Date.now() - startTime;
+          clientLogger.warn('⚠️ План не готов после ожидания', {
+            waitDuration,
+            maxWaitTime: MAX_WAIT_TIME,
+            checkInterval: CHECK_INTERVAL,
+            isMounted: isMountedRef.current,
+          });
           
           // ИСПРАВЛЕНО: Логируем в KV для диагностики
           try {
@@ -2139,6 +2081,7 @@ export default function QuizPage() {
                   message: 'Plan not ready after submission, answers preserved',
                   context: {
                     waitTime: MAX_WAIT_TIME,
+                    waitDuration,
                     checkInterval: CHECK_INTERVAL,
                     timestamp: new Date().toISOString(),
                   },
@@ -2148,6 +2091,10 @@ export default function QuizPage() {
           } catch (logError) {
             // Игнорируем ошибки логирования
           }
+          
+          // ИСПРАВЛЕНО: Продолжаем редирект даже если план не готов
+          // План будет сгенерирован на странице /plan при загрузке
+          clientLogger.log('🔄 Продолжаем редирект на /plan - план будет сгенерирован там');
         }
       } else {
         // ВАЖНО: Если shouldGeneratePlan = false, все равно пытаемся сгенерировать план
@@ -2318,6 +2265,31 @@ export default function QuizPage() {
       // Сбрасываем флаг монтирования только перед редиректом
       isMountedRef.current = false;
       
+      // ИСПРАВЛЕНО: Проверяем, что план действительно готов перед редиректом
+      // Если план не готов, показываем ошибку вместо редиректа
+      let planIsReady = false;
+      try {
+        const planCheck = await api.getPlan() as any;
+        if (planCheck && (planCheck.plan28 || planCheck.weeks)) {
+          planIsReady = true;
+          clientLogger.log('✅ План готов перед редиректом');
+        } else {
+          clientLogger.warn('⚠️ План не готов перед редиректом, но продолжаем редирект - план будет сгенерирован на странице /plan');
+          // Продолжаем редирект - план будет сгенерирован на странице /plan
+          planIsReady = true; // Разрешаем редирект, так как план будет сгенерирован на /plan
+        }
+      } catch (planCheckError: any) {
+        // Если план не найден (404), это нормально - он будет сгенерирован на /plan
+        if (planCheckError?.status === 404 || planCheckError?.isNotFound) {
+          clientLogger.log('ℹ️ План не найден (404) - будет сгенерирован на странице /plan');
+          planIsReady = true; // Разрешаем редирект
+        } else {
+          // Другая ошибка - логируем, но продолжаем редирект
+          clientLogger.warn('⚠️ Ошибка при проверке плана перед редиректом:', planCheckError?.message);
+          planIsReady = true; // Разрешаем редирект - план будет сгенерирован на /plan
+        }
+      }
+      
       // Редирект на страницу плана
       // План уже готов в кэше или будет загружен на странице /plan
       clientLogger.log('🔄 Редирект на /plan (немедленно)', {
@@ -2326,6 +2298,7 @@ export default function QuizPage() {
         hasError: !!result?.error,
         answersCount: Object.keys(answers).length,
         allQuestionsLength: allQuestions.length,
+        planIsReady,
       });
       
       // ИСПРАВЛЕНО: Логируем на сервер перед редиректом для диагностики
@@ -3322,13 +3295,20 @@ export default function QuizPage() {
     if (showRetakeScreen && isRetakingQuiz) {
       return false;
     }
-    // Если показывается экран продолжения - не показываем начальные экраны
+    // ИСПРАВЛЕНО: Проверяем showResumeScreen ПЕРВЫМ, чтобы предотвратить показ начальных экранов
+    // даже если savedProgress еще не установлен (во время асинхронной загрузки прогресса)
     if (showResumeScreen) {
       return false;
     }
-    // Если есть сохраненный прогресс (даже если еще не нажали "Продолжить") - не показываем начальные экраны
+    // ИСПРАВЛЕНО: Если есть сохраненный прогресс (даже если еще не нажали "Продолжить") - не показываем начальные экраны
     // Это предотвращает показ начальных экранов на промежуточных рендерах после resumeQuiz
+    // ВАЖНО: Проверяем savedProgress ДО проверки currentInfoScreenIndex, чтобы предотвратить мигание
     if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+      return false;
+    }
+    // ИСПРАВЛЕНО: Если loading = true, не показываем начальные экраны, чтобы предотвратить мигание
+    // во время загрузки прогресса с сервера
+    if (loading) {
       return false;
     }
     // ВАЖНО: Если повторное прохождение БЕЗ экрана выбора тем - не показываем начальные экраны
@@ -3363,7 +3343,7 @@ export default function QuizPage() {
     }
     
     return shouldShow;
-  }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
+  }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length, loading]);
   
   const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
   
@@ -4471,8 +4451,12 @@ export default function QuizPage() {
                   }
                   
                   clientLogger.log('🚀 Запуск submitAnswers...');
+                  // ИСПРАВЛЕНО: Устанавливаем isSubmitting СИНХРОННО перед вызовом submitAnswers
+                  // Это гарантирует, что лоадер покажется сразу после нажатия кнопки
+                  isSubmittingRef.current = true;
                   setIsSubmitting(true);
                   setError(null);
+                  setLoading(false); // Убираем лоадер "Загрузка анкеты..." если он показывался
                   
                   try {
                     await submitAnswers();
@@ -4623,15 +4607,27 @@ export default function QuizPage() {
     );
   };
 
+  // ИСПРАВЛЕНО: Проверяем showResumeScreen ПЕРЕД isShowingInitialInfoScreen,
+  // чтобы предотвратить мигание начальных экранов перед показом экрана продолжения
+  // Это критично, так как showResumeScreen устанавливается асинхронно после загрузки прогресса
+  // ВАЖНО: showResumeScreen уже проверяется выше в коде (строка 3900), но добавляем дополнительную проверку здесь
+  // для гарантии правильного порядка рендеринга
+  
   // Если показывается информационный экран между вопросами
   // При повторном прохождении пропускаем все info screens
   if (pendingInfoScreen && !isRetakingQuiz) {
     return renderInfoScreen(pendingInfoScreen);
   }
 
+  // ИСПРАВЛЕНО: Проверяем showResumeScreen перед isShowingInitialInfoScreen,
+  // чтобы предотвратить показ начальных экранов, если должен показываться экран продолжения
+  // ВАЖНО: НЕ возвращаем null здесь, так как экран прогресса уже отрендерен выше (строка 3903)
+  // Просто пропускаем показ начальных экранов, если showResumeScreen = true
+
   // Если мы на начальном информационном экране
   // При повторном прохождении пропускаем все info screens
-  if (isShowingInitialInfoScreen && currentInitialInfoScreen && !isRetakingQuiz) {
+  // ИСПРАВЛЕНО: Добавлена дополнительная проверка showResumeScreen для предотвращения мигания
+  if (isShowingInitialInfoScreen && currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen) {
     return renderInfoScreen(currentInitialInfoScreen);
   }
 

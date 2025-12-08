@@ -838,12 +838,36 @@ export async function POST(request: NextRequest) {
         // Конвертируем Set обратно в массив
         const productIds = Array.from(productIdsSet);
         
+        // ИСПРАВЛЕНО: Детальное логирование подбора средств для диагностики
         logger.info('Final product selection summary', {
           userId,
           totalProductIds: productIds.length,
           uniqueProductIds: productIds,
           stepsCount: Object.keys(stepsJson).length,
+          hasProducts: productIds.length > 0,
+          userBudget,
+          userPriceSegment,
+          ruleId: matchedRule.id,
+          ruleName: matchedRule.name,
         });
+        
+        // ВАЖНО: Проверяем, что средства подобраны
+        if (productIds.length === 0) {
+          logger.error('❌ No products selected for RecommendationSession', {
+            userId,
+            profileId: profile.id,
+            ruleId: matchedRule.id,
+            stepsCount: Object.keys(stepsJson).length,
+            userBudget,
+            userPriceSegment,
+          });
+        } else {
+          logger.info('✅ Products successfully selected', {
+            userId,
+            productCount: productIds.length,
+            productIds: productIds.slice(0, 20), // Первые 20 для логирования
+          });
+        }
 
         // Создаем RecommendationSession
         // ВАЖНО: Логируем для диагностики, особенно при перепрохождении
@@ -999,17 +1023,31 @@ export async function POST(request: NextRequest) {
             logger.warn('Failed to invalidate recommendations cache', { error: cacheError });
           }
           
-          logger.info('Fallback RecommendationSession created', {
+          // ИСПРАВЛЕНО: Детальное логирование fallback сессии
+          logger.info('✅ Fallback RecommendationSession created', {
             userId,
             productCount: fallbackProductIds.length,
+            productIds: fallbackProductIds,
+            profileId: profile.id,
+            profileVersion: profile.version,
+            skinType: profile.skinType,
           });
         } else {
-          logger.error('No products available for fallback session', { userId });
+          // ИСПРАВЛЕНО: Детальное логирование ошибки отсутствия продуктов
+          logger.error('❌ No products available for fallback session', { 
+            userId,
+            profileId: profile.id,
+            profileVersion: profile.version,
+            skinType: profile.skinType,
+            requiredSteps,
+          });
           // ИСПРАВЛЕНО: Если fallback сессия не создана из-за отсутствия продуктов - это критическая ошибка
           // Но не блокируем сохранение ответов - план может быть сгенерирован с базовыми продуктами
           logger.warn('⚠️ Fallback RecommendationSession could not be created - no products found. Plan may use all products.', {
             userId,
             profileId: profile.id,
+            profileVersion: profile.version,
+            skinType: profile.skinType,
           });
         }
       }

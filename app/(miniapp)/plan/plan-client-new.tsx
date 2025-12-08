@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PlanHeader } from '@/components/PlanHeader';
 import { DayView } from '@/components/DayView';
@@ -153,8 +153,16 @@ export function PlanPageClientNew({
     }
   }, [searchParams, initialCurrentDay]);
 
+  // ИСПРАВЛЕНО: Защита от множественных вызовов корзины
+  const cartLoadInProgressRef = useRef(false);
+
   // Загружаем данные корзине при монтировании
   useEffect(() => {
+    // ИСПРАВЛЕНО: Защита от множественных вызовов
+    if (cartLoadInProgressRef.current) {
+      return;
+    }
+    cartLoadInProgressRef.current = true;
     loadCart();
     // Проверяем статус первой оплаты (обновляем при изменении plan28)
     // ВАЖНО: НЕ устанавливаем автоматически payment_first_completed при наличии плана
@@ -171,6 +179,11 @@ export function PlanPageClientNew({
   }, [plan28]);
 
   const loadCart = async () => {
+    // ИСПРАВЛЕНО: Защита от множественных вызовов
+    if (cartLoadInProgressRef.current) {
+      return;
+    }
+    cartLoadInProgressRef.current = true;
     try {
       const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
       const items = cart.items || [];
@@ -181,6 +194,8 @@ export function PlanPageClientNew({
       setCartQuantities(quantitiesMap);
     } catch (err) {
       clientLogger.warn('Could not load cart:', err);
+    } finally {
+      cartLoadInProgressRef.current = false;
     }
   };
 
