@@ -43,19 +43,30 @@ function initializeCache(): void {
     
     // Приоритет 2: Vercel KV (если Upstash не настроен, но есть Vercel KV)
     // ВАЖНО: Используем токен для записи (KV_REST_API_TOKEN), а не read-only токен
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    if (process.env.KV_REST_API_URL) {
       const kvModule = require('@vercel/kv');
       
-      // ВАЖНО: Проверяем, что используется токен для записи, а не read-only
+      // ИСПРАВЛЕНО: Проверяем наличие write token
       const writeToken = process.env.KV_REST_API_TOKEN;
       const readOnlyToken = process.env.KV_REST_API_READ_ONLY_TOKEN;
       
+      // Если установлен только read-only токен - не используем кэш для записи
+      if (!writeToken && readOnlyToken) {
+        console.error('❌ ERROR: Only KV_REST_API_READ_ONLY_TOKEN is set, but KV_REST_API_TOKEN is missing!');
+        console.error('   Cache write operations will fail. Please set KV_REST_API_TOKEN in Vercel.');
+        kvAvailable = false;
+        return;
+      }
+      
       if (readOnlyToken && writeToken === readOnlyToken) {
         console.error('❌ ERROR: KV_REST_API_TOKEN и KV_REST_API_READ_ONLY_TOKEN совпадают - используйте токен для записи!');
+        kvAvailable = false;
+        return;
       }
       
       if (!writeToken || writeToken.length === 0) {
         console.error('❌ ERROR: KV_REST_API_TOKEN пустой или не установлен!');
+        console.error('   Cache write operations will fail. Please set KV_REST_API_TOKEN in Vercel.');
         kvAvailable = false;
         return;
       }

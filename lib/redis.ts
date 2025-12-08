@@ -19,12 +19,26 @@ export function getRedis(): Redis | null {
   // Поддерживаем оба варианта: UPSTASH_REDIS_* и KV_* (Vercel создает KV_* для Upstash Redis)
   // ВАЖНО: Используем токен для записи (KV_REST_API_TOKEN), а не read-only токен (KV_REST_API_READ_ONLY_TOKEN)
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   
-  // ИСПРАВЛЕНО: Проверяем, не используется ли read-only токен вместо write token
-  if (process.env.KV_REST_API_READ_ONLY_TOKEN && token === process.env.KV_REST_API_READ_ONLY_TOKEN) {
-    console.error('❌ ERROR: Using read-only token (KV_REST_API_READ_ONLY_TOKEN) for Redis write operations!');
-    console.error('   Please use KV_REST_API_TOKEN instead of KV_REST_API_READ_ONLY_TOKEN');
+  // ИСПРАВЛЕНО: Приоритет токенов - сначала проверяем write token, потом read-only (но не используем read-only для записи)
+  let token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+  
+  // ВАЖНО: Если установлен только read-only токен, но нет write token - это проблема
+  const readOnlyToken = process.env.KV_REST_API_READ_ONLY_TOKEN;
+  if (!token && readOnlyToken) {
+    console.error('❌ ERROR: Only KV_REST_API_READ_ONLY_TOKEN is set, but KV_REST_API_TOKEN is missing!');
+    console.error('   Write operations will fail. Please set KV_REST_API_TOKEN in Vercel environment variables.');
+    console.error('   Current token value is read-only and cannot be used for SET operations.');
+    // НЕ используем read-only токен для записи - возвращаем null
+    return null;
+  }
+  
+  // ИСПРАВЛЕНО: Проверяем, не используется ли read-only токен вместо write token (случайная ошибка)
+  if (readOnlyToken && token === readOnlyToken) {
+    console.error('❌ ERROR: KV_REST_API_TOKEN и KV_REST_API_READ_ONLY_TOKEN совпадают!');
+    console.error('   KV_REST_API_TOKEN должен быть токеном для записи, а не read-only токеном.');
+    console.error('   Please check your Vercel environment variables.');
+    return null;
   }
   
   if (!url || !token) {
