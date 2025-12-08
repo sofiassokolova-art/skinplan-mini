@@ -161,7 +161,7 @@ export function logApiRequest(
   path: string,
   statusCode: number,
   duration: number,
-  userId?: string
+  userId?: string | null
 ) {
   // Логируем в консоль (Vercel logs)
   logger.info('API Request', {
@@ -244,7 +244,7 @@ export function logApiError(
   method: string,
   path: string,
   error: Error | unknown,
-  userId?: string,
+  userId?: string | null,
   options?: ClientLogOptions
 ) {
   logger.error('API Error', error, {
