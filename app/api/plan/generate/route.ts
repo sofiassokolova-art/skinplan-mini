@@ -82,18 +82,34 @@ export async function GET(request: NextRequest) {
     // Выполняем генерацию с таймаутом и детальной обработкой ошибок
     let plan: Awaited<ReturnType<typeof generate28DayPlan>>;
     try {
+      logger.info('🚀 Starting generate28DayPlan function', {
+        userId,
+        profileVersion: profile.version,
+        timestamp: new Date().toISOString(),
+      });
+      
       plan = await Promise.race([
         generate28DayPlan(userId),
         timeoutPromise,
       ]) as Awaited<ReturnType<typeof generate28DayPlan>>;
+      
+      logger.info('✅ generate28DayPlan completed successfully', {
+        userId,
+        profileVersion: profile.version,
+        hasPlan28: !!plan?.plan28,
+        hasWeeks: !!plan?.weeks,
+        plan28DaysCount: plan?.plan28?.days?.length || 0,
+      });
     } catch (error: any) {
-      // Детальное логирование ошибки генерации
+      // ИСПРАВЛЕНО: Детальное логирование ошибки генерации
       logger.error('❌ Error during plan generation', error, {
         userId,
+        profileVersion: profile.version,
         errorMessage: error?.message,
-        errorStack: error?.stack,
+        errorStack: error?.stack?.substring(0, 1000),
         errorName: error?.name,
         errorCode: error?.code,
+        timestamp: new Date().toISOString(),
       });
       
       // Возвращаем детальную ошибку клиенту
@@ -104,6 +120,7 @@ export async function GET(request: NextRequest) {
           userId,
           profileVersion: profile.version,
           error: error?.message,
+          errorName: error?.name,
           timestamp: new Date().toISOString(),
         }
       );

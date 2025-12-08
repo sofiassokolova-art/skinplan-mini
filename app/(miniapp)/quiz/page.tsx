@@ -1851,11 +1851,12 @@ export default function QuizPage() {
         clientLogger.warn('⚠️ Ошибка при логировании:', logError);
       }
       
-      // ВАЖНО: Проверяем, что result существует и не содержит ошибку
+      // ИСПРАВЛЕНО: Проверяем, нужно ли генерировать план
       // ApiResponse.success() возвращает объект с данными напрямую
       // В /api/questionnaire/answers возвращается {success: true, profile: {...}, answersCount: number}
-      // Поэтому проверяем наличие result, отсутствие поля error и наличие success: true
-      const shouldGeneratePlan = result && !result.error && result.success === true;
+      // Проверяем наличие result, отсутствие поля error и что success не false
+      // result может быть просто объектом с данными, поэтому проверяем отсутствие ошибки
+      const shouldGeneratePlan = result && !result.error && result.success !== false;
       
       // Логируем для диагностики
       clientLogger.log('🔍 Проверка shouldGeneratePlan:', {
@@ -1897,12 +1898,45 @@ export default function QuizPage() {
               weeksCount: generatedPlan?.weeks?.length || 0,
             });
           } catch (planGenError: any) {
-            // Если это ошибка API (например, 500, 404), пробрасываем дальше
+            // ИСПРАВЛЕНО: Детальное логирование ошибки генерации плана
             console.error('❌ Ошибка при вызове api.generatePlan():', {
               message: planGenError?.message,
               status: planGenError?.status,
+              statusText: planGenError?.statusText,
+              details: planGenError?.details,
               error: planGenError,
+              errorType: typeof planGenError,
+              errorString: String(planGenError),
+              errorKeys: planGenError ? Object.keys(planGenError) : [],
             });
+            
+            // ИСПРАВЛЕНО: Логируем ошибку в KV для диагностики
+            try {
+              const currentInitData = await getInitData();
+              if (currentInitData) {
+                await fetch('/api/logs', {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Telegram-Init-Data': currentInitData,
+                  },
+                  body: JSON.stringify({
+                    level: 'error',
+                    message: 'Plan generation failed in submitAnswers',
+                    context: {
+                      error: planGenError?.message,
+                      status: planGenError?.status,
+                      statusText: planGenError?.statusText,
+                      details: planGenError?.details,
+                      stack: planGenError?.stack?.substring(0, 500),
+                    },
+                  }),
+                }).catch(() => {});
+              }
+            } catch (logError) {
+              // Игнорируем ошибки логирования
+            }
+            
             throw planGenError;
           }
           
@@ -2044,7 +2078,7 @@ export default function QuizPage() {
           await new Promise(resolve => setTimeout(resolve, CHECK_INTERVAL));
         }
         
-        // ВАЖНО: Очищаем ответы из БД ТОЛЬКО если план готов
+        // ИСПРАВЛЕНО: Очищаем ответы из БД ТОЛЬКО если план готов
         // Если план не готов, ответы остаются в БД для повторной генерации на странице /plan
         if (planReady) {
           try {
@@ -2057,6 +2091,31 @@ export default function QuizPage() {
           }
         } else {
           clientLogger.log('⚠️ План не готов после ожидания, ответы сохранены для генерации на странице /plan');
+          
+          // ИСПРАВЛЕНО: Логируем в KV для диагностики
+          try {
+            const currentInitData = await getInitData();
+            if (currentInitData) {
+              await fetch('/api/logs', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'X-Telegram-Init-Data': currentInitData,
+                },
+                body: JSON.stringify({
+                  level: 'warn',
+                  message: 'Plan not ready after submission, answers preserved',
+                  context: {
+                    waitTime: MAX_WAIT_TIME,
+                    checkInterval: CHECK_INTERVAL,
+                    timestamp: new Date().toISOString(),
+                  },
+                }),
+              }).catch(() => {});
+            }
+          } catch (logError) {
+            // Игнорируем ошибки логирования
+          }
         }
       } else {
         // ВАЖНО: Если shouldGeneratePlan = false, все равно пытаемся сгенерировать план

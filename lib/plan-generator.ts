@@ -522,16 +522,32 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       }
     }
 
-    if (existingSession) {
+    if (existingSession && existingSession.products && Array.isArray(existingSession.products) && existingSession.products.length > 0) {
       logger.info('✅ RecommendationSession found', {
         userId,
         sessionId: existingSession.id,
         ruleId: existingSession.ruleId,
-        productsCount: Array.isArray(existingSession.products) ? existingSession.products.length : 0,
-        products: Array.isArray(existingSession.products) ? existingSession.products.slice(0, 10) : [],
+        profileId: existingSession.profileId,
+        productsCount: existingSession.products.length,
+        products: existingSession.products.slice(0, 10),
       });
     } else {
-      logger.warn('⚠️ No RecommendationSession found', { userId, profileId: profile.id });
+      // ИСПРАВЛЕНО: Детальное логирование для диагностики
+      logger.warn('⚠️ No RecommendationSession found or empty', { 
+        userId, 
+        profileId: profile.id,
+        profileVersion: profile.version,
+        existingSessionId: existingSession?.id,
+        existingSessionProductsCount: existingSession?.products ? (Array.isArray(existingSession.products) ? existingSession.products.length : 0) : 0,
+      });
+      
+      // ИСПРАВЛЕНО: Если сессия найдена, но продуктов нет - не используем её
+      if (existingSession && (!existingSession.products || !Array.isArray(existingSession.products) || existingSession.products.length === 0)) {
+        logger.warn('⚠️ RecommendationSession found but has no products, will generate from scratch', {
+          userId,
+          sessionId: existingSession.id,
+        });
+      }
     }
 
   // ИСПРАВЛЕНО: Используем сессию даже если продуктов меньше MIN_PRODUCTS_IN_SESSION
@@ -563,8 +579,11 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         await prisma.recommendationSession.delete({
           where: { id: existingSession.id },
         });
-        // Продолжаем без этой сессии
-    } else {
+        // Продолжаем без этой сессии - будем генерировать с нуля
+        logger.info('Deleted empty RecommendationSession, will generate plan from scratch', {
+          userId,
+        });
+      } else {
         // Используем продукты, даже если их меньше минимума
         logger.info('Using RecommendationSession with fewer products than recommended', {
           userId,

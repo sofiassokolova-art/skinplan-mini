@@ -151,14 +151,20 @@ async function request<T>(
       throw notFoundError;
     }
     
-    // Для остальных ошибок
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    const errorMessage = error.error || `HTTP ${response.status}`;
+    // ИСПРАВЛЕНО: Для ошибок 500 и других статусов правильно парсим ответ
+    const errorText = await response.text().catch(() => 'Unknown error');
+    let errorData: any = {};
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      // Если не JSON, используем текст как есть
+      errorData = { error: errorText || `HTTP ${response.status}` };
+    }
+    const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}`;
     
     // Для 400 ошибок (Bad Request)
     if (response.status === 400) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Некорректный запрос. Проверьте данные и попробуйте снова.');
+      throw new Error(errorMessage || 'Некорректный запрос. Проверьте данные и попробуйте снова.');
     }
     
     // Для 429 (rate limit) добавляем информацию о времени ожидания
@@ -170,7 +176,19 @@ async function request<T>(
       throw new Error(message);
     }
     
-    throw new Error(errorMessage);
+    // Для 500 ошибок добавляем детальную информацию
+    if (response.status === 500) {
+      const apiError = new Error(errorMessage) as any;
+      apiError.status = 500;
+      apiError.details = errorData.details || errorData;
+      throw apiError;
+    }
+    
+    // Для остальных ошибок
+    const apiError = new Error(errorMessage) as any;
+    apiError.status = response.status;
+    apiError.details = errorData.details || errorData;
+    throw apiError;
   }
 
   return response.json();

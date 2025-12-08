@@ -1005,7 +1005,38 @@ export async function POST(request: NextRequest) {
           });
         } else {
           logger.error('No products available for fallback session', { userId });
+          // ИСПРАВЛЕНО: Если fallback сессия не создана из-за отсутствия продуктов - это критическая ошибка
+          // Но не блокируем сохранение ответов - план может быть сгенерирован с базовыми продуктами
+          logger.warn('⚠️ Fallback RecommendationSession could not be created - no products found. Plan may use all products.', {
+            userId,
+            profileId: profile.id,
+          });
         }
+      }
+      
+      // ИСПРАВЛЕНО: Проверяем, что RecommendationSession была создана
+      const createdSession = await prisma.recommendationSession.findFirst({
+        where: {
+          userId,
+          profileId: profile.id,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      if (createdSession) {
+        logger.info('✅ RecommendationSession created successfully', {
+          userId,
+          profileId: profile.id,
+          sessionId: createdSession.id,
+          productsCount: Array.isArray(createdSession.products) ? createdSession.products.length : 0,
+          ruleId: createdSession.ruleId,
+        });
+      } else {
+        logger.warn('⚠️ RecommendationSession was not created after answers submission', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+        });
       }
       
       // ВАЖНО: Генерируем план ПОСЛЕ создания RecommendationSession
@@ -1020,7 +1051,9 @@ export async function POST(request: NextRequest) {
       // 4. Ответы удаляются только после успешной генерации плана
       logger.info('Plan generation will be triggered by client after answers submission', { 
         userId, 
-        profileVersion: profile.version 
+        profileVersion: profile.version,
+        hasRecommendationSession: !!createdSession,
+        sessionProductsCount: createdSession ? (Array.isArray(createdSession.products) ? createdSession.products.length : 0) : 0,
       });
     } catch (recommendationError) {
       // Не блокируем сохранение ответов, если рекомендации не создались
