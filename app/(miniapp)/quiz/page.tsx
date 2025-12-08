@@ -1343,13 +1343,24 @@ export default function QuizPage() {
         return;
       }
       
+      // ИСПРАВЛЕНО: Проверяем, не последний ли это вопрос ДО закрытия инфо-экрана
+      const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+      const isWantImproveScreen = pendingInfoScreen?.id === 'want_improve';
+      
+      // ВАЖНО: Если это последний инфо-экран (want_improve), НЕ закрываем его автоматически
+      // Пользователь должен нажать кнопку "Получить план ухода" для отправки ответов
+      if (isWantImproveScreen && isLastQuestion) {
+        clientLogger.log('ℹ️ Это последний инфо-экран want_improve - ждем нажатия кнопки "Получить план ухода"');
+        // НЕ закрываем экран, НЕ меняем индекс - просто возвращаемся
+        // Кнопка "Получить план ухода" должна вызвать handleGetPlan, который вызовет submitAnswers
+        return;
+      }
+      
       // Если нет следующего info screen, закрываем pending и переходим к следующему вопросу
       setPendingInfoScreen(null);
       
-      // ИСПРАВЛЕНО: Проверяем, не последний ли это вопрос ДО закрытия инфо-экрана
-      const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
       if (isLastQuestion) {
-        // ИСПРАВЛЕНО: После закрытия последнего инфо-экрана увеличиваем индекс для запуска автоотправки
+        // ИСПРАВЛЕНО: После закрытия последнего инфо-экрана (но не want_improve) увеличиваем индекс для запуска автоотправки
         // ВАЖНО: Сначала сохраняем прогресс, потом увеличиваем индекс, чтобы избежать проблем с редиректом
         await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         // ИСПРАВЛЕНО: Устанавливаем индекс синхронно, но с небольшой задержкой для безопасности
