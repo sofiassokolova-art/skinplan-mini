@@ -6,7 +6,7 @@ import { ApiResponse } from '@/lib/api-response';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { getCachedRecommendations, setCachedRecommendations } from '@/lib/cache';
-import { logger } from '@/lib/logger';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { getProductsForStep, type RuleStep } from '@/lib/product-selection';
 import { normalizeIngredientSimple } from '@/lib/ingredient-normalizer';
 
