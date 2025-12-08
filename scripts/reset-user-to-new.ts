@@ -49,12 +49,28 @@ async function resetUserToNew(telegramId: string) {
     });
     console.log(`   ✅ Удалено сессий: ${deletedSessions.count}`);
 
-    // 4. Удаляем планы
+    // 4. Удаляем планы (если есть такая модель)
     console.log('🗑️  Удаляю планы...');
-    const deletedPlans = await prisma.skinPlan.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено планов: ${deletedPlans.count}`);
+    try {
+      // Пробуем разные варианты названий
+      let deletedPlans: any;
+      if (prisma.plan) {
+        deletedPlans = await prisma.plan.deleteMany({
+          where: { userId: user.id },
+        });
+      } else if (prisma.skinPlan) {
+        deletedPlans = await prisma.skinPlan.deleteMany({
+          where: { userId: user.id },
+        });
+      } else {
+        console.log(`   ℹ️  Модель плана не найдена`);
+      }
+      if (deletedPlans) {
+        console.log(`   ✅ Удалено планов: ${deletedPlans.count}`);
+      }
+    } catch (error: any) {
+      console.log(`   ℹ️  Планы: ${error?.message?.substring(0, 50) || 'не найдено'}`);
+    }
 
     // 5. Удаляем профили кожи
     console.log('🗑️  Удаляю профили кожи...');
