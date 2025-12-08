@@ -264,7 +264,9 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
     // не выполняем повторную инициализацию
     // ВАЖНО: НЕ блокируем, если показывается pendingInfoScreen - это нормальный ход анкеты
-    if (initCompletedRef.current && !isStartingOverRef.current && !pendingInfoScreen) {
+    // ВАЖНО: Также НЕ блокируем, если currentQuestionIndex >= allQuestions.length (анкета завершена, ожидается автоотправка)
+    if (initCompletedRef.current && !isStartingOverRef.current && !pendingInfoScreen && 
+        (questionnaire ? currentQuestionIndex < allQuestions.length : true)) {
       if (loading) {
         setLoading(false);
       }
@@ -1366,8 +1368,13 @@ export default function QuizPage() {
           // ИСПРАВЛЕНО: НЕ увеличиваем currentQuestionIndex, чтобы не запустить автоотправку
           // Автоотправка запустится только после закрытия инфо-экрана или при нажатии кнопки "Получить план"
           await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-          // ВАЖНО: Устанавливаем флаг, чтобы предотвратить редирект во время показа инфо-экрана
-          initCompletedRef.current = true;
+          // ВАЖНО: НЕ устанавливаем initCompletedRef.current = true здесь, чтобы не блокировать последующую обработку
+          // initCompletedRef устанавливается только после полной инициализации анкеты
+          clientLogger.log('✅ Показан инфо-экран после последнего вопроса:', {
+            infoScreenId: infoScreen.id,
+            currentQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+          });
           return;
         }
       }
