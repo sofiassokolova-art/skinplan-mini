@@ -459,8 +459,23 @@ export async function GET(request: NextRequest) {
     // Получаем продукты для каждого шага
     const stepsJson = matchedRule.stepsJson as Record<string, RuleStep>;
     const steps: Record<string, any[]> = {};
+    
+    // ИСПРАВЛЕНО: Увеличиваем количество продуктов на шаг для более полных рекомендаций
+    const enhancedStepsJson: Record<string, RuleStep> = { ...stepsJson };
+    
+    // Увеличиваем max_items для всех шагов
+    for (const [stepName, stepConfig] of Object.entries(enhancedStepsJson)) {
+      const step = { ...stepConfig };
+      // Увеличиваем max_items: минимум 3, максимум 5 для каждого шага
+      if (!step.max_items || step.max_items < 3) {
+        step.max_items = 3;
+      } else if (step.max_items > 5) {
+        step.max_items = 5;
+      }
+      enhancedStepsJson[stepName] = step;
+    }
 
-    for (const [stepName, stepConfig] of Object.entries(stepsJson)) {
+    for (const [stepName, stepConfig] of Object.entries(enhancedStepsJson)) {
       // Если в правиле не указан бюджет, используем бюджет пользователя
       const stepWithBudget: RuleStep = {
         ...stepConfig,
