@@ -143,7 +143,8 @@ export default function PersonalCabinet() {
         try {
           const plan = await api.getPlan() as any;
           // Проверяем наличие плана в новом или старом формате
-          if (plan && (plan.weeks || plan.plan28)) {
+          // ИСПРАВЛЕНО: Проверяем, что profile не null перед использованием
+          if (plan && (plan.weeks || plan.plan28) && profile) {
             const createdAt = new Date(profile.createdAt || Date.now());
             const now = new Date();
             const daysDiff = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
