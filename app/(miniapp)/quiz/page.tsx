@@ -156,6 +156,16 @@ export default function QuizPage() {
   const progressLoadInProgressRef = useRef(false);
 
   useEffect(() => {
+    // ТЕСТ: Отправляем тестовый лог при загрузке страницы
+    // ВАЖНО: Используем warn/error чтобы логи отправлялись даже в production
+    if (typeof window !== 'undefined') {
+      clientLogger.warn('⚠️ Quiz page loaded - test warning log (should appear in KV)');
+      // Отправляем через небольшую задержку, чтобы убедиться что все инициализировано
+      setTimeout(() => {
+        clientLogger.warn('⚠️ Quiz page initialization complete - second test log');
+      }, 1000);
+    }
+
     // ИСПРАВЛЕНО: Проверяем, не была ли анкета только что отправлена
     // Если да - редиректим на /plan, чтобы избежать показа первого экрана
     if (typeof window !== 'undefined') {

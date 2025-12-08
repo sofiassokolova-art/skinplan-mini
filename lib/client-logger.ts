@@ -83,9 +83,7 @@ const formatMessage = (...args: any[]): string => {
 export const clientLogger = {
   log: (...args: any[]) => {
     const message = formatMessage(...args);
-    if (isDevelopment) {
-      console.log(...args);
-    }
+    console.log(...args); // Всегда выводим в консоль
     // В production не отправляем обычные логи на сервер (только error/warn)
     if (isDevelopment) {
       sendLogToServer('log', message, args.length > 1 ? args.slice(1) : null);
@@ -94,13 +92,14 @@ export const clientLogger = {
   
   warn: (...args: any[]) => {
     const message = formatMessage(...args);
-    if (isDevelopment) {
-      console.warn(...args);
-    } else {
-      console.warn(...args); // Предупреждения всегда выводим
+    console.warn(...args); // Предупреждения всегда выводим
+    // ИСПРАВЛЕНО: Предупреждения всегда отправляем на сервер (и в production, и в development)
+    // Добавляем try-catch для безопасности
+    try {
+      sendLogToServer('warn', message, args.length > 1 ? args.slice(1) : null);
+    } catch (err) {
+      // Игнорируем ошибки отправки, чтобы не создать бесконечный цикл
     }
-    // Предупреждения всегда отправляем на сервер
-    sendLogToServer('warn', message, args.length > 1 ? args.slice(1) : null);
   },
   
   debug: (...args: any[]) => {
@@ -115,8 +114,13 @@ export const clientLogger = {
     const message = formatMessage(...args);
     // Ошибки всегда логируем, даже в production
     console.error(...args);
-    // Ошибки всегда отправляем на сервер
-    sendLogToServer('error', message, args.length > 1 ? args.slice(1) : null);
+    // ИСПРАВЛЕНО: Ошибки всегда отправляем на сервер (и в production, и в development)
+    // Добавляем try-catch для безопасности
+    try {
+      sendLogToServer('error', message, args.length > 1 ? args.slice(1) : null);
+    } catch (err) {
+      // Игнорируем ошибки отправки, чтобы не создать бесконечный цикл
+    }
   },
   
   info: (...args: any[]) => {
