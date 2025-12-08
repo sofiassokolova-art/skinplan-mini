@@ -11,6 +11,7 @@ import { PlanPageClientNew } from './plan-client-new';
 import { PlanPageClient } from './plan-client';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
+import { clientLogger } from '@/lib/client-logger';
 
 interface PlanData {
   // Новый формат (plan28)
@@ -119,21 +120,21 @@ export default function PlanPage() {
       if (checkProfile) {
         const profile = await api.getCurrentProfile() as ProfileResponse | null;
         if (!profile) {
-          console.log(`${logPrefix}❌ No profile found, cannot generate plan`);
+          clientLogger.log(`${logPrefix}❌ No profile found, cannot generate plan`);
           return null;
         }
       }
 
       // Пытаемся сгенерировать план
-      console.log(`${logPrefix}🔄 Attempting to generate plan...`);
+      clientLogger.log(`${logPrefix}🔄 Attempting to generate plan...`);
       const generatedPlan = await api.generatePlan() as GeneratedPlan;
       
       if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-        console.log(`${logPrefix}✅ Plan generated successfully`);
+        clientLogger.log(`${logPrefix}✅ Plan generated successfully`);
         return generatedPlan;
       }
       
-      console.warn(`${logPrefix}⚠️ Plan generation returned empty result`);
+      clientLogger.warn(`${logPrefix}⚠️ Plan generation returned empty result`);
       return null;
     } catch (error: any) {
       console.error(`${logPrefix}❌ Error generating plan:`, error);
@@ -142,7 +143,7 @@ export default function PlanPage() {
       if (error?.status === 404 || 
           error?.message?.includes('No skin profile') || 
           error?.message?.includes('Profile not found')) {
-        console.log(`${logPrefix}❌ No profile found in error response`);
+        clientLogger.log(`${logPrefix}❌ No profile found in error response`);
         return null;
       }
       
@@ -175,7 +176,7 @@ export default function PlanPage() {
         // Если профиль не найден, но план есть - это нормально, продолжаем с план28
         // Профиль нужен только для старого формата плана
         if (process.env.NODE_ENV === 'development') {
-          console.warn('Could not load profile, but plan exists - continuing with plan only');
+          clientLogger.warn('Could not load profile, but plan exists - continuing with plan only');
         }
         profile = null;
       }
@@ -183,7 +184,7 @@ export default function PlanPage() {
       // Если план есть в новом формате plan28, можем продолжать без профиля
       if (plan.plan28) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Using plan28 format, profile not required');
+          clientLogger.log('✅ Using plan28 format, profile not required');
         }
         // Продолжаем дальше без проверки профиля
       } else if (!profile && plan.weeks) {
@@ -202,7 +203,7 @@ export default function PlanPage() {
         ).filter((id: any): id is number => typeof id === 'number');
       } catch (err) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('Could not load wishlist:', err);
+          clientLogger.warn('Could not load wishlist:', err);
         }
       }
 
@@ -236,7 +237,7 @@ export default function PlanPage() {
         // Если ошибка авторизации — это означает, что initData не валиден,
         // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
         if (process.env.NODE_ENV === 'development') {
-          console.warn('Could not load plan progress, using defaults:', progressError);
+          clientLogger.warn('Could not load plan progress, using defaults:', progressError);
         }
       }
 
@@ -313,7 +314,7 @@ export default function PlanPage() {
         // Сначала пробуем загрузить из API, если не получилось - используем fallback
         let productsLoadedFromAPI = false;
         
-        console.log('🔍 DEBUG: Starting product loading', {
+        clientLogger.log('🔍 DEBUG: Starting product loading', {
           allProductIdsSize: allProductIds.size,
           allProductIds: Array.from(allProductIds).slice(0, 20),
           hasWindow: typeof window !== 'undefined',
@@ -323,7 +324,7 @@ export default function PlanPage() {
         if (allProductIds.size > 0 && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
           try {
             const productIdsArray = Array.from(allProductIds);
-            console.log('📦 Loading products from batch endpoint, count:', productIdsArray.length, 'IDs:', productIdsArray.slice(0, 10));
+            clientLogger.log('📦 Loading products from batch endpoint, count:', productIdsArray.length, 'IDs:', productIdsArray.slice(0, 10));
             
             // Используем api.getProductAlternatives или создаем отдельный метод для batch
             // Пока используем fetch напрямую, но с улучшенной обработкой ошибок
@@ -336,11 +337,11 @@ export default function PlanPage() {
               body: JSON.stringify({ productIds: productIdsArray }),
             });
             
-            console.log('📡 Batch API response status:', productsResponse.status, productsResponse.ok);
+            clientLogger.log('📡 Batch API response status:', productsResponse.status, productsResponse.ok);
 
             if (productsResponse.ok) {
               const productsData = await productsResponse.json();
-              console.log('✅ Products loaded from batch:', productsData.products?.length || 0);
+              clientLogger.log('✅ Products loaded from batch:', productsData.products?.length || 0);
               
               if (productsData.products && Array.isArray(productsData.products)) {
                 let addedCount = 0;
@@ -359,7 +360,7 @@ export default function PlanPage() {
               }
                 });
                 productsLoadedFromAPI = productsMap.size > 0;
-                console.log(`✅ Products added to map from API: ${addedCount}/${productsData.products.length}, total size: ${productsMap.size}`);
+                clientLogger.log(`✅ Products added to map from API: ${addedCount}/${productsData.products.length}, total size: ${productsMap.size}`);
                 
                 if (productsMap.size === 0 && productsData.products.length > 0) {
                   console.error('❌ CRITICAL: Products array is not empty but nothing was added to map!', {
@@ -367,7 +368,7 @@ export default function PlanPage() {
                   });
                 }
               } else {
-                console.warn('⚠️ productsData.products is not an array:', {
+                clientLogger.warn('⚠️ productsData.products is not an array:', {
                   type: typeof productsData.products,
                   isArray: Array.isArray(productsData.products),
                   data: productsData,
@@ -391,7 +392,7 @@ export default function PlanPage() {
             });
           }
         } else {
-          console.warn('⚠️ Cannot load products from API:', {
+          clientLogger.warn('⚠️ Cannot load products from API:', {
             hasProductIds: allProductIds.size > 0,
             hasWindow: typeof window !== 'undefined',
             hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
@@ -402,7 +403,7 @@ export default function PlanPage() {
         // Fallback: если продукты не загрузились из API, используем продукты из плана
         // НО: это должно быть исключением, а не правилом
         if (!productsLoadedFromAPI && plan.products && Array.isArray(plan.products)) {
-          console.log('⚠️ Using products from plan as fallback (API failed)');
+          clientLogger.log('⚠️ Using products from plan as fallback (API failed)');
           plan.products.forEach((p: any) => {
             if (p && p.id) {
               productsMap.set(p.id, {
@@ -415,7 +416,7 @@ export default function PlanPage() {
               });
             }
           });
-          console.log('⚠️ Products loaded from plan fallback, map size:', productsMap.size);
+          clientLogger.log('⚠️ Products loaded from plan fallback, map size:', productsMap.size);
             }
         
         // Если после всех попыток продуктов все еще нет - это ошибка
@@ -427,17 +428,17 @@ export default function PlanPage() {
           });
         }
 
-        console.log('📊 Final productsMap size:', productsMap.size);
+        clientLogger.log('📊 Final productsMap size:', productsMap.size);
         if (productsMap.size > 0) {
-          console.log('📦 Sample product IDs in map:', Array.from(productsMap.keys()).slice(0, 5));
+          clientLogger.log('📦 Sample product IDs in map:', Array.from(productsMap.keys()).slice(0, 5));
         }
       } else {
         // Для старого формата используем plan.products
         if (!plan28 && process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ plan28 not found in plan response, falling back to old format');
+          clientLogger.warn('⚠️ plan28 not found in plan response, falling back to old format');
         }
 
-        console.log('📦 Loading products from plan.products, count:', (plan.products || []).length);
+        clientLogger.log('📦 Loading products from plan.products, count:', (plan.products || []).length);
         (plan.products || []).forEach((p: any) => {
           productsMap.set(p.id, {
             id: p.id,
@@ -448,12 +449,12 @@ export default function PlanPage() {
             description: p.description || p.descriptionUser || null,
           });
         });
-        console.log('📊 Products loaded from plan.products, map size:', productsMap.size);
+        clientLogger.log('📊 Products loaded from plan.products, map size:', productsMap.size);
       }
 
       // Важно: Map не сериализуется в JSON, поэтому сохраняем как есть
       // При передаче через setState Map сохраняется корректно
-      console.log('💾 Setting planData with productsMap size:', productsMap.size);
+      clientLogger.log('💾 Setting planData with productsMap size:', productsMap.size);
 
       safeSetPlanData({
         plan28: plan28 || undefined,
@@ -506,10 +507,10 @@ export default function PlanPage() {
               url: window.location.href,
               userAgent: navigator.userAgent,
             }),
-          }).catch(logErr => console.warn('Failed to log error:', logErr));
+          }).catch(logErr => clientLogger.warn('Failed to log error:', logErr));
         }
       } catch (logError) {
-        console.warn('Failed to save error log:', logError);
+        clientLogger.warn('Failed to save error log:', logError);
       }
       
       // При ошибке обработки плана не показываем экран генерации
@@ -542,7 +543,7 @@ export default function PlanPage() {
     try {
       // Проверяем, что компонент еще смонтирован
       if (!isMountedRef.current) {
-        console.warn('⚠️ Component unmounted, skipping loadPlan');
+        clientLogger.warn('⚠️ Component unmounted, skipping loadPlan');
         return;
       }
       
@@ -598,16 +599,16 @@ export default function PlanPage() {
 
       // Логируем только в development
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ initData available, length:', initData.length);
+        clientLogger.log('✅ initData available, length:', initData.length);
       }
 
       // Загружаем план через API - сначала пытаемся из кэша
       // НЕ делаем лишних проверок профиля/прогресса - это замедляет загрузку
       let plan;
       try {
-        console.log('🔄 Attempting to load plan from cache...');
+        clientLogger.log('🔄 Attempting to load plan from cache...');
         plan = await api.getPlan() as GeneratedPlan | null;
-        console.log('✅ Plan loaded from cache:', {
+        clientLogger.log('✅ Plan loaded from cache:', {
             hasPlan28: !!plan?.plan28,
             hasWeeks: !!plan?.weeks,
             weeksCount: plan?.weeks?.length || 0,
@@ -638,14 +639,14 @@ export default function PlanPage() {
           const profileCheck = await api.getCurrentProfile() as ProfileResponse | null;
           if (!profileCheck) {
             // Нет профиля - показываем ошибку
-            console.log('❌ No profile found, showing error');
+            clientLogger.log('❌ No profile found, showing error');
             safeSetError('no_profile');
             safeSetLoading(false);
             return;
           }
           
           // Профиль есть, но план не сгенерировался - возможно еще обрабатывается
-          console.log('⚠️ Profile exists but plan not generated, will retry...');
+          clientLogger.log('⚠️ Profile exists but plan not generated, will retry...');
         }
         
         // Если это не 404 или регенерация не удалась - пробуем еще раз или показываем лоадер
@@ -658,7 +659,7 @@ export default function PlanPage() {
           planError?.message?.includes('Internal server error') ||
           planError?.message?.includes('timeout')
         )) {
-          console.log(`⏳ Ошибка сервера, повторяем через 1 секунду... (попытка ${retryCount + 1}/2)`);
+          clientLogger.log(`⏳ Ошибка сервера, повторяем через 1 секунду... (попытка ${retryCount + 1}/2)`);
           safeSetLoading(true);
           safeSetError(null);
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -667,7 +668,7 @@ export default function PlanPage() {
         
         // Если это не 404 и не серверная ошибка - показываем лоадер (возможно план генерируется)
         if (planError?.status !== 404) {
-          console.log('⚠️ Unexpected error, showing loader (plan might be generating)');
+          clientLogger.log('⚠️ Unexpected error, showing loader (plan might be generating)');
           safeSetLoading(true);
           safeSetError(null);
           // Пробуем еще раз через 2 секунды
@@ -685,7 +686,7 @@ export default function PlanPage() {
         }
         
         // Для 404 - уже обработано выше
-        console.log('⚠️ Plan not found in cache');
+        clientLogger.log('⚠️ Plan not found in cache');
         plan = null;
       }
       
@@ -696,16 +697,16 @@ export default function PlanPage() {
           const profileCheck = await api.getCurrentProfile() as any;
           if (profileCheck) {
             // Профиль есть - пробуем регенерировать план
-            console.log('🔄 Plan not in cache but profile exists - regenerating immediately...');
+            clientLogger.log('🔄 Plan not in cache but profile exists - regenerating immediately...');
             try {
               const generatedPlan = await api.generatePlan() as GeneratedPlan;
               if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-                console.log('✅ Plan regenerated successfully, processing...');
+                clientLogger.log('✅ Plan regenerated successfully, processing...');
                 await processPlanData(generatedPlan);
                 return;
               } else {
                 // План не сгенерировался - возможно еще обрабатывается, показываем лоадер
-                console.log('⏳ Plan generation returned empty result, waiting...');
+                clientLogger.log('⏳ Plan generation returned empty result, waiting...');
                 safeSetLoading(true);
                 safeSetError(null);
                 // Пробуем еще раз через 3 секунды
@@ -725,7 +726,7 @@ export default function PlanPage() {
                 return;
               }
               // Другие ошибки или первая попытка - возможно план еще генерируется, показываем лоадер
-              console.log('⏳ Plan generation error, but profile exists - waiting and retrying...');
+              clientLogger.log('⏳ Plan generation error, but profile exists - waiting and retrying...');
               safeSetLoading(true);
               safeSetError(null);
               // Пробуем еще раз через 3 секунды
@@ -742,7 +743,7 @@ export default function PlanPage() {
               return;
             }
             // При первой попытке показываем лоадер, возможно профиль еще создается
-            console.log('⏳ Profile not found, but might be creating - waiting and retrying...');
+            clientLogger.log('⏳ Profile not found, but might be creating - waiting and retrying...');
             safeSetLoading(true);
             safeSetError(null);
             setTimeout(() => {
@@ -754,7 +755,7 @@ export default function PlanPage() {
           console.error('❌ Error checking profile:', profileCheckError);
           // Если ошибка проверки профиля - возможно временная проблема, пробуем еще раз
           if (retryCount < 2) {
-            console.log('⏳ Profile check error, retrying...');
+            clientLogger.log('⏳ Profile check error, retrying...');
             safeSetLoading(true);
             safeSetError(null);
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -776,7 +777,7 @@ export default function PlanPage() {
         // Если профиль не найден, но план есть - это нормально, продолжаем с план28
         // Профиль нужен только для старого формата плана
         if (process.env.NODE_ENV === 'development') {
-          console.warn('Could not load profile, but plan exists - continuing with plan only');
+          clientLogger.warn('Could not load profile, but plan exists - continuing with plan only');
         }
         profile = null;
       }
@@ -784,14 +785,14 @@ export default function PlanPage() {
       // Если план есть в новом формате plan28, можем продолжать без профиля
       if (plan.plan28) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Using plan28 format, profile not required');
+          clientLogger.log('✅ Using plan28 format, profile not required');
         }
         // Продолжаем дальше без проверки профиля
       } else if (!profile) {
         // Для старого формата нужен профиль
         if (retryCount < 3) {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
+            clientLogger.log(`⏳ Профиль пустой, ждем 2 секунды... (попытка ${retryCount + 1}/3)`);
           }
           await new Promise(resolve => setTimeout(resolve, 2000));
           return loadPlan(retryCount + 1);
@@ -823,13 +824,13 @@ export default function PlanPage() {
         
         if (hasProfile || hasProgress) {
           // План должен существовать - пробуем регенерировать
-          console.log('🔄 Plan should exist, attempting to regenerate...');
+          clientLogger.log('🔄 Plan should exist, attempting to regenerate...');
           safeSetLoading(true);
           safeSetError(null);
           try {
             const generatedPlan = await api.generatePlan() as any;
             if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-              console.log('✅ Plan regenerated successfully, processing...');
+              clientLogger.log('✅ Plan regenerated successfully, processing...');
               await processPlanData(generatedPlan);
               return;
             }
@@ -1028,11 +1029,11 @@ export default function PlanPage() {
               try {
                 // Явно генерируем план
                 if (process.env.NODE_ENV === 'development') {
-                  console.log('🔄 User requested plan generation...');
+                  clientLogger.log('🔄 User requested plan generation...');
                 }
                 const generatedPlan = await api.generatePlan() as GeneratedPlan;
                 if (process.env.NODE_ENV === 'development') {
-                  console.log('✅ Plan generated successfully', {
+                  clientLogger.log('✅ Plan generated successfully', {
                     hasPlan28: !!generatedPlan?.plan28,
                     hasWeeks: !!generatedPlan?.weeks,
                   });
@@ -1182,7 +1183,7 @@ export default function PlanPage() {
       productsMap = productsMapFromData;
     } else if (productsMapFromData && typeof productsMapFromData === 'object' && productsMapFromData !== null) {
       // Если это объект, преобразуем в Map
-      console.log('⚠️ Converting productsMap from object to Map');
+      clientLogger.log('⚠️ Converting productsMap from object to Map');
       try {
         Object.entries(productsMapFromData).forEach(([key, value]) => {
           const numKey = parseInt(key);
@@ -1196,11 +1197,11 @@ export default function PlanPage() {
       }
     } else {
       // Если productsMap не определен или не является объектом/Map, создаем пустой Map
-      console.warn('⚠️ productsMap is not available, using empty Map');
+      clientLogger.warn('⚠️ productsMap is not available, using empty Map');
       productsMap = new Map();
     }
     
-    console.log('✅ Final productsMap size:', productsMap.size);
+    clientLogger.log('✅ Final productsMap size:', productsMap.size);
     
     return (
       <Suspense fallback={

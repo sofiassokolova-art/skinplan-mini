@@ -12,6 +12,7 @@ import { INFO_SCREENS, getInfoScreenAfterQuestion, type InfoScreen } from './inf
 import { getAllTopics } from '@/lib/quiz-topics';
 import type { QuizTopic } from '@/lib/quiz-topics';
 import { PaymentGate } from '@/components/PaymentGate';
+import { clientLogger } from '@/lib/client-logger';
 
 interface Question {
   id: number;
@@ -97,14 +98,14 @@ export default function QuizPage() {
               
               if (fullRetakeFromHome) {
                 localStorage.removeItem('full_retake_from_home');
-                console.log('✅ Полное перепрохождение с главной страницы - показываем экран выбора тем с оплатой');
+                clientLogger.log('✅ Полное перепрохождение с главной страницы - показываем экран выбора тем с оплатой');
               }
               
               setShowRetakeScreen(true);
-              console.log('✅ Флаг перепрохождения найден и профиль существует - показываем экран выбора тем');
+              clientLogger.log('✅ Флаг перепрохождения найден и профиль существует - показываем экран выбора тем');
             } else {
               // Профиля нет, но флаги установлены - это ошибка, очищаем флаги
-              console.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
+              clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
               localStorage.removeItem('is_retaking_quiz');
               localStorage.removeItem('full_retake_from_home');
             }
@@ -115,11 +116,11 @@ export default function QuizPage() {
                               err?.message?.includes('No profile') ||
                               err?.message?.includes('Profile not found');
             if (isNotFound) {
-              console.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
+              clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
               localStorage.removeItem('is_retaking_quiz');
               localStorage.removeItem('full_retake_from_home');
             } else {
-              console.warn('⚠️ Ошибка при проверке профиля для перепрохождения:', err);
+              clientLogger.warn('⚠️ Ошибка при проверке профиля для перепрохождения:', err);
             }
           }
         };
@@ -135,7 +136,7 @@ export default function QuizPage() {
   const addDebugLog = useCallback((message: string, data?: any) => {
     const time = new Date().toLocaleTimeString();
     // Также логируем в консоль для тех, кто может ее открыть
-    console.log(`[${time}] ${message}`, data || '');
+    clientLogger.log(`[${time}] ${message}`, data || '');
     
     if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG === 'true') {
       const log = {
@@ -160,7 +161,7 @@ export default function QuizPage() {
     if (typeof window !== 'undefined') {
       const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
       if (justSubmitted) {
-        console.log('✅ Анкета только что отправлена, редиректим на /plan');
+        clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan');
         // Очищаем флаг
         sessionStorage.removeItem('quiz_just_submitted');
         // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
@@ -187,7 +188,7 @@ export default function QuizPage() {
             const profile = await api.getCurrentProfile();
             if (!profile || !(profile as any).id) {
               // Профиля нет, но флаги перепрохождения установлены - это ошибка
-              console.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
+              clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
               localStorage.removeItem('is_retaking_quiz');
               localStorage.removeItem('full_retake_from_home');
               // Продолжаем как новый пользователь
@@ -201,7 +202,7 @@ export default function QuizPage() {
                               err?.message?.includes('No profile') ||
                               err?.message?.includes('Profile not found');
             if (isNotFound) {
-              console.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
+              clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
               localStorage.removeItem('is_retaking_quiz');
               localStorage.removeItem('full_retake_from_home');
             }
@@ -215,7 +216,7 @@ export default function QuizPage() {
             const profile = await api.getCurrentProfile();
             if (profile && (profile as any).id) {
               // Профиль существует - анкета уже завершена
-              console.log('✅ Профиль существует, анкета завершена - редиректим на /plan');
+              clientLogger.log('✅ Профиль существует, анкета завершена - редиректим на /plan');
               initCompletedRef.current = true;
               setLoading(false);
               window.location.replace('/plan');
@@ -228,7 +229,7 @@ export default function QuizPage() {
                               err?.message?.includes('No profile') ||
                               err?.message?.includes('Profile not found');
             if (!isNotFound) {
-              console.warn('⚠️ Ошибка при проверке профиля:', err);
+              clientLogger.warn('⚠️ Ошибка при проверке профиля:', err);
             }
           }
         };
@@ -297,25 +298,25 @@ export default function QuizPage() {
         // Если анкета уже загружена и это повторная инициализация после "Начать заново",
         // пропускаем загрузку анкеты и сразу устанавливаем loading = false
         if (questionnaire && isStartingOverRef.current) {
-          console.log('✅ Анкета уже загружена, пропускаем повторную загрузку после startOver');
+          clientLogger.log('✅ Анкета уже загружена, пропускаем повторную загрузку после startOver');
           setLoading(false);
           setError(null);
           initCompletedRef.current = true;
           isStartingOverRef.current = false;
           setIsStartingOver(false);
-          console.log('✅ Повторная инициализация завершена (анкета уже была загружена)');
+          clientLogger.log('✅ Повторная инициализация завершена (анкета уже была загружена)');
           return;
         }
         
         // Инициализируем Telegram WebApp
-        console.log('🔄 Initializing Telegram WebApp...');
+        clientLogger.log('🔄 Initializing Telegram WebApp...');
         initialize();
-        console.log('✅ Telegram WebApp initialized');
+        clientLogger.log('✅ Telegram WebApp initialized');
         
         // Ждем готовности Telegram WebApp
-        console.log('⏳ Waiting for Telegram WebApp...');
+        clientLogger.log('⏳ Waiting for Telegram WebApp...');
         await waitForTelegram();
-        console.log('✅ Telegram WebApp ready');
+        clientLogger.log('✅ Telegram WebApp ready');
 
         // Сначала загружаем анкету (публичный маршрут)
         // Но только если она еще не загружена
@@ -373,7 +374,7 @@ export default function QuizPage() {
                   
                   if (isDirectQuizAccess) {
                     // ИСПРАВЛЕНО: Пользователь явно зашел на /quiz - показываем анкету для перепрохождения
-                    console.log('✅ Прямой доступ к /quiz - показываем анкету для перепрохождения', {
+                    clientLogger.log('✅ Прямой доступ к /quiz - показываем анкету для перепрохождения', {
                       isRetakingFromStorage,
                       hasPlan,
                       pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
@@ -384,13 +385,13 @@ export default function QuizPage() {
                     // Пользователь нажал "Перепройти анкету" И план существует - показываем экран выбора тем
                     setIsRetakingQuiz(true);
                     setShowRetakeScreen(true);
-                    console.log('✅ Повторное прохождение анкеты - профиль, завершенная анкета и план существуют + флаг перепрохождения установлен, показываем экран выбора тем');
+                    clientLogger.log('✅ Повторное прохождение анкеты - профиль, завершенная анкета и план существуют + флаг перепрохождения установлен, показываем экран выбора тем');
                   } else {
                     // Профиль есть, анкета завершена, но:
                     // - либо пользователь не хочет перепроходить (флаг не установлен)
                     // - либо плана нет (значит, нужно пройти анкету заново)
                     // ИСПРАВЛЕНО: В этом случае тоже показываем анкету, чтобы пользователь мог её перепроходить
-                    console.log('ℹ️ Профиль и завершенная анкета существуют, но пользователь зашел на /quiz - показываем анкету', {
+                    clientLogger.log('ℹ️ Профиль и завершенная анкета существуют, но пользователь зашел на /quiz - показываем анкету', {
                       isRetakingFromStorage,
                       hasPlan,
                       isDirectQuizAccess,
@@ -400,7 +401,7 @@ export default function QuizPage() {
                   }
                 } else {
                   // Профиль есть, но анкета не завершена - показываем полную анкету
-                  console.log('ℹ️ Профиль есть, но анкета не завершена - показываем полную анкету', {
+                  clientLogger.log('ℹ️ Профиль есть, но анкета не завершена - показываем полную анкету', {
                     hasAnswers,
                     isCompleted,
                   });
@@ -409,12 +410,12 @@ export default function QuizPage() {
                 }
               } catch (progressErr) {
                 // Не удалось загрузить прогресс - показываем полную анкету
-                console.log('ℹ️ Не удалось загрузить прогресс анкеты - показываем полную анкету', progressErr);
+                clientLogger.log('ℹ️ Не удалось загрузить прогресс анкеты - показываем полную анкету', progressErr);
                 setIsRetakingQuiz(false);
                 setShowRetakeScreen(false);
               }
             } else {
-              console.log('⏸️ Пропущена проверка профиля, так как isStartingOverRef = true');
+              clientLogger.log('⏸️ Пропущена проверка профиля, так как isStartingOverRef = true');
             }
           }
         } catch (err: any) {
@@ -425,9 +426,9 @@ export default function QuizPage() {
                             err?.message?.includes('Profile not found');
           
           if (isNotFound) {
-            console.log('ℹ️ Первое прохождение анкеты - профиля еще нет (404), показываем полную анкету');
+            clientLogger.log('ℹ️ Первое прохождение анкеты - профиля еще нет (404), показываем полную анкету');
           } else {
-            console.log('ℹ️ Ошибка при проверке профиля, показываем полную анкету', err);
+            clientLogger.log('ℹ️ Ошибка при проверке профиля, показываем полную анкету', err);
           }
           setIsRetakingQuiz(false);
           setShowRetakeScreen(false);
@@ -435,13 +436,13 @@ export default function QuizPage() {
           profileCheckInProgressRef.current = false;
         }
       } else if (isStartingOverRef.current) {
-        console.log('⏸️ Пропущена проверка профиля в init, так как isStartingOverRef = true');
+        clientLogger.log('⏸️ Пропущена проверка профиля в init, так как isStartingOverRef = true');
         // При "Начать заново" показываем полную анкету
         setIsRetakingQuiz(false);
         setShowRetakeScreen(false);
       } else {
         // Telegram WebApp не доступен - показываем полную анкету
-        console.log('ℹ️ Telegram WebApp не доступен, показываем полную анкету');
+        clientLogger.log('ℹ️ Telegram WebApp не доступен, показываем полную анкету');
         setIsRetakingQuiz(false);
         setShowRetakeScreen(false);
       }
@@ -460,7 +461,7 @@ export default function QuizPage() {
         } catch (err: any) {
           // Если ошибка 401 - это нормально, просто не используем серверный прогресс
           if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
-            console.warn('Не удалось загрузить прогресс с сервера:', err);
+            clientLogger.warn('Не удалось загрузить прогресс с сервера:', err);
           }
           // НЕ используем fallback на localStorage - прогресс должен быть синхронизирован с сервером
           // Если на сервере нет прогресса, значит его не должно быть и локально
@@ -495,7 +496,7 @@ export default function QuizPage() {
       // ВАЖНО: Если это была повторная инициализация после "Начать заново",
       // сбрасываем флаг isStartingOverRef, чтобы разрешить нормальную работу
       if (isStartingOverRef.current) {
-        console.log('✅ Повторная инициализация завершена, сбрасываем isStartingOverRef');
+        clientLogger.log('✅ Повторная инициализация завершена, сбрасываем isStartingOverRef');
         isStartingOverRef.current = false;
         setIsStartingOver(false);
       }
@@ -510,7 +511,7 @@ export default function QuizPage() {
     // ВАЖНО: Добавляем таймаут для init(), чтобы гарантировать, что loading всегда будет false
     const initTimeout = setTimeout(() => {
       if (loading) {
-        console.warn('⚠️ Init timeout: forcing loading = false after 10 seconds');
+        clientLogger.warn('⚠️ Init timeout: forcing loading = false after 10 seconds');
         setLoading(false);
         setError('Таймаут загрузки. Пожалуйста, обновите страницу.');
       }
@@ -544,12 +545,12 @@ export default function QuizPage() {
   // Этот useEffect срабатывает после того, как questionnaire загружен и isRetakingQuiz установлен
   useEffect(() => {
     if (isRetakingQuiz && questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-      console.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
+      clientLogger.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
       // Вызываем функцию напрямую, не добавляя в зависимости, чтобы избежать проблем
       (async () => {
         const quiz = questionnaire;
         if (!quiz) {
-          console.warn('⚠️ Cannot load previous answers: questionnaire not loaded');
+          clientLogger.warn('⚠️ Cannot load previous answers: questionnaire not loaded');
           return;
         }
         
@@ -572,7 +573,7 @@ export default function QuizPage() {
             };
             
             if (data?.progress?.answers && Object.keys(data.progress.answers).length > 0) {
-              console.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
+              clientLogger.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
               setAnswers(data.progress.answers);
               if (data.progress.questionIndex !== undefined && data.progress.questionIndex >= 0) {
                 setCurrentQuestionIndex(data.progress.questionIndex);
@@ -580,7 +581,7 @@ export default function QuizPage() {
             }
           }
         } catch (err: any) {
-        console.warn('⚠️ Ошибка загрузки предыдущих ответов:', err);
+        clientLogger.warn('⚠️ Ошибка загрузки предыдущих ответов:', err);
         }
       })();
     }
@@ -612,7 +613,7 @@ export default function QuizPage() {
     // ВАЖНО: Если пользователь уже нажал "Продолжить", не загружаем прогресс
     // Это предотвращает повторное появление экрана "Вы не завершили анкету"
     if (hasResumedRef.current || hasResumed) {
-      console.log('⏸️ loadSavedProgress: пропущено, так как hasResumed = true (пользователь уже продолжил)');
+      clientLogger.log('⏸️ loadSavedProgress: пропущено, так как hasResumed = true (пользователь уже продолжил)');
       return;
     }
     
@@ -621,7 +622,7 @@ export default function QuizPage() {
       try {
         // ВАЖНО: Еще раз проверяем hasResumedRef перед установкой состояний
         if (hasResumedRef.current || hasResumed) {
-          console.log('⏸️ loadSavedProgress: пропущено перед установкой состояний, так как hasResumed = true');
+          clientLogger.log('⏸️ loadSavedProgress: пропущено перед установкой состояний, так как hasResumed = true');
           return;
         }
         
@@ -642,7 +643,7 @@ export default function QuizPage() {
   const loadPreviousAnswers = async (quizData?: Questionnaire) => {
     const quiz = quizData || questionnaire;
     if (!quiz) {
-      console.warn('⚠️ Cannot load previous answers: questionnaire not loaded');
+      clientLogger.warn('⚠️ Cannot load previous answers: questionnaire not loaded');
       return;
     }
     
@@ -666,8 +667,8 @@ export default function QuizPage() {
         };
         
         if (data?.progress?.answers && Object.keys(data.progress.answers).length > 0) {
-          console.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
-          console.log('📝 Ответы:', data.progress.answers);
+          clientLogger.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
+          clientLogger.log('📝 Ответы:', data.progress.answers);
           // Заполняем форму предыдущими ответами
           setAnswers(data.progress.answers);
           // Устанавливаем индекс вопроса, если он есть (для перехода к нужному вопросу)
@@ -675,11 +676,11 @@ export default function QuizPage() {
             setCurrentQuestionIndex(data.progress.questionIndex);
           }
         } else {
-          console.log('⚠️ Нет сохраненных ответов для предзаполнения');
+          clientLogger.log('⚠️ Нет сохраненных ответов для предзаполнения');
         }
       }
     } catch (err: any) {
-      console.warn('⚠️ Не удалось загрузить предыдущие ответы:', err);
+      clientLogger.warn('⚠️ Не удалось загрузить предыдущие ответы:', err);
     }
   };
 
@@ -738,7 +739,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Если профиля нет, но есть ответы - это старые данные
       // Не показываем экран "Вы не завершили анкету", очищаем ответы
       if (!hasProfile && response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
-        console.log('⚠️ Найдены ответы без профиля - это старые данные, очищаем их');
+        clientLogger.log('⚠️ Найдены ответы без профиля - это старые данные, очищаем их');
         // Очищаем ответы на сервере через API (если есть такой endpoint)
         // Или просто не показываем экран "Вы не завершили анкету"
         return;
@@ -749,7 +750,7 @@ export default function QuizPage() {
         // Это предотвращает повторное появление экрана "Вы не завершили анкету"
         // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
         if (hasResumedRef.current || hasResumed) {
-          console.log('⏸️ loadSavedProgressFromServer: пропущено после получения ответа, так как hasResumed = true', {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено после получения ответа, так как hasResumed = true', {
             refValue: hasResumedRef.current,
             stateValue: hasResumed,
           });
@@ -759,14 +760,14 @@ export default function QuizPage() {
         // ВАЖНО: Еще раз проверяем hasResumedRef ПЕРЕД установкой состояний
         // Это критично, так как запрос мог быть отправлен до установки hasResumedRef
         if (hasResumedRef.current || hasResumed) {
-          console.log('⏸️ loadSavedProgressFromServer: пропущено перед установкой состояний, так как hasResumed = true', {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено перед установкой состояний, так как hasResumed = true', {
             refValue: hasResumedRef.current,
             stateValue: hasResumed,
           });
           return;
         }
         
-        console.log('✅ Прогресс найден на сервере:', {
+        clientLogger.log('✅ Прогресс найден на сервере:', {
           answersCount: Object.keys(response.progress.answers).length,
           questionIndex: response.progress.questionIndex,
           infoScreenIndex: response.progress.infoScreenIndex,
@@ -779,7 +780,7 @@ export default function QuizPage() {
           localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
         }
       } else {
-        console.log('ℹ️ Прогресс на сервере не найден или пуст');
+        clientLogger.log('ℹ️ Прогресс на сервере не найден или пуст');
         // ВАЖНО: НЕ очищаем localStorage автоматически, если прогресс не найден на сервере
         // Это может быть временная проблема с сервером, и локальный прогресс может быть валидным
         // Очищаем только если это не перепрохождение анкеты
@@ -791,10 +792,10 @@ export default function QuizPage() {
               const parsed = JSON.parse(localProgress);
               // Если локальный прогресс старше 7 дней, очищаем его
               if (parsed.timestamp && Date.now() - parsed.timestamp > 7 * 24 * 60 * 60 * 1000) {
-                console.log('⚠️ Локальный прогресс слишком старый, очищаем');
+                clientLogger.log('⚠️ Локальный прогресс слишком старый, очищаем');
                 localStorage.removeItem('quiz_progress');
               } else {
-                console.log('ℹ️ Оставляем локальный прогресс, так как он может быть валидным');
+                clientLogger.log('ℹ️ Оставляем локальный прогресс, так как он может быть валидным');
               }
             } catch (e) {
               // Если не удалось распарсить, очищаем
@@ -818,7 +819,7 @@ export default function QuizPage() {
         setShowResumeScreen(false);
         return;
       }
-      console.warn('Ошибка загрузки прогресса с сервера:', err);
+      clientLogger.warn('Ошибка загрузки прогресса с сервера:', err);
       // Очищаем localStorage при любой ошибке - прогресс должен быть на сервере
       if (typeof window !== 'undefined') {
         localStorage.removeItem('quiz_progress');
@@ -871,10 +872,10 @@ export default function QuizPage() {
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       try {
         await api.clearQuizProgress();
-        console.log('✅ Прогресс очищен на сервере');
+        clientLogger.log('✅ Прогресс очищен на сервере');
       } catch (err: any) {
         // Не критично, если не удалось очистить - прогресс просто не будет показываться
-        console.warn('⚠️ Не удалось очистить прогресс на сервере:', err);
+        clientLogger.warn('⚠️ Не удалось очистить прогресс на сервере:', err);
       }
     }
   };
@@ -910,7 +911,7 @@ export default function QuizPage() {
       // Если ошибка авторизации, не показываем её как критическую
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
         // Анкета публичная, эта ошибка не должна возникать
-        console.warn('Неожиданная ошибка авторизации при загрузке анкеты');
+        clientLogger.warn('Неожиданная ошибка авторизации при загрузке анкеты');
       }
       // Если таймаут - это критическая ошибка, но не блокируем загрузку
       if (err?.message?.includes('Таймаут')) {
@@ -977,7 +978,7 @@ export default function QuizPage() {
     // Пропускаем сохранение на сервер, если это дубликат
     if (isDuplicateServerSave) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('⏭️ Skipping duplicate server save for question', questionId);
+        clientLogger.log('⏭️ Skipping duplicate server save for question', questionId);
       }
       return;
     }
@@ -1003,7 +1004,7 @@ export default function QuizPage() {
         );
         // Сохраняем информацию о последнем сохраненном ответе для дедупликации
         lastSavedAnswerRef.current = { questionId, answer: value };
-        console.log('✅ Successfully saved to server');
+        clientLogger.log('✅ Successfully saved to server');
       } catch (err: any) {
         // Если ошибка 401 - это нормально, прогресс сохранен локально
         if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
@@ -1125,7 +1126,7 @@ export default function QuizPage() {
         
         const shouldShow = answeredYes === true;
         if (!shouldShow) {
-          console.log('🚫 Question filtered out (retinoid_reaction without "Да" on retinoid_usage):', question.code);
+          clientLogger.log('🚫 Question filtered out (retinoid_reaction without "Да" on retinoid_usage):', question.code);
         }
         return shouldShow;
       }
@@ -1212,7 +1213,7 @@ export default function QuizPage() {
       
       const shouldShow = !isMale; // Показываем только если не мужчина
       if (!shouldShow) {
-        console.log('🚫 Question filtered out (pregnancy question for male):', question.code, {
+        clientLogger.log('🚫 Question filtered out (pregnancy question for male):', question.code, {
           genderValue,
           genderOption: genderOption ? { id: genderOption.id, value: genderOption.value, label: genderOption.label } : null,
           answerValue: genderQuestion ? answers[genderQuestion.id] : undefined,
@@ -1366,7 +1367,7 @@ export default function QuizPage() {
   };
 
   const submitAnswers = useCallback(async () => {
-    console.log('🚀 submitAnswers вызвана');
+    clientLogger.log('🚀 submitAnswers вызвана');
     
     // ВАЖНО: Логируем вызов submitAnswers на сервер
     try {
@@ -1409,10 +1410,10 @@ export default function QuizPage() {
           });
         } else {
           const responseData = await logResponse.json().catch(() => null);
-          console.log('✅ Лог успешно сохранен (submitAnswers called):', responseData);
+          clientLogger.log('✅ Лог успешно сохранен (submitAnswers called):', responseData);
         }
       } else {
-        console.warn('⚠️ initData не доступен для логирования');
+        clientLogger.warn('⚠️ initData не доступен для логирования');
       }
     } catch (logError) {
       // ИСПРАВЛЕНО: Логируем ошибки более детально для диагностики
@@ -1437,7 +1438,7 @@ export default function QuizPage() {
 
     // Защита от множественных вызовов: проверяем и ref, и state
     if (isSubmitting || isSubmittingRef.current) {
-      console.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
+      clientLogger.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
         isSubmitting,
         isSubmittingRef: isSubmittingRef.current,
       });
@@ -1456,7 +1457,7 @@ export default function QuizPage() {
       const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
       const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
       
-      console.log('📱 Проверка Telegram WebApp:', {
+      clientLogger.log('📱 Проверка Telegram WebApp:', {
         hasWindow: typeof window !== 'undefined',
         hasTelegram: typeof window !== 'undefined' && !!window.Telegram,
         hasWebApp: isInTelegram,
@@ -1497,10 +1498,10 @@ export default function QuizPage() {
 
       // Собираем ответы из state, если они пустые - пытаемся загрузить из localStorage
       let answersToSubmit = answers;
-      console.log('📝 Текущие ответы в state:', Object.keys(answersToSubmit).length);
+      clientLogger.log('📝 Текущие ответы в state:', Object.keys(answersToSubmit).length);
       
       if (Object.keys(answersToSubmit).length === 0) {
-        console.log('📦 Ответы пустые, пытаемся загрузить из localStorage...');
+        clientLogger.log('📦 Ответы пустые, пытаемся загрузить из localStorage...');
         try {
           const savedProgressStr = localStorage.getItem('quiz_progress');
           if (savedProgressStr) {
@@ -1510,7 +1511,7 @@ export default function QuizPage() {
               if (isMountedRef.current) {
                 setAnswers(savedProgress.answers);
               }
-              console.log('✅ Загружены ответы из localStorage:', Object.keys(savedProgress.answers).length);
+              clientLogger.log('✅ Загружены ответы из localStorage:', Object.keys(savedProgress.answers).length);
             }
           }
         } catch (e) {
@@ -1537,7 +1538,7 @@ export default function QuizPage() {
         };
       });
 
-      console.log('📤 Отправка ответов на сервер:', {
+      clientLogger.log('📤 Отправка ответов на сервер:', {
         questionnaireId: questionnaire.id,
         answersCount: answerArray.length,
       });
@@ -1545,7 +1546,7 @@ export default function QuizPage() {
       let result: any;
       try {
         result = await api.submitAnswers(questionnaire.id, answerArray) as any;
-        console.log('✅ Ответы отправлены, профиль создан:', {
+        clientLogger.log('✅ Ответы отправлены, профиль создан:', {
           result,
           success: result?.success,
           hasResult: !!result,
@@ -1556,7 +1557,7 @@ export default function QuizPage() {
       } catch (submitError: any) {
         // Если ошибка при отправке - это может быть нормально (дубликат, ошибка сети)
         // Все равно пытаемся редиректить, так как профиль мог быть создан
-        console.warn('⚠️ Ошибка при отправке ответов (продолжаем редирект):', submitError);
+        clientLogger.warn('⚠️ Ошибка при отправке ответов (продолжаем редирект):', submitError);
         result = { success: true, error: submitError?.message }; // Помечаем как success для продолжения
       }
       
@@ -1568,15 +1569,15 @@ export default function QuizPage() {
           // Очищаем флаги перепрохождения независимо от isRetakingQuiz, чтобы избежать показа экрана "что хотите изменить?" после редиректа
           localStorage.removeItem('is_retaking_quiz');
           localStorage.removeItem('full_retake_from_home');
-          console.log('✅ Флаги перепрохождения очищены после успешной отправки ответов');
+          clientLogger.log('✅ Флаги перепрохождения очищены после успешной отправки ответов');
         }
       } catch (storageError) {
-        console.warn('⚠️ Ошибка при очистке localStorage (некритично):', storageError);
+        clientLogger.warn('⚠️ Ошибка при очистке localStorage (некритично):', storageError);
       }
       
       // Если это дубликат отправки, все равно перенаправляем пользователя
       if (result?.isDuplicate) {
-        console.log('⚠️ Обнаружена повторная отправка, перенаправляем на результаты...');
+        clientLogger.log('⚠️ Обнаружена повторная отправка, перенаправляем на результаты...');
       }
       
       // ВАЖНО: НЕ очищаем прогресс (ответы) сразу после отправки!
@@ -1599,10 +1600,10 @@ export default function QuizPage() {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('is_retaking_quiz');
           localStorage.removeItem('full_retake_from_home');
-          console.log('✅ Флаги перепрохождения очищены перед редиректом на /plan');
+          clientLogger.log('✅ Флаги перепрохождения очищены перед редиректом на /plan');
         }
       } catch (storageError) {
-        console.warn('⚠️ Ошибка при очистке localStorage перед редиректом (некритично):', storageError);
+        clientLogger.warn('⚠️ Ошибка при очистке localStorage перед редиректом (некритично):', storageError);
       }
       
       // ВАЖНО: Редирект должен произойти СРАЗУ, без задержек и без обновления состояний
@@ -1619,13 +1620,13 @@ export default function QuizPage() {
           // Устанавливаем initCompletedRef, чтобы при возврате на /quiz не показывалось начало анкеты
           initCompletedRef.current = true;
         } catch (storageError) {
-          console.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
+          clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
         }
       }
       
       // Редирект на страницу плана
       // План будет сгенерирован на странице /plan
-      console.log('🔄 Редирект на /plan (немедленно, без ожидания генерации плана)');
+      clientLogger.log('🔄 Редирект на /plan (немедленно, без ожидания генерации плана)');
       
       // ВАЖНО: Редирект должен произойти СРАЗУ, синхронно, без await и без setTimeout
       // Это предотвращает перерендер компонента и показ первого экрана анкеты
@@ -1666,7 +1667,7 @@ export default function QuizPage() {
       // ВАЖНО: Лоадер уже показывается (isSubmitting = true)
       // Теперь запускаем генерацию плана в фоне (не ждем её завершения)
       // План будет сгенерирован на странице /plan, если здесь не успеет
-      console.log('🔍 Проверка result перед генерацией плана:', {
+      clientLogger.log('🔍 Проверка result перед генерацией плана:', {
         result,
         success: result?.success,
         hasResult: !!result,
@@ -1712,7 +1713,7 @@ export default function QuizPage() {
         }
       } catch (logError) {
         // Игнорируем ошибки логирования
-        console.warn('⚠️ Ошибка при логировании:', logError);
+        clientLogger.warn('⚠️ Ошибка при логировании:', logError);
       }
       
       // ВАЖНО: Проверяем, что result существует и не содержит ошибку
@@ -1722,7 +1723,7 @@ export default function QuizPage() {
       const shouldGeneratePlan = result && !result.error && result.success === true;
       
       // Логируем для диагностики
-      console.log('🔍 Проверка shouldGeneratePlan:', {
+      clientLogger.log('🔍 Проверка shouldGeneratePlan:', {
         hasResult: !!result,
         hasError: !!result?.error,
         success: result?.success,
@@ -1735,7 +1736,7 @@ export default function QuizPage() {
       if (shouldGeneratePlan) {
         // Запускаем генерацию плана и ждем её завершения
         try {
-          console.log('🔄 Вызываем api.generatePlan()...');
+          clientLogger.log('🔄 Вызываем api.generatePlan()...');
           let generatedPlan: any;
           try {
             generatedPlan = await api.generatePlan() as any;
@@ -1754,7 +1755,7 @@ export default function QuizPage() {
               throw new Error('Plan generation returned empty result');
             }
             
-            console.log('✅ План сгенерирован успешно:', {
+            clientLogger.log('✅ План сгенерирован успешно:', {
               hasPlan28: !!generatedPlan?.plan28,
               hasWeeks: !!generatedPlan?.weeks,
               plan28Days: generatedPlan?.plan28?.days?.length || 0,
@@ -1807,7 +1808,7 @@ export default function QuizPage() {
             }
           } catch (logError) {
             // Игнорируем ошибки логирования
-            console.warn('⚠️ Ошибка при логировании:', logError);
+            clientLogger.warn('⚠️ Ошибка при логировании:', logError);
           }
           
           // Логируем ошибку на сервер для диагностики
@@ -1828,11 +1829,11 @@ export default function QuizPage() {
                     message: 'Plan generated but empty',
                     context: { generatedPlan },
                   }),
-                }).catch((err) => console.warn('⚠️ Не удалось сохранить лог:', err));
+                }).catch((err) => clientLogger.warn('⚠️ Не удалось сохранить лог:', err));
               }
             } catch (logError) {
               // Игнорируем ошибки логирования
-              console.warn('⚠️ Ошибка при логировании:', logError);
+              clientLogger.warn('⚠️ Ошибка при логировании:', logError);
             }
           }
         } catch (genError: any) {
@@ -1872,7 +1873,7 @@ export default function QuizPage() {
           }
           
           // Если генерация не удалась, все равно редиректим - план перегенерируется на странице /plan
-          console.warn('⚠️ Ошибка при генерации плана (продолжаем редирект):', genError?.message || genError);
+          clientLogger.warn('⚠️ Ошибка при генерации плана (продолжаем редирект):', genError?.message || genError);
         }
         
         // Проверяем, готов ли план в кэше (может быть уже готов)
@@ -1887,20 +1888,20 @@ export default function QuizPage() {
           try {
             const plan = await api.getPlan() as any;
             if (plan && (plan.plan28 || plan.weeks)) {
-              console.log('✅ План готов в кэше, редиректим на /plan');
+              clientLogger.log('✅ План готов в кэше, редиректим на /plan');
               planReady = true;
               break;
             }
           } catch (planError: any) {
             // План еще не готов (404) - продолжаем ждать
             if (planError?.status !== 404) {
-              console.warn('⚠️ Ошибка при проверке плана:', planError);
+              clientLogger.warn('⚠️ Ошибка при проверке плана:', planError);
             }
           }
           
           // Проверяем, что компонент еще смонтирован перед следующей итерацией
           if (!isMountedRef.current) {
-            console.log('⚠️ Компонент размонтирован, прерываем проверку плана');
+            clientLogger.log('⚠️ Компонент размонтирован, прерываем проверку плана');
             break;
           }
           
@@ -1912,20 +1913,20 @@ export default function QuizPage() {
         // Если план не готов, ответы остаются в БД для повторной генерации на странице /plan
         if (planReady) {
           try {
-            console.log('🧹 Очищаем ответы из БД после успешной генерации плана...');
+            clientLogger.log('🧹 Очищаем ответы из БД после успешной генерации плана...');
             await api.clearQuizProgress();
-            console.log('✅ Ответы очищены из БД');
+            clientLogger.log('✅ Ответы очищены из БД');
           } catch (clearError) {
             // Не критично, если не удалось очистить - ответы просто останутся в БД
-            console.warn('⚠️ Не удалось очистить ответы из БД (некритично):', clearError);
+            clientLogger.warn('⚠️ Не удалось очистить ответы из БД (некритично):', clearError);
           }
         } else {
-          console.log('⚠️ План не готов после ожидания, ответы сохранены для генерации на странице /plan');
+          clientLogger.log('⚠️ План не готов после ожидания, ответы сохранены для генерации на странице /plan');
         }
       } else {
         // ВАЖНО: Если shouldGeneratePlan = false, все равно пытаемся сгенерировать план
         // Ответы уже отправлены и профиль создан, поэтому план должен быть сгенерирован
-        console.warn('⚠️ shouldGeneratePlan = false, но пытаемся сгенерировать план, так как ответы уже отправлены:', {
+        clientLogger.warn('⚠️ shouldGeneratePlan = false, но пытаемся сгенерировать план, так как ответы уже отправлены:', {
           result,
           hasResult: !!result,
           hasError: !!result?.error,
@@ -1960,10 +1961,10 @@ export default function QuizPage() {
         }
         
         try {
-          console.log('🔄 Вызываем api.generatePlan() несмотря на shouldGeneratePlan = false...');
+          clientLogger.log('🔄 Вызываем api.generatePlan() несмотря на shouldGeneratePlan = false...');
           const generatedPlan = await api.generatePlan() as any;
           
-          console.log('📊 Результат api.generatePlan():', {
+          clientLogger.log('📊 Результат api.generatePlan():', {
             hasPlan: !!generatedPlan,
             hasPlan28: !!generatedPlan?.plan28,
             hasWeeks: !!generatedPlan?.weeks,
@@ -1972,7 +1973,7 @@ export default function QuizPage() {
           });
           
           if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-            console.log('✅ План сгенерирован успешно (несмотря на shouldGeneratePlan = false)');
+            clientLogger.log('✅ План сгенерирован успешно (несмотря на shouldGeneratePlan = false)');
             
             // Логируем успех на сервер
             try {
@@ -1998,7 +1999,7 @@ export default function QuizPage() {
               // Игнорируем ошибки логирования
             }
           } else {
-            console.warn('⚠️ План не сгенерирован (несмотря на попытку), будет сгенерирован на странице /plan');
+            clientLogger.warn('⚠️ План не сгенерирован (несмотря на попытку), будет сгенерирован на странице /plan');
             
             // Логируем проблему на сервер
             try {
@@ -2067,10 +2068,10 @@ export default function QuizPage() {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('is_retaking_quiz');
           localStorage.removeItem('full_retake_from_home');
-          console.log('✅ Флаги перепрохождения очищены перед редиректом на /plan');
+          clientLogger.log('✅ Флаги перепрохождения очищены перед редиректом на /plan');
         }
       } catch (storageError) {
-        console.warn('⚠️ Ошибка при очистке localStorage перед редиректом (некритично):', storageError);
+        clientLogger.warn('⚠️ Ошибка при очистке localStorage перед редиректом (некритично):', storageError);
       }
       
       // ИСПРАВЛЕНО: Устанавливаем флаг в sessionStorage ПЕРЕД редиректом
@@ -2079,7 +2080,7 @@ export default function QuizPage() {
         try {
           sessionStorage.setItem('quiz_just_submitted', 'true');
         } catch (storageError) {
-          console.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
+          clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
         }
       }
       
@@ -2090,7 +2091,7 @@ export default function QuizPage() {
       
       // Редирект на страницу плана
       // План уже готов в кэше или будет загружен на странице /plan
-      console.log('🔄 Редирект на /plan (немедленно)');
+      clientLogger.log('🔄 Редирект на /plan (немедленно)');
       
       // ВАЖНО: Редирект должен произойти СРАЗУ, синхронно, без await и без setTimeout
       // Это предотвращает перерендер компонента и показ первого экрана анкеты
@@ -2139,13 +2140,13 @@ export default function QuizPage() {
         try {
           sessionStorage.setItem('quiz_just_submitted', 'true');
         } catch (storageError) {
-          console.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
+          clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
         }
       }
       
       // ВАЖНО: Проверяем, что компонент еще смонтирован перед обновлением состояния
       if (!isMountedRef.current) {
-        console.warn('⚠️ Компонент размонтирован, пропускаем обновление состояния');
+        clientLogger.warn('⚠️ Компонент размонтирован, пропускаем обновление состояния');
         // Все равно пытаемся редиректить, даже если компонент размонтирован
         if (typeof window !== 'undefined') {
           setTimeout(() => {
@@ -2163,7 +2164,7 @@ export default function QuizPage() {
       // Это обеспечивает лучший UX - пользователь видит лоадер, а не экран ошибки
       // План может генерироваться в фоне, даже если отправка ответов вернула ошибку
       try {
-        console.log('⚠️ Ошибка при отправке ответов, но продолжаем показывать лоадер и редиректим на /plan');
+        clientLogger.log('⚠️ Ошибка при отправке ответов, но продолжаем показывать лоадер и редиректим на /plan');
         
         // ВАЖНО: Устанавливаем loading = false, чтобы не было бесконечного лоадера "Загрузка анкеты..."
         setIsSubmitting(true); // Показываем лоадер "Создаем ваш план ухода..."
@@ -2172,13 +2173,13 @@ export default function QuizPage() {
         // Обработка различных типов ошибок - но все равно редиректим
         const errorMessage = err?.message || err?.error || '';
         if (errorMessage.includes('Unauthorized') || errorMessage.includes('401') || errorMessage.includes('initData')) {
-          console.warn('⚠️ Ошибка авторизации, но продолжаем редирект');
+          clientLogger.warn('⚠️ Ошибка авторизации, но продолжаем редирект');
         } else if (errorMessage.includes('уже была отправлена') || errorMessage.includes('301') || errorMessage.includes('302') || err?.status === 301 || err?.status === 302) {
           // Ошибка 301/302 - форма уже была отправлена - это нормально, редиректим
-          console.log('✅ Форма уже была отправлена, редиректим на /plan');
+          clientLogger.log('✅ Форма уже была отправлена, редиректим на /plan');
         } else {
           // Другие ошибки - логируем, но все равно редиректим
-          console.warn('⚠️ Ошибка при отправке ответов, но продолжаем редирект на /plan:', errorMessage);
+          clientLogger.warn('⚠️ Ошибка при отправке ответов, но продолжаем редирект на /plan:', errorMessage);
         }
       } catch (logError) {
         // Игнорируем ошибки логирования
@@ -2197,7 +2198,7 @@ export default function QuizPage() {
         try {
           sessionStorage.setItem('quiz_just_submitted', 'true');
         } catch (storageError) {
-          console.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
+          clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
         }
       }
       
@@ -2210,7 +2211,7 @@ export default function QuizPage() {
           setTimeout(() => {
             try {
               // Используем replace вместо href для предотвращения React Error #300
-              console.log('🔄 Редирект на /plan после ошибки');
+              clientLogger.log('🔄 Редирект на /plan после ошибки');
               window.location.replace('/plan');
             } catch (redirectError) {
               // Если replace не сработал, пробуем href
@@ -2251,7 +2252,7 @@ export default function QuizPage() {
     
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
     
-    console.log('🔄 resumeQuiz: Восстанавливаем прогресс', {
+    clientLogger.log('🔄 resumeQuiz: Восстанавливаем прогресс', {
       questionIndex: savedProgress.questionIndex,
       infoScreenIndex: savedProgress.infoScreenIndex,
       answersCount: Object.keys(savedProgress.answers).length,
@@ -2270,14 +2271,14 @@ export default function QuizPage() {
     // после того, как пользователь продолжил анкету
     if (!initCompletedRef.current) {
       initCompletedRef.current = true;
-      console.log('✅ initCompletedRef установлен в resumeQuiz для предотвращения повторной инициализации');
+      clientLogger.log('✅ initCompletedRef установлен в resumeQuiz для предотвращения повторной инициализации');
     }
     
     // ВАЖНО: Очищаем localStorage СРАЗУ, чтобы предотвратить повторную загрузку прогресса
     // из loadSavedProgress или loadSavedProgressFromServer
     if (typeof window !== 'undefined') {
       localStorage.removeItem('quiz_progress');
-      console.log('✅ localStorage очищен от quiz_progress');
+      clientLogger.log('✅ localStorage очищен от quiz_progress');
     }
     
     // ВАЖНО: Сохраняем копию savedProgress перед очисткой, так как мы будем использовать его данные
@@ -2294,28 +2295,28 @@ export default function QuizPage() {
     // Если infoScreenIndex указывает на начальный экран, но вопрос уже начался - пропускаем начальные экраны
     if (progressToRestore.infoScreenIndex >= initialInfoScreens.length) {
       // Начальные экраны пройдены, переходим к вопросам
-      console.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к вопросу', progressToRestore.questionIndex);
+      clientLogger.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к вопросу', progressToRestore.questionIndex);
       setCurrentQuestionIndex(progressToRestore.questionIndex);
       setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
     } else if (progressToRestore.questionIndex > 0 || Object.keys(progressToRestore.answers).length > 0) {
       // Пользователь уже начал отвечать, но infoScreenIndex еще на начальных экранах
       // Пропускаем все начальные экраны и переходим к сохранённому вопросу
-      console.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к вопросу', progressToRestore.questionIndex);
+      clientLogger.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к вопросу', progressToRestore.questionIndex);
       setCurrentQuestionIndex(progressToRestore.questionIndex);
       setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
     } else {
       // Пользователь еще не начал отвечать, начинаем с начальных экранов
-      console.log('✅ resumeQuiz: Начинаем с начальных экранов');
+      clientLogger.log('✅ resumeQuiz: Начинаем с начальных экранов');
       setCurrentQuestionIndex(0);
       setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
     }
     
-    console.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false, savedProgress = null, localStorage очищен');
+    clientLogger.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false, savedProgress = null, localStorage очищен');
   };
 
   // Начать заново
   const startOver = async () => {
-    console.log('🔄 startOver: Начинаем сброс анкеты', {
+    clientLogger.log('🔄 startOver: Начинаем сброс анкеты', {
       currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
       initCompleted: initCompletedRef.current,
       isStartingOverRef: isStartingOverRef.current,
@@ -2325,16 +2326,16 @@ export default function QuizPage() {
     // Используем ref для синхронной установки, чтобы асинхронные функции сразу видели новое значение
     isStartingOverRef.current = true;
     setIsStartingOver(true);
-    console.log('🔒 isStartingOverRef установлен в true');
+    clientLogger.log('🔒 isStartingOverRef установлен в true');
     
     // ВАЖНО: Сбрасываем initCompletedRef, чтобы позволить повторную инициализацию
     // но с правильными флагами (isStartingOverRef = true), чтобы не загружать прогресс
     initCompletedRef.current = false;
-    console.log('🔄 initCompletedRef сброшен для повторной инициализации');
+    clientLogger.log('🔄 initCompletedRef сброшен для повторной инициализации');
     
     // Очищаем весь прогресс (локальный и серверный)
     await clearProgress();
-    console.log('✅ Прогресс очищен');
+    clientLogger.log('✅ Прогресс очищен');
     
     // Сбрасываем все состояния полностью
     setAnswers({});
@@ -2357,17 +2358,17 @@ export default function QuizPage() {
     // Если анкета уже загружена, сразу завершаем инициализацию
     // и сбрасываем флаги, чтобы не вызывать повторную инициализацию
     if (questionnaire) {
-      console.log('✅ Анкета уже загружена, завершаем инициализацию без повторной загрузки');
+      clientLogger.log('✅ Анкета уже загружена, завершаем инициализацию без повторной загрузки');
       initCompletedRef.current = true;
       isStartingOverRef.current = false;
       setIsStartingOver(false);
-      console.log('✅ startOver завершен, анкета уже была загружена');
+      clientLogger.log('✅ startOver завершен, анкета уже была загружена');
       return;
     }
     
     // Проверяем путь после всех изменений состояния
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : 'unknown';
-    console.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран', {
+    clientLogger.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран', {
       hasResumedRef: hasResumedRef.current,
       isStartingOverRef: isStartingOverRef.current,
       loading: false,
@@ -2382,7 +2383,7 @@ export default function QuizPage() {
     // ВАЖНО: Убеждаемся, что мы остаемся на странице анкеты
     // Если по какой-то причине произошел редирект, возвращаемся на /quiz
     if (typeof window !== 'undefined' && !currentPath.includes('/quiz')) {
-      console.warn('⚠️ Обнаружен редирект с /quiz, возвращаемся на страницу анкеты', {
+      clientLogger.warn('⚠️ Обнаружен редирект с /quiz, возвращаемся на страницу анкеты', {
         currentPath,
         expectedPath: '/quiz',
       });
@@ -2393,7 +2394,7 @@ export default function QuizPage() {
     // НЕ сбрасываем isStartingOverRef - оставляем его установленным
     // Это предотвратит повторную загрузку прогресса даже если компонент перерендерится
     // Флаг будет сброшен только после успешной инициализации анкеты (когда questionnaire загружен)
-    console.log('✅ startOver завершен, isStartingOverRef остается true до следующей инициализации');
+    clientLogger.log('✅ startOver завершен, isStartingOverRef остается true до следующей инициализации');
   };
 
   // Лоадер при отправке ответов
@@ -2482,7 +2483,7 @@ export default function QuizPage() {
   const allQuestionsRaw = useMemo(() => {
     try {
     if (!questionnaire) {
-      console.log('⚠️ No questionnaire, allQuestionsRaw is empty');
+      clientLogger.log('⚠️ No questionnaire, allQuestionsRaw is empty');
       return [];
     }
       
@@ -2506,7 +2507,7 @@ export default function QuizPage() {
       
       // Убираем вызов addDebugLog из useMemo, чтобы избежать проблем с хуками
       // Логируем только в консоль
-      console.log('📋 allQuestionsRaw loaded', {
+      clientLogger.log('📋 allQuestionsRaw loaded', {
       total: raw.length,
         fromGroups: questionsFromGroups.length,
         fromQuestions: questions.length,
@@ -2595,7 +2596,7 @@ export default function QuizPage() {
       
       const shouldShow = answeredYes === true;
       if (!shouldShow) {
-        console.log('🚫 Question filtered out (retinoid_reaction without "Да" on retinoid_usage):', question.code);
+        clientLogger.log('🚫 Question filtered out (retinoid_reaction without "Да" on retinoid_usage):', question.code);
       }
       return shouldShow;
     }
@@ -2690,7 +2691,7 @@ export default function QuizPage() {
       
       const shouldShow = !isMale; // Показываем только если не мужчина
       if (!shouldShow) {
-        console.log('🚫 Question filtered out (makeup question for male):', question.code, {
+        clientLogger.log('🚫 Question filtered out (makeup question for male):', question.code, {
           genderValue,
           genderOption: genderOption ? { id: genderOption.id, value: genderOption.value, label: genderOption.label } : null,
           answerValue: genderQuestion ? answers[genderQuestion.id] : undefined,
@@ -2784,7 +2785,7 @@ export default function QuizPage() {
     
     const shouldShow = !isMale; // Показываем только если не мужчина
     if (!shouldShow) {
-      console.log('🚫 Question filtered out (pregnancy question for male):', question.code, {
+      clientLogger.log('🚫 Question filtered out (pregnancy question for male):', question.code, {
         genderValue,
         genderOption: genderOption ? { id: genderOption.id, value: genderOption.value, label: genderOption.label } : null,
         answerValue: genderQuestion ? answers[genderQuestion.id] : undefined,
@@ -2812,7 +2813,7 @@ export default function QuizPage() {
   useEffect(() => {
     if (allQuestions.length > 0) {
       // Логируем только в консоль, не используем addDebugLog чтобы избежать проблем с хуками
-      console.log('✅ allQuestions after filtering', {
+      clientLogger.log('✅ allQuestions after filtering', {
         total: allQuestions.length,
         questionIds: allQuestions.map((q: Question) => q.id),
         questionCodes: allQuestions.map((q: Question) => q.code),
@@ -2828,7 +2829,7 @@ export default function QuizPage() {
     // Если currentQuestionIndex выходит за пределы массива, корректируем его
     if (currentQuestionIndex >= allQuestions.length) {
       // Логируем только в консоль, не используем addDebugLog чтобы избежать проблем с хуками
-      console.log('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
+      clientLogger.log('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
       });
@@ -2838,7 +2839,7 @@ export default function QuizPage() {
     // Также убеждаемся, что мы не на начальных экранах после восстановления
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
     if (hasResumed && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex > 0) {
-      console.log('✅ Корректируем infoScreenIndex после восстановления');
+      clientLogger.log('✅ Корректируем infoScreenIndex после восстановления');
       setCurrentInfoScreenIndex(initialInfoScreens.length);
     }
   }, [hasResumed, allQuestions, currentQuestionIndex, currentInfoScreenIndex, questionnaire]);
@@ -2998,13 +2999,13 @@ export default function QuizPage() {
       // Это гарантирует, что начальные инфо-экраны не будут показаны
       if (currentInfoScreenIndex < initialInfoScreensCount) {
         setCurrentInfoScreenIndex(initialInfoScreensCount);
-        console.log('✅ Full retake: Setting currentInfoScreenIndex to skip all initial info screens');
+        clientLogger.log('✅ Full retake: Setting currentInfoScreenIndex to skip all initial info screens');
       }
       // Если currentQuestionIndex = 0 и нет ответов, это начало перепрохождения
       if (currentQuestionIndex === 0 && Object.keys(answers).length === 0) {
         setCurrentQuestionIndex(0);
         setPendingInfoScreen(null); // Очищаем pending info screen
-        console.log('✅ Full retake: Starting from first question, skipping all info screens');
+        clientLogger.log('✅ Full retake: Starting from first question, skipping all info screens');
       }
     }
   }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen]);
@@ -3053,7 +3054,7 @@ export default function QuizPage() {
     
     // Логирование для отладки (только в development)
     if (process.env.NODE_ENV === 'development' && shouldShow) {
-      console.log('📺 isShowingInitialInfoScreen: true', {
+      clientLogger.log('📺 isShowingInitialInfoScreen: true', {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
         showResumeScreen,
@@ -3103,7 +3104,7 @@ export default function QuizPage() {
         !showResumeScreen &&
         !error) {
       
-      console.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...');
+      clientLogger.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...');
       autoSubmitTriggeredRef.current = true;
       setAutoSubmitTriggered(true);
       
@@ -3129,12 +3130,12 @@ export default function QuizPage() {
                 setError(err?.message || 'Ошибка отправки ответов');
               } catch (stateError) {
                 // Игнорируем ошибки обновления состояния после размонтирования
-                console.warn('⚠️ Не удалось обновить состояние (компонент размонтирован):', stateError);
+                clientLogger.warn('⚠️ Не удалось обновить состояние (компонент размонтирован):', stateError);
               }
             }
           });
         } else {
-          console.warn('⚠️ Пропускаем автоматическую отправку: компонент размонтирован или questionnaire отсутствует');
+          clientLogger.warn('⚠️ Пропускаем автоматическую отправку: компонент размонтирован или questionnaire отсутствует');
         }
       }, 5000); // 5 секунд лоадера
       
@@ -3246,7 +3247,7 @@ export default function QuizPage() {
       ? localStorage.getItem('payment_full_retake_completed') === 'true'
       : false;
     
-    console.log('🔄 Retake screen check:', {
+    clientLogger.log('🔄 Retake screen check:', {
       showRetakeScreen,
       isRetakingQuiz,
       hasRetakingPayment,
@@ -3261,16 +3262,16 @@ export default function QuizPage() {
         : false;
       
       if (!hasTopicPayment) {
-        console.log('⚠️ Payment not completed for topic, showing payment gate');
+        clientLogger.log('⚠️ Payment not completed for topic, showing payment gate');
         // PaymentGate будет показан для этой темы
         return;
       }
       
-      console.log('✅ Payment completed for topic, allowing topic selection:', topic.id);
+      clientLogger.log('✅ Payment completed for topic, allowing topic selection:', topic.id);
       // Сбрасываем флаг оплаты после выбора темы - каждая тема требует отдельной оплаты
       if (typeof window !== 'undefined') {
         localStorage.removeItem(topicPaymentKey);
-        console.log('🔄 Payment flag cleared - next topic will require new payment');
+        clientLogger.log('🔄 Payment flag cleared - next topic will require new payment');
       }
       // Перенаправляем на страницу обновления по теме только после оплаты
       router.push(`/quiz/update/${topic.id}`);
@@ -3279,15 +3280,15 @@ export default function QuizPage() {
     const handleFullRetake = () => {
       // Для полного перепрохождения нужна отдельная оплата 99₽
       if (!hasFullRetakePayment) {
-        console.log('⚠️ Full retake payment not completed, showing payment gate');
+        clientLogger.log('⚠️ Full retake payment not completed, showing payment gate');
         // Показываем PaymentGate для полного перепрохождения
         return;
       }
-      console.log('✅ Full retake payment completed, allowing full retake');
+      clientLogger.log('✅ Full retake payment completed, allowing full retake');
       // Сбрасываем флаг оплаты после использования
       if (typeof window !== 'undefined') {
         localStorage.removeItem('payment_full_retake_completed');
-        console.log('🔄 Full retake payment flag cleared');
+        clientLogger.log('🔄 Full retake payment flag cleared');
       }
       // Полное перепрохождение - скрываем экран выбора тем и показываем все вопросы
       setShowRetakeScreen(false);
@@ -3308,7 +3309,7 @@ export default function QuizPage() {
         // if (typeof window !== 'undefined') {
         //   localStorage.removeItem('quiz_progress');
         // }
-        console.log('✅ Full retake: Skipping all info screens, starting from first question (answers preserved)');
+        clientLogger.log('✅ Full retake: Skipping all info screens, starting from first question (answers preserved)');
       }
     };
 
@@ -3459,7 +3460,7 @@ export default function QuizPage() {
                     if (typeof window !== 'undefined') {
                       localStorage.setItem(topicPaymentKey, 'true');
                       // После оплаты разрешаем выбор темы
-                      console.log('✅ Payment completed for topic, allowing selection');
+                      clientLogger.log('✅ Payment completed for topic, allowing selection');
                     }
                   }}
                 >
@@ -3490,7 +3491,7 @@ export default function QuizPage() {
                   setCurrentInfoScreenIndex(initialInfoScreens.length);
                   setCurrentQuestionIndex(0);
                   setPendingInfoScreen(null);
-                  console.log('✅ Full retake payment: Skipping all info screens, starting from first question');
+                  clientLogger.log('✅ Full retake payment: Skipping all info screens, starting from first question');
                 }
               }
             }}
@@ -4137,10 +4138,10 @@ export default function QuizPage() {
               // Для экрана "Хотите улучшить состояние кожи?" показываем только одну кнопку "Получить план ухода"
               if (isWantImproveScreen) {
                 const handleGetPlan = async () => {
-                  console.log('🔘 handleGetPlan вызван');
+                  clientLogger.log('🔘 handleGetPlan вызван');
                   
                   if (isSubmitting) {
-                    console.warn('⚠️ Уже отправляется');
+                    clientLogger.warn('⚠️ Уже отправляется');
                     return;
                   }
                   
@@ -4154,7 +4155,7 @@ export default function QuizPage() {
                   const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
                   const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
                   
-                  console.log('📱 Проверка Telegram перед отправкой:', {
+                  clientLogger.log('📱 Проверка Telegram перед отправкой:', {
                     hasWindow: typeof window !== 'undefined',
                     hasTelegram: isInTelegram,
                     hasInitData: !!initData,
@@ -4167,7 +4168,7 @@ export default function QuizPage() {
                     return;
                   }
                   
-                  console.log('🚀 Запуск submitAnswers...');
+                  clientLogger.log('🚀 Запуск submitAnswers...');
                   setIsSubmitting(true);
                   setError(null);
                   

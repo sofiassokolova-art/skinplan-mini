@@ -19,6 +19,7 @@ import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
+import { clientLogger } from '@/lib/client-logger';
 
 interface PlanPageClientNewProps {
   plan28: Plan28;
@@ -68,7 +69,7 @@ export function PlanPageClientNew({
         }
       } catch (err) {
         // Игнорируем ошибки - проблемы не критичны для отображения плана
-        console.warn('Could not load skin issues:', err);
+        clientLogger.warn('Could not load skin issues:', err);
       }
     };
     
@@ -91,7 +92,7 @@ export function PlanPageClientNew({
           });
         }
       } catch (err) {
-        console.warn('Could not load user info:', err);
+        clientLogger.warn('Could not load user info:', err);
       }
     };
     
@@ -112,7 +113,7 @@ export function PlanPageClientNew({
   const [needsFirstPayment, setNeedsFirstPayment] = useState(() => {
     if (typeof window !== 'undefined') {
       const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
-      console.log('💳 Payment status check (initial):', {
+      clientLogger.log('💳 Payment status check (initial):', {
         hasFirstPayment,
         needsFirstPayment: !hasFirstPayment,
         paymentKey: 'payment_first_completed',
@@ -126,7 +127,7 @@ export function PlanPageClientNew({
     // ИСПРАВЛЕНО: Ищем день по dayIndex, с защитой от undefined
     const day = plan28.days.find(d => d.dayIndex === selectedDay);
     if (!day) {
-      console.warn('Day not found for selectedDay:', {
+      clientLogger.warn('Day not found for selectedDay:', {
         selectedDay,
         availableDays: plan28.days.map(d => d.dayIndex).slice(0, 10),
         totalDays: plan28.days.length,
@@ -160,7 +161,7 @@ export function PlanPageClientNew({
     // Платеж должен быть показан при первом прохождении анкеты, даже если план уже сгенерирован
     if (typeof window !== 'undefined') {
       const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
-      console.log('💳 Payment status check (update):', {
+      clientLogger.log('💳 Payment status check (update):', {
         hasFirstPayment,
         needsFirstPayment: !hasFirstPayment,
         paymentKey: 'payment_first_completed',
@@ -179,7 +180,7 @@ export function PlanPageClientNew({
       });
       setCartQuantities(quantitiesMap);
     } catch (err) {
-      console.warn('Could not load cart:', err);
+      clientLogger.warn('Could not load cart:', err);
     }
   };
 
@@ -328,7 +329,7 @@ export function PlanPageClientNew({
         try {
           await api.savePlanProgress(nextDay, Array.from(newCompleted));
         } catch (err: any) {
-          console.warn('Ошибка сохранения прогресса:', err);
+          clientLogger.warn('Ошибка сохранения прогресса:', err);
         }
       }
 

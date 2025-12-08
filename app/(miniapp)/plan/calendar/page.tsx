@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import { api } from '@/lib/api';
+import { clientLogger } from '@/lib/client-logger';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
 import toast from 'react-hot-toast';
@@ -47,7 +48,7 @@ export default function PlanCalendarPage() {
         completedDays: number[];
       };
       } catch (progressErr) {
-        console.warn('📅 Calendar: Error loading progress (non-critical)', progressErr);
+        clientLogger.warn('📅 Calendar: Error loading progress (non-critical)', progressErr);
         progress = { currentDay: 1, completedDays: [] };
       }
       
@@ -61,7 +62,7 @@ export default function PlanCalendarPage() {
       let planData: any = null;
       try {
         planData = await api.getPlan() as any;
-        console.log('📅 Calendar: Plan loaded', {
+        clientLogger.log('📅 Calendar: Plan loaded', {
           hasPlan: !!planData,
           hasPlan28: !!planData?.plan28,
           hasWeeks: !!planData?.weeks,
@@ -91,16 +92,16 @@ export default function PlanCalendarPage() {
                 url: window.location.href,
                 userAgent: navigator.userAgent,
               }),
-            }).catch(logErr => console.warn('Failed to log error:', logErr));
+            }).catch(logErr => clientLogger.warn('Failed to log error:', logErr));
           }
         } catch (logError) {
-          console.warn('Failed to save error log:', logError);
+          clientLogger.warn('Failed to save error log:', logError);
         }
         
         // Если план не найден - проверяем, есть ли профиль
         // Если профиль есть, но план не найден - это ошибка, нужно регенерировать план
         if (err?.status === 404 || err?.isNotFound) {
-          console.log('📅 Calendar: Plan not found (404), checking if profile exists...');
+          clientLogger.log('📅 Calendar: Plan not found (404), checking if profile exists...');
           
           // Проверяем наличие профиля
           try {
@@ -108,13 +109,13 @@ export default function PlanCalendarPage() {
             if (profile && (profile as any).id) {
               // Профиль есть, но план не найден - это странно, но не критично
               // Показываем ошибку и предлагаем вернуться к плану или пройти анкету заново
-              console.warn('📅 Calendar: Profile exists but plan not found - plan may need regeneration');
+              clientLogger.warn('📅 Calendar: Profile exists but plan not found - plan may need regeneration');
               toast.error('План не найден. Попробуйте обновить страницу или пройдите анкету заново.');
               setLoading(false);
               return;
             } else {
               // Профиля нет - редиректим на анкету
-              console.log('📅 Calendar: No profile found, redirecting to quiz');
+              clientLogger.log('📅 Calendar: No profile found, redirecting to quiz');
               toast.error('План не найден. Пожалуйста, пройдите анкету.');
               setLoading(false);
               setTimeout(() => {
@@ -185,7 +186,7 @@ export default function PlanCalendarPage() {
           });
         });
         
-        console.log('📅 Calendar: Products from plan', {
+        clientLogger.log('📅 Calendar: Products from plan', {
           totalDays: planData.plan28.days.length,
           totalProductIds: allProductIds.size,
           productIds: Array.from(allProductIds).slice(0, 10),
@@ -218,7 +219,7 @@ export default function PlanCalendarPage() {
               }
             });
             
-            console.log('✅ Calendar: Products loaded from plan', {
+            clientLogger.log('✅ Calendar: Products loaded from plan', {
               requestedIds: allProductIds.size,
               loadedProducts: productsMap.size,
               missingProducts: Array.from(allProductIds).filter(id => !productsMap.has(id)),
@@ -227,7 +228,7 @@ export default function PlanCalendarPage() {
             // Проверяем, что все продукты загружены
             const missingProducts = Array.from(allProductIds).filter(id => !productsMap.has(id));
             if (missingProducts.length > 0) {
-              console.warn('⚠️ Calendar: Some products not found in database', {
+              clientLogger.warn('⚠️ Calendar: Some products not found in database', {
                 missingIds: missingProducts,
               });
             }
@@ -254,7 +255,7 @@ export default function PlanCalendarPage() {
         setWishlist(wishlistIds);
         setWishlistProductIds(new Set(wishlistIds));
       } catch (err) {
-        console.warn('Could not load wishlist:', err);
+        clientLogger.warn('Could not load wishlist:', err);
       }
 
       // Загружаем корзину
@@ -267,7 +268,7 @@ export default function PlanCalendarPage() {
         });
         setCartQuantities(quantitiesMap);
       } catch (err) {
-        console.warn('Could not load cart:', err);
+        clientLogger.warn('Could not load cart:', err);
       }
     } catch (err) {
       console.error('Error loading calendar data:', err);
@@ -323,7 +324,7 @@ export default function PlanCalendarPage() {
 
   const handleReplace = async (stepCategory: string, productId: number) => {
     // TODO: реализовать замену продукта
-    console.log('Replace product:', stepCategory, productId);
+    clientLogger.log('Replace product:', stepCategory, productId);
   };
 
   if (loading) {

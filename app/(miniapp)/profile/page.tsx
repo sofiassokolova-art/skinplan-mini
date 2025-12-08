@@ -10,6 +10,7 @@ import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { TelegramUserAvatar } from '@/components/TelegramUserAvatar';
 import toast from 'react-hot-toast';
+import { clientLogger } from '@/lib/client-logger';
 
 interface UserProfile {
   id: string;
@@ -96,7 +97,7 @@ export default function PersonalCabinet() {
       try {
         dbUser = await api.getUserProfile() as any;
       } catch (err) {
-        console.warn('Could not load user profile from DB:', err);
+        clientLogger.warn('Could not load user profile from DB:', err);
       }
 
       // Данные пользователя: сначала из БД, если нет - из Telegram
@@ -154,7 +155,7 @@ export default function PersonalCabinet() {
           } else {
             // План еще не готов - это нормально, не показываем ошибку
             if (process.env.NODE_ENV === 'development') {
-              console.log('Plan not yet generated, will be generated on demand');
+              clientLogger.log('Plan not yet generated, will be generated on demand');
             }
           }
         } catch (planErr: any) {
@@ -164,16 +165,16 @@ export default function PersonalCabinet() {
               !planErr?.message?.includes('No skin profile') &&
               !planErr?.message?.includes('Not found') &&
               !planErr?.message?.includes('Plan not found')) {
-            console.warn('Unexpected error loading plan:', planErr);
+            clientLogger.warn('Unexpected error loading plan:', planErr);
           } else {
             if (process.env.NODE_ENV === 'development') {
-              console.log('Plan not yet generated (this is normal)');
+              clientLogger.log('Plan not yet generated (this is normal)');
             }
           }
         }
       } catch (err: any) {
         if (!err?.message?.includes('No profile found') && !err?.message?.includes('404')) {
-          console.warn('Ошибка загрузки профиля:', err);
+          clientLogger.warn('Ошибка загрузки профиля:', err);
         }
       }
     } catch (err: any) {

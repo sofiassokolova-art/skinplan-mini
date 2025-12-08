@@ -16,6 +16,7 @@ import { RecommendedProducts } from '@/components/RecommendedProducts';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { clientLogger } from '@/lib/client-logger';
 
 interface PlanPageClientProps {
   user: {
@@ -124,7 +125,7 @@ export function PlanPageClient({
           await api.savePlanProgress(nextDay, Array.from(newCompleted));
         } catch (err: any) {
           // Если ошибка авторизации — просто логируем, локальный кеш уже обновлён
-          console.warn('Ошибка сохранения прогресса плана на сервере:', err);
+          clientLogger.warn('Ошибка сохранения прогресса плана на сервере:', err);
         }
       }
 

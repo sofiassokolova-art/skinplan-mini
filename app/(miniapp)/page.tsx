@@ -12,6 +12,7 @@ import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import toast from 'react-hot-toast';
+import { clientLogger } from '@/lib/client-logger';
 
 interface RoutineItem {
   id: string;
@@ -99,12 +100,12 @@ export default function HomePage() {
   // Если профиля нет, сразу редиректим на /quiz, где есть экран "Вы не завершили анкету"
 
   useEffect(() => {
-    console.log('🚀 HomePage useEffect started');
+    clientLogger.log('🚀 HomePage useEffect started');
     setMounted(true);
     planCheckDoneRef.current = false; // Сбрасываем флаг проверки плана при монтировании
     
     // Проверяем доступность Telegram WebApp
-    console.log('📱 Checking Telegram WebApp:', {
+    clientLogger.log('📱 Checking Telegram WebApp:', {
       hasWindow: typeof window !== 'undefined',
       hasTelegram: typeof window !== 'undefined' && !!window.Telegram,
       hasWebApp: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
@@ -115,7 +116,7 @@ export default function HomePage() {
     // Инициализируем Telegram с обработкой ошибок
     try {
     initialize();
-    console.log('✅ Telegram WebApp initialized');
+    clientLogger.log('✅ Telegram WebApp initialized');
     } catch (err) {
       console.error('❌ Error initializing Telegram:', err);
       // Продолжаем работу даже при ошибке инициализации
@@ -124,20 +125,20 @@ export default function HomePage() {
     // Загружаем данные (пользователь идентифицируется автоматически через initData)
     const initAndLoad = async () => {
       try {
-        console.log('🔄 initAndLoad started');
+        clientLogger.log('🔄 initAndLoad started');
         
         // Ждем немного, чтобы Telegram WebApp успел инициализироваться
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Проверяем, что приложение открыто через Telegram
         const hasInitData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData;
-        console.log('🔍 Checking initData after wait:', {
+        clientLogger.log('🔍 Checking initData after wait:', {
           hasInitData,
           initDataLength: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData?.length || 0,
         });
         
         if (!hasInitData) {
-          console.warn('⚠️ Telegram WebApp не доступен, redirecting to quiz');
+          clientLogger.warn('⚠️ Telegram WebApp не доступен, redirecting to quiz');
           setRedirectingToQuiz(true);
           setLoading(false);
           if (typeof window !== 'undefined') {
@@ -148,16 +149,16 @@ export default function HomePage() {
           return;
         }
         
-        console.log('✅ Telegram WebApp available, proceeding with initialization');
+        clientLogger.log('✅ Telegram WebApp available, proceeding with initialization');
 
         // СНАЧАЛА проверяем наличие профиля (самая надежная проверка)
         // ИСПРАВЛЕНО: Защита от множественных запросов
         if (profileCheckInProgressRef.current) {
-          console.log('⚠️ Profile check already in progress, skipping...');
+          clientLogger.log('⚠️ Profile check already in progress, skipping...');
           return;
         }
         
-        console.log('🔍 Step 1: Checking for existing profile...');
+        clientLogger.log('🔍 Step 1: Checking for existing profile...');
         profileCheckInProgressRef.current = true;
         setHasCheckedProfile(true); // Помечаем, что проверили профиль
         let hasProfile = false;
@@ -165,10 +166,10 @@ export default function HomePage() {
           const profile = await api.getCurrentProfile();
           if (profile && (profile as any).id) {
             hasProfile = true;
-            console.log('✅ Profile exists, user has completed quiz');
+            clientLogger.log('✅ Profile exists, user has completed quiz');
           } else {
             // Профиль вернулся, но без id - считаем, что профиля нет
-            console.log('ℹ️ Profile response received but no id, treating as no profile');
+            clientLogger.log('ℹ️ Profile response received but no id, treating as no profile');
             hasProfile = false;
           }
         } catch (err: any) {
@@ -183,11 +184,11 @@ export default function HomePage() {
                             err?.isNotFound;
           
           if (isNotFound) {
-            console.log('ℹ️ Profile not found (expected for new users or incomplete quiz)');
+            clientLogger.log('ℹ️ Profile not found (expected for new users or incomplete quiz)');
             hasProfile = false;
           } else {
             // Другая ошибка (сеть, авторизация и т.д.) - логируем, но продолжаем
-            console.warn('⚠️ Error checking profile:', errorMessage);
+            clientLogger.warn('⚠️ Error checking profile:', errorMessage);
             hasProfile = false;
           }
         }
@@ -195,7 +196,7 @@ export default function HomePage() {
         // ИСПРАВЛЕНО: Если профиля нет после проверки, ВСЕГДА редиректим на анкету
         // Убираем все условия - просто проверяем hasProfile
         if (!hasProfile) {
-          console.log('ℹ️ No profile found, redirecting to quiz immediately');
+          clientLogger.log('ℹ️ No profile found, redirecting to quiz immediately');
           setRedirectingToQuiz(true);
           setLoading(false);
           // Используем window.location.href для надежного редиректа
@@ -210,18 +211,18 @@ export default function HomePage() {
 
         // Если профиль есть - загружаем рекомендации
         if (hasProfile) {
-          console.log('✅ Profile exists, loading recommendations...');
+          clientLogger.log('✅ Profile exists, loading recommendations...');
           try {
             await loadRecommendations();
-            console.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
+            clientLogger.log('✅ loadRecommendations completed, checking if we should show feedback popup...');
             
             // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
             setTimeout(async () => {
               if (!error && recommendations) {
-                console.log('✅ Recommendations loaded, checking feedback popup...');
+                clientLogger.log('✅ Recommendations loaded, checking feedback popup...');
                 await checkFeedbackPopup();
               } else {
-                console.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
+                clientLogger.log('⚠️ Skipping feedback popup check:', { error, hasRecommendations: !!recommendations });
               }
             }, 100);
           } catch (recError: any) {
@@ -230,7 +231,7 @@ export default function HomePage() {
             if (recError?.status === 404 || recError?.isNotFound || 
                 recError?.message?.includes('404') || 
                 recError?.message?.includes('Plan not found')) {
-              console.log('ℹ️ Plan not found after profile check, redirecting to quiz');
+              clientLogger.log('ℹ️ Plan not found after profile check, redirecting to quiz');
               setRedirectingToQuiz(true);
               setLoading(false);
               if (typeof window !== 'undefined') {
@@ -250,7 +251,7 @@ export default function HomePage() {
         }
 
         // Если профиля нет - просто завершаем загрузку, покажем экран с кнопкой
-        console.log('ℹ️ No profile found, showing "Start quiz" screen');
+        clientLogger.log('ℹ️ No profile found, showing "Start quiz" screen');
         setLoading(false);
         profileCheckInProgressRef.current = false; // Сбрасываем флаг
         return;
@@ -272,7 +273,7 @@ export default function HomePage() {
             err?.message?.includes('Not found') ||
             err?.message?.includes('No skin profile') ||
             err?.message?.includes('Profile not found')) {
-          console.log('ℹ️ Profile not found in initAndLoad, redirecting to quiz');
+          clientLogger.log('ℹ️ Profile not found in initAndLoad, redirecting to quiz');
           setRedirectingToQuiz(true);
           setLoading(false);
           if (typeof window !== 'undefined') {
@@ -306,7 +307,7 @@ export default function HomePage() {
           err?.message?.includes('Not found') ||
           err?.message?.includes('No skin profile') ||
           err?.message?.includes('Profile not found')) {
-        console.log('ℹ️ Profile not found in catch, redirecting to quiz');
+        clientLogger.log('ℹ️ Profile not found in catch, redirecting to quiz');
         setRedirectingToQuiz(true);
         setLoading(false);
         if (typeof window !== 'undefined') {
@@ -321,18 +322,18 @@ export default function HomePage() {
       try {
         api.getPlan().then((plan: any) => {
           if (plan && (plan.plan28 || plan.weeks)) {
-            console.log('✅ Plan exists despite error, redirecting to /plan');
+            clientLogger.log('✅ Plan exists despite error, redirecting to /plan');
             router.push('/plan');
           } else {
-            console.log('ℹ️ No plan found, redirecting to quiz');
+            clientLogger.log('ℹ️ No plan found, redirecting to quiz');
             router.push('/quiz');
           }
         }).catch(() => {
-          console.log('ℹ️ Could not load plan, redirecting to quiz');
+          clientLogger.log('ℹ️ Could not load plan, redirecting to quiz');
           router.push('/quiz');
         });
       } catch {
-        console.log('ℹ️ Error in error handler, redirecting to quiz');
+        clientLogger.log('ℹ️ Error in error handler, redirecting to quiz');
         router.push('/quiz');
       }
       
@@ -345,7 +346,7 @@ export default function HomePage() {
           err?.message?.includes('Not found') ||
           err?.message?.includes('No skin profile') ||
           err?.message?.includes('Profile not found')) {
-        console.log('ℹ️ Profile not found in catch, redirecting to quiz');
+        clientLogger.log('ℹ️ Profile not found in catch, redirecting to quiz');
         setRedirectingToQuiz(true);
         setLoading(false);
         if (typeof window !== 'undefined') {
@@ -379,13 +380,13 @@ export default function HomePage() {
         }
       } catch (profileError) {
         // Если профиль не найден, не показываем поп-ап
-        console.log('⚠️ Profile not found, skipping feedback popup');
+        clientLogger.log('⚠️ Profile not found, skipping feedback popup');
         return;
       }
 
       // Если профиль не найден или дата создания не определена, не показываем поп-ап
       if (!profileCreatedAt) {
-        console.log('⚠️ Profile creation date not found, skipping feedback popup');
+        clientLogger.log('⚠️ Profile creation date not found, skipping feedback popup');
         return;
       }
 
@@ -394,7 +395,7 @@ export default function HomePage() {
       
       // ВАЖНО: Поп-ап показывается только через 3 дня после генерации плана
       if (daysSincePlanGeneration < 3) {
-        console.log(`⚠️ Plan generated ${daysSincePlanGeneration} days ago, need 3 days. Skipping feedback popup.`);
+        clientLogger.log(`⚠️ Plan generated ${daysSincePlanGeneration} days ago, need 3 days. Skipping feedback popup.`);
         return;
       }
 
@@ -447,7 +448,7 @@ export default function HomePage() {
       // Игнорируем ошибки при проверке поп-апа (404, отсутствие профиля и т.д.)
       // Это не критично для работы приложения
       if (err?.status !== 404 && !err?.message?.includes('404') && !err?.message?.includes('Not found')) {
-        console.warn('⚠️ Error checking feedback popup:', err);
+        clientLogger.warn('⚠️ Error checking feedback popup:', err);
       }
       // Не показываем поп-ап при ошибке
     }
@@ -469,9 +470,9 @@ export default function HomePage() {
     try {
       // ИСПРАВЛЕНО: Не проверяем профиль повторно, если уже проверили
       // Профиль уже был проверен в initAndLoad, просто продолжаем
-      console.log('✅ loadRecommendations: Proceeding (profile already checked in initAndLoad)...');
+      clientLogger.log('✅ loadRecommendations: Proceeding (profile already checked in initAndLoad)...');
       
-      console.log('📥 Loading plan for current day...');
+      clientLogger.log('📥 Loading plan for current day...');
       
       // Загружаем план и прогресс
       let planData: any = null;
@@ -480,7 +481,7 @@ export default function HomePage() {
       try {
         // Пробуем загрузить план
         planData = await api.getPlan() as any;
-        console.log('📥 Home: Plan loaded', {
+        clientLogger.log('📥 Home: Plan loaded', {
           hasPlan: !!planData,
           hasPlan28: !!planData?.plan28,
           hasWeeks: !!planData?.weeks,
@@ -509,14 +510,14 @@ export default function HomePage() {
             return;
           }
           
-          console.log('⚠️ Home: Plan not found (404), but profile exists. Attempting to generate plan...', { attempt: generateAttempts + 1 });
+          clientLogger.log('⚠️ Home: Plan not found (404), but profile exists. Attempting to generate plan...', { attempt: generateAttempts + 1 });
           sessionStorage.setItem(generateAttemptsKey, String(generateAttempts + 1));
           
           try {
             // Пробуем сгенерировать план (может быть для новой версии профиля после перепрохождения анкеты)
             const generatedPlan = await api.generatePlan() as any;
             if (generatedPlan && generatedPlan.plan28) {
-              console.log('✅ Home: Plan generated successfully');
+              clientLogger.log('✅ Home: Plan generated successfully');
               // Очищаем счетчик попыток
               sessionStorage.removeItem(generateAttemptsKey);
               // Вместо reload - просто перезагружаем данные через функцию loadRecommendations
@@ -524,14 +525,14 @@ export default function HomePage() {
               return;
             } else {
               // План не сгенерировался - показываем экран без плана
-              console.log('⚠️ Home: Plan could not be generated, showing home screen without plan.');
+              clientLogger.log('⚠️ Home: Plan could not be generated, showing home screen without plan.');
               sessionStorage.removeItem(generateAttemptsKey);
               setLoading(false);
               return;
             }
           } catch (genError) {
             // Ошибка генерации - показываем экран без плана
-            console.warn('⚠️ Home: Error generating plan:', genError);
+            clientLogger.warn('⚠️ Home: Error generating plan:', genError);
             sessionStorage.removeItem(generateAttemptsKey);
             setLoading(false);
             return;
@@ -548,7 +549,7 @@ export default function HomePage() {
       try {
         progress = await api.getPlanProgress() as { currentDay: number; completedDays: number[] };
       } catch (progressErr) {
-        console.warn('⚠️ Home: Error loading progress (non-critical)', progressErr);
+        clientLogger.warn('⚠️ Home: Error loading progress (non-critical)', progressErr);
         progress = { currentDay: 1, completedDays: [] };
       }
       
@@ -557,7 +558,7 @@ export default function HomePage() {
       const hasPlan28 = planData?.plan28 && planData.plan28.days && planData.plan28.days.length > 0;
       const hasWeeks = planData?.weeks && Array.isArray(planData.weeks) && planData.weeks.length > 0;
       
-      console.log('📊 Home: Plan validation', {
+      clientLogger.log('📊 Home: Plan validation', {
         hasPlanData: !!planData,
         hasPlan28,
         hasWeeks,
@@ -567,7 +568,7 @@ export default function HomePage() {
       });
       
       if (!planData || (!hasPlan28 && !hasWeeks)) {
-        console.log('⚠️ Home: Plan not found or invalid format, showing "Start quiz" screen');
+        clientLogger.log('⚠️ Home: Plan not found or invalid format, showing "Start quiz" screen');
         setLoading(false);
         return;
       }
@@ -576,12 +577,12 @@ export default function HomePage() {
       if (!hasPlan28) {
         // Если план есть, но в старом формате - пытаемся сгенерировать новый
         if (hasWeeks) {
-          console.log('⚠️ Home: Plan in old format (weeks), attempting to regenerate...');
+          clientLogger.log('⚠️ Home: Plan in old format (weeks), attempting to regenerate...');
           const regenerateAttemptsKey = 'plan_regenerate_attempts';
           const regenerateAttempts = parseInt(sessionStorage.getItem(regenerateAttemptsKey) || '0', 10);
           
           if (regenerateAttempts >= 2) {
-            console.warn('⚠️ Too many regeneration attempts, showing old format or redirecting to quiz');
+            clientLogger.warn('⚠️ Too many regeneration attempts, showing old format or redirecting to quiz');
             sessionStorage.removeItem(regenerateAttemptsKey);
             // Показываем экран "Start quiz" или можно показать старый формат
             setLoading(false);
@@ -591,7 +592,7 @@ export default function HomePage() {
               sessionStorage.setItem(regenerateAttemptsKey, String(regenerateAttempts + 1));
               const generatedPlan = await api.generatePlan() as any;
               if (generatedPlan && generatedPlan.plan28) {
-                console.log('✅ Home: Plan regenerated');
+                clientLogger.log('✅ Home: Plan regenerated');
                 sessionStorage.removeItem(regenerateAttemptsKey);
                 // Вместо reload - просто перезагружаем данные
                 await loadRecommendations();
@@ -602,7 +603,7 @@ export default function HomePage() {
                 return;
               }
             } catch (regenerateError) {
-              console.warn('⚠️ Could not regenerate plan:', regenerateError);
+              clientLogger.warn('⚠️ Could not regenerate plan:', regenerateError);
               sessionStorage.removeItem(regenerateAttemptsKey);
               setLoading(false);
               return;
@@ -610,7 +611,7 @@ export default function HomePage() {
           }
         } else {
           // План не в новом формате и не в старом - показываем экран "Start quiz"
-          console.log('⚠️ Home: Plan exists but has no valid format');
+          clientLogger.log('⚠️ Home: Plan exists but has no valid format');
           setLoading(false);
           return;
         }
@@ -635,7 +636,7 @@ export default function HomePage() {
       // Календарь использует: plan28.days.find(d => d.dayIndex === selectedDay)
       let currentDayPlan = plan28.days.find((d: any) => d.dayIndex === currentDay);
       if (!currentDayPlan) {
-        console.log('⚠️ Home: Current day plan not found for day', currentDay, ', using day 1');
+        clientLogger.log('⚠️ Home: Current day plan not found for day', currentDay, ', using day 1');
         // Вместо редиректа на анкету, пробуем использовать день 1 (как в календаре)
         const day1Plan = plan28.days.find((d: any) => d.dayIndex === 1);
         if (!day1Plan) {
@@ -661,7 +662,7 @@ export default function HomePage() {
         if (step.productId) allProductIds.add(Number(step.productId));
       });
       
-      console.log('✅ Home: Using same logic as calendar - day plan found', {
+      clientLogger.log('✅ Home: Using same logic as calendar - day plan found', {
         currentDay,
         dayIndex: currentDayPlan.dayIndex,
         morningSteps: currentDayPlan.morning?.length || 0,
@@ -700,7 +701,7 @@ export default function HomePage() {
               }
             });
             
-            console.log('✅ Home: Products loaded from plan', {
+            clientLogger.log('✅ Home: Products loaded from plan', {
               requestedIds: allProductIds.size,
               loadedProducts: productsMap.size,
               missingProducts: Array.from(allProductIds).filter(id => !productsMap.has(id)),
@@ -709,7 +710,7 @@ export default function HomePage() {
             // Проверяем, что все продукты загружены
             const missingProducts = Array.from(allProductIds).filter(id => !productsMap.has(id));
             if (missingProducts.length > 0) {
-              console.warn('⚠️ Home: Some products not found in database', {
+              clientLogger.warn('⚠️ Home: Some products not found in database', {
                 missingIds: missingProducts,
                 currentDay,
               });
@@ -726,7 +727,7 @@ export default function HomePage() {
           console.error('❌ Home: Error loading product details', err);
         }
       } else {
-        console.warn('⚠️ Home: No product IDs found for current day', { currentDay });
+        clientLogger.warn('⚠️ Home: No product IDs found for current day', { currentDay });
       }
       
       // Преобразуем шаги плана в RoutineItem[]
@@ -917,7 +918,7 @@ export default function HomePage() {
                 });
               }
             });
-            console.log('✅ Home: All products loaded from plan (like calendar)', {
+            clientLogger.log('✅ Home: All products loaded from plan (like calendar)', {
               requestedIds: allPlanProductIds.size,
               loadedProducts: allProductsMap.size,
             });
@@ -942,7 +943,7 @@ export default function HomePage() {
         ).filter((id: any): id is number => typeof id === 'number');
         setWishlistProductIds(new Set(wishlistIds));
       } catch (err) {
-        console.warn('Could not load wishlist:', err);
+        clientLogger.warn('Could not load wishlist:', err);
       }
 
       try {
@@ -954,7 +955,7 @@ export default function HomePage() {
         });
         setCartQuantities(quantitiesMap);
       } catch (err) {
-        console.warn('Could not load cart:', err);
+        clientLogger.warn('Could not load cart:', err);
       }
 
       setError(null);
@@ -977,14 +978,14 @@ export default function HomePage() {
           error?.message?.includes('No skin profile') ||
           error?.message?.includes('Profile not found')) {
         // Профиль не найден - перенаправляем на анкету (не показываем ошибку)
-        console.log('ℹ️ Profile not found (404), redirecting to quiz');
+        clientLogger.log('ℹ️ Profile not found (404), redirecting to quiz');
         router.push('/quiz');
         return;
       }
       
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('401') || error?.message?.includes('initData')) {
         // Ошибка идентификации - перенаправляем на анкету
-        console.log('ℹ️ Unauthorized, redirecting to quiz');
+        clientLogger.log('ℹ️ Unauthorized, redirecting to quiz');
         router.push('/quiz');
         return;
       }
@@ -997,13 +998,13 @@ export default function HomePage() {
         const plan = await api.getPlan() as any;
         if (plan && (plan.plan28 || plan.weeks)) {
           // План есть - перенаправляем на страницу плана
-          console.log('✅ Plan exists, redirecting to /plan');
+          clientLogger.log('✅ Plan exists, redirecting to /plan');
           router.push('/plan');
           return;
         }
       } catch (planError) {
         // Не удалось загрузить план - продолжаем с ошибкой
-        console.warn('⚠️ Could not load plan:', planError);
+        clientLogger.warn('⚠️ Could not load plan:', planError);
       }
       
       // Если план не найден, показываем ошибку
@@ -1053,13 +1054,13 @@ export default function HomePage() {
                   }))
                 );
               } catch (e) {
-                console.warn('Could not parse saved steps:', e);
+                clientLogger.warn('Could not parse saved steps:', e);
               }
             }
           }
         }
       } catch (err) {
-        console.warn('Could not load plan progress:', err);
+        clientLogger.warn('Could not load plan progress:', err);
       }
     };
     
@@ -1154,7 +1155,7 @@ export default function HomePage() {
             toast.success('День завершен! ✨');
           }
         } catch (err) {
-          console.warn('Could not save completed day:', err);
+          clientLogger.warn('Could not save completed day:', err);
         }
       }
     }
@@ -1184,7 +1185,7 @@ export default function HomePage() {
     // ВАЖНО: Проверяем план всегда, не только если нет рекомендаций
     // Это гарантирует, что если план есть, пользователь будет перенаправлен на /plan
     if ((routineItemsLength === 0 || (routineItemsLength > 0 && !recommendations)) && !loading && !checkingPlan && !hasPlan) {
-      console.log('🔍 Checking if plan exists...');
+      clientLogger.log('🔍 Checking if plan exists...');
       planCheckDoneRef.current = true; // Помечаем, что проверка началась
       
       const checkPlan = async () => {
@@ -1192,7 +1193,7 @@ export default function HomePage() {
         try {
           const plan = await api.getPlan() as any;
           if (plan && (plan.plan28 || plan.weeks)) {
-            console.log('✅ Plan found, redirecting to /plan');
+            clientLogger.log('✅ Plan found, redirecting to /plan');
             setHasPlan(true);
             // Если план найден - редиректим на страницу плана
             // Используем window.location для гарантированного редиректа
@@ -1201,12 +1202,12 @@ export default function HomePage() {
             }
             return;
           } else {
-            console.log('ℹ️ Plan not found or empty');
+            clientLogger.log('ℹ️ Plan not found or empty');
             // НЕ сбрасываем planCheckDoneRef, чтобы не делать повторные запросы
             // План не найден - это нормально, не проверяем снова
           }
         } catch (err) {
-          console.log('ℹ️ Plan check failed (expected if no plan):', err);
+          clientLogger.log('ℹ️ Plan check failed (expected if no plan):', err);
           // НЕ сбрасываем planCheckDoneRef, чтобы не делать повторные запросы
           // План не найден - это нормально, не проверяем снова
         } finally {
@@ -1332,7 +1333,7 @@ export default function HomePage() {
               if (typeof window !== 'undefined') {
                 localStorage.removeItem('is_retaking_quiz');
                 localStorage.removeItem('full_retake_from_home');
-                console.log('✅ Флаги перепрохождения очищены перед переходом на /quiz');
+                clientLogger.log('✅ Флаги перепрохождения очищены перед переходом на /quiz');
               }
               router.push('/quiz');
             }}
@@ -1437,7 +1438,7 @@ export default function HomePage() {
 
   const handleReplace = async (stepCategory: string, productId: number) => {
     // TODO: реализовать замену продукта
-    console.log('Replace product:', stepCategory, productId);
+    clientLogger.log('Replace product:', stepCategory, productId);
   };
 
   // Если план загружен - показываем календарь и DayView
@@ -1510,7 +1511,7 @@ export default function HomePage() {
             marginBottom: '8px',
           }}
           onError={(e) => {
-            console.warn('Logo not found');
+            clientLogger.warn('Logo not found');
             (e.target as HTMLImageElement).style.display = 'none';
           }}
         />
@@ -1643,7 +1644,7 @@ export default function HomePage() {
               }}
               onError={(e) => {
                 // Fallback для отсутствующих иконок
-                console.warn('Icon not found:', item.icon);
+                clientLogger.warn('Icon not found:', item.icon);
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />

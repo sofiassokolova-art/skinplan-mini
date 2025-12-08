@@ -12,6 +12,7 @@ import { CareRoutine } from '@/components/CareRoutine';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { clientLogger } from '@/lib/client-logger';
 
 interface SkinIssue {
   id: string;
@@ -91,7 +92,7 @@ function AnalysisPageContent() {
         ).filter((id: any): id is number => typeof id === 'number');
         setWishlistProductIds(new Set(wishlist));
       } catch (err) {
-        console.warn('Could not load wishlist:', err);
+        clientLogger.warn('Could not load wishlist:', err);
       }
 
       // Загружаем выбранные продукты из localStorage
@@ -103,7 +104,7 @@ function AnalysisPageContent() {
             setInRoutineProducts(new Set(routineProducts));
           }
         } catch (err) {
-          console.warn('Could not load routine products from localStorage:', err);
+          clientLogger.warn('Could not load routine products from localStorage:', err);
         }
       }
 
@@ -115,7 +116,7 @@ function AnalysisPageContent() {
       // Если план еще не готов (404 или ошибка генерации), редиректим на /plan
       // или показываем лоадер вместо ошибки
       if (err?.status === 404 || err?.message?.includes('not found') || err?.message?.includes('не найден')) {
-        console.log('Analysis not ready, redirecting to plan page');
+        clientLogger.log('Analysis not ready, redirecting to plan page');
         router.push('/plan');
         return;
       }

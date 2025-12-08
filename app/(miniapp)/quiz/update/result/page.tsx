@@ -29,7 +29,7 @@ function QuizUpdateResultContent() {
       // Сбрасываем флаг оплаты после завершения обновления темы
       // Каждая тема требует отдельной оплаты 49₽
       localStorage.removeItem('payment_retaking_completed');
-      console.log('🔄 Payment flag cleared after topic update completion - next topic will require new payment');
+      clientLogger.log('🔄 Payment flag cleared after topic update completion - next topic will require new payment');
     }
   }, [topicId]);
 

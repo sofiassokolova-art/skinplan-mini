@@ -9,6 +9,7 @@ import { getTopicById } from '@/lib/quiz-topics';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { logger } from '@/lib/logger';
+import { clientLogger } from '@/lib/client-logger';
 
 export default function QuizTopicPage() {
   const router = useRouter();
@@ -104,7 +105,7 @@ export default function QuizTopicPage() {
         return;
       }
 
-      console.log('Questions found for topic', {
+      clientLogger.log('Questions found for topic', {
         topicId,
         topicTitle: topicData.title,
         foundCount: topicQuestions.length,
@@ -125,7 +126,7 @@ export default function QuizTopicPage() {
         }
       } catch (answerError: any) {
         // Если не удалось загрузить ответы - это не критично, просто не предзаполняем
-        console.warn('Could not load previous answers (non-critical):', answerError);
+        clientLogger.warn('Could not load previous answers (non-critical):', answerError);
       }
 
       setQuestions(topicQuestions);

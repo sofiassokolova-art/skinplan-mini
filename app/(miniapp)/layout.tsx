@@ -169,16 +169,51 @@ function LayoutContent({
   );
 }
 
-export default function MiniappLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// Fallback компонент, который сохраняет всю структуру layout
+// ИСПРАВЛЕНО: usePathname() не вызывает suspend, но для консистентности используем его безопасно
+// В fallback показываем базовую структуру без зависимостей от конкретного пути
+function LayoutFallback() {
+  // usePathname() не вызывает suspend, только useSearchParams() вызывает
+  // Но для fallback лучше показать универсальную структуру
+  const pathname = usePathname();
+  
+  // Определяем, нужно ли показывать логотип (та же логика, что и в LayoutContent)
+  const showLogo = pathname !== '/' && 
+                   pathname !== '/quiz' &&
+                   !pathname.startsWith('/quiz/') &&
+                   pathname !== '/plan' && 
+                   pathname !== '/wishlist' && 
+                   pathname !== '/cart' &&
+                   pathname !== '/cart-new' &&
+                   pathname !== '/profile';
+  
+  // Определяем, нужно ли скрывать навигацию (та же логика, что и в LayoutContent)
+  const hideNav = pathname === '/quiz' || 
+                  pathname.startsWith('/quiz/');
+  
   return (
-    <QueryProvider>
-      <Suspense fallback={
+    <>
+      <NetworkStatus />
+      {/* Логотип наверху всех экранов (кроме главной) */}
+      {showLogo && (
         <div style={{
-          minHeight: '100vh',
+          padding: '20px',
+          textAlign: 'center',
+        }}>
+          <img
+            src="/skiniq-logo.png"
+            alt="SkinIQ"
+            style={{
+              height: '140px',
+              marginTop: '8px',
+              marginBottom: '8px',
+            }}
+          />
+        </div>
+      )}
+      <PageTransition>
+        <div style={{
+          minHeight: 'calc(100vh - 200px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -186,8 +221,23 @@ export default function MiniappLayout({
         }}>
           <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
         </div>
-      }>
-      <LayoutContent>{children}</LayoutContent>
+      </PageTransition>
+      {!hideNav && <BottomNavigation />}
+      {/* Сервисный попап для отзывов */}
+      {pathname !== '/quiz' && !pathname.startsWith('/quiz/') && <ServiceFeedbackPopup />}
+    </>
+  );
+}
+
+export default function MiniappLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <QueryProvider>
+      <Suspense fallback={<LayoutFallback />}>
+        <LayoutContent>{children}</LayoutContent>
       </Suspense>
     </QueryProvider>
   );

@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { clientLogger } from '@/lib/client-logger';
 
 interface Profile {
   id: string;
@@ -57,7 +58,7 @@ export default function InsightsPage() {
         const profileData = await api.getCurrentProfile();
         setProfile(profileData as Profile);
       } catch (err) {
-        console.warn('Profile not found, using fallback');
+        clientLogger.warn('Profile not found, using fallback');
       }
 
       // Загружаем фото-сканы из localStorage
