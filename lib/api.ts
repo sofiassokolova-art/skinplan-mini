@@ -242,11 +242,8 @@ export const api = {
           if (age < cacheMaxAge) {
             // Кэш свежий - возвращаем закэшированный результат
             if (cached === 'null') {
-              // Профиль не найден (404) - выбрасываем ошибку как обычно
-              const error: any = new Error('No profile found');
-              error.status = 404;
-              error.isNotFound = true;
-              throw error;
+              // Профиль не найден - возвращаем null
+              return null;
             }
             // Профиль найден - возвращаем из кэша
             return JSON.parse(cached);
@@ -264,12 +261,18 @@ export const api = {
         const profilePromise = (async () => {
           try {
             const profile = await request('/profile/current');
+            // Если профиль null - это нормально, кэшируем как 'null'
+            if (profile === null) {
+              sessionStorage.setItem(cacheKey, 'null');
+              sessionStorage.setItem(cacheTimestampKey, String(Date.now()));
+              return null;
+            }
             // Сохраняем в кэш
             sessionStorage.setItem(cacheKey, JSON.stringify(profile));
             sessionStorage.setItem(cacheTimestampKey, String(Date.now()));
             return profile;
           } catch (error: any) {
-            // Если 404 - тоже кэшируем, чтобы не делать повторные запросы
+            // Если 404 - тоже кэшируем, чтобы не делать повторные запросы (для обратной совместимости)
             if (error?.status === 404 || error?.isNotFound) {
               sessionStorage.setItem(cacheKey, 'null');
               sessionStorage.setItem(cacheTimestampKey, String(Date.now()));

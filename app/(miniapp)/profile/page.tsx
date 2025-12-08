@@ -132,8 +132,10 @@ export default function PersonalCabinet() {
 
       // Профиль кожи
       try {
-        const profile = await api.getCurrentProfile() as SkinProfile;
-        setSkinProfile(profile);
+        const profile = await api.getCurrentProfile() as SkinProfile | null;
+        if (profile) {
+          setSkinProfile(profile);
+        }
         
         // Пробуем загрузить план для вычисления текущего дня
         // Используем getPlan() который НЕ триггерит генерацию (только проверяет кэш)

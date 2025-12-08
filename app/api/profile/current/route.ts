@@ -46,13 +46,11 @@ export async function GET(request: NextRequest) {
 
     if (!profile) {
       // Это нормальная ситуация для пользователей, которые еще не прошли анкету
-      // Логируем как INFO, а не WARN
-      logger.info('Profile not found (user may not have completed questionnaire yet)', { userId });
+      // Возвращаем 200 с null вместо 404 для более RESTful подхода
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       
-      return NextResponse.json(
-        { error: 'No profile found' },
-        { status: 404 }
-      );
+      return NextResponse.json(null, { status: 200 });
     }
 
     // Преобразуем тип кожи в русский для отображения

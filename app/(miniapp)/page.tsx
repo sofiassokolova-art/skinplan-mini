@@ -168,12 +168,12 @@ export default function HomePage() {
             hasProfile = true;
             clientLogger.log('✅ Profile exists, user has completed quiz');
           } else {
-            // Профиль вернулся, но без id - считаем, что профиля нет
-            clientLogger.log('ℹ️ Profile response received but no id, treating as no profile');
+            // Профиль null или без id - считаем, что профиля нет
+            clientLogger.log('ℹ️ Profile not found (expected for new users or incomplete quiz)');
             hasProfile = false;
           }
         } catch (err: any) {
-          // Проверяем, какая именно ошибка
+          // Проверяем, какая именно ошибка (для обратной совместимости с 404)
           const errorMessage = err?.message || err?.toString() || '';
           const isNotFound = errorMessage.includes('404') || 
                             errorMessage.includes('No skin profile') ||
