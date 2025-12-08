@@ -563,10 +563,24 @@ export default function QuizPage() {
       // ВАЖНО: Защита от повторных загрузок прогресса
       // ИСПРАВЛЕНО: Загружаем прогресс ДО установки loading = false, чтобы экран resume показался вовремя
       // ИСПРАВЛЕНО: Добавлена дополнительная проверка initCompletedRef, чтобы предотвратить повторные вызовы после инициализации
+      // ИСПРАВЛЕНО: Добавлена дополнительная проверка hasResumed ПЕРЕД вызовом loadSavedProgressFromServer
+      // ИСПРАВЛЕНО: Добавлена проверка loadProgressInProgressRef и progressLoadInProgressRef
+      // Это предотвращает повторные вызовы в Telegram Mini App, где могут быть особенности с рендерингом
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && !hasResumed && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current &&
           !initCompletedRef.current) { // ИСПРАВЛЕНО: Не загружаем прогресс, если инициализация уже завершена
+        // ИСПРАВЛЕНО: Дополнительная проверка hasResumed перед установкой progressLoadInProgressRef
+        // Это предотвращает начало загрузки, если пользователь уже продолжил анкету
+        if (hasResumedRef.current || hasResumed || loadProgressInProgressRef.current || progressLoadInProgressRef.current) {
+          clientLogger.log('⏸️ Пропущена загрузка прогресса в init', {
+            hasResumedRef: hasResumedRef.current,
+            hasResumed,
+            loadProgressInProgress: loadProgressInProgressRef.current,
+            progressLoadInProgress: progressLoadInProgressRef.current,
+          });
+          return;
+        }
         progressLoadInProgressRef.current = true;
         try {
           clientLogger.log('🔄 Загружаем прогресс с сервера...');
@@ -593,7 +607,13 @@ export default function QuizPage() {
             setShowResumeScreen(false);
           }
         } finally {
-          progressLoadInProgressRef.current = false;
+          // ИСПРАВЛЕНО: Не сбрасываем флаг, если пользователь уже продолжил анкету
+          // Это предотвращает повторные вызовы в Telegram Mini App
+          if (!hasResumedRef.current && !hasResumed) {
+            progressLoadInProgressRef.current = false;
+          } else {
+            clientLogger.log('🔒 init: оставляем progressLoadInProgressRef установленным, так как hasResumed = true');
+          }
         }
       } else {
         // Если Telegram WebApp не доступен или пользователь уже продолжил, очищаем localStorage (прогресс должен быть на сервере)
@@ -808,10 +828,36 @@ export default function QuizPage() {
   const loadProgressInProgressRef = useRef(false);
 
   const loadSavedProgressFromServer = async () => {
+    // ИСПРАВЛЕНО: Логируем вызов для отладки в Telegram Mini App
+    clientLogger.log('🔄 loadSavedProgressFromServer: вызов', {
+      loadProgressInProgress: loadProgressInProgressRef.current,
+      progressLoadInProgress: progressLoadInProgressRef.current,
+      hasResumedRef: hasResumedRef.current,
+      hasResumed,
+      initCompleted: initCompletedRef.current,
+      stack: new Error().stack?.split('\n').slice(1, 4).join('\n'),
+    });
+    
     // Защита от множественных вызовов
     if (loadProgressInProgressRef.current) {
+      clientLogger.log('⏸️ loadSavedProgressFromServer: уже выполняется, пропускаем');
       return;
     }
+    
+    // ИСПРАВЛЕНО: Проверяем hasResumed ПЕРЕД установкой loadProgressInProgressRef
+    // Это предотвращает начало загрузки, если пользователь уже продолжил анкету
+    if (hasResumedRef.current || hasResumed) {
+      clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true, пропускаем');
+      return;
+    }
+    
+    // ИСПРАВЛЕНО: Дополнительная проверка progressLoadInProgressRef
+    // Это предотвращает повторные вызовы после resumeQuiz
+    if (progressLoadInProgressRef.current) {
+      clientLogger.log('⏸️ loadSavedProgressFromServer: progressLoadInProgressRef = true, пропускаем');
+      return;
+    }
+    
     loadProgressInProgressRef.current = true;
 
     try {
@@ -823,7 +869,9 @@ export default function QuizPage() {
       // Если пользователь уже нажал "Продолжить" (hasResumed = true), не загружаем прогресс снова
       // Это предотвращает повторное появление экрана "Вы не завершили анкету"
       // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
+      // ИСПРАВЛЕНО: Проверяем еще раз перед API вызовом
       if (hasResumedRef.current || hasResumed) {
+        clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true перед API вызовом, пропускаем');
         return;
       }
       // Проверяем, что Telegram WebApp доступен перед запросом
@@ -881,6 +929,16 @@ export default function QuizPage() {
         // Это критично, так как запрос мог быть отправлен до установки hasResumedRef
         if (hasResumedRef.current || hasResumed) {
           clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено перед установкой состояний, так как hasResumed = true', {
+            refValue: hasResumedRef.current,
+            stateValue: hasResumed,
+          });
+          return;
+        }
+        
+        // ИСПРАВЛЕНО: Финальная проверка hasResumed ПЕРЕД установкой состояний
+        // Это критично для предотвращения бесконечного цикла между экраном продолжения и первым экраном анкеты
+        if (hasResumedRef.current || hasResumed) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true перед установкой состояний, пропускаем', {
             refValue: hasResumedRef.current,
             stateValue: hasResumed,
           });
@@ -950,7 +1008,22 @@ export default function QuizPage() {
       setSavedProgress(null);
       setShowResumeScreen(false);
     } finally {
-      loadProgressInProgressRef.current = false;
+      // ИСПРАВЛЕНО: Не сбрасываем флаги, если пользователь уже продолжил анкету
+      // Это предотвращает повторные вызовы loadSavedProgressFromServer в Telegram Mini App
+      if (!hasResumedRef.current && !hasResumed) {
+        loadProgressInProgressRef.current = false;
+      } else {
+        // Если hasResumed = true, оставляем флаги установленными, чтобы предотвратить повторные вызовы
+        clientLogger.log('🔒 loadSavedProgressFromServer: оставляем флаги установленными, так как hasResumed = true');
+      }
+      
+      // ИСПРАВЛЕНО: Дополнительная проверка после завершения загрузки
+      // Если hasResumed стал true во время загрузки, очищаем состояния
+      if (hasResumedRef.current || hasResumed) {
+        clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true после загрузки, очищаем состояния');
+        setSavedProgress(null);
+        setShowResumeScreen(false);
+      }
     }
   };
 
@@ -1178,173 +1251,44 @@ export default function QuizPage() {
 
     if (!questionnaire) return;
 
-    // Получаем все вопросы с фильтрацией
-    const allQuestionsRaw = [
-      ...questionnaire.groups.flatMap((g) => g.questions),
-      ...questionnaire.questions,
-    ];
+    // ИСПРАВЛЕНО: Используем мемоизированный allQuestions из компонента вместо локального вычисления
+    // Это гарантирует, что мы используем тот же массив вопросов, что и в остальном компоненте
+    // Локальное вычисление может привести к несоответствию индексов после изменения фильтрации
+    // (например, после ответа на вопрос про бюджет)
     
-    // Фильтруем вопросы на основе ответов
-    // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
-    // При повторном прохождении исключаем вопросы про пол и возраст
-    const allQuestions = allQuestionsRaw.filter((question) => {
-      // При повторном прохождении исключаем вопросы про пол и возраст
-      if (isRetakingQuiz && !showRetakeScreen) {
-        if (question.code === 'gender' || question.code === 'GENDER' || 
-            question.code === 'age' || question.code === 'AGE' ||
-            question.text?.toLowerCase().includes('ваш пол') ||
-            question.text?.toLowerCase().includes('сколько вам лет')) {
-          return false;
-        }
-      }
+    // Проверяем, что currentQuestionIndex валиден для текущего allQuestions
+    if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
+      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы allQuestions, корректируем', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        questionIds: allQuestions.map((q: Question) => q.id),
+      });
+      // Корректируем индекс на последний валидный вопрос
+      const correctedIndex = Math.max(0, allQuestions.length - 1);
+      setCurrentQuestionIndex(correctedIndex);
+      await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
+      return;
+    }
+    
+    // Проверяем, что текущий вопрос существует в allQuestions
+    const currentQuestionInAllQuestions = allQuestions[currentQuestionIndex];
+    if (!currentQuestionInAllQuestions && allQuestions.length > 0) {
+      clientLogger.warn('⚠️ Текущий вопрос не найден в allQuestions, ищем правильный индекс', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        allQuestionIds: allQuestions.map((q: Question) => q.id),
+      });
       
-      // Проверяем, является ли это вопросом про реакцию на ретинол (retinoid_reaction)
-      // Этот вопрос должен показываться только если на вопрос retinoid_usage ответили "Да"
-      const isRetinoidReactionQuestion = question.code === 'retinoid_reaction' ||
-                                         question.text?.toLowerCase().includes('как кожа реагировала');
-      
-      if (isRetinoidReactionQuestion) {
-        // Ищем ответ на вопрос о использовании ретинола (retinoid_usage)
-        let retinoidUsageValue: string | undefined;
-        let retinoidUsageQuestion: Question | undefined;
-        
-        for (const q of allQuestionsRaw) {
-          if (q.code === 'retinoid_usage') {
-            retinoidUsageQuestion = q;
-            if (answers[q.id]) {
-              const answerValue = Array.isArray(answers[q.id]) 
-                ? (answers[q.id] as string[])[0] 
-                : (answers[q.id] as string);
-              
-              retinoidUsageValue = answerValue;
-              
-              // Если это не похоже на текст (может быть ID), ищем опцию
-              if (q.options && q.options.length > 0) {
-                const matchingOption = q.options.find(opt => 
-                  opt.id.toString() === answerValue || 
-                  opt.value === answerValue ||
-                  opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
-                  opt.label?.toLowerCase() === answerValue?.toLowerCase()
-                );
-                if (matchingOption) {
-                  retinoidUsageValue = matchingOption.value || matchingOption.label || answerValue;
-                }
-              }
-              break;
-            }
-          }
-        }
-        
-        // Показываем вопрос только если на вопрос о ретиноле ответили "Да"
-        const answeredYes = retinoidUsageValue?.toLowerCase().includes('да') ||
-                            retinoidUsageValue?.toLowerCase() === 'yes' ||
-                            retinoidUsageValue === 'Да' ||
-                            (retinoidUsageQuestion?.options?.some(opt => 
-                              (opt.value?.toLowerCase().includes('да') || 
-                               opt.label?.toLowerCase().includes('да')) &&
-                              (answers[retinoidUsageQuestion.id] === opt.value || 
-                               answers[retinoidUsageQuestion.id] === opt.id.toString() ||
-                               answers[retinoidUsageQuestion.id] === opt.label)
-                            ));
-        
-        const shouldShow = answeredYes === true;
-        if (!shouldShow) {
-          clientLogger.log('🚫 Question filtered out (retinoid_reaction without "Да" on retinoid_usage):', question.code);
-        }
-        return shouldShow;
-      }
-      
-      // Проверяем, является ли это вопросом про беременность/кормление
-      const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
-                                  question.code === 'pregnancy' ||
-                                  question.text?.toLowerCase().includes('беременн') ||
-                                  question.text?.toLowerCase().includes('кормлен');
-      
-      if (!isPregnancyQuestion) {
-        return true; // Показываем все остальные вопросы
-      }
-      
-      // Для вопроса про беременность проверяем пол
-      // Ищем ответ на вопрос о поле (gender)
-      let genderValue: string | undefined;
-      let genderQuestion: Question | undefined;
-      let genderOption: { id: number; value: string; label: string } | undefined;
-      
-      for (const q of allQuestionsRaw) {
-        if (q.code === 'gender' || q.code === 'GENDER') {
-          genderQuestion = q;
-          // Проверяем текущие ответы
-          if (answers[q.id]) {
-            const answerValue = Array.isArray(answers[q.id]) 
-              ? (answers[q.id] as string[])[0] 
-              : String(answers[q.id]);
-            
-            // Ищем соответствующую опцию по ID, value или label
-            if (q.options && q.options.length > 0) {
-              genderOption = q.options.find(opt => 
-                opt.id.toString() === answerValue || 
-                String(opt.id) === answerValue ||
-                opt.value === answerValue ||
-                opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
-                opt.label === answerValue ||
-                opt.label?.toLowerCase() === answerValue?.toLowerCase()
-              );
-              
-              if (genderOption) {
-                genderValue = genderOption.label || genderOption.value || answerValue;
-              } else {
-                genderValue = answerValue;
-              }
-            } else {
-              genderValue = answerValue;
-            }
-            break;
-          }
-        }
-      }
-      
-      // Проверяем, является ли выбранный пол "мужской"
-      let isMale = false;
-      
-      if (genderOption) {
-        // Если нашли опцию, проверяем её label и value
-        const optLabel = (genderOption.label || '').toLowerCase().trim();
-        const optValue = (genderOption.value || '').toLowerCase().trim();
-        isMale = optLabel.includes('мужск') || 
-                 optValue.includes('мужск') ||
-                 optValue.includes('male') ||
-                 optLabel.includes('male') ||
-                 optValue === 'gender_2' || // Мужской вариант
-                 optLabel === 'мужской';
-      } else if (genderValue) {
-        // Если опцию не нашли, проверяем значение напрямую
-        const normalizedValue = genderValue.toLowerCase().trim();
-        isMale = normalizedValue.includes('мужск') || 
-                 normalizedValue.includes('male') ||
-                 normalizedValue === 'male' ||
-                 normalizedValue === 'мужской' ||
-                 normalizedValue === 'gender_2' || // Мужской вариант
-                 normalizedValue === '137'; // ID мужской опции
-      } else if (genderQuestion && answers[genderQuestion.id]) {
-        // Если не нашли опцию, но есть ответ, проверяем напрямую по ID/value
-        const answerValue = String(answers[genderQuestion.id]);
-        isMale = answerValue === '137' || // ID мужской опции
-                 answerValue === 'gender_2' || // value мужской опции
-                 answerValue.toLowerCase().includes('мужск') ||
-                 answerValue.toLowerCase().includes('male');
-      }
-      
-      const shouldShow = !isMale; // Показываем только если не мужчина
-      if (!shouldShow) {
-        clientLogger.log('🚫 Question filtered out (pregnancy question for male):', question.code, {
-          genderValue,
-          genderOption: genderOption ? { id: genderOption.id, value: genderOption.value, label: genderOption.label } : null,
-          answerValue: genderQuestion ? answers[genderQuestion.id] : undefined,
-          isMale,
-        });
-      }
-      return shouldShow;
-    });
+      // ИСПРАВЛЕНО: Если вопрос не найден по индексу, корректируем на последний валидный индекс
+      // Это может произойти после изменения фильтрации (например, после ответа на вопрос про бюджет)
+      const correctedIndex = Math.max(0, allQuestions.length - 1);
+      setCurrentQuestionIndex(correctedIndex);
+      await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
+      return;
+    }
+    
+    // ИСПРАВЛЕНО: Больше не вычисляем allQuestions локально - используем мемоизированный из компонента
+    // Это гарантирует консистентность индексов и предотвращает проблемы после изменения фильтрации
 
     // Если показывается информационный экран между вопросами, проверяем, есть ли следующий инфо-экран в цепочке
     // При повторном прохождении пропускаем все info screens
@@ -2612,6 +2556,12 @@ export default function QuizPage() {
     // даже если loadSavedProgressFromServer установит setShowResumeScreen(true) позже
     setSavedProgress(null);
     
+    // ИСПРАВЛЕНО: Устанавливаем флаги, чтобы предотвратить повторные вызовы loadSavedProgressFromServer
+    // Это критично для Telegram Mini App, где могут быть особенности с рендерингом
+    loadProgressInProgressRef.current = true;
+    progressLoadInProgressRef.current = true;
+    clientLogger.log('🔒 Установлены флаги для предотвращения повторных загрузок прогресса');
+    
     // Восстанавливаем прогресс из сохраненной копии
     setAnswers(progressToRestore.answers);
     
@@ -3150,14 +3100,33 @@ export default function QuizPage() {
   useEffect(() => {
     if (!hasResumed || !questionnaire || allQuestions.length === 0) return;
     
-    // Если currentQuestionIndex выходит за пределы массива, корректируем его
+    // ИСПРАВЛЕНО: Проверяем, что currentQuestionIndex валиден для текущего allQuestions
+    // Это важно после изменения фильтрации (например, после ответа на вопрос про бюджет)
     if (currentQuestionIndex >= allQuestions.length) {
       // Логируем только в консоль, не используем addDebugLog чтобы избежать проблем с хуками
       clientLogger.log('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
+        questionIds: allQuestions.map((q: Question) => q.id),
       });
       setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
+      return;
+    }
+    
+    // ИСПРАВЛЕНО: Проверяем, что текущий вопрос существует в allQuestions
+    // Если вопрос был отфильтрован, корректируем индекс
+    const currentQuestionInAllQuestions = allQuestions[currentQuestionIndex];
+    if (!currentQuestionInAllQuestions && allQuestions.length > 0) {
+      clientLogger.warn('⚠️ Текущий вопрос не найден в allQuestions, корректируем индекс', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        allQuestionIds: allQuestions.map((q: Question) => q.id),
+      });
+      
+      // Корректируем на последний валидный индекс
+      const correctedIndex = Math.max(0, allQuestions.length - 1);
+      setCurrentQuestionIndex(correctedIndex);
+      return;
     }
     
     // Также убеждаемся, что мы не на начальных экранах после восстановления
@@ -3166,7 +3135,7 @@ export default function QuizPage() {
       clientLogger.log('✅ Корректируем infoScreenIndex после восстановления');
       setCurrentInfoScreenIndex(initialInfoScreens.length);
     }
-  }, [hasResumed, allQuestions, currentQuestionIndex, questionnaire]); // ИСПРАВЛЕНО: Убрали currentInfoScreenIndex из зависимостей, чтобы избежать бесконечного цикла
+  }, [hasResumed, allQuestions, currentQuestionIndex, questionnaire]); // ИСПРАВЛЕНО: Убрали currentQuestion из зависимостей, используем allQuestions[currentQuestionIndex] внутри
 
   // При повторном прохождении сразу переходим к вопросам
   // ВАЖНО: Эта логика должна выполняться только один раз при инициализации, а не при каждом рендере
@@ -3344,6 +3313,11 @@ export default function QuizPage() {
   // Также пропускаем, если пользователь уже начал отвечать (currentQuestionIndex > 0 или есть ответы)
   // ВАЖНО: Если есть savedProgress, значит пользователь должен продолжить, и мы не должны показывать начальные экраны
   const isShowingInitialInfoScreen = useMemo(() => {
+    // ИСПРАВЛЕНО: Если пользователь уже продолжил анкету (hasResumedRef), никогда не показываем начальные экраны
+    // Это критично для предотвращения бесконечного цикла между экраном продолжения и первым экраном
+    if (hasResumedRef.current || hasResumed) {
+      return false;
+    }
     // Если показывается экран выбора тем при перепрохождении - не показываем начальные экраны
     if (showRetakeScreen && isRetakingQuiz) {
       return false;
@@ -3355,10 +3329,6 @@ export default function QuizPage() {
     // Если есть сохраненный прогресс (даже если еще не нажали "Продолжить") - не показываем начальные экраны
     // Это предотвращает показ начальных экранов на промежуточных рендерах после resumeQuiz
     if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
-      return false;
-    }
-    // Если пользователь восстановил прогресс - не показываем начальные экраны
-    if (hasResumed) {
       return false;
     }
     // ВАЖНО: Если повторное прохождение БЕЗ экрана выбора тем - не показываем начальные экраны
