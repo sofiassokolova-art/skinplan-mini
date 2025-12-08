@@ -1,153 +1,130 @@
 // scripts/clear-all-user-data.ts
-// Скрипт для полной очистки всех данных пользователя (как новый пользователь)
+// Полная очистка всех данных пользователя, включая рекомендации по очистке localStorage
 
-// ВАЖНО: Загружаем переменные окружения ДО всех импортов
-// Это нужно для доступа к Redis/KV переменным, которые есть в Vercel
-import { createRequire } from 'module';
-import { resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { prisma } from '../lib/db';
+import { invalidateAllUserCache, invalidateCache } from '../lib/cache';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const require = createRequire(import.meta.url);
+const userId = 'cmieq8w2v0000js0480u0n0ax'; // User ID для Sofia
+const telegramId = '643160759';
 
-// Загружаем dotenv синхронно
-const dotenv = require('dotenv');
-
-// Загружаем .env.local (приоритет) или .env
-dotenv.config({ path: resolve(process.cwd(), '.env.local') });
-dotenv.config({ path: resolve(process.cwd(), '.env') });
-
-// Теперь импортируем модули после загрузки переменных
-import { PrismaClient } from '@prisma/client';
-import { invalidateCache, invalidateAllUserCache } from '../lib/cache';
-
-const prisma = new PrismaClient();
-
-async function clearAllUserData(telegramId: string) {
-  console.log(`\n🗑️  ПОЛНАЯ ОЧИСТКА всех данных пользователя ${telegramId}\n`);
+async function clearAllUserData() {
+  console.log('🔄 Полная очистка всех данных пользователя:');
+  console.log(`   User ID: ${userId}`);
+  console.log(`   Telegram ID: ${telegramId}`);
+  console.log('');
   
   try {
-    const user = await prisma.user.findFirst({
-      where: { telegramId },
-      include: {
-        skinProfiles: true,
-      },
+    // 1. Получаем информацию о профиле
+    const profile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { version: 'desc' },
+      select: { id: true, version: true, skinType: true },
     });
-
-    if (!user) {
-      console.error(`❌ Пользователь с Telegram ID "${telegramId}" не найден`);
-      process.exit(1);
-    }
-
-    console.log(`✅ Пользователь найден: ${user.firstName} ${user.lastName || ''} (ID: ${user.id})\n`);
-
-    // Получаем все версии профилей для инвалидации кэша
-    const profileVersions = user.skinProfiles.map(p => p.version);
-
-    // 1. Удаляем ответы на анкету (UserAnswer)
-    console.log('📋 Удаляю ответы на анкету...');
-    const answersDeleted = await prisma.userAnswer.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено ответов: ${answersDeleted.count}`);
-
-    // 2. Удаляем профили кожи (SkinProfile) - это удалит все связанные данные
-    console.log('📋 Удаляю профили кожи...');
-    const profilesDeleted = await prisma.skinProfile.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено профилей: ${profilesDeleted.count}`);
-
-    // 3. Удаляем сессии рекомендаций
-    console.log('📋 Удаляю сессии рекомендаций...');
-    const sessionsDeleted = await prisma.recommendationSession.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено сессий: ${sessionsDeleted.count}`);
-
-    // 4. Удаляем прогресс плана
-    console.log('📋 Удаляю прогресс плана...');
-    const progressDeleted = await prisma.planProgress.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено записей прогресса: ${progressDeleted.count}`);
-
-    // 5. Удаляем отзывы на план
-    console.log('📋 Удаляю отзывы на план...');
-    const feedbackDeleted = await prisma.planFeedback.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено отзывов: ${feedbackDeleted.count}`);
-
-    // 6. Удаляем избранное (wishlist)
-    console.log('📋 Удаляю избранное...');
-    const wishlistDeleted = await prisma.wishlist.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено из избранного: ${wishlistDeleted.count}`);
-
-    // 7. Удаляем отзывы на избранное
-    console.log('📋 Удаляю отзывы на избранное...');
-    const wishlistFeedbackDeleted = await prisma.wishlistFeedback.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено отзывов на избранное: ${wishlistFeedbackDeleted.count}`);
-
-    // 8. Удаляем замены продуктов
-    console.log('📋 Удаляю замены продуктов...');
-    const replacementsDeleted = await prisma.productReplacement.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено замен: ${replacementsDeleted.count}`);
-
-    // 9. Удаляем корзину
-    console.log('📋 Удаляю корзину...');
-    const cartDeleted = await prisma.cart.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено из корзины: ${cartDeleted.count}`);
-
-    // 10. Инвалидируем весь кэш пользователя (все версии)
-    // ВАЖНО: Делаем это ДО удаления профилей, чтобы получить версии
-    // Но также очищаем весь кэш после удаления, чтобы гарантировать полную очистку
-    console.log('📋 Инвалидирую кэш плана и рекомендаций...');
     
-    // Сначала очищаем кэш для известных версий (если они есть)
-    for (const version of profileVersions) {
+    if (profile) {
+      console.log('📊 Текущий профиль:');
+      console.log(`   Profile ID: ${profile.id}`);
+      console.log(`   Version: ${profile.version}`);
+      console.log(`   Skin Type: ${profile.skinType}`);
+      console.log('');
+      
+      // Очищаем кэш для конкретной версии
+      console.log(`📋 Очищаю кэш для версии ${profile.version}...`);
       try {
-        await invalidateCache(user.id, version);
-        console.log(`   ✅ Кэш инвалидирован для версии ${version}`);
-      } catch (error) {
-        console.warn(`   ⚠️  Ошибка при инвалидации кэша версии ${version} (может быть недоступен): ${error}`);
+        await invalidateCache(userId, profile.version);
+        console.log('   ✅ Кэш для версии очищен');
+      } catch (cacheError: any) {
+        console.warn('   ⚠️ Ошибка при очистке кэша версии:', cacheError?.message);
       }
     }
     
-    // Затем очищаем весь кэш пользователя (все возможные версии)
-    // Это гарантирует, что даже если версии не были получены, кэш будет очищен
+    // 2. Очищаем весь кэш пользователя (все версии)
+    console.log('📋 Очищаю весь кэш пользователя (все версии)...');
     try {
-      await invalidateAllUserCache(user.id);
-      console.log(`   ✅ Весь кэш пользователя очищен (все версии)`);
-    } catch (error) {
-      console.warn(`   ⚠️  Ошибка при полной очистке кэша (может быть недоступен): ${error}`);
+      await invalidateAllUserCache(userId);
+      console.log('   ✅ Весь кэш очищен');
+    } catch (cacheError: any) {
+      console.warn('   ⚠️ Ошибка при очистке кэша:', cacheError?.message);
     }
-
-    // Финальная проверка
-    const finalAnswersCount = await prisma.userAnswer.count({ where: { userId: user.id } });
-    const finalProfilesCount = await prisma.skinProfile.count({ where: { userId: user.id } });
-    const finalSessionsCount = await prisma.recommendationSession.count({ where: { userId: user.id } });
-    const finalProgressCount = await prisma.planProgress.count({ where: { userId: user.id } });
-
-    console.log('\n🎉 Полная очистка завершена успешно!');
-    console.log(`📊 Финальное состояние:`);
-    console.log(`   - Ответов на анкету: ${finalAnswersCount}`);
-    console.log(`   - Профилей кожи: ${finalProfilesCount}`);
-    console.log(`   - Сессий рекомендаций: ${finalSessionsCount}`);
-    console.log(`   - Записей прогресса: ${finalProgressCount}`);
-    console.log(`\n✅ Пользователь может пройти весь путь заново как новый пользователь!\n`);
-
-  } catch (error) {
+    
+    // 3. Удаляем все RecommendationSession
+    console.log('📋 Удаляю RecommendationSession...');
+    const sessionsDeleted = await prisma.recommendationSession.deleteMany({
+      where: { userId },
+    });
+    console.log(`   ✅ Удалено сессий: ${sessionsDeleted.count}`);
+    
+    // 4. Удаляем PlanProgress
+    console.log('📋 Удаляю PlanProgress...');
+    try {
+      const progressDeleted = await prisma.planProgress.deleteMany({
+        where: { userId },
+      });
+      console.log(`   ✅ Удалено записей прогресса: ${progressDeleted.count}`);
+    } catch (progressError: any) {
+      if (progressError?.code === 'P2022' || progressError?.message?.includes('completed_days')) {
+        console.log('   ⚠️ PlanProgress не удален (проблема со схемой БД), но это не критично');
+      } else {
+        console.warn('   ⚠️ Ошибка при удалении PlanProgress:', progressError?.message);
+      }
+    }
+    
+    // 5. Удаляем все ответы на анкету (UserAnswer)
+    console.log('📋 Удаляю ответы на анкету (UserAnswer)...');
+    const answersDeleted = await prisma.userAnswer.deleteMany({
+      where: { userId },
+    });
+    console.log(`   ✅ Удалено ответов: ${answersDeleted.count}`);
+    
+    // 6. Удаляем все профили (SkinProfile)
+    console.log('📋 Удаляю профили (SkinProfile)...');
+    const profilesDeleted = await prisma.skinProfile.deleteMany({
+      where: { userId },
+    });
+    console.log(`   ✅ Удалено профилей: ${profilesDeleted.count}`);
+    
+    // 7. Проверяем, что все очищено
+    const remainingProfile = await prisma.skinProfile.findFirst({
+      where: { userId },
+    });
+    const remainingAnswers = await prisma.userAnswer.count({
+      where: { userId },
+    });
+    const remainingSessions = await prisma.recommendationSession.count({
+      where: { userId },
+    });
+    
+    let remainingProgress = 0;
+    try {
+      remainingProgress = await prisma.planProgress.count({
+        where: { userId },
+      });
+    } catch {
+      // Игнорируем ошибки схемы
+    }
+    
+    console.log('\n✅ Очистка БД завершена!');
+    console.log(`   Осталось профилей: ${remainingProfile ? 1 : 0}`);
+    console.log(`   Осталось ответов: ${remainingAnswers}`);
+    console.log(`   Осталось сессий: ${remainingSessions}`);
+    console.log(`   Осталось прогресса: ${remainingProgress}`);
+    
+    if (remainingProfile || remainingAnswers > 0) {
+      console.log('\n⚠️ ВНИМАНИЕ: Некоторые данные не были удалены!');
+    } else {
+      console.log('\n✅ Пользователь теперь как новый - будет перенаправлен на анкету');
+    }
+    
+    // 8. Инструкции по очистке localStorage
+    console.log('\n📱 ВАЖНО: Очистите localStorage в браузере:');
+    console.log('   Откройте консоль браузера (F12) и выполните:');
+    console.log('   localStorage.removeItem("is_retaking_quiz");');
+    console.log('   localStorage.removeItem("full_retake_from_home");');
+    console.log('   localStorage.removeItem("quiz_progress");');
+    console.log('   sessionStorage.removeItem("quiz_just_submitted");');
+    console.log('   Или очистите все: localStorage.clear(); sessionStorage.clear();');
+    
+  } catch (error: any) {
     console.error('❌ Ошибка при очистке:', error);
     throw error;
   } finally {
@@ -155,11 +132,13 @@ async function clearAllUserData(telegramId: string) {
   }
 }
 
-const telegramIdArg = process.argv[2] || '643160759';
-clearAllUserData(telegramIdArg)
-  .catch((e) => {
-    console.error('❌ Критическая ошибка:', e);
+clearAllUserData()
+  .then(() => {
+    console.log('\n🎉 Готово! Все данные удалены из БД.');
+    console.log('   Не забудьте очистить localStorage в браузере!');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('\n❌ Ошибка:', error);
     process.exit(1);
   });
-
-

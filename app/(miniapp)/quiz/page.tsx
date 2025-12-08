@@ -149,31 +149,68 @@ export default function QuizPage() {
     
     // ИСПРАВЛЕНО: Проверяем, есть ли уже профиль (анкета завершена)
     // Если профиль есть, не показываем начало анкеты, а редиректим на /plan
+    // ВАЖНО: НЕ проверяем профиль, если установлен флаг перепрохождения - это может быть ложный срабатывание
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current) {
-      const checkProfile = async () => {
-        try {
-          const profile = await api.getCurrentProfile();
-          if (profile && (profile as any).id) {
-            // Профиль существует - анкета уже завершена
-            console.log('✅ Профиль существует, анкета завершена - редиректим на /plan');
-            initCompletedRef.current = true;
-            setLoading(false);
-            window.location.replace('/plan');
-            return;
+      // ИСПРАВЛЕНО: Проверяем флаги перепрохождения ПЕРЕД проверкой профиля
+      const isRetakingFromStorage = localStorage.getItem('is_retaking_quiz') === 'true';
+      const fullRetakeFromHome = localStorage.getItem('full_retake_from_home') === 'true';
+      
+      // Если флаги перепрохождения установлены, но профиля нет - очищаем флаги
+      // Это может быть остаточный флаг от предыдущей сессии
+      if (isRetakingFromStorage || fullRetakeFromHome) {
+        const checkProfile = async () => {
+          try {
+            const profile = await api.getCurrentProfile();
+            if (!profile || !(profile as any).id) {
+              // Профиля нет, но флаги перепрохождения установлены - это ошибка
+              console.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
+              localStorage.removeItem('is_retaking_quiz');
+              localStorage.removeItem('full_retake_from_home');
+              // Продолжаем как новый пользователь
+              return;
+            }
+            // Профиль есть - это нормальное перепрохождение
+          } catch (err: any) {
+            // Профиля нет - очищаем флаги
+            const isNotFound = err?.status === 404 || 
+                              err?.message?.includes('404') || 
+                              err?.message?.includes('No profile') ||
+                              err?.message?.includes('Profile not found');
+            if (isNotFound) {
+              console.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
+              localStorage.removeItem('is_retaking_quiz');
+              localStorage.removeItem('full_retake_from_home');
+            }
           }
-        } catch (err: any) {
-          // Профиля нет - это нормально, продолжаем инициализацию
-          const isNotFound = err?.status === 404 || 
-                            err?.message?.includes('404') || 
-                            err?.message?.includes('No profile') ||
-                            err?.message?.includes('Profile not found');
-          if (!isNotFound) {
-            console.warn('⚠️ Ошибка при проверке профиля:', err);
+        };
+        checkProfile().catch(() => {});
+      } else {
+        // Флагов перепрохождения нет - проверяем профиль как обычно
+        const checkProfile = async () => {
+          try {
+            const profile = await api.getCurrentProfile();
+            if (profile && (profile as any).id) {
+              // Профиль существует - анкета уже завершена
+              console.log('✅ Профиль существует, анкета завершена - редиректим на /plan');
+              initCompletedRef.current = true;
+              setLoading(false);
+              window.location.replace('/plan');
+              return;
+            }
+          } catch (err: any) {
+            // Профиля нет - это нормально, продолжаем инициализацию
+            const isNotFound = err?.status === 404 || 
+                              err?.message?.includes('404') || 
+                              err?.message?.includes('No profile') ||
+                              err?.message?.includes('Profile not found');
+            if (!isNotFound) {
+              console.warn('⚠️ Ошибка при проверке профиля:', err);
+            }
           }
-        }
-      };
-      // Выполняем проверку асинхронно, но не блокируем инициализацию
-      checkProfile().catch(() => {});
+        };
+        // Выполняем проверку асинхронно, но не блокируем инициализацию
+        checkProfile().catch(() => {});
+      }
     }
     
     // ВАЖНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
