@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
   const path = '/api/plan/replace-product';
-  let userId: string | undefined;
+  let userId: string | null | undefined;
   
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
