@@ -93,11 +93,16 @@ export async function POST(request: NextRequest) {
           url: url || null,
         },
       });
-      console.log('✅ /api/logs: Log saved successfully', {
+      // ИСПРАВЛЕНО: Логируем более детально для диагностики
+      const logInfo = {
         userId,
         level,
-        message: message.substring(0, 50), // Первые 50 символов сообщения
-      });
+        message: message.substring(0, 50),
+        timestamp: new Date().toISOString(),
+      };
+      console.log('✅ /api/logs: Log saved successfully', logInfo);
+      // Также логируем в server logger для отслеживания
+      logger.info('Client log saved', logInfo);
     } catch (dbError: any) {
       console.error('❌ /api/logs: Database error saving log:', {
         error: dbError?.message,

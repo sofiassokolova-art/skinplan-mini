@@ -1372,8 +1372,13 @@ export default function QuizPage() {
         console.warn('⚠️ initData не доступен для логирования');
       }
     } catch (logError) {
-      // Игнорируем ошибки логирования
-      console.warn('⚠️ Ошибка при логировании:', logError);
+      // ИСПРАВЛЕНО: Логируем ошибки более детально для диагностики
+      console.error('❌ КРИТИЧЕСКАЯ ОШИБКА при логировании (submitAnswers called):', {
+        error: logError,
+        message: logError instanceof Error ? logError.message : String(logError),
+        stack: logError instanceof Error ? logError.stack : undefined,
+        hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
+      });
     }
     
     // Сохраняем функцию в ref для использования в setTimeout
