@@ -857,7 +857,9 @@ export default function QuizPage() {
         });
         setSavedProgress(response.progress);
         setShowResumeScreen(true);
-        // НЕ вызываем setLoading(false) здесь - это сделает init() после загрузки questionnaire
+        // ИСПРАВЛЕНО: Устанавливаем loading = false, чтобы экран resume показался сразу
+        // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до первого экрана анкеты
+        setLoading(false);
         // Также сохраняем в localStorage для офлайн доступа
         if (typeof window !== 'undefined') {
           localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
