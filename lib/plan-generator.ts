@@ -2040,17 +2040,14 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         }
       }
 
+      // ИСПРАВЛЕНО: Не фильтруем шаги по наличию продуктов - оставляем все шаги
+      // Продукты будут найдены позже при создании plan28 через fallback логику
+      // Фильтрация приводит к тому, что дни остаются без шагов, и plan28Days становится пустым
       days.push({
         day,
         week: weekNum,
-        morning: morningSteps.filter((step) => {
-          if (isCleanserStep(step) || isSPFStep(step)) return true;
-          return getProductsForStep(step).length > 0;
-        }),
-        evening: eveningSteps.filter((step) => {
-          if (isCleanserStep(step)) return true;
-          return getProductsForStep(step).length > 0;
-        }),
+        morning: morningSteps, // Убрана фильтрация - оставляем все шаги
+        evening: eveningSteps, // Убрана фильтрация - оставляем все шаги
         products: dayProducts,
         completed: false,
       });
@@ -2215,13 +2212,44 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     routineComplexity = (medicalMarkers as any).routineComplexity;
   }
   
+  // ИСПРАВЛЕНО: Проверяем, что weeks не пустой перед генерацией plan28
+  if (weeks.length === 0) {
+    logger.error('CRITICAL: weeks array is empty, cannot generate plan28', {
+      userId,
+      profileId: profile.id,
+      weeksLength: weeks.length,
+    });
+    throw new Error('Plan generation failed: weeks array is empty');
+  }
+  
   for (let dayIndex = 1; dayIndex <= 28; dayIndex++) {
     const weekNum = Math.ceil(dayIndex / 7);
     const dayInWeek = ((dayIndex - 1) % 7) + 1;
     const weekData = weeks.find(w => w.week === weekNum);
     const dayData = weekData?.days.find(d => d.day === dayIndex);
     
-    if (!dayData) continue;
+    // ИСПРАВЛЕНО: Логируем, если dayData не найден, но не пропускаем день
+    // Вместо этого создаем день с пустыми шагами, чтобы план не был пустым
+    if (!dayData) {
+      logger.warn('dayData not found for day, creating empty day structure', {
+        dayIndex,
+        weekNum,
+        weeksCount: weeks.length,
+        weekDataExists: !!weekData,
+        weekDataDaysCount: weekData?.days?.length || 0,
+        userId,
+      });
+      // Создаем минимальную структуру дня, чтобы план не был пустым
+      plan28Days.push({
+        dayIndex,
+        phase: getPhaseForDay(dayIndex),
+        isWeeklyFocusDay: false,
+        morning: [],
+        evening: [],
+        weekly: [],
+      });
+      continue;
+    }
     
     const phase = getPhaseForDay(dayIndex);
     const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps, routineComplexity as any);
