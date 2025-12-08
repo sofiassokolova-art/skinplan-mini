@@ -467,56 +467,9 @@ export default function HomePage() {
 
   const loadRecommendations = async () => {
     try {
-      // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: проверяем наличие профиля перед загрузкой
-      console.log('🔍 loadRecommendations: Checking profile before loading...');
-      let profileExists = false;
-      try {
-        // ИСПРАВЛЕНО: Не проверяем профиль повторно, если уже проверили
-        // Профиль уже был проверен в initAndLoad, просто продолжаем
-        profileExists = true;
-        console.log('✅ loadRecommendations: Proceeding (profile already checked)...'); else {
-            router.push('/quiz');
-          }
-          return;
-        }
-      } catch (profileErr: any) {
-        const errorMessage = profileErr?.message || profileErr?.toString() || '';
-        const isNotFound = errorMessage.includes('404') || 
-                          errorMessage.includes('No skin profile') ||
-                          errorMessage.includes('Skin profile not found') ||
-                          errorMessage.includes('Profile not found') ||
-                          profileErr?.status === 404 ||
-                          profileErr?.isNotFound;
-        
-        if (isNotFound) {
-          console.log('⚠️ loadRecommendations: Profile not found (404), redirecting to quiz');
-          setRedirectingToQuiz(true);
-          setLoading(false);
-          if (typeof window !== 'undefined') {
-            window.location.href = '/quiz';
-          } else {
-            router.push('/quiz');
-          }
-          return;
-        }
-        // Другая ошибка - логируем, но продолжаем (может быть временная проблема)
-        console.warn('⚠️ loadRecommendations: Error checking profile, but continuing:', errorMessage);
-        // Если это не 404, но профиль не найден - все равно редиректим
-        profileExists = false;
-      }
-      
-      // Если профиля нет - не загружаем план
-      if (!profileExists) {
-        console.log('⚠️ loadRecommendations: Profile not confirmed, redirecting to quiz');
-        setRedirectingToQuiz(true);
-        setLoading(false);
-        if (typeof window !== 'undefined') {
-          window.location.href = '/quiz';
-        } else {
-          router.push('/quiz');
-        }
-        return;
-      }
+      // ИСПРАВЛЕНО: Не проверяем профиль повторно, если уже проверили
+      // Профиль уже был проверен в initAndLoad, просто продолжаем
+      console.log('✅ loadRecommendations: Proceeding (profile already checked in initAndLoad)...');
       
       console.log('📥 Loading plan for current day...');
       
