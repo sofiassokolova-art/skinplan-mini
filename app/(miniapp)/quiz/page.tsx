@@ -75,6 +75,7 @@ export default function QuizPage() {
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const submitAnswersRef = useRef<(() => Promise<void>) | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Дебаунсинг для сохранения метаданных позиции
+  const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null); // Последний сохраненный ответ для дедупликации
   
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
   // ИСПРАВЛЕНО: Проверяем флаг из localStorage при монтировании
@@ -846,50 +847,10 @@ export default function QuizPage() {
     
     localStorage.setItem('quiz_progress', JSON.stringify(progress));
     
-    // Синхронизируем позицию на сервер (только если Telegram WebApp доступен)
-    // ВАЖНО: Используем дебаунсинг для метаданных позиции, чтобы не делать слишком много запросов
-    if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-      // Очищаем предыдущий таймаут, если он есть
-      if (saveProgressTimeoutRef.current) {
-        clearTimeout(saveProgressTimeoutRef.current);
-      }
-      
-      // Функция для сохранения позиции на сервер
-      const savePositionToServer = async () => {
-        try {
-          // Сохраняем позицию через специальный вызов (используем questionId = -1 как маркер)
-          await api.saveQuizProgress(
-            questionnaire.id,
-            -1, // Маркер для метаданных позиции
-            JSON.stringify({
-              questionIndex: finalQuestionIndex,
-              infoScreenIndex: finalInfoScreenIndex,
-              timestamp: Date.now(),
-            }),
-            undefined,
-            finalQuestionIndex,
-            finalInfoScreenIndex
-          );
-        } catch (err: any) {
-          // Если ошибка 401 - это нормально, прогресс сохранен локально
-          if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
-            console.warn('Ошибка сохранения позиции на сервер:', err);
-          }
-        }
-      };
-      
-      // Если skipDebounce = true (например, при сохранении ответа), сохраняем сразу
-      // Иначе используем дебаунсинг 500ms для метаданных позиции
-      if (skipDebounce) {
-        await savePositionToServer();
-      } else {
-        // Дебаунсинг: сохраняем позицию через 500ms после последнего изменения
-        saveProgressTimeoutRef.current = setTimeout(() => {
-          savePositionToServer();
-          saveProgressTimeoutRef.current = null;
-        }, 500);
-      }
-    }
+    // ОПТИМИЗАЦИЯ: Метаданные позиции (questionIndex, infoScreenIndex) больше НЕ отправляются на сервер
+    // Они хранятся только локально в localStorage, так как сервер их не сохраняет в БД
+    // Позицию можно вычислить на основе последнего отвеченного вопроса при загрузке прогресса
+    // Это значительно уменьшает количество ненужных API вызовов
   };
 
   // Очищаем сохранённый прогресс
@@ -903,6 +864,8 @@ export default function QuizPage() {
     // Сбрасываем флаги восстановления прогресса (и state, и ref)
     hasResumedRef.current = false;
     setHasResumed(false);
+    // Сбрасываем кэш последнего сохраненного ответа
+    lastSavedAnswerRef.current = null;
     
     // Также очищаем прогресс на сервере
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
@@ -996,10 +959,28 @@ export default function QuizPage() {
       return;
     }
 
+    // ОПТИМИЗАЦИЯ: Проверяем, изменился ли ответ
+    const currentAnswer = answers[questionId];
+    const answerChanged = JSON.stringify(currentAnswer) !== JSON.stringify(value);
+    
+    // ОПТИМИЗАЦИЯ: Дедупликация - проверяем, не сохраняли ли мы уже этот ответ на сервер
+    const lastSaved = lastSavedAnswerRef.current;
+    const isDuplicateServerSave = lastSaved && 
+      lastSaved.questionId === questionId && 
+      JSON.stringify(lastSaved.answer) === JSON.stringify(value);
+    
+    // Всегда обновляем состояние и localStorage (даже если не изменилось, для консистентности)
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
-    // При сохранении ответа сохраняем позицию сразу (skipDebounce = true)
     await saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex, true);
+    
+    // Пропускаем сохранение на сервер, если это дубликат
+    if (isDuplicateServerSave) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('⏭️ Skipping duplicate server save for question', questionId);
+      }
+      return;
+    }
     
     // Сохраняем в БД для синхронизации между устройствами (только если Telegram WebApp доступен)
     if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
@@ -1020,6 +1001,8 @@ export default function QuizPage() {
           currentQuestionIndex,
           currentInfoScreenIndex
         );
+        // Сохраняем информацию о последнем сохраненном ответе для дедупликации
+        lastSavedAnswerRef.current = { questionId, answer: value };
         console.log('✅ Successfully saved to server');
       } catch (err: any) {
         // Если ошибка 401 - это нормально, прогресс сохранен локально
