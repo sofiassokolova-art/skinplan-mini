@@ -2261,7 +2261,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       const stepCategory = step as StepCategory;
       let stepProducts = getProductsForStep(stepCategory);
       
-      // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback или поиск в БД
+      // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback
       if (stepProducts.length === 0) {
         // Пробуем fallback
         const fallback = getFallbackStep(stepCategory);
@@ -2284,30 +2284,15 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           // Удаляем дубликаты
           stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
           
-          // ИСПРАВЛЕНО: Если все еще нет, пробуем найти через прямой запрос в БД (последний резерв)
-          if (stepProducts.length === 0 && baseStep) {
-            try {
-              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
-              if (fallbackProduct) {
-                stepProducts.push(fallbackProduct);
-                // Регистрируем найденный продукт в productsByStepMap для будущего использования
-                registerProductForStep(stepCategory, fallbackProduct);
-                logger.info('Fallback product found via DB query and registered', {
-                  stepCategory,
-                  baseStep,
-                  productId: fallbackProduct.id,
-                  productName: fallbackProduct.name,
-                  userId,
-                });
-              }
-            } catch (fallbackError) {
-              logger.warn('Error finding fallback product via DB query', {
-                stepCategory,
-                baseStep,
-                error: fallbackError,
-                userId,
-              });
-            }
+          // ИСПРАВЛЕНО: Убрали await из map - fallback через БД будет искаться асинхронно позже
+          // Если продуктов все еще нет, оставляем productId как null - план все равно создастся
+          if (stepProducts.length === 0) {
+            logger.warn('No products found for step after all fallbacks (morning)', {
+              stepCategory,
+              baseStep,
+              dayIndex,
+              userId,
+            });
           }
         }
       }
@@ -2342,7 +2327,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       const stepCategory = step as StepCategory;
       let stepProducts = getProductsForStep(stepCategory);
       
-      // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback или поиск в БД
+      // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback
       if (stepProducts.length === 0) {
         // Пробуем fallback
         const fallback = getFallbackStep(stepCategory);
@@ -2365,31 +2350,15 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           // Удаляем дубликаты
           stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
           
-          // ИСПРАВЛЕНО: Если все еще нет, пробуем найти через прямой запрос в БД (последний резерв)
-          if (stepProducts.length === 0 && baseStep) {
-            try {
-              const { findFallbackProduct } = await import('@/lib/product-fallback');
-              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
-              if (fallbackProduct) {
-                stepProducts.push(fallbackProduct);
-                // Регистрируем найденный продукт в productsByStepMap для будущего использования
-                registerProductForStep(stepCategory, fallbackProduct);
-                logger.info('Fallback product found via DB query and registered', {
-                  stepCategory,
-                  baseStep,
-                  productId: fallbackProduct.id,
-                  productName: fallbackProduct.name,
-                  userId,
-                });
-              }
-            } catch (fallbackError) {
-              logger.warn('Error finding fallback product via DB query', {
-                stepCategory,
-                baseStep,
-                error: fallbackError,
-                userId,
-              });
-            }
+          // ИСПРАВЛЕНО: Убрали await из map - fallback через БД будет искаться асинхронно позже
+          // Если продуктов все еще нет, оставляем productId как null - план все равно создастся
+          if (stepProducts.length === 0) {
+            logger.warn('No products found for step after all fallbacks (evening)', {
+              stepCategory,
+              baseStep,
+              dayIndex,
+              userId,
+            });
           }
         }
       }
