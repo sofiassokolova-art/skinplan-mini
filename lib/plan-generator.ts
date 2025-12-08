@@ -1223,9 +1223,11 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       return exact;
     }
     
-    // Если не найдено, пробуем найти по базовому step (например, 'toner' для 'toner_hydrating')
+    // ИСПРАВЛЕНО: Если не найдено, пробуем найти по базовому step (например, 'toner' для 'toner_hydrating')
+    // Но также пробуем все варианты с этим базовым шагом (например, 'toner_hydrating', 'toner_soothing' для 'toner')
     const baseStep = getBaseStepFromStepCategory(step);
     if (baseStep !== step) {
+      // Сначала пробуем базовый шаг как StepCategory
       const base = productsByStepMap.get(baseStep as StepCategory);
       if (base && base.length > 0) {
         // Детальное логирование для диагностики
@@ -1239,6 +1241,34 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           });
         }
         return base;
+      }
+      
+      // ИСПРАВЛЕНО: Если базовый шаг не найден, пробуем все варианты с этим базовым шагом
+      // Например, для 'serum_hydrating' пробуем все 'serum_*'
+      const allVariants: ProductWithBrand[] = [];
+      for (const [mapStep, products] of productsByStepMap.entries()) {
+        if (mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
+          allVariants.push(...products);
+        }
+      }
+      
+      if (allVariants.length > 0) {
+        // Удаляем дубликаты по id
+        const uniqueProducts = Array.from(
+          new Map(allVariants.map(p => [p.id, p])).values()
+        );
+        
+        if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+          logger.debug('Products found for step (base step variants match)', {
+            step,
+            baseStep,
+            count: uniqueProducts.length,
+            productIds: uniqueProducts.map(p => p.id),
+            variantSteps: Array.from(productsByStepMap.keys()).filter(k => k.startsWith(baseStep + '_') || k === baseStep),
+            userId,
+          });
+        }
+        return uniqueProducts;
       }
     }
     
@@ -2201,7 +2231,59 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     // dayData.products может содержать только cleanser и SPF из-за фильтрации в старом формате
     const morningSteps: DayStep[] = dayData.morning.map((step: string) => {
       const stepCategory = step as StepCategory;
-      const stepProducts = getProductsForStep(stepCategory);
+      let stepProducts = getProductsForStep(stepCategory);
+      
+      // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback или поиск в БД
+      if (stepProducts.length === 0) {
+        // Пробуем fallback
+        const fallback = getFallbackStep(stepCategory);
+        if (fallback && fallback !== stepCategory) {
+          stepProducts = getProductsForStep(fallback);
+        }
+        
+        // Если все еще нет, пробуем найти любой продукт для базового шага
+        if (stepProducts.length === 0) {
+          const baseStep = getBaseStepFromStepCategory(stepCategory);
+          // ИСПРАВЛЕНО: Ищем в productsByStepMap все ключи, которые начинаются с базового шага
+          // Например, для 'toner_hydrating' базовый шаг 'toner', ищем все 'toner_*'
+          for (const [mapStep, products] of productsByStepMap.entries()) {
+            const mapBaseStep = getBaseStepFromStepCategory(mapStep as StepCategory);
+            // Сравниваем базовые шаги, а не полные названия
+            if (mapBaseStep === baseStep || mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
+              stepProducts.push(...products);
+            }
+          }
+          // Удаляем дубликаты
+          stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
+          
+          // ИСПРАВЛЕНО: Если все еще нет, пробуем найти через прямой запрос в БД (последний резерв)
+          if (stepProducts.length === 0 && baseStep) {
+            try {
+              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+              if (fallbackProduct) {
+                stepProducts.push(fallbackProduct);
+                // Регистрируем найденный продукт в productsByStepMap для будущего использования
+                registerProductForStep(stepCategory, fallbackProduct);
+                logger.info('Fallback product found via DB query and registered', {
+                  stepCategory,
+                  baseStep,
+                  productId: fallbackProduct.id,
+                  productName: fallbackProduct.name,
+                  userId,
+                });
+              }
+            } catch (fallbackError) {
+              logger.warn('Error finding fallback product via DB query', {
+                stepCategory,
+                baseStep,
+                error: fallbackError,
+                userId,
+              });
+            }
+          }
+        }
+      }
+      
       const alternatives = stepProducts
         .slice(1, 4) // Берем следующие 3 продукта как альтернативы
         .map(p => String(p.id));
@@ -2213,6 +2295,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           dayIndex,
           productsCount: stepProducts.length,
           productIds: stepProducts.map(p => p.id).slice(0, 5),
+          productsByStepMapKeys: Array.from(productsByStepMap.keys()),
           userId,
         });
       }
@@ -2229,7 +2312,60 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     // Преобразуем evening steps
     const eveningSteps: DayStep[] = dayData.evening.map((step: string) => {
       const stepCategory = step as StepCategory;
-      const stepProducts = getProductsForStep(stepCategory);
+      let stepProducts = getProductsForStep(stepCategory);
+      
+      // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback или поиск в БД
+      if (stepProducts.length === 0) {
+        // Пробуем fallback
+        const fallback = getFallbackStep(stepCategory);
+        if (fallback && fallback !== stepCategory) {
+          stepProducts = getProductsForStep(fallback);
+        }
+        
+        // Если все еще нет, пробуем найти любой продукт для базового шага
+        if (stepProducts.length === 0) {
+          const baseStep = getBaseStepFromStepCategory(stepCategory);
+          // ИСПРАВЛЕНО: Ищем в productsByStepMap все ключи, которые начинаются с базового шага
+          // Например, для 'toner_hydrating' базовый шаг 'toner', ищем все 'toner_*'
+          for (const [mapStep, products] of productsByStepMap.entries()) {
+            const mapBaseStep = getBaseStepFromStepCategory(mapStep as StepCategory);
+            // Сравниваем базовые шаги, а не полные названия
+            if (mapBaseStep === baseStep || mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
+              stepProducts.push(...products);
+            }
+          }
+          // Удаляем дубликаты
+          stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
+          
+          // ИСПРАВЛЕНО: Если все еще нет, пробуем найти через прямой запрос в БД (последний резерв)
+          if (stepProducts.length === 0 && baseStep) {
+            try {
+              const { findFallbackProduct } = await import('@/lib/product-fallback');
+              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+              if (fallbackProduct) {
+                stepProducts.push(fallbackProduct);
+                // Регистрируем найденный продукт в productsByStepMap для будущего использования
+                registerProductForStep(stepCategory, fallbackProduct);
+                logger.info('Fallback product found via DB query and registered', {
+                  stepCategory,
+                  baseStep,
+                  productId: fallbackProduct.id,
+                  productName: fallbackProduct.name,
+                  userId,
+                });
+              }
+            } catch (fallbackError) {
+              logger.warn('Error finding fallback product via DB query', {
+                stepCategory,
+                baseStep,
+                error: fallbackError,
+                userId,
+              });
+            }
+          }
+        }
+      }
+      
       const alternatives = stepProducts
         .slice(1, 4)
         .map(p => String(p.id));
@@ -2241,6 +2377,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           dayIndex,
           productsCount: stepProducts.length,
           productIds: stepProducts.map(p => p.id).slice(0, 5),
+          productsByStepMapKeys: Array.from(productsByStepMap.keys()),
           userId,
         });
       }
@@ -2276,6 +2413,37 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       weekly: weeklyDaySteps,
     });
   }
+  
+  // ИСПРАВЛЕНО: Проверяем, что план28Days не пустой перед возвратом
+  if (plan28Days.length === 0) {
+    logger.error('CRITICAL: plan28Days is empty after generation', {
+      userId,
+      profileId: profile.id,
+      productsByStepMapSize: productsByStepMap.size,
+      productsByStepMapKeys: Array.from(productsByStepMap.keys()),
+      recommendationProductsCount: recommendationProducts.length,
+      selectedProductsCount: selectedProducts.length,
+    });
+    throw new Error('Plan generation failed: no days generated');
+  }
+  
+  logger.info('Plan28 days generated successfully', {
+    userId,
+    daysCount: plan28Days.length,
+    daysWithProducts: plan28Days.filter(d => 
+      d.morning.some(s => s.productId) || 
+      d.evening.some(s => s.productId) || 
+      d.weekly.some(s => s.productId)
+    ).length,
+    totalMorningSteps: plan28Days.reduce((sum, d) => sum + d.morning.length, 0),
+    totalEveningSteps: plan28Days.reduce((sum, d) => sum + d.evening.length, 0),
+    morningStepsWithProducts: plan28Days.reduce((sum, d) => 
+      sum + d.morning.filter(s => s.productId).length, 0
+    ),
+    eveningStepsWithProducts: plan28Days.reduce((sum, d) => 
+      sum + d.evening.filter(s => s.productId).length, 0
+    ),
+  });
   
   const plan28: Plan28 = {
     userId,
