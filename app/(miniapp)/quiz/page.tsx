@@ -274,7 +274,21 @@ export default function QuizPage() {
                     hasPlan = false;
                   }
                   
-                  if (isRetakingFromStorage && hasPlan) {
+                  // ИСПРАВЛЕНО: Если пользователь явно зашел на /quiz, всегда показываем анкету
+                  // Это позволяет пользователю перепроходить анкету вручную, даже если она завершена
+                  const isDirectQuizAccess = typeof window !== 'undefined' && 
+                    (window.location.pathname === '/quiz' || window.location.pathname.startsWith('/quiz/'));
+                  
+                  if (isDirectQuizAccess) {
+                    // ИСПРАВЛЕНО: Пользователь явно зашел на /quiz - показываем анкету для перепрохождения
+                    console.log('✅ Прямой доступ к /quiz - показываем анкету для перепрохождения', {
+                      isRetakingFromStorage,
+                      hasPlan,
+                      pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+                    });
+                    setIsRetakingQuiz(true);
+                    setShowRetakeScreen(false); // Показываем анкету напрямую, без экрана выбора тем
+                  } else if (isRetakingFromStorage && hasPlan) {
                     // Пользователь нажал "Перепройти анкету" И план существует - показываем экран выбора тем
                     setIsRetakingQuiz(true);
                     setShowRetakeScreen(true);
@@ -283,13 +297,14 @@ export default function QuizPage() {
                     // Профиль есть, анкета завершена, но:
                     // - либо пользователь не хочет перепроходить (флаг не установлен)
                     // - либо плана нет (значит, нужно пройти анкету заново)
-                    console.log('ℹ️ Профиль и завершенная анкета существуют, но:', {
+                    // ИСПРАВЛЕНО: В этом случае тоже показываем анкету, чтобы пользователь мог её перепроходить
+                    console.log('ℹ️ Профиль и завершенная анкета существуют, но пользователь зашел на /quiz - показываем анкету', {
                       isRetakingFromStorage,
                       hasPlan,
-                      reason: !isRetakingFromStorage ? 'флаг перепрохождения не установлен' : 'план не найден',
+                      isDirectQuizAccess,
                     });
-                    setIsRetakingQuiz(false);
-                    setShowRetakeScreen(false);
+                    setIsRetakingQuiz(true);
+                    setShowRetakeScreen(false); // Показываем анкету напрямую
                   }
                 } else {
                   // Профиль есть, но анкета не завершена - показываем полную анкету
