@@ -9,6 +9,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getTopicById } from '@/lib/quiz-topics';
 import { CheckCircle } from 'lucide-react';
+import { clientLogger } from '@/lib/client-logger';
 
 function QuizUpdateResultContent() {
   const router = useRouter();
