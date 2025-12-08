@@ -1635,6 +1635,9 @@ export default function QuizPage() {
       if (typeof window !== 'undefined') {
         try {
           sessionStorage.setItem('quiz_just_submitted', 'true');
+          // ОПТИМИЗАЦИЯ: Очищаем кэш профиля, чтобы новый профиль был доступен сразу после создания
+          sessionStorage.removeItem('profile_check_cache');
+          sessionStorage.removeItem('profile_check_cache_timestamp');
           // Устанавливаем initCompletedRef, чтобы при возврате на /quiz не показывалось начало анкеты
           initCompletedRef.current = true;
         } catch (storageError) {
@@ -2097,6 +2100,9 @@ export default function QuizPage() {
       if (typeof window !== 'undefined') {
         try {
           sessionStorage.setItem('quiz_just_submitted', 'true');
+          // ОПТИМИЗАЦИЯ: Очищаем кэш профиля, чтобы новый профиль был доступен сразу после создания
+          sessionStorage.removeItem('profile_check_cache');
+          sessionStorage.removeItem('profile_check_cache_timestamp');
         } catch (storageError) {
           clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
         }
