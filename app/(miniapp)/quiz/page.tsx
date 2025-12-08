@@ -1385,30 +1385,36 @@ export default function QuizPage() {
     // Проверяем, нужно ли показать информационный экран после текущего вопроса
     // При повторном прохождении пропускаем все info screens
     const currentQuestion = allQuestions[currentQuestionIndex];
+    const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+    
     if (currentQuestion && !isRetakingQuiz) {
       const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
       if (infoScreen) {
         setPendingInfoScreen(infoScreen);
         await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        clientLogger.log('✅ Показан инфо-экран после вопроса:', {
+          questionCode: currentQuestion.code,
+          questionIndex: currentQuestionIndex,
+          infoScreenId: infoScreen.id,
+          isLastQuestion,
+        });
         return;
       }
     }
 
-    // Проверяем, не последний ли это вопрос
-    const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+    // ИСПРАВЛЕНО: Проверяем последний вопрос отдельно, так как логика отличается
     if (isLastQuestion) {
       // Это последний вопрос - проверяем, есть ли инфо-экраны после него
       // При повторном прохождении пропускаем info screens
-      if (!isRetakingQuiz) {
+      if (!isRetakingQuiz && currentQuestion) {
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
         if (infoScreen) {
           setPendingInfoScreen(infoScreen);
           // ИСПРАВЛЕНО: НЕ увеличиваем currentQuestionIndex, чтобы не запустить автоотправку
           // Автоотправка запустится только после закрытия инфо-экрана или при нажатии кнопки "Получить план"
           await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-          // ВАЖНО: НЕ устанавливаем initCompletedRef.current = true здесь, чтобы не блокировать последующую обработку
-          // initCompletedRef устанавливается только после полной инициализации анкеты
           clientLogger.log('✅ Показан инфо-экран после последнего вопроса:', {
+            questionCode: currentQuestion.code,
             infoScreenId: infoScreen.id,
             currentQuestionIndex,
             allQuestionsLength: allQuestions.length,
@@ -1419,6 +1425,7 @@ export default function QuizPage() {
       // ВАЖНО: Если это последний вопрос и нет инфо-экрана, увеличиваем currentQuestionIndex
       // чтобы сработала автоматическая отправка ответов (проверка currentQuestionIndex >= allQuestions.length)
       await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+      clientLogger.log('✅ Последний вопрос отвечен, нет инфо-экранов, увеличиваем индекс для автоотправки');
       // Увеличиваем индекс, чтобы выйти за пределы массива вопросов и запустить автоматическую отправку
       setCurrentQuestionIndex(allQuestions.length);
       return;
