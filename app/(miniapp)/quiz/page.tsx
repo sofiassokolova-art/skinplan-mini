@@ -2344,7 +2344,40 @@ export default function QuizPage() {
       
       // Редирект на страницу плана
       // План уже готов в кэше или будет загружен на странице /plan
-      clientLogger.log('🔄 Редирект на /plan (немедленно)');
+      clientLogger.log('🔄 Редирект на /plan (немедленно)', {
+        hasResult: !!result,
+        resultSuccess: result?.success,
+        hasError: !!result?.error,
+        answersCount: Object.keys(answers).length,
+        allQuestionsLength: allQuestions.length,
+      });
+      
+      // ИСПРАВЛЕНО: Логируем на сервер перед редиректом для диагностики
+      try {
+        const currentInitData = await getInitData();
+        if (currentInitData) {
+          fetch('/api/logs', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
+            },
+            body: JSON.stringify({
+              level: 'info',
+              message: 'Redirecting to /plan after submitAnswers',
+              context: {
+                hasResult: !!result,
+                resultSuccess: result?.success,
+                hasError: !!result?.error,
+                answersCount: Object.keys(answers).length,
+                timestamp: new Date().toISOString(),
+              },
+            }),
+          }).catch(() => {});
+        }
+      } catch (logError) {
+        // Игнорируем ошибки логирования
+      }
       
       // ВАЖНО: Редирект должен произойти СРАЗУ, синхронно, без await и без setTimeout
       // Это предотвращает перерендер компонента и показ первого экрана анкеты
