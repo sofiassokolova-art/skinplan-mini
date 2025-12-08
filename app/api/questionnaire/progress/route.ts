@@ -165,16 +165,19 @@ export async function POST(request: NextRequest) {
 
     let { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
 
-    console.log('📝 Saving quiz progress:', { 
-      userId, 
-      questionnaireId, 
-      questionId, 
-      questionIdType: typeof questionId,
-      hasAnswerValue: !!answerValue, 
-      hasAnswerValues: !!answerValues,
-      questionIndex,
-      infoScreenIndex,
-    });
+    // Логируем только в development режиме
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📝 Saving quiz progress:', { 
+        userId, 
+        questionnaireId, 
+        questionId, 
+        questionIdType: typeof questionId,
+        hasAnswerValue: !!answerValue, 
+        hasAnswerValues: !!answerValues,
+        questionIndex,
+        infoScreenIndex,
+      });
+    }
 
     if (!questionnaireId) {
       return NextResponse.json(
@@ -189,10 +192,13 @@ export async function POST(request: NextRequest) {
     // НЕ сохраняем их в БД, так как это нарушает внешний ключ
     // Метаданные позиции хранятся только локально на клиенте
     if (questionId === -1 || questionId === '-1') {
-      console.log('ℹ️ Metadata position update (not saved to DB, stored locally only):', {
-        questionIndex,
-        infoScreenIndex,
-      });
+      // Логируем только в development режиме
+      if (process.env.NODE_ENV === 'development') {
+        console.log('ℹ️ Metadata position update (not saved to DB, stored locally only):', {
+          questionIndex,
+          infoScreenIndex,
+        });
+      }
       return NextResponse.json({
         success: true,
         answer: null, // Метаданные не сохраняются в БД
@@ -296,12 +302,15 @@ export async function POST(request: NextRequest) {
 
     // Проверяем, что questionnaireId совпадает с активной анкетой
     if (questionnaireId !== activeQuestionnaire.id) {
-      console.warn('⚠️ Questionnaire ID mismatch:', {
-        requestedQuestionnaireId: questionnaireId,
-        activeQuestionnaireId: activeQuestionnaire.id,
-        questionId: questionIdNum,
-        userId,
-      });
+      // Логируем только в development режиме
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Questionnaire ID mismatch:', {
+          requestedQuestionnaireId: questionnaireId,
+          activeQuestionnaireId: activeQuestionnaire.id,
+          questionId: questionIdNum,
+          userId,
+        });
+      }
       // Используем ID активной анкеты вместо запрошенного
       questionnaireId = activeQuestionnaire.id;
     }
@@ -391,7 +400,10 @@ export async function DELETE(request: NextRequest) {
       },
     });
 
-    console.log(`✅ Quiz progress cleared for user ${userId}, deleted ${deletedCount.count} answers`);
+    // Логируем только в development режиме
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Quiz progress cleared for user ${userId}, deleted ${deletedCount.count} answers`);
+    }
 
     return NextResponse.json({
       success: true,

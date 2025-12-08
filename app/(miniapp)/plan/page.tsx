@@ -1214,13 +1214,13 @@ export default function PlanPage() {
           <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
         </div>
       }>
-        <PlanPageClientNew
-          plan28={(planData as any).plan28}
-          products={productsMap}
-          wishlist={planData.wishlist}
-          currentDay={planData.currentDay}
-          completedDays={planData.progress?.completedDays || []}
-        />
+      <PlanPageClientNew
+        plan28={(planData as any).plan28}
+        products={productsMap}
+        wishlist={planData.wishlist}
+        currentDay={planData.currentDay}
+        completedDays={planData.progress?.completedDays || []}
+      />
       </Suspense>
     );
   }

@@ -459,7 +459,7 @@ export async function GET(request: NextRequest) {
     // Получаем продукты для каждого шага
     const stepsJson = matchedRule.stepsJson as Record<string, RuleStep>;
     const steps: Record<string, any[]> = {};
-    
+
     // ИСПРАВЛЕНО: Увеличиваем количество продуктов на шаг для более полных рекомендаций
     const enhancedStepsJson: Record<string, RuleStep> = { ...stepsJson };
     

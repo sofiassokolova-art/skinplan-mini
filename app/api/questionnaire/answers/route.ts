@@ -206,13 +206,13 @@ export async function POST(request: NextRequest) {
             where: { id: existingProfileBeforeTransaction.id },
           })
         : await tx.skinProfile.findFirst({
-            where: {
-              userId: userId!, // userId гарантированно string
-            },
-            orderBy: {
-              version: 'desc', // Берем последнюю версию
-            },
-          });
+        where: {
+          userId: userId!, // userId гарантированно string
+        },
+        orderBy: {
+          version: 'desc', // Берем последнюю версию
+        },
+      });
 
       // ВАЖНО: Извлекаем diagnoses и другие данные из ответов напрямую
       // createSkinProfile не извлекает diagnoses, поэтому делаем это здесь
