@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const method = 'GET';
   const path = '/api/questionnaire/progress';
-  let userId: string | undefined;
+  let userId: string | null = null;
 
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
   const path = '/api/questionnaire/progress';
-  let userId: string | undefined;
+  let userId: string | null = null;
 
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
@@ -445,7 +445,7 @@ export async function DELETE(request: NextRequest) {
   const startTime = Date.now();
   const method = 'DELETE';
   const path = '/api/questionnaire/progress';
-  let userId: string | undefined;
+  let userId: string | null = null;
 
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
