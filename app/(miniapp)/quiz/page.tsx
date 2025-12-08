@@ -527,26 +527,32 @@ export default function QuizPage() {
       // Проверка isStartingOver и hasResumed выполняется внутри loadSavedProgressFromServer
       // ВАЖНО: Не загружаем прогресс, если пользователь уже продолжил анкету
       // ВАЖНО: Защита от повторных загрузок прогресса
+      // ИСПРАВЛЕНО: Загружаем прогресс ДО установки loading = false, чтобы экран resume показался вовремя
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !hasResumedRef.current && !hasResumed && !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
         progressLoadInProgressRef.current = true;
         try {
+          clientLogger.log('🔄 Загружаем прогресс с сервера...');
           await loadSavedProgressFromServer();
           // loadSavedProgressFromServer сам устанавливает setShowResumeScreen(true) если есть прогресс
           // и очищает localStorage если прогресса нет на сервере
+          clientLogger.log('✅ Загрузка прогресса завершена', {
+            showResumeScreen,
+            hasSavedProgress: !!savedProgress,
+          });
         } catch (err: any) {
           // Если ошибка 401 - это нормально, просто не используем серверный прогресс
           if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
-            clientLogger.warn('Не удалось загрузить прогресс с сервера:', err);
+            clientLogger.warn('⚠️ Не удалось загрузить прогресс с сервера:', err);
           }
           // НЕ используем fallback на localStorage - прогресс должен быть синхронизирован с сервером
           // Если на сервере нет прогресса, значит его не должно быть и локально
           // Но только если пользователь еще не продолжил анкету
           if (!hasResumedRef.current && !hasResumed) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('quiz_progress');
-          }
-          setSavedProgress(null);
-          setShowResumeScreen(false);
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('quiz_progress');
+            }
+            setSavedProgress(null);
+            setShowResumeScreen(false);
           }
         } finally {
           progressLoadInProgressRef.current = false;
@@ -555,15 +561,16 @@ export default function QuizPage() {
         // Если Telegram WebApp не доступен или пользователь уже продолжил, очищаем localStorage (прогресс должен быть на сервере)
         // Но только если пользователь еще не продолжил анкету
         if (!hasResumedRef.current && !hasResumed) {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('quiz_progress');
-        }
-        setSavedProgress(null);
-        setShowResumeScreen(false);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('quiz_progress');
+          }
+          setSavedProgress(null);
+          setShowResumeScreen(false);
         }
       }
       
-      // Только после всех загрузок устанавливаем loading = false
+      // ИСПРАВЛЕНО: Устанавливаем loading = false только после загрузки прогресса
+      // Это гарантирует, что экран resume покажется до того, как пользователь увидит первый экран анкеты
       setLoading(false);
       initCompletedRef.current = true;
       initInProgressRef.current = false;
