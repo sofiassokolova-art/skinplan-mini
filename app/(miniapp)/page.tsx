@@ -580,10 +580,10 @@ export default function HomePage() {
       // ИСПРАВЛЕНО: Защита от множественных вызовов
       if (!progressLoadInProgressRef.current) {
         progressLoadInProgressRef.current = true;
-        try {
-          progress = await api.getPlanProgress() as { currentDay: number; completedDays: number[] };
-        } catch (progressErr) {
-          clientLogger.warn('⚠️ Home: Error loading progress (non-critical)', progressErr);
+      try {
+        progress = await api.getPlanProgress() as { currentDay: number; completedDays: number[] };
+      } catch (progressErr) {
+        clientLogger.warn('⚠️ Home: Error loading progress (non-critical)', progressErr);
           progress = { currentDay: 1, completedDays: [] };
         } finally {
           progressLoadInProgressRef.current = false;

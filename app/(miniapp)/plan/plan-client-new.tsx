@@ -110,17 +110,23 @@ export function PlanPageClientNew({
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
   // ВАЖНО: Устанавливаем начальное значение needsFirstPayment сразу при инициализации
   // Это гарантирует, что проверка происходит до первого рендера
+  // ИСПРАВЛЕНО: needsFirstPayment должен быть true по умолчанию, если нет оплаты
+  // Это гарантирует, что блюр показывается сразу после генерации плана
   const [needsFirstPayment, setNeedsFirstPayment] = useState(() => {
     if (typeof window !== 'undefined') {
       const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
+      const needsPayment = !hasFirstPayment;
       clientLogger.log('💳 Payment status check (initial):', {
         hasFirstPayment,
-        needsFirstPayment: !hasFirstPayment,
+        needsFirstPayment: needsPayment,
         paymentKey: 'payment_first_completed',
+        hasPlan28: !!plan28,
       });
-      return !hasFirstPayment;
+      return needsPayment;
     }
-    return false;
+    // ИСПРАВЛЕНО: Если window недоступен, но есть plan28 - показываем оплату
+    // Это гарантирует, что при SSR или первой загрузке блюр будет показан
+    return !!plan28;
   });
 
   const currentDayPlan = useMemo(() => {
@@ -164,17 +170,45 @@ export function PlanPageClientNew({
     }
     cartLoadInProgressRef.current = true;
     loadCart();
+  }, [plan28]);
+
+  // ИСПРАВЛЕНО: Отдельный useEffect для обновления needsFirstPayment при изменении plan28
+  // Это гарантирует, что блюр оплаты показывается правильно после генерации плана
+  useEffect(() => {
     // Проверяем статус первой оплаты (обновляем при изменении plan28)
     // ВАЖНО: НЕ устанавливаем автоматически payment_first_completed при наличии плана
     // Платеж должен быть показан при первом прохождении анкеты, даже если план уже сгенерирован
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && plan28 && plan28.days && plan28.days.length > 0) {
       const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
-      clientLogger.log('💳 Payment status check (update):', {
+      const newNeedsFirstPayment = !hasFirstPayment;
+      
+      clientLogger.log('💳 Payment status check (update on plan28 change):', {
         hasFirstPayment,
-        needsFirstPayment: !hasFirstPayment,
+        needsFirstPayment: newNeedsFirstPayment,
         paymentKey: 'payment_first_completed',
+        hasPlan28: !!plan28,
+        plan28Days: plan28?.days?.length || 0,
+        plan28MainGoals: plan28?.mainGoals?.length || 0,
       });
-      setNeedsFirstPayment(!hasFirstPayment);
+      
+      // ИСПРАВЛЕНО: Обновляем needsFirstPayment только если значение изменилось
+      // Это предотвращает лишние ре-рендеры
+      // ВАЖНО: При первой генерации плана (когда plan28 появляется) нужно обновить needsFirstPayment
+      setNeedsFirstPayment(prev => {
+        if (prev !== newNeedsFirstPayment) {
+          clientLogger.log('💳 Updating needsFirstPayment:', {
+            from: prev,
+            to: newNeedsFirstPayment,
+            reason: 'plan28 changed or initialized',
+          });
+          return newNeedsFirstPayment;
+        }
+        return prev;
+      });
+    } else if (typeof window !== 'undefined' && !plan28) {
+      // ИСПРАВЛЕНО: Если plan28 еще не загружен, не меняем needsFirstPayment
+      // Это предотвращает преждевременное скрытие блюра
+      clientLogger.log('💳 Plan28 not ready yet, keeping current needsFirstPayment state');
     }
   }, [plan28]);
 

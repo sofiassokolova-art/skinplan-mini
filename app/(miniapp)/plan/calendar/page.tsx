@@ -31,7 +31,7 @@ export default function PlanCalendarPage() {
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
   const [cartQuantities, setCartQuantities] = useState<Map<number, number>>(new Map());
-  
+
   // ИСПРАВЛЕНО: Защита от множественных вызовов корзины
   const cartLoadInProgressRef = useRef(false);
   // ИСПРАВЛЕНО: Защита от множественных вызовов прогресса
@@ -50,13 +50,13 @@ export default function PlanCalendarPage() {
       let progress: { currentDay: number; completedDays: number[] } | null = null;
       if (!progressLoadInProgressRef.current) {
         progressLoadInProgressRef.current = true;
-        try {
-          progress = await api.getPlanProgress() as {
-          currentDay: number;
-          completedDays: number[];
-        };
-        } catch (progressErr) {
-          clientLogger.warn('📅 Calendar: Error loading progress (non-critical)', progressErr);
+      try {
+        progress = await api.getPlanProgress() as {
+        currentDay: number;
+        completedDays: number[];
+      };
+      } catch (progressErr) {
+        clientLogger.warn('📅 Calendar: Error loading progress (non-critical)', progressErr);
           progress = { currentDay: 1, completedDays: [] };
         } finally {
           progressLoadInProgressRef.current = false;

@@ -218,11 +218,11 @@ export default function PlanPage() {
       let progressLoadInProgress = false;
       if (!progressLoadInProgress) {
         progressLoadInProgress = true;
-        try {
-          const progressResponse = await api.getPlanProgress() as {
-            currentDay: number;
-            completedDays: number[];
-          };
+      try {
+        const progressResponse = await api.getPlanProgress() as {
+          currentDay: number;
+          completedDays: number[];
+        };
         if (
           progressResponse &&
           typeof progressResponse.currentDay === 'number' &&
@@ -238,11 +238,11 @@ export default function PlanPage() {
             completedDays: progressResponse.completedDays,
           };
         }
-        } catch (progressError: any) {
-          // Если ошибка авторизации — это означает, что initData не валиден,
-          // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
-          if (process.env.NODE_ENV === 'development') {
-            clientLogger.warn('Could not load plan progress, using defaults:', progressError);
+      } catch (progressError: any) {
+        // Если ошибка авторизации — это означает, что initData не валиден,
+        // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
+        if (process.env.NODE_ENV === 'development') {
+          clientLogger.warn('Could not load plan progress, using defaults:', progressError);
           }
         } finally {
           progressLoadInProgress = false;
@@ -700,48 +700,101 @@ export default function PlanPage() {
       
       // Проверяем наличие плана (новый формат plan28 или старый weeks)
       if (!plan || (!plan.plan28 && (!plan.weeks || plan.weeks.length === 0))) {
-        // Если план не найден, проверяем наличие профиля
+        // ИСПРАВЛЕНО: Если план не найден, проверяем наличие профиля и ответов
+        // Если есть профиль и ответы, но нет плана - это ситуация, которую нужно исправить
         try {
           const profileCheck = await api.getCurrentProfile() as any;
           if (profileCheck) {
             // Профиль есть - пробуем регенерировать план
-            clientLogger.log('🔄 Plan not in cache but profile exists - regenerating immediately...');
+            // ИСПРАВЛЕНО: Более агрессивная генерация плана при отсутствии плана, но наличии профиля
+            clientLogger.log('🔄 Plan not found but profile exists - attempting to generate plan immediately...', {
+              profileId: profileCheck.id,
+              profileVersion: profileCheck.version,
+              retryCount,
+            });
+            
+            // ИСПРАВЛЕНО: Показываем лоадер генерации плана
+            safeSetLoading(true);
+            safeSetError(null);
+            
             try {
               const generatedPlan = await api.generatePlan() as GeneratedPlan;
-              if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-                clientLogger.log('✅ Plan regenerated successfully, processing...');
+              
+              // ИСПРАВЛЕНО: Проверяем оба формата плана
+              const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
+              const hasWeeks = generatedPlan?.weeks && Array.isArray(generatedPlan.weeks) && generatedPlan.weeks.length > 0;
+              
+              if (generatedPlan && (hasPlan28 || hasWeeks)) {
+                clientLogger.log('✅ Plan generated successfully, processing...', {
+                  hasPlan28,
+                  hasWeeks,
+                  plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                  weeksCount: generatedPlan?.weeks?.length || 0,
+                });
                 await processPlanData(generatedPlan);
                 return;
               } else {
-                // План не сгенерировался - возможно еще обрабатывается, показываем лоадер
-                clientLogger.log('⏳ Plan generation returned empty result, waiting...');
-                safeSetLoading(true);
-                safeSetError(null);
-                // Пробуем еще раз через 3 секунды
-                setTimeout(() => {
-                  loadPlan(retryCount + 1);
-                }, 3000);
-                return;
+                // План не сгенерировался - возможно еще обрабатывается или ошибка
+                clientLogger.warn('⚠️ Plan generation returned empty result', {
+                  hasPlan: !!generatedPlan,
+                  hasPlan28,
+                  hasWeeks,
+                  planKeys: generatedPlan ? Object.keys(generatedPlan) : [],
+                });
+                
+                // ИСПРАВЛЕНО: Если это не последняя попытка, пробуем еще раз
+                if (retryCount < MAX_RETRIES - 1) {
+                  clientLogger.log('⏳ Retrying plan generation...', { retryCount: retryCount + 1 });
+                  safeSetLoading(true);
+                  safeSetError(null);
+                  setTimeout(() => {
+                    loadPlan(retryCount + 1);
+                  }, 3000);
+                  return;
+                } else {
+                  // Последняя попытка - показываем ошибку
+                  safeSetError('Не удалось создать план. Попробуйте обновить страницу или пройдите анкету заново.');
+                  safeSetLoading(false);
+                  return;
+                }
               }
             } catch (generateError: any) {
               console.error('❌ Failed to regenerate plan:', generateError);
-              // ВАЖНО: При первой загрузке плана после завершения анкеты не показываем ошибку сразу
-              // План может еще генерироваться, поэтому показываем только лоадер
+              
+              // ИСПРАВЛЕНО: Детальное логирование ошибки
+              clientLogger.error('❌ Plan generation failed', {
+                error: generateError?.message,
+                status: generateError?.status,
+                statusText: generateError?.statusText,
+                stack: generateError?.stack?.substring(0, 300),
+                retryCount,
+              });
+              
               // Если это ошибка 404 (нет профиля) и это не первая попытка - показываем ошибку
               if ((generateError?.status === 404 || generateError?.message?.includes('No skin profile') || generateError?.message?.includes('Profile not found')) && retryCount >= 2) {
                 safeSetError('no_profile');
                 safeSetLoading(false);
                 return;
               }
-              // Другие ошибки или первая попытка - возможно план еще генерируется, показываем лоадер
-              clientLogger.log('⏳ Plan generation error, but profile exists - waiting and retrying...');
-              safeSetLoading(true);
-              safeSetError(null);
-              // Пробуем еще раз через 3 секунды
-              setTimeout(() => {
-                loadPlan(retryCount + 1);
-              }, 3000);
-              return;
+              
+              // ИСПРАВЛЕНО: Для других ошибок пробуем еще раз, если не последняя попытка
+              if (retryCount < MAX_RETRIES - 1) {
+                clientLogger.log('⏳ Plan generation error, but profile exists - retrying...', {
+                  error: generateError?.message,
+                  retryCount: retryCount + 1,
+                });
+                safeSetLoading(true);
+                safeSetError(null);
+                setTimeout(() => {
+                  loadPlan(retryCount + 1);
+                }, 3000);
+                return;
+              } else {
+                // Последняя попытка - показываем ошибку
+                safeSetError('Не удалось создать план. Попробуйте обновить страницу.');
+                safeSetLoading(false);
+                return;
+              }
             }
           } else {
             // Профиля нет - показываем ошибку только после нескольких попыток
@@ -824,53 +877,53 @@ export default function PlanPage() {
       try {
         if (!progressCheckInProgress) {
           progressCheckInProgress = true;
-          const [profileCheck, progressCheck] = await Promise.allSettled([
-            api.getCurrentProfile() as Promise<any>,
-            api.getPlanProgress() as Promise<any>,
-          ]);
+        const [profileCheck, progressCheck] = await Promise.allSettled([
+          api.getCurrentProfile() as Promise<any>,
+          api.getPlanProgress() as Promise<any>,
+        ]);
         
-          const hasProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
-          const hasProgress = progressCheck.status === 'fulfilled' && 
-            !!progressCheck.value && 
-            (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
+        const hasProfile = profileCheck.status === 'fulfilled' && !!profileCheck.value;
+        const hasProgress = progressCheck.status === 'fulfilled' && 
+          !!progressCheck.value && 
+          (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
         
-          if (hasProfile || hasProgress) {
-            // План должен существовать - пробуем регенерировать
-            clientLogger.log('🔄 Plan should exist, attempting to regenerate...');
-            safeSetLoading(true);
-            safeSetError(null);
-            try {
-              const generatedPlan = await api.generatePlan() as any;
-              if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-                clientLogger.log('✅ Plan regenerated successfully, processing...');
-                await processPlanData(generatedPlan);
+        if (hasProfile || hasProgress) {
+          // План должен существовать - пробуем регенерировать
+          clientLogger.log('🔄 Plan should exist, attempting to regenerate...');
+          safeSetLoading(true);
+          safeSetError(null);
+          try {
+            const generatedPlan = await api.generatePlan() as any;
+            if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
+              clientLogger.log('✅ Plan regenerated successfully, processing...');
+              await processPlanData(generatedPlan);
                 progressCheckInProgress = false;
-                return;
-              }
-            } catch (generateError: any) {
-              console.error('❌ Failed to regenerate plan:', generateError);
-              // Если слишком много попыток - показываем ошибку
-              if (retryCount >= MAX_RETRIES - 1) {
-                safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
-                safeSetLoading(false);
-                progressCheckInProgress = false;
-                return;
-              }
-              // Пробуем еще раз через 3 секунды, но увеличиваем счетчик попыток
-              safeSetLoading(true);
-              safeSetError(null);
-              progressCheckInProgress = false;
-              setTimeout(() => {
-                loadPlan(retryCount + 1);
-              }, 3000);
               return;
             }
-          } else {
-            // Профиля нет - показываем ошибку профиля
-            safeSetError('no_profile');
-            safeSetLoading(false);
-            progressCheckInProgress = false;
+          } catch (generateError: any) {
+            console.error('❌ Failed to regenerate plan:', generateError);
+            // Если слишком много попыток - показываем ошибку
+            if (retryCount >= MAX_RETRIES - 1) {
+              safeSetError('Не удалось загрузить план. Попробуйте обновить страницу.');
+              safeSetLoading(false);
+                progressCheckInProgress = false;
+              return;
+            }
+            // Пробуем еще раз через 3 секунды, но увеличиваем счетчик попыток
+            safeSetLoading(true);
+            safeSetError(null);
+              progressCheckInProgress = false;
+            setTimeout(() => {
+              loadPlan(retryCount + 1);
+            }, 3000);
             return;
+          }
+        } else {
+          // Профиля нет - показываем ошибку профиля
+          safeSetError('no_profile');
+      safeSetLoading(false);
+            progressCheckInProgress = false;
+          return;
           }
           progressCheckInProgress = false;
         }

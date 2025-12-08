@@ -610,7 +610,7 @@ export default function QuizPage() {
           // ИСПРАВЛЕНО: Не сбрасываем флаг, если пользователь уже продолжил анкету
           // Это предотвращает повторные вызовы в Telegram Mini App
           if (!hasResumedRef.current && !hasResumed) {
-            progressLoadInProgressRef.current = false;
+          progressLoadInProgressRef.current = false;
           } else {
             clientLogger.log('🔒 init: оставляем progressLoadInProgressRef установленным, так как hasResumed = true');
           }
@@ -1014,7 +1014,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Не сбрасываем флаги, если пользователь уже продолжил анкету
       // Это предотвращает повторные вызовы loadSavedProgressFromServer в Telegram Mini App
       if (!hasResumedRef.current && !hasResumed) {
-        loadProgressInProgressRef.current = false;
+      loadProgressInProgressRef.current = false;
       } else {
         // Если hasResumed = true, оставляем флаги установленными, чтобы предотвратить повторные вызовы
         clientLogger.log('🔒 loadSavedProgressFromServer: оставляем флаги установленными, так как hasResumed = true');
@@ -1271,8 +1271,8 @@ export default function QuizPage() {
       setCurrentQuestionIndex(correctedIndex);
       await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
       return;
-    }
-    
+        }
+        
     // Проверяем, что текущий вопрос существует в allQuestions
     const currentQuestionInAllQuestions = allQuestions[currentQuestionIndex];
     if (!currentQuestionInAllQuestions && allQuestions.length > 0) {
@@ -1288,8 +1288,8 @@ export default function QuizPage() {
       setCurrentQuestionIndex(correctedIndex);
       await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
       return;
-    }
-    
+      }
+      
     // ИСПРАВЛЕНО: Больше не вычисляем allQuestions локально - используем мемоизированный из компонента
     // Это гарантирует консистентность индексов и предотвращает проблемы после изменения фильтрации
 
@@ -1977,26 +1977,26 @@ export default function QuizPage() {
           try {
             const currentInitData = await getInitData();
             if (currentInitData) {
-              await fetch('/api/logs', {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
+            await fetch('/api/logs', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
                   'X-Telegram-Init-Data': currentInitData,
-                },
-                body: JSON.stringify({
-                  level: 'error',
-                  message: 'Failed to generate plan after submitting answers',
-                  context: {
-                    error: genError?.message,
-                    status: genError?.status,
-                    statusText: genError?.statusText,
-                    stack: genError?.stack?.substring(0, 500), // Ограничиваем размер
+              },
+              body: JSON.stringify({
+                level: 'error',
+                message: 'Failed to generate plan after submitting answers',
+                context: {
+                  error: genError?.message,
+                  status: genError?.status,
+                  statusText: genError?.statusText,
+                  stack: genError?.stack?.substring(0, 500), // Ограничиваем размер
                     shouldGeneratePlan,
                     hasResult: !!result,
                     resultSuccess: result?.success,
-                  },
-                }),
-              }).catch(() => {}); // Игнорируем ошибки логирования
+                },
+              }),
+            }).catch(() => {}); // Игнорируем ошибки логирования
             }
           } catch (logError) {
             // Игнорируем ошибки логирования
@@ -4612,7 +4612,7 @@ export default function QuizPage() {
   // Это критично, так как showResumeScreen устанавливается асинхронно после загрузки прогресса
   // ВАЖНО: showResumeScreen уже проверяется выше в коде (строка 3900), но добавляем дополнительную проверку здесь
   // для гарантии правильного порядка рендеринга
-  
+
   // Если показывается информационный экран между вопросами
   // При повторном прохождении пропускаем все info screens
   if (pendingInfoScreen && !isRetakingQuiz) {

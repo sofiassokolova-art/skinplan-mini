@@ -134,7 +134,7 @@ export default function PersonalCabinet() {
       try {
         const profile = await api.getCurrentProfile() as SkinProfile | null;
         if (profile) {
-          setSkinProfile(profile);
+        setSkinProfile(profile);
         }
         
         // Пробуем загрузить план для вычисления текущего дня
