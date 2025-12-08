@@ -1452,11 +1452,12 @@ export default function QuizPage() {
       const currentInitData = await getInitData();
       
       if (currentInitData) {
+        // ИСПРАВЛЕНО: Отправляем логи даже без initData - API теперь поддерживает анонимные логи
         const logResponse = await fetch('/api/logs', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': currentInitData,
+            'X-Telegram-Init-Data': currentInitData || '',
           },
           body: JSON.stringify({
             level: 'info',
@@ -1466,32 +1467,48 @@ export default function QuizPage() {
               hasQuestionnaire: !!questionnaire,
               answersCount: Object.keys(answers).length,
             },
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+            userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
           }),
         });
         
         if (!logResponse.ok) {
           const errorText = await logResponse.text().catch(() => 'Unknown error');
-          let errorJson: any = null;
-          try {
-            errorJson = JSON.parse(errorText);
-          } catch {
-            // Не JSON, оставляем как текст
-          }
           console.error('❌ Ошибка сохранения лога (submitAnswers called):', {
             status: logResponse.status,
             statusText: logResponse.statusText,
             error: errorText,
-            errorJson,
             hasInitData: !!currentInitData,
-            initDataLength: currentInitData?.length || 0,
-            initDataPreview: currentInitData ? currentInitData.substring(0, 50) + '...' : null,
           });
         } else {
           const responseData = await logResponse.json().catch(() => null);
           clientLogger.log('✅ Лог успешно сохранен (submitAnswers called):', responseData);
         }
       } else {
-        clientLogger.warn('⚠️ initData не доступен для логирования');
+        // ИСПРАВЛЕНО: Отправляем логи даже без initData (анонимно)
+        try {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              level: 'info',
+              message: 'submitAnswers called (no initData)',
+              context: {
+                timestamp: new Date().toISOString(),
+                hasQuestionnaire: !!questionnaire,
+                answersCount: Object.keys(answers).length,
+                hasInitData: false,
+              },
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+              userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
+            }),
+          }).catch(() => {}); // Игнорируем ошибки отправки анонимных логов
+        } catch (anonLogError) {
+          // Игнорируем ошибки анонимного логирования
+        }
+        clientLogger.warn('⚠️ initData не доступен, логируем анонимно');
       }
     } catch (logError) {
       // ИСПРАВЛЕНО: Логируем ошибки более детально для диагностики

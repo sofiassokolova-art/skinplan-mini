@@ -1,10 +1,12 @@
 // app/api/logs/route.ts
 // API для сохранения логов клиентов
+// ИСПРАВЛЕНО: Используем Upstash KV как основное хранилище для логов
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { logger } from '@/lib/logger';
+import { getRedis } from '@/lib/redis';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,35 +14,17 @@ export async function POST(request: NextRequest) {
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
 
-    if (!initData) {
-      console.error('❌ /api/logs: Missing Telegram initData');
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
-    }
-
-    // Получаем userId из initData
+    // ИСПРАВЛЕНО: initData не обязателен - можем логировать даже без него
     let userId: string | null = null;
-    try {
-      userId = await getUserIdFromInitData(initData);
-    } catch (userIdError: any) {
-      console.error('❌ /api/logs: Error getting userId from initData:', {
-        error: userIdError?.message,
-        stack: userIdError?.stack,
-      });
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
-    
-    if (!userId) {
-      console.error('❌ /api/logs: userId is null after getUserIdFromInitData');
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
+    if (initData) {
+      try {
+        userId = await getUserIdFromInitData(initData);
+      } catch (userIdError: any) {
+        console.warn('⚠️ /api/logs: Error getting userId from initData (continuing without userId):', {
+          error: userIdError?.message,
+        });
+        // Продолжаем без userId - логируем как анонимный лог
+      }
     }
 
     // Парсим тело запроса
@@ -81,39 +65,87 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Сохраняем лог в БД
-    try {
-      await prisma.clientLog.create({
-        data: {
+    const timestamp = new Date().toISOString();
+    const logData = {
+      userId: userId || 'anonymous',
+      level,
+      message,
+      context: context || null,
+      userAgent: userAgent || null,
+      url: url || null,
+      timestamp,
+    };
+
+    // ИСПРАВЛЕНО: Сохраняем в Upstash KV как основное хранилище
+    let kvSaved = false;
+    const redis = getRedis();
+    if (redis) {
+      try {
+        // Создаем уникальный ключ: logs:{userId}:{timestamp}:{random}
+        const logKey = `logs:${userId || 'anonymous'}:${Date.now()}:${Math.random().toString(36).substring(7)}`;
+        // Сохраняем с TTL 30 дней
+        await redis.set(logKey, JSON.stringify(logData), { ex: 30 * 24 * 60 * 60 });
+        
+        // Также добавляем в список последних логов пользователя (храним последние 100)
+        if (userId) {
+          const userLogsKey = `user_logs:${userId}`;
+          await redis.lpush(userLogsKey, logKey);
+          await redis.ltrim(userLogsKey, 0, 99); // Храним только последние 100 логов
+          await redis.expire(userLogsKey, 30 * 24 * 60 * 60); // TTL 30 дней
+        }
+        
+        // Для ошибок также добавляем в общий список ошибок
+        if (level === 'error') {
+          const errorsKey = 'logs:errors:recent';
+          await redis.lpush(errorsKey, logKey);
+          await redis.ltrim(errorsKey, 0, 999); // Последние 1000 ошибок
+          await redis.expire(errorsKey, 7 * 24 * 60 * 60); // TTL 7 дней
+        }
+        
+        kvSaved = true;
+        console.log('✅ /api/logs: Log saved to Upstash KV', {
+          userId: userId || 'anonymous',
+          level,
+          message: message.substring(0, 50),
+        });
+      } catch (kvError: any) {
+        console.error('❌ /api/logs: Upstash KV error (will try PostgreSQL fallback):', {
+          error: kvError?.message,
+        });
+      }
+    }
+
+    // Fallback: Сохраняем в PostgreSQL (если доступен и userId есть)
+    if (userId) {
+      try {
+        await prisma.clientLog.create({
+          data: {
+            userId,
+            level,
+            message,
+            context: context || null,
+            userAgent: userAgent || null,
+            url: url || null,
+          },
+        });
+        console.log('✅ /api/logs: Log saved to PostgreSQL (fallback)', {
           userId,
           level,
-          message,
-          context: context || null,
-          userAgent: userAgent || null,
-          url: url || null,
-        },
-      });
-      // ИСПРАВЛЕНО: Логируем более детально для диагностики
-      const logInfo = {
-        userId,
-        level,
-        message: message.substring(0, 50),
-        timestamp: new Date().toISOString(),
-      };
-      console.log('✅ /api/logs: Log saved successfully', logInfo);
-      // Также логируем в server logger для отслеживания
-      logger.info('Client log saved', logInfo);
-    } catch (dbError: any) {
-      console.error('❌ /api/logs: Database error saving log:', {
-        error: dbError?.message,
-        code: dbError?.code,
-        meta: dbError?.meta,
-        stack: dbError?.stack,
-        userId,
-        level,
-        message: message?.substring(0, 50),
-      });
-      throw dbError; // Пробрасываем ошибку дальше, чтобы она попала в catch блок
+          message: message.substring(0, 50),
+        });
+      } catch (dbError: any) {
+        // Если KV уже сохранил, это не критично
+        if (!kvSaved) {
+          console.error('❌ /api/logs: Database error saving log:', {
+            error: dbError?.message,
+            code: dbError?.code,
+          });
+          // Если не удалось сохранить ни в KV, ни в БД - это проблема
+          if (!kvSaved) {
+            throw dbError;
+          }
+        }
+      }
     }
 
     // Автоматически удаляем логи старше 7 дней (в фоне, не блокируем ответ)
@@ -146,7 +178,11 @@ export async function POST(request: NextRequest) {
       }, 0);
     }
 
-    return NextResponse.json({ success: true });
+    // Если хотя бы одно хранилище успешно - возвращаем успех
+    return NextResponse.json({ 
+      success: true,
+      storedIn: kvSaved ? 'kv' : (userId ? 'postgres' : 'none'),
+    });
   } catch (error: any) {
     console.error('❌ /api/logs: Unhandled error:', {
       error: error?.message,
@@ -156,6 +192,22 @@ export async function POST(request: NextRequest) {
       meta: error?.meta,
     });
     logger.error('Error saving client log', error);
+    
+    // ИСПРАВЛЕНО: Даже при ошибке пытаемся сохранить в KV как последний резерв
+    try {
+      const redis = getRedis();
+      if (redis) {
+        const errorLogKey = `logs:errors:${Date.now()}:${Math.random().toString(36).substring(7)}`;
+        await redis.set(errorLogKey, JSON.stringify({
+          error: error?.message,
+          stack: error?.stack,
+          timestamp: new Date().toISOString(),
+        }), { ex: 7 * 24 * 60 * 60 }); // TTL 7 дней
+      }
+    } catch (kvError) {
+      // Игнорируем ошибки сохранения ошибок логирования
+    }
+    
     return NextResponse.json(
       { 
         error: 'Internal server error',
