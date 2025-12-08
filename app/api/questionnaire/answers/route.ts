@@ -79,34 +79,47 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (recentSubmission) {
+    // ИСПРАВЛЕНО: Проверяем дубликат только если есть профиль
+    // Если профиля нет, но есть ответы - это означает, что анкета не была завершена
+    // В этом случае нужно создать профиль, а не возвращать дубликат
+    const existingProfile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    if (recentSubmission && existingProfile) {
       const timeSinceSubmission = Date.now() - new Date(recentSubmission.createdAt).getTime();
-      // Если ответ был отправлен менее чем 5 секунд назад - это вероятно дубликат
+      // Если ответ был отправлен менее чем 5 секунд назад И профиль уже существует - это вероятно дубликат
       if (timeSinceSubmission < 5000) {
-        logger.warn('Possible duplicate submission detected', {
+        logger.warn('Possible duplicate submission detected (profile exists)', {
           userId,
           questionnaireId,
           timeSinceSubmission,
           lastSubmissionId: recentSubmission.id,
+          profileId: existingProfile.id,
         });
         
         // Возвращаем успешный ответ, чтобы избежать ошибки 301 и повторной обработки
-        // Но логируем это для мониторинга
-        const existingProfile = await prisma.skinProfile.findFirst({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-        });
-        
         return ApiResponse.success({
           success: true,
           message: 'Answers already submitted',
-          profile: existingProfile ? {
+          profile: {
             id: existingProfile.id,
             version: existingProfile.version,
-          } : null,
+          },
           isDuplicate: true,
         });
       }
+    }
+    
+    // ИСПРАВЛЕНО: Если профиля нет, но есть ответы - продолжаем создание профиля
+    // Это может быть случай, когда пользователь начал анкету, но не завершил её
+    if (!existingProfile && recentSubmission) {
+      logger.info('Profile does not exist, but answers found - will create profile', {
+        userId,
+        questionnaireId,
+        answersCount: answers.length,
+      });
     }
 
     // Используем транзакцию для атомарности операций
