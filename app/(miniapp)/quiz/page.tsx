@@ -3162,7 +3162,7 @@ export default function QuizPage() {
       clientLogger.log('✅ Корректируем infoScreenIndex после восстановления');
       setCurrentInfoScreenIndex(initialInfoScreens.length);
     }
-  }, [hasResumed, allQuestions, currentQuestionIndex, currentInfoScreenIndex, questionnaire]);
+  }, [hasResumed, allQuestions, currentQuestionIndex, questionnaire]); // ИСПРАВЛЕНО: Убрали currentInfoScreenIndex из зависимостей, чтобы избежать бесконечного цикла
 
   // При повторном прохождении сразу переходим к вопросам
   // ВАЖНО: Эта логика должна выполняться только один раз при инициализации, а не при каждом рендере
@@ -3317,6 +3317,7 @@ export default function QuizPage() {
       const initialInfoScreensCount = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode).length;
       // ВАЖНО: Всегда устанавливаем currentInfoScreenIndex в initialInfoScreensCount при перепрохождении
       // Это гарантирует, что начальные инфо-экраны не будут показаны
+      // ИСПРАВЛЕНО: Используем ref для отслеживания, чтобы избежать бесконечного цикла
       if (currentInfoScreenIndex < initialInfoScreensCount) {
         setCurrentInfoScreenIndex(initialInfoScreensCount);
         clientLogger.log('✅ Full retake: Setting currentInfoScreenIndex to skip all initial info screens');
@@ -3328,7 +3329,7 @@ export default function QuizPage() {
         clientLogger.log('✅ Full retake: Starting from first question, skipping all info screens');
       }
     }
-  }, [isRetakingQuiz, questionnaire, currentInfoScreenIndex, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen]);
+  }, [isRetakingQuiz, questionnaire, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen]); // ИСПРАВЛЕНО: Убрали currentInfoScreenIndex из зависимостей, чтобы избежать бесконечного цикла
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
   const initialInfoScreens = useMemo(() => INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode), []);
