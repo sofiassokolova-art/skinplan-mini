@@ -123,7 +123,18 @@ export function PlanPageClientNew({
   });
 
   const currentDayPlan = useMemo(() => {
-    return plan28.days.find(d => d.dayIndex === selectedDay);
+    // ИСПРАВЛЕНО: Ищем день по dayIndex, с защитой от undefined
+    const day = plan28.days.find(d => d.dayIndex === selectedDay);
+    if (!day) {
+      console.warn('Day not found for selectedDay:', {
+        selectedDay,
+        availableDays: plan28.days.map(d => d.dayIndex).slice(0, 10),
+        totalDays: plan28.days.length,
+      });
+      // Возвращаем первый день как fallback
+      return plan28.days[0] || null;
+    }
+    return day;
   }, [plan28.days, selectedDay]);
 
   // Обновляем выбранный день при изменении параметра в URL
