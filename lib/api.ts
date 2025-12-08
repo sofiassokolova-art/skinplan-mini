@@ -74,22 +74,6 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    // Для 404 ошибок логируем подробности
-    if (response.status === 404) {
-      const errorText = await response.text().catch(() => '');
-      console.log('📋 404 Not Found:', {
-        endpoint,
-        errorText: errorText.substring(0, 200), // Первые 200 символов
-        hasInitData: !!initData,
-      });
-      
-      // Создаем объект ошибки с информацией о статусе
-      const error: any = new Error(errorText || 'Not found');
-      error.status = 404;
-      error.isNotFound = true;
-      throw error;
-    }
-    
     // Для 401 ошибок добавляем более информативное сообщение
     // НО: для некоторых endpoints (cart, wishlist) 401 - это нормально (пользователь не авторизован)
     // В этом случае не выбрасываем исключение, а возвращаем пустой результат
@@ -143,13 +127,23 @@ async function request<T>(
     }
     
     // Для 404 ошибок (Not Found) - обычно означает отсутствие профиля
+    // Это нормальная ситуация для новых пользователей или когда профиль не найден
     if (response.status === 404) {
-      const errorData = await response.json().catch(() => ({ error: 'Not found' }));
+      const errorText = await response.text().catch(() => '');
+      let errorData: any = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        // Если не JSON, используем текст как есть
+        errorData = { error: errorText || 'Not found' };
+      }
       const errorMessage = errorData.error || 'Not found';
-      // Логируем 404 только в development (они могут быть нормальными)
+      
+      // Логируем 404 только в development (они могут быть нормальными для новых пользователей)
       if (process.env.NODE_ENV === 'development') {
         console.log('⚠️ 404 response from API:', { endpoint, errorMessage });
       }
+      
       // Создаем специальную ошибку с кодом 404 для обработки на клиенте
       const notFoundError = new Error(errorMessage) as any;
       notFoundError.status = 404;
@@ -206,7 +200,7 @@ export const api = {
 
   // Профиль
   // ОПТИМИЗАЦИЯ: Кэшируем результат проверки профиля в sessionStorage
-  // чтобы избежать множественных запросов в течение одной сессии
+  // и дедуплицируем параллельные запросы для предотвращения множественных запросов
   async getCurrentProfile() {
     // Проверяем кэш в sessionStorage
     if (typeof window !== 'undefined') {
@@ -214,7 +208,14 @@ export const api = {
       const cacheTimestampKey = 'profile_check_cache_timestamp';
       const cacheMaxAge = 5000; // 5 секунд - достаточно для предотвращения дублирующих запросов
       
+      // Дедупликация: если запрос уже выполняется, ждем его результата
+      const globalPendingKey = '__profile_request_pending';
+      if (!(window as any)[globalPendingKey]) {
+        (window as any)[globalPendingKey] = null;
+      }
+      
       try {
+        // Проверяем кэш
         const cached = sessionStorage.getItem(cacheKey);
         const cachedTimestamp = sessionStorage.getItem(cacheTimestampKey);
         
@@ -233,24 +234,43 @@ export const api = {
             return JSON.parse(cached);
           }
         }
-      } catch (e) {
-        // Если ошибка парсинга кэша - игнорируем и делаем запрос
-      }
-      
-      // Делаем запрос
-      try {
-        const profile = await request('/profile/current');
-        // Сохраняем в кэш
-        sessionStorage.setItem(cacheKey, JSON.stringify(profile));
-        sessionStorage.setItem(cacheTimestampKey, String(Date.now()));
-        return profile;
-      } catch (error: any) {
-        // Если 404 - тоже кэшируем, чтобы не делать повторные запросы
-        if (error?.status === 404 || error?.isNotFound) {
-          sessionStorage.setItem(cacheKey, 'null');
-          sessionStorage.setItem(cacheTimestampKey, String(Date.now()));
+        
+        // Проверяем, есть ли уже выполняющийся запрос
+        const pendingPromise = (window as any)[globalPendingKey];
+        if (pendingPromise) {
+          // Запрос уже выполняется - ждем его результата
+          return pendingPromise;
         }
-        throw error;
+        
+        // Создаем новый запрос и сохраняем промис для дедупликации
+        const profilePromise = (async () => {
+          try {
+            const profile = await request('/profile/current');
+            // Сохраняем в кэш
+            sessionStorage.setItem(cacheKey, JSON.stringify(profile));
+            sessionStorage.setItem(cacheTimestampKey, String(Date.now()));
+            return profile;
+          } catch (error: any) {
+            // Если 404 - тоже кэшируем, чтобы не делать повторные запросы
+            if (error?.status === 404 || error?.isNotFound) {
+              sessionStorage.setItem(cacheKey, 'null');
+              sessionStorage.setItem(cacheTimestampKey, String(Date.now()));
+            }
+            throw error;
+          } finally {
+            // Очищаем ссылку на промис после завершения
+            (window as any)[globalPendingKey] = null;
+          }
+        })();
+        
+        // Сохраняем промис для других вызовов
+        (window as any)[globalPendingKey] = profilePromise;
+        
+        return profilePromise;
+      } catch (e) {
+        // Очищаем промис в случае ошибки
+        (window as any)[globalPendingKey] = null;
+        throw e;
       }
     }
     
