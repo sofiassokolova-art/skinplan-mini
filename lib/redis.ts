@@ -23,9 +23,29 @@ export function getRedis(): Redis | null {
   // ИСПРАВЛЕНО: Приоритет токенов - сначала проверяем write token, потом read-only (но не используем read-only для записи)
   let token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   
-  // ВАЖНО: Если установлен только read-only токен, но нет write token - это проблема
+  // ИСПРАВЛЕНО: Детальная диагностика токенов
   const readOnlyToken = process.env.KV_REST_API_READ_ONLY_TOKEN;
-  if (!token && readOnlyToken) {
+  const hasWriteToken = !!token;
+  const hasReadOnlyToken = !!readOnlyToken;
+  const tokensMatch = hasReadOnlyToken && hasWriteToken && token === readOnlyToken;
+  
+  // Логируем только при проблемах или в development
+  if (process.env.NODE_ENV === 'development' || tokensMatch || (!hasWriteToken && hasReadOnlyToken)) {
+    console.log('🔍 Redis token diagnostics:', {
+      hasKVUrl: !!process.env.KV_REST_API_URL,
+      hasUpstashUrl: !!process.env.UPSTASH_REDIS_REST_URL,
+      hasWriteToken,
+      hasReadOnlyToken,
+      tokensMatch,
+      writeTokenLength: token?.length || 0,
+      readOnlyTokenLength: readOnlyToken?.length || 0,
+      writeTokenPrefix: token?.substring(0, 10) || 'none',
+      readOnlyTokenPrefix: readOnlyToken?.substring(0, 10) || 'none',
+    });
+  }
+  
+  // ВАЖНО: Если установлен только read-only токен, но нет write token - это проблема
+  if (!hasWriteToken && hasReadOnlyToken) {
     console.error('❌ ERROR: Only KV_REST_API_READ_ONLY_TOKEN is set, but KV_REST_API_TOKEN is missing!');
     console.error('   Write operations will fail. Please set KV_REST_API_TOKEN in Vercel environment variables.');
     console.error('   Current token value is read-only and cannot be used for SET operations.');
@@ -34,10 +54,11 @@ export function getRedis(): Redis | null {
   }
   
   // ИСПРАВЛЕНО: Проверяем, не используется ли read-only токен вместо write token (случайная ошибка)
-  if (readOnlyToken && token === readOnlyToken) {
+  if (tokensMatch) {
     console.error('❌ ERROR: KV_REST_API_TOKEN и KV_REST_API_READ_ONLY_TOKEN совпадают!');
     console.error('   KV_REST_API_TOKEN должен быть токеном для записи, а не read-only токеном.');
     console.error('   Please check your Vercel environment variables.');
+    console.error('   Both tokens are the same value - this will cause NOPERM errors on write operations.');
     return null;
   }
   

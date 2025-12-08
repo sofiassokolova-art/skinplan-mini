@@ -34,8 +34,17 @@ function initializeCache(): void {
       // ВАЖНО: Проверяем, что используется токен для записи
       const writeToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
       const readOnlyToken = process.env.KV_REST_API_READ_ONLY_TOKEN;
-      if (readOnlyToken && writeToken === readOnlyToken) {
-        console.error('❌ ERROR: Using read-only token for Redis write operations! Please set KV_REST_API_TOKEN (not KV_REST_API_READ_ONLY_TOKEN)');
+      const tokensMatch = readOnlyToken && writeToken === readOnlyToken;
+      
+      if (tokensMatch) {
+        console.error('❌ ERROR: Using read-only token for Redis write operations!');
+        console.error('   KV_REST_API_TOKEN совпадает с KV_REST_API_READ_ONLY_TOKEN');
+        console.error('   Please set KV_REST_API_TOKEN to a write token in Vercel environment variables.');
+      }
+      
+      if (!writeToken && readOnlyToken) {
+        console.error('❌ ERROR: Only KV_REST_API_READ_ONLY_TOKEN is set, KV_REST_API_TOKEN is missing!');
+        console.error('   Cache write operations will fail. Please set KV_REST_API_TOKEN in Vercel.');
       }
       
       return;
