@@ -139,10 +139,41 @@ export default function QuizPage() {
         console.log('✅ Анкета только что отправлена, редиректим на /plan');
         // Очищаем флаг
         sessionStorage.removeItem('quiz_just_submitted');
+        // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
+        initCompletedRef.current = true;
         // Редиректим на /plan
         window.location.replace('/plan');
         return;
       }
+    }
+    
+    // ИСПРАВЛЕНО: Проверяем, есть ли уже профиль (анкета завершена)
+    // Если профиль есть, не показываем начало анкеты, а редиректим на /plan
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current) {
+      const checkProfile = async () => {
+        try {
+          const profile = await api.getCurrentProfile();
+          if (profile && (profile as any).id) {
+            // Профиль существует - анкета уже завершена
+            console.log('✅ Профиль существует, анкета завершена - редиректим на /plan');
+            initCompletedRef.current = true;
+            setLoading(false);
+            window.location.replace('/plan');
+            return;
+          }
+        } catch (err: any) {
+          // Профиля нет - это нормально, продолжаем инициализацию
+          const isNotFound = err?.status === 404 || 
+                            err?.message?.includes('404') || 
+                            err?.message?.includes('No profile') ||
+                            err?.message?.includes('Profile not found');
+          if (!isNotFound) {
+            console.warn('⚠️ Ошибка при проверке профиля:', err);
+          }
+        }
+      };
+      // Выполняем проверку асинхронно, но не блокируем инициализацию
+      checkProfile().catch(() => {});
     }
     
     // ВАЖНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
@@ -1506,9 +1537,12 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Устанавливаем флаг в sessionStorage ПЕРЕД редиректом
       // Это защита на случай, если редирект не сработает (Telegram WebApp может блокировать)
+      // ВАЖНО: Также устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
       if (typeof window !== 'undefined') {
         try {
           sessionStorage.setItem('quiz_just_submitted', 'true');
+          // Устанавливаем initCompletedRef, чтобы при возврате на /quiz не показывалось начало анкеты
+          initCompletedRef.current = true;
         } catch (storageError) {
           console.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
         }
