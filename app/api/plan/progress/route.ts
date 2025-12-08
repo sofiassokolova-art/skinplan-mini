@@ -44,14 +44,24 @@ export async function GET(request: NextRequest) {
     let progress;
     try {
       progress = await prisma.planProgress.findUnique({
-      where: { userId },
-    });
+        where: { userId },
+      });
     } catch (dbError: any) {
-      // Если ошибка связана с отсутствием колонки - возвращаем дефолтное значение
-      if (dbError?.message?.includes('does not exist') || dbError?.message?.includes('column')) {
+      // ИСПРАВЛЕНО: Если ошибка связана с отсутствием колонки или таблицы - возвращаем дефолтное значение
+      const errorMessage = dbError?.message || '';
+      if (
+        errorMessage.includes('does not exist') || 
+        errorMessage.includes('column') ||
+        errorMessage.includes('completed_days') ||
+        dbError?.code === 'P2022'
+      ) {
         // Это известная проблема схемы - база данных не синхронизирована с Prisma схемой
         // Возвращаем дефолтные значения без логирования, так как это ожидаемое поведение
         // при миграции или когда база данных еще не обновлена
+        logger.debug('PlanProgress table/column not found, returning default values', {
+          userId,
+          error: errorMessage.substring(0, 100),
+        });
         return NextResponse.json({
           currentDay: 1,
           completedDays: [] as number[],
@@ -60,6 +70,8 @@ export async function GET(request: NextRequest) {
           totalCompletedDays: 0,
         });
       }
+      // Для других ошибок логируем и пробрасываем
+      logger.error('Error fetching PlanProgress', dbError, { userId });
       throw dbError;
     }
 

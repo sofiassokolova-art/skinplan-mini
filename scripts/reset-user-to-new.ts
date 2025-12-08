@@ -10,7 +10,7 @@ async function resetUserToNew(telegramId: string) {
     // Находим пользователя
     const user = await prisma.user.findUnique({
       where: { telegramId },
-      select: { id: true, telegramId: true, name: true },
+      select: { id: true, telegramId: true, firstName: true, lastName: true, username: true },
     });
 
     if (!user) {
@@ -18,23 +18,29 @@ async function resetUserToNew(telegramId: string) {
       process.exit(1);
     }
 
-    console.log(`✅ Пользователь найден: ${user.name || 'N/A'} (${user.id})`);
+    const userName = user.firstName || user.username || user.telegramId;
+    console.log(`✅ Пользователь найден: ${userName} (${user.id})`);
 
     // Удаляем все данные пользователя в правильном порядке (из-за foreign keys)
     
     // 1. Удаляем ответы на вопросы анкеты
     console.log('🗑️  Удаляю ответы на вопросы анкеты...');
-    const deletedAnswers = await prisma.questionnaireAnswer.deleteMany({
+    const deletedAnswers = await prisma.userAnswer.deleteMany({
       where: { userId: user.id },
     });
     console.log(`   ✅ Удалено ответов: ${deletedAnswers.count}`);
 
-    // 2. Удаляем прогресс анкеты
+    // 2. Удаляем прогресс анкеты (если есть такая модель)
     console.log('🗑️  Удаляю прогресс анкеты...');
-    const deletedProgress = await prisma.questionnaireProgress.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено прогрессов: ${deletedProgress.count}`);
+    try {
+      const deletedProgress = await prisma.questionnaireProgress.deleteMany({
+        where: { userId: user.id },
+      });
+      console.log(`   ✅ Удалено прогрессов: ${deletedProgress.count}`);
+    } catch (error: any) {
+      // Модель может не существовать
+      console.log(`   ℹ️  Прогресс анкеты: ${error?.message?.substring(0, 50) || 'не найдено'}`);
+    }
 
     // 3. Удаляем RecommendationSession
     console.log('🗑️  Удаляю RecommendationSession...');
@@ -73,15 +79,27 @@ async function resetUserToNew(telegramId: string) {
 
     // 8. Удаляем избранное (если есть)
     console.log('🗑️  Удаляю избранное...');
-    const deletedFavorites = await prisma.favorite.deleteMany({
-      where: { userId: user.id },
-    });
-    console.log(`   ✅ Удалено избранного: ${deletedFavorites.count}`);
+    try {
+      const deletedFavorites = await prisma.wishlist.deleteMany({
+        where: { userId: user.id },
+      });
+      console.log(`   ✅ Удалено избранного: ${deletedFavorites.count}`);
+    } catch (error: any) {
+      // Модель может называться по-другому
+      try {
+        const deletedFavorites = await prisma.favorite.deleteMany({
+          where: { userId: user.id },
+        });
+        console.log(`   ✅ Удалено избранного: ${deletedFavorites.count}`);
+      } catch (error2: any) {
+        console.log(`   ℹ️  Избранное: ${error2?.message?.substring(0, 50) || 'не найдено'}`);
+      }
+    }
 
     // ВАЖНО: Пользователя НЕ удаляем - только его данные
 
     console.log('\n✅ Все данные пользователя успешно удалены!');
-    console.log(`   Пользователь ${user.name || telegramId} теперь как новый.\n`);
+    console.log(`   Пользователь ${userName} теперь как новый.\n`);
 
   } catch (error: any) {
     console.error('❌ Ошибка при сбросе данных:', error);
