@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const method = 'GET';
   const path = '/api/cart';
-  let userId: string | undefined;
+  let userId: string | null | undefined;
 
   try {
     const initData = request.headers.get('x-telegram-init-data') ||
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
       return NextResponse.json(
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
   const path = '/api/cart';
-  let userId: string | undefined;
+  let userId: string | null | undefined;
 
   try {
     const initData = request.headers.get('x-telegram-init-data') ||
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
       return NextResponse.json(
@@ -205,7 +205,7 @@ export async function DELETE(request: NextRequest) {
   const startTime = Date.now();
   const method = 'DELETE';
   const path = '/api/cart';
-  let userId: string | undefined;
+  let userId: string | null | undefined;
 
   try {
     const initData = request.headers.get('x-telegram-init-data') ||
@@ -218,7 +218,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
       return NextResponse.json(
