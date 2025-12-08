@@ -250,18 +250,22 @@ export async function POST(request: NextRequest) {
     // ИСПРАВЛЕНО: Логируем результат сохранения (даже в production для диагностики)
     console.log('📊 /api/logs: Save result', {
       kvSaved,
+      dbSaved: userId ? 'attempted' : 'skipped',
       storedIn: kvSaved ? 'kv' : (userId ? 'postgres' : 'none'),
       userId: userId || 'anonymous',
       level,
       hasKVUrl,
       hasKVToken,
+      message: message.substring(0, 50),
     });
     
-    // Если хотя бы одно хранилище успешно - возвращаем успех
+    // ИСПРАВЛЕНО: Возвращаем детальную информацию о сохранении
     return NextResponse.json({ 
       success: true,
-      storedIn: kvSaved ? 'kv' : (userId ? 'postgres' : 'none'),
+      saved: kvSaved || !!userId, // Успешно, если сохранено в KV или есть userId для БД
       kvSaved,
+      dbSaved: userId ? true : false,
+      storedIn: kvSaved ? 'kv' : (userId ? 'postgres' : 'none'),
       hasKVUrl,
       hasKVToken,
     });

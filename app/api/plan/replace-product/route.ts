@@ -4,8 +4,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/plan/replace-product';
+  let userId: string | undefined;
+  
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
     const initData = request.headers.get('x-telegram-init-data') ||
@@ -18,9 +24,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 401, duration);
       return NextResponse.json(
         { error: 'Invalid or expired initData' },
         { status: 401 }
@@ -28,8 +36,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { oldProductId, newProductId } = await request.json();
+    
+    logger.info('Product replacement request', {
+      userId,
+      oldProductId,
+      newProductId,
+    });
 
     if (!oldProductId || !newProductId) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 400, duration, userId);
       return NextResponse.json(
         { error: 'Missing oldProductId or newProductId' },
         { status: 400 }
@@ -46,6 +62,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (!oldProduct || !newProduct) {
+      const duration = Date.now() - startTime;
+      logger.warn('Product not found for replacement', {
+        userId,
+        oldProductId,
+        newProductId,
+        oldProductExists: !!oldProduct,
+        newProductExists: !!newProduct,
+      });
+      logApiRequest(method, path, 404, duration, userId);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
@@ -90,14 +115,33 @@ export async function POST(request: NextRequest) {
           products: updatedProducts,
         },
       });
+      
+      logger.info('RecommendationSession updated with new product', {
+        userId,
+        sessionId: activeSession.id,
+        oldProductId,
+        newProductId,
+      });
     }
 
+    const duration = Date.now() - startTime;
+    logger.info('Product replaced successfully', {
+      userId,
+      oldProductId,
+      newProductId,
+      sessionUpdated: !!activeSession,
+    });
+    logApiRequest(method, path, 200, duration, userId);
+    
     return NextResponse.json({ 
       success: true,
       message: 'Product replaced successfully. Plan will be updated on next refresh.',
     });
-  } catch (error) {
-    console.error('Error replacing product:', error);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    logger.error('Error replacing product', error, { userId });
+    logApiError(method, path, error, userId);
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

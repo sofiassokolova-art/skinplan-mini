@@ -5,7 +5,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCachedPlan } from '@/lib/cache';
 import { ApiResponse } from '@/lib/api-response';
-import { logger } from '@/lib/logger';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 
 export async function GET(request: NextRequest) {
@@ -20,9 +20,11 @@ export async function GET(request: NextRequest) {
                      request.headers.get('X-Telegram-Init-Data');
     
     if (!initData) {
+      const duration = Date.now() - startTime;
       logger.error('Missing initData in headers for plan retrieval', {
         availableHeaders: Array.from(request.headers.keys()),
       });
+      logApiRequest(method, path, 401, duration);
       return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
     }
 
@@ -31,7 +33,9 @@ export async function GET(request: NextRequest) {
     userId = userIdResult || undefined;
     
     if (!userId) {
+      const duration = Date.now() - startTime;
       logger.error('Invalid or expired initData');
+      logApiRequest(method, path, 401, duration);
       return ApiResponse.unauthorized('Invalid or expired Telegram initData');
     }
 
@@ -47,7 +51,9 @@ export async function GET(request: NextRequest) {
     });
 
     if (!profile) {
+      const duration = Date.now() - startTime;
       logger.error('No skin profile found for user', { userId });
+      logApiRequest(method, path, 404, duration, userId);
       return ApiResponse.notFound('No skin profile found', { userId });
     }
 
@@ -56,7 +62,9 @@ export async function GET(request: NextRequest) {
     const cachedPlan = await getCachedPlan(userId, profile.version);
     
     if (cachedPlan && cachedPlan.plan28) {
+      const duration = Date.now() - startTime;
       logger.info('Plan retrieved from cache', { userId, profileVersion: profile.version });
+      logApiRequest(method, path, 200, duration, userId);
       return ApiResponse.success(cachedPlan);
     }
 
@@ -69,7 +77,9 @@ export async function GET(request: NextRequest) {
     });
 
     // План не найден ни в текущем, ни в предыдущих версиях - возвращаем 404
+    const duration = Date.now() - startTime;
     logger.info('Plan not found in cache for any version', { userId, profileVersion: profile.version });
+    logApiRequest(method, path, 404, duration, userId);
     return ApiResponse.notFound('Plan not found. Please generate a plan first.', { userId });
     
   } catch (error: unknown) {
@@ -79,6 +89,7 @@ export async function GET(request: NextRequest) {
       ? { message: error.message, stack: error.stack, name: error.name }
       : { error: String(error) };
     logger.error('Error retrieving plan', { ...errorDetails, userId, duration });
+    logApiError(method, path, error, userId);
     
     return ApiResponse.internalError(error, { userId, method, path, duration });
   }

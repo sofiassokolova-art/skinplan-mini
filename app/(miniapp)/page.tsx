@@ -1267,14 +1267,37 @@ export default function HomePage() {
           
           const plan = await Promise.race([checkPromise, timeoutPromise]) as any;
           if (plan && (plan.plan28 || plan.weeks)) {
-            clientLogger.log('✅ Plan found, redirecting to /plan');
-            setHasPlan(true);
-            // Если план найден - редиректим на страницу плана
-            // Используем window.location для гарантированного редиректа
-            if (typeof window !== 'undefined') {
-              window.location.href = '/plan';
+            // ИСПРАВЛЕНО: Проверяем, является ли план фолбековым перед редиректом
+            // Если план фолбековый (rule.name === 'Базовые рекомендации'), не редиректим
+            // Пользователь должен иметь возможность пройти анкету заново для получения правильного плана
+            let isFallbackPlan = false;
+            try {
+              const recommendationsData = await api.getRecommendations() as any;
+              if (recommendationsData?.rule?.name === 'Базовые рекомендации') {
+                isFallbackPlan = true;
+                clientLogger.warn('⚠️ Plan is fallback (Базовые рекомендации), not redirecting to /plan', {
+                  ruleName: recommendationsData.rule?.name,
+                });
+              }
+            } catch (recError) {
+              // Если не удалось проверить рекомендации, продолжаем с проверкой плана
+              clientLogger.warn('⚠️ Could not check recommendations for fallback detection:', recError);
             }
-            return;
+            
+            if (!isFallbackPlan) {
+              clientLogger.log('✅ Plan found (not fallback), redirecting to /plan');
+              setHasPlan(true);
+              // Если план найден и не фолбековый - редиректим на страницу плана
+              // Используем window.location для гарантированного редиректа
+              if (typeof window !== 'undefined') {
+                window.location.href = '/plan';
+              }
+              return;
+            } else {
+              clientLogger.log('ℹ️ Plan is fallback, staying on home page');
+              // План фолбековый - не редиректим, показываем главную страницу
+              // Пользователь может пройти анкету заново для получения правильного плана
+            }
           } else {
             clientLogger.log('ℹ️ Plan not found or empty');
             // НЕ сбрасываем planCheckDoneRef, чтобы не делать повторные запросы

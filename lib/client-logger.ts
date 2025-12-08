@@ -15,8 +15,9 @@ const sendLogToServer = async (
     return; // SSR - не отправляем
   }
 
-  // В production отправляем только error и warn
-  if (!isDevelopment && level !== 'error' && level !== 'warn') {
+  // ИСПРАВЛЕНО: В production отправляем error, warn и info (для важных логов)
+  // Но не отправляем debug и обычные log
+  if (!isDevelopment && level !== 'error' && level !== 'warn' && level !== 'info') {
     return;
   }
 
@@ -31,10 +32,12 @@ const sendLogToServer = async (
       userAgent: navigator.userAgent,
     };
 
-    // ИСПРАВЛЕНО: Логируем в консоль для отладки (только в development)
-    if (isDevelopment) {
-      console.debug('📤 Sending log to server:', { level, message: message.substring(0, 50) });
-    }
+    // ИСПРАВЛЕНО: Логируем в консоль для отладки (всегда, чтобы видеть, что логи отправляются)
+    console.debug('📤 Sending log to server:', { 
+      level, 
+      message: message.substring(0, 50),
+      hasInitData: !!initData,
+    });
 
     // Отправляем с таймаутом, чтобы не блокировать
     const controller = new AbortController();
@@ -50,20 +53,36 @@ const sendLogToServer = async (
       signal: controller.signal,
     });
 
-    if (isDevelopment) {
-      if (response.ok) {
-        const result = await response.json();
-        console.debug('✅ Log sent successfully:', result);
-      } else {
-        console.warn('⚠️ Failed to send log:', response.status, response.statusText);
-      }
+    clearTimeout(timeoutId);
+
+    // ИСПРАВЛЕНО: Всегда логируем результат отправки для диагностики
+    if (response.ok) {
+      const result = await response.json();
+      console.debug('✅ Log sent successfully:', { 
+        level, 
+        saved: result.saved,
+        kvSaved: result.kvSaved,
+        dbSaved: result.dbSaved,
+      });
+    } else {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.warn('⚠️ Failed to send log:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        error: errorText.substring(0, 200),
+        level,
+        message: message.substring(0, 50),
+      });
     }
   } catch (err: any) {
     // ИСПРАВЛЕНО: Логируем ошибки отправки (но не создаем бесконечный цикл)
-    if (isDevelopment) {
-      if (err?.name !== 'AbortError') {
-        console.warn('⚠️ Error sending log to server:', err?.message || err);
-      }
+    if (err?.name !== 'AbortError') {
+      console.warn('⚠️ Error sending log to server:', {
+        error: err?.message || err,
+        errorName: err?.name,
+        level,
+        message: message.substring(0, 50),
+      });
     }
   }
 };
@@ -84,9 +103,20 @@ export const clientLogger = {
   log: (...args: any[]) => {
     const message = formatMessage(...args);
     console.log(...args); // Всегда выводим в консоль
-    // В production не отправляем обычные логи на сервер (только error/warn)
-    if (isDevelopment) {
-      sendLogToServer('log', message, args.length > 1 ? args.slice(1) : null);
+    // ИСПРАВЛЕНО: Отправляем логи на сервер (в development все, в production только важные)
+    // Проверяем, является ли это важным логом (содержит эмодзи или ключевые слова)
+    const isImportantLog = message.includes('✅') || message.includes('❌') || 
+                          message.includes('⚠️') || message.includes('🔄') ||
+                          message.includes('🔍') || message.includes('📥') ||
+                          message.includes('Plan') || message.includes('fallback') ||
+                          message.includes('redirect') || message.includes('error');
+    
+    if (isDevelopment || isImportantLog) {
+      try {
+        sendLogToServer('log', message, args.length > 1 ? args.slice(1) : null);
+      } catch (err) {
+        // Игнорируем ошибки отправки
+      }
     }
   },
   
@@ -125,9 +155,12 @@ export const clientLogger = {
   
   info: (...args: any[]) => {
     const message = formatMessage(...args);
-    if (isDevelopment) {
-      console.info(...args);
+    console.info(...args);
+    // ИСПРАВЛЕНО: info логи всегда отправляем на сервер (и в production, и в development)
+    try {
       sendLogToServer('info', message, args.length > 1 ? args.slice(1) : null);
+    } catch (err) {
+      // Игнорируем ошибки отправки
     }
   },
 };
