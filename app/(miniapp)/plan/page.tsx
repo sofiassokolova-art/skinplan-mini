@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PlanPageClientNew } from './plan-client-new';
@@ -1203,13 +1203,25 @@ export default function PlanPage() {
     console.log('✅ Final productsMap size:', productsMap.size);
     
     return (
-      <PlanPageClientNew
-        plan28={(planData as any).plan28}
-        products={productsMap}
-        wishlist={planData.wishlist}
-        currentDay={planData.currentDay}
-        completedDays={planData.progress?.completedDays || []}
-      />
+      <Suspense fallback={
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}>
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка плана...</div>
+        </div>
+      }>
+        <PlanPageClientNew
+          plan28={(planData as any).plan28}
+          products={productsMap}
+          wishlist={planData.wishlist}
+          currentDay={planData.currentDay}
+          completedDays={planData.progress?.completedDays || []}
+        />
+      </Suspense>
     );
   }
 

@@ -161,7 +161,19 @@ export default function MiniappLayout({
 }) {
   return (
     <QueryProvider>
-      <LayoutContent>{children}</LayoutContent>
+      <Suspense fallback={
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}>
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
+        </div>
+      }>
+        <LayoutContent>{children}</LayoutContent>
+      </Suspense>
     </QueryProvider>
   );
 }
