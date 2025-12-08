@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { calculateSkinAxes } from '@/lib/skin-analysis-engine';
 import type { QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
-import { logger } from '@/lib/logger';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 
 interface SkinIssue {
   id: string;
@@ -270,24 +270,37 @@ export function calculateSkinIssues(
 }
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/analysis';
+  let userId: string | undefined;
+  
   try {
+    logger.info('📥 Analysis request started', { timestamp: new Date().toISOString() });
+    
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
+      logger.warn('Missing initData in analysis request', {
+        availableHeaders: Array.from(request.headers.keys()),
+      });
       return NextResponse.json(
         { error: 'Missing Telegram initData' },
         { status: 401 }
       );
     }
 
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     if (!userId) {
+      logger.warn('Invalid or expired initData in analysis request');
       return NextResponse.json(
         { error: 'Invalid or expired initData' },
         { status: 401 }
       );
     }
+    
+    logger.info('User identified for analysis', { userId });
 
     // Получаем профиль
     const profile = await prisma.skinProfile.findFirst({
@@ -579,6 +592,17 @@ export async function GET(request: NextRequest) {
       // Продолжаем без рекомендаций
     }
 
+    const duration = Date.now() - startTime;
+    logger.info('✅ Analysis data generated successfully', {
+      userId,
+      issuesCount: issues.length,
+      morningStepsCount: morningSteps.length,
+      eveningStepsCount: eveningSteps.length,
+      keyProblemsCount: keyProblems.length,
+      duration,
+    });
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       profile: {
         gender: gender || null,
@@ -591,8 +615,13 @@ export async function GET(request: NextRequest) {
       morningSteps,
       eveningSteps,
     });
-  } catch (error) {
-    logger.error('Error getting analysis data', error);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    logger.error('❌ Error getting analysis data', error, {
+      userId,
+      duration,
+    });
+    logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

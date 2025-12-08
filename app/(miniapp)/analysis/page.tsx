@@ -77,11 +77,17 @@ function AnalysisPageContent() {
 
   const loadAnalysisData = async () => {
     try {
+      clientLogger.info('📥 Loading analysis data');
       setLoading(true);
       setError(null);
 
       // Загружаем данные анализа через новый API endpoint
       const analysisData = await api.getAnalysis() as AnalysisData;
+      clientLogger.info('✅ Analysis data loaded', {
+        issuesCount: analysisData.issues?.length || 0,
+        morningStepsCount: analysisData.morningSteps?.length || 0,
+        eveningStepsCount: analysisData.eveningSteps?.length || 0,
+      });
 
       // Загружаем wishlist
       let wishlist: number[] = [];
@@ -111,7 +117,11 @@ function AnalysisPageContent() {
       setAnalysisData(analysisData);
       setLoading(false);
     } catch (err: any) {
-      console.error('Error loading analysis data:', err);
+      clientLogger.error('❌ Error loading analysis data', {
+        error: err?.message || String(err),
+        status: err?.status,
+        stack: err?.stack?.substring(0, 200),
+      });
       
       // Если план еще не готов (404 или ошибка генерации), редиректим на /plan
       // или показываем лоадер вместо ошибки
@@ -153,6 +163,7 @@ function AnalysisPageContent() {
       const isInWishlist = wishlistProductIds.has(productId);
       
       if (isInWishlist) {
+        clientLogger.info('Removing product from wishlist', { productId });
         await api.removeFromWishlist(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
@@ -161,12 +172,16 @@ function AnalysisPageContent() {
         });
         toast.success('Удалено из избранного');
       } else {
+        clientLogger.info('Adding product to wishlist', { productId });
         await api.addToWishlist(productId);
         setWishlistProductIds(prev => new Set(prev).add(productId));
         toast.success('Добавлено в избранное');
       }
     } catch (err: any) {
-      console.error('Error toggling wishlist:', err);
+      clientLogger.error('Error toggling wishlist', {
+        productId,
+        error: err?.message || String(err),
+      });
       toast.error(err?.message || 'Не удалось изменить избранное');
     }
   };
@@ -177,10 +192,17 @@ function AnalysisPageContent() {
     comment?: string;
   }) => {
     try {
+      clientLogger.info('Submitting analysis feedback', {
+        isRelevant: feedback.isRelevant,
+        hasReasons: !!feedback.reasons?.length,
+        hasComment: !!feedback.comment,
+      });
       await api.submitAnalysisFeedback(feedback);
       toast.success('Спасибо за обратную связь!');
     } catch (err: any) {
-      console.error('Error submitting feedback:', err);
+      clientLogger.error('Error submitting feedback', {
+        error: err?.message || String(err),
+      });
       toast.error(err?.message || 'Не удалось отправить отзыв');
     }
   };

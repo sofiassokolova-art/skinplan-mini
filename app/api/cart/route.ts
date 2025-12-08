@@ -47,6 +47,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    logger.info('Cart retrieved', {
+      userId,
+      itemsCount: cartItems.length,
+    });
+
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId || undefined);
 
@@ -155,6 +160,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logger.info('Product added to cart', {
+      userId,
+      productId,
+      quantity: cartItem.quantity,
+      productName: cartItem.product.name,
+    });
+
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId || undefined);
 
@@ -230,6 +242,11 @@ export async function DELETE(request: NextRequest) {
         userId,
         productId: parseInt(productId),
       },
+    });
+
+    logger.info('Product removed from cart', {
+      userId,
+      productId: parseInt(productId),
     });
 
     const duration = Date.now() - startTime;

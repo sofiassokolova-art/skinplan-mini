@@ -180,6 +180,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logger.info('Product added to wishlist', {
+      userId,
+      productId: productIdNum,
+      productName: wishlistItem.product.name,
+    });
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       success: true,
       item: {
@@ -191,9 +200,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    const duration = Date.now() - startTime;
-    logApiRequest(method, path, 200, duration, userId);
 
     return NextResponse.json({
       success: true,
@@ -285,6 +291,11 @@ export async function DELETE(request: NextRequest) {
         userId,
         productId: productIdNum,
       },
+    });
+
+    logger.info('Product removed from wishlist', {
+      userId,
+      productId: productIdNum,
     });
 
     const duration = Date.now() - startTime;

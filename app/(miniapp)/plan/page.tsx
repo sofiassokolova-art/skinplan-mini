@@ -126,18 +126,26 @@ export default function PlanPage() {
       }
 
       // Пытаемся сгенерировать план
-      clientLogger.log(`${logPrefix}🔄 Attempting to generate plan...`);
+      clientLogger.info(`${logPrefix}🔄 Attempting to generate plan...`);
       const generatedPlan = await api.generatePlan() as GeneratedPlan;
       
       if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
-        clientLogger.log(`${logPrefix}✅ Plan generated successfully`);
+        clientLogger.info(`${logPrefix}✅ Plan generated successfully`, {
+          hasPlan28: !!generatedPlan.plan28,
+          hasWeeks: !!generatedPlan.weeks,
+          plan28Days: generatedPlan.plan28?.days?.length || 0,
+        });
         return generatedPlan;
       }
       
       clientLogger.warn(`${logPrefix}⚠️ Plan generation returned empty result`);
       return null;
     } catch (error: any) {
-      console.error(`${logPrefix}❌ Error generating plan:`, error);
+      clientLogger.error(`${logPrefix}❌ Error generating plan`, {
+        error: error?.message || String(error),
+        status: error?.status,
+        stack: error?.stack?.substring(0, 200),
+      });
       
       // Проверяем, является ли ошибка связанной с отсутствием профиля
       if (error?.status === 404 || 

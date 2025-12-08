@@ -4,6 +4,7 @@
 'use client';
 
 import { Component, ReactNode } from 'react';
+import { clientLogger } from '@/lib/client-logger';
 
 interface Props {
   children: ReactNode;
@@ -102,6 +103,12 @@ export class ErrorBoundary extends Component<Props, State> {
     
     // Логируем в консоль для разработки
     console.error('❌ ErrorBoundary caught an error:', errorDetails);
+    clientLogger.error('ErrorBoundary caught an error', {
+      errorName: error.name,
+      errorMessage: error.message,
+      url: errorDetails.url,
+      reactErrorCode: errorDetails.reactErrorCode,
+    });
     
     // Сохраняем ошибку в БД через API (асинхронно, не блокируем)
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
@@ -117,7 +124,7 @@ export class ErrorBoundary extends Component<Props, State> {
         },
         body: JSON.stringify({
           level: 'error',
-          message: error.message,
+          message: `ErrorBoundary: ${error.message}`,
           context: {
             errorName: error.name,
             stack: error.stack,
@@ -126,6 +133,7 @@ export class ErrorBoundary extends Component<Props, State> {
             reactErrorDescription: errorDetails.reactErrorDescription,
             localStorage: errorDetails.localStorage,
             telegramWebApp: errorDetails.telegramWebApp,
+            userId: userId?.toString(),
           },
           userAgent: errorDetails.userAgent,
           url: errorDetails.url,

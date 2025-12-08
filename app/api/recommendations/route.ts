@@ -60,22 +60,35 @@ function matchesRule(profile: any, rule: Rule): boolean {
 // Это устраняет дублирование кода и обеспечивает единую логику подбора продуктов
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/recommendations';
+  let userId: string | undefined;
+  
   try {
+    logger.info('📥 Recommendations request started', { timestamp: new Date().toISOString() });
+    
     // Получаем initData из заголовков
     // Пробуем оба варианта заголовка (регистронезависимо)
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
+      logger.warn('Missing initData in recommendations request', {
+        availableHeaders: Array.from(request.headers.keys()),
+      });
       return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
     }
 
     // Получаем userId из initData
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
+      logger.warn('Invalid or expired initData in recommendations request');
       return ApiResponse.unauthorized('Invalid or expired initData');
     }
+    
+    logger.info('User identified for recommendations', { userId });
 
     // Получаем последний профиль пользователя
     const profile = await prisma.skinProfile.findFirst({
@@ -545,15 +558,25 @@ export async function GET(request: NextRequest) {
 
     // Сохраняем в кэш
     await setCachedRecommendations(userId, profile.version, response);
+    
+    const duration = Date.now() - startTime;
+    logger.info('✅ Recommendations generated successfully', {
+      userId,
+      profileVersion: profile.version,
+      stepsCount: Object.keys(steps).length,
+      totalProducts: Object.values(steps).flat().length,
+      duration,
+    });
+    logApiRequest(method, path, 200, duration, userId);
 
     return ApiResponse.success(response);
   } catch (error: unknown) {
-    logger.error('Error fetching recommendations', {
-      error,
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined,
+    const duration = Date.now() - startTime;
+    logger.error('❌ Error fetching recommendations', error, {
+      userId,
+      duration,
     });
-    return ApiResponse.internalError(error, {});
+    logApiError(method, path, error, userId);
+    return ApiResponse.internalError(error, { userId, method, path, duration });
   }
 }
