@@ -6,10 +6,34 @@ import { handleNetworkError, fetchWithTimeout } from './network-utils';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const DEFAULT_TIMEOUT = 30000; // 30 секунд по умолчанию
 
+// ИСПРАВЛЕНО: Глобальная защита от множественных одновременных запросов
+// Кэшируем активные промисы для предотвращения дублирующих запросов
+const activeRequests = new Map<string, Promise<any>>();
+const requestCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 2000; // 2 секунды кэш для одинаковых запросов
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // ИСПРАВЛЕНО: Создаем уникальный ключ для запроса (GET запросы кэшируем)
+  const isGetRequest = !options.method || options.method === 'GET';
+  const requestKey = isGetRequest ? `${options.method || 'GET'}:${endpoint}` : null;
+  
+  // Если это GET запрос и он уже выполняется - возвращаем тот же промис
+  if (requestKey && activeRequests.has(requestKey)) {
+    return activeRequests.get(requestKey) as Promise<T>;
+  }
+  
+  // Если это GET запрос и есть свежий кэш - возвращаем из кэша
+  if (requestKey && requestCache.has(requestKey)) {
+    const cached = requestCache.get(requestKey)!;
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return Promise.resolve(cached.data) as Promise<T>;
+    }
+    requestCache.delete(requestKey);
+  }
+  
   // Получаем initData из Telegram WebApp
   // Ждем готовности initData, если он еще не доступен
   let initData: string | null = null;
@@ -57,23 +81,36 @@ async function request<T>(
     }
   }
 
-  // Используем fetchWithTimeout для обработки таймаутов
-  // Для генерации плана используем больший таймаут
-  const timeout = endpoint.includes('/plan/generate') ? 60000 : DEFAULT_TIMEOUT;
+  // ИСПРАВЛЕНО: Создаем промис запроса и сохраняем его для предотвращения дублирования
+  const requestPromise = (async () => {
+    // Используем fetchWithTimeout для обработки таймаутов
+    // Для генерации плана используем больший таймаут
+    const timeout = endpoint.includes('/plan/generate') ? 60000 : DEFAULT_TIMEOUT;
+    
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      }, timeout);
+    } catch (error) {
+      // Обрабатываем сетевые ошибки
+      const errorMessage = handleNetworkError(error);
+      throw new Error(errorMessage);
+    }
+    
+    return response;
+  })();
   
-  let response: Response;
-  try {
-    response = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    }, timeout);
-  } catch (error) {
-    // Обрабатываем сетевые ошибки
-    const errorMessage = handleNetworkError(error);
-    throw new Error(errorMessage);
+  // ИСПРАВЛЕНО: Сохраняем промис для GET запросов, чтобы предотвратить дублирование
+  if (requestKey) {
+    activeRequests.set(requestKey, requestPromise);
   }
+  
+  try {
+    const response = await requestPromise;
 
-  if (!response.ok) {
+    if (!response.ok) {
     // Для 401 ошибок добавляем более информативное сообщение
     // НО: для некоторых endpoints (cart, wishlist) 401 - это нормально (пользователь не авторизован)
     // В этом случае не выбрасываем исключение, а возвращаем пустой результат
@@ -191,7 +228,27 @@ async function request<T>(
     throw apiError;
   }
 
-  return response.json();
+  // ИСПРАВЛЕНО: Получаем данные и кэшируем для GET запросов
+  const data = await response.json() as T;
+  
+  // Кэшируем результат для GET запросов
+  if (requestKey) {
+    requestCache.set(requestKey, { data, timestamp: Date.now() });
+  }
+  
+  return data;
+  } catch (error) {
+    // ИСПРАВЛЕНО: Удаляем промис из activeRequests при ошибке
+    if (requestKey) {
+      activeRequests.delete(requestKey);
+    }
+    throw error;
+  } finally {
+    // ИСПРАВЛЕНО: Удаляем промис из activeRequests после завершения
+    if (requestKey) {
+      activeRequests.delete(requestKey);
+    }
+  }
 }
 
 export const api = {
