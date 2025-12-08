@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const method = 'GET';
   const path = '/api/recommendations';
-  let userId: string | undefined;
+  let userId: string | null | undefined;
   
   try {
     logger.info('📥 Recommendations request started', { timestamp: new Date().toISOString() });
