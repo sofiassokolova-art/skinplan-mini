@@ -4,24 +4,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logApiRequest, logApiError } from '@/lib/logger';
 
 // GET - загрузка прогресса
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/questionnaire/progress';
+  let userId: string | undefined;
+
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
     const initData = request.headers.get('x-telegram-init-data') ||
                      request.headers.get('X-Telegram-Init-Data');
 
     if (!initData) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 401, duration);
       return NextResponse.json(
         { error: 'Missing Telegram initData' },
         { status: 401 }
       );
     }
 
-    const userId = await getUserIdFromInitData(initData);
+    userId = await getUserIdFromInitData(initData);
     
     if (!userId) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 401, duration);
       return NextResponse.json(
         { error: 'Invalid or expired initData' },
         { status: 401 }
@@ -49,6 +59,8 @@ export async function GET(request: NextRequest) {
       });
 
       if (!activeQuestionnaire) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
         return NextResponse.json({
           progress: null,
           isCompleted: true,
@@ -78,6 +90,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
         progress: {
           answers,
@@ -98,6 +112,8 @@ export async function GET(request: NextRequest) {
     });
 
     if (!activeQuestionnaire) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
         progress: null,
         isCompleted: false,
@@ -118,6 +134,8 @@ export async function GET(request: NextRequest) {
     });
 
     if (userAnswers.length === 0) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
         progress: null,
         isCompleted: false,
@@ -172,6 +190,9 @@ export async function GET(request: NextRequest) {
     const answeredQuestionsCount = Object.keys(answers).length;
     const isCompleted = answeredQuestionsCount >= totalQuestions;
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       progress: {
         answers,
@@ -182,7 +203,8 @@ export async function GET(request: NextRequest) {
       isCompleted,
     });
   } catch (error) {
-    console.error('Error loading progress:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -192,6 +214,11 @@ export async function GET(request: NextRequest) {
 
 // POST - сохранение прогресса (ответы)
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/questionnaire/progress';
+  let userId: string | undefined;
+
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
     const initData = request.headers.get('x-telegram-init-data') ||
@@ -249,6 +276,8 @@ export async function POST(request: NextRequest) {
           infoScreenIndex,
         });
       }
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
         success: true,
         answer: null, // Метаданные не сохраняются в БД
@@ -389,6 +418,9 @@ export async function POST(request: NextRequest) {
     // Они хранятся только локально на клиенте в localStorage
     // Позицию можно вычислить на основе последнего отвеченного вопроса
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       success: true,
       answer: {
@@ -399,7 +431,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error saving progress:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -409,6 +442,11 @@ export async function POST(request: NextRequest) {
 
 // DELETE - очистка прогресса анкеты
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'DELETE';
+  const path = '/api/questionnaire/progress';
+  let userId: string | undefined;
+
   try {
     // Пробуем оба варианта заголовка (регистронезависимо)
     const initData = request.headers.get('x-telegram-init-data') ||
@@ -455,12 +493,16 @@ export async function DELETE(request: NextRequest) {
       console.log(`✅ Quiz progress cleared for user ${userId}, deleted ${deletedCount.count} answers`);
     }
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       success: true,
       deletedCount: deletedCount.count,
     });
   } catch (error) {
-    console.error('Error clearing progress:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

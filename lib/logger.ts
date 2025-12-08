@@ -163,6 +163,7 @@ export function logApiRequest(
   duration: number,
   userId?: string
 ) {
+  // Логируем в консоль (Vercel logs)
   logger.info('API Request', {
     method,
     path,
@@ -170,6 +171,72 @@ export function logApiRequest(
     duration,
     userId,
   });
+
+  // ИСПРАВЛЕНО: Также сохраняем в KV (асинхронно, не блокирует)
+  setTimeout(async () => {
+    try {
+      const { getRedis } = await import('@/lib/redis');
+      const redis = getRedis();
+      
+      if (!redis) {
+        // Redis не настроен - логируем только в production для диагностики
+        if (process.env.NODE_ENV === 'production') {
+          console.warn('⚠️ API log not saved to KV: Redis not configured', {
+            method,
+            path,
+            hasKVUrl: !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
+            hasKVToken: !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN),
+          });
+        }
+        return;
+      }
+
+      // Создаем структурированный лог для KV
+      const logData = {
+        timestamp: new Date().toISOString(),
+        level: 'INFO',
+        service: process.env.SERVICE_NAME || 'skinplan-mini',
+        message: 'API Request',
+        method,
+        path,
+        statusCode,
+        duration,
+        userId: userId || null,
+      };
+
+      // Создаем уникальный ключ: api_logs:{userId}:{timestamp}:{random}
+      const logKey = `api_logs:${userId || 'anonymous'}:${Date.now()}:${Math.random().toString(36).substring(7)}`;
+      
+      // Сохраняем с TTL 30 дней
+      const setResult = await redis.set(logKey, JSON.stringify(logData), { ex: 30 * 24 * 60 * 60 });
+      
+      // Также добавляем в список последних API логов пользователя (храним последние 100)
+      if (userId) {
+        const userApiLogsKey = `user_api_logs:${userId}`;
+        await redis.lpush(userApiLogsKey, logKey);
+        await redis.ltrim(userApiLogsKey, 0, 99); // Храним только последние 100 логов
+        await redis.expire(userApiLogsKey, 30 * 24 * 60 * 60); // TTL 30 дней
+      }
+      
+      // Логируем успешную запись в KV (для диагностики)
+      console.log('✅ API log saved to KV', {
+        method,
+        path,
+        statusCode,
+        userId: userId || 'anonymous',
+        logKey: logKey.substring(0, 50) + '...',
+      });
+    } catch (error: any) {
+      // Логируем ошибки сохранения в KV (для диагностики)
+      console.error('❌ Failed to save API request log to KV:', {
+        method,
+        path,
+        error: error?.message,
+        errorCode: error?.code,
+        userId: userId || 'anonymous',
+      });
+    }
+  }, 0);
 }
 
 // Helper для логирования ошибок API
