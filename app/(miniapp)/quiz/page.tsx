@@ -218,13 +218,18 @@ export default function QuizPage() {
             if (profile && (profile as any).id) {
               // Профиль существует - проверяем, завершена ли анкета
               try {
-                const progress = await api.getQuizProgress();
-                const hasAnswers = progress && (progress as any).answers && Object.keys((progress as any).answers).length > 0;
-                const isCompleted = progress && (progress as any).isCompleted;
+                const response = await api.getQuizProgress() as any;
+                const progress = response?.progress;
+                const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
+                // ИСПРАВЛЕНО: isCompleted находится в корне ответа, а не в progress
+                const isCompleted = response?.isCompleted === true;
                 
                 // Если анкета завершена и нет флага перепрохождения - редиректим на /plan
-                if (hasAnswers && isCompleted && !isRetakingFromStorage && !fullRetakeFromHome) {
-                  clientLogger.log('✅ Профиль существует и анкета завершена - редиректим на /plan');
+                if (isCompleted && !isRetakingFromStorage && !fullRetakeFromHome) {
+                  clientLogger.log('✅ Профиль существует и анкета завершена - редиректим на /plan', {
+                    hasAnswers,
+                    isCompleted,
+                  });
                   initCompletedRef.current = true;
                   setLoading(false);
                   window.location.replace('/plan');
@@ -364,10 +369,12 @@ export default function QuizPage() {
             if (!isStartingOverRef.current) {
               // Проверяем, есть ли ответы на анкету (завершена ли анкета)
               try {
-                const progress = await api.getQuizProgress();
+                const response = await api.getQuizProgress() as any;
+                const progress = response?.progress;
                 // Проверяем, что есть ответы И что анкета завершена (все вопросы отвечены)
-                const hasAnswers = progress && (progress as any).answers && Object.keys((progress as any).answers).length > 0;
-                const isCompleted = progress && (progress as any).isCompleted;
+                const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
+                // ИСПРАВЛЕНО: isCompleted находится в корне ответа, а не в progress
+                const isCompleted = response?.isCompleted === true;
                 
                 if (hasAnswers && isCompleted) {
                   // Анкета полностью завершена - проверяем, хочет ли пользователь перепроходить

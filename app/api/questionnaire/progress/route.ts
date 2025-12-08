@@ -40,10 +40,52 @@ export async function GET(request: NextRequest) {
     // ИСПРАВЛЕНО: Если профиля нет, но есть ответы - это незавершенная анкета
     // Возвращаем прогресс, чтобы пользователь мог продолжить
     // Если профиль есть и не повторное прохождение - анкета завершена
+    // ВАЖНО: Возвращаем явное поле isCompleted: true, чтобы фронтенд мог правильно определить завершенность
     if (existingProfile && !retaking) {
-      // Анкета завершена, прогресс не нужен (если не повторное прохождение)
+      // Анкета завершена, возвращаем информацию о завершенности
+      // Получаем ответы для проверки
+      const activeQuestionnaire = await prisma.questionnaire.findFirst({
+        where: { isActive: true },
+      });
+
+      if (!activeQuestionnaire) {
+        return NextResponse.json({
+          progress: null,
+          isCompleted: true,
+        });
+      }
+
+      const userAnswers = await prisma.userAnswer.findMany({
+        where: {
+          userId,
+          questionnaireId: activeQuestionnaire.id,
+        },
+        include: {
+          question: true,
+        },
+      });
+
+      // Преобразуем ответы в формат для фронтенда
+      const answers: Record<number, string | string[]> = {};
+      for (const answer of userAnswers) {
+        if (answer.questionId === -1) {
+          continue;
+        }
+        if (answer.answerValues) {
+          answers[answer.questionId] = answer.answerValues as string[];
+        } else if (answer.answerValue) {
+          answers[answer.questionId] = answer.answerValue;
+        }
+      }
+
       return NextResponse.json({
-        progress: null,
+        progress: {
+          answers,
+          questionIndex: 0,
+          infoScreenIndex: 0,
+          timestamp: Date.now(),
+        },
+        isCompleted: true,
       });
     }
     
@@ -58,6 +100,7 @@ export async function GET(request: NextRequest) {
     if (!activeQuestionnaire) {
       return NextResponse.json({
         progress: null,
+        isCompleted: false,
       });
     }
 
@@ -77,6 +120,7 @@ export async function GET(request: NextRequest) {
     if (userAnswers.length === 0) {
       return NextResponse.json({
         progress: null,
+        isCompleted: false,
       });
     }
 
@@ -123,6 +167,11 @@ export async function GET(request: NextRequest) {
     const finalQuestionIndex = lastAnsweredIndex + 1; // Следующий вопрос после последнего отвеченного
     const finalInfoScreenIndex = 0; // По умолчанию 0
 
+    // Проверяем, все ли вопросы анкеты отвечены
+    const totalQuestions = allQuestions.filter(q => q.questionId !== -1).length;
+    const answeredQuestionsCount = Object.keys(answers).length;
+    const isCompleted = answeredQuestionsCount >= totalQuestions;
+
     return NextResponse.json({
       progress: {
         answers,
@@ -130,6 +179,7 @@ export async function GET(request: NextRequest) {
         infoScreenIndex: finalInfoScreenIndex,
         timestamp: userAnswers[0]?.createdAt.getTime() || Date.now(),
       },
+      isCompleted,
     });
   } catch (error) {
     console.error('Error loading progress:', error);
