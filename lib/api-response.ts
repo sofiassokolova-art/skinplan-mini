@@ -16,7 +16,9 @@ export class ApiResponse {
     context?: Record<string, any>
   ) {
     if (context) {
-      logger.error('API Error', { message, status, details, ...context });
+      // ИСПРАВЛЕНО: logger.error принимает (message, error, context, options)
+      // Здесь нет error объекта, поэтому передаем undefined как error и context как context
+      logger.error('API Error', undefined, { message, status, details, ...context });
     }
 
     return NextResponse.json(
@@ -64,23 +66,14 @@ export class ApiResponse {
       error instanceof Error ? error.message : 'Internal server error';
     const errorStack = error instanceof Error ? error.stack : undefined;
     
-    // Правильно сериализуем ошибку для логирования
-    let errorDetails: any = {
-      error: errorMessage,
-      stack: errorStack,
+    // ИСПРАВЛЕНО: Правильно сериализуем ошибку для логирования
+    // logger.error принимает (message, error, context, options)
+    // где error - это Error или unknown, а context - это дополнительный контекст
+    logger.error('API Error', error, {
       ...context,
-    };
-    
-    // Если это не Error, пытаемся сериализовать как JSON
-    if (!(error instanceof Error)) {
-      try {
-        errorDetails.errorDetails = JSON.stringify(error);
-      } catch {
-        errorDetails.errorDetails = String(error);
-      }
-    }
-
-    logger.error('Internal server error', errorDetails);
+      errorMessage,
+      errorStack,
+    });
 
     return ApiResponse.error(
       errorMessage,

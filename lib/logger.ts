@@ -127,7 +127,25 @@ class Logger {
         name: error.name,
       };
     } else if (error) {
-      errorContext.error = String(error);
+      // ИСПРАВЛЕНО: Правильно сериализуем объекты и другие типы ошибок
+      if (typeof error === 'object' && error !== null) {
+        try {
+          errorContext.error = JSON.parse(JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        } catch {
+          // Если не удалось сериализовать, пробуем преобразовать в строку с дополнительной информацией
+          try {
+            errorContext.error = {
+              type: error.constructor?.name || 'Object',
+              stringified: String(error),
+              keys: Object.keys(error),
+            };
+          } catch {
+            errorContext.error = String(error);
+          }
+        }
+      } else {
+        errorContext.error = String(error);
+      }
     }
 
     this.log('error', message, errorContext, options);
