@@ -65,8 +65,16 @@ export function logEnvStatus(): void {
   }
 }
 
-// Автоматически проверяем при импорте модуля (только на сервере)
-if (typeof window === 'undefined' && process.env.NODE_ENV !== 'test') {
+// ИСПРАВЛЕНО: Проверяем env переменные только в runtime, а не при сборке
+// При сборке Next.js переменные окружения могут быть недоступны
+// В Vercel переменные окружения доступны только в runtime, не во время сборки
+// Проверка выполняется только когда код действительно выполняется (в API routes или server components)
+if (typeof window === 'undefined' && 
+    process.env.NODE_ENV !== 'test' && 
+    process.env.NEXT_PHASE !== 'phase-production-build' &&
+    !process.env.VERCEL_ENV) {
+  // В Vercel переменные окружения доступны только в runtime
+  // Проверяем только если это не фаза сборки и не Vercel build
   logEnvStatus();
 }
 
