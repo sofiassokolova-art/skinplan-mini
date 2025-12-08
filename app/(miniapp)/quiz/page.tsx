@@ -811,16 +811,21 @@ export default function QuizPage() {
         }
       }
       
-      // ИСПРАВЛЕНО: Если профиля нет, но есть ответы - это старые данные
-      // Не показываем экран "Вы не завершили анкету", очищаем ответы
+      // ИСПРАВЛЕНО: Если профиля нет, но есть ответы - это НОРМАЛЬНО для незавершенной анкеты
+      // Показываем экран "Вы не завершили анкету" даже если профиля нет
+      // Профиль создается только после завершения анкеты (отправки ответов)
+      // Поэтому для незавершенной анкеты профиля быть не должно
       if (!hasProfile && response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
-        clientLogger.log('⚠️ Найдены ответы без профиля - это старые данные, очищаем их');
-        // Очищаем ответы на сервере через API (если есть такой endpoint)
-        // Или просто не показываем экран "Вы не завершили анкету"
-        return;
+        clientLogger.log('✅ Найдены ответы без профиля - это нормально для незавершенной анкеты, показываем экран продолжения', {
+          answersCount: Object.keys(response.progress.answers).length,
+        });
+        // Продолжаем логику ниже - показываем экран "Вы не завершили анкету"
+        // НЕ делаем return здесь
       }
       
-      if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0 && hasProfile) {
+      // ИСПРАВЛЕНО: Показываем экран "Вы не завершили анкету" если есть ответы, независимо от наличия профиля
+      // Профиль создается только после завершения анкеты, поэтому для незавершенной анкеты профиля быть не должно
+      if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
         // ВАЖНО: Не загружаем прогресс, если пользователь уже нажал "Продолжить"
         // Это предотвращает повторное появление экрана "Вы не завершили анкету"
         // Используем ref для синхронной проверки, так как состояние обновляется асинхронно
@@ -842,10 +847,11 @@ export default function QuizPage() {
           return;
         }
         
-        clientLogger.log('✅ Прогресс найден на сервере:', {
+        clientLogger.log('✅ Прогресс найден на сервере, показываем экран продолжения:', {
           answersCount: Object.keys(response.progress.answers).length,
           questionIndex: response.progress.questionIndex,
           infoScreenIndex: response.progress.infoScreenIndex,
+          hasProfile,
         });
         setSavedProgress(response.progress);
         setShowResumeScreen(true);
