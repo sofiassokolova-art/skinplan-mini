@@ -170,6 +170,15 @@ export default function QuizPage() {
         window.location.replace('/plan');
         return;
       }
+      
+      // ИСПРАВЛЕНО: Также проверяем, не находится ли пользователь на инфо-экране после последнего вопроса
+      // Если да, не выполняем проверку профиля, которая может вызвать редирект
+      const urlParams = new URLSearchParams(window.location.search);
+      const isResuming = urlParams.get('resume') === 'true';
+      if (isResuming || pendingInfoScreen) {
+        clientLogger.log('ℹ️ Пользователь на инфо-экране или resume экране, пропускаем раннюю проверку профиля');
+        // Продолжаем нормальную инициализацию без раннего редиректа
+      }
     }
     
     // ИСПРАВЛЕНО: Проверяем, есть ли уже профиль (анкета завершена)
