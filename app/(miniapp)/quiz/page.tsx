@@ -444,14 +444,63 @@ export default function QuizPage() {
             }
           }
         } catch (err: any) {
-          // Профиля нет (404) - это первое прохождение, показываем полную анкету
+          // Профиля нет (404) - проверяем, может быть анкета уже завершена, но профиль не создан
           const isNotFound = err?.status === 404 || 
                             err?.message?.includes('404') || 
                             err?.message?.includes('No profile') ||
                             err?.message?.includes('Profile not found');
           
           if (isNotFound) {
-            clientLogger.log('ℹ️ Первое прохождение анкеты - профиля еще нет (404), показываем полную анкету');
+            clientLogger.log('ℹ️ Профиль не найден (404) - проверяем, завершена ли анкета');
+            
+            // ИСПРАВЛЕНО: Если анкета завершена, но профиль не найден - автоматически отправляем ответы для создания профиля
+            try {
+              const response = await api.getQuizProgress() as any;
+              const progress = response?.progress;
+              const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
+              const isCompleted = response?.isCompleted === true;
+              
+              if (hasAnswers && isCompleted && questionnaire) {
+                clientLogger.log('⚠️ Анкета завершена, но профиль не найден - автоматически отправляем ответы для создания профиля');
+                try {
+                  // Преобразуем ответы в формат для submitAnswers
+                  const answerArray = Object.entries(progress.answers).map(([questionId, value]) => {
+                    const isArray = Array.isArray(value);
+                    return {
+                      questionId: parseInt(questionId),
+                      answerValue: isArray ? undefined : (value as string),
+                      answerValues: isArray ? (value as string[]) : undefined,
+                    };
+                  });
+                  
+                  clientLogger.log('📤 Автоматическая отправка ответов для создания профиля:', {
+                    questionnaireId: questionnaire.id,
+                    answersCount: answerArray.length,
+                  });
+                  
+                  // Вызываем submitAnswers для создания профиля
+                  await api.submitAnswers(questionnaire.id, answerArray);
+                  clientLogger.log('✅ Профиль создан автоматически после обнаружения завершенной анкеты');
+                  
+                  // После создания профиля редиректим на /plan
+                  initCompletedRef.current = true;
+                  setLoading(false);
+                  window.location.replace('/plan');
+                  return;
+                } catch (submitErr: any) {
+                  console.error('❌ Ошибка при автоматической отправке ответов для создания профиля:', submitErr);
+                  // Продолжаем выполнение - показываем анкету
+                }
+              } else {
+                clientLogger.log('ℹ️ Первое прохождение анкеты - профиля еще нет (404), показываем полную анкету', {
+                  hasAnswers,
+                  isCompleted,
+                  hasQuestionnaire: !!questionnaire,
+                });
+              }
+            } catch (progressErr: any) {
+              clientLogger.log('ℹ️ Не удалось проверить прогресс анкеты, показываем полную анкету', progressErr);
+            }
           } else {
             clientLogger.log('ℹ️ Ошибка при проверке профиля, показываем полную анкету', err);
           }
@@ -1297,6 +1346,9 @@ export default function QuizPage() {
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
         if (infoScreen) {
           setPendingInfoScreen(infoScreen);
+          // ВАЖНО: Устанавливаем currentQuestionIndex >= allQuestions.length, чтобы автоотправка сработала
+          // даже если показывается info screen после последнего вопроса
+          setCurrentQuestionIndex(allQuestions.length);
           await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
           return;
         }
@@ -1570,6 +1622,11 @@ export default function QuizPage() {
 
       let result: any;
       try {
+        clientLogger.log('📤 Вызываем api.submitAnswers:', {
+          questionnaireId: questionnaire.id,
+          answersCount: answerArray.length,
+          answerArray: answerArray.slice(0, 3), // Первые 3 для логирования
+        });
         result = await api.submitAnswers(questionnaire.id, answerArray) as any;
         clientLogger.log('✅ Ответы отправлены, профиль создан:', {
           result,
@@ -1578,12 +1635,44 @@ export default function QuizPage() {
           resultType: typeof result,
           resultKeys: result ? Object.keys(result) : [],
           resultString: JSON.stringify(result).substring(0, 200),
+          profileId: result?.profile?.id,
         });
       } catch (submitError: any) {
-        // Если ошибка при отправке - это может быть нормально (дубликат, ошибка сети)
-        // Все равно пытаемся редиректить, так как профиль мог быть создан
-        clientLogger.warn('⚠️ Ошибка при отправке ответов (продолжаем редирект):', submitError);
-        result = { success: true, error: submitError?.message }; // Помечаем как success для продолжения
+        // ИСПРАВЛЕНО: Логируем ошибку более детально и НЕ продолжаем редирект, если профиль не создан
+        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА при отправке ответов:', {
+          error: submitError,
+          message: submitError?.message,
+          status: submitError?.status,
+          stack: submitError?.stack,
+          questionnaireId: questionnaire.id,
+          answersCount: answerArray.length,
+        });
+        clientLogger.error('❌ Ошибка при отправке ответов:', submitError);
+        
+        // Если это не дубликат и не временная ошибка сети, показываем ошибку пользователю
+        const isDuplicate = submitError?.message?.includes('duplicate') || 
+                           submitError?.message?.includes('already submitted') ||
+                           submitError?.status === 409;
+        const isNetworkError = submitError?.message?.includes('fetch') || 
+                              submitError?.message?.includes('network') ||
+                              !submitError?.status;
+        
+        if (isDuplicate) {
+          clientLogger.log('⚠️ Обнаружена повторная отправка (дубликат), продолжаем редирект');
+          result = { success: true, isDuplicate: true, error: submitError?.message };
+        } else if (isNetworkError) {
+          // Ошибка сети - пробуем редиректить, возможно профиль создан
+          clientLogger.warn('⚠️ Ошибка сети при отправке, пробуем редирект (профиль мог быть создан)');
+          result = { success: true, error: submitError?.message };
+        } else {
+          // Другая ошибка - не редиректим, показываем ошибку
+          if (isMountedRef.current) {
+            setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
+            isSubmittingRef.current = false;
+            setIsSubmitting(false);
+          }
+          return;
+        }
       }
       
       // ВАЖНО: При перепрохождении анкеты НЕ устанавливаем флаг is_retaking_quiz в localStorage
@@ -3129,19 +3218,26 @@ export default function QuizPage() {
   // ВАЖНО: Автоматически отправляем ответы когда все вопросы отвечены
   // Этот useEffect должен быть ВСЕГДА вызван, даже если есть ранние return'ы, чтобы соблюдать порядок хуков
   // ВАЖНО: Используем submitAnswersRef вместо submitAnswers в зависимостях, чтобы избежать проблем с порядком хуков
+  // ИСПРАВЛЕНО: Убрали проверку !hasResumed, так как она может блокировать отправку после завершения анкеты
   useEffect(() => {
     // Автоматически отправляем ответы, если все вопросы отвечены и ответы есть
+    // ИСПРАВЛЕНО: Убрали !hasResumed из условий, чтобы автоотправка работала даже после восстановления прогресса
     if (!autoSubmitTriggeredRef.current && 
         questionnaire && 
         allQuestions.length > 0 && 
         currentQuestionIndex >= allQuestions.length &&
         Object.keys(answers).length > 0 &&
         !isSubmitting &&
-        !hasResumed &&
         !showResumeScreen &&
-        !error) {
+        !error &&
+        !pendingInfoScreen) { // ИСПРАВЛЕНО: Не запускаем автоотправку, если показывается info screen (кнопка "Получить план" будет вызвать submitAnswers вручную)
       
-      clientLogger.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...');
+      clientLogger.log('✅ Все вопросы отвечены, автоматически отправляем ответы через 5 секунд...', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        answersCount: Object.keys(answers).length,
+        hasPendingInfoScreen: !!pendingInfoScreen,
+      });
       autoSubmitTriggeredRef.current = true;
       setAutoSubmitTriggered(true);
       
@@ -3181,7 +3277,7 @@ export default function QuizPage() {
         clearTimeout(timeoutId);
       };
     }
-  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, hasResumed, showResumeScreen, autoSubmitTriggered, error]);
+  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков

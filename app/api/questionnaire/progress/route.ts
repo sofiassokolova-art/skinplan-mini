@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
     const finalInfoScreenIndex = 0; // По умолчанию 0
 
     // Проверяем, все ли вопросы анкеты отвечены
-    const totalQuestions = allQuestions.filter(q => q.questionId !== -1).length;
+    const totalQuestions = allQuestions.filter(q => q.id !== -1).length;
     const answeredQuestionsCount = Object.keys(answers).length;
     const isCompleted = answeredQuestionsCount >= totalQuestions;
 
