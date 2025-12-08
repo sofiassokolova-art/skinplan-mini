@@ -460,30 +460,52 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     // ВАЖНО: Сначала пытаемся получить продукты из RecommendationSession
     // Это гарантирует, что план использует те же продукты, что и главная страница
     // Ищем сессию для текущего профиля, чтобы при перепрохождении анкеты использовались новые продукты
-    logger.debug('🔍 Looking for RecommendationSession', { userId, profileId: profile.id });
+    logger.info('🔍 Looking for RecommendationSession', { 
+      userId, 
+      profileId: profile.id,
+      profileVersion: profile.version,
+    });
     let recommendationProducts: any[] = [];
     
-    // ИСПРАВЛЕНО: Ищем сессию БЕЗ условия ruleId: { not: null }
-    // Потому что fallback в /recommendations может создать сессию с ruleId = null
-    // Но если в ней есть продукты - используем их
-    const existingSession = await prisma.recommendationSession.findFirst({
+    // ИСПРАВЛЕНО: Ищем сессию сначала по profileId, потом по userId
+    // Это гарантирует, что найдем сессию даже если profileId не совпадает
+    let existingSession = await prisma.recommendationSession.findFirst({
       where: {
         userId,
-        profileId: profile.id, // Только для текущего профиля
-        // УБРАНО: ruleId: { not: null } - теперь ищем любую сессию с продуктами
+        profileId: profile.id,
       },
       orderBy: { createdAt: 'desc' },
     });
     
-    // Дополнительно: если не нашли с ruleId, ищем любую сессию с продуктами
+    logger.info('First search result', {
+      userId,
+      profileId: profile.id,
+      found: !!existingSession,
+      sessionId: existingSession?.id,
+      productsCount: existingSession?.products ? (Array.isArray(existingSession.products) ? existingSession.products.length : 0) : 0,
+    });
+    
+    // Дополнительно: если не нашли по profileId, ищем любую сессию с продуктами для пользователя
     if (!existingSession || !existingSession.products || !Array.isArray(existingSession.products) || existingSession.products.length === 0) {
-      logger.debug('No RecommendationSession found for current profile, searching any session with products', { userId, profileId: profile.id });
+      logger.info('No RecommendationSession found for current profileId, searching any session with products', { 
+        userId, 
+        profileId: profile.id,
+        searchedProfileId: profile.id,
+      });
       const anySession = await prisma.recommendationSession.findFirst({
         where: {
           userId,
           products: { not: { equals: [] } }, // Сессия с непустым массивом продуктов
         },
         orderBy: { createdAt: 'desc' },
+      });
+      
+      logger.info('Second search result (any session)', {
+        userId,
+        found: !!anySession,
+        sessionId: anySession?.id,
+        sessionProfileId: anySession?.profileId,
+        productsCount: anySession?.products ? (Array.isArray(anySession.products) ? anySession.products.length : 0) : 0,
       });
       
       if (anySession && anySession.products && Array.isArray(anySession.products) && anySession.products.length > 0) {

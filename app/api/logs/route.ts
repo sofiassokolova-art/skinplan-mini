@@ -79,6 +79,20 @@ export async function POST(request: NextRequest) {
     // ИСПРАВЛЕНО: Сохраняем в Upstash KV как основное хранилище
     let kvSaved = false;
     const redis = getRedis();
+    
+    // ИСПРАВЛЕНО: Проверяем наличие переменных окружения для диагностики
+    const hasKVUrl = !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL);
+    const hasKVToken = !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN);
+    
+    if (!redis && (hasKVUrl && hasKVToken)) {
+      // Если переменные есть, но Redis не инициализирован - это проблема
+      console.warn('⚠️ /api/logs: Redis variables set but getRedis() returned null', {
+        hasKVUrl,
+        hasKVToken,
+        kvUrl: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
+      });
+    }
+    
     if (redis) {
       try {
         // Создаем уникальный ключ: logs:{userId}:{timestamp}:{random}
@@ -103,14 +117,29 @@ export async function POST(request: NextRequest) {
         }
         
         kvSaved = true;
-        console.log('✅ /api/logs: Log saved to Upstash KV', {
-          userId: userId || 'anonymous',
-          level,
-          message: message.substring(0, 50),
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ /api/logs: Log saved to Upstash KV', {
+            userId: userId || 'anonymous',
+            level,
+            message: message.substring(0, 50),
+            logKey,
+          });
+        }
       } catch (kvError: any) {
         console.error('❌ /api/logs: Upstash KV error (will try PostgreSQL fallback):', {
           error: kvError?.message,
+          errorCode: kvError?.code,
+          hasRedis: !!redis,
+          hasKVUrl,
+          hasKVToken,
+        });
+      }
+    } else if (!hasKVUrl || !hasKVToken) {
+      // Если Redis не настроен - это нормально, используем только PostgreSQL
+      if (process.env.NODE_ENV === 'development') {
+        console.log('ℹ️ /api/logs: Upstash KV not configured, using PostgreSQL only', {
+          hasKVUrl,
+          hasKVToken,
         });
       }
     }
