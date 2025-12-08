@@ -1,5 +1,6 @@
 // lib/redis.ts
 // Singleton для Upstash Redis
+// ИСПРАВЛЕНО: Используем Redis.fromEnv() согласно официальной документации Upstash
 
 import { Redis } from '@upstash/redis';
 
@@ -8,6 +9,7 @@ let redisInstance: Redis | null = null;
 /**
  * Получить экземпляр Redis (singleton)
  * Создается только один раз при первом вызове
+ * ИСПРАВЛЕНО: Используем Redis.fromEnv() который автоматически читает переменные окружения
  */
 export function getRedis(): Redis | null {
   // Если экземпляр уже создан, возвращаем его
@@ -16,89 +18,82 @@ export function getRedis(): Redis | null {
   }
 
   // Проверяем наличие переменных окружения
-  // Поддерживаем оба варианта: UPSTASH_REDIS_* и KV_* (Vercel создает KV_* для Upstash Redis)
-  // ВАЖНО: Используем токен для записи (KV_REST_API_TOKEN), а не read-only токен (KV_REST_API_READ_ONLY_TOKEN)
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  // Redis.fromEnv() поддерживает оба варианта:
+  // - UPSTASH_REDIS_REST_URL и UPSTASH_REDIS_REST_TOKEN
+  // - KV_REST_API_URL и KV_REST_API_TOKEN (Vercel создает эти переменные)
   
-  // ИСПРАВЛЕНО: Приоритет токенов - сначала проверяем write token, потом read-only (но не используем read-only для записи)
-  let token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  
-  // ИСПРАВЛЕНО: Детальная диагностика токенов
+  // ИСПРАВЛЕНО: Проверяем наличие переменных для диагностики
+  const hasUpstashUrl = !!(process.env.UPSTASH_REDIS_REST_URL);
+  const hasUpstashToken = !!(process.env.UPSTASH_REDIS_REST_TOKEN);
+  const hasKVUrl = !!(process.env.KV_REST_API_URL);
+  const hasKVToken = !!(process.env.KV_REST_API_TOKEN);
   const readOnlyToken = process.env.KV_REST_API_READ_ONLY_TOKEN;
-  const hasWriteToken = !!token;
-  const hasReadOnlyToken = !!readOnlyToken;
-  const tokensMatch = hasReadOnlyToken && hasWriteToken && token === readOnlyToken;
+  const writeToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
   
-  // Логируем только при проблемах или в development
-  if (process.env.NODE_ENV === 'development' || tokensMatch || (!hasWriteToken && hasReadOnlyToken)) {
+  const tokensMatch = readOnlyToken && writeToken && writeToken === readOnlyToken;
+  
+  // Диагностика токенов
+  if (process.env.NODE_ENV === 'development' || tokensMatch || (!hasKVToken && !hasUpstashToken && readOnlyToken)) {
     console.log('🔍 Redis token diagnostics:', {
-      hasKVUrl: !!process.env.KV_REST_API_URL,
-      hasUpstashUrl: !!process.env.UPSTASH_REDIS_REST_URL,
-      hasWriteToken,
-      hasReadOnlyToken,
+      hasKVUrl,
+      hasKVToken,
+      hasUpstashUrl,
+      hasUpstashToken,
+      hasReadOnlyToken: !!readOnlyToken,
       tokensMatch,
-      writeTokenLength: token?.length || 0,
+      writeTokenLength: writeToken?.length || 0,
       readOnlyTokenLength: readOnlyToken?.length || 0,
-      writeTokenPrefix: token?.substring(0, 10) || 'none',
-      readOnlyTokenPrefix: readOnlyToken?.substring(0, 10) || 'none',
     });
   }
   
   // ВАЖНО: Если установлен только read-only токен, но нет write token - это проблема
-  if (!hasWriteToken && hasReadOnlyToken) {
+  if ((!hasKVToken && !hasUpstashToken) && readOnlyToken) {
     console.error('❌ ERROR: Only KV_REST_API_READ_ONLY_TOKEN is set, but KV_REST_API_TOKEN is missing!');
     console.error('   Write operations will fail. Please set KV_REST_API_TOKEN in Vercel environment variables.');
-    console.error('   Current token value is read-only and cannot be used for SET operations.');
-    // НЕ используем read-only токен для записи - возвращаем null
     return null;
   }
   
-  // ИСПРАВЛЕНО: Проверяем, не используется ли read-only токен вместо write token (случайная ошибка)
+  // ИСПРАВЛЕНО: Проверяем, не используется ли read-only токен вместо write token
   if (tokensMatch) {
     console.error('❌ ERROR: KV_REST_API_TOKEN и KV_REST_API_READ_ONLY_TOKEN совпадают!');
     console.error('   KV_REST_API_TOKEN должен быть токеном для записи, а не read-only токеном.');
     console.error('   Please check your Vercel environment variables.');
-    console.error('   Both tokens are the same value - this will cause NOPERM errors on write operations.');
     return null;
   }
   
-  if (!url || !token) {
+  if (!hasKVUrl && !hasUpstashUrl) {
     // Redis не настроен, возвращаем null
-    // Это нормально для разработки или если Redis не используется
     if (process.env.NODE_ENV === 'development') {
-      console.log('ℹ️ Redis not configured (UPSTASH_REDIS_REST_URL/KV_REST_API_URL or UPSTASH_REDIS_REST_TOKEN/KV_REST_API_TOKEN not set)');
+      console.log('ℹ️ Redis not configured (UPSTASH_REDIS_REST_URL or KV_REST_API_URL not set)');
     }
     return null;
   }
 
-  // ИСПРАВЛЕНО: Проверяем формат URL (должен быть https://, а не rediss://)
-  if (url.startsWith('rediss://')) {
-    console.error('❌ ERROR: Redis URL should use https:// protocol, not rediss://');
-    console.error('   REST API requires: https://super-bat-14283.upstash.io');
-    console.error('   Not: rediss://default:TOKEN@super-bat-14283.upstash.io:6379');
-    return null;
-  }
-
-  // Создаем новый экземпляр
+  // ИСПРАВЛЕНО: Используем Redis.fromEnv() согласно официальной документации
+  // Этот метод автоматически читает переменные окружения в следующем порядке:
+  // 1. UPSTASH_REDIS_REST_URL и UPSTASH_REDIS_REST_TOKEN
+  // 2. KV_REST_API_URL и KV_REST_API_TOKEN (Vercel)
   try {
-    redisInstance = new Redis({
-      url,
-      token,
-    });
+    redisInstance = Redis.fromEnv();
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Upstash Redis initialized successfully', {
-        url: url.substring(0, 30) + '...',
-        hasToken: !!token,
+      console.log('✅ Upstash Redis initialized successfully using Redis.fromEnv()', {
+        hasKVUrl,
+        hasKVToken,
+        hasUpstashUrl,
+        hasUpstashToken,
       });
     }
     
     return redisInstance;
   } catch (error: any) {
-    console.error('❌ Failed to create Redis instance:', {
+    console.error('❌ Failed to create Redis instance using Redis.fromEnv():', {
       error: error?.message,
-      url: url?.substring(0, 30),
-      hasToken: !!token,
+      stack: error?.stack,
+      hasKVUrl,
+      hasKVToken,
+      hasUpstashUrl,
+      hasUpstashToken,
     });
     return null;
   }
