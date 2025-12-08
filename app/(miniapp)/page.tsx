@@ -158,6 +158,10 @@ export default function HomePage() {
           if (profile && (profile as any).id) {
             hasProfile = true;
             console.log('✅ Profile exists, user has completed quiz');
+          } else {
+            // Профиль вернулся, но без id - считаем, что профиля нет
+            console.log('ℹ️ Profile response received but no id, treating as no profile');
+            hasProfile = false;
           }
         } catch (err: any) {
           // Проверяем, какая именно ошибка
@@ -166,22 +170,13 @@ export default function HomePage() {
                             errorMessage.includes('No skin profile') ||
                             errorMessage.includes('Skin profile not found') ||
                             errorMessage.includes('Profile not found') ||
+                            errorMessage.includes('No profile found') ||
                             err?.status === 404 ||
                             err?.isNotFound;
           
           if (isNotFound) {
             console.log('ℹ️ Profile not found (expected for new users or incomplete quiz)');
             hasProfile = false;
-            // Если профиля нет, сразу редиректим на анкету
-            console.log('ℹ️ No profile found, redirecting to quiz immediately');
-            setRedirectingToQuiz(true);
-            setLoading(false);
-            if (typeof window !== 'undefined') {
-              window.location.href = '/quiz';
-            } else {
-              router.push('/quiz');
-            }
-            return;
           } else {
             // Другая ошибка (сеть, авторизация и т.д.) - логируем, но продолжаем
             console.warn('⚠️ Error checking profile:', errorMessage);
@@ -189,17 +184,20 @@ export default function HomePage() {
           }
         }
         
-        // Если профиля нет после проверки, сразу редиректим на анкету
+        // ИСПРАВЛЕНО: Если профиля нет после проверки, ВСЕГДА редиректим на анкету
+        // Убираем все условия - просто проверяем hasProfile
         if (!hasProfile) {
           console.log('ℹ️ No profile found, redirecting to quiz immediately');
           setRedirectingToQuiz(true);
           setLoading(false);
+          // Используем window.location.href для надежного редиректа
           if (typeof window !== 'undefined') {
             window.location.href = '/quiz';
+            return;
           } else {
             router.push('/quiz');
+            return;
           }
-          return;
         }
 
         // Если профиль есть - загружаем рекомендации
