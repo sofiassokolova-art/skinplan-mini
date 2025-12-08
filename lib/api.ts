@@ -205,7 +205,56 @@ export const api = {
   },
 
   // Профиль
+  // ОПТИМИЗАЦИЯ: Кэшируем результат проверки профиля в sessionStorage
+  // чтобы избежать множественных запросов в течение одной сессии
   async getCurrentProfile() {
+    // Проверяем кэш в sessionStorage
+    if (typeof window !== 'undefined') {
+      const cacheKey = 'profile_check_cache';
+      const cacheTimestampKey = 'profile_check_cache_timestamp';
+      const cacheMaxAge = 5000; // 5 секунд - достаточно для предотвращения дублирующих запросов
+      
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        const cachedTimestamp = sessionStorage.getItem(cacheTimestampKey);
+        
+        if (cached && cachedTimestamp) {
+          const age = Date.now() - parseInt(cachedTimestamp, 10);
+          if (age < cacheMaxAge) {
+            // Кэш свежий - возвращаем закэшированный результат
+            if (cached === 'null') {
+              // Профиль не найден (404) - выбрасываем ошибку как обычно
+              const error: any = new Error('No profile found');
+              error.status = 404;
+              error.isNotFound = true;
+              throw error;
+            }
+            // Профиль найден - возвращаем из кэша
+            return JSON.parse(cached);
+          }
+        }
+      } catch (e) {
+        // Если ошибка парсинга кэша - игнорируем и делаем запрос
+      }
+      
+      // Делаем запрос
+      try {
+        const profile = await request('/profile/current');
+        // Сохраняем в кэш
+        sessionStorage.setItem(cacheKey, JSON.stringify(profile));
+        sessionStorage.setItem(cacheTimestampKey, String(Date.now()));
+        return profile;
+      } catch (error: any) {
+        // Если 404 - тоже кэшируем, чтобы не делать повторные запросы
+        if (error?.status === 404 || error?.isNotFound) {
+          sessionStorage.setItem(cacheKey, 'null');
+          sessionStorage.setItem(cacheTimestampKey, String(Date.now()));
+        }
+        throw error;
+      }
+    }
+    
+    // SSR или window недоступен - делаем запрос без кэша
     return request('/profile/current');
   },
 
