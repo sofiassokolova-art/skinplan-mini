@@ -3,7 +3,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+// ИСПРАВЛЕНО: Отключаем статическую генерацию для этой страницы
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnalysisLoading } from '@/components/AnalysisLoading';
 import { UserProfileCard } from '@/components/UserProfileCard';
@@ -54,7 +58,7 @@ interface AnalysisData {
   eveningSteps: CareStep[];
 }
 
-export default function AnalysisPage() {
+function AnalysisPageContent() {
   const router = useRouter();
   const [showLoading, setShowLoading] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -398,5 +402,23 @@ export default function AnalysisPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function AnalysisPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
+      </div>
+    }>
+      <AnalysisPageContent />
+    </Suspense>
   );
 }
