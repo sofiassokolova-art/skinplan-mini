@@ -82,12 +82,12 @@ export async function POST(request: NextRequest) {
     // ИСПРАВЛЕНО: Проверяем дубликат только если есть профиль
     // Если профиля нет, но есть ответы - это означает, что анкета не была завершена
     // В этом случае нужно создать профиль, а не возвращать дубликат
-    const existingProfile = await prisma.skinProfile.findFirst({
+    const existingProfileBeforeTransaction = await prisma.skinProfile.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
     
-    if (recentSubmission && existingProfile) {
+    if (recentSubmission && existingProfileBeforeTransaction) {
       const timeSinceSubmission = Date.now() - new Date(recentSubmission.createdAt).getTime();
       // Если ответ был отправлен менее чем 5 секунд назад И профиль уже существует - это вероятно дубликат
       if (timeSinceSubmission < 5000) {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
           questionnaireId,
           timeSinceSubmission,
           lastSubmissionId: recentSubmission.id,
-          profileId: existingProfile.id,
+          profileId: existingProfileBeforeTransaction.id,
         });
         
         // Возвращаем успешный ответ, чтобы избежать ошибки 301 и повторной обработки
@@ -104,8 +104,8 @@ export async function POST(request: NextRequest) {
           success: true,
           message: 'Answers already submitted',
           profile: {
-            id: existingProfile.id,
-            version: existingProfile.version,
+            id: existingProfileBeforeTransaction.id,
+            version: existingProfileBeforeTransaction.version,
           },
           isDuplicate: true,
         });
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     
     // ИСПРАВЛЕНО: Если профиля нет, но есть ответы - продолжаем создание профиля
     // Это может быть случай, когда пользователь начал анкету, но не завершил её
-    if (!existingProfile && recentSubmission) {
+    if (!existingProfileBeforeTransaction && recentSubmission) {
       logger.info('Profile does not exist, but answers found - will create profile', {
         userId,
         questionnaireId,
@@ -200,14 +200,19 @@ export async function POST(request: NextRequest) {
       // Сохраняем или обновляем профиль
       // ВАЖНО: Ищем последний профиль пользователя (не по questionnaire.version, а по последней версии)
       // Это нужно для правильной обработки повторных отправок анкеты
-      const existingProfile = await tx.skinProfile.findFirst({
-        where: {
-          userId: userId!, // userId гарантированно string
-        },
-        orderBy: {
-          version: 'desc', // Берем последнюю версию
-        },
-      });
+      // ИСПРАВЛЕНО: Используем existingProfileBeforeTransaction, если он есть, иначе ищем в транзакции
+      const existingProfile = existingProfileBeforeTransaction 
+        ? await tx.skinProfile.findUnique({
+            where: { id: existingProfileBeforeTransaction.id },
+          })
+        : await tx.skinProfile.findFirst({
+            where: {
+              userId: userId!, // userId гарантированно string
+            },
+            orderBy: {
+              version: 'desc', // Берем последнюю версию
+            },
+          });
 
       // ВАЖНО: Извлекаем diagnoses и другие данные из ответов напрямую
       // createSkinProfile не извлекает diagnoses, поэтому делаем это здесь
@@ -816,7 +821,7 @@ export async function POST(request: NextRequest) {
                userPriceSegment === 'premium' ? 'премиум' : 'любой') : 'любой'),
           };
           
-          const products = await getProductsForStep(stepWithBudget, userPriceSegment);
+          const products = await getProductsForStep(stepWithBudget);
           logger.info(`Products selected for step ${stepName}`, {
             stepName,
             productCount: products.length,

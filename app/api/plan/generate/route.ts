@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
     }
     
     // ИСПРАВЛЕНО: Дополнительная проверка - план может быть сгенерирован, но с пустыми днями
-    if (hasPlan28 && plan.plan28.days.length === 0) {
+    if (hasPlan28 && plan.plan28 && plan.plan28.days.length === 0) {
       logger.error('❌ Plan28 generated but has no days', undefined, {
         userId,
         profileVersion: profile.version,
