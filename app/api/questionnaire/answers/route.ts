@@ -753,6 +753,8 @@ export async function POST(request: NextRequest) {
         
         // ИСПРАВЛЕНО: Увеличиваем количество продуктов на шаг для более полных рекомендаций
         // Дерматологическая логика: для каждого шага берем 3-5 продуктов вместо 1-3
+        // ВАЖНО: Теперь все обязательные шаги (toner, serum) уже есть в правилах в БД,
+        // поэтому не нужно добавлять их программно
         const enhancedStepsJson: Record<string, any> = { ...stepsJson };
         
         // Увеличиваем max_items для всех шагов
@@ -766,74 +768,8 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        // ДЕРМАТОЛОГИЧЕСКАЯ ЛОГИКА: Добавляем недостающие обязательные шаги
-        // Для полноценной рутины нужны: cleanser, toner, serum, moisturizer, spf
-        const requiredSteps = {
-          'cleanser': { category: ['cleanser'], max_items: 3 },
-          'toner': { category: ['toner'], max_items: 3 },
-          'serum': { category: ['serum'], max_items: 4 },
-          'moisturizer': { category: ['moisturizer'], max_items: 3 },
-          'spf': { category: ['spf'], max_items: 2 },
-        };
-        
-        // Проверяем, какие обязательные шаги отсутствуют
-        const existingSteps = Object.keys(enhancedStepsJson);
-        const missingSteps: Record<string, any> = {};
-        
-        for (const [requiredStepName, requiredStepConfig] of Object.entries(requiredSteps)) {
-          // Проверяем, есть ли этот шаг или его вариация
-          const hasStep = existingSteps.some(step => 
-            step === requiredStepName || 
-            step.startsWith(requiredStepName + '_') ||
-            step.includes(requiredStepName)
-          );
-          
-          if (!hasStep) {
-            // Адаптируем конфигурацию под профиль пользователя
-            const adaptedConfig: any = {
-              ...requiredStepConfig,
-              skin_types: profile.skinType ? [profile.skinType] : undefined,
-            };
-            
-            // Для serum добавляем активные ингредиенты в зависимости от проблем
-            if (requiredStepName === 'serum') {
-              if (profile.acneLevel && profile.acneLevel >= 2) {
-                adaptedConfig.active_ingredients = ['niacinamide', 'salicylic_acid'];
-                adaptedConfig.concerns = ['acne'];
-              } else if (profile.concerns?.includes('pigmentation') || profile.concerns?.includes('dark_spots')) {
-                adaptedConfig.active_ingredients = ['vitamin_c', 'niacinamide'];
-                adaptedConfig.concerns = ['pigmentation'];
-              } else if (profile.concerns?.includes('wrinkles') || profile.concerns?.includes('fine_lines')) {
-                adaptedConfig.active_ingredients = ['retinol', 'peptides'];
-                adaptedConfig.concerns = ['anti_aging'];
-              } else {
-                adaptedConfig.active_ingredients = ['hyaluronic_acid', 'niacinamide'];
-                adaptedConfig.concerns = ['hydration'];
-              }
-            }
-            
-            // Для toner адаптируем под тип кожи
-            if (requiredStepName === 'toner') {
-              if (profile.skinType === 'oily' || profile.skinType === 'combo') {
-                adaptedConfig.active_ingredients = ['salicylic_acid', 'niacinamide'];
-              } else if (profile.skinType === 'dry' || profile.sensitivityLevel === 'high') {
-                adaptedConfig.active_ingredients = ['hyaluronic_acid'];
-                adaptedConfig.is_fragrance_free = true;
-              } else {
-                adaptedConfig.active_ingredients = ['hyaluronic_acid', 'niacinamide'];
-              }
-            }
-            
-            missingSteps[requiredStepName] = adaptedConfig;
-            logger.info(`Adding missing required step: ${requiredStepName}`, {
-              userId,
-              stepConfig: adaptedConfig,
-            });
-          }
-        }
-        
-        // Объединяем существующие и недостающие шаги
-        const allSteps = { ...enhancedStepsJson, ...missingSteps };
+        // Используем только шаги из правила (все обязательные шаги уже добавлены в БД)
+        const allSteps = enhancedStepsJson;
         
         for (const [stepName, stepConfig] of Object.entries(allSteps)) {
           const step = stepConfig as any;
@@ -874,7 +810,6 @@ export async function POST(request: NextRequest) {
             productIds: products.map(p => p.id),
             productNames: products.map(p => p.name),
             stepConfig: stepWithBudget,
-            isAddedStep: missingSteps.hasOwnProperty(stepName),
             userId,
           });
           
