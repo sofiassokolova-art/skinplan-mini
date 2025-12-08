@@ -451,7 +451,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       mainGoals: carePlanProfileInput.mainGoals,
       sensitivityLevel: carePlanProfileInput.sensitivityLevel,
       routineComplexity: carePlanProfileInput.routineComplexity,
-    });
+  });
   }
 
   // Шаг 2: Фильтрация продуктов
@@ -564,7 +564,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           where: { id: existingSession.id },
         });
         // Продолжаем без этой сессии
-      } else {
+    } else {
         // Используем продукты, даже если их меньше минимума
         logger.info('Using RecommendationSession with fewer products than recommended', {
           userId,
@@ -1169,12 +1169,12 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         // Если и это не помогло, регистрируем в 'other' или пропускаем с предупреждением
         if (fallbackCategories.length === 0) {
           logger.error('CRITICAL: Could not register product - no fallback categories found', {
-            productId: product.id,
-            productName: product.name,
-            step: product.step,
-            category: product.category,
-            userId,
-          });
+        productId: product.id,
+        productName: product.name,
+        step: product.step,
+        category: product.category,
+        userId,
+      });
           // Пропускаем этот продукт, но продолжаем
           return;
         }
@@ -1534,12 +1534,12 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   await ensureRequiredProductsForPlan();
   
   // ИСПРАВЛЕНО: Всегда логируем итоговое состояние для диагностики
-  const stepSummary = Array.from(productsByStepMap.entries()).map(([step, products]) => ({
-    step,
-    count: products.length,
+    const stepSummary = Array.from(productsByStepMap.entries()).map(([step, products]) => ({
+      step,
+      count: products.length,
     productIds: products.map(p => p.id).slice(0, 5),
-    productNames: products.map(p => p.name).slice(0, 3),
-  }));
+      productNames: products.map(p => p.name).slice(0, 3),
+    }));
   
   // КРИТИЧНО: Проверяем, что для всех обязательных шагов есть продукты
   const missingSteps: StepCategory[] = [];
@@ -1559,15 +1559,15 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     });
   }
   
-  logger.info('ProductsByStepMap summary AFTER ensureRequiredProducts', {
-    userId,
-    requiredSteps: Array.from(requiredStepCategories),
-    totalSteps: productsByStepMap.size,
-    steps: stepSummary,
-    selectedProductsCount: selectedProducts.length,
+    logger.info('ProductsByStepMap summary AFTER ensureRequiredProducts', {
+      userId,
+      requiredSteps: Array.from(requiredStepCategories),
+      totalSteps: productsByStepMap.size,
+      steps: stepSummary,
+      selectedProductsCount: selectedProducts.length,
     selectedProductIds: selectedProducts.map((p: any) => p.id).slice(0, 10),
     missingSteps: missingSteps.length > 0 ? missingSteps : undefined,
-  });
+    });
 
   // Определяем дерматологический протокол
   const dermatologyProtocol = determineProtocol({
@@ -1741,7 +1741,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
                 week: weekNum,
                 userId,
               });
-              continue;
+            continue;
             }
           }
         }
@@ -1918,7 +1918,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
                 week: weekNum,
                 userId,
               });
-              continue;
+            continue;
             }
           }
         }

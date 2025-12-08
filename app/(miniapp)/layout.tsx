@@ -20,7 +20,7 @@ function LayoutContent({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams(); // ИСПРАВЛЕНО: Теперь внутри Suspense boundary
+  const searchParams = useSearchParams();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState(false); // Флаг: идет ли проверка профиля на главной странице
@@ -161,17 +161,7 @@ export default function MiniappLayout({
 }) {
   return (
     <QueryProvider>
-      <Suspense fallback={
-        // Fallback без useSearchParams для SSR
-        <div style={{ minHeight: '100vh' }}>
-          <NetworkStatus />
-          <PageTransition>
-            {children}
-          </PageTransition>
-        </div>
-      }>
-        <LayoutContent>{children}</LayoutContent>
-      </Suspense>
+      <LayoutContent>{children}</LayoutContent>
     </QueryProvider>
   );
 }

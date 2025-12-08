@@ -3,10 +3,6 @@
 
 'use client';
 
-// ИСПРАВЛЕНО: Отключаем статическую генерацию для этой страницы
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnalysisLoading } from '@/components/AnalysisLoading';
