@@ -51,7 +51,22 @@ function LayoutContent({
   }, [initData, isAuthorized, initialize]);
 
   // Проверяем наличие профиля на главной странице, чтобы скрыть навигацию для новых пользователей
+  // ИСПРАВЛЕНО: Убираем проверку профиля из layout, так как она дублируется на главной странице
+  // Это вызывает множественные запросы и лаги
   useEffect(() => {
+    // Не проверяем профиль в layout - это делает главная страница
+    // Просто скрываем навигацию на главной странице до загрузки
+    if (pathname === '/') {
+      // Небольшая задержка для плавности, но не проверяем профиль
+      setIsCheckingProfile(true);
+      setTimeout(() => setIsCheckingProfile(false), 500);
+    } else {
+      setIsCheckingProfile(false);
+    }
+  }, [pathname]);
+  
+  // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
+  /* useEffect(() => {
     if (pathname === '/' && initData) {
       setIsCheckingProfile(true);
       // Проверяем профиль асинхронно
@@ -84,7 +99,7 @@ function LayoutContent({
       // Не на главной странице - не проверяем профиль
       setIsCheckingProfile(false);
     }
-  }, [pathname, initData]);
+  }, [pathname, initData]); */
 
   // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
   const isResumeScreen = searchParams?.get('resume') === 'true';
@@ -172,7 +187,7 @@ export default function MiniappLayout({
           <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
         </div>
       }>
-        <LayoutContent>{children}</LayoutContent>
+      <LayoutContent>{children}</LayoutContent>
       </Suspense>
     </QueryProvider>
   );

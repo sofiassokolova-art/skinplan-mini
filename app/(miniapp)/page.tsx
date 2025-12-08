@@ -93,6 +93,7 @@ export default function HomePage() {
   });
   const [redirectingToQuiz, setRedirectingToQuiz] = useState(false); // Флаг: редиректим на анкету
   const [hasCheckedProfile, setHasCheckedProfile] = useState(false); // Флаг: проверили ли наличие профиля
+  const profileCheckInProgressRef = useRef(false); // Защита от множественных запросов к getCurrentProfile
 
   // УДАЛЕНО: Функция checkIncompleteQuiz больше не нужна
   // Если профиля нет, сразу редиректим на /quiz, где есть экран "Вы не завершили анкету"
@@ -150,7 +151,14 @@ export default function HomePage() {
         console.log('✅ Telegram WebApp available, proceeding with initialization');
 
         // СНАЧАЛА проверяем наличие профиля (самая надежная проверка)
+        // ИСПРАВЛЕНО: Защита от множественных запросов
+        if (profileCheckInProgressRef.current) {
+          console.log('⚠️ Profile check already in progress, skipping...');
+          return;
+        }
+        
         console.log('🔍 Step 1: Checking for existing profile...');
+        profileCheckInProgressRef.current = true;
         setHasCheckedProfile(true); // Помечаем, что проверили профиль
         let hasProfile = false;
         try {
@@ -196,7 +204,7 @@ export default function HomePage() {
             return;
           } else {
             router.push('/quiz');
-            return;
+          return;
           }
         }
 
@@ -237,14 +245,17 @@ export default function HomePage() {
           }
           // Убеждаемся что loading установлен в false
           setLoading(false);
+          profileCheckInProgressRef.current = false; // Сбрасываем флаг
           return; // Завершаем инициализацию
         }
 
         // Если профиля нет - просто завершаем загрузку, покажем экран с кнопкой
         console.log('ℹ️ No profile found, showing "Start quiz" screen');
         setLoading(false);
+        profileCheckInProgressRef.current = false; // Сбрасываем флаг
         return;
       } catch (err: any) {
+        profileCheckInProgressRef.current = false; // Сбрасываем флаг при ошибке
         console.error('❌ Error in initAndLoad:', {
           error: err,
           message: err?.message,
@@ -460,17 +471,10 @@ export default function HomePage() {
       console.log('🔍 loadRecommendations: Checking profile before loading...');
       let profileExists = false;
       try {
-        const profile = await api.getCurrentProfile();
-        if (profile && (profile as any).id) {
-          profileExists = true;
-          console.log('✅ loadRecommendations: Profile confirmed, proceeding...');
-        } else {
-          console.log('⚠️ loadRecommendations: No profile found, redirecting to quiz');
-          setRedirectingToQuiz(true);
-          setLoading(false);
-          if (typeof window !== 'undefined') {
-            window.location.href = '/quiz';
-          } else {
+        // ИСПРАВЛЕНО: Не проверяем профиль повторно, если уже проверили
+        // Профиль уже был проверен в initAndLoad, просто продолжаем
+        profileExists = true;
+        console.log('✅ loadRecommendations: Proceeding (profile already checked)...'); else {
             router.push('/quiz');
           }
           return;
