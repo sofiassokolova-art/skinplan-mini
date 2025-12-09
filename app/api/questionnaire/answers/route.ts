@@ -123,7 +123,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Используем транзакцию для атомарности операций
-    const { savedAnswers, fullAnswers, profile, existingProfile } = await prisma.$transaction(async (tx) => {
+    let transactionResult: { savedAnswers: any[]; fullAnswers: any[]; profile: any; existingProfile: any | null };
+    try {
+      transactionResult = await prisma.$transaction(async (tx) => {
       // Сохраняем или обновляем ответы (upsert для избежания дубликатов)
       const savedAnswers = await Promise.all(
         answers.map(async (answer: AnswerInput) => {
@@ -190,12 +192,36 @@ export async function POST(request: NextRequest) {
       });
 
       // Рассчитываем профиль кожи
-      const profileData = createSkinProfile(
-        userId!, // userId гарантированно string в транзакции
+      // ВАЖНО: Логируем перед вызовом createSkinProfile для диагностики
+      logger.debug('Creating skin profile', {
+        userId,
         questionnaireId,
-        fullAnswers,
-        questionnaire.version
-      );
+        fullAnswersCount: fullAnswers.length,
+        questionnaireVersion: questionnaire.version,
+      });
+      
+      let profileData;
+      try {
+        profileData = createSkinProfile(
+          userId!, // userId гарантированно string в транзакции
+          questionnaireId,
+          fullAnswers,
+          questionnaire.version
+        );
+        logger.debug('Skin profile calculated successfully', {
+          userId,
+          skinType: profileData.skinType,
+          sensitivityLevel: profileData.sensitivityLevel,
+        });
+      } catch (profileCalcError: any) {
+        logger.error('Error calculating skin profile', profileCalcError, {
+          userId,
+          questionnaireId,
+          fullAnswersCount: fullAnswers.length,
+        });
+        // Пробрасываем ошибку, чтобы транзакция откатилась
+        throw profileCalcError;
+      }
 
       // Сохраняем или обновляем профиль
       // ВАЖНО: Ищем последний профиль пользователя (не по questionnaire.version, а по последней версии)
@@ -240,11 +266,43 @@ export async function POST(request: NextRequest) {
       if (existingMarkers?.gender) {
         mergedMarkers.gender = existingMarkers.gender;
       }
+      // ВАЖНО: Валидируем данные перед созданием профиля
+      // Проверяем, что все обязательные поля присутствуют
+      if (!profileData.skinType) {
+        logger.error('CRITICAL: skinType is missing in profileData', {
+          userId,
+          questionnaireId,
+          profileData,
+        });
+        throw new Error('skinType is required for profile creation');
+      }
+      
+      if (!profileData.sensitivityLevel) {
+        logger.error('CRITICAL: sensitivityLevel is missing in profileData', {
+          userId,
+          questionnaireId,
+          profileData,
+        });
+        throw new Error('sensitivityLevel is required for profile creation');
+      }
+      
       const profileDataForPrisma = {
         ...profileData,
         ageGroup: existingProfile?.ageGroup ?? profileData.ageGroup,
         medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
       };
+      
+      // ВАЖНО: Логируем данные перед созданием профиля для диагностики
+      logger.debug('Profile data for Prisma', {
+        userId,
+        questionnaireId,
+        skinType: profileDataForPrisma.skinType,
+        sensitivityLevel: profileDataForPrisma.sensitivityLevel,
+        acneLevel: profileDataForPrisma.acneLevel,
+        dehydrationLevel: profileDataForPrisma.dehydrationLevel,
+        hasMedicalMarkers: !!profileDataForPrisma.medicalMarkers,
+        newVersion,
+      });
 
       // ВАЖНО: Используем upsert для избежания конфликтов уникальности при повторных отправках
       // Если профиль существует, обновляем его с новой версией
@@ -282,7 +340,7 @@ export async function POST(request: NextRequest) {
       // Если существующий профиль есть, обновляем его с новой версией
       // Если нет - создаем новый
       // ВАЖНО: Используем try-catch для обработки unique constraint ошибок при race condition
-      let profile;
+      let profile: any = null; // ИСПРАВЛЕНО: Инициализируем как null для проверки
       try {
         profile = existingProfile
           ? await tx.skinProfile.update({
@@ -357,11 +415,63 @@ export async function POST(request: NextRequest) {
           throw updateError;
         }
       }
+      
+      // ВАЖНО: Проверяем, что профиль был создан/обновлен
+      if (!profile || !profile.id) {
+        logger.error('CRITICAL: Profile was not created/updated in transaction', {
+          userId,
+          questionnaireId,
+          hasProfile: !!profile,
+          profileId: profile?.id,
+          existingProfileId: existingProfile?.id,
+          newVersion,
+        });
+        throw new Error('Profile was not created/updated in transaction');
+      }
 
       return { savedAnswers, fullAnswers, profile, existingProfile };
-    }, {
-      timeout: 30000, // 30 секунд таймаут для транзакции
-    });
+      }, {
+        timeout: 30000, // 30 секунд таймаут для транзакции
+      });
+      
+      // Извлекаем результат транзакции
+      const { savedAnswers, fullAnswers, profile, existingProfile } = transactionResult;
+      
+      // ВАЖНО: Проверяем, что профиль был создан/обновлен
+      if (!profile || !profile.id) {
+        logger.error('CRITICAL: Profile was not created/updated in transaction', {
+          userId,
+          questionnaireId,
+          hasProfile: !!profile,
+          profileId: profile?.id,
+          savedAnswersCount: savedAnswers?.length || 0,
+        });
+        throw new Error('Profile was not created/updated in transaction');
+      }
+      
+      logger.info('✅ Transaction completed successfully', {
+        userId,
+        profileId: profile.id,
+        profileVersion: profile.version,
+        savedAnswersCount: savedAnswers?.length || 0,
+      });
+    } catch (transactionError: any) {
+      // Логируем ошибку транзакции детально
+      logger.error('CRITICAL: Transaction failed', transactionError, {
+        userId,
+        questionnaireId,
+        errorCode: transactionError?.code,
+        errorMessage: transactionError?.message,
+        errorMeta: transactionError?.meta,
+        stack: transactionError?.stack?.substring(0, 500),
+      });
+      
+      // Пробрасываем ошибку дальше, чтобы вернуть правильный HTTP статус
+      throw transactionError;
+    }
+    
+    // Извлекаем результат после успешной транзакции
+    const { savedAnswers, fullAnswers, profile, existingProfile } = transactionResult;
     
     // Очищаем кэш плана и рекомендаций при обновлении профиля (вне транзакции)
     if (existingProfile && existingProfile.version !== profile.version) {
@@ -1104,8 +1214,31 @@ export async function POST(request: NextRequest) {
     // Это гарантирует, что план будет сгенерирован с правильными данными
     logger.info('Answers preserved for plan generation (will be cleared after plan is generated)', { userId });
 
+    // ВАЖНО: Проверяем, что профиль действительно был создан/обновлен
+    if (!profile || !profile.id) {
+      logger.error('CRITICAL: Profile was not created/updated after transaction', {
+        userId,
+        questionnaireId,
+        hasProfile: !!profile,
+        profileId: profile?.id,
+        savedAnswersCount: savedAnswers.length,
+      });
+      return ApiResponse.internalError(
+        new Error('Profile was not created after saving answers'),
+        { userId, questionnaireId, savedAnswersCount: savedAnswers.length }
+      );
+    }
+    
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId || undefined);
+
+    logger.info('✅ Answers submitted and profile created successfully', {
+      userId,
+      profileId: profile.id,
+      profileVersion: profile.version,
+      answersCount: savedAnswers.length,
+      duration,
+    });
 
     return ApiResponse.success({
       success: true,

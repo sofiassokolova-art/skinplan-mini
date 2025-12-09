@@ -410,6 +410,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, processed: 'admin_command' });
     }
 
+    // Обработка команды /clear
+    else if (update.message?.text === '/clear' || update.message?.text === '/reset') {
+      const chatId = update.message.chat.id;
+      const telegramId = update.message.from.id;
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
+
+      const clearText = `🧹 <b>Очистка данных</b>\n\nНажмите на кнопку ниже, чтобы очистить все данные анкеты из браузера.\n\nЭто удалит:\n• Прогресс анкеты\n• Сохраненные ответы\n• Кэш профиля\n\nПосле очистки вы сможете пройти анкету заново.`;
+
+      const replyMarkup = {
+        inline_keyboard: [
+          [
+            {
+              text: '🧹 Очистить данные',
+              web_app: { url: MINI_APP_URL + '/clear-storage' },
+            },
+          ],
+        ],
+      };
+
+      try {
+        await sendMessage(chatId, clearText, replyMarkup, userId || undefined);
+        console.log(`✅ Clear command processed for chat ${chatId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to send clear message:`, error);
+      }
+      
+      return NextResponse.json({ ok: true, processed: 'clear_command' });
+    }
+
     // Обработка команды /help
     else if (update.message?.text === '/help') {
       const chatId = update.message.chat.id;
@@ -425,6 +459,7 @@ export async function POST(request: NextRequest) {
 <b>Команды:</b>
 /start - Начать работу с ботом
 /help - Показать эту справку
+/clear - Очистить данные анкеты
 
 <b>Что дальше?</b>
 Нажмите на кнопку "Открыть SkinIQ" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями SkinIQ!`;
