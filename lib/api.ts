@@ -120,11 +120,14 @@ async function request<T>(
       // ВАЖНО: Логируем ошибку сети (только для критичных endpoints)
       if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
         if (typeof window !== 'undefined') {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorName = error instanceof Error ? error.name : undefined;
+          const errorStack = error instanceof Error ? error.stack?.substring(0, 200) : undefined;
           console.error('❌ Network error for:', `${API_BASE}${endpoint}`, {
-            error: error?.message || String(error),
+            error: errorMessage,
             errorType: typeof error,
-            errorName: error?.name,
-            stack: error?.stack?.substring(0, 200),
+            errorName,
+            stack: errorStack,
           });
         }
       }
