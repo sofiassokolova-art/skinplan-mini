@@ -3534,6 +3534,9 @@ export default function QuizPage() {
       const groups = questionnaire.groups || [];
       const questions = questionnaire.questions || [];
       
+      // ВОССТАНОВЛЕНО из коммита accc330: правильная логика сбора вопросов
+      // ВАЖНО: Сохраняем порядок групп и внутри каждой группы - порядок вопросов
+      // Groups уже отсортированы по position в API, вопросы внутри групп тоже отсортированы
       const questionsFromGroups = groups.flatMap((g) => {
         try {
           return g?.questions || [];
@@ -3544,52 +3547,41 @@ export default function QuizPage() {
       });
       
     // ВАЖНО: Удаляем дубликаты по questionId, сохраняя исходный порядок из API
-    // Вопросы из API уже отсортированы по position, поэтому нужно сохранить этот порядок
-    // Используем Map для дедупликации, но сохраняем порядок вставки
+    // Используем Map для сохранения первого вхождения каждого вопроса
+    // ВАЖНО: Сначала добавляем вопросы из groups (они имеют приоритет), затем из questions
+    // flatMap сохраняет порядок: сначала все вопросы из первой группы, потом из второй и т.д.
     const questionsMap = new Map<number, Question>();
-    const seenIds = new Set<number>();
     
-    // Сначала добавляем вопросы из groups (они имеют приоритет при дубликатах)
-    // Сохраняем порядок из groups, так как они уже отсортированы по position
+    // Сначала добавляем вопросы из groups в порядке их появления (уже отсортированы по группам и position)
     questionsFromGroups.forEach((q: Question) => {
-      if (q && q.id && !seenIds.has(q.id)) {
+      if (q && q.id && !questionsMap.has(q.id)) {
         questionsMap.set(q.id, q);
-        seenIds.add(q.id);
       }
     });
     
     // Затем добавляем вопросы из questions (если их еще нет)
-    // Сохраняем порядок из questions, так как они уже отсортированы по position
     questions.forEach((q: Question) => {
-      if (q && q.id && !seenIds.has(q.id)) {
+      if (q && q.id && !questionsMap.has(q.id)) {
         questionsMap.set(q.id, q);
-        seenIds.add(q.id);
       }
     });
     
-    // ВАЖНО: Map сохраняет порядок вставки в современных версиях JavaScript
-    // Но для надежности сортируем по position (вопросы уже отсортированы в API)
-    // ИСПРАВЛЕНО: Используем исходный порядок из API, который уже отсортирован по position
-    // ВОССТАНОВЛЕНО из коммита 05d2f14: правильная сортировка вопросов
+    // ВОССТАНОВЛЕНО из коммита accc330: простая сортировка по position
+    // ВАЖНО: Сортируем по position для сохранения правильного порядка
+    // position может быть разным для вопросов из groups и questions, поэтому сортируем после удаления дубликатов
+    // ИСПРАВЛЕНО: Используем id как основной критерий, если position не задан или равен 0
     const raw = Array.from(questionsMap.values()).sort((a: Question, b: Question) => {
       const aPosition = (a as any).position;
       const bPosition = (b as any).position;
       
       // Если у обоих есть валидный position (не null, не undefined, не 0), сортируем по нему
       if (aPosition != null && aPosition > 0 && bPosition != null && bPosition > 0) {
-        return aPosition - bPosition;
+        if (aPosition !== bPosition) {
+          return aPosition - bPosition;
+        }
       }
       
-      // Если у одного есть position, а у другого нет - приоритет у того, у кого есть
-      if (aPosition != null && aPosition > 0 && (bPosition == null || bPosition <= 0)) {
-        return -1; // a идет раньше
-      }
-      if (bPosition != null && bPosition > 0 && (aPosition == null || aPosition <= 0)) {
-        return 1; // b идет раньше
-      }
-      
-      // Если position не задан или равен 0 у обоих, сортируем по id (это гарантирует стабильный порядок)
-      // Но в большинстве случаев position должен быть задан, так как API сортирует по нему
+      // Если position не задан или одинаковый, сортируем по id (это гарантирует стабильный порядок)
       return a.id - b.id;
     });
       
