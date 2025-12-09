@@ -1806,33 +1806,46 @@ export default function QuizPage() {
     }
 
     // Защита от множественных вызовов: проверяем и ref, и state
+    // ИСПРАВЛЕНО: Если state = false, но ref = true - это рассинхронизация, сбрасываем ref
     if (isSubmitting || isSubmittingRef.current) {
-      clientLogger.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
-        isSubmitting,
-        isSubmittingRef: isSubmittingRef.current,
-      });
-      // ВАЖНО: Логируем на сервер для диагностики (неблокирующе)
-      const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-      if (currentInitData) {
-        fetch('/api/logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': currentInitData,
-          },
-          body: JSON.stringify({
-            level: 'warn',
-            message: '⚠️ Уже отправляется, игнорируем повторный вызов',
-            context: {
-              isSubmitting,
-              isSubmittingRef: isSubmittingRef.current,
-              timestamp: new Date().toISOString(),
+      // ИСПРАВЛЕНО: Если state = false, но ref = true - это рассинхронизация после ошибки
+      // Сбрасываем ref и разрешаем повторную попытку
+      if (!isSubmitting && isSubmittingRef.current) {
+        clientLogger.warn('⚠️ Обнаружена рассинхронизация: isSubmitting=false, но isSubmittingRef=true. Сбрасываем ref и разрешаем повторную попытку', {
+          isSubmitting,
+          isSubmittingRef: isSubmittingRef.current,
+        });
+        isSubmittingRef.current = false;
+        // Продолжаем выполнение - разрешаем повторную попытку
+      } else {
+        // Оба флага true - действительно идет отправка
+        clientLogger.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
+          isSubmitting,
+          isSubmittingRef: isSubmittingRef.current,
+        });
+        // ВАЖНО: Логируем на сервер для диагностики (неблокирующе)
+        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+        if (currentInitData) {
+          fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
             },
-            url: typeof window !== 'undefined' ? window.location.href : undefined,
-          }),
-        }).catch(() => {}); // Игнорируем ошибки логирования
+            body: JSON.stringify({
+              level: 'warn',
+              message: '⚠️ Уже отправляется, игнорируем повторный вызов',
+              context: {
+                isSubmitting,
+                isSubmittingRef: isSubmittingRef.current,
+                timestamp: new Date().toISOString(),
+              },
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {}); // Игнорируем ошибки логирования
+        }
+        return;
       }
-      return;
     }
 
     if (isMountedRef.current) {
@@ -3222,6 +3235,22 @@ export default function QuizPage() {
         } catch (redirectError) {
           // Игнорируем ошибки
         }
+      }
+    } finally {
+      // ИСПРАВЛЕНО: Гарантированно сбрасываем флаг isSubmittingRef даже при любых ошибках
+      // Это предотвращает блокировку повторных попыток отправки
+      if (isMountedRef.current) {
+        // Сбрасываем только если компонент еще смонтирован
+        // Если компонент размонтирован, флаг будет сброшен при следующем монтировании
+        const shouldReset = !isSubmitting; // Сбрасываем только если state уже false
+        if (shouldReset) {
+          isSubmittingRef.current = false;
+          clientLogger.log('✅ Флаг isSubmittingRef сброшен в finally блоке');
+        }
+      } else {
+        // Компонент размонтирован - сбрасываем флаг принудительно
+        isSubmittingRef.current = false;
+        clientLogger.log('✅ Флаг isSubmittingRef сброшен в finally (компонент размонтирован)');
       }
     }
   }, [questionnaire, answers, isSubmitting, isRetakingQuiz, isMountedRef, clearProgress]);
