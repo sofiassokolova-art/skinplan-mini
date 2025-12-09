@@ -3490,40 +3490,44 @@ export default function QuizPage() {
         }
       });
       
-    // ВАЖНО: Удаляем дубликаты по questionId, так как вопросы могут быть и в groups, и в questions
-    // Используем Map для сохранения первого вхождения каждого вопроса
-    // ВАЖНО: Сначала добавляем вопросы из groups (они имеют приоритет), затем из questions
+    // ВАЖНО: Удаляем дубликаты по questionId, сохраняя исходный порядок из API
+    // Вопросы из API уже отсортированы по position, поэтому нужно сохранить этот порядок
+    // Используем Map для дедупликации, но сохраняем порядок вставки
     const questionsMap = new Map<number, Question>();
+    const seenIds = new Set<number>();
     
     // Сначала добавляем вопросы из groups (они имеют приоритет при дубликатах)
+    // Сохраняем порядок из groups, так как они уже отсортированы по position
     questionsFromGroups.forEach((q: Question) => {
-      if (q && q.id && !questionsMap.has(q.id)) {
+      if (q && q.id && !seenIds.has(q.id)) {
         questionsMap.set(q.id, q);
+        seenIds.add(q.id);
       }
     });
     
     // Затем добавляем вопросы из questions (если их еще нет)
+    // Сохраняем порядок из questions, так как они уже отсортированы по position
     questions.forEach((q: Question) => {
-      if (q && q.id && !questionsMap.has(q.id)) {
+      if (q && q.id && !seenIds.has(q.id)) {
         questionsMap.set(q.id, q);
+        seenIds.add(q.id);
       }
     });
     
-    // ВАЖНО: Сортируем по position для сохранения правильного порядка
-    // position может быть разным для вопросов из groups и questions, поэтому сортируем после удаления дубликатов
-    // ИСПРАВЛЕНО: Используем id как основной критерий, если position не задан или равен 0
+    // ВАЖНО: Map сохраняет порядок вставки в современных версиях JavaScript
+    // Но для надежности сортируем по position (вопросы уже отсортированы в API)
+    // ИСПРАВЛЕНО: Используем исходный порядок из API, который уже отсортирован по position
     const raw = Array.from(questionsMap.values()).sort((a: Question, b: Question) => {
       const aPosition = (a as any).position;
       const bPosition = (b as any).position;
       
       // Если у обоих есть валидный position (не null, не undefined, не 0), сортируем по нему
       if (aPosition != null && aPosition > 0 && bPosition != null && bPosition > 0) {
-        if (aPosition !== bPosition) {
-          return aPosition - bPosition;
-        }
+        return aPosition - bPosition;
       }
       
-      // Если position не задан или одинаковый, сортируем по id (это гарантирует стабильный порядок)
+      // Если position не задан или равен 0, сортируем по id (это гарантирует стабильный порядок)
+      // Но в большинстве случаев position должен быть задан, так как API сортирует по нему
       return a.id - b.id;
     });
       
