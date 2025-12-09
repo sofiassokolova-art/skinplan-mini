@@ -3534,22 +3534,32 @@ export default function QuizPage() {
       const groups = questionnaire.groups || [];
       const questions = questionnaire.questions || [];
       
-      // ВОССТАНОВЛЕНО из коммита accc330: правильная логика сбора вопросов
-      // ВАЖНО: Сохраняем порядок групп и внутри каждой группы - порядок вопросов
+      // ИСПРАВЛЕНО: Сохраняем порядок групп и вопросов БЕЗ дополнительной сортировки
       // Groups уже отсортированы по position в API, вопросы внутри групп тоже отсортированы
-      const questionsFromGroups = groups.flatMap((g) => {
+      // flatMap сохраняет порядок: сначала все вопросы из первой группы, потом из второй и т.д.
+      // НЕ сортируем по position, так как это нарушает порядок групп!
+      const questionsFromGroups: Question[] = [];
+      const seenIds = new Set<number>();
+      
+      // Проходим по группам в порядке их position (groups уже отсортированы в API)
+      groups.forEach((g) => {
         try {
-          return g?.questions || [];
+          const groupQuestions = g?.questions || [];
+          // Вопросы внутри группы уже отсортированы по position в API
+          groupQuestions.forEach((q: Question) => {
+            if (q && q.id && !seenIds.has(q.id)) {
+              questionsFromGroups.push(q);
+              seenIds.add(q.id);
+            }
+          });
         } catch (err) {
           console.error('❌ Error accessing group questions:', err, g);
-          return [];
         }
       });
       
     // ВАЖНО: Удаляем дубликаты по questionId, сохраняя исходный порядок из API
     // Используем Map для сохранения первого вхождения каждого вопроса
     // ВАЖНО: Сначала добавляем вопросы из groups (они имеют приоритет), затем из questions
-    // flatMap сохраняет порядок: сначала все вопросы из первой группы, потом из второй и т.д.
     const questionsMap = new Map<number, Question>();
     
     // Сначала добавляем вопросы из groups в порядке их появления (уже отсортированы по группам и position)
@@ -3566,24 +3576,11 @@ export default function QuizPage() {
       }
     });
     
-    // ВОССТАНОВЛЕНО из коммита accc330: простая сортировка по position
-    // ВАЖНО: Сортируем по position для сохранения правильного порядка
-    // position может быть разным для вопросов из groups и questions, поэтому сортируем после удаления дубликатов
-    // ИСПРАВЛЕНО: Используем id как основной критерий, если position не задан или равен 0
-    const raw = Array.from(questionsMap.values()).sort((a: Question, b: Question) => {
-      const aPosition = (a as any).position;
-      const bPosition = (b as any).position;
-      
-      // Если у обоих есть валидный position (не null, не undefined, не 0), сортируем по нему
-      if (aPosition != null && aPosition > 0 && bPosition != null && bPosition > 0) {
-        if (aPosition !== bPosition) {
-          return aPosition - bPosition;
-        }
-      }
-      
-      // Если position не задан или одинаковый, сортируем по id (это гарантирует стабильный порядок)
-      return a.id - b.id;
-    });
+    // ИСПРАВЛЕНО: НЕ сортируем по position, так как это нарушает порядок групп!
+    // Map сохраняет порядок вставки в современных версиях JavaScript
+    // Groups уже отсортированы по position в API, вопросы внутри групп тоже отсортированы
+    // Сохраняем порядок из Map без дополнительной сортировки
+    const raw = Array.from(questionsMap.values());
       
       // Убираем вызов addDebugLog из useMemo, чтобы избежать проблем с хуками
       // Логируем только в консоль
@@ -3882,33 +3879,11 @@ export default function QuizPage() {
         }
       });
       
-      // ВАЖНО: Сортируем отфильтрованные вопросы по position для сохранения правильного порядка
-      // Фильтрация может изменить порядок, поэтому нужно пересортировать
-      // ВОССТАНОВЛЕНО из коммита 05d2f14: правильная сортировка после фильтрации
-      const sorted = filteredQuestions.sort((a: Question, b: Question) => {
-        const aPosition = (a as any).position;
-        const bPosition = (b as any).position;
-        
-        // Если у обоих есть валидный position (не null, не undefined, не 0), сортируем по нему
-        if (aPosition != null && aPosition > 0 && bPosition != null && bPosition > 0) {
-          if (aPosition !== bPosition) {
-            return aPosition - bPosition;
-          }
-        }
-        
-        // Если у одного есть position, а у другого нет - приоритет у того, у кого есть
-        if (aPosition != null && aPosition > 0 && (bPosition == null || bPosition <= 0)) {
-          return -1; // a идет раньше
-        }
-        if (bPosition != null && bPosition > 0 && (aPosition == null || aPosition <= 0)) {
-          return 1; // b идет раньше
-        }
-        
-        // Если position не задан или одинаковый, сортируем по id (это гарантирует стабильный порядок)
-        return a.id - b.id;
-      });
-      
-      return sorted;
+      // ИСПРАВЛЕНО: НЕ сортируем после фильтрации, чтобы сохранить порядок групп
+      // Фильтрация сохраняет относительный порядок элементов
+      // Порядок из allQuestionsRaw уже правильный (с учетом групп)
+      // Сортировка по position нарушит порядок групп, если position пересекаются между группами
+      return filteredQuestions;
     } catch (err) {
       console.error('❌ Error computing allQuestions:', err, {
         allQuestionsRawLength: allQuestionsRaw?.length,
