@@ -1551,76 +1551,108 @@ export default function QuizPage() {
     }
     
     // ВАЖНО: Логируем вызов submitAnswers на сервер
+    // ИСПРАВЛЕНО: Используем синхронный доступ к initData, чтобы не блокировать выполнение
+    let currentInitData: string | null = null;
     try {
-      const currentInitData = await getInitData();
+      // Сначала пробуем использовать initData из хука (синхронно)
+      if (initData) {
+        currentInitData = initData;
+      } else if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        currentInitData = window.Telegram?.WebApp?.initData;
+      }
       
-      if (currentInitData) {
-        // ИСПРАВЛЕНО: Отправляем логи даже без initData - API теперь поддерживает анонимные логи
-        const logResponse = await fetch('/api/logs', {
+      // ВАЖНО: Логируем на сервер асинхронно, но не блокируем выполнение
+      const logPromise = (async () => {
+        try {
+          if (currentInitData) {
+            const logResponse = await fetch('/api/logs', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': currentInitData,
+              },
+              body: JSON.stringify({
+                level: 'info',
+                message: 'submitAnswers called',
+                context: {
+                  timestamp: new Date().toISOString(),
+                  hasQuestionnaire: !!questionnaire,
+                  answersCount: Object.keys(answers).length,
+                },
+                url: typeof window !== 'undefined' ? window.location.href : undefined,
+                userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
+              }),
+            });
+            
+            if (!logResponse.ok) {
+              const errorText = await logResponse.text().catch(() => 'Unknown error');
+              console.error('❌ Ошибка сохранения лога (submitAnswers called):', {
+                status: logResponse.status,
+                statusText: logResponse.statusText,
+                error: errorText,
+              });
+            }
+          } else {
+            // Отправляем анонимно
+            await fetch('/api/logs', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                level: 'info',
+                message: 'submitAnswers called (no initData)',
+                context: {
+                  timestamp: new Date().toISOString(),
+                  hasQuestionnaire: !!questionnaire,
+                  answersCount: Object.keys(answers).length,
+                  hasInitData: false,
+                },
+                url: typeof window !== 'undefined' ? window.location.href : undefined,
+                userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
+              }),
+            }).catch(() => {});
+          }
+        } catch (logError) {
+          // Игнорируем ошибки логирования, чтобы не блокировать выполнение
+          console.warn('⚠️ Ошибка при логировании (submitAnswers called):', logError);
+        }
+      })();
+      
+      // НЕ ждем завершения логирования - продолжаем выполнение
+      // logPromise будет выполняться в фоне
+    } catch (logError) {
+      // Игнорируем ошибки логирования, чтобы не блокировать выполнение
+      console.warn('⚠️ Ошибка при подготовке логирования (submitAnswers called):', logError);
+    }
+    
+    // ВАЖНО: Логируем, что продолжаем выполнение после логирования
+    clientLogger.log('✅ Логирование submitAnswers called завершено, продолжаем выполнение');
+    
+    // ВАЖНО: Отправляем критичный лог на сервер
+    try {
+      const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (syncInitData) {
+        await fetch('/api/logs', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': currentInitData || '',
+            'X-Telegram-Init-Data': syncInitData,
           },
           body: JSON.stringify({
             level: 'info',
-            message: 'submitAnswers called',
+            message: '✅ Логирование submitAnswers called завершено, продолжаем выполнение',
             context: {
               timestamp: new Date().toISOString(),
               hasQuestionnaire: !!questionnaire,
-              answersCount: Object.keys(answers).length,
+              questionnaireId: questionnaire?.id,
             },
             url: typeof window !== 'undefined' ? window.location.href : undefined,
-            userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
           }),
-        });
-        
-        if (!logResponse.ok) {
-          const errorText = await logResponse.text().catch(() => 'Unknown error');
-          console.error('❌ Ошибка сохранения лога (submitAnswers called):', {
-            status: logResponse.status,
-            statusText: logResponse.statusText,
-            error: errorText,
-            hasInitData: !!currentInitData,
-          });
-        } else {
-          const responseData = await logResponse.json().catch(() => null);
-          clientLogger.log('✅ Лог успешно сохранен (submitAnswers called):', responseData);
-        }
-      } else {
-        // ИСПРАВЛЕНО: Отправляем логи даже без initData (анонимно)
-        try {
-          await fetch('/api/logs', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              level: 'info',
-              message: 'submitAnswers called (no initData)',
-              context: {
-                timestamp: new Date().toISOString(),
-                hasQuestionnaire: !!questionnaire,
-                answersCount: Object.keys(answers).length,
-                hasInitData: false,
-              },
-              url: typeof window !== 'undefined' ? window.location.href : undefined,
-              userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
-            }),
-          }).catch(() => {}); // Игнорируем ошибки отправки анонимных логов
-        } catch (anonLogError) {
-          // Игнорируем ошибки анонимного логирования
-        }
-        clientLogger.warn('⚠️ initData не доступен, логируем анонимно');
+        }).catch(() => {});
       }
     } catch (logError) {
-      // ИСПРАВЛЕНО: Логируем ошибки более детально для диагностики
-      console.error('❌ КРИТИЧЕСКАЯ ОШИБКА при логировании (submitAnswers called):', {
-        error: logError,
-        message: logError instanceof Error ? logError.message : String(logError),
-        stack: logError instanceof Error ? logError.stack : undefined,
-        hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
-      });
+      // Игнорируем ошибки логирования
     }
     
     // Сохраняем функцию в ref для использования в setTimeout
@@ -1628,6 +1660,32 @@ export default function QuizPage() {
     
     if (!questionnaire) {
       clientLogger.error('❌ Анкета не загружена - блокируем отправку');
+      
+      // ВАЖНО: Отправляем критичный лог на сервер
+      try {
+        const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+        if (syncInitData) {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': syncInitData,
+            },
+            body: JSON.stringify({
+              level: 'error',
+              message: '❌ Анкета не загружена - блокируем отправку',
+              context: {
+                timestamp: new Date().toISOString(),
+                hasQuestionnaire: false,
+              },
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {});
+        }
+      } catch (logError) {
+        // Игнорируем ошибки логирования
+      }
+      
       if (isMountedRef.current) {
         setError('Анкета не загружена. Пожалуйста, обновите страницу.');
         isSubmittingRef.current = false;
