@@ -1661,7 +1661,6 @@ export default function QuizPage() {
     
     // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
     // ИСПРАВЛЕНО: Не ждем завершения логирования, чтобы не блокировать выполнение
-    const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
     if (syncInitData) {
       // Отправляем логирование асинхронно, не блокируя выполнение
       fetch('/api/logs', {
@@ -1714,29 +1713,25 @@ export default function QuizPage() {
     if (!questionnaire) {
       clientLogger.error('❌ Анкета не загружена - блокируем отправку');
       
-      // ВАЖНО: Отправляем критичный лог на сервер
-      try {
-        const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-        if (syncInitData) {
-          await fetch('/api/logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': syncInitData,
+      // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
+      const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (syncInitData) {
+        fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': syncInitData,
+          },
+          body: JSON.stringify({
+            level: 'error',
+            message: '❌ Анкета не загружена - блокируем отправку',
+            context: {
+              timestamp: new Date().toISOString(),
+              hasQuestionnaire: false,
             },
-            body: JSON.stringify({
-              level: 'error',
-              message: '❌ Анкета не загружена - блокируем отправку',
-              context: {
-                timestamp: new Date().toISOString(),
-                hasQuestionnaire: false,
-              },
-              url: typeof window !== 'undefined' ? window.location.href : undefined,
-            }),
-          }).catch(() => {});
-        }
-      } catch (logError) {
-        // Игнорируем ошибки логирования
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+          }),
+        }).catch(() => {}); // Игнорируем ошибки логирования
       }
       
       if (isMountedRef.current) {
@@ -1753,30 +1748,26 @@ export default function QuizPage() {
         isSubmitting,
         isSubmittingRef: isSubmittingRef.current,
       });
-      // ВАЖНО: Логируем на сервер для диагностики
-      try {
-        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-        if (currentInitData) {
-          await fetch('/api/logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': currentInitData,
+      // ВАЖНО: Логируем на сервер для диагностики (неблокирующе)
+      const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (currentInitData) {
+        fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': currentInitData,
+          },
+          body: JSON.stringify({
+            level: 'warn',
+            message: '⚠️ Уже отправляется, игнорируем повторный вызов',
+            context: {
+              isSubmitting,
+              isSubmittingRef: isSubmittingRef.current,
+              timestamp: new Date().toISOString(),
             },
-            body: JSON.stringify({
-              level: 'warn',
-              message: '⚠️ Уже отправляется, игнорируем повторный вызов',
-              context: {
-                isSubmitting,
-                isSubmittingRef: isSubmittingRef.current,
-                timestamp: new Date().toISOString(),
-              },
-              url: typeof window !== 'undefined' ? window.location.href : undefined,
-            }),
-          }).catch(() => {});
-        }
-      } catch (logError) {
-        // Игнорируем ошибки логирования
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+          }),
+        }).catch(() => {}); // Игнорируем ошибки логирования
       }
       return;
     }
@@ -1846,60 +1837,52 @@ export default function QuizPage() {
       
       clientLogger.log('✅ Все проверки пройдены, продолжаем формирование answerArray');
       
-      // ВАЖНО: Отправляем критичный лог на сервер
-      try {
-        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-        if (currentInitData) {
-          await fetch('/api/logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': currentInitData,
+      // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
+      const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (currentInitData) {
+        fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': currentInitData,
+          },
+          body: JSON.stringify({
+            level: 'info',
+            message: '✅ Все проверки пройдены, продолжаем формирование answerArray',
+            context: {
+              timestamp: new Date().toISOString(),
+              hasQuestionnaire: !!questionnaire,
+              answersCount: Object.keys(answers).length,
             },
-            body: JSON.stringify({
-              level: 'info',
-              message: '✅ Все проверки пройдены, продолжаем формирование answerArray',
-              context: {
-                timestamp: new Date().toISOString(),
-                hasQuestionnaire: !!questionnaire,
-                answersCount: Object.keys(answers).length,
-              },
-              url: typeof window !== 'undefined' ? window.location.href : undefined,
-            }),
-          }).catch(() => {});
-        }
-      } catch (logError) {
-        // Игнорируем ошибки логирования
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+          }),
+        }).catch(() => {}); // Игнорируем ошибки логирования
       }
 
       // Собираем ответы из state, если они пустые - пытаемся загрузить из localStorage
       let answersToSubmit = answers;
       clientLogger.log('📝 Текущие ответы в state:', Object.keys(answersToSubmit).length);
       
-      // ВАЖНО: Отправляем критичный лог на сервер
-      try {
-        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-        if (currentInitData) {
-          await fetch('/api/logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': currentInitData,
+      // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
+      const currentInitDataForLog1 = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (currentInitDataForLog1) {
+        fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': currentInitDataForLog1,
+          },
+          body: JSON.stringify({
+            level: 'info',
+            message: '📝 Текущие ответы в state',
+            context: {
+              timestamp: new Date().toISOString(),
+              answersCount: Object.keys(answersToSubmit).length,
+              answersInState: Object.keys(answers).length,
             },
-            body: JSON.stringify({
-              level: 'info',
-              message: '📝 Текущие ответы в state',
-              context: {
-                timestamp: new Date().toISOString(),
-                answersCount: Object.keys(answersToSubmit).length,
-                answersInState: Object.keys(answers).length,
-              },
-              url: typeof window !== 'undefined' ? window.location.href : undefined,
-            }),
-          }).catch(() => {});
-        }
-      } catch (logError) {
-        // Игнорируем ошибки логирования
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+          }),
+        }).catch(() => {}); // Игнорируем ошибки логирования
       }
       
       if (Object.keys(answersToSubmit).length === 0) {
@@ -1995,31 +1978,27 @@ export default function QuizPage() {
         answerArraySample: answerArray.slice(0, 5),
       });
       
-      // ВАЖНО: Отправляем критичный лог на сервер
-      try {
-        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-        if (currentInitData) {
-          await fetch('/api/logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': currentInitData,
+      // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
+      const currentInitDataForLog2 = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (currentInitDataForLog2) {
+        fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': currentInitDataForLog2,
+          },
+          body: JSON.stringify({
+            level: 'info',
+            message: '📤 Отправка ответов на сервер',
+            context: {
+              timestamp: new Date().toISOString(),
+              questionnaireId: questionnaire.id,
+              answersCount: answerArray.length,
+              answerArrayQuestionIds: answerArray.map(a => a.questionId),
             },
-            body: JSON.stringify({
-              level: 'info',
-              message: '📤 Отправка ответов на сервер',
-              context: {
-                timestamp: new Date().toISOString(),
-                questionnaireId: questionnaire.id,
-                answersCount: answerArray.length,
-                answerArrayQuestionIds: answerArray.map(a => a.questionId),
-              },
-              url: typeof window !== 'undefined' ? window.location.href : undefined,
-            }),
-          }).catch(() => {});
-        }
-      } catch (logError) {
-        // Игнорируем ошибки логирования
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+          }),
+        }).catch(() => {}); // Игнорируем ошибки логирования
       }
       
       // ВАЖНО: Проверяем, что answerArray не пустой
@@ -2068,59 +2047,51 @@ export default function QuizPage() {
           answerQuestionIds: answerArray.map(a => a.questionId),
         });
         
-        // ВАЖНО: Логируем на сервер перед вызовом API
-        try {
-          if (currentInitData) {
-            await fetch('/api/logs', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': currentInitData,
+        // ВАЖНО: Логируем на сервер перед вызовом API (неблокирующе)
+        if (currentInitData) {
+          fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
+            },
+            body: JSON.stringify({
+              level: 'info',
+              message: '🚀 About to call api.submitAnswers',
+              context: {
+                questionnaireId: questionnaire.id,
+                answersCount: answerArray.length,
+                answerQuestionIds: answerArray.map(a => a.questionId),
+                timestamp: new Date().toISOString(),
               },
-              body: JSON.stringify({
-                level: 'info',
-                message: '🚀 About to call api.submitAnswers',
-                context: {
-                  questionnaireId: questionnaire.id,
-                  answersCount: answerArray.length,
-                  answerQuestionIds: answerArray.map(a => a.questionId),
-                  timestamp: new Date().toISOString(),
-                },
-                url: typeof window !== 'undefined' ? window.location.href : undefined,
-              }),
-            }).catch(() => {});
-          }
-        } catch (logError) {
-          // Игнорируем ошибки логирования
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {}); // Игнорируем ошибки логирования
         }
         
         result = await api.submitAnswers(questionnaire.id, answerArray) as any;
         
-        // ВАЖНО: Логируем на сервер после получения ответа
-        try {
-          if (currentInitData) {
-            await fetch('/api/logs', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': currentInitData,
+        // ВАЖНО: Логируем на сервер после получения ответа (неблокирующе)
+        if (currentInitData) {
+          fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
+            },
+            body: JSON.stringify({
+              level: result?.profile?.id ? 'info' : 'error',
+              message: result?.profile?.id ? '✅ api.submitAnswers completed with profile' : '❌ api.submitAnswers completed without profile',
+              context: {
+                hasResult: !!result,
+                hasProfile: !!result?.profile,
+                profileId: result?.profile?.id,
+                resultKeys: result ? Object.keys(result) : [],
+                timestamp: new Date().toISOString(),
               },
-              body: JSON.stringify({
-                level: result?.profile?.id ? 'info' : 'error',
-                message: result?.profile?.id ? '✅ api.submitAnswers completed with profile' : '❌ api.submitAnswers completed without profile',
-                context: {
-                  hasResult: !!result,
-                  hasProfile: !!result?.profile,
-                  profileId: result?.profile?.id,
-                  resultKeys: result ? Object.keys(result) : [],
-                  timestamp: new Date().toISOString(),
-                },
-                url: typeof window !== 'undefined' ? window.location.href : undefined,
-              }),
-            }).catch(() => {});
-          }
-        } catch (logError) {
-          // Игнорируем ошибки логирования
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {}); // Игнорируем ошибки логирования
         }
         
         // ВАЖНО: Логируем сразу после получения ответа
@@ -2195,32 +2166,28 @@ export default function QuizPage() {
           errorType: typeof submitError,
         });
         
-        // ВАЖНО: Логируем на сервер для диагностики
-        try {
-          const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-          if (currentInitData) {
-            await fetch('/api/logs', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': currentInitData,
+        // ВАЖНО: Логируем на сервер для диагностики (неблокирующе)
+        const currentInitDataForError = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+        if (currentInitDataForError) {
+          fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitDataForError,
+            },
+            body: JSON.stringify({
+              level: 'error',
+              message: `Error in submitAnswers: ${submitError?.message || 'Unknown error'}`,
+              context: {
+                error: submitError?.message || String(submitError),
+                status: submitError?.status,
+                questionnaireId: questionnaire.id,
+                answersCount: answerArray.length,
+                stack: submitError?.stack?.substring(0, 500),
               },
-              body: JSON.stringify({
-                level: 'error',
-                message: `Error in submitAnswers: ${submitError?.message || 'Unknown error'}`,
-                context: {
-                  error: submitError?.message || String(submitError),
-                  status: submitError?.status,
-                  questionnaireId: questionnaire.id,
-                  answersCount: answerArray.length,
-                  stack: submitError?.stack?.substring(0, 500),
-                },
-                url: typeof window !== 'undefined' ? window.location.href : undefined,
-              }),
-            }).catch(() => {});
-          }
-        } catch (logError) {
-          // Игнорируем ошибки логирования
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {}); // Игнорируем ошибки логирования
         }
         
         // Если это не дубликат и не временная ошибка сети, показываем ошибку пользователю
