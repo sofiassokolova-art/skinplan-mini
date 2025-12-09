@@ -1734,10 +1734,62 @@ export default function QuizPage() {
       }
       
       clientLogger.log('✅ Все проверки пройдены, продолжаем формирование answerArray');
+      
+      // ВАЖНО: Отправляем критичный лог на сервер
+      try {
+        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+        if (currentInitData) {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
+            },
+            body: JSON.stringify({
+              level: 'info',
+              message: '✅ Все проверки пройдены, продолжаем формирование answerArray',
+              context: {
+                timestamp: new Date().toISOString(),
+                hasQuestionnaire: !!questionnaire,
+                answersCount: Object.keys(answers).length,
+              },
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {});
+        }
+      } catch (logError) {
+        // Игнорируем ошибки логирования
+      }
 
       // Собираем ответы из state, если они пустые - пытаемся загрузить из localStorage
       let answersToSubmit = answers;
       clientLogger.log('📝 Текущие ответы в state:', Object.keys(answersToSubmit).length);
+      
+      // ВАЖНО: Отправляем критичный лог на сервер
+      try {
+        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+        if (currentInitData) {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
+            },
+            body: JSON.stringify({
+              level: 'info',
+              message: '📝 Текущие ответы в state',
+              context: {
+                timestamp: new Date().toISOString(),
+                answersCount: Object.keys(answersToSubmit).length,
+                answersInState: Object.keys(answers).length,
+              },
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {});
+        }
+      } catch (logError) {
+        // Игнорируем ошибки логирования
+      }
       
       if (Object.keys(answersToSubmit).length === 0) {
         clientLogger.log('📦 Ответы пустые, пытаемся загрузить из localStorage...');
@@ -1831,6 +1883,33 @@ export default function QuizPage() {
         answerArrayQuestionIds: answerArray.map(a => a.questionId),
         answerArraySample: answerArray.slice(0, 5),
       });
+      
+      // ВАЖНО: Отправляем критичный лог на сервер
+      try {
+        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+        if (currentInitData) {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
+            },
+            body: JSON.stringify({
+              level: 'info',
+              message: '📤 Отправка ответов на сервер',
+              context: {
+                timestamp: new Date().toISOString(),
+                questionnaireId: questionnaire.id,
+                answersCount: answerArray.length,
+                answerArrayQuestionIds: answerArray.map(a => a.questionId),
+              },
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {});
+        }
+      } catch (logError) {
+        // Игнорируем ошибки логирования
+      }
       
       // ВАЖНО: Проверяем, что answerArray не пустой
       if (answerArray.length === 0) {
