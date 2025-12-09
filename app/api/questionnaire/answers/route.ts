@@ -292,6 +292,11 @@ export async function POST(request: NextRequest) {
         medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
       };
       
+      // ВАЖНО: Используем upsert для избежания конфликтов уникальности при повторных отправках
+      // Если профиль существует, обновляем его с новой версией
+      // Если нет - создаем новый
+      const newVersion = existingProfile ? existingProfile.version + 1 : questionnaire.version;
+      
       // ВАЖНО: Логируем данные перед созданием профиля для диагностики
       logger.debug('Profile data for Prisma', {
         userId,
@@ -303,11 +308,6 @@ export async function POST(request: NextRequest) {
         hasMedicalMarkers: !!profileDataForPrisma.medicalMarkers,
         newVersion,
       });
-
-      // ВАЖНО: Используем upsert для избежания конфликтов уникальности при повторных отправках
-      // Если профиль существует, обновляем его с новой версией
-      // Если нет - создаем новый
-      const newVersion = existingProfile ? existingProfile.version + 1 : questionnaire.version;
       
       // Проверяем, не существует ли уже профиль с новой версией (защита от race condition)
       const existingProfileWithNewVersion = await tx.skinProfile.findUnique({

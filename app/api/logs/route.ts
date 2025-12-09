@@ -123,33 +123,141 @@ export async function POST(request: NextRequest) {
         
         // Сохраняем с TTL 30 дней
         const setResult = await redis.set(logKey, JSON.stringify(logData), { ex: 30 * 24 * 60 * 60 });
-        console.log('✅ /api/logs: redis.set completed', { logKey, setResult });
+        console.log('🔄 /api/logs: redis.set result', { logKey, setResult, setResultType: typeof setResult });
         
-        // Также добавляем в список последних логов пользователя (храним последние 100)
-        if (userId) {
-          const userLogsKey = `user_logs:${userId}`;
-          await redis.lpush(userLogsKey, logKey);
-          await redis.ltrim(userLogsKey, 0, 99); // Храним только последние 100 логов
-          await redis.expire(userLogsKey, 30 * 24 * 60 * 60); // TTL 30 дней
-          console.log('✅ /api/logs: Added to user logs list', { userLogsKey, logKey });
+        // ИСПРАВЛЕНО: Проверяем, что операция действительно успешна
+        // Upstash Redis возвращает "OK" при успехе
+        if (setResult !== 'OK') {
+          console.error('❌ /api/logs: redis.set failed - unexpected result', {
+            logKey,
+            setResult,
+            setResultType: typeof setResult,
+            userId: userId || 'anonymous',
+          });
+          throw new Error(`redis.set failed: expected "OK", got ${JSON.stringify(setResult)}`);
         }
         
-        // Для ошибок также добавляем в общий список ошибок
-        if (level === 'error') {
-          const errorsKey = 'logs:errors:recent';
-          await redis.lpush(errorsKey, logKey);
-          await redis.ltrim(errorsKey, 0, 999); // Последние 1000 ошибок
-          await redis.expire(errorsKey, 7 * 24 * 60 * 60); // TTL 7 дней
-          console.log('✅ /api/logs: Added to errors list', { errorsKey, logKey });
+        console.log('✅ /api/logs: redis.set completed successfully', { logKey, setResult });
+        
+        // ИСПРАВЛЕНО: Проверяем, что данные действительно сохранились, делая get запрос
+        // Это важно, так как при использовании read-only токена set может не выбросить ошибку
+        let verificationPassed = false;
+        try {
+          const verifyResult = await redis.get(logKey);
+          if (verifyResult) {
+            verificationPassed = true;
+            console.log('✅ /api/logs: Log saved to KV and verified', { logKey });
+          } else {
+            // ИСПРАВЛЕНО: Если get вернул null, данные НЕ сохранены, даже если set вернул "OK"
+            // Это может происходить при использовании read-only токена
+            console.error('❌ /api/logs: Log was not saved to KV (verification failed - get returned null)', {
+              logKey,
+              setResult,
+              userId: userId || 'anonymous',
+              possibleReadOnlyToken: true,
+            });
+            verificationPassed = false;
+          }
+        } catch (verifyError: any) {
+          console.error('❌ /api/logs: Error verifying log save', {
+            error: verifyError?.message,
+            logKey,
+            setResult,
+            verifyErrorCode: verifyError?.code,
+            verifyErrorName: verifyError?.name,
+          });
+          
+          // ИСПРАВЛЕНО: Не полагаемся на setResult === 'OK', если не можем проверить
+          // Если это ошибка read-only токена при чтении, данные точно не сохранены
+          const isReadOnlyError = verifyError?.message?.includes('NOPERM') || 
+                                 verifyError?.message?.includes('read-only') ||
+                                 verifyError?.code === 'NOPERM';
+          
+          if (isReadOnlyError) {
+            console.error('❌ /api/logs: Read-only token detected during verification - data NOT saved', {
+              logKey,
+              setResult,
+            });
+            verificationPassed = false;
+          } else {
+            // Если это другая ошибка (не read-only), возможно временная проблема
+            // Но все равно не считаем данные сохраненными без верификации
+            console.warn('⚠️ /api/logs: Verification failed with non-read-only error - assuming NOT saved', {
+              logKey,
+              setResult,
+              verifyError: verifyError?.message,
+            });
+            verificationPassed = false;
+          }
         }
         
-        kvSaved = true;
-        console.log('✅ /api/logs: Log saved to Upstash KV successfully', {
-          userId: userId || 'anonymous',
-          level,
-          message: message.substring(0, 50),
-          logKey,
-        });
+        // Продолжаем только если данные действительно сохранились
+        if (verificationPassed) {
+          // Также добавляем в список последних логов пользователя (храним последние 100)
+          if (userId) {
+            try {
+              const userLogsKey = `user_logs:${userId}`;
+              const lpushResult = await redis.lpush(userLogsKey, logKey);
+              const ltrimResult = await redis.ltrim(userLogsKey, 0, 99); // Храним только последние 100 логов
+              const expireResult = await redis.expire(userLogsKey, 30 * 24 * 60 * 60); // TTL 30 дней
+              console.log('✅ /api/logs: Added to user logs list', { 
+                userLogsKey, 
+                logKey, 
+                lpushResult, 
+                ltrimResult, 
+                expireResult 
+              });
+              
+              // Проверяем результаты операций
+              if (lpushResult === null || lpushResult === undefined) {
+                console.warn('⚠️ /api/logs: lpush returned unexpected result', { lpushResult });
+              }
+            } catch (listError: any) {
+              console.error('❌ /api/logs: Error adding to user logs list', {
+                error: listError?.message,
+                logKey,
+              });
+            }
+          }
+          
+          // Для ошибок также добавляем в общий список ошибок
+          if (level === 'error') {
+            try {
+              const errorsKey = 'logs:errors:recent';
+              const errorLpushResult = await redis.lpush(errorsKey, logKey);
+              const errorLtrimResult = await redis.ltrim(errorsKey, 0, 999); // Последние 1000 ошибок
+              const errorExpireResult = await redis.expire(errorsKey, 7 * 24 * 60 * 60); // TTL 7 дней
+              console.log('✅ /api/logs: Added to errors list', { 
+                errorsKey, 
+                logKey, 
+                errorLpushResult, 
+                errorLtrimResult, 
+                errorExpireResult 
+              });
+            } catch (errorsListError: any) {
+              console.error('❌ /api/logs: Error adding to errors list', {
+                error: errorsListError?.message,
+                logKey,
+              });
+            }
+          }
+          
+          // ИСПРАВЛЕНО: Устанавливаем kvSaved только после успешной проверки
+          kvSaved = true;
+          console.log('✅ /api/logs: Log saved to Upstash KV successfully', {
+            userId: userId || 'anonymous',
+            level,
+            message: message.substring(0, 50),
+            logKey,
+          });
+        } else {
+          // Данные не сохранились - не устанавливаем kvSaved
+          console.error('❌ /api/logs: kvSaved will be false - data not saved to KV', {
+            logKey,
+            setResult,
+            userId: userId || 'anonymous',
+          });
+        }
       } catch (kvError: any) {
         // ИСПРАВЛЕНО: Детальное логирование ошибки (даже в production)
         console.error('❌ /api/logs: Upstash KV error (will try PostgreSQL fallback):', {

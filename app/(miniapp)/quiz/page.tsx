@@ -1791,13 +1791,52 @@ export default function QuizPage() {
             return;
           }
         } else {
-          // Другая ошибка - не редиректим, показываем ошибку
-          if (isMountedRef.current) {
-            setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
-            isSubmittingRef.current = false;
-            setIsSubmitting(false);
+          // Другая ошибка - проверяем, не является ли это ошибкой создания профиля (500)
+          // Если это ошибка 500, проверяем, был ли профиль создан несмотря на ошибку
+          const isProfileCreationError = submitError?.status === 500 && 
+                                        (submitError?.message?.includes('Profile was not created') ||
+                                         submitError?.message?.includes('profile') ||
+                                         submitError?.message?.includes('Profile'));
+          
+          if (isProfileCreationError) {
+            clientLogger.warn('⚠️ Ошибка создания профиля (500), проверяем наличие профиля');
+            
+            // Проверяем, был ли профиль создан, несмотря на ошибку
+            try {
+              const profileCheck = await api.getCurrentProfile() as any;
+              if (profileCheck && profileCheck.id) {
+                // Профиль существует - продолжаем редирект
+                clientLogger.log('✅ Профиль существует после ошибки создания, продолжаем редирект');
+                result = { success: true, profile: profileCheck, error: submitError?.message };
+              } else {
+                // Профиль не существует - показываем ошибку
+                clientLogger.error('❌ Профиль не был создан после ошибки 500');
+                if (isMountedRef.current) {
+                  setError('Не удалось создать профиль. Пожалуйста, попробуйте еще раз.');
+                  isSubmittingRef.current = false;
+                  setIsSubmitting(false);
+                }
+                return;
+              }
+            } catch (profileCheckError) {
+              // Не удалось проверить профиль - показываем ошибку
+              clientLogger.error('❌ Не удалось проверить наличие профиля после ошибки 500', profileCheckError);
+              if (isMountedRef.current) {
+                setError('Ошибка при создании профиля. Пожалуйста, попробуйте еще раз.');
+                isSubmittingRef.current = false;
+                setIsSubmitting(false);
+              }
+              return;
+            }
+          } else {
+            // Другая ошибка - не редиректим, показываем ошибку
+            if (isMountedRef.current) {
+              setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
+              isSubmittingRef.current = false;
+              setIsSubmitting(false);
+            }
+            return;
           }
-          return;
         }
       }
       
@@ -1830,6 +1869,21 @@ export default function QuizPage() {
       // Лоадер "Создаем ваш план ухода..." уже показывается через isSubmitting = true
       if (isMountedRef.current) {
         setLoading(false);
+      }
+      
+      // ИСПРАВЛЕНО: Устанавливаем флаг quiz_just_submitted ДО генерации плана
+      // Это защита на случай, если генерация плана займет время или произойдет ошибка
+      // Флаг предотвратит редирект на первый экран анкеты при возврате на /quiz
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_just_submitted', 'true');
+          // ОПТИМИЗАЦИЯ: Очищаем кэш профиля, чтобы новый профиль был доступен сразу после создания
+          sessionStorage.removeItem('profile_check_cache');
+          sessionStorage.removeItem('profile_check_cache_timestamp');
+          clientLogger.log('✅ Флаг quiz_just_submitted установлен ДО генерации плана');
+        } catch (storageError) {
+          clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
+        }
       }
       
       // ИСПРАВЛЕНО: Генерируем план ПЕРЕД редиректом, чтобы план был готов
@@ -2321,18 +2375,8 @@ export default function QuizPage() {
         clientLogger.warn('⚠️ Ошибка при очистке localStorage перед редиректом (некритично):', storageError);
       }
       
-      // ИСПРАВЛЕНО: Устанавливаем флаг в sessionStorage ПЕРЕД редиректом
-      // Это защита на случай, если редирект не сработает (Telegram WebApp может блокировать)
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.setItem('quiz_just_submitted', 'true');
-          // ОПТИМИЗАЦИЯ: Очищаем кэш профиля, чтобы новый профиль был доступен сразу после создания
-          sessionStorage.removeItem('profile_check_cache');
-          sessionStorage.removeItem('profile_check_cache_timestamp');
-        } catch (storageError) {
-          clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
-        }
-      }
+      // ИСПРАВЛЕНО: Флаг quiz_just_submitted уже установлен ДО генерации плана (см. выше)
+      // Не устанавливаем его повторно здесь
       
       // ВАЖНО: Редирект должен произойти СРАЗУ, без задержек и без обновления состояний
       // Не обновляем состояние после редиректа, чтобы избежать React Error #300
