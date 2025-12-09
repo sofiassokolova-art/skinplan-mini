@@ -1,152 +1,159 @@
 // scripts/check-plan-generation-logs.ts
-// Скрипт для проверки логов генерации плана для конкретного пользователя
+// Проверка логов генерации плана для пользователя
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/db';
 
-const prisma = new PrismaClient();
+const telegramId = process.argv[2] || '643160759';
 
-async function checkPlanGenerationLogs(telegramId: string) {
-  console.log(`\n🔍 Проверка логов генерации плана для пользователя ${telegramId}\n`);
-
+async function checkPlanGenerationLogs() {
+  console.log(`🔍 Проверяю логи генерации плана для пользователя: ${telegramId}\n`);
+  
   try {
+    // Находим пользователя
     const user = await prisma.user.findFirst({
       where: { telegramId },
+      select: { id: true, telegramId: true, firstName: true },
+    });
+    
+    if (!user) {
+      console.log('❌ Пользователь не найден');
+      await prisma.$disconnect();
+      return;
+    }
+    
+    console.log('✅ Пользователь найден:', {
+      userId: user.id,
+      telegramId: user.telegramId,
+      name: user.firstName,
+    });
+    
+    // Проверяем профиль
+    const profiles = await prisma.skinProfile.findMany({
+      where: { userId: user.id },
+      orderBy: { version: 'desc' },
+      take: 3,
+    });
+    
+    console.log(`\n👤 Профили: ${profiles.length}`);
+    if (profiles.length > 0) {
+      profiles.forEach((p, idx) => {
+        console.log(`   ${idx + 1}. Version ${p.version}, SkinType: ${p.skinType}, Created: ${p.createdAt.toLocaleString('ru-RU')}`);
+      });
+    } else {
+      console.log('   ❌ Профили не найдены');
+    }
+    
+    // Проверяем RecommendationSession
+    const sessions = await prisma.recommendationSession.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    });
+    
+    console.log(`\n💾 RecommendationSessions: ${sessions.length}`);
+    if (sessions.length > 0) {
+      sessions.forEach((s, idx) => {
+        const productsCount = Array.isArray(s.products) ? s.products.length : 0;
+        console.log(`   ${idx + 1}. ID: ${s.id}, Products: ${productsCount}, RuleID: ${s.ruleId}, Created: ${s.createdAt.toLocaleString('ru-RU')}`);
+      });
+    } else {
+      console.log('   ❌ RecommendationSessions не найдены');
+    }
+    
+    // Проверяем план через Plan28
+    const planProgress = await prisma.planProgress.findFirst({
+      where: { userId: user.id },
       include: {
-        skinProfiles: {
-          orderBy: { version: 'desc' },
+        plan28: {
+          include: {
+            days: {
+              take: 1,
+              orderBy: { day: 'asc' },
+            },
+          },
         },
       },
-    });
-
-    if (!user) {
-      console.error(`❌ Пользователь с Telegram ID "${telegramId}" не найден`);
-      process.exit(1);
+    }).catch(() => null);
+    
+    console.log(`\n📅 План:`);
+    if (planProgress && planProgress.plan28) {
+      const plan28 = planProgress.plan28;
+      console.log(`   ✅ План найден! ID: ${plan28.id}`);
+      console.log(`   Дней: ${plan28.days?.length || 0}`);
+      console.log(`   Создан: ${plan28.createdAt.toLocaleString('ru-RU')}`);
+      console.log(`   Обновлен: ${plan28.updatedAt.toLocaleString('ru-RU')}`);
+    } else {
+      console.log('   ❌ План не найден');
     }
-
-    console.log(`✅ Пользователь: ${user.firstName} ${user.lastName || ''} (ID: ${user.id})\n`);
-
-    // Получаем активную анкету
+    
+    // Проверяем логи из БД
+    const logs = await prisma.clientLog.findMany({
+      where: { 
+        userId: user.id,
+        OR: [
+          { message: { contains: 'plan', mode: 'insensitive' } },
+          { message: { contains: 'Plan', mode: 'insensitive' } },
+          { message: { contains: 'generate', mode: 'insensitive' } },
+          { message: { contains: 'генерац', mode: 'insensitive' } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    });
+    
+    console.log(`\n📋 Логи генерации плана (последние ${logs.length}):`);
+    if (logs.length === 0) {
+      console.log('   Логов не найдено');
+    } else {
+      logs.forEach((log, idx) => {
+        const time = new Date(log.createdAt).toLocaleString('ru-RU');
+        console.log(`\n   ${idx + 1}. [${time}] ${log.level.toUpperCase()}`);
+        console.log(`      Message: ${log.message}`);
+        if (log.context) {
+          try {
+            const context = typeof log.context === 'string' 
+              ? JSON.parse(log.context) 
+              : log.context;
+            const contextStr = JSON.stringify(context, null, 2);
+            if (contextStr.length > 300) {
+              console.log(`      Context: ${contextStr.substring(0, 300)}...`);
+            } else {
+              console.log(`      Context: ${contextStr}`);
+            }
+          } catch (e) {
+            console.log(`      Context: ${String(log.context).substring(0, 200)}`);
+          }
+        }
+      });
+    }
+    
+    // Проверяем последние ответы
     const activeQuestionnaire = await prisma.questionnaire.findFirst({
       where: { isActive: true },
-      select: { id: true, name: true, version: true },
     });
-
-    if (!activeQuestionnaire) {
-      console.error('❌ Активная анкета не найдена');
-      process.exit(1);
-    }
-
-    console.log(`📋 Активная анкета: ID ${activeQuestionnaire.id}, версия ${activeQuestionnaire.version}, название: ${activeQuestionnaire.name}\n`);
-
-    // Проверяем ответы на анкету (для активной анкеты)
-    const answers = await prisma.userAnswer.findMany({
-      where: {
-        userId: user.id,
-        questionnaireId: activeQuestionnaire.id, // Используем активную анкету
-      },
-      include: {
-        question: {
-          select: {
-            id: true,
-            code: true,
-            text: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    console.log(`📋 Ответы на анкету: ${answers.length}`);
-    if (answers.length === 0) {
-      console.log(`   ⚠️  Ответов не найдено! Это может быть причиной проблемы.\n`);
-    } else {
-      console.log(`   Последние ответы:`);
-      answers.slice(0, 10).forEach((answer, idx) => {
-        console.log(`      ${idx + 1}. ${answer.question.code}: ${answer.answerValue || JSON.stringify(answer.answerValues)}`);
-      });
-      console.log('');
-    }
-
-    // Проверяем профили
-    const latestProfile = user.skinProfiles[0];
-    if (latestProfile) {
-      console.log(`📊 Последний профиль:`);
-      console.log(`   Версия: ${latestProfile.version}`);
-      console.log(`   Тип кожи: ${latestProfile.skinType}`);
-      console.log(`   Создан: ${latestProfile.createdAt.toISOString()}`);
-      console.log(`   Обновлен: ${latestProfile.updatedAt.toISOString()}`);
-      console.log('');
-
-      // Проверяем сессии рекомендаций
-      const sessions = await prisma.recommendationSession.findMany({
-        where: {
+    
+    if (activeQuestionnaire) {
+      const allAnswers = await prisma.userAnswer.findMany({
+        where: { 
           userId: user.id,
-          profileId: latestProfile.id,
+          questionnaireId: activeQuestionnaire.id,
         },
         orderBy: { createdAt: 'desc' },
+        take: 5,
         include: {
-          rule: {
-            select: {
-              name: true,
-            },
+          question: {
+            select: { code: true },
           },
         },
       });
-
-      console.log(`📦 Сессии рекомендаций: ${sessions.length}`);
-      sessions.forEach((session, idx) => {
-        const productIds = Array.isArray(session.products) ? session.products as number[] : [];
-        console.log(`   ${idx + 1}. ID: ${session.id}`);
-        console.log(`      Правило: ${session.rule?.name || 'нет'}`);
-        console.log(`      Продуктов: ${productIds.length}`);
-        console.log(`      Продукты: [${productIds.join(',')}]`);
-        console.log(`      Создан: ${session.createdAt.toISOString()}`);
-        console.log('');
-      });
-
-      // Проверяем, какие продукты есть в сессии
-      if (sessions.length > 0) {
-        const lastSession = sessions[0];
-        const productIds = Array.isArray(lastSession.products) ? lastSession.products as number[] : [];
-        
-        if (productIds.length > 0) {
-          console.log(`🔍 Детали продуктов из последней сессии:`);
-          const products = await prisma.product.findMany({
-            where: {
-              id: { in: productIds },
-            },
-            select: {
-              id: true,
-              name: true,
-              step: true,
-              category: true,
-              published: true,
-              brand: {
-                select: {
-                  name: true,
-                  isActive: true,
-                },
-              },
-            },
-          });
-
-          products.forEach((product) => {
-            console.log(`   ${product.id}. ${product.name}`);
-            console.log(`      Step: ${product.step || 'нет'}`);
-            console.log(`      Category: ${product.category || 'нет'}`);
-            console.log(`      Published: ${product.published}`);
-            console.log(`      Brand: ${product.brand.name} (active: ${product.brand.isActive})`);
-            console.log('');
-          });
-        }
+      
+      console.log(`\n📝 Последние ответы: ${allAnswers.length}`);
+      if (allAnswers.length > 0) {
+        console.log(`   Последний ответ: ${allAnswers[0].question.code} в ${allAnswers[0].createdAt.toLocaleString('ru-RU')}`);
       }
     }
-
-    console.log('\n✅ Проверка завершена\n');
-
-  } catch (error) {
+    
+  } catch (error: any) {
     console.error('❌ Ошибка:', error);
     throw error;
   } finally {
@@ -154,14 +161,12 @@ async function checkPlanGenerationLogs(telegramId: string) {
   }
 }
 
-const telegramIdArg = process.argv[2] || '643160759';
-checkPlanGenerationLogs(telegramIdArg)
+checkPlanGenerationLogs()
   .then(() => {
-    console.log('✅ Скрипт выполнен успешно');
+    console.log('\n✅ Проверка завершена');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('❌ Ошибка выполнения:', error);
+    console.error('❌ Ошибка:', error);
     process.exit(1);
   });
-

@@ -1268,7 +1268,12 @@ export default function HomePage() {
           );
           
           const plan = await Promise.race([checkPromise, timeoutPromise]) as any;
-          if (plan && (plan.plan28 || plan.weeks)) {
+          
+          // ИСПРАВЛЕНО: Проверяем, что план действительно валидный перед редиректом
+          const hasPlan28 = plan?.plan28 && plan.plan28.days && Array.isArray(plan.plan28.days) && plan.plan28.days.length > 0;
+          const hasWeeks = plan?.weeks && Array.isArray(plan.weeks) && plan.weeks.length > 0;
+          
+          if (plan && (hasPlan28 || hasWeeks)) {
             // ИСПРАВЛЕНО: Проверяем, является ли план фолбековым перед редиректом
             // Если план фолбековый (rule.name === 'Базовые рекомендации'), не редиректим
             // Пользователь должен иметь возможность пройти анкету заново для получения правильного плана
@@ -1287,7 +1292,11 @@ export default function HomePage() {
             }
             
             if (!isFallbackPlan) {
-              clientLogger.log('✅ Plan found (not fallback), redirecting to /plan');
+              clientLogger.log('✅ Plan found (not fallback), redirecting to /plan', {
+                hasPlan28,
+                hasWeeks,
+                plan28Days: plan?.plan28?.days?.length || 0,
+              });
               setHasPlan(true);
               // Если план найден и не фолбековый - редиректим на страницу плана
               // Используем window.location для гарантированного редиректа
@@ -1301,7 +1310,12 @@ export default function HomePage() {
               // Пользователь может пройти анкету заново для получения правильного плана
             }
           } else {
-            clientLogger.log('ℹ️ Plan not found or empty');
+            clientLogger.log('ℹ️ Plan not found or empty', {
+              hasPlan: !!plan,
+              hasPlan28,
+              hasWeeks,
+              planKeys: plan ? Object.keys(plan) : [],
+            });
             // НЕ сбрасываем planCheckDoneRef, чтобы не делать повторные запросы
             // План не найден - это нормально, не проверяем снова
           }
