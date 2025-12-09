@@ -3522,7 +3522,8 @@ export default function QuizPage() {
     try {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
     
-    return allQuestionsRaw.filter((question) => {
+    // Фильтруем вопросы
+    const filteredQuestions = allQuestionsRaw.filter((question) => {
         try {
     // При повторном прохождении исключаем вопросы про пол и возраст
     // Эти данные уже записаны в профиле пользователя после первой анкеты
@@ -3790,12 +3791,27 @@ export default function QuizPage() {
           return true;
         }
       });
+      
+      // ВАЖНО: Сортируем отфильтрованные вопросы по position для сохранения правильного порядка
+      // Фильтрация может изменить порядок, поэтому нужно пересортировать
+      const sorted = filteredQuestions.sort((a: Question, b: Question) => {
+        // Сортируем по position, если он есть
+        const aPosition = (a as any).position ?? 0;
+        const bPosition = (b as any).position ?? 0;
+        if (aPosition !== bPosition) {
+          return aPosition - bPosition;
+        }
+        // Если position одинаковый, сортируем по id для стабильности
+        return a.id - b.id;
+      });
+      
+      return sorted;
     } catch (err) {
       console.error('❌ Error computing allQuestions:', err, {
         allQuestionsRawLength: allQuestionsRaw?.length,
         answersKeys: Object.keys(answers || {}),
       });
-      // В случае ошибки возвращаем все вопросы из allQuestionsRaw
+      // В случае ошибки возвращаем все вопросы из allQuestionsRaw (уже отсортированные)
       return allQuestionsRaw || [];
     }
   }, [allQuestionsRaw, answers, isRetakingQuiz, showRetakeScreen]);
