@@ -80,6 +80,12 @@
             resultDiv.style.display = 'block';
             infoDiv.style.display = 'block';
             
+            // Показываем индикатор загрузки
+            resultDiv.className = 'result';
+            resultDiv.style.background = '#d1ecf1';
+            resultDiv.style.color = '#0c5460';
+            resultDiv.innerHTML = '<p>⏳ Очистка в процессе...</p>';
+            
             let removedFromLocalStorage = 0;
             let removedFromSessionStorage = 0;
             const removedKeys = {
@@ -103,13 +109,19 @@
                 'profile_check_cache_timestamp',
             ];
             
-            // Очистка localStorage
+            // ИСПРАВЛЕНО: Безопасная очистка localStorage с обработкой ошибок для каждого ключа
             try {
                 localStorageKeys.forEach(key => {
-                    if (localStorage.getItem(key) !== null) {
-                        localStorage.removeItem(key);
-                        removedFromLocalStorage++;
-                        removedKeys.localStorage.push(key);
+                    try {
+                        // ИСПРАВЛЕНО: Проверяем наличие ключа перед удалением
+                        if (localStorage.getItem(key) !== null) {
+                            localStorage.removeItem(key);
+                            removedFromLocalStorage++;
+                            removedKeys.localStorage.push(key);
+                        }
+                    } catch (keyError) {
+                        // Логируем ошибку для конкретного ключа, но продолжаем обработку остальных
+                        console.warn(`Ошибка при удалении ключа localStorage ${key}:`, keyError);
                     }
                 });
             } catch (error) {
@@ -120,13 +132,19 @@
                 return;
             }
             
-            // Очистка sessionStorage
+            // ИСПРАВЛЕНО: Безопасная очистка sessionStorage с обработкой ошибок для каждого ключа
             try {
                 sessionStorageKeys.forEach(key => {
-                    if (sessionStorage.getItem(key) !== null) {
-                        sessionStorage.removeItem(key);
-                        removedFromSessionStorage++;
-                        removedKeys.sessionStorage.push(key);
+                    try {
+                        // ИСПРАВЛЕНО: Проверяем наличие ключа перед удалением
+                        if (sessionStorage.getItem(key) !== null) {
+                            sessionStorage.removeItem(key);
+                            removedFromSessionStorage++;
+                            removedKeys.sessionStorage.push(key);
+                        }
+                    } catch (keyError) {
+                        // Логируем ошибку для конкретного ключа, но продолжаем обработку остальных
+                        console.warn(`Ошибка при удалении ключа sessionStorage ${key}:`, keyError);
                     }
                 });
             } catch (error) {
@@ -148,10 +166,8 @@
                     : '<p>Обновите страницу для применения изменений.</p>'}
             `;
             
-            // Показываем информацию об оставшихся ключах
-            const remainingLocalStorage = Object.keys(localStorage);
-            const remainingSessionStorage = Object.keys(sessionStorage);
-            
+            // ИСПРАВЛЕНО: Используем асинхронную обработку для получения оставшихся ключей
+            // Это предотвращает блокировку UI при большом количестве данных
             if (removedKeys.localStorage.length > 0 || removedKeys.sessionStorage.length > 0) {
                 infoDiv.innerHTML = `
                     <h4>Удаленные ключи:</h4>
@@ -160,12 +176,69 @@
                 `;
             }
             
-            if (remainingLocalStorage.length > 0 || remainingSessionStorage.length > 0) {
-                infoDiv.innerHTML += `
-                    <h4>Оставшиеся ключи (не связанные с анкетой):</h4>
-                    ${remainingLocalStorage.length > 0 ? `<p><strong>localStorage:</strong> <pre>${JSON.stringify(remainingLocalStorage, null, 2)}</pre></p>` : ''}
-                    ${remainingSessionStorage.length > 0 ? `<p><strong>sessionStorage:</strong> <pre>${JSON.stringify(remainingSessionStorage, null, 2)}</pre></p>` : ''}
-                `;
+            // Используем requestIdleCallback или setTimeout для неблокирующей обработки
+            const processRemainingKeys = () => {
+                try {
+                    // ИСПРАВЛЕНО: Безопасное получение ключей с обработкой ошибок
+                    let remainingLocalStorage = [];
+                    let remainingSessionStorage = [];
+                    
+                    try {
+                        remainingLocalStorage = Object.keys(localStorage);
+                    } catch (e) {
+                        console.warn('Ошибка при получении ключей localStorage:', e);
+                    }
+                    
+                    try {
+                        remainingSessionStorage = Object.keys(sessionStorage);
+                    } catch (e) {
+                        console.warn('Ошибка при получении ключей sessionStorage:', e);
+                    }
+                    
+                    if (remainingLocalStorage.length > 0 || remainingSessionStorage.length > 0) {
+                        // ИСПРАВЛЕНО: Безопасный JSON.stringify с ограничением размера
+                        let localStorageStr = '';
+                        let sessionStorageStr = '';
+                        
+                        try {
+                            // Ограничиваем вывод для предотвращения блокировки
+                            const maxKeys = 50;
+                            const keysToShow = remainingLocalStorage.slice(0, maxKeys);
+                            localStorageStr = JSON.stringify(keysToShow, null, 2);
+                            if (remainingLocalStorage.length > maxKeys) {
+                                localStorageStr += `\n... и еще ${remainingLocalStorage.length - maxKeys} ключей`;
+                            }
+                        } catch (e) {
+                            localStorageStr = remainingLocalStorage.join(', ');
+                        }
+                        
+                        try {
+                            const maxKeys = 50;
+                            const keysToShow = remainingSessionStorage.slice(0, maxKeys);
+                            sessionStorageStr = JSON.stringify(keysToShow, null, 2);
+                            if (remainingSessionStorage.length > maxKeys) {
+                                sessionStorageStr += `\n... и еще ${remainingSessionStorage.length - maxKeys} ключей`;
+                            }
+                        } catch (e) {
+                            sessionStorageStr = remainingSessionStorage.join(', ');
+                        }
+                        
+                        infoDiv.innerHTML += `
+                            <h4>Оставшиеся ключи (не связанные с анкетой):</h4>
+                            ${remainingLocalStorage.length > 0 ? `<p><strong>localStorage:</strong> <pre>${localStorageStr}</pre></p>` : ''}
+                            ${remainingSessionStorage.length > 0 ? `<p><strong>sessionStorage:</strong> <pre>${sessionStorageStr}</pre></p>` : ''}
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Ошибка при обработке оставшихся ключей:', error);
+                }
+            };
+            
+            // Используем requestIdleCallback если доступен, иначе setTimeout
+            if (window.requestIdleCallback) {
+                window.requestIdleCallback(processRemainingKeys, { timeout: 1000 });
+            } else {
+                setTimeout(processRemainingKeys, 0);
             }
         }
         
@@ -175,32 +248,74 @@
             infoDiv.style.display = 'block';
             infoDiv.className = 'result info';
             
-            const localStorageKeys = [
-                'is_retaking_quiz',
-                'full_retake_from_home',
-                'quiz_progress',
-                'profile_check_cache',
-                'profile_check_cache_timestamp',
-            ];
+            // ИСПРАВЛЕНО: Используем асинхронную обработку для предотвращения блокировки UI
+            const checkStorage = () => {
+                try {
+                    const localStorageKeys = [
+                        'is_retaking_quiz',
+                        'full_retake_from_home',
+                        'quiz_progress',
+                        'profile_check_cache',
+                        'profile_check_cache_timestamp',
+                    ];
+                    
+                    const sessionStorageKeys = [
+                        'quiz_just_submitted',
+                        'profile_check_cache',
+                        'profile_check_cache_timestamp',
+                    ];
+                    
+                    // ИСПРАВЛЕНО: Безопасная проверка с обработкой ошибок
+                    let foundLocalStorage = [];
+                    let foundSessionStorage = [];
+                    
+                    try {
+                        foundLocalStorage = localStorageKeys.filter(key => {
+                            try {
+                                return localStorage.getItem(key) !== null;
+                            } catch (e) {
+                                console.warn(`Ошибка при проверке ключа localStorage ${key}:`, e);
+                                return false;
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Ошибка при проверке localStorage:', e);
+                    }
+                    
+                    try {
+                        foundSessionStorage = sessionStorageKeys.filter(key => {
+                            try {
+                                return sessionStorage.getItem(key) !== null;
+                            } catch (e) {
+                                console.warn(`Ошибка при проверке ключа sessionStorage ${key}:`, e);
+                                return false;
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Ошибка при проверке sessionStorage:', e);
+                    }
+                    
+                    if (foundLocalStorage.length > 0 || foundSessionStorage.length > 0) {
+                        infoDiv.innerHTML = `
+                            <h4>📋 Найдены данные для очистки:</h4>
+                            ${foundLocalStorage.length > 0 ? `<p><strong>localStorage:</strong> ${foundLocalStorage.join(', ')}</p>` : ''}
+                            ${foundSessionStorage.length > 0 ? `<p><strong>sessionStorage:</strong> ${foundSessionStorage.join(', ')}</p>` : ''}
+                            <p>Нажмите кнопку выше для очистки.</p>
+                        `;
+                    } else {
+                        infoDiv.innerHTML = '<p>✅ Данные анкеты не найдены в localStorage и sessionStorage.</p>';
+                    }
+                } catch (error) {
+                    console.error('Ошибка при проверке хранилища:', error);
+                    infoDiv.innerHTML = '<p>⚠️ Ошибка при проверке хранилища. Попробуйте обновить страницу.</p>';
+                }
+            };
             
-            const sessionStorageKeys = [
-                'quiz_just_submitted',
-                'profile_check_cache',
-                'profile_check_cache_timestamp',
-            ];
-            
-            const foundLocalStorage = localStorageKeys.filter(key => localStorage.getItem(key) !== null);
-            const foundSessionStorage = sessionStorageKeys.filter(key => sessionStorage.getItem(key) !== null);
-            
-            if (foundLocalStorage.length > 0 || foundSessionStorage.length > 0) {
-                infoDiv.innerHTML = `
-                    <h4>📋 Найдены данные для очистки:</h4>
-                    ${foundLocalStorage.length > 0 ? `<p><strong>localStorage:</strong> ${foundLocalStorage.join(', ')}</p>` : ''}
-                    ${foundSessionStorage.length > 0 ? `<p><strong>sessionStorage:</strong> ${foundSessionStorage.join(', ')}</p>` : ''}
-                    <p>Нажмите кнопку выше для очистки.</p>
-                `;
+            // Используем requestIdleCallback если доступен, иначе setTimeout
+            if (window.requestIdleCallback) {
+                window.requestIdleCallback(checkStorage, { timeout: 500 });
             } else {
-                infoDiv.innerHTML = '<p>✅ Данные анкеты не найдены в localStorage и sessionStorage.</p>';
+                setTimeout(checkStorage, 0);
             }
         };
     </script>

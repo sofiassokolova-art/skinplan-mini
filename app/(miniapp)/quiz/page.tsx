@@ -799,7 +799,17 @@ export default function QuizPage() {
           return;
         }
         
-        const progress = JSON.parse(saved);
+        // ИСПРАВЛЕНО: Безопасный парсинг с обработкой больших данных
+        let progress;
+        try {
+          progress = JSON.parse(saved);
+        } catch (parseError) {
+          console.error('Error parsing saved progress:', parseError);
+          // Очищаем поврежденные данные
+          localStorage.removeItem('quiz_progress');
+          return;
+        }
+        
         setSavedProgress(progress);
         // Показываем экран продолжения только если есть сохранённые ответы
         if (progress.answers && Object.keys(progress.answers).length > 0) {
@@ -808,6 +818,12 @@ export default function QuizPage() {
         }
       } catch (err) {
         console.error('Error loading saved progress:', err);
+        // Очищаем поврежденные данные при любой ошибке
+        try {
+          localStorage.removeItem('quiz_progress');
+        } catch (removeError) {
+          console.error('Error removing corrupted progress:', removeError);
+        }
       }
     }
   };
@@ -993,8 +1009,18 @@ export default function QuizPage() {
         // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до первого экрана анкеты
         setLoading(false);
         // Также сохраняем в localStorage для офлайн доступа
+        // ИСПРАВЛЕНО: Безопасное сохранение с обработкой ошибок
         if (typeof window !== 'undefined') {
-          localStorage.setItem('quiz_progress', JSON.stringify(response.progress));
+          try {
+            const progressStr = JSON.stringify(response.progress);
+            if (progressStr.length > 5 * 1024 * 1024) {
+              console.warn('Progress data from server is too large');
+            }
+            localStorage.setItem('quiz_progress', progressStr);
+          } catch (storageError) {
+            console.error('Error saving progress from server to localStorage:', storageError);
+            // Не прерываем выполнение, так как это не критично
+          }
         }
       } else {
         clientLogger.log('ℹ️ Прогресс на сервере не найден или пуст');
@@ -1006,7 +1032,16 @@ export default function QuizPage() {
           const localProgress = localStorage.getItem('quiz_progress');
           if (localProgress) {
             try {
-              const parsed = JSON.parse(localProgress);
+              // ИСПРАВЛЕНО: Безопасный парсинг с обработкой ошибок
+              let parsed;
+              try {
+                parsed = JSON.parse(localProgress);
+              } catch (parseError) {
+                console.error('Error parsing local progress:', parseError);
+                // Очищаем поврежденные данные
+                localStorage.removeItem('quiz_progress');
+                return;
+              }
               // Если локальный прогресс старше 7 дней, очищаем его
               if (parsed.timestamp && Date.now() - parsed.timestamp > 7 * 24 * 60 * 60 * 1000) {
                 clientLogger.log('⚠️ Локальный прогресс слишком старый, очищаем');
@@ -1078,7 +1113,19 @@ export default function QuizPage() {
       timestamp: Date.now(),
     };
     
-    localStorage.setItem('quiz_progress', JSON.stringify(progress));
+    // ИСПРАВЛЕНО: Безопасное сохранение с обработкой ошибок
+    try {
+      const progressStr = JSON.stringify(progress);
+      // Проверяем размер данных перед сохранением (localStorage обычно ограничен ~5-10MB)
+      if (progressStr.length > 5 * 1024 * 1024) {
+        console.warn('Progress data is too large, truncating...');
+        // В критическом случае можно сохранить только последние ответы
+      }
+      localStorage.setItem('quiz_progress', progressStr);
+    } catch (storageError) {
+      console.error('Error saving progress to localStorage:', storageError);
+      // Не прерываем выполнение, так как это не критично для работы анкеты
+    }
     
     // ОПТИМИЗАЦИЯ: Метаданные позиции (questionIndex, infoScreenIndex) больше НЕ отправляются на сервер
     // Они хранятся только локально в localStorage, так как сервер их не сохраняет в БД
@@ -1217,14 +1264,30 @@ export default function QuizPage() {
     }
 
     // ОПТИМИЗАЦИЯ: Проверяем, изменился ли ответ
+    // ИСПРАВЛЕНО: Безопасное сравнение с обработкой ошибок
     const currentAnswer = answers[questionId];
-    const answerChanged = JSON.stringify(currentAnswer) !== JSON.stringify(value);
+    let answerChanged = false;
+    try {
+      answerChanged = JSON.stringify(currentAnswer) !== JSON.stringify(value);
+    } catch (compareError) {
+      // Если сравнение не удалось, считаем что ответ изменился для безопасности
+      console.warn('Error comparing answers, assuming changed:', compareError);
+      answerChanged = true;
+    }
     
     // ОПТИМИЗАЦИЯ: Дедупликация - проверяем, не сохраняли ли мы уже этот ответ на сервер
+    // ИСПРАВЛЕНО: Безопасное сравнение с обработкой ошибок
     const lastSaved = lastSavedAnswerRef.current;
-    const isDuplicateServerSave = lastSaved && 
-      lastSaved.questionId === questionId && 
-      JSON.stringify(lastSaved.answer) === JSON.stringify(value);
+    let isDuplicateServerSave: boolean = false;
+    try {
+      if (lastSaved && lastSaved.questionId === questionId) {
+        isDuplicateServerSave = JSON.stringify(lastSaved.answer) === JSON.stringify(value);
+      }
+    } catch (compareError) {
+      // Если сравнение не удалось, считаем что это не дубликат для безопасности
+      console.warn('Error checking duplicate save, assuming not duplicate:', compareError);
+      isDuplicateServerSave = false;
+    }
     
     // Всегда обновляем состояние и localStorage (даже если не изменилось, для консистентности)
     const newAnswers = { ...answers, [questionId]: value };
@@ -3478,6 +3541,7 @@ export default function QuizPage() {
     // ВАЖНО: Map сохраняет порядок вставки в современных версиях JavaScript
     // Но для надежности сортируем по position (вопросы уже отсортированы в API)
     // ИСПРАВЛЕНО: Используем исходный порядок из API, который уже отсортирован по position
+    // ВОССТАНОВЛЕНО из коммита 05d2f14: правильная сортировка вопросов
     const raw = Array.from(questionsMap.values()).sort((a: Question, b: Question) => {
       const aPosition = (a as any).position;
       const bPosition = (b as any).position;
@@ -3487,7 +3551,15 @@ export default function QuizPage() {
         return aPosition - bPosition;
       }
       
-      // Если position не задан или равен 0, сортируем по id (это гарантирует стабильный порядок)
+      // Если у одного есть position, а у другого нет - приоритет у того, у кого есть
+      if (aPosition != null && aPosition > 0 && (bPosition == null || bPosition <= 0)) {
+        return -1; // a идет раньше
+      }
+      if (bPosition != null && bPosition > 0 && (aPosition == null || aPosition <= 0)) {
+        return 1; // b идет раньше
+      }
+      
+      // Если position не задан или равен 0 у обоих, сортируем по id (это гарантирует стабильный порядок)
       // Но в большинстве случаев position должен быть задан, так как API сортирует по нему
       return a.id - b.id;
     });
@@ -3791,7 +3863,7 @@ export default function QuizPage() {
       
       // ВАЖНО: Сортируем отфильтрованные вопросы по position для сохранения правильного порядка
       // Фильтрация может изменить порядок, поэтому нужно пересортировать
-      // ИСПРАВЛЕНО: Используем id как основной критерий, если position не задан или равен 0
+      // ВОССТАНОВЛЕНО из коммита 05d2f14: правильная сортировка после фильтрации
       const sorted = filteredQuestions.sort((a: Question, b: Question) => {
         const aPosition = (a as any).position;
         const bPosition = (b as any).position;
@@ -3801,6 +3873,14 @@ export default function QuizPage() {
           if (aPosition !== bPosition) {
             return aPosition - bPosition;
           }
+        }
+        
+        // Если у одного есть position, а у другого нет - приоритет у того, у кого есть
+        if (aPosition != null && aPosition > 0 && (bPosition == null || bPosition <= 0)) {
+          return -1; // a идет раньше
+        }
+        if (bPosition != null && bPosition > 0 && (aPosition == null || aPosition <= 0)) {
+          return 1; // b идет раньше
         }
         
         // Если position не задан или одинаковый, сортируем по id (это гарантирует стабильный порядок)

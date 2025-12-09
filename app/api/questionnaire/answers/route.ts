@@ -438,6 +438,15 @@ export async function POST(request: NextRequest) {
       // ВАЖНО: Используем try-catch для обработки unique constraint ошибок при race condition
       let profile: any = null; // ИСПРАВЛЕНО: Инициализируем как null для проверки
       try {
+        // ИСПРАВЛЕНО: Детальное логирование перед созданием/обновлением профиля
+        logger.debug('Attempting to create/update profile', {
+          userId,
+          hasExistingProfile: !!existingProfile,
+          existingProfileId: existingProfile?.id,
+          newVersion,
+          profileDataKeys: Object.keys(profileDataForPrisma),
+        });
+        
         profile = existingProfile
           ? await tx.skinProfile.update({
               where: { id: existingProfile.id },
@@ -454,6 +463,14 @@ export async function POST(request: NextRequest) {
                 ...profileDataForPrisma,
               },
             });
+        
+        // ИСПРАВЛЕНО: Логируем успешное создание/обновление профиля
+        logger.debug('Profile created/updated successfully', {
+          userId,
+          profileId: profile?.id,
+          version: profile?.version,
+          wasUpdate: !!existingProfile,
+        });
       } catch (updateError: any) {
         // Если возникла ошибка unique constraint, значит профиль с новой версией уже был создан
         // (race condition - два запроса одновременно)

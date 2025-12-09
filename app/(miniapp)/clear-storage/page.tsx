@@ -34,19 +34,29 @@ export default function ClearStoragePage() {
     };
 
     try {
-      // Очистка localStorage
+      // ИСПРАВЛЕНО: Безопасная очистка localStorage с обработкой ошибок для каждого ключа
       localStorageKeys.forEach(key => {
-        if (localStorage.getItem(key) !== null) {
-          localStorage.removeItem(key);
-          removed.localStorage.push(key);
+        try {
+          if (localStorage.getItem(key) !== null) {
+            localStorage.removeItem(key);
+            removed.localStorage.push(key);
+          }
+        } catch (keyError) {
+          // Логируем ошибку для конкретного ключа, но продолжаем обработку остальных
+          console.warn(`Ошибка при удалении ключа localStorage ${key}:`, keyError);
         }
       });
 
-      // Очистка sessionStorage
+      // ИСПРАВЛЕНО: Безопасная очистка sessionStorage с обработкой ошибок для каждого ключа
       sessionStorageKeys.forEach(key => {
-        if (sessionStorage.getItem(key) !== null) {
-          sessionStorage.removeItem(key);
-          removed.sessionStorage.push(key);
+        try {
+          if (sessionStorage.getItem(key) !== null) {
+            sessionStorage.removeItem(key);
+            removed.sessionStorage.push(key);
+          }
+        } catch (keyError) {
+          // Логируем ошибку для конкретного ключа, но продолжаем обработку остальных
+          console.warn(`Ошибка при удалении ключа sessionStorage ${key}:`, keyError);
         }
       });
 
