@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import PlanFeedbackPopup from '@/components/PlanFeedbackPopup';
 import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
+import { PaymentGate } from '@/components/PaymentGate';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
@@ -94,6 +95,7 @@ export default function HomePage() {
   });
   const [redirectingToQuiz, setRedirectingToQuiz] = useState(false); // Флаг: редиректим на анкету
   const [hasCheckedProfile, setHasCheckedProfile] = useState(false); // Флаг: проверили ли наличие профиля
+  const [paymentKey, setPaymentKey] = useState(0); // Ключ для принудительного обновления PaymentGate
   const profileCheckInProgressRef = useRef(false); // Защита от множественных запросов к getCurrentProfile
   const progressLoadInProgressRef = useRef(false); // ИСПРАВЛЕНО: Защита от множественных запросов к getPlanProgress
 
@@ -1637,228 +1639,470 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Toggle AM/PM */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        marginBottom: '24px',
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.42)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: '28px',
-          padding: '6px',
-          display: 'flex',
-          gap: '6px',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-        }}>
-          <button
-            onClick={() => setTab('AM')}
-            style={{
-              padding: '8px 20px',
-              borderRadius: '22px',
-              border: 'none',
-              backgroundColor: tab === 'AM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
-              color: tab === 'AM' ? 'white' : '#0A5F59',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px',
-            }}
-          >
-            Утро
-          </button>
-          <button
-            onClick={() => setTab('PM')}
-            style={{
-              padding: '8px 20px',
-              borderRadius: '22px',
-              border: 'none',
-              backgroundColor: tab === 'PM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
-              color: tab === 'PM' ? 'white' : '#0A5F59',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '14px',
-            }}
-          >
-            Вечер
-          </button>
-        </div>
-      </div>
-
-      {/* Routine Items */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        padding: '0 20px',
-        maxWidth: '600px',
-        margin: '0 auto',
-      }}>
-        {routineItems.map((item, index) => (
-          <div
-            key={item.id}
-            onClick={() => setSelectedItem(item)}
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.56)',
-              backdropFilter: 'blur(28px)',
-              borderRadius: '20px',
-              padding: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              cursor: 'pointer',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              opacity: item.done ? 0.7 : 1,
-            }}
-          >
-            {/* Step Number */}
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleItem(item.id);
-              }}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: item.done ? '#0A5F59' : 'rgba(10, 95, 89, 0.1)',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-            >
-              {item.done ? '✓' : index + 1}
-            </div>
-
-            {/* Icon */}
-            <img
-              src={item.icon}
-              alt={item.title}
-              style={{
-                width: '60px',
-                height: '60px',
-                objectFit: 'contain',
-                flexShrink: 0,
-              }}
-              onError={(e) => {
-                // Fallback для отсутствующих иконок
-                clientLogger.warn('Icon not found:', item.icon);
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-
-            {/* Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: '17px',
-                fontWeight: 'bold',
-                color: '#0A5F59',
-                marginBottom: '4px',
-              }}>
-                {item.title}
-              </div>
-              <div style={{
-                fontSize: '14px',
-                color: '#475467',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>
-                {item.subtitle}
-              </div>
-            </div>
-
-            {/* Info Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedItem(item);
-              }}
-              style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                flexShrink: 0,
-              }}
-            >
-              i
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* BottomSheet для деталей */}
-      {selectedItem && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 2000,
-            display: 'flex',
-            alignItems: 'flex-end',
+      {/* PaymentGate для рекомендаций - показываем блюр для неоплаченных пользователей */}
+      {routineItems.length > 0 ? (
+        <PaymentGate
+          key={paymentKey}
+          price={199}
+          isRetaking={false}
+          onPaymentComplete={() => {
+            // После оплаты обновляем состояние, чтобы снять блюр
+            clientLogger.log('✅ Payment completed on home page, blur removed');
+            // Обновляем ключ для принудительного перерендера PaymentGate
+            setPaymentKey(prev => prev + 1);
           }}
         >
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              backdropFilter: 'blur(4px)',
-            }}
-            onClick={() => setSelectedItem(null)}
-          />
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxHeight: '85vh',
-              backgroundColor: 'rgba(250, 251, 253, 0.75)',
-              backdropFilter: 'blur(32px)',
-              borderTopLeftRadius: '28px',
-              borderTopRightRadius: '28px',
-              padding: '24px',
-              overflowY: 'auto',
-            }}
-          >
-            <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#0A5F59', marginBottom: '16px' }}>
-              {selectedItem.title}
-            </h3>
-            <div style={{ marginBottom: '16px', color: '#475467' }}>
-              {selectedItem.subtitle}
+          {/* Toggle AM/PM */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '24px',
+          }}>
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.42)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '28px',
+              padding: '6px',
+              display: 'flex',
+              gap: '6px',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+            }}>
+              <button
+                onClick={() => setTab('AM')}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '22px',
+                  border: 'none',
+                  backgroundColor: tab === 'AM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
+                  color: tab === 'AM' ? 'white' : '#0A5F59',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                }}
+              >
+                Утро
+              </button>
+              <button
+                onClick={() => setTab('PM')}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '22px',
+                  border: 'none',
+                  backgroundColor: tab === 'PM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
+                  color: tab === 'PM' ? 'white' : '#0A5F59',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                }}
+              >
+                Вечер
+              </button>
             </div>
-            <button
-              onClick={() => setSelectedItem(null)}
+          </div>
+
+          {/* Routine Items */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            padding: '0 20px',
+            maxWidth: '600px',
+            margin: '0 auto',
+          }}>
+            {routineItems.map((item, index) => (
+              <div
+                key={item.id}
+                onClick={() => setSelectedItem(item)}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.56)',
+                  backdropFilter: 'blur(28px)',
+                  borderRadius: '20px',
+                  padding: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  opacity: item.done ? 0.7 : 1,
+                }}
+              >
+                {/* Step Number */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleItem(item.id);
+                  }}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: item.done ? '#0A5F59' : 'rgba(10, 95, 89, 0.1)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.done ? '✓' : index + 1}
+                </div>
+
+                {/* Icon */}
+                <img
+                  src={item.icon}
+                  alt={item.title}
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    objectFit: 'contain',
+                    flexShrink: 0,
+                  }}
+                  onError={(e) => {
+                    // Fallback для отсутствующих иконок
+                    clientLogger.warn('Icon not found:', item.icon);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: '17px',
+                    fontWeight: 'bold',
+                    color: '#0A5F59',
+                    marginBottom: '4px',
+                  }}>
+                    {item.title}
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#475467',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {item.subtitle}
+                  </div>
+                </div>
+
+                {/* Info Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedItem(item);
+                  }}
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    flexShrink: 0,
+                  }}
+                >
+                  i
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* BottomSheet для деталей */}
+          {selectedItem && (
+            <div
               style={{
-                marginTop: '24px',
-                width: '100%',
-                padding: '16px',
-                borderRadius: '16px',
-                backgroundColor: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: 'bold',
+                position: 'fixed',
+                inset: 0,
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'flex-end',
               }}
             >
-              Понятно
-            </button>
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                  backdropFilter: 'blur(4px)',
+                }}
+                onClick={() => setSelectedItem(null)}
+              />
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxHeight: '85vh',
+                  backgroundColor: 'rgba(250, 251, 253, 0.75)',
+                  backdropFilter: 'blur(32px)',
+                  borderTopLeftRadius: '28px',
+                  borderTopRightRadius: '28px',
+                  padding: '24px',
+                  overflowY: 'auto',
+                }}
+              >
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#0A5F59', marginBottom: '16px' }}>
+                  {selectedItem.title}
+                </h3>
+                <div style={{ marginBottom: '16px', color: '#475467' }}>
+                  {selectedItem.subtitle}
+                </div>
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  style={{
+                    marginTop: '24px',
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Понятно
+                </button>
+              </div>
+            </div>
+          )}
+        </PaymentGate>
+      ) : (
+        // Если рекомендаций нет, показываем без PaymentGate
+        <>
+          {/* Toggle AM/PM */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '24px',
+          }}>
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.42)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '28px',
+              padding: '6px',
+              display: 'flex',
+              gap: '6px',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+            }}>
+              <button
+                onClick={() => setTab('AM')}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '22px',
+                  border: 'none',
+                  backgroundColor: tab === 'AM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
+                  color: tab === 'AM' ? 'white' : '#0A5F59',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                }}
+              >
+                Утро
+              </button>
+              <button
+                onClick={() => setTab('PM')}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '22px',
+                  border: 'none',
+                  backgroundColor: tab === 'PM' ? 'rgba(10, 95, 89, 0.9)' : 'rgba(255, 255, 255, 0.2)',
+                  color: tab === 'PM' ? 'white' : '#0A5F59',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                }}
+              >
+                Вечер
+              </button>
+            </div>
           </div>
-        </div>
+
+          {/* Routine Items */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            padding: '0 20px',
+            maxWidth: '600px',
+            margin: '0 auto',
+          }}>
+            {routineItems.map((item, index) => (
+              <div
+                key={item.id}
+                onClick={() => setSelectedItem(item)}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.56)',
+                  backdropFilter: 'blur(28px)',
+                  borderRadius: '20px',
+                  padding: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  opacity: item.done ? 0.7 : 1,
+                }}
+              >
+                {/* Step Number */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleItem(item.id);
+                  }}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: item.done ? '#0A5F59' : 'rgba(10, 95, 89, 0.1)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.done ? '✓' : index + 1}
+                </div>
+
+                {/* Icon */}
+                <img
+                  src={item.icon}
+                  alt={item.title}
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    objectFit: 'contain',
+                    flexShrink: 0,
+                  }}
+                  onError={(e) => {
+                    // Fallback для отсутствующих иконок
+                    clientLogger.warn('Icon not found:', item.icon);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: '17px',
+                    fontWeight: 'bold',
+                    color: '#0A5F59',
+                    marginBottom: '4px',
+                  }}>
+                    {item.title}
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#475467',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {item.subtitle}
+                  </div>
+                </div>
+
+                {/* Info Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedItem(item);
+                  }}
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    flexShrink: 0,
+                  }}
+                >
+                  i
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* BottomSheet для деталей */}
+          {selectedItem && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'flex-end',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                  backdropFilter: 'blur(4px)',
+                }}
+                onClick={() => setSelectedItem(null)}
+              />
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxHeight: '85vh',
+                  backgroundColor: 'rgba(250, 251, 253, 0.75)',
+                  backdropFilter: 'blur(32px)',
+                  borderTopLeftRadius: '28px',
+                  borderTopRightRadius: '28px',
+                  padding: '24px',
+                  overflowY: 'auto',
+                }}
+              >
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#0A5F59', marginBottom: '16px' }}>
+                  {selectedItem.title}
+                </h3>
+                <div style={{ marginBottom: '16px', color: '#475467' }}>
+                  {selectedItem.subtitle}
+                </div>
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  style={{
+                    marginTop: '24px',
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Понятно
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Кнопки внизу страницы */}

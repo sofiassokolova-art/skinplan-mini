@@ -50,9 +50,60 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { questionnaireId, answers } = body;
 
+    // ВАЖНО: Логируем полученные данные для диагностики
+    logger.debug('Received answers submission', {
+      userId,
+      questionnaireId,
+      answersCount: Array.isArray(answers) ? answers.length : 0,
+      answersType: Array.isArray(answers) ? 'array' : typeof answers,
+      answerQuestionIds: Array.isArray(answers) ? answers.map((a: any) => a.questionId) : [],
+      answerSample: Array.isArray(answers) ? answers.slice(0, 3) : answers,
+    });
+
     if (!questionnaireId || !Array.isArray(answers)) {
+      logger.error('Invalid request body', {
+        userId,
+        hasQuestionnaireId: !!questionnaireId,
+        questionnaireId,
+        answersType: typeof answers,
+        isArray: Array.isArray(answers),
+        answers,
+      });
       return ApiResponse.badRequest('Invalid request body');
     }
+    
+    // ВАЖНО: Проверяем, что все ответы имеют валидный questionId
+    const invalidAnswers = answers.filter((a: any) => !a.questionId || typeof a.questionId !== 'number' || a.questionId <= 0);
+    if (invalidAnswers.length > 0) {
+      logger.error('Invalid answers found (missing or invalid questionId)', {
+        userId,
+        questionnaireId,
+        invalidAnswersCount: invalidAnswers.length,
+        invalidAnswers,
+        validAnswersCount: answers.length - invalidAnswers.length,
+      });
+      // Продолжаем обработку, но логируем проблему
+    }
+    
+    // Фильтруем только валидные ответы
+    const validAnswers = answers.filter((a: any) => a.questionId && typeof a.questionId === 'number' && a.questionId > 0);
+    
+    if (validAnswers.length === 0) {
+      logger.error('No valid answers to process', {
+        userId,
+        questionnaireId,
+        totalAnswers: answers.length,
+        invalidAnswers: invalidAnswers.length,
+      });
+      return ApiResponse.badRequest('No valid answers provided');
+    }
+    
+    logger.debug('Processing valid answers', {
+      userId,
+      questionnaireId,
+      validAnswersCount: validAnswers.length,
+      validQuestionIds: validAnswers.map((a: any) => a.questionId),
+    });
 
     // Получаем анкету
     const questionnaire = await prisma.questionnaire.findUnique({
@@ -118,7 +169,7 @@ export async function POST(request: NextRequest) {
       logger.info('Profile does not exist, but answers found - will create profile', {
         userId,
         questionnaireId,
-        answersCount: answers.length,
+        answersCount: validAnswers.length,
       });
     }
 
@@ -127,8 +178,17 @@ export async function POST(request: NextRequest) {
     try {
       transactionResult = await prisma.$transaction(async (tx) => {
       // Сохраняем или обновляем ответы (upsert для избежания дубликатов)
+      // ВАЖНО: Используем validAnswers вместо answers
+      // ВАЖНО: Логируем количество ответов для диагностики
+      logger.debug('Saving answers in transaction', {
+        userId,
+        questionnaireId,
+        answersCount: validAnswers.length,
+        answerQuestionIds: validAnswers.map((a: any) => a.questionId),
+      });
+      
       const savedAnswers = await Promise.all(
-        answers.map(async (answer: AnswerInput) => {
+        validAnswers.map(async (answer: AnswerInput) => {
           // Проверяем, существует ли уже ответ
           const existingAnswer = await tx.userAnswer.findFirst({
             where: {
@@ -140,11 +200,12 @@ export async function POST(request: NextRequest) {
 
           if (existingAnswer) {
             // Обновляем существующий ответ (updatedAt обновляется автоматически через @updatedAt)
-            return tx.userAnswer.update({
+            // ВАЖНО: Сохраняем answerValue как есть (включая пустую строку), только undefined преобразуем в null
+            const updated = await tx.userAnswer.update({
               where: { id: existingAnswer.id },
               data: {
-                answerValue: answer.answerValue || null,
-                answerValues: answer.answerValues ? (answer.answerValues as any) : null,
+                answerValue: answer.answerValue !== undefined ? answer.answerValue : null,
+                answerValues: answer.answerValues !== undefined ? (answer.answerValues as any) : null,
               },
               include: {
                 question: {
@@ -154,15 +215,23 @@ export async function POST(request: NextRequest) {
                 },
               },
             });
+            logger.debug('Answer updated', {
+              userId,
+              questionId: answer.questionId,
+              answerValue: answer.answerValue,
+              answerValues: answer.answerValues,
+            });
+            return updated;
           } else {
             // Создаем новый ответ
-            return tx.userAnswer.create({
+            // ВАЖНО: Сохраняем answerValue как есть (включая пустую строку), только undefined преобразуем в null
+            const created = await tx.userAnswer.create({
               data: {
                 userId: userId!,
                 questionnaireId,
                 questionId: answer.questionId,
-                answerValue: answer.answerValue || null,
-                answerValues: answer.answerValues ? (answer.answerValues as any) : null,
+                answerValue: answer.answerValue !== undefined ? answer.answerValue : null,
+                answerValues: answer.answerValues !== undefined ? (answer.answerValues as any) : null,
               },
               include: {
                 question: {
@@ -172,9 +241,22 @@ export async function POST(request: NextRequest) {
                 },
               },
             });
+            logger.debug('Answer created', {
+              userId,
+              questionId: answer.questionId,
+              answerValue: answer.answerValue,
+              answerValues: answer.answerValues,
+            });
+            return created;
           }
         })
       );
+      
+      logger.debug('All answers saved in transaction', {
+        userId,
+        savedAnswersCount: savedAnswers.length,
+        savedQuestionIds: savedAnswers.map(a => a.questionId),
+      });
 
       // Загружаем полные данные для расчета профиля
       const fullAnswers = await tx.userAnswer.findMany({

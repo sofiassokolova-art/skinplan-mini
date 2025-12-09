@@ -40,10 +40,11 @@ export function aggregateAnswerScores(
 
 /**
  * Определяет тип кожи на основе агрегированных баллов
+ * ВАЖНО: Всегда возвращает валидное значение ('normal', 'dry', 'oily', или 'combo')
  */
 export function determineSkinType(scores: AggregatedScores): string {
-  const oiliness = scores.oiliness || 0;
-  const dehydration = scores.dehydration || 0;
+  const oiliness = typeof scores.oiliness === 'number' ? scores.oiliness : 0;
+  const dehydration = typeof scores.dehydration === 'number' ? scores.dehydration : 0;
 
   // Логика определения типа кожи
   if (oiliness >= 4 && dehydration >= 3) {
@@ -55,16 +56,21 @@ export function determineSkinType(scores: AggregatedScores): string {
   } else if (oiliness >= 2 || dehydration >= 2) {
     return 'combo';
   }
+  // Всегда возвращаем 'normal' по умолчанию
   return 'normal';
 }
 
 /**
  * Определяет уровень чувствительности
+ * ВАЖНО: Всегда возвращает валидное значение ('low', 'medium', или 'high')
  */
 export function determineSensitivityLevel(scores: AggregatedScores): string {
   const sensitivity = scores.sensitivity || 0;
-  if (sensitivity >= 4) return 'high';
-  if (sensitivity >= 2) return 'medium';
+  if (typeof sensitivity === 'number') {
+    if (sensitivity >= 4) return 'high';
+    if (sensitivity >= 2) return 'medium';
+  }
+  // Всегда возвращаем 'low' по умолчанию, даже если sensitivity отсутствует
   return 'low';
 }
 

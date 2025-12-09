@@ -167,16 +167,18 @@ export default function QuizPage() {
     }
 
     // ИСПРАВЛЕНО: Проверяем, не была ли анкета только что отправлена
-    // Если да - редиректим на /plan, чтобы избежать показа первого экрана
+    // КРИТИЧНО: Проверяем флаг quiz_just_submitted САМЫМ ПЕРВЫМ, до любых других проверок
+    // Это предотвращает редирект на первый экран после отправки ответов
     if (typeof window !== 'undefined') {
       const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
       if (justSubmitted) {
-        clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan');
+        clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan (ранняя проверка)');
         // Очищаем флаг
         sessionStorage.removeItem('quiz_just_submitted');
         // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
         initCompletedRef.current = true;
-        // Редиректим на /plan
+        setLoading(false);
+        // Редиректим на /plan СРАЗУ, без задержек
         window.location.replace('/plan');
         return;
       }
@@ -191,10 +193,30 @@ export default function QuizPage() {
       }
     }
     
+    // ИСПРАВЛЕНО: Проверяем флаг quiz_just_submitted ПЕРЕД проверкой профиля
+    // Это критично, чтобы предотвратить редирект на первый экран после отправки ответов
+    const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+    if (justSubmitted) {
+      clientLogger.log('✅ Флаг quiz_just_submitted установлен - пропускаем проверку профиля и редиректим на /plan');
+      // Очищаем флаг
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('quiz_just_submitted');
+      }
+      // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
+      initCompletedRef.current = true;
+      setLoading(false);
+      // Редиректим на /plan
+      if (typeof window !== 'undefined') {
+        window.location.replace('/plan');
+      }
+      return;
+    }
+    
     // ИСПРАВЛЕНО: Проверяем, есть ли уже профиль (анкета завершена)
     // Если профиль есть и анкета завершена, не показываем начало анкеты, а редиректим на /plan
     // ВАЖНО: Проверяем синхронно, чтобы предотвратить показ первого экрана
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current) {
+    // ВАЖНО: НЕ проверяем профиль, если флаг quiz_just_submitted установлен (уже обработано выше)
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current && !justSubmitted) {
       // ИСПРАВЛЕНО: Проверяем флаги перепрохождения ПЕРЕД проверкой профиля
       const isRetakingFromStorage = localStorage.getItem('is_retaking_quiz') === 'true';
       const fullRetakeFromHome = localStorage.getItem('full_retake_from_home') === 'true';
@@ -236,6 +258,17 @@ export default function QuizPage() {
         const checkProfileAndRedirect = async () => {
           // ИСПРАВЛЕНО: Не выполняем проверку, если пользователь находится на инфо-экране
           // Это предотвращает редирект во время показа инфо-экранов после последнего вопроса
+          // ВАЖНО: Также проверяем флаг quiz_just_submitted еще раз (на случай, если он был установлен после начала проверки)
+          const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+          if (justSubmittedCheck) {
+            clientLogger.log('✅ Флаг quiz_just_submitted обнаружен во время проверки профиля - прерываем проверку');
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem('quiz_just_submitted');
+              window.location.replace('/plan');
+            }
+            return;
+          }
+          
           if (pendingInfoScreen || currentQuestionIndex >= allQuestions.length) {
             clientLogger.log('⏸️ Пропускаем проверку профиля: пользователь на инфо-экране или анкета завершена', {
               hasPendingInfoScreen: !!pendingInfoScreen,
@@ -1147,16 +1180,36 @@ export default function QuizPage() {
       questionId = currentQuestion.id;
     }
 
-    // Дополнительная валидация: проверяем, что вопрос существует в allQuestions
-    const questionExists = allQuestions.some((q: Question) => q.id === questionId);
-    if (!questionExists && allQuestions.length > 0) {
-      console.error('❌ Question ID not found in allQuestions:', {
+    // ИСПРАВЛЕНО: Проверяем, что вопрос существует в анкете (не только в allQuestions)
+    // allQuestions может быть отфильтрован (например, при повторном прохождении исключаются пол и возраст)
+    // Но ответы на эти вопросы все равно должны сохраняться на сервер
+    const questionExistsInAllQuestions = allQuestions.some((q: Question) => q.id === questionId);
+    const questionExistsInQuestionnaire = questionnaire?.questions?.some((q: Question) => q.id === questionId) ||
+                                         questionnaire?.groups?.some((g: any) => 
+                                           g?.questions?.some((q: Question) => q.id === questionId)
+                                         );
+    
+    // ВАЖНО: Если вопрос не найден в анкете, все равно сохраняем ответ в state и localStorage
+    // Это важно, чтобы ответ не потерялся, даже если есть проблема с загрузкой анкеты
+    // При отправке ответов на сервер сервер проверит валидность questionId
+    if (!questionExistsInAllQuestions && !questionExistsInQuestionnaire && allQuestions.length > 0) {
+      console.warn('⚠️ Question ID not found in questionnaire, but saving to state anyway:', {
         questionId,
         allQuestionIds: allQuestions.map((q: Question) => q.id),
         currentQuestionId: currentQuestion?.id,
+        questionnaireId: questionnaire?.id,
       });
-      // Если вопрос не найден, не сохраняем ответ
-      return;
+      // НЕ возвращаемся - продолжаем сохранение в state и localStorage
+      // Сервер проверит валидность questionId при финальной отправке
+    }
+    
+    // ВАЖНО: Если вопрос существует в анкете, но отфильтрован из allQuestions - все равно сохраняем
+    // Это важно для вопросов про пол и возраст, которые фильтруются при повторном прохождении
+    if (!questionExistsInAllQuestions && questionExistsInQuestionnaire) {
+      clientLogger.log('⚠️ Question exists in questionnaire but filtered from allQuestions, saving anyway', {
+        questionId,
+        currentQuestionCode: currentQuestion?.code,
+      });
     }
 
     // ОПТИМИЗАЦИЯ: Проверяем, изменился ли ответ
@@ -1482,6 +1535,17 @@ export default function QuizPage() {
   const submitAnswers = useCallback(async () => {
     clientLogger.log('🚀 submitAnswers вызвана');
     
+    // КРИТИЧНО: Устанавливаем флаг quiz_just_submitted СРАЗУ, синхронно, ДО любых асинхронных операций
+    // Это защита от редиректа на первый экран, если что-то пойдет не так
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('quiz_just_submitted', 'true');
+        clientLogger.log('✅ Флаг quiz_just_submitted установлен СРАЗУ при вызове submitAnswers');
+      } catch (storageError) {
+        clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
+      }
+    }
+    
     // ВАЖНО: Логируем вызов submitAnswers на сервер
     try {
       const currentInitData = await getInitData();
@@ -1659,18 +1723,63 @@ export default function QuizPage() {
         return;
       }
 
-      const answerArray = Object.entries(answersToSubmit).map(([questionId, value]) => {
-        const isArray = Array.isArray(value);
-        return {
-          questionId: parseInt(questionId),
-          answerValue: isArray ? undefined : (value as string),
-          answerValues: isArray ? (value as string[]) : undefined,
-        };
+      // ВАЖНО: Логируем все ответы перед формированием массива
+      clientLogger.log('📝 Формирование answerArray из answersToSubmit:', {
+        answersToSubmitKeys: Object.keys(answersToSubmit),
+        answersToSubmitCount: Object.keys(answersToSubmit).length,
+        answersToSubmitEntries: Object.entries(answersToSubmit).slice(0, 5).map(([k, v]) => ({
+          key: k,
+          keyType: typeof k,
+          value: v,
+          valueType: typeof v,
+          isArray: Array.isArray(v),
+        })),
       });
+
+      const answerArray = Object.entries(answersToSubmit)
+        .filter(([questionId, value]) => {
+          // ВАЖНО: Фильтруем только валидные ответы
+          // Игнорируем ответы с questionId = -1 (метаданные позиции)
+          const qId = parseInt(questionId, 10);
+          if (isNaN(qId) || qId <= 0) {
+            clientLogger.warn('⚠️ Пропущен невалидный questionId:', {
+              questionId,
+              value,
+              parsed: qId,
+            });
+            return false;
+          }
+          // ВАЖНО: Пустые строки и null - это валидные ответы (пользователь может намеренно не отвечать)
+          // Игнорируем только undefined, так как это означает отсутствие ответа
+          if (value === undefined) {
+            clientLogger.warn('⚠️ Пропущен ответ с undefined:', {
+              questionId: qId,
+              value,
+            });
+            return false;
+          }
+          // null и пустая строка - это валидные ответы, сохраняем их
+          return true;
+        })
+        .map(([questionId, value]) => {
+          const isArray = Array.isArray(value);
+          const qId = parseInt(questionId, 10);
+          // ВАЖНО: Сохраняем все ответы, включая пустые строки и null
+          // Пустая строка - это валидный ответ (пользователь может намеренно не отвечать)
+          return {
+            questionId: qId,
+            // ВАЖНО: Преобразуем null в undefined для совместимости с API
+            // null и пустая строка - это валидные ответы
+            answerValue: isArray ? undefined : (value === null ? undefined : (value as string)),
+            answerValues: isArray ? (value as string[]) : undefined,
+          };
+        });
 
       clientLogger.log('📤 Отправка ответов на сервер:', {
         questionnaireId: questionnaire.id,
         answersCount: answerArray.length,
+        answerArrayQuestionIds: answerArray.map(a => a.questionId),
+        answerArraySample: answerArray.slice(0, 5),
       });
 
       let result: any;
@@ -1829,13 +1938,42 @@ export default function QuizPage() {
               return;
             }
           } else {
-            // Другая ошибка - не редиректим, показываем ошибку
-            if (isMountedRef.current) {
-              setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
-              isSubmittingRef.current = false;
-              setIsSubmitting(false);
+            // Другая ошибка - проверяем, был ли профиль создан, перед показом ошибки
+            // ВАЖНО: Флаг quiz_just_submitted уже установлен, не очищаем его
+            // Это защита от редиректа на первый экран, даже если произошла ошибка
+            clientLogger.warn('⚠️ Другая ошибка при отправке ответов, проверяем наличие профиля');
+            
+            // Проверяем, был ли профиль создан, несмотря на ошибку
+            try {
+              const profileCheck = await api.getCurrentProfile() as any;
+              if (profileCheck && profileCheck.id) {
+                // Профиль существует - продолжаем редирект, несмотря на ошибку
+                clientLogger.log('✅ Профиль существует после другой ошибки, продолжаем редирект');
+                result = { success: true, profile: profileCheck, error: submitError?.message };
+                // Продолжаем выполнение - редирект произойдет ниже
+              } else {
+                // Профиль не существует - показываем ошибку, но НЕ очищаем флаг quiz_just_submitted
+                // Это защита от редиректа на первый экран
+                clientLogger.error('❌ Профиль не был создан после другой ошибки');
+                if (isMountedRef.current) {
+                  setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
+                  isSubmittingRef.current = false;
+                  setIsSubmitting(false);
+                }
+                // ВАЖНО: НЕ очищаем флаг quiz_just_submitted - он будет очищен только после успешного редиректа
+                return;
+              }
+            } catch (profileCheckError) {
+              // Не удалось проверить профиль - показываем ошибку, но НЕ очищаем флаг
+              clientLogger.error('❌ Не удалось проверить наличие профиля после другой ошибки', profileCheckError);
+              if (isMountedRef.current) {
+                setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
+                isSubmittingRef.current = false;
+                setIsSubmitting(false);
+              }
+              // ВАЖНО: НЕ очищаем флаг quiz_just_submitted - он будет очищен только после успешного редиректа
+              return;
             }
-            return;
           }
         }
       }
@@ -2604,6 +2742,20 @@ export default function QuizPage() {
 
   // Продолжить с сохранённого места
   const resumeQuiz = () => {
+    // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД восстановлением прогресса
+    // Это предотвращает редирект на первый экран после отправки ответов
+    const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+    if (justSubmitted) {
+      clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('quiz_just_submitted');
+        initCompletedRef.current = true;
+        setLoading(false);
+        window.location.replace('/plan');
+      }
+      return;
+    }
+    
     if (!savedProgress || !questionnaire) {
       console.error('❌ resumeQuiz: savedProgress or questionnaire is missing', { savedProgress: !!savedProgress, questionnaire: !!questionnaire });
       return;
@@ -2671,6 +2823,17 @@ export default function QuizPage() {
       setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
     } else {
       // Пользователь еще не начал отвечать, начинаем с начальных экранов
+      // ВАЖНО: Проверяем флаг quiz_just_submitted перед сбросом currentQuestionIndex
+      const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+      if (justSubmitted) {
+        clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('quiz_just_submitted');
+          window.location.replace('/plan');
+        }
+        return;
+      }
+      
       clientLogger.log('✅ resumeQuiz: Начинаем с начальных экранов');
       setCurrentQuestionIndex(0);
       setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
