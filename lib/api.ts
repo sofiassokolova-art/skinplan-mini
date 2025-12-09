@@ -89,7 +89,7 @@ async function request<T>(
     
     // ВАЖНО: Логируем перед отправкой запроса (только для критичных endpoints)
     if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
-      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      if (typeof window !== 'undefined') {
         console.log('📤 Sending request to:', `${API_BASE}${endpoint}`, {
           method: options.method || 'GET',
           hasInitData: !!initData,
@@ -108,7 +108,7 @@ async function request<T>(
       
       // ВАЖНО: Логируем ответ (только для критичных endpoints)
       if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
-        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+        if (typeof window !== 'undefined') {
           console.log('📥 Received response from:', `${API_BASE}${endpoint}`, {
             status: response.status,
             statusText: response.statusText,
@@ -120,7 +120,12 @@ async function request<T>(
       // ВАЖНО: Логируем ошибку сети (только для критичных endpoints)
       if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
         if (typeof window !== 'undefined') {
-          console.error('❌ Network error for:', `${API_BASE}${endpoint}`, error);
+          console.error('❌ Network error for:', `${API_BASE}${endpoint}`, {
+            error: error?.message || String(error),
+            errorType: typeof error,
+            errorName: error?.name,
+            stack: error?.stack?.substring(0, 200),
+          });
         }
       }
       // Обрабатываем сетевые ошибки

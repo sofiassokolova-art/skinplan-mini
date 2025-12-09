@@ -1627,9 +1627,11 @@ export default function QuizPage() {
     submitAnswersRef.current = submitAnswers;
     
     if (!questionnaire) {
-      console.error('❌ Анкета не загружена');
+      clientLogger.error('❌ Анкета не загружена - блокируем отправку');
       if (isMountedRef.current) {
         setError('Анкета не загружена. Пожалуйста, обновите страницу.');
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
       }
       return;
     }
@@ -1640,6 +1642,31 @@ export default function QuizPage() {
         isSubmitting,
         isSubmittingRef: isSubmittingRef.current,
       });
+      // ВАЖНО: Логируем на сервер для диагностики
+      try {
+        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+        if (currentInitData) {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
+            },
+            body: JSON.stringify({
+              level: 'warn',
+              message: '⚠️ Уже отправляется, игнорируем повторный вызов',
+              context: {
+                isSubmitting,
+                isSubmittingRef: isSubmittingRef.current,
+                timestamp: new Date().toISOString(),
+              },
+              url: typeof window !== 'undefined' ? window.location.href : undefined,
+            }),
+          }).catch(() => {});
+        }
+      } catch (logError) {
+        // Игнорируем ошибки логирования
+      }
       return;
     }
 
@@ -1648,6 +1675,9 @@ export default function QuizPage() {
       setIsSubmitting(true);
       setError(null);
       setLoading(false); // ВАЖНО: Устанавливаем loading = false, чтобы не показывался лоадер "Загрузка анкеты..."
+      clientLogger.log('✅ Флаги isSubmitting установлены, продолжаем выполнение submitAnswers');
+    } else {
+      clientLogger.warn('⚠️ Компонент размонтирован, но продолжаем выполнение submitAnswers');
     }
 
     try {
@@ -1662,10 +1692,19 @@ export default function QuizPage() {
         hasInitData: !!initData,
         initDataLength: initData?.length || 0,
       });
+      
+      // ВАЖНО: Логируем перед каждой проверкой
+      clientLogger.log('🔍 Проверка условий перед отправкой ответов:', {
+        hasQuestionnaire: !!questionnaire,
+        questionnaireId: questionnaire?.id,
+        answersCount: Object.keys(answers).length,
+        isInTelegram,
+        hasInitData: !!initData,
+      });
 
       // Если мы в Telegram, но initData нет - это может быть preview mode
       if (isInTelegram && !initData) {
-        console.error('❌ Telegram WebApp доступен, но initData отсутствует (возможно, preview mode)');
+        clientLogger.error('❌ Telegram WebApp доступен, но initData отсутствует (возможно, preview mode)');
         if (isMountedRef.current) {
           setError('Приложение открыто в режиме предпросмотра. Пожалуйста, откройте его через кнопку бота или используйте ссылку формата: https://t.me/your_bot?startapp=...');
           isSubmittingRef.current = false;
@@ -1675,7 +1714,7 @@ export default function QuizPage() {
       }
 
       if (!isInTelegram) {
-        console.error('❌ Telegram WebApp не доступен');
+        clientLogger.error('❌ Telegram WebApp не доступен - блокируем отправку');
         if (isMountedRef.current) {
           setError('Пожалуйста, откройте приложение через Telegram Mini App (не просто по ссылке, а через кнопку бота).');
           isSubmittingRef.current = false;
@@ -1685,7 +1724,7 @@ export default function QuizPage() {
       }
 
       if (!initData) {
-        console.error('❌ Telegram WebApp initData не доступен');
+        clientLogger.error('❌ Telegram WebApp initData не доступен - блокируем отправку');
         if (isMountedRef.current) {
           setError('Не удалось получить данные авторизации. Попробуйте обновить страницу.');
           isSubmittingRef.current = false;
@@ -1693,6 +1732,8 @@ export default function QuizPage() {
         }
         return;
       }
+      
+      clientLogger.log('✅ Все проверки пройдены, продолжаем формирование answerArray');
 
       // Собираем ответы из state, если они пустые - пытаемся загрузить из localStorage
       let answersToSubmit = answers;
@@ -1834,9 +1875,63 @@ export default function QuizPage() {
           questionnaireId: questionnaire.id,
           answersCount: answerArray.length,
           hasInitData: !!currentInitData,
+          answerQuestionIds: answerArray.map(a => a.questionId),
         });
         
+        // ВАЖНО: Логируем на сервер перед вызовом API
+        try {
+          if (currentInitData) {
+            await fetch('/api/logs', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': currentInitData,
+              },
+              body: JSON.stringify({
+                level: 'info',
+                message: '🚀 About to call api.submitAnswers',
+                context: {
+                  questionnaireId: questionnaire.id,
+                  answersCount: answerArray.length,
+                  answerQuestionIds: answerArray.map(a => a.questionId),
+                  timestamp: new Date().toISOString(),
+                },
+                url: typeof window !== 'undefined' ? window.location.href : undefined,
+              }),
+            }).catch(() => {});
+          }
+        } catch (logError) {
+          // Игнорируем ошибки логирования
+        }
+        
         result = await api.submitAnswers(questionnaire.id, answerArray) as any;
+        
+        // ВАЖНО: Логируем на сервер после получения ответа
+        try {
+          if (currentInitData) {
+            await fetch('/api/logs', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': currentInitData,
+              },
+              body: JSON.stringify({
+                level: result?.profile?.id ? 'info' : 'error',
+                message: result?.profile?.id ? '✅ api.submitAnswers completed with profile' : '❌ api.submitAnswers completed without profile',
+                context: {
+                  hasResult: !!result,
+                  hasProfile: !!result?.profile,
+                  profileId: result?.profile?.id,
+                  resultKeys: result ? Object.keys(result) : [],
+                  timestamp: new Date().toISOString(),
+                },
+                url: typeof window !== 'undefined' ? window.location.href : undefined,
+              }),
+            }).catch(() => {});
+          }
+        } catch (logError) {
+          // Игнорируем ошибки логирования
+        }
         
         // ВАЖНО: Логируем сразу после получения ответа
         clientLogger.log('📥 Получен ответ от api.submitAnswers:', {
@@ -1906,7 +2001,37 @@ export default function QuizPage() {
           stack: submitError?.stack?.substring(0, 500),
           questionnaireId: questionnaire.id,
           answersCount: answerArray.length,
+          errorName: submitError?.name,
+          errorType: typeof submitError,
         });
+        
+        // ВАЖНО: Логируем на сервер для диагностики
+        try {
+          const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+          if (currentInitData) {
+            await fetch('/api/logs', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': currentInitData,
+              },
+              body: JSON.stringify({
+                level: 'error',
+                message: `Error in submitAnswers: ${submitError?.message || 'Unknown error'}`,
+                context: {
+                  error: submitError?.message || String(submitError),
+                  status: submitError?.status,
+                  questionnaireId: questionnaire.id,
+                  answersCount: answerArray.length,
+                  stack: submitError?.stack?.substring(0, 500),
+                },
+                url: typeof window !== 'undefined' ? window.location.href : undefined,
+              }),
+            }).catch(() => {});
+          }
+        } catch (logError) {
+          // Игнорируем ошибки логирования
+        }
         
         // Если это не дубликат и не временная ошибка сети, показываем ошибку пользователю
         const isDuplicate = submitError?.message?.includes('duplicate') || 
