@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const profile = await prisma.skinProfile.findFirst({
       where: { userId },
       orderBy: { version: 'desc' },
-      select: { version: true },
+      select: { id: true, version: true },
     });
 
     if (!profile) {
