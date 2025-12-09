@@ -1129,10 +1129,14 @@ export default function QuizPage() {
         groupsCount: questionnaireData.groups.length,
         questionsCount: questionnaireData.questions.length,
         totalQuestions: questionnaireData.groups.reduce((sum, g) => sum + g.questions.length, 0) + questionnaireData.questions.length,
-        questionIds: [
-          ...questionnaireData.groups.flatMap((g: any) => g.questions.map((q: Question) => q.id)),
-          ...questionnaireData.questions.map((q: Question) => q.id),
-        ],
+        questionIds: (() => {
+          // ВАЖНО: Удаляем дубликаты questionId, так как вопросы могут быть и в groups, и в questions
+          const allIds = [
+            ...questionnaireData.groups.flatMap((g: any) => g.questions.map((q: Question) => q.id)),
+            ...questionnaireData.questions.map((q: Question) => q.id),
+          ];
+          return Array.from(new Set(allIds));
+        })(),
       });
       setQuestionnaire(questionnaireData);
       setError(null); // Очищаем ошибки при успешной загрузке
@@ -1815,6 +1819,17 @@ export default function QuizPage() {
             profileId: result?.profile?.id,
           });
           
+          // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
+          // Это предотвратит редирект на первый экран при следующей загрузке страницы
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.removeItem('quiz_just_submitted');
+              clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не был создан');
+            } catch (storageError) {
+              clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
+            }
+          }
+          
           // Не продолжаем редирект, если профиль не создан
           if (isMountedRef.current) {
             setError('Не удалось создать профиль. Пожалуйста, попробуйте еще раз.');
@@ -1854,8 +1869,19 @@ export default function QuizPage() {
               clientLogger.log('✅ Профиль существует при дубликате, продолжаем редирект');
               result = { success: true, profile: profileCheck, isDuplicate: true, error: submitError?.message };
             } else {
-              // Профиль не существует - это странно для дубликата, но показываем ошибку
+              // Профиль не существует - это странно для дубликата, но показываем ошибку и очищаем флаг
               clientLogger.error('❌ Профиль не существует при дубликате отправки');
+              
+              // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
+              if (typeof window !== 'undefined') {
+                try {
+                  sessionStorage.removeItem('quiz_just_submitted');
+                  clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не найден при дубликате');
+                } catch (storageError) {
+                  clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
+                }
+              }
+              
               if (isMountedRef.current) {
                 setError('Обнаружена повторная отправка, но профиль не найден. Пожалуйста, попробуйте еще раз.');
                 isSubmittingRef.current = false;
@@ -1880,8 +1906,19 @@ export default function QuizPage() {
               clientLogger.log('✅ Профиль существует после ошибки сети, продолжаем редирект');
               result = { success: true, profile: profileCheck, error: submitError?.message };
             } else {
-              // Профиль не существует - показываем ошибку
+              // Профиль не существует - показываем ошибку и очищаем флаг
               clientLogger.error('❌ Профиль не был создан после ошибки сети');
+              
+              // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
+              if (typeof window !== 'undefined') {
+                try {
+                  sessionStorage.removeItem('quiz_just_submitted');
+                  clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не был создан после ошибки сети');
+                } catch (storageError) {
+                  clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
+                }
+              }
+              
               if (isMountedRef.current) {
                 setError('Ошибка сети при отправке ответов. Профиль не был создан. Пожалуйста, попробуйте еще раз.');
                 isSubmittingRef.current = false;
@@ -1918,8 +1955,19 @@ export default function QuizPage() {
                 clientLogger.log('✅ Профиль существует после ошибки создания, продолжаем редирект');
                 result = { success: true, profile: profileCheck, error: submitError?.message };
               } else {
-                // Профиль не существует - показываем ошибку
+                // Профиль не существует - показываем ошибку и очищаем флаг
                 clientLogger.error('❌ Профиль не был создан после ошибки 500');
+                
+                // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
+                if (typeof window !== 'undefined') {
+                  try {
+                    sessionStorage.removeItem('quiz_just_submitted');
+                    clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не был создан после ошибки 500');
+                  } catch (storageError) {
+                    clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
+                  }
+                }
+                
                 if (isMountedRef.current) {
                   setError('Не удалось создать профиль. Пожалуйста, попробуйте еще раз.');
                   isSubmittingRef.current = false;
@@ -1952,15 +2000,25 @@ export default function QuizPage() {
                 result = { success: true, profile: profileCheck, error: submitError?.message };
                 // Продолжаем выполнение - редирект произойдет ниже
               } else {
-                // Профиль не существует - показываем ошибку, но НЕ очищаем флаг quiz_just_submitted
-                // Это защита от редиректа на первый экран
+                // Профиль не существует - показываем ошибку и очищаем флаг quiz_just_submitted
+                // Это предотвратит редирект на /plan без профиля и редирект на первый экран
                 clientLogger.error('❌ Профиль не был создан после другой ошибки');
+                
+                // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
+                if (typeof window !== 'undefined') {
+                  try {
+                    sessionStorage.removeItem('quiz_just_submitted');
+                    clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не был создан после ошибки');
+                  } catch (storageError) {
+                    clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
+                  }
+                }
+                
                 if (isMountedRef.current) {
                   setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
                   isSubmittingRef.current = false;
                   setIsSubmitting(false);
                 }
-                // ВАЖНО: НЕ очищаем флаг quiz_just_submitted - он будет очищен только после успешного редиректа
                 return;
               }
             } catch (profileCheckError) {
@@ -2626,8 +2684,23 @@ export default function QuizPage() {
         // Игнорируем ошибки логирования
       }
       
-      // ИСПРАВЛЕНО: Устанавливаем флаг в sessionStorage ПЕРЕД редиректом
-      if (typeof window !== 'undefined') {
+      // ВАЖНО: Проверяем, был ли профиль создан, перед установкой флага quiz_just_submitted
+      // Если профиль не создан, не устанавливаем флаг, чтобы не происходил редирект на /plan без профиля
+      let profileExists = false;
+      try {
+        const profileCheck = await api.getCurrentProfile() as any;
+        if (profileCheck && profileCheck.id) {
+          profileExists = true;
+          clientLogger.log('✅ Профиль существует после ошибки в catch блоке, устанавливаем флаг quiz_just_submitted');
+        } else {
+          clientLogger.error('❌ Профиль не существует после ошибки в catch блоке, НЕ устанавливаем флаг quiz_just_submitted');
+        }
+      } catch (profileCheckError) {
+        clientLogger.warn('⚠️ Не удалось проверить профиль после ошибки в catch блоке, НЕ устанавливаем флаг quiz_just_submitted');
+      }
+      
+      // ИСПРАВЛЕНО: Устанавливаем флаг в sessionStorage ПЕРЕД редиректом ТОЛЬКО если профиль существует
+      if (profileExists && typeof window !== 'undefined') {
         try {
           sessionStorage.setItem('quiz_just_submitted', 'true');
           // ОПТИМИЗАЦИЯ: Очищаем кэш профиля, чтобы новый профиль был доступен сразу после создания
@@ -2635,6 +2708,16 @@ export default function QuizPage() {
           sessionStorage.removeItem('profile_check_cache_timestamp');
         } catch (storageError) {
           clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
+        }
+      } else {
+        // Профиль не существует - очищаем флаг, если он был установлен ранее
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('quiz_just_submitted');
+            clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не существует после ошибки');
+          } catch (storageError) {
+            clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
+          }
         }
       }
       
@@ -3028,10 +3111,37 @@ export default function QuizPage() {
         }
       });
       
-    const raw = [
-        ...questionsFromGroups,
-        ...questions,
-    ];
+    // ВАЖНО: Удаляем дубликаты по questionId, так как вопросы могут быть и в groups, и в questions
+    // Используем Map для сохранения первого вхождения каждого вопроса
+    // ВАЖНО: Сначала добавляем вопросы из groups (они имеют приоритет), затем из questions
+    const questionsMap = new Map<number, Question>();
+    
+    // Сначала добавляем вопросы из groups (они имеют приоритет при дубликатах)
+    questionsFromGroups.forEach((q: Question) => {
+      if (q && q.id && !questionsMap.has(q.id)) {
+        questionsMap.set(q.id, q);
+      }
+    });
+    
+    // Затем добавляем вопросы из questions (если их еще нет)
+    questions.forEach((q: Question) => {
+      if (q && q.id && !questionsMap.has(q.id)) {
+        questionsMap.set(q.id, q);
+      }
+    });
+    
+    // ВАЖНО: Сортируем по position для сохранения правильного порядка
+    // position может быть разным для вопросов из groups и questions, поэтому сортируем после удаления дубликатов
+    const raw = Array.from(questionsMap.values()).sort((a: Question, b: Question) => {
+      // Сортируем по position, если он есть
+      const aPosition = (a as any).position ?? 0;
+      const bPosition = (b as any).position ?? 0;
+      if (aPosition !== bPosition) {
+        return aPosition - bPosition;
+      }
+      // Если position одинаковый, сортируем по id для стабильности
+      return a.id - b.id;
+    });
       
       // Убираем вызов addDebugLog из useMemo, чтобы избежать проблем с хуками
       // Логируем только в консоль
@@ -3039,7 +3149,8 @@ export default function QuizPage() {
       total: raw.length,
         fromGroups: questionsFromGroups.length,
         fromQuestions: questions.length,
-          questionIds: raw.map((q: Question) => q.id),
+        uniqueQuestionIds: raw.map((q: Question) => q.id),
+        duplicatesRemoved: (questionsFromGroups.length + questions.length) - raw.length,
     });
     return raw;
     } catch (err) {

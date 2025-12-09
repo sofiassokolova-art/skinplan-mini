@@ -173,10 +173,24 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // ВАЖНО: Логируем перед началом транзакции
+    logger.debug('Starting transaction for answers submission', {
+      userId,
+      questionnaireId,
+      validAnswersCount: validAnswers.length,
+      validQuestionIds: validAnswers.map((a: any) => a.questionId),
+    });
+    
     // Используем транзакцию для атомарности операций
     let transactionResult: { savedAnswers: any[]; fullAnswers: any[]; profile: any; existingProfile: any | null };
     try {
       transactionResult = await prisma.$transaction(async (tx) => {
+      // ВАЖНО: Логируем внутри транзакции
+      logger.debug('Inside transaction, starting to save answers', {
+        userId,
+        questionnaireId,
+        validAnswersCount: validAnswers.length,
+      });
       // Сохраняем или обновляем ответы (upsert для избежания дубликатов)
       // ВАЖНО: Используем validAnswers вместо answers
       // ВАЖНО: Логируем количество ответов для диагностики
@@ -511,13 +525,41 @@ export async function POST(request: NextRequest) {
         throw new Error('Profile was not created/updated in transaction');
       }
 
+      // ВАЖНО: Логируем перед возвратом из транзакции
+      logger.debug('Transaction about to complete', {
+        userId,
+        questionnaireId,
+        hasProfile: !!profile,
+        profileId: profile?.id,
+        savedAnswersCount: savedAnswers?.length || 0,
+        fullAnswersCount: fullAnswers?.length || 0,
+      });
+      
       return { savedAnswers, fullAnswers, profile, existingProfile };
       }, {
         timeout: 30000, // 30 секунд таймаут для транзакции
       });
       
+      // ВАЖНО: Логируем сразу после завершения транзакции
+      logger.debug('Transaction completed, extracting result', {
+        userId,
+        questionnaireId,
+        hasTransactionResult: !!transactionResult,
+      });
+      
       // Извлекаем результат транзакции
       const { savedAnswers, fullAnswers, profile, existingProfile } = transactionResult;
+      
+      // ВАЖНО: Логируем сразу после извлечения результата
+      logger.debug('Transaction result extracted', {
+        userId,
+        questionnaireId,
+        hasProfile: !!profile,
+        profileId: profile?.id,
+        profileVersion: profile?.version,
+        savedAnswersCount: savedAnswers?.length || 0,
+        fullAnswersCount: fullAnswers?.length || 0,
+      });
       
       // ВАЖНО: Проверяем, что профиль был создан/обновлен
       if (!profile || !profile.id) {

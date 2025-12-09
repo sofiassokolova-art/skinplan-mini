@@ -54,10 +54,36 @@ export default function QuizTopicPage() {
         answerOptions: q.answerOptions || q.options || [], // Поддержка обоих форматов
       });
       
-      const allQuestions = [
-        ...(questionnaire.groups?.flatMap((g: any) => (g.questions || []).map(normalizeQuestion)) || []),
-        ...(questionnaire.questions || []).map(normalizeQuestion),
-      ];
+      // ВАЖНО: Удаляем дубликаты по questionId, так как вопросы могут быть и в groups, и в questions
+      // Используем Map для сохранения первого вхождения каждого вопроса
+      const questionsMap = new Map<number, any>();
+      
+      // Сначала добавляем вопросы из groups (они имеют приоритет при дубликатах)
+      const questionsFromGroups = questionnaire.groups?.flatMap((g: any) => (g.questions || []).map(normalizeQuestion)) || [];
+      questionsFromGroups.forEach((q: any) => {
+        if (q && q.id && !questionsMap.has(q.id)) {
+          questionsMap.set(q.id, q);
+        }
+      });
+      
+      // Затем добавляем вопросы из questions (если их еще нет)
+      const questionsFromRoot = (questionnaire.questions || []).map(normalizeQuestion);
+      questionsFromRoot.forEach((q: any) => {
+        if (q && q.id && !questionsMap.has(q.id)) {
+          questionsMap.set(q.id, q);
+        }
+      });
+      
+      // ВАЖНО: Сортируем по position для сохранения правильного порядка
+      const allQuestions = Array.from(questionsMap.values()).sort((a: any, b: any) => {
+        const aPosition = a.position ?? 0;
+        const bPosition = b.position ?? 0;
+        if (aPosition !== bPosition) {
+          return aPosition - bPosition;
+        }
+        // Если position одинаковый, сортируем по id для стабильности
+        return a.id - b.id;
+      });
 
       if (!Array.isArray(allQuestions) || allQuestions.length === 0) {
         toast.error('Вопросы не найдены в анкете');
