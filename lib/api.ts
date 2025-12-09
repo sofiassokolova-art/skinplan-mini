@@ -87,13 +87,42 @@ async function request<T>(
     // Для генерации плана используем больший таймаут
     const timeout = endpoint.includes('/plan/generate') ? 60000 : DEFAULT_TIMEOUT;
     
+    // ВАЖНО: Логируем перед отправкой запроса (только для критичных endpoints)
+    if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
+      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+        console.log('📤 Sending request to:', `${API_BASE}${endpoint}`, {
+          method: options.method || 'GET',
+          hasInitData: !!initData,
+          initDataLength: initData?.length || 0,
+          timeout,
+        });
+      }
+    }
+    
     let response: Response;
     try {
       response = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
         ...options,
         headers,
       }, timeout);
+      
+      // ВАЖНО: Логируем ответ (только для критичных endpoints)
+      if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
+        if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+          console.log('📥 Received response from:', `${API_BASE}${endpoint}`, {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok,
+          });
+        }
+      }
     } catch (error) {
+      // ВАЖНО: Логируем ошибку сети (только для критичных endpoints)
+      if (endpoint.includes('/questionnaire/answers') || endpoint.includes('/plan/generate')) {
+        if (typeof window !== 'undefined') {
+          console.error('❌ Network error for:', `${API_BASE}${endpoint}`, error);
+        }
+      }
       // Обрабатываем сетевые ошибки
       const errorMessage = handleNetworkError(error);
       throw new Error(errorMessage);
@@ -267,10 +296,46 @@ export const api = {
     answerValue?: string;
     answerValues?: string[];
   }>) {
-    return request('/questionnaire/answers', {
-      method: 'POST',
-      body: JSON.stringify({ questionnaireId, answers }),
-    });
+    // ВАЖНО: Логируем перед отправкой запроса
+    if (typeof window !== 'undefined') {
+      console.log('📤 api.submitAnswers called:', {
+        questionnaireId,
+        answersCount: answers.length,
+        answerQuestionIds: answers.map(a => a.questionId),
+        hasInitData: !!window.Telegram?.WebApp?.initData,
+      });
+    }
+    
+    try {
+      const result = await request('/questionnaire/answers', {
+        method: 'POST',
+        body: JSON.stringify({ questionnaireId, answers }),
+      });
+      
+      // ВАЖНО: Логируем после получения ответа
+      if (typeof window !== 'undefined') {
+        console.log('📥 api.submitAnswers response received:', {
+          hasResult: !!result,
+          resultType: typeof result,
+          resultKeys: result ? Object.keys(result) : [],
+          hasProfile: !!(result as any)?.profile,
+          profileId: (result as any)?.profile?.id,
+        });
+      }
+      
+      return result;
+    } catch (error: any) {
+      // ВАЖНО: Логируем ошибку
+      if (typeof window !== 'undefined') {
+        console.error('❌ api.submitAnswers error:', {
+          error,
+          message: error?.message,
+          status: error?.status,
+          stack: error?.stack?.substring(0, 500),
+        });
+      }
+      throw error;
+    }
   },
 
   // Профиль

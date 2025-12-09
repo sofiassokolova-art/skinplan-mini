@@ -95,6 +95,19 @@ export default function PlanPage() {
 
   useEffect(() => {
     isMountedRef.current = true;
+    
+    // ВАЖНО: Очищаем кэш профиля при загрузке страницы плана
+    // Это гарантирует, что мы получим актуальные данные профиля, даже если он был только что создан
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('profile_check_cache');
+        sessionStorage.removeItem('profile_check_cache_timestamp');
+        clientLogger.log('✅ Кэш профиля очищен при загрузке страницы плана');
+      } catch (cacheError) {
+        clientLogger.warn('⚠️ Не удалось очистить кэш профиля при загрузке:', cacheError);
+      }
+    }
+    
     loadPlan();
     
     return () => {
@@ -118,11 +131,32 @@ export default function PlanPage() {
     try {
       // Опционально проверяем наличие профиля
       if (checkProfile) {
+        // ВАЖНО: Очищаем кэш профиля перед проверкой, чтобы получить актуальные данные
+        // Это особенно важно после создания профиля, когда кэш может содержать старый null
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('profile_check_cache');
+            sessionStorage.removeItem('profile_check_cache_timestamp');
+            if (logPrefix) {
+              clientLogger.log(`${logPrefix}✅ Кэш профиля очищен перед проверкой`);
+            }
+          } catch (cacheError) {
+            if (logPrefix) {
+              clientLogger.warn(`${logPrefix}⚠️ Не удалось очистить кэш профиля:`, cacheError);
+            }
+          }
+        }
+        
         const profile = await api.getCurrentProfile() as ProfileResponse | null;
         if (!profile) {
-          clientLogger.log(`${logPrefix}❌ No profile found, cannot generate plan`);
+          clientLogger.log(`${logPrefix}❌ No profile found after cache clear, cannot generate plan`);
           return null;
         }
+        
+        clientLogger.log(`${logPrefix}✅ Profile found:`, {
+          profileId: profile.id,
+          profileVersion: profile.version,
+        });
       }
 
       // Пытаемся сгенерировать план
@@ -652,14 +686,30 @@ export default function PlanPage() {
           }
           
           // План не сгенерировался - проверяем, есть ли профиль
+          // ВАЖНО: Очищаем кэш профиля перед проверкой, чтобы получить актуальные данные
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.removeItem('profile_check_cache');
+              sessionStorage.removeItem('profile_check_cache_timestamp');
+              clientLogger.log('✅ Кэш профиля очищен перед проверкой');
+            } catch (cacheError) {
+              clientLogger.warn('⚠️ Не удалось очистить кэш профиля:', cacheError);
+            }
+          }
+          
           const profileCheck = await api.getCurrentProfile() as ProfileResponse | null;
           if (!profileCheck) {
             // Нет профиля - показываем ошибку
-            clientLogger.log('❌ No profile found, showing error');
+            clientLogger.log('❌ No profile found after cache clear, showing error');
             safeSetError('no_profile');
             safeSetLoading(false);
             return;
           }
+          
+          clientLogger.log('✅ Profile found after cache clear:', {
+            profileId: profileCheck.id,
+            profileVersion: profileCheck.version,
+          });
           
           // Профиль есть, но план не сгенерировался - возможно еще обрабатывается
           clientLogger.log('⚠️ Profile exists but plan not generated, will retry...');

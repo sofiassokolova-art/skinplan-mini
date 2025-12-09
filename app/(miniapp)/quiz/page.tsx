@@ -1719,6 +1719,11 @@ export default function QuizPage() {
 
       if (Object.keys(answersToSubmit).length === 0) {
         console.error('❌ Нет ответов для отправки');
+        clientLogger.error('❌ Нет ответов для отправки - блокируем вызов API', {
+          answersToSubmitKeys: Object.keys(answersToSubmit),
+          answersToSubmitCount: Object.keys(answersToSubmit).length,
+          answersInState: Object.keys(answers).length,
+        });
         if (isMountedRef.current) {
           setError('Нет ответов для отправки. Пожалуйста, пройдите анкету.');
           isSubmittingRef.current = false;
@@ -1785,15 +1790,61 @@ export default function QuizPage() {
         answerArrayQuestionIds: answerArray.map(a => a.questionId),
         answerArraySample: answerArray.slice(0, 5),
       });
+      
+      // ВАЖНО: Проверяем, что answerArray не пустой
+      if (answerArray.length === 0) {
+        clientLogger.error('❌ answerArray пустой после фильтрации - блокируем вызов API', {
+          answersToSubmitCount: Object.keys(answersToSubmit).length,
+          answerArrayLength: answerArray.length,
+        });
+        if (isMountedRef.current) {
+          setError('Нет валидных ответов для отправки. Пожалуйста, пройдите анкету.');
+          isSubmittingRef.current = false;
+          setIsSubmitting(false);
+        }
+        return;
+      }
 
       let result: any;
       try {
+        // ВАЖНО: Логируем перед вызовом API
         clientLogger.log('📤 Вызываем api.submitAnswers:', {
           questionnaireId: questionnaire.id,
           answersCount: answerArray.length,
-          answerArray: answerArray.slice(0, 3), // Первые 3 для логирования
+          answerQuestionIds: answerArray.map(a => a.questionId),
+          answerArraySample: answerArray.slice(0, 3),
         });
+        
+        // ВАЖНО: Проверяем, что initData доступен перед вызовом API
+        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+        clientLogger.log('🔍 Проверка initData перед вызовом API:', {
+          hasInitData: !!currentInitData,
+          initDataLength: currentInitData?.length || 0,
+          hasTelegram: typeof window !== 'undefined' && !!window.Telegram,
+          hasWebApp: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
+        });
+        
+        if (!currentInitData) {
+          clientLogger.error('❌ initData не доступен перед вызовом api.submitAnswers');
+          throw new Error('initData не доступен. Пожалуйста, обновите страницу.');
+        }
+        
+        // ВАЖНО: Логируем непосредственно перед вызовом API
+        clientLogger.log('🚀 Вызываем api.submitAnswers СЕЙЧАС:', {
+          questionnaireId: questionnaire.id,
+          answersCount: answerArray.length,
+          hasInitData: !!currentInitData,
+        });
+        
         result = await api.submitAnswers(questionnaire.id, answerArray) as any;
+        
+        // ВАЖНО: Логируем сразу после получения ответа
+        clientLogger.log('📥 Получен ответ от api.submitAnswers:', {
+          hasResult: !!result,
+          resultType: typeof result,
+          resultKeys: result ? Object.keys(result) : [],
+        });
+        
         clientLogger.log('✅ Ответы отправлены, профиль создан:', {
           result,
           success: result?.success,
@@ -1848,7 +1899,14 @@ export default function QuizPage() {
           questionnaireId: questionnaire.id,
           answersCount: answerArray.length,
         });
-        clientLogger.error('❌ Ошибка при отправке ответов:', submitError);
+        clientLogger.error('❌ Ошибка при отправке ответов:', {
+          error: submitError,
+          message: submitError?.message,
+          status: submitError?.status,
+          stack: submitError?.stack?.substring(0, 500),
+          questionnaireId: questionnaire.id,
+          answersCount: answerArray.length,
+        });
         
         // Если это не дубликат и не временная ошибка сети, показываем ошибку пользователю
         const isDuplicate = submitError?.message?.includes('duplicate') || 

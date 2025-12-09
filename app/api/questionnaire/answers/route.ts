@@ -1311,6 +1311,19 @@ export async function POST(request: NextRequest) {
         });
       }
       
+      // ВАЖНО: Финальная проверка перед возвратом ответа
+      logger.info('✅ Final check before returning response', {
+        userId,
+        questionnaireId,
+        profileId: profile.id,
+        profileVersion: profile.version,
+        hasProfile: !!profile,
+        profileSkinType: profile.skinType,
+        profileSensitivityLevel: profile.sensitivityLevel,
+        savedAnswersCount: savedAnswers?.length || 0,
+        hasRecommendationSession: !!createdSession,
+      });
+      
       // ВАЖНО: Генерируем план ПОСЛЕ создания RecommendationSession
       // Это гарантирует, что план будет использовать продукты из новой сессии
       // РЕШЕНИЕ ПРОБЛЕМЫ ДОЛГОЙ ГЕНЕРАЦИИ: Запускаем генерацию асинхронно в фоне
