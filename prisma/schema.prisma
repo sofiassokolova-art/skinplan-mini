@@ -31,6 +31,7 @@ model User {
   userAnswers            UserAnswer[]
   recommendationSessions RecommendationSession[]
   planFeedbacks          PlanFeedback[]
+  plan28s                Plan28[]
   planProgress           PlanProgress?
   wishlist               Wishlist[]
   wishlistFeedbacks      WishlistFeedback[]
@@ -64,6 +65,7 @@ model SkinProfile {
 
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   recommendationSessions RecommendationSession[]
+  plan28s                Plan28[]
 
   @@unique([userId, version])
   @@index([userId])
@@ -327,6 +329,25 @@ model PlanFeedback {
 // ============================================
 // ПРОГРЕСС ПЛАНА
 // ============================================
+
+model Plan28 {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  skinProfileId  String   @map("skin_profile_id")
+  profileVersion Int      @map("profile_version") // Версия профиля, для которого создан план
+  planData       Json     @map("plan_data") // Полный план в формате Plan28 (days, mainGoals)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skinProfile SkinProfile @relation(fields: [skinProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, profileVersion]) // Один план на пользователя и версию профиля
+  @@index([userId])
+  @@index([skinProfileId])
+  @@index([profileVersion])
+  @@map("plan28")
+}
 
 model PlanProgress {
   id                 String   @id @default(cuid())

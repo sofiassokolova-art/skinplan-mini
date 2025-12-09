@@ -185,6 +185,45 @@ export async function GET(request: NextRequest) {
       planProductsCount: plan.products?.length || 0,
       });
     
+    // Сохраняем план в PostgreSQL
+    if (plan.plan28) {
+      try {
+        logger.info('Saving plan to database', { userId, profileVersion: profile.version, skinProfileId: profile.id });
+        await prisma.plan28.upsert({
+          where: {
+            userId_profileVersion: {
+              userId: userId,
+              profileVersion: profile.version,
+            },
+          },
+          update: {
+            planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
+            updatedAt: new Date(),
+          },
+          create: {
+            userId,
+            skinProfileId: profile.id,
+            profileVersion: profile.version,
+            planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
+          },
+        });
+        logger.info('Plan saved to database successfully', { 
+          userId, 
+          profileVersion: profile.version,
+          hasPlan28: !!plan.plan28,
+          plan28Days: plan.plan28.days?.length || 0,
+        });
+      } catch (dbError: any) {
+        // Ошибка сохранения в БД не должна блокировать возврат плана
+        logger.error('Failed to save plan to database (non-critical)', dbError, {
+          userId,
+          profileVersion: profile.version,
+          errorMessage: dbError?.message,
+          errorStack: dbError?.stack?.substring(0, 500),
+        });
+      }
+    }
+    
     // Сохраняем в кэш
     try {
       logger.info('Caching plan', { userId, profileVersion: profile.version });
