@@ -1658,6 +1658,38 @@ export default function QuizPage() {
     // Сохраняем функцию в ref для использования в setTimeout
     submitAnswersRef.current = submitAnswers;
     
+    // ВАЖНО: Логируем перед проверкой questionnaire
+    clientLogger.log('🔍 Проверка questionnaire перед продолжением:', {
+      hasQuestionnaire: !!questionnaire,
+      questionnaireId: questionnaire?.id,
+    });
+    
+    // ВАЖНО: Отправляем критичный лог на сервер
+    try {
+      const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (syncInitData) {
+        await fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': syncInitData,
+          },
+          body: JSON.stringify({
+            level: 'info',
+            message: '🔍 Проверка questionnaire перед продолжением',
+            context: {
+              timestamp: new Date().toISOString(),
+              hasQuestionnaire: !!questionnaire,
+              questionnaireId: questionnaire?.id,
+            },
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+          }),
+        }).catch(() => {});
+      }
+    } catch (logError) {
+      // Игнорируем ошибки логирования
+    }
+    
     if (!questionnaire) {
       clientLogger.error('❌ Анкета не загружена - блокируем отправку');
       
