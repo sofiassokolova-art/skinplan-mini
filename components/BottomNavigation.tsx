@@ -5,13 +5,17 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
+import { useCart } from '@/hooks/useCart';
 
 export default function BottomNavigation() {
   const router = useRouter();
   const pathname = usePathname();
   const [scrollY, setScrollY] = useState(0);
-  const [cartCount, setCartCount] = useState(0);
+  
+  // ИСПРАВЛЕНО: Используем React Query для кэширования корзины
+  // Это значительно снижает количество запросов к API
+  const { data: cartData } = useCart();
+  const cartCount = cartData?.items?.length || 0;
 
   // Track scroll for hide/show effect
   useEffect(() => {
@@ -20,23 +24,6 @@ export default function BottomNavigation() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Load cart count
-  useEffect(() => {
-    const loadCartCount = async () => {
-      try {
-        const data = await api.getCart() as { items?: any[] };
-        setCartCount(data.items?.length || 0);
-      } catch (err) {
-        // Ignore errors
-        setCartCount(0);
-      }
-    };
-    loadCartCount();
-    // Refresh cart count periodically - reduced frequency to 30 seconds to avoid excessive API calls
-    const interval = setInterval(loadCartCount, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const navItems = [
