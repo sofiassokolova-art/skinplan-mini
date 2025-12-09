@@ -1658,6 +1658,35 @@ export default function QuizPage() {
     // Сохраняем функцию в ref для использования в setTimeout
     submitAnswersRef.current = submitAnswers;
     
+    // ВАЖНО: Логируем сразу после установки ref
+    clientLogger.log('✅ submitAnswersRef.current установлен, продолжаем выполнение');
+    
+    // ВАЖНО: Отправляем критичный лог на сервер
+    try {
+      const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (syncInitData) {
+        await fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': syncInitData,
+          },
+          body: JSON.stringify({
+            level: 'info',
+            message: '✅ submitAnswersRef.current установлен, продолжаем выполнение',
+            context: {
+              timestamp: new Date().toISOString(),
+              hasQuestionnaire: !!questionnaire,
+              questionnaireId: questionnaire?.id,
+            },
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+          }),
+        }).catch(() => {});
+      }
+    } catch (logError) {
+      // Игнорируем ошибки логирования
+    }
+    
     // ВАЖНО: Логируем перед проверкой questionnaire
     clientLogger.log('🔍 Проверка questionnaire перед продолжением:', {
       hasQuestionnaire: !!questionnaire,
@@ -3484,14 +3513,19 @@ export default function QuizPage() {
     
     // ВАЖНО: Сортируем по position для сохранения правильного порядка
     // position может быть разным для вопросов из groups и questions, поэтому сортируем после удаления дубликатов
+    // ИСПРАВЛЕНО: Используем id как основной критерий, если position не задан или равен 0
     const raw = Array.from(questionsMap.values()).sort((a: Question, b: Question) => {
-      // Сортируем по position, если он есть
-      const aPosition = (a as any).position ?? 0;
-      const bPosition = (b as any).position ?? 0;
-      if (aPosition !== bPosition) {
-        return aPosition - bPosition;
+      const aPosition = (a as any).position;
+      const bPosition = (b as any).position;
+      
+      // Если у обоих есть валидный position (не null, не undefined, не 0), сортируем по нему
+      if (aPosition != null && aPosition > 0 && bPosition != null && bPosition > 0) {
+        if (aPosition !== bPosition) {
+          return aPosition - bPosition;
+        }
       }
-      // Если position одинаковый, сортируем по id для стабильности
+      
+      // Если position не задан или одинаковый, сортируем по id (это гарантирует стабильный порядок)
       return a.id - b.id;
     });
       
@@ -3794,14 +3828,19 @@ export default function QuizPage() {
       
       // ВАЖНО: Сортируем отфильтрованные вопросы по position для сохранения правильного порядка
       // Фильтрация может изменить порядок, поэтому нужно пересортировать
+      // ИСПРАВЛЕНО: Используем id как основной критерий, если position не задан или равен 0
       const sorted = filteredQuestions.sort((a: Question, b: Question) => {
-        // Сортируем по position, если он есть
-        const aPosition = (a as any).position ?? 0;
-        const bPosition = (b as any).position ?? 0;
-        if (aPosition !== bPosition) {
-          return aPosition - bPosition;
+        const aPosition = (a as any).position;
+        const bPosition = (b as any).position;
+        
+        // Если у обоих есть валидный position (не null, не undefined, не 0), сортируем по нему
+        if (aPosition != null && aPosition > 0 && bPosition != null && bPosition > 0) {
+          if (aPosition !== bPosition) {
+            return aPosition - bPosition;
+          }
         }
-        // Если position одинаковый, сортируем по id для стабильности
+        
+        // Если position не задан или одинаковый, сортируем по id (это гарантирует стабильный порядок)
         return a.id - b.id;
       });
       
