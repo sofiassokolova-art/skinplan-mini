@@ -204,12 +204,32 @@ export async function setCachedPlan(
   initializeCache();
   
   if (!kvAvailable || !kv) {
-    return; // Кеш недоступен, просто выходим
+    console.warn('⚠️ Cache not available for plan caching', { userId, profileVersion });
+    throw new Error('Cache not available: kvAvailable=' + kvAvailable + ', kv=' + !!kv);
   }
   
   try {
     const key = `plan:${userId}:${profileVersion}`;
-    await setWithTTL(key, JSON.stringify(plan), CACHE_TTL.plan);
+    const planString = JSON.stringify(plan);
+    const planSize = planString.length;
+    
+    console.log('💾 Attempting to cache plan', { 
+      userId, 
+      profileVersion, 
+      key,
+      planSize,
+      hasPlan28: !!plan.plan28,
+      hasWeeks: !!plan.weeks,
+    });
+    
+    await setWithTTL(key, planString, CACHE_TTL.plan);
+    
+    console.log('✅ Plan cached successfully', { 
+      userId, 
+      profileVersion, 
+      key,
+      planSize,
+    });
   } catch (error: any) {
     // Логируем только если это не ошибка отсутствия переменных окружения
     if (!error?.message?.includes('Missing required environment variables')) {
@@ -224,13 +244,26 @@ export async function setCachedPlan(
         errorString.includes('no permissions');
       
       if (isPermissionError) {
-        // Тихо логируем как предупреждение - это ожидаемое поведение при read-only токене
-        console.warn('⚠️ Cache write failed (read-only token, non-critical):', errorMessage);
+        // Логируем как предупреждение - это ожидаемое поведение при read-only токене
+        console.error('❌ Cache write failed (read-only token):', {
+          userId,
+          profileVersion,
+          error: errorMessage,
+          key: `plan:${userId}:${profileVersion}`,
+        });
       } else {
-        console.error('Error caching plan:', error);
+        console.error('❌ Error caching plan:', {
+          userId,
+          profileVersion,
+          error: error,
+          errorMessage: errorMessage,
+          errorStack: error?.stack?.substring(0, 500),
+          key: `plan:${userId}:${profileVersion}`,
+        });
       }
     }
-    // Не прерываем выполнение, если кэш не работает
+    // Пробрасываем ошибку дальше, чтобы она была залогирована на сервере
+    throw error;
   }
 }
 

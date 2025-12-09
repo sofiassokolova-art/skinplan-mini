@@ -189,10 +189,19 @@ export async function GET(request: NextRequest) {
     try {
       logger.info('Caching plan', { userId, profileVersion: profile.version });
       await setCachedPlan(userId, profile.version, plan);
+      logger.info('Plan cached successfully', { 
+        userId, 
+        profileVersion: profile.version,
+        hasPlan28: !!plan.plan28,
+        hasWeeks: !!plan.weeks,
+      });
     } catch (cacheError: any) {
       // Ошибка кэширования не должна блокировать возврат плана
-      logger.warn('Failed to cache plan (non-critical)', cacheError, {
+      logger.error('Failed to cache plan (non-critical)', cacheError, {
         userId,
+        profileVersion: profile.version,
+        errorMessage: cacheError?.message,
+        errorStack: cacheError?.stack?.substring(0, 500),
       });
     }
     
