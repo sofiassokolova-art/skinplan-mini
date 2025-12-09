@@ -1659,30 +1659,28 @@ export default function QuizPage() {
     // ВАЖНО: Логируем сразу после установки ref
     clientLogger.log('✅ submitAnswersRef.current установлен, продолжаем выполнение');
     
-    // ВАЖНО: Отправляем критичный лог на сервер
-    try {
-      const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-      if (syncInitData) {
-        await fetch('/api/logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': syncInitData,
+    // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
+    // ИСПРАВЛЕНО: Не ждем завершения логирования, чтобы не блокировать выполнение
+    const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+    if (syncInitData) {
+      // Отправляем логирование асинхронно, не блокируя выполнение
+      fetch('/api/logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': syncInitData,
+        },
+        body: JSON.stringify({
+          level: 'info',
+          message: '✅ submitAnswersRef.current установлен, продолжаем выполнение',
+          context: {
+            timestamp: new Date().toISOString(),
+            hasQuestionnaire: !!questionnaire,
+            questionnaireId: questionnaire?.id,
           },
-          body: JSON.stringify({
-            level: 'info',
-            message: '✅ submitAnswersRef.current установлен, продолжаем выполнение',
-            context: {
-              timestamp: new Date().toISOString(),
-              hasQuestionnaire: !!questionnaire,
-              questionnaireId: questionnaire?.id,
-            },
-            url: typeof window !== 'undefined' ? window.location.href : undefined,
-          }),
-        }).catch(() => {});
-      }
-    } catch (logError) {
-      // Игнорируем ошибки логирования
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }),
+      }).catch(() => {}); // Игнорируем ошибки логирования
     }
     
     // ВАЖНО: Логируем перед проверкой questionnaire
@@ -1691,30 +1689,26 @@ export default function QuizPage() {
       questionnaireId: questionnaire?.id,
     });
     
-    // ВАЖНО: Отправляем критичный лог на сервер
-    try {
-      const syncInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-      if (syncInitData) {
-        await fetch('/api/logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Telegram-Init-Data': syncInitData,
+    // ВАЖНО: Отправляем критичный лог на сервер (неблокирующе)
+    if (syncInitData) {
+      // Отправляем логирование асинхронно, не блокируя выполнение
+      fetch('/api/logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': syncInitData,
+        },
+        body: JSON.stringify({
+          level: 'info',
+          message: '🔍 Проверка questionnaire перед продолжением',
+          context: {
+            timestamp: new Date().toISOString(),
+            hasQuestionnaire: !!questionnaire,
+            questionnaireId: questionnaire?.id,
           },
-          body: JSON.stringify({
-            level: 'info',
-            message: '🔍 Проверка questionnaire перед продолжением',
-            context: {
-              timestamp: new Date().toISOString(),
-              hasQuestionnaire: !!questionnaire,
-              questionnaireId: questionnaire?.id,
-            },
-            url: typeof window !== 'undefined' ? window.location.href : undefined,
-          }),
-        }).catch(() => {});
-      }
-    } catch (logError) {
-      // Игнорируем ошибки логирования
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }),
+      }).catch(() => {}); // Игнорируем ошибки логирования
     }
     
     if (!questionnaire) {
