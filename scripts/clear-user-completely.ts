@@ -140,7 +140,18 @@ async function clearUserCompletely() {
       console.warn('   ⚠️ Ошибка при удалении Cart:', error?.message);
     }
 
-    // 1.10. Удаляем ClientLog
+    // 1.10. Удаляем Plan28
+    console.log('📋 Удаляю Plan28...');
+    try {
+      const plan28Deleted = await prisma.plan28.deleteMany({
+        where: { userId },
+      });
+      console.log(`   ✅ Удалено планов: ${plan28Deleted.count}`);
+    } catch (error: any) {
+      console.warn('   ⚠️ Ошибка при удалении Plan28:', error?.message);
+    }
+
+    // 1.11. Удаляем ClientLog
     console.log('📋 Удаляю ClientLog...');
     try {
       const logsDeleted = await prisma.clientLog.deleteMany({
