@@ -243,11 +243,18 @@ async function request<T>(
     
     // Для 429 (rate limit) добавляем информацию о времени ожидания
     if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After');
-      const message = retryAfter 
-        ? `Слишком много запросов. Попробуйте через ${retryAfter} секунд.`
+      const retryAfterHeader = response.headers.get('Retry-After');
+      const parsedRetryAfter = retryAfterHeader ? Number(retryAfterHeader) : null;
+      const retryAfterSeconds = parsedRetryAfter && Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : null;
+      const message = retryAfterSeconds 
+        ? `Слишком много запросов. Попробуйте через ${retryAfterSeconds} секунд.`
         : 'Слишком много запросов. Попробуйте позже.';
-      throw new Error(message);
+      const rateLimitError = new Error(message) as any;
+      rateLimitError.status = 429;
+      if (retryAfterSeconds) {
+        rateLimitError.retryAfter = retryAfterSeconds;
+      }
+      throw rateLimitError;
     }
     
     // Для 500 ошибок добавляем детальную информацию

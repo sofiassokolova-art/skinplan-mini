@@ -81,6 +81,8 @@ export default function PlanPage() {
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const isMountedRef = useRef(true);
   const loadPlanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const planGenerationCooldownRef = useRef<number>(0);
+  const planGenerationInFlightRef = useRef<Promise<GeneratedPlan | null> | null>(null);
 
   // Безопасные обертки для setState (проверяют mounted перед обновлением)
   const safeSetLoading = (value: boolean) => {
@@ -91,6 +93,77 @@ export default function PlanPage() {
   };
   const safeSetPlanData = (value: PlanData | null) => {
     if (isMountedRef.current) setPlanData(value);
+  };
+
+  const getPlanCooldownMsRemaining = () => Math.max(planGenerationCooldownRef.current - Date.now(), 0);
+  const hasActivePlanGenerationCooldown = () => getPlanCooldownMsRemaining() > 0;
+
+  const isRateLimitError = (error: any) => {
+    if (!error) return false;
+    if (typeof error.status === 'number' && error.status === 429) return true;
+    if (typeof error.retryAfter === 'number') return true;
+    if (typeof error.details?.retryAfter === 'number') return true;
+    return typeof error.message === 'string' && /Слишком много запросов/i.test(error.message);
+  };
+
+  const extractRetryAfterSeconds = (error: any) => {
+    if (typeof error?.retryAfter === 'number' && Number.isFinite(error.retryAfter)) {
+      return error.retryAfter;
+    }
+    if (typeof error?.details?.retryAfter === 'number' && Number.isFinite(error.details.retryAfter)) {
+      return error.details.retryAfter;
+    }
+    if (typeof error?.message === 'string') {
+      const match = error.message.match(/через\s+(\d+)/i);
+      if (match) {
+        const parsed = parseInt(match[1], 10);
+        if (Number.isFinite(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+
+  const generatePlanWithHandling = async (logPrefix = ''): Promise<GeneratedPlan | null> => {
+    const cooldownMs = getPlanCooldownMsRemaining();
+    if (cooldownMs > 0) {
+      clientLogger.log(
+        `${logPrefix}⏳ Plan generation cooldown active (${Math.ceil(cooldownMs / 1000)}s remaining), skipping request`
+      );
+      return null;
+    }
+
+    if (planGenerationInFlightRef.current) {
+      clientLogger.log(`${logPrefix}⏳ Plan generation already in progress, awaiting existing request`);
+      return planGenerationInFlightRef.current;
+    }
+
+    const generationPromise = (async () => {
+      try {
+        const result = await api.generatePlan() as GeneratedPlan;
+        planGenerationCooldownRef.current = 0;
+        return result;
+      } catch (err: any) {
+        if (isRateLimitError(err)) {
+          const retrySeconds = extractRetryAfterSeconds(err) ?? 30;
+          planGenerationCooldownRef.current = Date.now() + retrySeconds * 1000;
+          clientLogger.warn(
+            `${logPrefix}⚠️ Rate limit triggered for plan generation, pausing for ${retrySeconds} сек.`
+          );
+          return null;
+        }
+        throw err;
+      }
+    })();
+
+    planGenerationInFlightRef.current = generationPromise;
+
+    try {
+      return await generationPromise;
+    } finally {
+      planGenerationInFlightRef.current = null;
+    }
   };
 
   useEffect(() => {
@@ -161,7 +234,7 @@ export default function PlanPage() {
 
       // Пытаемся сгенерировать план
       clientLogger.info(`${logPrefix}🔄 Attempting to generate plan...`);
-      const generatedPlan = await api.generatePlan() as GeneratedPlan;
+      const generatedPlan = await generatePlanWithHandling(logPrefix);
       
       if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
         clientLogger.info(`${logPrefix}✅ Plan generated successfully`, {
@@ -172,6 +245,11 @@ export default function PlanPage() {
         return generatedPlan;
       }
       
+      if (hasActivePlanGenerationCooldown()) {
+        clientLogger.log(`${logPrefix}⏳ Plan generation delayed due to active rate limit cooldown`);
+        return null;
+      }
+
       clientLogger.warn(`${logPrefix}⚠️ Plan generation returned empty result`);
       return null;
     } catch (error: any) {
@@ -582,6 +660,35 @@ export default function PlanPage() {
   const MAX_RETRIES = 5;
   
   const loadPlan = async (retryCount = 0) => {
+    const scheduleRetryAfterCooldown = (context: string) => {
+      if (!hasActivePlanGenerationCooldown()) {
+        return false;
+      }
+
+      const waitMs = getPlanCooldownMsRemaining();
+      if (waitMs <= 0) {
+        return false;
+      }
+
+      const waitSeconds = Math.ceil(waitMs / 1000);
+      clientLogger.log(`${context}⏳ Waiting ${waitSeconds}s before retrying plan flow`);
+      safeSetLoading(true);
+      safeSetError(null);
+
+      if (loadPlanTimeoutRef.current) {
+        clearTimeout(loadPlanTimeoutRef.current);
+      }
+
+      loadPlanTimeoutRef.current = setTimeout(() => {
+        loadPlanTimeoutRef.current = null;
+        if (isMountedRef.current) {
+          loadPlan(retryCount);
+        }
+      }, waitMs);
+
+      return true;
+    };
+
     // Защита от бесконечных попыток
     if (retryCount >= MAX_RETRIES) {
       console.error('❌ Max retries reached, stopping to prevent infinite loop');
@@ -685,6 +792,10 @@ export default function PlanPage() {
             return;
           }
           
+          if (scheduleRetryAfterCooldown('Plan generation temporarily unavailable. ')) {
+            return;
+          }
+          
           // План не сгенерировался - проверяем, есть ли профиль
           // ВАЖНО: Очищаем кэш профиля перед проверкой, чтобы получить актуальные данные
           if (typeof window !== 'undefined') {
@@ -776,8 +887,12 @@ export default function PlanPage() {
             safeSetError(null);
             
             try {
-              const generatedPlan = await api.generatePlan() as GeneratedPlan;
-              
+              const generatedPlan = await generatePlanWithHandling('🔄 Plan not found but profile exists - ');
+
+              if (!generatedPlan && scheduleRetryAfterCooldown('Plan generation temporarily paused (profile exists). ')) {
+                return;
+              }
+
               // ИСПРАВЛЕНО: Проверяем оба формата плана
               const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
               const hasWeeks = generatedPlan?.weeks && Array.isArray(generatedPlan.weeks) && generatedPlan.weeks.length > 0;
@@ -951,7 +1066,10 @@ export default function PlanPage() {
           safeSetLoading(true);
           safeSetError(null);
           try {
-            const generatedPlan = await api.generatePlan() as any;
+            const generatedPlan = await generatePlanWithHandling('🔄 Plan should exist - ');
+            if (!generatedPlan && scheduleRetryAfterCooldown('Plan regeneration paused due to cooldown. ')) {
+              return;
+            }
             if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
               clientLogger.log('✅ Plan regenerated successfully, processing...');
               await processPlanData(generatedPlan);
@@ -1148,7 +1266,28 @@ export default function PlanPage() {
                 if (process.env.NODE_ENV === 'development') {
                   clientLogger.log('🔄 User requested plan generation...');
                 }
-                const generatedPlan = await api.generatePlan() as GeneratedPlan;
+                const generatedPlan = await generatePlanWithHandling('🔄 Manual refresh - ');
+                if (!generatedPlan) {
+                  if (hasActivePlanGenerationCooldown()) {
+                    const waitMs = getPlanCooldownMsRemaining();
+                    const waitSeconds = Math.ceil(waitMs / 1000);
+                    clientLogger.log(`⏳ Manual refresh delayed due to cooldown (${waitSeconds}s).`);
+                    if (loadPlanTimeoutRef.current) {
+                      clearTimeout(loadPlanTimeoutRef.current);
+                    }
+                    loadPlanTimeoutRef.current = setTimeout(() => {
+                      loadPlanTimeoutRef.current = null;
+                      if (isMountedRef.current) {
+                        loadPlan(0);
+                      }
+                    }, waitMs);
+                    safeSetError('plan_generating');
+                    return;
+                  }
+                  
+                  await loadPlan(0);
+                  return;
+                }
                 if (process.env.NODE_ENV === 'development') {
                   clientLogger.log('✅ Plan generated successfully', {
                     hasPlan28: !!generatedPlan?.plan28,

@@ -3,6 +3,115 @@
 
 import { getRedis } from '../lib/redis';
 
+type RedisClient = NonNullable<ReturnType<typeof getRedis>>;
+
+async function resolveUserIdForLogs(userIdOrTelegramId: string) {
+  if (!userIdOrTelegramId) {
+    return { targetId: userIdOrTelegramId, matchedInDb: false, message: '⚠️ Не передан идентификатор пользователя' };
+  }
+
+  try {
+    if (!process.env.DATABASE_URL) {
+      return {
+        targetId: userIdOrTelegramId,
+        matchedInDb: false,
+        message: '⚠️ DATABASE_URL не задан, использую переданный идентификатор напрямую',
+      };
+    }
+
+    const { prisma } = await import('../lib/db');
+
+    try {
+      const user = await prisma.user.findFirst({
+        where: { telegramId: userIdOrTelegramId },
+        select: { id: true },
+      });
+
+      if (user?.id) {
+        return { targetId: user.id, matchedInDb: true };
+      }
+
+      const userById = await prisma.user.findFirst({
+        where: { id: userIdOrTelegramId },
+        select: { id: true },
+      });
+
+      if (userById?.id) {
+        return { targetId: userIdOrTelegramId, matchedInDb: true };
+      }
+
+      return {
+        targetId: userIdOrTelegramId,
+        matchedInDb: false,
+        message: `⚠️ Пользователь ${userIdOrTelegramId} не найден в БД, проверяю логи напрямую`,
+      };
+    } finally {
+      await prisma.$disconnect().catch(() => undefined);
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return {
+      targetId: userIdOrTelegramId,
+      matchedInDb: false,
+      message: `⚠️ Не удалось инициализировать Prisma Client (${errorMessage}). Использую переданный идентификатор напрямую`,
+    };
+  }
+}
+
+async function printUserLogs(redis: RedisClient, userId: string) {
+  const userLogsKey = `user_logs:${userId}`;
+  const userLogKeys = await redis.lrange(userLogsKey, 0, 19);
+
+  if (userLogKeys.length === 0) {
+    console.log('   Обычных логов не найдено');
+    return;
+  }
+
+  console.log(`   Найдено ${userLogKeys.length} обычных логов:`);
+  for (const logKey of userLogKeys) {
+    try {
+      const logData = await redis.get(logKey);
+      if (logData) {
+        const log = typeof logData === 'string' ? JSON.parse(logData) : logData;
+        const time = log.timestamp ? new Date(log.timestamp).toLocaleString('ru-RU') : 'unknown';
+        console.log(`\n   [${time}] ${log.level?.toUpperCase() || 'LOG'}`);
+        console.log(`   Message: ${log.message}`);
+        if (log.context) {
+          const contextStr = JSON.stringify(log.context, null, 2);
+          console.log(`   Context: ${contextStr.length > 200 ? `${contextStr.substring(0, 200)}...` : contextStr}`);
+        }
+      }
+    } catch (err) {
+      console.log(`   ⚠️ Ошибка чтения лога ${logKey}:`, err);
+    }
+  }
+}
+
+async function printUserApiLogs(redis: RedisClient, userId: string) {
+  const userApiLogsKey = `user_api_logs:${userId}`;
+  const apiLogKeys = await redis.lrange(userApiLogsKey, 0, 19);
+
+  if (apiLogKeys.length === 0) {
+    console.log('\n   API логов не найдено');
+    return;
+  }
+
+  console.log(`\n   Найдено ${apiLogKeys.length} API логов:`);
+  for (const logKey of apiLogKeys) {
+    try {
+      const logData = await redis.get(logKey);
+      if (logData) {
+        const log = typeof logData === 'string' ? JSON.parse(logData) : logData;
+        const time = log.timestamp ? new Date(log.timestamp).toLocaleString('ru-RU') : 'unknown';
+        console.log(`\n   [${time}] ${log.method || 'GET'} ${log.path || 'unknown'}`);
+        console.log(`   Status: ${log.statusCode || 'unknown'}, Duration: ${log.duration || 'unknown'}ms`);
+      }
+    } catch (err) {
+      console.log(`   ⚠️ Ошибка чтения API лога ${logKey}:`, err);
+    }
+  }
+}
+
 async function checkKVLogs() {
   console.log('🔍 Проверяю логи из Upstash KV...\n');
   
@@ -114,147 +223,15 @@ async function checkKVLogs() {
     const userIdOrTelegramId = process.argv[2];
     if (userIdOrTelegramId) {
       console.log(`\n📋 Логи пользователя ${userIdOrTelegramId}:`);
-      
-      let userId: string | null = null;
-      
-      // Пробуем найти пользователя по telegramId или использовать как userId напрямую
-      const { prisma } = await import('../lib/db');
-      const user = await prisma.user.findFirst({
-        where: { telegramId: userIdOrTelegramId },
-        select: { id: true },
-      });
-      
-      if (user) {
-        userId = user.id;
-      } else {
-        // Если не найден по telegramId, пробуем использовать как userId напрямую
-        // Проверяем, существует ли пользователь с таким id
-        const userById = await prisma.user.findFirst({
-          where: { id: userIdOrTelegramId },
-          select: { id: true },
-        });
-        if (userById) {
-          userId = userIdOrTelegramId;
-        }
-      }
-      
-      if (userId) {
-        // Обычные логи
-        const userLogsKey = `user_logs:${userId}`;
-        const userLogKeys = await redis.lrange(userLogsKey, 0, 19); // Последние 20 логов
-        
-        if (userLogKeys.length === 0) {
-          console.log('   Обычных логов не найдено');
-        } else {
-          console.log(`   Найдено ${userLogKeys.length} обычных логов:`);
-          for (const logKey of userLogKeys) {
-            try {
-              const logData = await redis.get(logKey);
-              if (logData) {
-                const log = typeof logData === 'string' ? JSON.parse(logData) : logData;
-                const time = log.timestamp ? new Date(log.timestamp).toLocaleString('ru-RU') : 'unknown';
-                console.log(`\n   [${time}] ${log.level?.toUpperCase() || 'LOG'}`);
-                console.log(`   Message: ${log.message}`);
-                if (log.context) {
-                  const contextStr = JSON.stringify(log.context, null, 2);
-                  if (contextStr.length > 200) {
-                    console.log(`   Context: ${contextStr.substring(0, 200)}...`);
-                  } else {
-                    console.log(`   Context: ${contextStr}`);
-                  }
-                }
-              }
-            } catch (err) {
-              console.log(`   ⚠️ Ошибка чтения лога ${logKey}:`, err);
-            }
-          }
-        }
 
-        // API логи
-        const userApiLogsKey = `user_api_logs:${userId}`;
-        const apiLogKeys = await redis.lrange(userApiLogsKey, 0, 19); // Последние 20 API логов
-        
-        if (apiLogKeys.length === 0) {
-          console.log('\n   API логов не найдено');
-        } else {
-          console.log(`\n   Найдено ${apiLogKeys.length} API логов:`);
-          for (const logKey of apiLogKeys) {
-            try {
-              const logData = await redis.get(logKey);
-              if (logData) {
-                const log = typeof logData === 'string' ? JSON.parse(logData) : logData;
-                const time = log.timestamp ? new Date(log.timestamp).toLocaleString('ru-RU') : 'unknown';
-                console.log(`\n   [${time}] ${log.method || 'GET'} ${log.path || 'unknown'}`);
-                console.log(`   Status: ${log.statusCode || 'unknown'}, Duration: ${log.duration || 'unknown'}ms`);
-              }
-            } catch (err) {
-              console.log(`   ⚠️ Ошибка чтения API лога ${logKey}:`, err);
-            }
-          }
-        }
-      } else {
-        // Если пользователь не найден, все равно пробуем проверить логи напрямую по переданному ID
-        console.log(`   ⚠️ Пользователь с telegramId/userId ${userIdOrTelegramId} не найден в БД`);
-        console.log(`   Проверяю логи напрямую по ID ${userIdOrTelegramId}...\n`);
-        
-        userId = userIdOrTelegramId;
-        
-        // Обычные логи
-        const userLogsKey = `user_logs:${userId}`;
-        const userLogKeys = await redis.lrange(userLogsKey, 0, 19);
-        
-        if (userLogKeys.length === 0) {
-          console.log('   Обычных логов не найдено');
-        } else {
-          console.log(`   Найдено ${userLogKeys.length} обычных логов:`);
-          for (const logKey of userLogKeys) {
-            try {
-              const logData = await redis.get(logKey);
-              if (logData) {
-                const log = typeof logData === 'string' ? JSON.parse(logData) : logData;
-                const time = log.timestamp ? new Date(log.timestamp).toLocaleString('ru-RU') : 'unknown';
-                console.log(`\n   [${time}] ${log.level?.toUpperCase() || 'LOG'}`);
-                console.log(`   Message: ${log.message}`);
-                if (log.context) {
-                  const contextStr = JSON.stringify(log.context, null, 2);
-                  if (contextStr.length > 200) {
-                    console.log(`   Context: ${contextStr.substring(0, 200)}...`);
-                  } else {
-                    console.log(`   Context: ${contextStr}`);
-                  }
-                }
-              }
-            } catch (err) {
-              console.log(`   ⚠️ Ошибка чтения лога ${logKey}:`, err);
-            }
-          }
-        }
+      const { targetId, message } = await resolveUserIdForLogs(userIdOrTelegramId);
 
-        // API логи
-        const userApiLogsKey = `user_api_logs:${userId}`;
-        const apiLogKeys = await redis.lrange(userApiLogsKey, 0, 19);
-        
-        if (apiLogKeys.length === 0) {
-          console.log('\n   API логов не найдено');
-        } else {
-          console.log(`\n   Найдено ${apiLogKeys.length} API логов:`);
-          for (const logKey of apiLogKeys) {
-            try {
-              const logData = await redis.get(logKey);
-              if (logData) {
-                const log = typeof logData === 'string' ? JSON.parse(logData) : logData;
-                const time = log.timestamp ? new Date(log.timestamp).toLocaleString('ru-RU') : 'unknown';
-                console.log(`\n   [${time}] ${log.method || 'GET'} ${log.path || 'unknown'}`);
-                console.log(`   Status: ${log.statusCode || 'unknown'}, Duration: ${log.duration || 'unknown'}ms`);
-              }
-            } catch (err) {
-              console.log(`   ⚠️ Ошибка чтения API лога ${logKey}:`, err);
-            }
-          }
-        }
+      if (message) {
+        console.log(`   ${message}`);
       }
-      
-      await prisma.$disconnect();
+
+      await printUserLogs(redis, targetId);
+      await printUserApiLogs(redis, targetId);
     } else {
       console.log('\n💡 Для просмотра логов пользователя запустите:');
       console.log('   npx tsx scripts/check-kv-logs.ts <telegramId или userId>');
