@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/api';
 
 export default function ClearStoragePage() {
   const router = useRouter();
@@ -10,8 +11,9 @@ export default function ClearStoragePage() {
     localStorage: string[];
     sessionStorage: string[];
   }>({ localStorage: [], sessionStorage: [] });
+  const [dbResults, setDbResults] = useState<any>(null);
 
-  const clearStorage = useCallback(() => {
+  const clearStorage = useCallback(async () => {
     setStatus('clearing');
 
     const localStorageKeys = [
@@ -34,7 +36,7 @@ export default function ClearStoragePage() {
     };
 
     try {
-      // ИСПРАВЛЕНО: Безопасная очистка localStorage с обработкой ошибок для каждого ключа
+      // 1. Очищаем localStorage
       localStorageKeys.forEach(key => {
         try {
           if (localStorage.getItem(key) !== null) {
@@ -42,12 +44,11 @@ export default function ClearStoragePage() {
             removed.localStorage.push(key);
           }
         } catch (keyError) {
-          // Логируем ошибку для конкретного ключа, но продолжаем обработку остальных
           console.warn(`Ошибка при удалении ключа localStorage ${key}:`, keyError);
         }
       });
 
-      // ИСПРАВЛЕНО: Безопасная очистка sessionStorage с обработкой ошибок для каждого ключа
+      // 2. Очищаем sessionStorage
       sessionStorageKeys.forEach(key => {
         try {
           if (sessionStorage.getItem(key) !== null) {
@@ -55,18 +56,41 @@ export default function ClearStoragePage() {
             removed.sessionStorage.push(key);
           }
         } catch (keyError) {
-          // Логируем ошибку для конкретного ключа, но продолжаем обработку остальных
           console.warn(`Ошибка при удалении ключа sessionStorage ${key}:`, keyError);
         }
       });
 
       setRemovedKeys(removed);
+
+      // 3. Удаляем данные из БД через API
+      try {
+        const response = await fetch('/api/user/clear-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+              ? { 'X-Telegram-Init-Data': window.Telegram.WebApp.initData }
+              : {}),
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setDbResults(data.results || null);
+        } else {
+          console.warn('Не удалось очистить данные из БД, но localStorage очищен');
+        }
+      } catch (dbError) {
+        console.warn('Ошибка при очистке БД (не критично):', dbError);
+        // Продолжаем даже если БД не очистилась
+      }
+
       setStatus('success');
 
-      // Автоматически перенаправляем на главную через 2 секунды
+      // Автоматически перенаправляем на главную через 3 секунды
       setTimeout(() => {
         router.push('/');
-      }, 2000);
+      }, 3000);
     } catch (error: any) {
       console.error('Ошибка при очистке:', error);
       setStatus('error');
@@ -139,10 +163,25 @@ export default function ClearStoragePage() {
                 </div>
               )}
 
-              {removedKeys.localStorage.length === 0 && removedKeys.sessionStorage.length === 0 && (
+              {removedKeys.localStorage.length === 0 && removedKeys.sessionStorage.length === 0 && !dbResults && (
                 <p className="text-gray-600 mb-4">
                   Данные уже были очищены ранее
                 </p>
+              )}
+
+              {dbResults && (
+                <div className="mb-3 text-left bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    Удалено из базы данных:
+                  </p>
+                  <ul className="text-xs text-gray-600 space-y-1">
+                    {dbResults.skinProfiles > 0 && <li>• Профилей: {dbResults.skinProfiles}</li>}
+                    {dbResults.userAnswers > 0 && <li>• Ответов: {dbResults.userAnswers}</li>}
+                    {dbResults.recommendationSessions > 0 && <li>• Сессий рекомендаций: {dbResults.recommendationSessions}</li>}
+                    {dbResults.plan28 > 0 && <li>• Планов: {dbResults.plan28}</li>}
+                    {dbResults.clientLogs > 0 && <li>• Логов: {dbResults.clientLogs}</li>}
+                  </ul>
+                </div>
               )}
 
               <p className="text-sm text-gray-500 mt-4">
