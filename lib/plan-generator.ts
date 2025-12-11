@@ -1286,6 +1286,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       
       // ИСПРАВЛЕНО: Если базовый шаг не найден, пробуем все варианты с этим базовым шагом
       // Например, для 'serum_hydrating' пробуем все 'serum_*'
+      // ИСПРАВЛЕНО: Также для 'moisturizer_light' пробуем все 'moisturizer_*' (barrier, balancing и т.д.)
       const allVariants: ProductWithBrand[] = [];
       for (const [mapStep, products] of productsByStepMap.entries()) {
         if (mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
@@ -1306,6 +1307,61 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             count: uniqueProducts.length,
             productIds: uniqueProducts.map(p => p.id),
             variantSteps: Array.from(productsByStepMap.keys()).filter(k => k.startsWith(baseStep + '_') || k === baseStep),
+            userId,
+          });
+        }
+        return uniqueProducts;
+      }
+    }
+    
+    // ИСПРАВЛЕНО: Дополнительная проверка для moisturizer - если ищем moisturizer_light, 
+    // но нашли только moisturizer_barrier или другие варианты, используем их
+    if (step.startsWith('moisturizer_')) {
+      const moisturizerVariants: ProductWithBrand[] = [];
+      for (const [mapStep, products] of productsByStepMap.entries()) {
+        if (mapStep.startsWith('moisturizer_')) {
+          moisturizerVariants.push(...products);
+        }
+      }
+      
+      if (moisturizerVariants.length > 0) {
+        const uniqueProducts = Array.from(
+          new Map(moisturizerVariants.map(p => [p.id, p])).values()
+        );
+        
+        if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+          logger.debug('Products found for step (moisturizer variants match)', {
+            step,
+            count: uniqueProducts.length,
+            productIds: uniqueProducts.map(p => p.id),
+            variantSteps: Array.from(productsByStepMap.keys()).filter(k => k.startsWith('moisturizer_')),
+            userId,
+          });
+        }
+        return uniqueProducts;
+      }
+    }
+    
+    // ИСПРАВЛЕНО: Аналогично для serum - если ищем serum_hydrating, но нашли только serum_niacinamide, используем его
+    if (step.startsWith('serum_')) {
+      const serumVariants: ProductWithBrand[] = [];
+      for (const [mapStep, products] of productsByStepMap.entries()) {
+        if (mapStep.startsWith('serum_')) {
+          serumVariants.push(...products);
+        }
+      }
+      
+      if (serumVariants.length > 0) {
+        const uniqueProducts = Array.from(
+          new Map(serumVariants.map(p => [p.id, p])).values()
+        );
+        
+        if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+          logger.debug('Products found for step (serum variants match)', {
+            step,
+            count: uniqueProducts.length,
+            productIds: uniqueProducts.map(p => p.id),
+            variantSteps: Array.from(productsByStepMap.keys()).filter(k => k.startsWith('serum_')),
             userId,
           });
         }
