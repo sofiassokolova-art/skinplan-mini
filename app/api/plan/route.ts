@@ -81,17 +81,66 @@ export async function GET(request: NextRequest) {
       return ApiResponse.success(cachedPlan);
     }
 
+    // ИСПРАВЛЕНО: Если план не найден в кэше, проверяем БД
+    logger.debug('Plan not found in cache, checking database', { userId, profileVersion: profile.version });
+    const planFromDb = await prisma.plan28.findFirst({
+      where: {
+        userId,
+        profileVersion: profile.version,
+      },
+      select: {
+        planData: true,
+      },
+    });
+
+    if (planFromDb && planFromDb.planData) {
+      const planData = planFromDb.planData as any;
+      
+      // Проверяем, что план имеет правильную структуру
+      const hasPlan28 = planData && planData.days && Array.isArray(planData.days) && planData.days.length > 0;
+      
+      if (hasPlan28) {
+        // Формируем ответ в формате, который ожидает клиент
+        const planResponse = {
+          plan28: planData,
+        };
+        
+        // Попытаемся сохранить в кэш для будущих запросов
+        try {
+          const { setCachedPlan } = await import('@/lib/cache');
+          await setCachedPlan(userId, profile.version, planResponse);
+          logger.info('Plan retrieved from DB and cached', { userId, profileVersion: profile.version });
+        } catch (cacheError) {
+          // Ошибка кэширования не критична
+          logger.warn('Failed to cache plan from DB (non-critical)', { userId, profileVersion: profile.version });
+        }
+        
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return ApiResponse.success(planResponse);
+      } else {
+        logger.warn('Plan found in DB but has invalid structure', {
+          userId,
+          profileVersion: profile.version,
+          hasPlanData: !!planData,
+          hasDays: !!planData?.days,
+          daysIsArray: Array.isArray(planData?.days),
+          daysLength: Array.isArray(planData?.days) ? planData.days.length : 0,
+        });
+      }
+    }
+
     // ВАЖНО: При перепрохождении анкеты НЕ возвращаем план из старой версии
     // Пользователь должен получить план, соответствующий новым ответам
     // Если план не найден для текущей версии - возвращаем 404, чтобы триггерить генерацию
-    logger.debug('Plan not found in cache for current version - will trigger generation', { 
+    logger.debug('Plan not found in cache or DB for current version - will trigger generation', { 
       userId, 
       currentVersion: profile.version 
     });
 
-    // План не найден ни в текущем, ни в предыдущих версиях - возвращаем 404
+    // План не найден ни в кэше, ни в БД - возвращаем 404
     const duration = Date.now() - startTime;
-    logger.info('Plan not found in cache for any version', { userId, profileVersion: profile.version });
+    logger.info('Plan not found in cache or DB for any version', { userId, profileVersion: profile.version });
     logApiRequest(method, path, 404, duration, userId);
     return ApiResponse.notFound('Plan not found. Please generate a plan first.', { userId });
     
