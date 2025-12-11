@@ -337,17 +337,45 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // ИСПРАВЛЕНО: Извлекаем mainGoals через buildSkinProfileFromAnswers для правильного маппинга values -> labels
+      // Преобразуем ответы в формат для buildSkinProfileFromAnswers
+      const rawAnswers = fullAnswers.map(answer => {
+        let answerOptionLabels: string[] | undefined;
+        
+        // Если есть answerValues (массив values опций), маппим их на labels
+        if (answer.answerValues && Array.isArray(answer.answerValues) && answer.question?.answerOptions) {
+          answerOptionLabels = answer.answerValues
+            .map((val: string) => {
+              const option = answer.question!.answerOptions.find(opt => opt.value === val);
+              // Используем label, если есть, иначе text, иначе value
+              return (option as any)?.label || option?.text || val;
+            })
+            .filter(Boolean);
+        }
+        
+        return {
+          questionId: answer.questionId,
+          questionCode: answer.question?.code,
+          answerValue: answer.answerValue,
+          answerValues: answer.answerValues,
+          answerOptionLabels,
+        };
+      });
+      
+      // Применяем правила для извлечения mainGoals
+      const profileFromRules = buildSkinProfileFromAnswers(rawAnswers);
+      
       // ВАЖНО: Извлекаем diagnoses и другие данные из ответов напрямую
       // createSkinProfile не извлекает diagnoses, поэтому делаем это здесь
       const diagnosesAnswer = fullAnswers.find(a => a.question?.code === 'diagnoses' || a.question?.code === 'DIAGNOSES');
-      const concernsAnswer = fullAnswers.find(a => a.question?.code === 'skin_concerns' || a.question?.code === 'current_concerns');
       
       const extractedData: any = {};
       if (diagnosesAnswer && Array.isArray(diagnosesAnswer.answerValues)) {
         extractedData.diagnoses = diagnosesAnswer.answerValues;
       }
-      if (concernsAnswer && Array.isArray(concernsAnswer.answerValues)) {
-        extractedData.mainGoals = concernsAnswer.answerValues;
+      // ИСПРАВЛЕНО: Используем mainGoals из buildSkinProfileFromAnswers вместо concernsAnswer
+      if (profileFromRules.mainGoals && Array.isArray(profileFromRules.mainGoals) && profileFromRules.mainGoals.length > 0) {
+        extractedData.mainGoals = profileFromRules.mainGoals;
       }
 
       // Подготавливаем данные для Prisma

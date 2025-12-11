@@ -177,13 +177,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Получаем все ответы (обновленные + старые)
+    // ИСПРАВЛЕНО: Добавлен include для answerOptions, чтобы маппить values на labels
     const allAnswers = await prisma.userAnswer.findMany({
       where: {
         userId,
         questionnaireId: questionnaire.id,
       },
       include: {
-        question: true,
+        question: {
+          include: {
+            answerOptions: true,
+          },
+        },
       },
     });
 
