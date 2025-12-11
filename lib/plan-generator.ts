@@ -1912,6 +1912,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             });
           }
           
+          // ИСПРАВЛЕНО: Если нет совместимых продуктов после фильтрации, используем первый доступный продукт
+          // Это гарантирует, что шаги из шаблона не пропускаются из-за строгой фильтрации
           if (compatibleProducts.length > 0) {
             const selectedProduct = compatibleProducts[0].product;
             selectedProductsForDay.push(selectedProduct);
@@ -1936,25 +1938,38 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
               warnings: warnings.length > 0 ? warnings : undefined,
             };
           } else if (stepProducts.length > 0) {
-            // Если нет совместимых, используем первый доступный (fallback)
-            // Это важно, чтобы план не был пустым
-            const fallbackProduct = stepProducts[0];
-            selectedProductsForDay.push(fallbackProduct);
-            
-            logger.info('Using fallback product (no compatible after filter)', {
+            // ИСПРАВЛЕНО: Если продукты есть, но они отфильтрованы, используем первый доступный
+            // Это лучше, чем пропускать шаг из шаблона
+            logger.warn('Using first available product despite dermatology filter (morning)', {
               step,
               day,
-              productId: fallbackProduct.id,
-              productName: fallbackProduct.name,
+              week: weekNum,
+              totalProducts: stepProducts.length,
+              selectedProductId: stepProducts[0].id,
               userId,
             });
             
+            const selectedProduct = stepProducts[0];
+            selectedProductsForDay.push(selectedProduct);
+            
+            const justification = generateProductJustification(
+              selectedProduct,
+              dermatologyProtocol,
+              profileClassification
+            );
+            const warnings = generateProductWarnings(
+              selectedProduct,
+              dermatologyProtocol,
+              profileClassification
+            );
+            
             dayProducts[step] = {
-              id: fallbackProduct.id,
-              name: fallbackProduct.name,
-              brand: fallbackProduct.brand.name,
+              id: selectedProduct.id,
+              name: selectedProduct.name,
+              brand: selectedProduct.brand.name,
               step,
-              warning: 'Продукт может требовать дополнительной проверки совместимости',
+              justification,
+              warnings: warnings.length > 0 ? warnings : undefined,
             };
           }
         }
