@@ -2221,6 +2221,19 @@ export default function QuizPage() {
           }
           return;
         }
+        
+        // ВАЖНО: Очищаем кэш профиля после успешного создания, чтобы при редиректе на /plan
+        // профиль загрузился заново из БД, а не из старого кэша
+        if (typeof window !== 'undefined') {
+          try {
+            // Очищаем кэш профиля в sessionStorage
+            sessionStorage.removeItem('profile_check_cache');
+            sessionStorage.removeItem('profile_check_cache_timestamp');
+            clientLogger.log('✅ Кэш профиля очищен после создания профиля');
+          } catch (cacheError) {
+            clientLogger.warn('⚠️ Не удалось очистить кэш профиля:', cacheError);
+          }
+        }
       } catch (submitError: any) {
         // ИСПРАВЛЕНО: Логируем ошибку более детально и НЕ продолжаем редирект, если профиль не создан
         console.error('❌ КРИТИЧЕСКАЯ ОШИБКА при отправке ответов:', {

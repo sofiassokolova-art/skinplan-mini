@@ -39,9 +39,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Получаем последний профиль пользователя
+    // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
+    // При перепрохождении анкеты создается новая версия профиля
     const profile = await prisma.skinProfile.findFirst({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { version: 'desc' },
     });
 
     if (!profile) {
