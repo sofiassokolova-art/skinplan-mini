@@ -25,6 +25,7 @@ export interface ProductWithBrand {
   priority: number;
   skinTypes: string[];
   published: boolean;
+  activeIngredients?: string[]; // ИСПРАВЛЕНО: Добавлено для фильтрации по фазам
 }
 
 // ProfileClassification импортируется из plan-generation-helpers.ts

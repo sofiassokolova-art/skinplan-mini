@@ -1111,6 +1111,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       priority: product.priority || 0,
       skinTypes: (product.skinTypes as string[]) || [],
       published: product.published || false,
+      activeIngredients: (product.activeIngredients as string[]) || [],
     };
     
     // Преобразуем старый формат step/category в StepCategory
@@ -1248,7 +1249,103 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     });
   }
 
-  const getProductsForStep = (step: StepCategory): ProductWithBrand[] => {
+  // Функция для фильтрации продуктов по фазе плана
+  const filterProductsByPhase = (
+    products: ProductWithBrand[],
+    phase: 'adaptation' | 'active' | 'support',
+    stepCategory: StepCategory
+  ): ProductWithBrand[] => {
+    if (products.length === 0) return products;
+    
+    // Определяем, какие активные ингредиенты и stepCategory подходят для каждой фазы
+    const strongActives = ['retinol', 'retinoid', 'tretinoin', 'adapalene', 'benzoyl_peroxide', 'aha', 'bha', 'glycolic', 'salicylic'];
+    const moderateActives = ['azelaic_acid', 'niacinamide', 'vitamin_c', 'alpha_arbutin', 'tranexamic'];
+    const gentleActives = ['hyaluronic_acid', 'glycerin', 'centella', 'panthenol', 'ceramide'];
+    
+    // Определяем, какие stepCategory подходят для каждой фазы
+    const adaptationSteps = [
+      'cleanser_gentle', 'toner_hydrating', 'toner_soothing',
+      'serum_hydrating', 'serum_anti_redness',
+      'moisturizer_barrier', 'moisturizer_soothing', 'moisturizer_light',
+      'treatment_exfoliant_mild'
+    ];
+    
+    const activeSteps = [
+      'serum_niacinamide', 'serum_vitc', 'serum_brightening_soft',
+      'treatment_acne_azelaic', 'treatment_acne_bpo', 'treatment_pigmentation',
+      'treatment_antiage', 'treatment_exfoliant_strong'
+    ];
+    
+    const supportSteps = [
+      'moisturizer_barrier', 'moisturizer_balancing',
+      'serum_hydrating', 'serum_niacinamide'
+    ];
+    
+    return products.filter(product => {
+      // SPF и очищение всегда подходят для всех фаз
+      if (stepCategory.startsWith('spf_') || stepCategory.startsWith('cleanser_')) {
+        return true;
+      }
+      
+      // Получаем активные ингредиенты продукта (из БД или из stepCategory)
+      const productActives = (product as any).activeIngredients || [];
+      const activeIngredientsStr = Array.isArray(productActives) 
+        ? productActives.join(' ').toLowerCase()
+        : '';
+      
+      if (phase === 'adaptation') {
+        // Фаза 1: только мягкие продукты
+        // Проверяем stepCategory
+        if (adaptationSteps.some(adaptStep => stepCategory === adaptStep || stepCategory.startsWith(adaptStep.split('_')[0]))) {
+          return true;
+        }
+        
+        // Проверяем активные ингредиенты - исключаем сильные
+        const hasStrongActive = strongActives.some(active => 
+          activeIngredientsStr.includes(active.toLowerCase())
+        );
+        if (hasStrongActive) return false;
+        
+        // Предпочитаем мягкие ингредиенты
+        const hasGentleActive = gentleActives.some(active => 
+          activeIngredientsStr.includes(active.toLowerCase())
+        );
+        return hasGentleActive || activeIngredientsStr.length === 0; // Если нет активных ингредиентов, тоже подходит
+      } else if (phase === 'active') {
+        // Фаза 2: активные ингредиенты
+        // Проверяем stepCategory
+        if (activeSteps.some(activeStep => stepCategory === activeStep || stepCategory.startsWith(activeStep.split('_')[0]))) {
+          return true;
+        }
+        
+        // Проверяем активные ингредиенты - предпочитаем сильные или умеренные
+        const hasStrongActive = strongActives.some(active => 
+          activeIngredientsStr.includes(active.toLowerCase())
+        );
+        const hasModerateActive = moderateActives.some(active => 
+          activeIngredientsStr.includes(active.toLowerCase())
+        );
+        return hasStrongActive || hasModerateActive;
+      } else {
+        // Фаза 3: поддерживающие продукты
+        // Проверяем stepCategory
+        if (supportSteps.some(supportStep => stepCategory === supportStep || stepCategory.startsWith(supportStep.split('_')[0]))) {
+          return true;
+        }
+        
+        // Предпочитаем умеренные или мягкие ингредиенты
+        const hasModerateActive = moderateActives.some(active => 
+          activeIngredientsStr.includes(active.toLowerCase())
+        );
+        const hasGentleActive = gentleActives.some(active => 
+          activeIngredientsStr.includes(active.toLowerCase())
+        );
+        return hasModerateActive || hasGentleActive || activeIngredientsStr.length === 0;
+      }
+    });
+  };
+
+  const getProductsForStep = (step: StepCategory, phase?: 'adaptation' | 'active' | 'support'): ProductWithBrand[] => {
     // Сначала пробуем найти по точному совпадению StepCategory
     const exact = productsByStepMap.get(step);
     if (exact && exact.length > 0) {
@@ -1258,8 +1355,19 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           step,
           count: exact.length,
           productIds: exact.map(p => p.id),
+          phase,
           userId,
         });
+      }
+      // Фильтруем по фазе, если указана
+      if (phase) {
+        const filtered = filterProductsByPhase(exact, phase, step);
+        if (filtered.length > 0) {
+          return filtered;
+        }
+        // Если после фильтрации ничего не осталось, возвращаем исходный список
+        // (лучше показать продукт, чем ничего)
+        return exact;
       }
       return exact;
     }
@@ -1278,8 +1386,17 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             baseStep,
             count: base.length,
             productIds: base.map(p => p.id),
+            phase,
             userId,
           });
+        }
+        // Фильтруем по фазе, если указана
+        if (phase) {
+          const filtered = filterProductsByPhase(base, phase, step);
+          if (filtered.length > 0) {
+            return filtered;
+          }
+          return base;
         }
         return base;
       }
@@ -1307,8 +1424,17 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             count: uniqueProducts.length,
             productIds: uniqueProducts.map(p => p.id),
             variantSteps: Array.from(productsByStepMap.keys()).filter(k => k.startsWith(baseStep + '_') || k === baseStep),
+            phase,
             userId,
           });
+        }
+        // Фильтруем по фазе, если указана
+        if (phase) {
+          const filtered = filterProductsByPhase(uniqueProducts, phase, step);
+          if (filtered.length > 0) {
+            return filtered;
+          }
+          return uniqueProducts;
         }
         return uniqueProducts;
       }
@@ -1335,8 +1461,17 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             count: uniqueProducts.length,
             productIds: uniqueProducts.map(p => p.id),
             variantSteps: Array.from(productsByStepMap.keys()).filter(k => k.startsWith('moisturizer_')),
+            phase,
             userId,
           });
+        }
+        // Фильтруем по фазе, если указана
+        if (phase) {
+          const filtered = filterProductsByPhase(uniqueProducts, phase, step);
+          if (filtered.length > 0) {
+            return filtered;
+          }
+          return uniqueProducts;
         }
         return uniqueProducts;
       }
@@ -1362,8 +1497,17 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             count: uniqueProducts.length,
             productIds: uniqueProducts.map(p => p.id),
             variantSteps: Array.from(productsByStepMap.keys()).filter(k => k.startsWith('serum_')),
+            phase,
             userId,
           });
+        }
+        // Фильтруем по фазе, если указана
+        if (phase) {
+          const filtered = filterProductsByPhase(uniqueProducts, phase, step);
+          if (filtered.length > 0) {
+            return filtered;
+          }
+          return uniqueProducts;
         }
         return uniqueProducts;
       }
@@ -2369,16 +2513,17 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     // Преобразуем morning steps
     // ИСПРАВЛЕНО: всегда используем getProductsForStep для plan28, не полагаемся на dayData.products
     // dayData.products может содержать только cleanser и SPF из-за фильтрации в старом формате
+    // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
     const morningSteps: DayStep[] = dayData.morning.map((step: string) => {
       const stepCategory = step as StepCategory;
-      let stepProducts = getProductsForStep(stepCategory);
+      let stepProducts = getProductsForStep(stepCategory, phase);
       
       // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback
       if (stepProducts.length === 0) {
         // Пробуем fallback
         const fallback = getFallbackStep(stepCategory);
         if (fallback && fallback !== stepCategory) {
-          stepProducts = getProductsForStep(fallback);
+          stepProducts = getProductsForStep(fallback, phase);
         }
         
         // Если все еще нет, пробуем найти любой продукт для базового шага
@@ -2396,6 +2541,11 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           // Удаляем дубликаты
           stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
           
+          // ИСПРАВЛЕНО: Фильтруем по фазе после сбора всех вариантов
+          if (phase && stepProducts.length > 0) {
+            stepProducts = filterProductsByPhase(stepProducts, phase, stepCategory);
+          }
+          
           // ИСПРАВЛЕНО: Убрали await из map - fallback через БД будет искаться асинхронно позже
           // Если продуктов все еще нет, оставляем productId как null - план все равно создастся
           if (stepProducts.length === 0) {
@@ -2403,6 +2553,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
               stepCategory,
               baseStep,
               dayIndex,
+              phase,
               userId,
             });
           }
@@ -2435,16 +2586,17 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     });
     
     // Преобразуем evening steps
+    // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
     const eveningSteps: DayStep[] = dayData.evening.map((step: string) => {
       const stepCategory = step as StepCategory;
-      let stepProducts = getProductsForStep(stepCategory);
+      let stepProducts = getProductsForStep(stepCategory, phase);
       
       // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback
       if (stepProducts.length === 0) {
         // Пробуем fallback
         const fallback = getFallbackStep(stepCategory);
         if (fallback && fallback !== stepCategory) {
-          stepProducts = getProductsForStep(fallback);
+          stepProducts = getProductsForStep(fallback, phase);
         }
         
         // Если все еще нет, пробуем найти любой продукт для базового шага
@@ -2462,6 +2614,11 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           // Удаляем дубликаты
           stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
           
+          // ИСПРАВЛЕНО: Фильтруем по фазе после сбора всех вариантов
+          if (phase && stepProducts.length > 0) {
+            stepProducts = filterProductsByPhase(stepProducts, phase, stepCategory);
+          }
+          
           // ИСПРАВЛЕНО: Убрали await из map - fallback через БД будет искаться асинхронно позже
           // Если продуктов все еще нет, оставляем productId как null - план все равно создастся
           if (stepProducts.length === 0) {
@@ -2469,6 +2626,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
               stepCategory,
               baseStep,
               dayIndex,
+              phase,
               userId,
             });
           }
@@ -2500,8 +2658,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     });
     
     // Преобразуем weekly steps (если это день для недельного ухода)
+    // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
     const weeklyDaySteps: DayStep[] = isWeekly ? weeklySteps.map((step: StepCategory) => {
-      const stepProducts = getProductsForStep(step);
+      const stepProducts = getProductsForStep(step, phase);
       const alternatives = stepProducts
         .slice(1, 4)
         .map(p => String(p.id));
