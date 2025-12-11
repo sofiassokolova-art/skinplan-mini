@@ -162,3 +162,25 @@ export interface AnalysisResponse {
   recommendations?: string[];
 }
 
+export interface QuizProgressResponse {
+  progress?: {
+    questionnaireId: number;
+    currentQuestionId?: number;
+    currentQuestionIndex?: number;
+    currentInfoScreenIndex?: number;
+    answers: Record<string, string | string[]>;
+  };
+  isCompleted?: boolean;
+  hasAnswers?: boolean;
+}
+
+export interface SubmitAnswersResponse {
+  success: boolean;
+  profile?: {
+    id: string;
+    version: number;
+  };
+  answersCount?: number;
+  error?: string;
+}
+

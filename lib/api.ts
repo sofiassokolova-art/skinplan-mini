@@ -8,7 +8,9 @@ import type {
   PlanResponse, 
   WishlistResponse, 
   CartResponse, 
-  AnalysisResponse 
+  AnalysisResponse,
+  QuizProgressResponse,
+  SubmitAnswersResponse
 } from './api-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -318,7 +320,7 @@ export const api = {
     questionId: number;
     answerValue?: string;
     answerValues?: string[];
-  }>) {
+  }>): Promise<SubmitAnswersResponse> {
     // ВАЖНО: Логируем перед отправкой запроса
     if (typeof window !== 'undefined') {
       console.log('📤 api.submitAnswers called:', {
@@ -330,7 +332,7 @@ export const api = {
     }
     
     try {
-      const result = await request('/questionnaire/answers', {
+      const result = await request<SubmitAnswersResponse>('/questionnaire/answers', {
         method: 'POST',
         body: JSON.stringify({ questionnaireId, answers }),
       });
@@ -341,8 +343,8 @@ export const api = {
           hasResult: !!result,
           resultType: typeof result,
           resultKeys: result ? Object.keys(result) : [],
-          hasProfile: !!(result as any)?.profile,
-          profileId: (result as any)?.profile?.id,
+          hasProfile: !!result?.profile,
+          profileId: result?.profile?.id,
         });
       }
       
@@ -491,8 +493,8 @@ export const api = {
   },
 
   // Прогресс анкеты
-  async getQuizProgress() {
-    return request('/questionnaire/progress');
+  async getQuizProgress(): Promise<QuizProgressResponse> {
+    return request<QuizProgressResponse>('/questionnaire/progress');
   },
 
   async clearQuizProgress() {

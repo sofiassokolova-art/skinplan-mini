@@ -92,7 +92,7 @@ export default function QuizPage() {
         const checkProfileAndShowRetake = async () => {
           try {
             const profile = await api.getCurrentProfile();
-            if (profile && (profile as any).id) {
+            if (profile && profile.id) {
               // Профиль есть - это нормальное перепрохождение
               setIsRetakingQuiz(true);
               
@@ -227,7 +227,7 @@ export default function QuizPage() {
         const checkProfile = async () => {
           try {
             const profile = await api.getCurrentProfile();
-            if (!profile || !(profile as any).id) {
+            if (!profile || !profile.id) {
               // Профиля нет, но флаги перепрохождения установлены - это ошибка
               clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
               localStorage.removeItem('is_retaking_quiz');
@@ -283,7 +283,7 @@ export default function QuizPage() {
             if (profile && (profile as any).id) {
               // Профиль существует - проверяем, завершена ли анкета
               try {
-                const response = await api.getQuizProgress() as any;
+                const response = await api.getQuizProgress();
                 const progress = response?.progress;
                 const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
                 // ИСПРАВЛЕНО: isCompleted находится в корне ответа, а не в progress
@@ -432,12 +432,12 @@ export default function QuizPage() {
         profileCheckInProgressRef.current = true;
         try {
           const profile = await api.getCurrentProfile();
-          if (profile && (profile as any).id) {
+          if (profile && profile.id) {
             // Профиль существует - проверяем, завершена ли анкета
             if (!isStartingOverRef.current) {
               // Проверяем, есть ли ответы на анкету (завершена ли анкета)
               try {
-                const response = await api.getQuizProgress() as any;
+                const response = await api.getQuizProgress();
                 const progress = response?.progress;
                 // Проверяем, что есть ответы И что анкета завершена (все вопросы отвечены)
                 const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
@@ -453,7 +453,7 @@ export default function QuizPage() {
                   // Проверяем наличие плана - если плана нет, не показываем экран перепрохождения
                   let hasPlan = false;
                   try {
-                    const plan = await api.getPlan() as any;
+                    const plan = await api.getPlan();
                     hasPlan = !!(plan && (plan.plan28 || plan.weeks));
                   } catch (planErr) {
                     // План не найден - это нормально для нового пользователя
@@ -523,7 +523,7 @@ export default function QuizPage() {
             
             // ИСПРАВЛЕНО: Если анкета завершена, но профиль не найден - автоматически отправляем ответы для создания профиля
             try {
-              const response = await api.getQuizProgress() as any;
+              const response = await api.getQuizProgress();
               const progress = response?.progress;
               const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
               const isCompleted = response?.isCompleted === true;
@@ -942,7 +942,7 @@ export default function QuizPage() {
       let hasProfile = false;
       try {
         const profile = await api.getCurrentProfile();
-        hasProfile = !!(profile && (profile as any).id);
+        hasProfile = !!(profile && profile.id);
       } catch (profileErr: any) {
         const isNotFound = profileErr?.status === 404 || 
                           profileErr?.message?.includes('404') || 
@@ -2145,7 +2145,7 @@ export default function QuizPage() {
           }).catch(() => {}); // Игнорируем ошибки логирования
         }
         
-        result = await api.submitAnswers(questionnaire.id, answerArray) as any;
+        result = await api.submitAnswers(questionnaire.id, answerArray);
         
         // ВАЖНО: Логируем на сервер после получения ответа (неблокирующе)
         if (currentInitData) {
@@ -2799,7 +2799,7 @@ export default function QuizPage() {
         // ВАЖНО: Проверяем isMountedRef в цикле, чтобы остановиться при размонтировании
         while (!planReady && (Date.now() - startTime) < MAX_WAIT_TIME && isMountedRef.current) {
           try {
-            const plan = await api.getPlan() as any;
+            const plan = await api.getPlan();
             if (plan && (plan.plan28 || plan.weeks)) {
               clientLogger.log('✅ План готов в кэше, редиректим на /plan');
               planReady = true;
@@ -3042,7 +3042,7 @@ export default function QuizPage() {
       // Если план не готов, показываем ошибку вместо редиректа
       let planIsReady = false;
       try {
-        const planCheck = await api.getPlan() as any;
+        const planCheck = await api.getPlan();
         if (planCheck && (planCheck.plan28 || planCheck.weeks)) {
           planIsReady = true;
           clientLogger.log('✅ План готов перед редиректом');

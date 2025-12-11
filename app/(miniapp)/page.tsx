@@ -124,7 +124,7 @@ export default function HomePage() {
     initialize();
     clientLogger.log('✅ Telegram WebApp initialized');
     } catch (err) {
-      console.error('❌ Error initializing Telegram:', err);
+      clientLogger.error('Error initializing Telegram', err);
       // Продолжаем работу даже при ошибке инициализации
     }
     
@@ -245,7 +245,7 @@ export default function HomePage() {
               }
             }, 100);
           } catch (recError: any) {
-            console.error('❌ Error in loadRecommendations:', recError);
+            clientLogger.error('Error in loadRecommendations', recError);
             // Если произошла ошибка загрузки плана (404) - редиректим на анкету
             if (recError?.status === 404 || recError?.isNotFound || 
                 recError?.message?.includes('404') || 
@@ -276,13 +276,10 @@ export default function HomePage() {
         return;
       } catch (err: any) {
         profileCheckInProgressRef.current = false; // Сбрасываем флаг при ошибке
-        console.error('❌ Error in initAndLoad:', {
-          error: err,
+        clientLogger.error('Error in initAndLoad', err, {
           message: err?.message,
           status: err?.status,
           isNotFound: err?.isNotFound,
-          stack: err?.stack,
-          name: err?.name,
         });
         
         // Обрабатываем любые необработанные ошибки
@@ -303,20 +300,17 @@ export default function HomePage() {
           return;
         }
         
-        console.error('❌ Unexpected error in initAndLoad, setting error state');
+        clientLogger.error('Unexpected error in initAndLoad, setting error state', err);
         setError('Произошла ошибка при загрузке данных. Попробуйте обновить страницу.');
         setLoading(false);
       }
     };
 
     initAndLoad().catch((err: any) => {
-      console.error('❌ Unhandled promise rejection in initAndLoad catch:', {
-        error: err,
+      clientLogger.error('Unhandled promise rejection in initAndLoad catch', err, {
         message: err?.message,
         status: err?.status,
         isNotFound: err?.isNotFound,
-        stack: err?.stack,
-        name: err?.name,
       });
       
       // Обрабатываем ошибку более мягко - не показываем ошибку пользователю
@@ -1066,7 +1060,7 @@ export default function HomePage() {
       
       // Если это ошибка KV или другая ошибка, но план может быть доступен - проверяем план
       try {
-        const plan = await api.getPlan() as any;
+        const plan = await api.getPlan();
         if (plan && (plan.plan28 || plan.weeks)) {
           // План есть - перенаправляем на страницу плана
           clientLogger.log('✅ Plan exists, redirecting to /plan');
@@ -1293,7 +1287,7 @@ export default function HomePage() {
             // Пользователь должен иметь возможность пройти анкету заново для получения правильного плана
             let isFallbackPlan = false;
             try {
-              const recommendationsData = await api.getRecommendations() as any;
+              const recommendationsData = await api.getRecommendations();
               if (recommendationsData?.rule?.name === 'Базовые рекомендации') {
                 isFallbackPlan = true;
                 clientLogger.warn('⚠️ Plan is fallback (Базовые рекомендации), not redirecting to /plan', {
