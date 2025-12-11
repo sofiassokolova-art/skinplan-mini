@@ -1622,53 +1622,66 @@ export default function HomePage() {
         padding: '20px',
         paddingBottom: '100px',
       }}>
-        {/* Приветствие с именем (если план загружен) */}
-        {userName && (
+        {/* PaymentGate для плана - показываем блюр для неоплаченных пользователей */}
+        <PaymentGate
+          key={paymentKey}
+          price={199}
+          isRetaking={false}
+          onPaymentComplete={() => {
+            // После оплаты обновляем состояние, чтобы снять блюр
+            clientLogger.log('✅ Payment completed on home page (plan view), blur removed');
+            // Обновляем ключ для принудительного перерендера PaymentGate
+            setPaymentKey(prev => prev + 1);
+          }}
+        >
+          {/* Приветствие с именем (если план загружен) */}
+          {userName && (
+            <div style={{
+              fontSize: '20px',
+              fontWeight: 500,
+              color: '#0A5F59',
+              marginBottom: '16px',
+              textAlign: 'center',
+            }}>
+              {(() => {
+                const hour = new Date().getHours();
+                const greeting = hour >= 6 && hour < 18 ? 'Добрый день' : 'Добрый вечер';
+                return `${greeting}, ${userName}`;
+              })()}
+            </div>
+          )}
+          {/* Календарь */}
           <div style={{
-            fontSize: '20px',
-            fontWeight: 500,
-            color: '#0A5F59',
-            marginBottom: '16px',
-            textAlign: 'center',
+            backgroundColor: 'white',
+            borderRadius: '24px',
+            padding: '24px',
+            marginBottom: '24px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            border: '1px solid rgba(10, 95, 89, 0.1)',
           }}>
-            {(() => {
-              const hour = new Date().getHours();
-              const greeting = hour >= 6 && hour < 18 ? 'Добрый день' : 'Добрый вечер';
-              return `${greeting}, ${userName}`;
-            })()}
-          </div>
-        )}
-        {/* Календарь */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '24px',
-          padding: '24px',
-          marginBottom: '24px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          border: '1px solid rgba(10, 95, 89, 0.1)',
-        }}>
-          <PlanCalendar
-            currentDay={currentDay}
-            completedDays={completedDays}
-            onDaySelect={handleDaySelect}
-          />
-        </div>
-
-        {/* Отображение выбранного дня */}
-        {selectedDayPlan && (
-          <div style={{ marginBottom: '24px' }}>
-            <DayView
-              dayPlan={selectedDayPlan}
-              mainGoals={plan28.mainGoals}
-              products={products}
-              wishlistProductIds={wishlistProductIds}
-              cartQuantities={cartQuantities}
-              onToggleWishlist={toggleWishlist}
-              onAddToCart={handleAddToCart}
-              onReplace={handleReplace}
+            <PlanCalendar
+              currentDay={currentDay}
+              completedDays={completedDays}
+              onDaySelect={handleDaySelect}
             />
           </div>
-        )}
+
+          {/* Отображение выбранного дня */}
+          {selectedDayPlan && (
+            <div style={{ marginBottom: '24px' }}>
+              <DayView
+                dayPlan={selectedDayPlan}
+                mainGoals={plan28.mainGoals}
+                products={products}
+                wishlistProductIds={wishlistProductIds}
+                cartQuantities={cartQuantities}
+                onToggleWishlist={toggleWishlist}
+                onAddToCart={handleAddToCart}
+                onReplace={handleReplace}
+              />
+            </div>
+          )}
+        </PaymentGate>
       </div>
     );
   }
