@@ -54,6 +54,11 @@ export default function QuizPage() {
   const [showResumeScreen, setShowResumeScreen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false); // Ref для синхронной проверки в асинхронных функциях
+  
+  // ИСПРАВЛЕНО: Синхронизируем ref с state для предотвращения рассинхронизации
+  useEffect(() => {
+    isSubmittingRef.current = isSubmitting;
+  }, [isSubmitting]);
   const [pendingInfoScreen, setPendingInfoScreen] = useState<InfoScreen | null>(null); // Информационный экран между вопросами
   const [savedProgress, setSavedProgress] = useState<{
     answers: Record<number, string | string[]>;
@@ -1799,61 +1804,59 @@ export default function QuizPage() {
       
       if (isMountedRef.current) {
         setError('Анкета не загружена. Пожалуйста, обновите страницу.');
-        isSubmittingRef.current = false;
+        // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
         setIsSubmitting(false);
       }
       return;
     }
 
-    // Защита от множественных вызовов: проверяем и ref, и state
-    // ИСПРАВЛЕНО: Если state = false, но ref = true - это рассинхронизация, сбрасываем ref
-    if (isSubmitting || isSubmittingRef.current) {
-      // ИСПРАВЛЕНО: Если state = false, но ref = true - это рассинхронизация после ошибки
-      // Сбрасываем ref и разрешаем повторную попытку
-      if (!isSubmitting && isSubmittingRef.current) {
-        clientLogger.warn('⚠️ Обнаружена рассинхронизация: isSubmitting=false, но isSubmittingRef=true. Сбрасываем ref и разрешаем повторную попытку', {
+    // Защита от множественных вызовов: проверяем state (ref синхронизирован через useEffect)
+    // ИСПРАВЛЕНО: Используем только state для проверки, так как ref синхронизирован автоматически
+    if (isSubmitting) {
+      // ИСПРАВЛЕНО: Если state = true, но ref = false - это рассинхронизация (редкий случай)
+      // Синхронизируем ref и игнорируем повторный вызов
+      if (!isSubmittingRef.current) {
+        clientLogger.warn('⚠️ Обнаружена рассинхронизация: isSubmitting=true, но isSubmittingRef=false. Синхронизируем ref', {
           isSubmitting,
           isSubmittingRef: isSubmittingRef.current,
         });
-        isSubmittingRef.current = false;
-        // Продолжаем выполнение - разрешаем повторную попытку
-      } else {
-        // Оба флага true - действительно идет отправка
-        clientLogger.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
-          isSubmitting,
-          isSubmittingRef: isSubmittingRef.current,
-        });
-        // ВАЖНО: Логируем на сервер для диагностики (неблокирующе)
-        const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-        if (currentInitData) {
-          fetch('/api/logs', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': currentInitData,
-            },
-            body: JSON.stringify({
-              level: 'warn',
-              message: '⚠️ Уже отправляется, игнорируем повторный вызов',
-              context: {
-                isSubmitting,
-                isSubmittingRef: isSubmittingRef.current,
-                timestamp: new Date().toISOString(),
-              },
-              url: typeof window !== 'undefined' ? window.location.href : undefined,
-            }),
-          }).catch(() => {}); // Игнорируем ошибки логирования
-        }
-        return;
+        isSubmittingRef.current = true;
       }
+      // Оба флага true - действительно идет отправка
+      clientLogger.warn('⚠️ Уже отправляется, игнорируем повторный вызов', {
+        isSubmitting,
+        isSubmittingRef: isSubmittingRef.current,
+      });
+      // ВАЖНО: Логируем на сервер для диагностики (неблокирующе)
+      const currentInitData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
+      if (currentInitData) {
+        fetch('/api/logs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Telegram-Init-Data': currentInitData,
+          },
+          body: JSON.stringify({
+            level: 'warn',
+            message: '⚠️ Уже отправляется, игнорируем повторный вызов',
+            context: {
+              isSubmitting,
+              isSubmittingRef: isSubmittingRef.current,
+              timestamp: new Date().toISOString(),
+            },
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+          }),
+        }).catch(() => {}); // Игнорируем ошибки логирования
+      }
+      return;
     }
 
     if (isMountedRef.current) {
-      isSubmittingRef.current = true; // Устанавливаем ref сразу для синхронной проверки
+      // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
       setIsSubmitting(true);
       setError(null);
       setLoading(false); // ВАЖНО: Устанавливаем loading = false, чтобы не показывался лоадер "Загрузка анкеты..."
-      clientLogger.log('✅ Флаги isSubmitting установлены, продолжаем выполнение submitAnswers');
+      clientLogger.log('✅ Флаг isSubmitting установлен, продолжаем выполнение submitAnswers');
     } else {
       clientLogger.warn('⚠️ Компонент размонтирован, но продолжаем выполнение submitAnswers');
     }
@@ -1885,7 +1888,7 @@ export default function QuizPage() {
         clientLogger.error('❌ Telegram WebApp доступен, но initData отсутствует (возможно, preview mode)');
         if (isMountedRef.current) {
           setError('Приложение открыто в режиме предпросмотра. Пожалуйста, откройте его через кнопку бота или используйте ссылку формата: https://t.me/your_bot?startapp=...');
-          isSubmittingRef.current = false;
+          // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
           setIsSubmitting(false);
         }
         return;
@@ -1895,7 +1898,7 @@ export default function QuizPage() {
         clientLogger.error('❌ Telegram WebApp не доступен - блокируем отправку');
         if (isMountedRef.current) {
           setError('Пожалуйста, откройте приложение через Telegram Mini App (не просто по ссылке, а через кнопку бота).');
-          isSubmittingRef.current = false;
+          // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
           setIsSubmitting(false);
         }
         return;
@@ -1905,7 +1908,7 @@ export default function QuizPage() {
         clientLogger.error('❌ Telegram WebApp initData не доступен - блокируем отправку');
         if (isMountedRef.current) {
           setError('Не удалось получить данные авторизации. Попробуйте обновить страницу.');
-          isSubmittingRef.current = false;
+          // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
           setIsSubmitting(false);
         }
         return;
@@ -1989,7 +1992,7 @@ export default function QuizPage() {
         });
         if (isMountedRef.current) {
           setError('Нет ответов для отправки. Пожалуйста, пройдите анкету.');
-          isSubmittingRef.current = false;
+          // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
           setIsSubmitting(false);
         }
         return;
@@ -2085,7 +2088,7 @@ export default function QuizPage() {
         });
         if (isMountedRef.current) {
           setError('Нет валидных ответов для отправки. Пожалуйста, пройдите анкету.');
-          isSubmittingRef.current = false;
+          // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
           setIsSubmitting(false);
         }
         return;
@@ -2216,7 +2219,7 @@ export default function QuizPage() {
           // Не продолжаем редирект, если профиль не создан
           if (isMountedRef.current) {
             setError('Не удалось создать профиль. Пожалуйста, попробуйте еще раз.');
-            isSubmittingRef.current = false;
+            // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
             setIsSubmitting(false);
           }
           return;
@@ -2313,7 +2316,7 @@ export default function QuizPage() {
               
               if (isMountedRef.current) {
                 setError('Обнаружена повторная отправка, но профиль не найден. Пожалуйста, попробуйте еще раз.');
-                isSubmittingRef.current = false;
+                // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
                 setIsSubmitting(false);
               }
               return;
@@ -2350,7 +2353,7 @@ export default function QuizPage() {
               
               if (isMountedRef.current) {
                 setError('Ошибка сети при отправке ответов. Профиль не был создан. Пожалуйста, попробуйте еще раз.');
-                isSubmittingRef.current = false;
+                // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
                 setIsSubmitting(false);
               }
               return;
@@ -2360,7 +2363,7 @@ export default function QuizPage() {
             clientLogger.error('❌ Не удалось проверить наличие профиля после ошибки сети', profileCheckError);
             if (isMountedRef.current) {
               setError('Ошибка сети при отправке ответов. Не удалось проверить создание профиля. Пожалуйста, попробуйте еще раз.');
-              isSubmittingRef.current = false;
+              // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
               setIsSubmitting(false);
             }
             return;
@@ -2399,7 +2402,7 @@ export default function QuizPage() {
                 
                 if (isMountedRef.current) {
                   setError('Не удалось создать профиль. Пожалуйста, попробуйте еще раз.');
-                  isSubmittingRef.current = false;
+                  // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
                   setIsSubmitting(false);
                 }
                 return;
@@ -2409,7 +2412,7 @@ export default function QuizPage() {
               clientLogger.error('❌ Не удалось проверить наличие профиля после ошибки 500', profileCheckError);
               if (isMountedRef.current) {
                 setError('Ошибка при создании профиля. Пожалуйста, попробуйте еще раз.');
-                isSubmittingRef.current = false;
+                // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
                 setIsSubmitting(false);
               }
               return;
@@ -2445,7 +2448,7 @@ export default function QuizPage() {
                 
                 if (isMountedRef.current) {
                   setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
-                  isSubmittingRef.current = false;
+                  // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
                   setIsSubmitting(false);
                 }
                 return;
@@ -2455,7 +2458,7 @@ export default function QuizPage() {
               clientLogger.error('❌ Не удалось проверить наличие профиля после другой ошибки', profileCheckError);
               if (isMountedRef.current) {
                 setError(submitError?.message || 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.');
-                isSubmittingRef.current = false;
+                // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
                 setIsSubmitting(false);
               }
               // ВАЖНО: НЕ очищаем флаг quiz_just_submitted - он будет очищен только после успешного редиректа
@@ -3289,15 +3292,15 @@ export default function QuizPage() {
         }
       }
     } finally {
-      // ИСПРАВЛЕНО: Гарантированно сбрасываем флаг isSubmittingRef даже при любых ошибках
+      // ИСПРАВЛЕНО: Гарантированно сбрасываем флаг isSubmitting только если компонент смонтирован
+      // Ref синхронизируется автоматически через useEffect
       // Это предотвращает блокировку повторных попыток отправки
       if (isMountedRef.current) {
-        // Сбрасываем только если компонент еще смонтирован
-        // Если компонент размонтирован, флаг будет сброшен при следующем монтировании
-        const shouldReset = !isSubmitting; // Сбрасываем только если state уже false
-        if (shouldReset) {
-          isSubmittingRef.current = false;
-          clientLogger.log('✅ Флаг isSubmittingRef сброшен в finally блоке');
+        // Сбрасываем state только если он еще true (не был сброшен в catch блоке)
+        // Если state уже false, значит он был сброшен в catch блоке, ничего не делаем
+        if (isSubmitting) {
+          setIsSubmitting(false);
+          clientLogger.log('✅ Флаг isSubmitting сброшен в finally блоке');
         }
       } else {
         // Компонент размонтирован - сбрасываем флаг принудительно
@@ -4297,7 +4300,7 @@ export default function QuizPage() {
               try {
                 autoSubmitTriggeredRef.current = false; // Разрешаем повторную попытку
                 setAutoSubmitTriggered(false);
-                isSubmittingRef.current = false;
+                // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
                 setIsSubmitting(false);
                 setError(err?.message || 'Ошибка отправки ответов');
               } catch (stateError) {
@@ -5277,8 +5280,8 @@ export default function QuizPage() {
                       // Убеждаемся, что error всегда строка
                       const errorMessage = String(err?.message || 'Ошибка отправки ответов');
                       setError(errorMessage);
-                      isSubmittingRef.current = false;
-          setIsSubmitting(false);
+                      // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
+                      setIsSubmitting(false);
                     });
                   }}
                   disabled={isSubmitting}
@@ -5369,8 +5372,8 @@ export default function QuizPage() {
                     // Убеждаемся, что errorMessage всегда строка
                     const safeErrorMessage = String(errorMessage || 'Ошибка отправки ответов. Попробуйте еще раз.');
                     setError(safeErrorMessage);
-                    isSubmittingRef.current = false;
-          setIsSubmitting(false);
+                    // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
+                    setIsSubmitting(false);
                   }
                 };
                 
