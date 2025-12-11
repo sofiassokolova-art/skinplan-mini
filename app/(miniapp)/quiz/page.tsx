@@ -5200,7 +5200,7 @@ export default function QuizPage() {
               WebkitOverflowScrolling: 'touch',
               msOverflowStyle: '-ms-autohiding-scrollbar',
             }}>
-              {screen.content.map((testimonial: any, idx: number) => (
+              {screen.content.map((testimonial, idx: number) => (
                 <div key={idx} style={{
                   minWidth: '280px',
                   backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -5226,7 +5226,7 @@ export default function QuizPage() {
           {/* Продукты (карточки) */}
           {isProductsScreen && screen.content && Array.isArray(screen.content) && (
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
-              {screen.content.map((product: any, idx: number) => (
+              {screen.content.map((product, idx: number) => (
                 <div key={idx} style={{
                   flex: '1 1 100px',
                   minWidth: '100px',

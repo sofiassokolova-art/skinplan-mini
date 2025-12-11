@@ -10,7 +10,8 @@ import type {
   CartResponse, 
   AnalysisResponse,
   QuizProgressResponse,
-  SubmitAnswersResponse
+  SubmitAnswersResponse,
+  RecommendationsResponse
 } from './api-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -458,8 +459,8 @@ export const api = {
   },
 
   // Рекомендации
-  async getRecommendations() {
-    return request('/recommendations');
+  async getRecommendations(): Promise<RecommendationsResponse> {
+    return request<RecommendationsResponse>('/recommendations');
   },
 
   // План ухода (28 дней) - получает план БЕЗ генерации (только из кэша)

@@ -79,8 +79,8 @@ export function PlanPageClientNew({
         if (profile) {
           // Получаем пол и возраст из ответов
           const analysis = await api.getAnalysis();
-          const gender = analysis?.gender || null;
-          const age = analysis?.age ? `${analysis.age} лет` : profile.ageGroup || null;
+          const gender = analysis?.profile?.gender || null;
+          const age = analysis?.profile?.age ? `${analysis.profile.age} лет` : profile.ageGroup || null;
           const skinType = profile.skinTypeRu || profile.skinType || null;
           const mainConcern = plan28.mainGoals?.[0] || null;
           

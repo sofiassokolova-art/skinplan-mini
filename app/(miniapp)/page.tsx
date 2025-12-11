@@ -12,7 +12,7 @@ import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import { PaymentGate } from '@/components/PaymentGate';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
-import type { PlanResponse, UserProfileResponse, ProfileResponse, WishlistResponse } from '@/lib/api-types';
+import type { PlanResponse, UserProfileResponse, ProfileResponse, WishlistResponse, RecommendationsResponse, ProductFromBatch } from '@/lib/api-types';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
 
@@ -699,11 +699,11 @@ export default function HomePage() {
       
       // ВАЖНО: Используем ту же логику, что и календарь - находим день по dayIndex
       // Календарь использует: plan28.days.find(d => d.dayIndex === selectedDay)
-      let currentDayPlan = plan28.days.find((d: any) => d.dayIndex === currentDay);
+      let currentDayPlan = plan28.days.find((d) => d.dayIndex === currentDay);
       if (!currentDayPlan) {
         clientLogger.log('⚠️ Home: Current day plan not found for day', currentDay, ', using day 1');
         // Вместо редиректа на анкету, пробуем использовать день 1 (как в календаре)
-        const day1Plan = plan28.days.find((d: any) => d.dayIndex === 1);
+        const day1Plan = plan28.days.find((d) => d.dayIndex === 1);
         if (!day1Plan) {
           console.error('❌ Home: No plan found for day 1 either');
           setLoading(false);
@@ -716,14 +716,14 @@ export default function HomePage() {
       // ВАЖНО: Собираем productId точно так же, как календарь (строки 170-186 в calendar/page.tsx)
       // Календарь также собирает alternatives, но для главной страницы используем только основные продукты
       const allProductIds = new Set<number>();
-      currentDayPlan.morning.forEach((step: any) => {
+      currentDayPlan.morning.forEach((step) => {
         if (step.productId) allProductIds.add(Number(step.productId));
         // ВАЖНО: Календарь также собирает alternatives, но для главной достаточно основных продуктов
       });
-      currentDayPlan.evening.forEach((step: any) => {
+      currentDayPlan.evening.forEach((step) => {
         if (step.productId) allProductIds.add(Number(step.productId));
       });
-      currentDayPlan.weekly.forEach((step: any) => {
+      currentDayPlan.weekly.forEach((step) => {
         if (step.productId) allProductIds.add(Number(step.productId));
       });
       
@@ -751,7 +751,7 @@ export default function HomePage() {
           
           if (productsResponse.ok) {
             const productsData = await productsResponse.json();
-            productsData.products?.forEach((p: any) => {
+            productsData.products?.forEach((p: ProductFromBatch) => {
               if (p && p.id) {
                 // Используем ту же структуру, что и в календаре для синхронизации
                 productsMap.set(p.id, {
@@ -877,7 +877,7 @@ export default function HomePage() {
       };
       
       // УТРЕННЯЯ РУТИНА
-      currentDayPlan.morning.forEach((step: any, index: number) => {
+      currentDayPlan.morning.forEach((step, index: number) => {
         if (step.productId) {
           const productId = Number(step.productId);
           const product = productsMap.get(productId);
@@ -901,7 +901,7 @@ export default function HomePage() {
       });
       
       // ВЕЧЕРНЯЯ РУТИНА
-      currentDayPlan.evening.forEach((step: any, index: number) => {
+      currentDayPlan.evening.forEach((step, index: number) => {
         if (step.productId) {
           const productId = Number(step.productId);
           const stepTitle = step.stepCategory.startsWith('cleanser') ? 'Очищение' :
@@ -922,7 +922,7 @@ export default function HomePage() {
       });
       
       // ЕЖЕНЕДЕЛЬНЫЕ СРЕДСТВА (добавляем в вечер, если они есть)
-      currentDayPlan.weekly.forEach((step: any, index: number) => {
+      currentDayPlan.weekly.forEach((step, index: number) => {
         if (step.productId) {
           const productId = Number(step.productId);
           const stepTitle = step.stepCategory.startsWith('mask') ? 'Маска' : 'Средство';
@@ -971,7 +971,7 @@ export default function HomePage() {
 
           if (allProductsResponse.ok) {
             const allProductsData = await allProductsResponse.json();
-            allProductsData.products?.forEach((p: any) => {
+            allProductsData.products?.forEach((p: ProductFromBatch) => {
               if (p && p.id) {
                 allProductsMap.set(p.id, {
                   id: p.id,
@@ -1003,9 +1003,9 @@ export default function HomePage() {
       // Загружаем wishlist и корзину (как в календаре)
       try {
         const wishlistData = await api.getWishlist();
-        const wishlistIds = (wishlistData.items || []).map((item: any) => 
+        const wishlistIds = (wishlistData.items || []).map((item) => 
           item.product?.id || item.productId
-        ).filter((id: any): id is number => typeof id === 'number');
+        ).filter((id): id is number => typeof id === 'number');
         setWishlistProductIds(new Set(wishlistIds));
       } catch (err) {
         clientLogger.warn('Could not load wishlist:', err);

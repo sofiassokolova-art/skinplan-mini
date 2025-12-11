@@ -124,12 +124,15 @@ export interface WishlistResponse {
     product?: {
       id: number;
       name: string;
-      brand: { name: string };
+      brand: { id?: number; name: string };
       price: number | null;
       imageUrl: string | null;
       description?: string;
+      link?: string | null;
+      marketLinks?: any;
     };
     createdAt: string;
+    feedback?: string | null;
   }>;
 }
 
@@ -141,10 +144,12 @@ export interface CartResponse {
     product: {
       id: number;
       name: string;
-      brand: { name: string };
+      brand: { id?: number; name: string };
       price: number | null;
       imageUrl: string | null;
       description?: string;
+      link?: string | null;
+      marketLinks?: any;
     };
     createdAt: string;
   }>;
@@ -209,5 +214,47 @@ export interface SubmitAnswersResponse {
   };
   answersCount?: number;
   error?: string;
+}
+
+export interface RecommendationsResponse {
+  profile_summary: {
+    skinType: string;
+    sensitivityLevel: string | null;
+    acneLevel: number | null;
+    notes: string | null;
+  };
+  rule: {
+    name: string;
+  };
+  steps: Record<string, Array<{
+    id: number;
+    name: string;
+    brand: string;
+    line: string;
+    category: string;
+    step: string;
+    description: string;
+    marketLinks?: any;
+    imageUrl: string | null;
+  }>>;
+}
+
+export interface ProductFromBatch {
+  id: number;
+  name: string;
+  brand: {
+    id: number;
+    name: string;
+  };
+  price: number | null;
+  volume: string | null;
+  imageUrl: string | null;
+  description?: string;
+  descriptionUser?: string;
+  step: string;
+  category: string;
+  skinTypes: string[];
+  concerns: string[];
+  activeIngredients?: string[];
 }
 

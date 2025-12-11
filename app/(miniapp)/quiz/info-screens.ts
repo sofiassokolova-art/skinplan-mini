@@ -1,6 +1,18 @@
 // Информационные экраны между вопросами анкеты
 // Порядок экранов согласно требованиям пользователя (41 экран)
 
+export interface Testimonial {
+  stars: number;
+  text: string;
+  author: string;
+}
+
+export interface InfoScreenProduct {
+  name: string;
+  desc: string;
+  icon: string;
+}
+
 export interface InfoScreen {
   id: string;
   title: string;
@@ -9,7 +21,7 @@ export interface InfoScreen {
   showAfterQuestionCode?: string; // Код вопроса, после которого показать экран
   ctaText?: string;
   type?: 'default' | 'testimonials' | 'tinder' | 'comparison' | 'products' | 'transformation'; // Тип экрана для специального рендеринга
-  content?: any; // Дополнительные данные для кастомного рендеринга
+  content?: Testimonial[] | InfoScreenProduct[] | any; // Дополнительные данные для кастомного рендеринга
 }
 
 export const INFO_SCREENS: InfoScreen[] = [

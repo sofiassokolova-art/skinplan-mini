@@ -13,7 +13,7 @@ import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
-import type { AnalysisResponse } from '@/lib/api-types';
+import type { AnalysisResponse, CareStep } from '@/lib/api-types';
 
 // Используем типы из api-types.ts
 type AnalysisData = AnalysisResponse;
@@ -55,10 +55,10 @@ function AnalysisPageContent() {
       // Загружаем wishlist
       let wishlist: number[] = [];
       try {
-        const wishlistData = await api.getWishlist() as any;
-        wishlist = (wishlistData.items || []).map((item: any) => 
+        const wishlistData = await api.getWishlist();
+        wishlist = (wishlistData.items || []).map((item) => 
           item.product?.id || item.productId
-        ).filter((id: any): id is number => typeof id === 'number');
+        ).filter((id): id is number => typeof id === 'number');
         setWishlistProductIds(new Set(wishlist));
       } catch (err) {
         clientLogger.warn('Could not load wishlist:', err);

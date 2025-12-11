@@ -45,10 +45,34 @@ export default function CartPage() {
       
       // Загружаем wishlist без обязательной проверки авторизации
       // API вернет пустой список, если нет авторизации
-      const data = await api.getWishlist() as { items?: WishlistItemData[] };
-      // Обрабатываем разные форматы ответа
-      const items = data.items || (data as any).wishlist || [];
-      setWishlist(Array.isArray(items) ? items : []);
+      const data = await api.getWishlist();
+      // Маппим данные из API в формат WishlistItemData
+      const items: WishlistItemData[] = (data.items || []).map(item => ({
+        id: item.id,
+        product: item.product ? {
+          id: item.product.id,
+          name: item.product.name,
+          brand: {
+            id: item.product.brand?.id || 0,
+            name: item.product.brand.name,
+          },
+          price: item.product.price,
+          imageUrl: item.product.imageUrl,
+          link: item.product.link || null,
+          marketLinks: item.product.marketLinks || null,
+        } : {
+          id: item.productId,
+          name: 'Неизвестный продукт',
+          brand: { id: 0, name: 'Unknown' },
+          price: null,
+          imageUrl: null,
+          link: null,
+          marketLinks: null,
+        },
+        feedback: item.feedback || '',
+        createdAt: item.createdAt,
+      }));
+      setWishlist(items);
     } catch (err: any) {
       console.error('Error loading wishlist:', err);
       // Любые ошибки обрабатываем как пустое состояние

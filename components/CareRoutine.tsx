@@ -4,24 +4,7 @@
 'use client';
 
 import { useState } from 'react';
-
-interface Product {
-  id: number;
-  name: string;
-  brand: { name: string };
-  price?: number;
-  imageUrl?: string | null;
-  description?: string;
-  tags?: string[];
-}
-
-interface CareStep {
-  stepNumber: number;
-  stepName: string;
-  stepDescription: string;
-  stepTags: string[];
-  products: Product[];
-}
+import type { CareStep } from '@/lib/api-types';
 
 interface CareRoutineProps {
   morningSteps: CareStep[];

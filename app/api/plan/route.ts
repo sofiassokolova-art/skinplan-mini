@@ -7,6 +7,8 @@ import { getCachedPlan } from '@/lib/cache';
 import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import type { Plan28 } from '@/lib/plan-types';
+import type { PlanResponse } from '@/lib/api-types';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -94,15 +96,16 @@ export async function GET(request: NextRequest) {
     });
 
     if (planFromDb && planFromDb.planData) {
-      const planData = planFromDb.planData as any;
+      // ИСПРАВЛЕНО: Используем правильный тип для planData из БД
+      const planData = planFromDb.planData as { days?: Array<{ dayIndex: number }>; mainGoals?: string[] };
       
       // Проверяем, что план имеет правильную структуру
       const hasPlan28 = planData && planData.days && Array.isArray(planData.days) && planData.days.length > 0;
       
       if (hasPlan28) {
         // Формируем ответ в формате, который ожидает клиент
-        const planResponse = {
-          plan28: planData,
+        const planResponse: PlanResponse = {
+          plan28: planData as Plan28,
         };
         
         // Попытаемся сохранить в кэш для будущих запросов
