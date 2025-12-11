@@ -47,15 +47,21 @@ async function addNameQuestion() {
     return;
   }
 
-  // Получаем минимальную позицию среди всех вопросов
-  const minPositionQuestion = await prisma.question.findFirst({
+  // ИСПРАВЛЕНО: Вопрос об имени должен быть первым (position: 0)
+  // Это гарантирует, что он будет показан сразу после инфо-экранов, перед остальными вопросами
+  const nameQuestionPosition = 0;
+  
+  // Сдвигаем позиции всех существующих вопросов на +1
+  await prisma.question.updateMany({
     where: {
       questionnaireId: questionnaire.id,
     },
-    orderBy: { position: 'asc' },
+    data: {
+      position: {
+        increment: 1,
+      },
+    },
   });
-
-  const nameQuestionPosition = minPositionQuestion ? minPositionQuestion.position - 1 : 0;
 
   // Создаем вопрос об имени
   const nameQuestion = await prisma.question.create({
