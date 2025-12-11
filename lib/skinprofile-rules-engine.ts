@@ -138,26 +138,53 @@ export function buildSkinProfileFromAnswers(
     questionCode?: string;
     answerValue: string | null;
     answerValues: any;
+    answerOptionLabels?: string[]; // ИСПРАВЛЕНО: Добавлено для маппинга values -> labels
   }>
 ): SkinProfile {
   const profile = createEmptySkinProfile();
   const rules = (rulesData as any).rules as Rule[];
 
-  // Создаем мапу правил по ID вопроса
+  // ИСПРАВЛЕНО: Создаем мапу правил по ID вопроса И по ключу правила
+  // Это позволяет маппить правила как по questionId (если совпадает с rule.id), так и по questionCode -> rule.key
   const rulesByQuestionId = new Map<number, Rule>();
+  const rulesByKey = new Map<string, Rule>();
+  
   rules.forEach(rule => {
     rulesByQuestionId.set(rule.id, rule);
+    if (rule.key) {
+      rulesByKey.set(rule.key, rule);
+    }
   });
+
+  // Маппинг questionCode -> rule.key (для обратной совместимости)
+  const codeToKeyMap: Record<string, string> = {
+    'skin_goals': 'goals_primary',
+    'goals_primary': 'goals_primary',
+    'skin_concerns': 'concerns_primary',
+    'concerns_primary': 'concerns_primary',
+  };
 
   // Применяем правила для каждого ответа
   userAnswers.forEach(answer => {
-    const rule = rulesByQuestionId.get(answer.questionId);
+    // Сначала пробуем найти правило по questionId
+    let rule = rulesByQuestionId.get(answer.questionId);
+    
+    // Если не найдено, пробуем найти по questionCode -> rule.key
+    if (!rule && answer.questionCode) {
+      const ruleKey = codeToKeyMap[answer.questionCode] || answer.questionCode;
+      rule = rulesByKey.get(ruleKey);
+    }
+    
     if (!rule) return;
 
     // Определяем значение ответа
     let answerValue: string | string[] | { subKey: string; value: string } | null = null;
 
-    if (answer.answerValues && Array.isArray(answer.answerValues)) {
+    // ИСПРАВЛЕНО: Если есть answerOptionLabels, используем их вместо answerValues
+    // Это позволяет маппить values опций на labels для правил
+    if (answer.answerOptionLabels && Array.isArray(answer.answerOptionLabels) && answer.answerOptionLabels.length > 0) {
+      answerValue = answer.answerOptionLabels;
+    } else if (answer.answerValues && Array.isArray(answer.answerValues)) {
       answerValue = answer.answerValues;
     } else if (answer.answerValue) {
       answerValue = answer.answerValue;

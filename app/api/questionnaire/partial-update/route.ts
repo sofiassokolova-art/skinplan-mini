@@ -188,12 +188,29 @@ export async function POST(request: NextRequest) {
     });
 
     // Преобразуем в формат для skinprofile-rules-engine
-    const rawAnswers = allAnswers.map(answer => ({
-      questionId: answer.questionId,
-      questionCode: answer.question.code,
-      answerValue: answer.answerValue,
-      answerValues: answer.answerValues,
-    }));
+    // ИСПРАВЛЕНО: Маппим values опций на labels для правил
+    const rawAnswers = allAnswers.map(answer => {
+      let answerOptionLabels: string[] | undefined;
+      
+      // Если есть answerValues (массив values опций), маппим их на labels
+      if (answer.answerValues && Array.isArray(answer.answerValues) && answer.question.answerOptions) {
+        answerOptionLabels = answer.answerValues
+          .map((val: string) => {
+            const option = answer.question.answerOptions.find(opt => opt.value === val);
+            // Используем label, если есть, иначе text, иначе value
+            return (option as any)?.label || option?.text || val;
+          })
+          .filter(Boolean);
+      }
+      
+      return {
+        questionId: answer.questionId,
+        questionCode: answer.question.code,
+        answerValue: answer.answerValue,
+        answerValues: answer.answerValues,
+        answerOptionLabels, // ИСПРАВЛЕНО: Добавлено для маппинга values -> labels
+      };
+    });
 
     // Получаем текущий профиль
     const currentProfile = await prisma.skinProfile.findFirst({

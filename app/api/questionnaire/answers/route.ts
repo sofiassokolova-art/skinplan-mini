@@ -8,6 +8,7 @@ import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
 import { MAX_DUPLICATE_SUBMISSION_WINDOW_MS } from '@/lib/constants';
+import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 
 export const runtime = 'nodejs';
 
