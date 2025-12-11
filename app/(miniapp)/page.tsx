@@ -1292,18 +1292,55 @@ export default function HomePage() {
             }
             
             if (!isFallbackPlan) {
-              clientLogger.log('✅ Plan found (not fallback), redirecting to /plan', {
-                hasPlan28,
-                hasWeeks,
-                plan28Days: plan?.plan28?.days?.length || 0,
-              });
-              setHasPlan(true);
-              // Если план найден и не фолбековый - редиректим на страницу плана
-              // Используем window.location для гарантированного редиректа
-              if (typeof window !== 'undefined') {
-                window.location.href = '/plan';
+              // ИСПРАВЛЕНО: Проверяем, что план не пустой (минимум 3 продукта)
+              // Если в плане меньше 3 продуктов, не редиректим - план неполный
+              let uniqueProductsCount = 0;
+              if (plan?.plan28?.days && Array.isArray(plan.plan28.days)) {
+                const productIds = new Set<number>();
+                for (const day of plan.plan28.days) {
+                  if (day.morning) {
+                    for (const step of day.morning) {
+                      if (step.productId) productIds.add(Number(step.productId));
+                    }
+                  }
+                  if (day.evening) {
+                    for (const step of day.evening) {
+                      if (step.productId) productIds.add(Number(step.productId));
+                    }
+                  }
+                  if (day.weekly) {
+                    for (const step of day.weekly) {
+                      if (step.productId) productIds.add(Number(step.productId));
+                    }
+                  }
+                }
+                uniqueProductsCount = productIds.size;
               }
-              return;
+              
+              if (uniqueProductsCount >= 3) {
+                clientLogger.log('✅ Plan found (not fallback, has enough products), redirecting to /plan', {
+                  hasPlan28,
+                  hasWeeks,
+                  plan28Days: plan?.plan28?.days?.length || 0,
+                  uniqueProductsCount,
+                });
+                setHasPlan(true);
+                // Если план найден и не фолбековый и содержит достаточно продуктов - редиректим на страницу плана
+                // Используем window.location для гарантированного редиректа
+                if (typeof window !== 'undefined') {
+                  window.location.href = '/plan';
+                }
+                return;
+              } else {
+                clientLogger.warn('⚠️ Plan found but has too few products, not redirecting', {
+                  hasPlan28,
+                  hasWeeks,
+                  plan28Days: plan?.plan28?.days?.length || 0,
+                  uniqueProductsCount,
+                });
+                // План неполный - не редиректим, показываем главную страницу
+                // Пользователь может пройти анкету заново для получения полного плана
+              }
             } else {
               clientLogger.log('ℹ️ Plan is fallback, staying on home page');
               // План фолбековый - не редиректим, показываем главную страницу
