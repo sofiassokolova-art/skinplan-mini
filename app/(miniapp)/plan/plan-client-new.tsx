@@ -423,8 +423,15 @@ export function PlanPageClientNew({
         }}
       />
 
-      {/* ИСПРАВЛЕНО: Убран PaymentGate - блюр для покупки не должен показываться автоматически */}
-      {/* Основной контент плана - показываем контент сразу без блюра */}
+      {/* ИСПРАВЛЕНО: Возвращен PaymentGate - блюр для покупки должен показываться */}
+      <PaymentGate
+        price={199}
+        isRetaking={false}
+        onPaymentComplete={() => {
+          setNeedsFirstPayment(false);
+          clientLogger.log('✅ Payment completed on plan page');
+        }}
+      >
       {/* Инфографика прогресса по целям */}
       <GoalProgressInfographic
         goals={plan28.mainGoals}
@@ -477,6 +484,7 @@ export function PlanPageClientNew({
         onClose={() => setReplaceProduct(null)}
         onReplace={handleReplaceConfirm}
       />
+      </PaymentGate>
     </div>
   );
 }
