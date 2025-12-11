@@ -6047,6 +6047,58 @@ export default function QuizPage() {
           </div>
         )}
 
+        {currentQuestion.type === 'free_text' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input
+              type="text"
+              value={(answers[currentQuestion.id] as string) || ''}
+              onChange={(e) => {
+                handleAnswer(currentQuestion.id, e.target.value);
+              }}
+              placeholder="Введите ваше имя"
+              style={{
+                padding: '16px',
+                borderRadius: '16px',
+                border: '1px solid rgba(10, 95, 89, 0.2)',
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                fontSize: '16px',
+                color: '#0A5F59',
+                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                outline: 'none',
+                transition: 'all 0.2s',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#0A5F59';
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(10, 95, 89, 0.2)';
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+              }}
+            />
+            {/* Кнопка "Далее" для текстового вопроса */}
+            {answers[currentQuestion.id] && String(answers[currentQuestion.id]).trim().length > 0 && (
+              <button
+                onClick={handleNext}
+                style={{
+                  marginTop: '12px',
+                  width: '100%',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                }}
+              >
+                Далее
+              </button>
+            )}
+          </div>
+        )}
+
         {currentQuestion.type === 'multi_choice' && currentQuestion.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentQuestion.options.map((option) => {

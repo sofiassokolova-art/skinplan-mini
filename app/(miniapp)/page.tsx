@@ -98,6 +98,7 @@ export default function HomePage() {
   const [paymentKey, setPaymentKey] = useState(0); // Ключ для принудительного обновления PaymentGate
   const profileCheckInProgressRef = useRef(false); // Защита от множественных запросов к getCurrentProfile
   const progressLoadInProgressRef = useRef(false); // ИСПРАВЛЕНО: Защита от множественных запросов к getPlanProgress
+  const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
 
   // УДАЛЕНО: Функция checkIncompleteQuiz больше не нужна
   // Если профиля нет, сразу редиректим на /quiz, где есть экран "Вы не завершили анкету"
@@ -154,6 +155,18 @@ export default function HomePage() {
         }
         
         clientLogger.log('✅ Telegram WebApp available, proceeding with initialization');
+
+        // ИСПРАВЛЕНО: Загружаем имя пользователя для приветствия
+        try {
+          const userProfile = await api.getUserProfile() as any;
+          if (userProfile?.firstName) {
+            setUserName(userProfile.firstName);
+            clientLogger.log('✅ User name loaded:', userProfile.firstName);
+          }
+        } catch (err) {
+          // Не критично, если не удалось загрузить имя
+          clientLogger.warn('Could not load user name:', err);
+        }
 
         // СНАЧАЛА проверяем наличие профиля (самая надежная проверка)
         // ИСПРАВЛЕНО: Защита от множественных запросов
@@ -1609,6 +1622,22 @@ export default function HomePage() {
         padding: '20px',
         paddingBottom: '100px',
       }}>
+        {/* Приветствие с именем (если план загружен) */}
+        {userName && (
+          <div style={{
+            fontSize: '20px',
+            fontWeight: 500,
+            color: '#0A5F59',
+            marginBottom: '16px',
+            textAlign: 'center',
+          }}>
+            {(() => {
+              const hour = new Date().getHours();
+              const greeting = hour >= 6 && hour < 18 ? 'Добрый день' : 'Добрый вечер';
+              return `${greeting}, ${userName}`;
+            })()}
+          </div>
+        )}
         {/* Календарь */}
         <div style={{
           backgroundColor: 'white',
@@ -1672,6 +1701,21 @@ export default function HomePage() {
             (e.target as HTMLImageElement).style.display = 'none';
           }}
         />
+        {/* Приветствие с именем */}
+        {userName && (
+          <div style={{
+            fontSize: '20px',
+            fontWeight: 500,
+            color: '#0A5F59',
+            marginBottom: '12px',
+          }}>
+            {(() => {
+              const hour = new Date().getHours();
+              const greeting = hour >= 6 && hour < 18 ? 'Добрый день' : 'Добрый вечер';
+              return `${greeting}, ${userName}`;
+            })()}
+          </div>
+        )}
         <div style={{
           fontSize: '26px',
           fontWeight: 600,

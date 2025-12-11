@@ -273,6 +273,20 @@ export async function POST(request: NextRequest) {
         savedQuestionIds: savedAnswers.map(a => a.questionId),
       });
 
+      // ИСПРАВЛЕНО: Сохраняем имя пользователя из ответа на вопрос USER_NAME
+      const nameAnswer = savedAnswers.find(a => a.question?.code === 'USER_NAME');
+      if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+        const userName = String(nameAnswer.answerValue).trim();
+        await tx.user.update({
+          where: { id: userId! },
+          data: { firstName: userName },
+        });
+        logger.info('User name saved', {
+          userId,
+          firstName: userName,
+        });
+      }
+
       // Загружаем полные данные для расчета профиля
       const fullAnswers = await tx.userAnswer.findMany({
         where: {
