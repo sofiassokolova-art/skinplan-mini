@@ -150,16 +150,43 @@ export interface CartResponse {
   }>;
 }
 
-export interface AnalysisResponse {
-  issues: Array<{
-    id: string;
+export interface SkinIssue {
+  id: string;
+  name: string;
+  severity_score: number;
+  severity_label: 'критично' | 'плохо' | 'умеренно' | 'хорошо' | 'отлично';
+  description: string;
+  tags: string[];
+  image_url?: string;
+}
+
+export interface CareStep {
+  stepNumber: number;
+  stepName: string;
+  stepDescription: string;
+  stepTags: string[];
+  products: Array<{
+    id: number;
     name: string;
-    severity: 'low' | 'medium' | 'high';
+    brand: { name: string };
+    price?: number | null;
+    imageUrl?: string | null;
     description?: string;
+    tags?: string[];
   }>;
-  gender?: 'male' | 'female';
-  age?: number;
-  recommendations?: string[];
+}
+
+export interface AnalysisResponse {
+  profile: {
+    gender?: string | null;
+    age?: number | null;
+    skinType: string;
+    skinTypeRu: string;
+    keyProblems: string[];
+  };
+  issues: SkinIssue[];
+  morningSteps: CareStep[];
+  eveningSteps: CareStep[];
 }
 
 export interface QuizProgressResponse {

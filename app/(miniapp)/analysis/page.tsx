@@ -13,47 +13,10 @@ import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { api } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
+import type { AnalysisResponse } from '@/lib/api-types';
 
-interface SkinIssue {
-  id: string;
-  name: string;
-  severity_score: number;
-  severity_label: 'критично' | 'плохо' | 'умеренно' | 'хорошо' | 'отлично';
-  description: string;
-  tags: string[];
-  image_url?: string;
-}
-
-interface Product {
-  id: number;
-  name: string;
-  brand: { name: string };
-  price?: number;
-  imageUrl?: string | null;
-  description?: string;
-  tags?: string[];
-}
-
-interface CareStep {
-  stepNumber: number;
-  stepName: string;
-  stepDescription: string;
-  stepTags: string[];
-  products: Product[];
-}
-
-interface AnalysisData {
-  profile: {
-    gender?: string | null;
-    age?: number | null;
-    skinType: string;
-    skinTypeRu: string;
-    keyProblems: string[];
-  };
-  issues: SkinIssue[];
-  morningSteps: CareStep[];
-  eveningSteps: CareStep[];
-}
+// Используем типы из api-types.ts
+type AnalysisData = AnalysisResponse;
 
 function AnalysisPageContent() {
   const router = useRouter();
@@ -82,7 +45,7 @@ function AnalysisPageContent() {
       setError(null);
 
       // Загружаем данные анализа через новый API endpoint
-      const analysisData = await api.getAnalysis() as AnalysisData;
+      const analysisData = await api.getAnalysis();
       clientLogger.info('✅ Analysis data loaded', {
         issuesCount: analysisData.issues?.length || 0,
         morningStepsCount: analysisData.morningSteps?.length || 0,
