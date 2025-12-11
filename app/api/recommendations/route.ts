@@ -9,6 +9,7 @@ import { getCachedRecommendations, setCachedRecommendations } from '@/lib/cache'
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { getProductsForStep, type RuleStep } from '@/lib/product-selection';
 import { normalizeIngredientSimple } from '@/lib/ingredient-normalizer';
+import { calculateSkinAxes, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 
 export const runtime = 'nodejs';
 
@@ -28,12 +29,30 @@ interface Rule {
 
 /**
  * Проверяет, соответствует ли профиль условиям правила
+ * ИСПРАВЛЕНО: Правильно обрабатывает отсутствующие поля и вычисленные scores
  */
 function matchesRule(profile: any, rule: Rule): boolean {
   const conditions = rule.conditionsJson;
 
   for (const [key, condition] of Object.entries(conditions)) {
     const profileValue = profile[key];
+
+    // ИСПРАВЛЕНО: Если поле отсутствует в профиле, правило не соответствует
+    // (кроме случаев, когда условие может быть опциональным)
+    if (profileValue === undefined || profileValue === null) {
+      // Для числовых условий (gte/lte) отсутствие значения = несоответствие
+      if (typeof condition === 'object' && condition !== null && ('gte' in condition || 'lte' in condition)) {
+        return false;
+      }
+      // Для точных совпадений отсутствие значения = несоответствие
+      if (typeof condition !== 'object' || condition === null) {
+        return false;
+      }
+      // Для массивов - отсутствие значения = несоответствие
+      if (Array.isArray(condition)) {
+        return false;
+      }
+    }
 
     if (Array.isArray(condition)) {
       // Проверка на соответствие массиву значений
@@ -47,6 +66,16 @@ function matchesRule(profile: any, rule: Rule): boolean {
       }
       if ('lte' in condition && typeof profileValue === 'number') {
         if (profileValue > condition.lte!) return false;
+      }
+      // Проверка hasSome для массивов (например, diagnoses: { hasSome: ["acne"] })
+      if ('hasSome' in condition && Array.isArray(condition.hasSome)) {
+        const profileArray = Array.isArray(profileValue) ? profileValue : [];
+        const hasMatch = condition.hasSome.some((item: any) => profileArray.includes(item));
+        if (!hasMatch) return false;
+      }
+      // Проверка in для массивов (например, age: { in: ["25-34"] })
+      if ('in' in condition && Array.isArray(condition.in)) {
+        if (!condition.in.includes(profileValue)) return false;
       }
     } else if (condition !== profileValue) {
       return false;
@@ -337,6 +366,75 @@ export async function GET(request: NextRequest) {
       return ApiResponse.success(response);
     }
 
+    // ИСПРАВЛЕНО: Вычисляем skin scores перед проверкой правил
+    // Правила могут использовать поля из scores (inflammation, oiliness, hydration, barrier, pigmentation, photoaging)
+    // которые не хранятся в профиле, а вычисляются из ответов
+    const answersForScores = await prisma.userAnswer.findMany({
+      where: {
+        userId,
+        questionnaireId: 3, // Активная анкета
+      },
+      include: {
+        question: true,
+      },
+    });
+
+    // Формируем QuestionnaireAnswers для вычисления scores
+    const questionnaireAnswers: QuestionnaireAnswers = {
+      skinType: profile.skinType || 'normal',
+      age: profile.ageGroup || '25-34',
+      concerns: [],
+      diagnoses: [],
+      allergies: [],
+      sensitivityLevel: profile.sensitivityLevel || 'low',
+      acneLevel: profile.acneLevel || 0,
+    };
+
+    // Извлекаем данные из ответов
+    for (const answer of answersForScores) {
+      const code = answer.question?.code || '';
+      if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
+        questionnaireAnswers.concerns = answer.answerValues as string[];
+      } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
+        questionnaireAnswers.diagnoses = answer.answerValues as string[];
+      } else if (code === 'allergies' && Array.isArray(answer.answerValues)) {
+        questionnaireAnswers.allergies = answer.answerValues as string[];
+      } else if (code === 'habits' && Array.isArray(answer.answerValues)) {
+        questionnaireAnswers.habits = answer.answerValues as string[];
+      }
+    }
+
+    // Вычисляем skin scores
+    const skinScores = calculateSkinAxes(questionnaireAnswers);
+
+    // Создаем расширенный профиль с вычисленными scores для проверки правил
+    const profileWithScores: any = {
+      ...profile,
+      // Добавляем вычисленные scores
+      inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
+      oiliness: skinScores.find(s => s.axis === 'oiliness')?.value || 0,
+      hydration: skinScores.find(s => s.axis === 'hydration')?.value || 0,
+      barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
+      pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
+      photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
+      // Также добавляем поля для совместимости с разными форматами правил
+      skin_type: profile.skinType,
+      skinType: profile.skinType,
+      sensitivity_level: profile.sensitivityLevel,
+      age_group: profile.ageGroup,
+      age: profile.ageGroup,
+    };
+
+    logger.info('Profile with calculated scores for rule matching', {
+      userId,
+      profileId: profile.id,
+      skinType: profile.skinType,
+      inflammation: profileWithScores.inflammation,
+      oiliness: profileWithScores.oiliness,
+      hydration: profileWithScores.hydration,
+      barrier: profileWithScores.barrier,
+    });
+
     // Получаем все активные правила, отсортированные по приоритету
     const rules = await prisma.recommendationRule.findMany({
       where: { isActive: true },
@@ -348,8 +446,14 @@ export async function GET(request: NextRequest) {
     
     for (const rule of rules) {
       const conditions = rule.conditionsJson as RuleCondition;
-      if (matchesRule(profile, { ...rule, conditionsJson: conditions } as Rule)) {
+      if (matchesRule(profileWithScores, { ...rule, conditionsJson: conditions } as Rule)) {
         matchedRule = { ...rule, conditionsJson: conditions } as Rule;
+        logger.info('Rule matched for profile', {
+          userId,
+          ruleId: rule.id,
+          ruleName: rule.name,
+          profileId: profile.id,
+        });
         break;
       }
     }
