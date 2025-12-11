@@ -2,6 +2,14 @@
 // API клиент для работы с бэкендом
 
 import { handleNetworkError, fetchWithTimeout } from './network-utils';
+import type { 
+  UserProfileResponse, 
+  ProfileResponse, 
+  PlanResponse, 
+  WishlistResponse, 
+  CartResponse, 
+  AnalysisResponse 
+} from './api-types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 const DEFAULT_TIMEOUT = 30000; // 30 секунд по умолчанию
@@ -356,7 +364,7 @@ export const api = {
   // Профиль
   // ОПТИМИЗАЦИЯ: Кэшируем результат проверки профиля в sessionStorage
   // и дедуплицируем параллельные запросы для предотвращения множественных запросов
-  async getCurrentProfile() {
+  async getCurrentProfile(): Promise<ProfileResponse | null> {
     // Проверяем кэш в sessionStorage
     if (typeof window !== 'undefined') {
       const cacheKey = 'profile_check_cache';
@@ -383,21 +391,21 @@ export const api = {
               return null;
             }
             // Профиль найден - возвращаем из кэша
-            return JSON.parse(cached);
+            return JSON.parse(cached) as ProfileResponse;
           }
         }
         
         // Проверяем, есть ли уже выполняющийся запрос
-        const pendingPromise = (window as any)[globalPendingKey];
+        const pendingPromise = (window as any)[globalPendingKey] as Promise<ProfileResponse | null> | null;
         if (pendingPromise) {
           // Запрос уже выполняется - ждем его результата
           return pendingPromise;
         }
         
         // Создаем новый запрос и сохраняем промис для дедупликации
-        const profilePromise = (async () => {
+        const profilePromise = (async (): Promise<ProfileResponse | null> => {
           try {
-            const profile = await request('/profile/current');
+            const profile = await request<ProfileResponse>('/profile/current');
             // Если профиль null - это нормально, кэшируем как 'null'
             if (profile === null) {
               sessionStorage.setItem(cacheKey, 'null');
@@ -433,11 +441,11 @@ export const api = {
     }
     
     // SSR или window недоступен - делаем запрос без кэша
-    return request('/profile/current');
+    return request<ProfileResponse | null>('/profile/current');
   },
 
-  async getUserProfile() {
-    return request('/profile/user');
+  async getUserProfile(): Promise<UserProfileResponse> {
+    return request<UserProfileResponse>('/profile/user');
   },
 
   async updateUserProfile(data: { firstName?: string; lastName?: string; phoneNumber?: string }) {
@@ -453,13 +461,13 @@ export const api = {
   },
 
   // План ухода (28 дней) - получает план БЕЗ генерации (только из кэша)
-  async getPlan() {
-    return request('/plan');
+  async getPlan(): Promise<PlanResponse> {
+    return request<PlanResponse>('/plan');
   },
 
   // Генерация плана ухода (28 дней) - явная генерация
-  async generatePlan() {
-    return request('/plan/generate');
+  async generatePlan(): Promise<PlanResponse> {
+    return request<PlanResponse>('/plan/generate');
   },
 
   // Прогресс плана (28 дней)
@@ -553,8 +561,8 @@ export const api = {
   },
 
   // Избранное (Wishlist)
-  async getWishlist() {
-    return request('/wishlist');
+  async getWishlist(): Promise<WishlistResponse> {
+    return request<WishlistResponse>('/wishlist');
   },
 
   async addToWishlist(productId: number) {
@@ -589,8 +597,8 @@ export const api = {
   },
 
   // Корзина
-  async getCart() {
-    return request('/cart');
+  async getCart(): Promise<CartResponse> {
+    return request<CartResponse>('/cart');
   },
 
   async addToCart(productId: number, quantity: number = 1) {
@@ -617,8 +625,8 @@ export const api = {
   },
 
   // Анализ кожи
-  async getAnalysis() {
-    return request('/analysis');
+  async getAnalysis(): Promise<AnalysisResponse> {
+    return request<AnalysisResponse>('/analysis');
   },
 
   // Админские функции

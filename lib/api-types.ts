@@ -89,6 +89,76 @@ export interface ProfileResponse {
   acneLevel?: number | null;
   ageGroup?: string | null;
   scores?: any[];
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: any;
+}
+
+// Типы для API ответов
+export interface UserProfileResponse {
+  id: string;
+  telegramId: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  language: string;
+  phoneNumber: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  lastActive: string | null;
+}
+
+export interface PlanResponse {
+  plan28?: Plan28;
+  weeks?: PlanWeek[];
+  products?: PlanProduct[];
+  profile?: PlanProfile;
+  warnings?: string[];
+}
+
+export interface WishlistResponse {
+  items: Array<{
+    id: string;
+    productId: number;
+    product?: {
+      id: number;
+      name: string;
+      brand: { name: string };
+      price: number | null;
+      imageUrl: string | null;
+      description?: string;
+    };
+    createdAt: string;
+  }>;
+}
+
+export interface CartResponse {
+  items: Array<{
+    id: string;
+    productId: number;
+    quantity: number;
+    product: {
+      id: number;
+      name: string;
+      brand: { name: string };
+      price: number | null;
+      imageUrl: string | null;
+      description?: string;
+    };
+    createdAt: string;
+  }>;
+}
+
+export interface AnalysisResponse {
+  issues: Array<{
+    id: string;
+    name: string;
+    severity: 'low' | 'medium' | 'high';
+    description?: string;
+  }>;
+  gender?: 'male' | 'female';
+  age?: number;
+  recommendations?: string[];
 }
 

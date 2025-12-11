@@ -12,6 +12,7 @@ import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import { PaymentGate } from '@/components/PaymentGate';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
+import type { PlanResponse, UserProfileResponse, ProfileResponse, WishlistResponse } from '@/lib/api-types';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
 
@@ -158,7 +159,7 @@ export default function HomePage() {
 
         // ИСПРАВЛЕНО: Загружаем имя пользователя для приветствия
         try {
-          const userProfile = await api.getUserProfile() as any;
+          const userProfile = await api.getUserProfile();
           if (userProfile?.firstName) {
             setUserName(userProfile.firstName);
             clientLogger.log('✅ User name loaded:', userProfile.firstName);
@@ -182,7 +183,7 @@ export default function HomePage() {
         let hasProfile = false;
         try {
           const profile = await api.getCurrentProfile();
-          if (profile && (profile as any).id) {
+          if (profile && profile.id) {
             hasProfile = true;
             clientLogger.log('✅ Profile exists, user has completed quiz');
           } else {
@@ -493,12 +494,12 @@ export default function HomePage() {
       clientLogger.log('📥 Loading plan for current day...');
       
       // Загружаем план и прогресс
-      let planData: any = null;
+      let planData: PlanResponse | null = null;
       let progress: { currentDay: number; completedDays: number[] } | null = null;
       
       try {
         // Пробуем загрузить план
-        planData = await api.getPlan() as any;
+        planData = await api.getPlan();
         clientLogger.log('📥 Home: Plan loaded', {
           hasPlan: !!planData,
           hasPlan28: !!planData?.plan28,
@@ -537,7 +538,7 @@ export default function HomePage() {
             clientLogger.log('🔄 Home: Generating plan...');
             
             // Пробуем сгенерировать план (может быть для новой версии профиля после перепрохождения анкеты)
-            const generatedPlan = await api.generatePlan() as any;
+            const generatedPlan = await api.generatePlan();
             
             // ИСПРАВЛЕНО: Проверяем оба формата плана (plan28 и weeks)
             const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
@@ -649,7 +650,7 @@ export default function HomePage() {
               clientLogger.log('🔄 Home: Regenerating plan from old format...');
               
               sessionStorage.setItem(regenerateAttemptsKey, String(regenerateAttempts + 1));
-              const generatedPlan = await api.generatePlan() as any;
+              const generatedPlan = await api.generatePlan();
               
               // ИСПРАВЛЕНО: Проверяем оба формата плана
               const hasPlan28 = generatedPlan?.plan28 && generatedPlan.plan28.days && generatedPlan.plan28.days.length > 0;
@@ -1007,7 +1008,7 @@ export default function HomePage() {
 
       // Загружаем wishlist и корзину (как в календаре)
       try {
-        const wishlistData = await api.getWishlist() as any;
+        const wishlistData = await api.getWishlist();
         const wishlistIds = (wishlistData.items || []).map((item: any) => 
           item.product?.id || item.productId
         ).filter((id: any): id is number => typeof id === 'number');

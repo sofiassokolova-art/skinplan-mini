@@ -5,14 +5,13 @@ const REQUIRED_ENV_VARS = {
   // Критичные для работы приложения
   DATABASE_URL: 'Строка подключения к базе данных',
   TELEGRAM_BOT_TOKEN: 'Токен Telegram бота',
-  
-  // Для кэширования (опционально, но желательно)
-  KV_REST_API_URL: 'Vercel KV REST API URL',
-  KV_REST_API_TOKEN: 'Vercel KV REST API Token',
+  JWT_SECRET: 'Секретный ключ для JWT токенов (обязателен для production)',
 } as const;
 
 const OPTIONAL_ENV_VARS = {
-  JWT_SECRET: 'Секретный ключ для JWT (используется дефолт, если не установлен)',
+  ADMIN_SECRET: 'Секретное слово для входа в админ-панель (опционально)',
+  KV_REST_API_URL: 'Vercel KV REST API URL (опционально, для кэширования)',
+  KV_REST_API_TOKEN: 'Vercel KV REST API Token (опционально, для кэширования)',
   UPSTASH_REDIS_REST_URL: 'Upstash Redis URL (опционально, для rate limiting)',
   UPSTASH_REDIS_REST_TOKEN: 'Upstash Redis Token (опционально, для rate limiting)',
   SENTRY_DSN: 'Sentry DSN для мониторинга ошибок',
@@ -34,8 +33,13 @@ export function validateEnv(): { valid: boolean; missing: string[]; warnings: st
     warnings.push('KV_REST_API_URL и KV_REST_API_TOKEN не установлены - кэширование будет отключено');
   }
 
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
-    warnings.push('JWT_SECRET не установлен или использует дефолтное значение - это небезопасно для production');
+  if (!process.env.ADMIN_SECRET || process.env.ADMIN_SECRET === '') {
+    warnings.push('ADMIN_SECRET не установлен - вход в админ-панель будет недоступен');
+  }
+
+  // ИСПРАВЛЕНО: JWT_SECRET теперь обязателен, проверяем его в REQUIRED_ENV_VARS
+  if (process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
+    warnings.push('JWT_SECRET использует дефолтное значение - это небезопасно для production');
   }
 
   return {

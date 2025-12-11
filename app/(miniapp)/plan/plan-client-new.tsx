@@ -63,7 +63,7 @@ export function PlanPageClientNew({
   useEffect(() => {
     const loadSkinIssues = async () => {
       try {
-        const analysisData = await api.getAnalysis() as any;
+        const analysisData = await api.getAnalysis();
         if (analysisData?.issues && Array.isArray(analysisData.issues)) {
           setSkinIssues(analysisData.issues);
         }
@@ -75,10 +75,10 @@ export function PlanPageClientNew({
     
     const loadUserInfo = async () => {
       try {
-        const profile = await api.getCurrentProfile() as any;
+        const profile = await api.getCurrentProfile();
         if (profile) {
           // Получаем пол и возраст из ответов
-          const analysis = await api.getAnalysis() as any;
+          const analysis = await api.getAnalysis();
           const gender = analysis?.gender || null;
           const age = analysis?.age ? `${analysis.age} лет` : profile.ageGroup || null;
           const skinType = profile.skinTypeRu || profile.skinType || null;
