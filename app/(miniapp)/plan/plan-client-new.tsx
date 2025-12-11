@@ -157,43 +157,6 @@ export function PlanPageClientNew({
 
   // ИСПРАВЛЕНО: Убрана автоматическая проверка needsFirstPayment - блюр не должен показываться автоматически
   // Платеж должен показываться только при явном запросе пользователя
-  // useEffect(() => {
-  //   // Проверяем статус первой оплаты (обновляем при изменении plan28)
-  //   // ВАЖНО: НЕ устанавливаем автоматически payment_first_completed при наличии плана
-  //   // Платеж должен быть показан при первом прохождении анкеты, даже если план уже сгенерирован
-  //   if (typeof window !== 'undefined' && plan28 && plan28.days && plan28.days.length > 0) {
-  //     const hasFirstPayment = localStorage.getItem('payment_first_completed') === 'true';
-  //     const newNeedsFirstPayment = !hasFirstPayment;
-  //     
-  //     clientLogger.log('💳 Payment status check (update on plan28 change):', {
-  //       hasFirstPayment,
-  //       needsFirstPayment: newNeedsFirstPayment,
-  //       paymentKey: 'payment_first_completed',
-  //       hasPlan28: !!plan28,
-  //       plan28Days: plan28?.days?.length || 0,
-  //       plan28MainGoals: plan28?.mainGoals?.length || 0,
-  //     });
-  //     
-  //     // ИСПРАВЛЕНО: Обновляем needsFirstPayment только если значение изменилось
-  //     // Это предотвращает лишние ре-рендеры
-  //     // ВАЖНО: При первой генерации плана (когда plan28 появляется) нужно обновить needsFirstPayment
-  //     setNeedsFirstPayment(prev => {
-  //       if (prev !== newNeedsFirstPayment) {
-  //         clientLogger.log('💳 Updating needsFirstPayment:', {
-  //           from: prev,
-  //           to: newNeedsFirstPayment,
-  //           reason: 'plan28 changed or initialized',
-  //         });
-  //         return newNeedsFirstPayment;
-  //       }
-  //       return prev;
-  //     });
-  //   } else if (typeof window !== 'undefined' && !plan28) {
-  //     // ИСПРАВЛЕНО: Если plan28 еще не загружен, не меняем needsFirstPayment
-      // Это предотвращает преждевременное скрытие блюра
-      clientLogger.log('💳 Plan28 not ready yet, keeping current needsFirstPayment state');
-    }
-  }, [plan28]);
 
   const loadCart = async () => {
     // ИСПРАВЛЕНО: Защита от множественных вызовов

@@ -345,10 +345,11 @@ export async function POST(request: NextRequest) {
         // Если есть answerValues (массив values опций), маппим их на labels
         if (answer.answerValues && Array.isArray(answer.answerValues) && answer.question?.answerOptions) {
           answerOptionLabels = answer.answerValues
+            .filter((val): val is string => typeof val === 'string')
             .map((val: string) => {
               const option = answer.question!.answerOptions.find(opt => opt.value === val);
-              // Используем label, если есть, иначе text, иначе value
-              return (option as any)?.label || option?.text || val;
+              // Используем label, если есть, иначе value
+              return option?.label || val;
             })
             .filter(Boolean);
         }
