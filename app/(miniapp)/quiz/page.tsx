@@ -2526,18 +2526,43 @@ export default function QuizPage() {
       // Проверяем наличие result, отсутствие поля error и что success не false
       // result может быть просто объектом с данными, поэтому проверяем отсутствие ошибки
       // ВАЖНО: Также проверяем, что профиль существует
-      const shouldGeneratePlan = result && !result.error && result.success !== false && result?.profile?.id;
+      const hasProfileId = result?.profile?.id;
+      const shouldGeneratePlan = result && !result.error && result.success !== false && hasProfileId;
       
-      // Логируем для диагностики
-      clientLogger.log('🔍 Проверка shouldGeneratePlan:', {
+      // Логируем для диагностики (включая отправку на сервер)
+      const logData = {
         hasResult: !!result,
         hasError: !!result?.error,
         success: result?.success,
         successType: typeof result?.success,
+        hasProfileId,
+        profileId: result?.profile?.id,
         shouldGeneratePlan,
         resultKeys: result ? Object.keys(result) : [],
         resultPreview: result ? JSON.stringify(result).substring(0, 300) : 'null',
-      });
+      };
+      clientLogger.log('🔍 Проверка shouldGeneratePlan:', logData);
+      
+      // ВАЖНО: Отправляем лог на сервер для диагностики
+      try {
+        const currentInitData = await getInitData();
+        if (currentInitData) {
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': currentInitData,
+            },
+            body: JSON.stringify({
+              level: 'info',
+              message: 'shouldGeneratePlan check result',
+              context: logData,
+            }),
+          }).catch(() => {});
+        }
+      } catch (logError) {
+        // Игнорируем ошибки логирования
+      }
       
       if (shouldGeneratePlan) {
         // Запускаем генерацию плана и ждем её завершения

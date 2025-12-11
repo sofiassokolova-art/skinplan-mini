@@ -44,15 +44,28 @@ export async function GET(request: NextRequest) {
     // Получаем профиль для версии
     // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
     // При перепрохождении анкеты создается новая версия профиля, и план должен быть для новой версии
-    const profile = await prisma.skinProfile.findFirst({
+    // ИСПРАВЛЕНО: Добавляем небольшую задержку и повторную попытку, если профиль не найден
+    // Это решает проблему race condition, когда профиль только что создан, но еще не виден в БД
+    let profile = await prisma.skinProfile.findFirst({
       where: { userId },
-      orderBy: { version: 'desc' }, // Используем version вместо createdAt для корректной версии
+      orderBy: { version: 'desc' },
       select: { version: true, updatedAt: true },
     });
 
+    // Если профиль не найден, ждем немного и пробуем еще раз (race condition fix)
+    if (!profile) {
+      logger.warn('Profile not found on first attempt, waiting and retrying...', { userId });
+      await new Promise(resolve => setTimeout(resolve, 200)); // Ждем 200ms
+      profile = await prisma.skinProfile.findFirst({
+        where: { userId },
+        orderBy: { version: 'desc' },
+        select: { version: true, updatedAt: true },
+      });
+    }
+
     if (!profile) {
       const duration = Date.now() - startTime;
-      logger.error('No skin profile found for user', { userId });
+      logger.error('No skin profile found for user after retry', { userId });
       logApiRequest(method, path, 404, duration, userId);
       return ApiResponse.notFound('No skin profile found', { userId });
     }
