@@ -49,6 +49,8 @@ export default function PersonalCabinet() {
   const [nameValue, setNameValue] = useState('');
   const [phoneValue, setPhoneValue] = useState('');
   const [expandedFAQ, setExpandedFAQ] = useState<number | false>(false);
+  // ИСПРАВЛЕНО: Имя для отображения - приоритет из ответа USER_NAME
+  const [displayNameFromAnswer, setDisplayNameFromAnswer] = useState<string | null>(null);
 
   useEffect(() => {
     initialize();
@@ -351,9 +353,6 @@ export default function PersonalCabinet() {
       </div>
     );
   }
-
-  // ИСПРАВЛЕНО: Имя для отображения - приоритет из ответа USER_NAME
-  const [displayNameFromAnswer, setDisplayNameFromAnswer] = useState<string | null>(null);
 
   // Вычисляем полное имя для отображения - приоритет: ответ USER_NAME > профиль > Telegram
   const fullName = displayNameFromAnswer || (userProfile 
