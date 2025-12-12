@@ -396,8 +396,16 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     }
   }
 
+  // ИСПРАВЛЕНО: Нормализуем тип кожи для выбора шаблона
+  // Шаблоны могут использовать "combo", "combination_dry", "combination_oily"
+  const { normalizeSkinTypeForRules } = await import('@/lib/skin-type-normalizer');
+  const normalizedSkinTypeForTemplate = normalizeSkinTypeForRules(profile.skinType, { userId });
+  // Для шаблонов используем оригинальный тип, так как selectCarePlanTemplate сам нормализует
+  // Но если нормализация вернула null, используем 'normal'
+  const skinTypeForTemplate = normalizedSkinTypeForTemplate || profile.skinType || 'normal';
+  
   const carePlanProfileInput: CarePlanProfileInput = {
-    skinType: profile.skinType || 'normal',
+    skinType: skinTypeForTemplate,
     mainGoals: mainGoals.length > 0 ? mainGoals : ['general'],
     sensitivityLevel: profile.sensitivityLevel || 'low',
     routineComplexity,
