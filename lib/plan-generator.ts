@@ -1913,7 +1913,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             sensitivity: stepProfile.sensitivity,
             diagnoses: stepProfile.diagnoses,
             userId,
-            dayIndex,
+            day,
           });
         }
         return isAllowed;
@@ -1927,7 +1927,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             sensitivity: stepProfile.sensitivity,
             diagnoses: stepProfile.diagnoses,
             userId,
-            dayIndex,
+            day,
           });
         }
         return isAllowed;
@@ -1937,7 +1937,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       if (allowedMorningSteps.length <= 2 && allowedEveningSteps.length <= 1) {
         logger.warn('CRITICAL: Only minimal steps after filtering', {
           userId,
-          dayIndex,
+          day,
           rawMorningSteps,
           rawEveningSteps,
           allowedMorningSteps,

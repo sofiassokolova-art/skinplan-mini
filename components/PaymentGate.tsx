@@ -30,9 +30,16 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
   const [checkingDbPayment, setCheckingDbPayment] = useState(false);
 
   // ИСПРАВЛЕНО: Проверяем статус оплаты в БД при монтировании
+  // ВАЖНО: Убрали checkingDbPayment из зависимостей, чтобы избежать бесконечного цикла
   useEffect(() => {
+    let isMounted = true;
+    
     const checkDbPaymentStatus = async () => {
-      if (hasPaid || checkingDbPayment) return; // Уже оплачено или проверяем
+      // Проверяем localStorage сначала - если уже оплачено, не делаем запрос
+      if (hasPaid) return;
+      
+      // Используем ref для предотвращения множественных одновременных запросов
+      if (checkingDbPayment) return;
       
       try {
         setCheckingDbPayment(true);
@@ -42,6 +49,8 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
             'X-Telegram-Init-Data': typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData || '') : '',
           },
         });
+        
+        if (!isMounted) return; // Компонент размонтирован, не обновляем состояние
         
         if (response.ok) {
           const data = await response.json();
@@ -56,14 +65,22 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
         }
       } catch (error) {
         // Игнорируем ошибки проверки - используем только localStorage
-        console.warn('Could not check payment status from DB:', error);
+        if (isMounted) {
+          console.warn('Could not check payment status from DB:', error);
+        }
       } finally {
-        setCheckingDbPayment(false);
+        if (isMounted) {
+          setCheckingDbPayment(false);
+        }
       }
     };
 
     checkDbPaymentStatus();
-  }, [isRetaking, hasPaid, checkingDbPayment]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [isRetaking, hasPaid]); // ИСПРАВЛЕНО: Убрали checkingDbPayment из зависимостей
 
   const handlePayment = async () => {
     if (!agreedToTerms) {

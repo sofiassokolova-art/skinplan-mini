@@ -19,6 +19,69 @@ interface AnswerInput {
   answerValues?: string[];
 }
 
+// ИСПРАВЛЕНО: Добавлен GET метод для получения ответов пользователя
+export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/questionnaire/answers';
+  let userId: string | undefined;
+
+  try {
+    const initData = request.headers.get('x-telegram-init-data') ||
+                     request.headers.get('X-Telegram-Init-Data');
+
+    if (!initData) {
+      return ApiResponse.unauthorized('Missing Telegram initData');
+    }
+
+    const userIdResult = await getUserIdFromInitData(initData);
+    if (!userIdResult) {
+      return ApiResponse.unauthorized('Invalid or expired initData');
+    }
+    userId = userIdResult;
+
+    // Получаем активную анкету
+    const questionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!questionnaire) {
+      return ApiResponse.notFound('No active questionnaire found');
+    }
+
+    // Получаем все ответы пользователя для этой анкеты
+    const userAnswers = await prisma.userAnswer.findMany({
+      where: {
+        userId,
+        question: {
+          questionnaireId: questionnaire.id,
+        },
+      },
+      include: {
+        question: {
+          select: {
+            id: true,
+            code: true,
+            text: true,
+            type: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    logApiRequest(method, path, 200, Date.now() - startTime, userId);
+    return ApiResponse.success(userAnswers);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId || undefined);
+    return ApiResponse.internalError(error, { userId: userId || undefined, method, path, duration });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
