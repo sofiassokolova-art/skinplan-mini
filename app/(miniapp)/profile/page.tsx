@@ -105,12 +105,29 @@ export default function PersonalCabinet() {
       let userNameFromAnswer: string | null = null;
       try {
         const userAnswers = await api.getUserAnswers() as any;
+        clientLogger.log('📋 Загружены ответы пользователя:', { 
+          count: userAnswers?.length || 0,
+          hasArray: Array.isArray(userAnswers)
+        });
         if (userAnswers && Array.isArray(userAnswers)) {
           const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+          clientLogger.log('🔍 Поиск ответа USER_NAME:', { 
+            found: !!nameAnswer,
+            answerValue: nameAnswer?.answerValue,
+            questionCode: nameAnswer?.question?.code
+          });
           if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
             userNameFromAnswer = String(nameAnswer.answerValue).trim();
+            setDisplayNameFromAnswer(userNameFromAnswer);
             clientLogger.log('✅ Имя найдено в ответах USER_NAME:', userNameFromAnswer);
+          } else {
+            clientLogger.warn('⚠️ Ответ USER_NAME не найден или пустой', { 
+              hasAnswer: !!nameAnswer,
+              answerValue: nameAnswer?.answerValue
+            });
           }
+        } else {
+          clientLogger.warn('⚠️ Ответы пользователя не являются массивом', { type: typeof userAnswers });
         }
       } catch (err) {
         clientLogger.warn('Could not load user answers for name:', err);
@@ -335,9 +352,13 @@ export default function PersonalCabinet() {
     );
   }
 
-  const fullName = userProfile 
+  // ИСПРАВЛЕНО: Имя для отображения - приоритет из ответа USER_NAME
+  const [displayNameFromAnswer, setDisplayNameFromAnswer] = useState<string | null>(null);
+
+  // Вычисляем полное имя для отображения - приоритет: ответ USER_NAME > профиль > Telegram
+  const fullName = displayNameFromAnswer || (userProfile 
     ? [userProfile.firstName, userProfile.lastName].filter(Boolean).join(' ') || userProfile.username || 'Пользователь'
-    : 'Пользователь';
+    : 'Пользователь');
 
   // Вычисляем статистику
   const daysInApp = skinProfile 
