@@ -53,11 +53,11 @@ export function PlanPageClientNew({
   
   // Состояние для информации о пользователе
   const [userInfo, setUserInfo] = useState<{
-    gender?: string | null;
-    age?: string | null;
     skinType?: string | null;
-    mainConcern?: string | null;
   } | null>(null);
+  
+  // Состояние для имени пользователя
+  const [userName, setUserName] = useState<string | null>(null);
   
   // Загружаем проблемы кожи и информацию о пользователе при монтировании
   useEffect(() => {
@@ -78,31 +78,15 @@ export function PlanPageClientNew({
         const profile = await api.getCurrentProfile();
         if (profile) {
           // ИСПРАВЛЕНО: Используем функции форматирования для единообразия
-          const { formatAgeGroup, formatSkinType, formatMainGoal } = await import('@/lib/format-helpers');
-          
-          // Получаем пол и возраст из ответов
-          const analysis = await api.getAnalysis();
-          const gender = analysis?.profile?.gender || null;
-          
-          // Форматируем возраст: приоритет analysis.profile.age, затем profile.ageGroup
-          const age = analysis?.profile?.age 
-            ? formatAgeGroup(analysis.profile.age) 
-            : formatAgeGroup(profile.ageGroup);
+          const { formatSkinType } = await import('@/lib/format-helpers');
           
           // Форматируем тип кожи: приоритет profile.skinTypeRu, затем profile.skinType
           const skinType = profile.skinTypeRu 
             ? formatSkinType(profile.skinTypeRu) 
             : formatSkinType(profile.skinType);
           
-          // Форматируем основной запрос: переводим код в читаемый текст
-          const mainConcernRaw = plan28.mainGoals?.[0] || null;
-          const mainConcern = mainConcernRaw ? formatMainGoal(mainConcernRaw) : null;
-          
           setUserInfo({
-            gender: gender === 'female' ? 'Девушка' : gender === 'male' ? 'Парень' : null,
-            age,
             skinType,
-            mainConcern,
           });
         }
       } catch (err) {
@@ -110,8 +94,34 @@ export function PlanPageClientNew({
       }
     };
     
+    const loadUserName = async () => {
+      try {
+        // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
+        const userAnswers = await api.getUserAnswers() as any;
+        if (userAnswers && Array.isArray(userAnswers)) {
+          const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+          if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+            const userNameFromAnswer = String(nameAnswer.answerValue).trim();
+            setUserName(userNameFromAnswer);
+            clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
+            return;
+          }
+        }
+        // Если имени нет в ответах, пробуем из профиля
+        const userProfile = await api.getUserProfile();
+        if (userProfile?.firstName) {
+          setUserName(userProfile.firstName);
+          clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
+        }
+      } catch (err) {
+        // Не критично, если не удалось загрузить имя
+        clientLogger.warn('Could not load user name:', err);
+      }
+    };
+    
     loadSkinIssues();
     loadUserInfo();
+    loadUserName();
   }, []);
   
   // Инициализируем selectedDay без зависимости от searchParams в useState
