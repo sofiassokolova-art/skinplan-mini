@@ -460,6 +460,7 @@ export async function POST(request: NextRequest) {
 /start - Начать работу с ботом
 /help - Показать эту справку
 /clear - Очистить данные анкеты
+/payment - Установить статус оплаты (для тестирования)
 
 <b>Что дальше?</b>
 Нажмите на кнопку "Открыть SkinIQ" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями SkinIQ!`;
@@ -472,6 +473,57 @@ export async function POST(request: NextRequest) {
       }
       
       return NextResponse.json({ ok: true, processed: 'help_command' });
+    }
+
+    // Обработка команды /payment - устанавливает статус оплаты для тестирования
+    else if (update.message?.text === '/payment' || update.message?.text?.startsWith('/payment')) {
+      const chatId = update.message.chat.id;
+      const telegramId = update.message.from.id;
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
+
+      if (!userId) {
+        await sendMessage(chatId, '❌ Не удалось идентифицировать пользователя', undefined);
+        return NextResponse.json({ ok: true, processed: 'payment_command_error' });
+      }
+
+      // Устанавливаем флаг оплаты в БД через тег пользователя
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { tags: true },
+        });
+
+        const tags = user?.tags || [];
+        const hasPaymentTag = tags.includes('payment_completed');
+
+        if (!hasPaymentTag) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              tags: { push: 'payment_completed' },
+            },
+          });
+        }
+
+        const paymentText = `✅ <b>Статус оплаты установлен!</b>
+
+Теперь откройте Mini App и обновите страницу - план должен отобразиться без блюра.
+
+<b>Примечание:</b> Это команда для тестирования. В продакшене оплата обрабатывается через платежную систему.`;
+
+        await sendMessage(chatId, paymentText, undefined, userId);
+        console.log(`✅ Payment status set for user ${userId} (telegramId: ${telegramId})`);
+      } catch (error: any) {
+        console.error(`❌ Failed to set payment status:`, error);
+        await sendMessage(chatId, '❌ Ошибка при установке статуса оплаты', undefined, userId);
+      }
+      
+      return NextResponse.json({ ok: true, processed: 'payment_command' });
     }
 
     // Если это сообщение, но не команда - логируем для отладки

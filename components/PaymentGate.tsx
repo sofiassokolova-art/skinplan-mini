@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 interface PaymentGateProps {
@@ -19,6 +19,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Проверяем, оплатил ли пользователь ранее
+  // ИСПРАВЛЕНО: Проверяем и localStorage, и БД (через API)
   const checkPaymentStatus = () => {
     if (typeof window === 'undefined') return false;
     const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
@@ -26,6 +27,43 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
   };
 
   const [hasPaid, setHasPaid] = useState(checkPaymentStatus());
+  const [checkingDbPayment, setCheckingDbPayment] = useState(false);
+
+  // ИСПРАВЛЕНО: Проверяем статус оплаты в БД при монтировании
+  useEffect(() => {
+    const checkDbPaymentStatus = async () => {
+      if (hasPaid || checkingDbPayment) return; // Уже оплачено или проверяем
+      
+      try {
+        setCheckingDbPayment(true);
+        const response = await fetch('/api/payment/check-status', {
+          method: 'GET',
+          headers: {
+            'X-Telegram-Init-Data': typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData || '') : '',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.hasPaid) {
+            // Устанавливаем в localStorage для быстрой проверки в будущем
+            const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(paymentKey, 'true');
+            }
+            setHasPaid(true);
+          }
+        }
+      } catch (error) {
+        // Игнорируем ошибки проверки - используем только localStorage
+        console.warn('Could not check payment status from DB:', error);
+      } finally {
+        setCheckingDbPayment(false);
+      }
+    };
+
+    checkDbPaymentStatus();
+  }, [isRetaking, hasPaid, checkingDbPayment]);
 
   const handlePayment = async () => {
     if (!agreedToTerms) {
