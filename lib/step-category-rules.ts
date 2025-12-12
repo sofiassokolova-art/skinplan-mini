@@ -280,14 +280,21 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
 
 /**
  * Проверяет, допустим ли шаг для профиля
+ * ИСПРАВЛЕНО: Добавлена нормализация значений и проверка чувствительности
  */
-export function isStepAllowedForProfile(step: StepCategory, profile: SkinProfile): boolean {
+export async function isStepAllowedForProfile(step: StepCategory, profile: SkinProfile): Promise<boolean> {
   const rule = STEP_CATEGORY_RULES[step];
   if (!rule) return true; // Если правила нет, разрешаем по умолчанию
 
+  // ИСПРАВЛЕНО: Нормализуем тип кожи перед проверкой
+  // В БД может быть "combo", но в правилах используется "combination_dry" или "combination_oily"
+  // Используем функцию нормализации для единообразия
+  const { normalizeSkinTypeForRules, normalizeSensitivityForRules } = await import('./skin-type-normalizer');
+  const normalizedSkinType = normalizeSkinTypeForRules(profile.skinType);
+
   // Проверка типа кожи
-  if (rule.skinTypesAllowed && profile.skinType) {
-    if (!rule.skinTypesAllowed.includes(profile.skinType)) {
+  if (rule.skinTypesAllowed && normalizedSkinType) {
+    if (!rule.skinTypesAllowed.includes(normalizedSkinType)) {
       return false;
     }
   }
@@ -299,10 +306,21 @@ export function isStepAllowedForProfile(step: StepCategory, profile: SkinProfile
     }
   }
 
-  // Проверка противопоказаний
-  if (rule.avoidIfContra && profile.contraindications && profile.contraindications.length > 0) {
-    if (profile.contraindications.some(c => rule.avoidIfContra!.includes(c))) {
-      return false;
+  // ИСПРАВЛЕНО: Проверка противопоказаний с учетом чувствительности
+  if (rule.avoidIfContra && rule.avoidIfContra.length > 0) {
+    // Проверяем противопоказания из профиля
+    if (profile.contraindications && profile.contraindications.length > 0) {
+      if (profile.contraindications.some(c => rule.avoidIfContra!.includes(c))) {
+        return false;
+      }
+    }
+    
+    // ИСПРАВЛЕНО: Проверяем "very_high_sensitivity" на основе уровня чувствительности
+    if (rule.avoidIfContra.includes('very_high_sensitivity')) {
+      const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivity);
+      if (normalizedSensitivity === 'very_high') {
+        return false;
+      }
     }
   }
 

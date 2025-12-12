@@ -824,13 +824,21 @@ export async function POST(request: NextRequest) {
         barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
         pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
         photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
-        // Также добавляем поля для совместимости с разными форматами правил
-        skin_type: profile.skinType,
-        skinType: profile.skinType,
-        sensitivity_level: profile.sensitivityLevel,
-        age_group: profile.ageGroup,
-        age: profile.ageGroup,
       };
+      
+      // ИСПРАВЛЕНО: Нормализуем тип кожи и чувствительность для совместимости с правилами
+      // Правила используют "combination_dry" и "combination_oily", но в БД используется "combo"
+      const { normalizeSkinTypeForRules, normalizeSensitivityForRules } = await import('@/lib/skin-type-normalizer');
+      const normalizedSkinType = normalizeSkinTypeForRules(profile.skinType, { userId });
+      const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivityLevel);
+      
+      // Добавляем нормализованные значения в profileWithScores
+      profileWithScores.skin_type = normalizedSkinType;
+      profileWithScores.skinType = normalizedSkinType;
+      profileWithScores.sensitivity_level = normalizedSensitivity;
+      profileWithScores.sensitivity = normalizedSensitivity;
+      profileWithScores.age_group = profile.ageGroup;
+      profileWithScores.age = profile.ageGroup;
       
       logger.info('Profile with calculated scores for rule matching', {
         userId,

@@ -290,20 +290,20 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   const medicalMarkers = (profile.medicalMarkers as Record<string, any> | null) || {};
   // Создаем минимальный SkinProfile для проверки шагов
   const { createEmptySkinProfile } = await import('@/lib/skinprofile-types');
+  const { normalizeSkinTypeForRules, normalizeSensitivityForRules } = await import('@/lib/skin-type-normalizer');
   
-  // ИСПРАВЛЕНО: Нормализуем тип кожи "combo" в "combination_oily" для совместимости с правилами
-  // Правила используют "combination_dry" и "combination_oily", но не "combo"
-  let normalizedSkinType = profile.skinType;
-  if (normalizedSkinType === 'combo') {
-    // По умолчанию используем combination_oily, так как это более распространенный вариант
-    normalizedSkinType = 'combination_oily';
-    logger.info('Normalized skin type from "combo" to "combination_oily" for step filtering', { userId });
-  }
+  // ИСПРАВЛЕНО: Нормализуем тип кожи и чувствительность для совместимости с правилами
+  // Правила используют "combination_dry" и "combination_oily", но в БД используется "combo"
+  const normalizedSkinType = normalizeSkinTypeForRules(profile.skinType, {
+    userId: userId as string,
+    // Можно добавить oiliness и dehydration из medicalMarkers, если доступны
+  });
+  const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivityLevel);
   
   const stepProfile: import('@/lib/skinprofile-types').SkinProfile = {
     ...createEmptySkinProfile(),
     skinType: normalizedSkinType as any,
-    sensitivity: profile.sensitivityLevel as any,
+    sensitivity: normalizedSensitivity as any,
     diagnoses: Array.isArray(medicalMarkers.diagnoses) ? medicalMarkers.diagnoses : [],
     contraindications: Array.isArray(medicalMarkers.contraindications)
       ? medicalMarkers.contraindications
@@ -1914,8 +1914,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       ]);
 
       // ИСПРАВЛЕНО: Логируем фильтрацию шагов для диагностики
-      const allowedMorningSteps = rawMorningSteps.filter((step) => {
-        const isAllowed = isStepAllowedForProfile(step, stepProfile);
+      // ИСПРАВЛЕНО: isStepAllowedForProfile теперь async, используем Promise.all
+      const allowedMorningStepsPromises = rawMorningSteps.map(async (step) => {
+        const isAllowed = await isStepAllowedForProfile(step, stepProfile);
         if (!isAllowed) {
           logger.warn('Step filtered out by isStepAllowedForProfile (morning)', {
             step,
@@ -1926,10 +1927,13 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             day,
           });
         }
-        return isAllowed;
+        return { step, isAllowed };
       });
-      const allowedEveningSteps = rawEveningSteps.filter((step) => {
-        const isAllowed = isStepAllowedForProfile(step, stepProfile);
+      const allowedMorningResults = await Promise.all(allowedMorningStepsPromises);
+      const allowedMorningSteps = allowedMorningResults.filter(r => r.isAllowed).map(r => r.step);
+      
+      const allowedEveningStepsPromises = rawEveningSteps.map(async (step) => {
+        const isAllowed = await isStepAllowedForProfile(step, stepProfile);
         if (!isAllowed) {
           logger.warn('Step filtered out by isStepAllowedForProfile (evening)', {
             step,
@@ -1940,8 +1944,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             day,
           });
         }
-        return isAllowed;
+        return { step, isAllowed };
       });
+      const allowedEveningResults = await Promise.all(allowedEveningStepsPromises);
+      const allowedEveningSteps = allowedEveningResults.filter(r => r.isAllowed).map(r => r.step);
       
       // ИСПРАВЛЕНО: Если после фильтрации осталось только 2 шага (cleanser и SPF), логируем предупреждение
       if (allowedMorningSteps.length <= 2 && allowedEveningSteps.length <= 1) {

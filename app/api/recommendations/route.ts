@@ -407,6 +407,11 @@ export async function GET(request: NextRequest) {
     // Вычисляем skin scores
     const skinScores = calculateSkinAxes(questionnaireAnswers);
 
+    // ИСПРАВЛЕНО: Нормализуем тип кожи и чувствительность для совместимости с правилами
+    const { normalizeSkinTypeForRules, normalizeSensitivityForRules } = await import('@/lib/skin-type-normalizer');
+    const normalizedSkinType = normalizeSkinTypeForRules(profile.skinType, { userId });
+    const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivityLevel);
+
     // Создаем расширенный профиль с вычисленными scores для проверки правил
     const profileWithScores: any = {
       ...profile,
@@ -417,10 +422,11 @@ export async function GET(request: NextRequest) {
       barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
       pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
       photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
-      // Также добавляем поля для совместимости с разными форматами правил
-      skin_type: profile.skinType,
-      skinType: profile.skinType,
-      sensitivity_level: profile.sensitivityLevel,
+      // ИСПРАВЛЕНО: Используем нормализованные значения для совместимости с правилами
+      skin_type: normalizedSkinType,
+      skinType: normalizedSkinType,
+      sensitivity_level: normalizedSensitivity,
+      sensitivity: normalizedSensitivity,
       age_group: profile.ageGroup,
       age: profile.ageGroup,
     };

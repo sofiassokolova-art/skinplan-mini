@@ -86,11 +86,24 @@ export function selectCarePlanTemplate(
 ): CarePlanTemplate {
   const { skinType, mainGoals, sensitivityLevel, routineComplexity } = profile;
 
+  // ИСПРАВЛЕНО: Нормализуем тип кожи для сравнения с шаблонами
+  // Шаблоны могут использовать "combo", "combination_dry", "combination_oily"
+  // Нужно проверить все варианты
+  const normalizeForTemplateMatch = (dbSkinType: string): string[] => {
+    if (dbSkinType === 'combo') {
+      return ['combo', 'combination_dry', 'combination_oily'];
+    }
+    return [dbSkinType];
+  };
+
   const matchesTemplate = (tpl: CarePlanTemplate): boolean => {
     const cond = tpl.conditions;
 
     if (cond.skinTypes && cond.skinTypes.length > 0) {
-      if (!cond.skinTypes.includes(skinType)) return false;
+      // ИСПРАВЛЕНО: Проверяем все нормализованные варианты типа кожи
+      const normalizedVariants = normalizeForTemplateMatch(skinType);
+      const hasMatch = normalizedVariants.some(variant => cond.skinTypes!.includes(variant));
+      if (!hasMatch) return false;
     }
 
     if (cond.mainGoals && cond.mainGoals.length > 0) {
@@ -99,6 +112,10 @@ export function selectCarePlanTemplate(
     }
 
     if (cond.sensitivityLevels && cond.sensitivityLevels.length > 0) {
+      // ИСПРАВЛЕНО: Проверяем соответствие уровня чувствительности
+      // В БД может быть "high", но в шаблонах может быть "very_high"
+      // Если в шаблоне есть "very_high", а в БД "high", это не совпадает
+      // Но если в шаблоне есть "high", а в БД "high", это совпадает
       if (!cond.sensitivityLevels.includes(sensitivityLevel)) return false;
     }
 
