@@ -1001,6 +1001,12 @@ export default function HomePage() {
       setCompletedDays(progress?.completedDays || []);
       
       // ИСПРАВЛЕНО: Устанавливаем morningItems и eveningItems для отображения на главной
+      clientLogger.log('✅ Устанавливаем morningItems и eveningItems для главной', {
+        morningLength: morning.length,
+        eveningLength: evening.length,
+        currentDay,
+        hasCurrentDayPlan: !!currentDayPlan,
+      });
       setMorningItems(morning);
       setEveningItems(evening);
 
@@ -1443,16 +1449,25 @@ export default function HomePage() {
       );
     }
     
-    // ИСПРАВЛЕНО: Если план найден, но рекомендаций нет - НЕ показываем только "Переход к плану..."
-    // Вместо этого показываем обычный контент главной страницы (рекомендации или экран начала)
-    // Редирект на /plan уже выполняется в useEffect, поэтому не нужно показывать промежуточный экран
-    // if (hasPlan) {
-    //   return (
-    //     <div style={{ padding: '20px', textAlign: 'center' }}>
-    //       <div style={{ color: '#0A5F59', fontSize: '16px' }}>Переход к плану...</div>
-    //     </div>
-    //   );
-    // }
+    // ИСПРАВЛЕНО: Если план найден, но рекомендаций нет - редиректим на /plan
+    // Это происходит, когда план есть в БД, но еще не загружен на главной
+    if (hasPlan) {
+      clientLogger.log('✅ План найден, но routineItems пустой - редиректим на /plan', {
+        hasPlan,
+        morningItemsLength: morningItems.length,
+        eveningItemsLength: eveningItems.length,
+        routineItemsLength: routineItems.length,
+      });
+      // Используем useEffect для редиректа, чтобы избежать проблем с рендерингом
+      useEffect(() => {
+        router.push('/plan');
+      }, []);
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Переход к плану...</div>
+        </div>
+      );
+    }
     
     // Если профиль не найден или нет рекомендаций - показываем экран с предложением пройти анкету
     return (

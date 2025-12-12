@@ -224,6 +224,21 @@ export async function GET(request: NextRequest) {
       }
     }
     
+    // ИСПРАВЛЕНО: Инвалидируем старый кэш перед сохранением нового плана
+    // Это предотвращает проблему, когда старый план с 2 продуктами показывается вместо нового с 5 продуктами
+    try {
+      const { invalidateAllUserCache } = await import('@/lib/cache');
+      await invalidateAllUserCache(userId);
+      logger.info('Old cache invalidated before caching new plan', { userId, profileVersion: profile.version });
+    } catch (invalidateError: any) {
+      // Ошибка инвалидации не критична, но логируем
+      logger.warn('Failed to invalidate old cache (non-critical)', {
+        userId,
+        profileVersion: profile.version,
+        errorMessage: invalidateError?.message,
+      });
+    }
+    
     // Сохраняем в кэш
     try {
       logger.info('Caching plan', { userId, profileVersion: profile.version });
@@ -233,6 +248,10 @@ export async function GET(request: NextRequest) {
         profileVersion: profile.version,
         hasPlan28: !!plan.plan28,
         hasWeeks: !!plan.weeks,
+        plan28DaysCount: plan?.plan28?.days?.length || 0,
+        // ИСПРАВЛЕНО: Логируем количество продуктов для диагностики
+        day1MorningProducts: plan?.plan28?.days?.[0]?.morning?.filter((s: any) => s.productId).length || 0,
+        day1EveningProducts: plan?.plan28?.days?.[0]?.evening?.filter((s: any) => s.productId).length || 0,
       });
     } catch (cacheError: any) {
       // Ошибка кэширования не должна блокировать возврат плана
