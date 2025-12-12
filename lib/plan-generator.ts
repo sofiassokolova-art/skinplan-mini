@@ -290,9 +290,19 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   const medicalMarkers = (profile.medicalMarkers as Record<string, any> | null) || {};
   // Создаем минимальный SkinProfile для проверки шагов
   const { createEmptySkinProfile } = await import('@/lib/skinprofile-types');
+  
+  // ИСПРАВЛЕНО: Нормализуем тип кожи "combo" в "combination_oily" для совместимости с правилами
+  // Правила используют "combination_dry" и "combination_oily", но не "combo"
+  let normalizedSkinType = profile.skinType;
+  if (normalizedSkinType === 'combo') {
+    // По умолчанию используем combination_oily, так как это более распространенный вариант
+    normalizedSkinType = 'combination_oily';
+    logger.info('Normalized skin type from "combo" to "combination_oily" for step filtering', { userId });
+  }
+  
   const stepProfile: import('@/lib/skinprofile-types').SkinProfile = {
     ...createEmptySkinProfile(),
-    skinType: profile.skinType as any,
+    skinType: normalizedSkinType as any,
     sensitivity: profile.sensitivityLevel as any,
     diagnoses: Array.isArray(medicalMarkers.diagnoses) ? medicalMarkers.diagnoses : [],
     contraindications: Array.isArray(medicalMarkers.contraindications)
@@ -2044,22 +2054,34 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
                 userId,
               });
             } else {
-              // Если даже это не помогло, пропускаем шаг
-              logger.error('CRITICAL: Could not find ANY product for step, skipping', {
+              // ИСПРАВЛЕНО: Не пропускаем шаг, даже если продукт не найден
+              // Шаг должен быть добавлен в план, даже без продукта (productId будет null в plan28)
+              logger.warn('CRITICAL: Could not find ANY product for step, but keeping step in plan with null productId', {
                 step,
                 baseStep,
                 day,
                 week: weekNum,
                 userId,
               });
-            continue;
+              // Продолжаем выполнение - шаг будет добавлен в days.push() ниже, но без продукта
+              // stepProducts остается пустым, но шаг все равно будет в morningSteps
             }
           }
         }
         
-        // ВАЖНО: Для очищения и SPF не применяем строгую дерматологическую фильтрацию
-        // Они должны быть всегда доступны
-        if (isCleanserStep(step) || isSPFStep(step)) {
+        // ИСПРАВЛЕНО: Проверяем, есть ли продукты перед использованием
+        // Если продуктов нет, шаг все равно должен быть добавлен в план (без продукта)
+        if (stepProducts.length === 0) {
+          // Шаг без продукта - не добавляем в dayProducts, но шаг остается в morningSteps массиве
+          logger.warn('Step has no products, but keeping step in plan', {
+            step,
+            day,
+            week: weekNum,
+            userId,
+          });
+        } else if (isCleanserStep(step) || isSPFStep(step)) {
+          // ВАЖНО: Для очищения и SPF не применяем строгую дерматологическую фильтрацию
+          // Они должны быть всегда доступны
           // Для обязательных шагов используем первый доступный продукт без фильтрации
           const selectedProduct = stepProducts[0];
           selectedProductsForDay.push(selectedProduct);
@@ -2236,22 +2258,35 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
                 userId,
               });
             } else {
-              // Если даже это не помогло, пропускаем шаг
-              logger.error('CRITICAL: Could not find ANY product for step, skipping', {
+              // ИСПРАВЛЕНО: Не пропускаем шаг, даже если продукт не найден
+              // Шаг должен быть добавлен в план, даже без продукта (productId будет null в plan28)
+              logger.warn('CRITICAL: Could not find ANY product for step, but keeping step in plan with null productId', {
                 step,
                 baseStep,
                 day,
                 week: weekNum,
                 userId,
               });
-            continue;
+              // Продолжаем выполнение - шаг будет добавлен в days.push() ниже, но без продукта
+              // stepProducts остается пустым, но шаг все равно будет в eveningSteps
             }
           }
         }
         
-        // ВАЖНО: Для очищения не применяем строгую дерматологическую фильтрацию
-        // Оно должно быть всегда доступно
-        if (isCleanserStep(step)) {
+        // ИСПРАВЛЕНО: Проверяем, есть ли продукты перед использованием
+        // Если продуктов нет, шаг все равно должен быть добавлен в план (без продукта)
+        if (stepProducts.length === 0) {
+          // Шаг без продукта - добавляем в dayProducts как null, но шаг остается в eveningSteps
+          logger.warn('Step has no products, but keeping step in plan', {
+            step,
+            day,
+            week: weekNum,
+            userId,
+          });
+          // Не добавляем в dayProducts, но шаг останется в eveningSteps массиве
+        } else if (isCleanserStep(step)) {
+          // ВАЖНО: Для очищения не применяем строгую дерматологическую фильтрацию
+          // Оно должно быть всегда доступно
           // Для обязательных шагов используем первый доступный продукт без фильтрации
           const selectedProduct = stepProducts[0];
           selectedProductsForDay.push(selectedProduct);
