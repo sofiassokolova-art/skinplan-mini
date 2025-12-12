@@ -991,7 +991,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('cleanser_gentle'); // Базовый поиск для совместимости
     } else if (stepStr.startsWith('cleanser_gentle') || categoryStr.includes('gentle')) {
       categories.push('cleanser_gentle');
-    } else if (stepStr.startsWith('cleanser_balancing') || stepStr.includes('balancing') || categoryStr.includes('balancing')) {
+    } else if (stepStr.startsWith('cleanser_balancing') || (stepStr.includes('cleanser') && (stepStr.includes('balancing') || categoryStr.includes('balancing')))) {
       categories.push('cleanser_balancing');
     } else if (stepStr.startsWith('cleanser_deep') || stepStr.includes('deep') || categoryStr.includes('deep')) {
       categories.push('cleanser_deep');
@@ -1004,7 +1004,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     
     if (stepStr.startsWith('toner_hydrating') || categoryStr.includes('hydrating')) {
       categories.push('toner_hydrating');
-    } else if (stepStr.startsWith('toner_soothing') || stepStr.includes('soothing') || categoryStr.includes('soothing')) {
+    } else if (stepStr.startsWith('toner_soothing') || (stepStr.includes('toner') && (stepStr.includes('soothing') || categoryStr.includes('soothing')))) {
       categories.push('toner_soothing');
     } else if (stepStr === 'toner' || categoryStr === 'toner') {
       // Если просто 'toner' без уточнения, пробуем оба варианта
@@ -1057,7 +1057,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('moisturizer_balancing');
     } else if (stepStr.startsWith('moisturizer_barrier') || stepStr.includes('barrier') || categoryStr.includes('barrier')) {
       categories.push('moisturizer_barrier');
-    } else if (stepStr.startsWith('moisturizer_soothing') || stepStr.includes('soothing') || categoryStr.includes('soothing')) {
+    } else if (stepStr.startsWith('moisturizer_soothing') || (stepStr.includes('moisturizer') && (stepStr.includes('soothing') || categoryStr.includes('soothing')))) {
       categories.push('moisturizer_soothing');
     } else if (stepStr === 'moisturizer' || stepStr === 'cream' || categoryStr === 'moisturizer' || categoryStr === 'cream') {
       // ИСПРАВЛЕНО: Если просто 'moisturizer' или 'cream' без уточнения, пробуем варианты в зависимости от типа кожи
@@ -1073,22 +1073,23 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       }
     }
     
-    if (stepStr.startsWith('spf_50_face') || stepStr === 'spf' || category === 'spf') {
-      categories.push('spf_50_face');
-    } else if (stepStr.startsWith('spf_50_oily') || stepStr.includes('oily')) {
-      categories.push('spf_50_oily');
-    } else if (stepStr.startsWith('spf_50_sensitive') || stepStr.includes('sensitive')) {
+    // ИСПРАВЛЕНО: Проверяем специфичные варианты SPF ПЕРВЫМИ, чтобы не маппить sensitive/oily на face
+    if (stepStr.startsWith('spf_50_sensitive') || (stepStr.includes('spf') && stepStr.includes('sensitive'))) {
       categories.push('spf_50_sensitive');
+    } else if (stepStr.startsWith('spf_50_oily') || (stepStr.includes('spf') && stepStr.includes('oily'))) {
+      categories.push('spf_50_oily');
+    } else if (stepStr.startsWith('spf_50_face') || stepStr === 'spf' || categoryStr === 'spf') {
+      categories.push('spf_50_face');
     }
     
-    // Маски
-    if (stepStr.startsWith('mask_clay') || stepStr.includes('clay')) {
+    // Маски - ИСПРАВЛЕНО: Проверяем, что это именно mask, а не toner/moisturizer с тем же суффиксом
+    if (stepStr.startsWith('mask_clay') || (stepStr.includes('mask') && stepStr.includes('clay'))) {
       categories.push('mask_clay');
-    } else if (stepStr.startsWith('mask_hydrating') || stepStr.includes('hydrating')) {
+    } else if (stepStr.startsWith('mask_hydrating') || (stepStr.includes('mask') && stepStr.includes('hydrating'))) {
       categories.push('mask_hydrating');
-    } else if (stepStr.startsWith('mask_soothing') || stepStr.includes('soothing')) {
+    } else if (stepStr.startsWith('mask_soothing') || (stepStr.includes('mask') && stepStr.includes('soothing'))) {
       categories.push('mask_soothing');
-    } else if (stepStr.startsWith('mask_sleeping') || stepStr.includes('sleeping')) {
+    } else if (stepStr.startsWith('mask_sleeping') || (stepStr.includes('mask') && stepStr.includes('sleeping'))) {
       categories.push('mask_sleeping');
     } else if (stepStr === 'mask' || categoryStr === 'mask') {
       // Если просто 'mask' без уточнения, пробуем все варианты
