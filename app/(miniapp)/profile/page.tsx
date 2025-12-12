@@ -100,19 +100,37 @@ export default function PersonalCabinet() {
         clientLogger.warn('Could not load user profile from DB:', err);
       }
 
-      // Данные пользователя: сначала из БД, если нет - из Telegram
+      // ИСПРАВЛЕНО: Имя должно браться из ответа пользователя на вопрос USER_NAME
+      // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
+      let userNameFromAnswer: string | null = null;
+      try {
+        const userAnswers = await api.getUserAnswers() as any;
+        if (userAnswers && Array.isArray(userAnswers)) {
+          const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+          if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+            userNameFromAnswer = String(nameAnswer.answerValue).trim();
+            clientLogger.log('✅ Имя найдено в ответах USER_NAME:', userNameFromAnswer);
+          }
+        }
+      } catch (err) {
+        clientLogger.warn('Could not load user answers for name:', err);
+      }
+      
+      // Данные пользователя: сначала из ответа USER_NAME, потом из БД, потом из Telegram
       if (dbUser) {
         const profile: UserProfile = {
           id: dbUser.id || user?.id?.toString() || '',
           telegramId: dbUser.telegramId || user?.id?.toString() || '',
           username: dbUser.username || user?.username,
-          firstName: dbUser.firstName || user?.first_name || undefined,
+          // ИСПРАВЛЕНО: Приоритет имени: ответ USER_NAME > БД > Telegram
+          firstName: userNameFromAnswer || dbUser.firstName || user?.first_name || undefined,
           lastName: dbUser.lastName || user?.last_name || undefined,
           language: dbUser.language || user?.language_code,
           phoneNumber: dbUser.phoneNumber || undefined,
         };
         setUserProfile(profile);
-        setNameValue([dbUser.firstName || user?.first_name, dbUser.lastName || user?.last_name].filter(Boolean).join(' ') || '');
+        // ИСПРАВЛЕНО: Используем имя из ответа USER_NAME, если оно есть
+        setNameValue(userNameFromAnswer || [dbUser.firstName || user?.first_name, dbUser.lastName || user?.last_name].filter(Boolean).join(' ') || '');
         setPhoneValue(dbUser.phoneNumber || '');
       } else if (user) {
         // Если БД недоступна, используем данные из Telegram
@@ -120,13 +138,15 @@ export default function PersonalCabinet() {
           id: user.id.toString(),
           telegramId: user.id.toString(),
           username: user.username,
-          firstName: user.first_name || undefined,
+          // ИСПРАВЛЕНО: Приоритет имени: ответ USER_NAME > Telegram
+          firstName: userNameFromAnswer || user.first_name || undefined,
           lastName: user.last_name || undefined,
           language: user.language_code,
           phoneNumber: undefined,
         };
         setUserProfile(profile);
-        setNameValue([user.first_name, user.last_name].filter(Boolean).join(' ') || '');
+        // ИСПРАВЛЕНО: Используем имя из ответа USER_NAME, если оно есть
+        setNameValue(userNameFromAnswer || [user.first_name, user.last_name].filter(Boolean).join(' ') || '');
         setPhoneValue('');
       }
 

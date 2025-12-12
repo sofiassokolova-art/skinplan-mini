@@ -157,12 +157,31 @@ export default function HomePage() {
         
         clientLogger.log('✅ Telegram WebApp available, proceeding with initialization');
 
-        // ИСПРАВЛЕНО: Загружаем имя пользователя для приветствия
+        // ИСПРАВЛЕНО: Загружаем имя пользователя для приветствия из ответа USER_NAME
         try {
-          const userProfile = await api.getUserProfile();
-          if (userProfile?.firstName) {
-            setUserName(userProfile.firstName);
-            clientLogger.log('✅ User name loaded:', userProfile.firstName);
+          // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
+          const userAnswers = await api.getUserAnswers() as any;
+          if (userAnswers && Array.isArray(userAnswers)) {
+            const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+            if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+              const userNameFromAnswer = String(nameAnswer.answerValue).trim();
+              setUserName(userNameFromAnswer);
+              clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
+            } else {
+              // Если имени нет в ответах, пробуем из профиля
+              const userProfile = await api.getUserProfile();
+              if (userProfile?.firstName) {
+                setUserName(userProfile.firstName);
+                clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
+              }
+            }
+          } else {
+            // Если ответы не загрузились, пробуем из профиля
+            const userProfile = await api.getUserProfile();
+            if (userProfile?.firstName) {
+              setUserName(userProfile.firstName);
+              clientLogger.log('✅ User name loaded from profile (fallback):', userProfile.firstName);
+            }
           }
         } catch (err) {
           // Не критично, если не удалось загрузить имя
