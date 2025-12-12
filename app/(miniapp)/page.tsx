@@ -999,6 +999,10 @@ export default function HomePage() {
       setCurrentDay(currentDay);
       setSelectedDay(currentDay);
       setCompletedDays(progress?.completedDays || []);
+      
+      // ИСПРАВЛЕНО: Устанавливаем morningItems и eveningItems для отображения на главной
+      setMorningItems(morning);
+      setEveningItems(evening);
 
       // Загружаем wishlist и корзину (как в календаре)
       try {
