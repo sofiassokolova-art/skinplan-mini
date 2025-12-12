@@ -4259,14 +4259,16 @@ export default function QuizPage() {
   // Текущий вопрос (показывается после начальных инфо-экранов)
   const currentQuestion = useMemo(() => {
     // Убираем все console.log из useMemo - они могут вызывать проблемы с рендерингом
-    if (isShowingInitialInfoScreen || pendingInfoScreen) {
+    // ВАЖНО: При перепрохождении (retake) мы пропускаем info screens,
+    // поэтому pendingInfoScreen не должен блокировать отображение вопросов.
+    if (isShowingInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz)) {
       return null;
     }
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
       return allQuestions[currentQuestionIndex];
     }
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions]);
+  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
   useEffect(() => {
@@ -5549,9 +5551,61 @@ export default function QuizPage() {
     if (questionnaire && allQuestions.length > 0) {
       // Проверяем, не выходит ли индекс за пределы
       if (currentQuestionIndex >= allQuestions.length) {
-        // Это последний вопрос - автоматически показываем лоадер и отправляем ответы
-        // Не показываем экран "Анкета завершена. Отправить ответы?" - сразу лоадер
-        // ИСПРАВЛЕНО: Но только если нет pendingInfoScreen (инфо-экран должен показаться первым)
+        // Это состояние используется для авто-отправки после последнего вопроса (currentQuestionIndex = allQuestions.length).
+        // ВАЖНО: Показываем лоадер "Создаем план..." только если действительно есть ответы.
+        // Иначе это, скорее всего, поврежденный/неконсистентный прогресс и мы не должны "притворяться",
+        // что создаем план, когда вопросов пользователь не видел.
+        const answersCount = Object.keys(answers || {}).length;
+        if (answersCount === 0) {
+          return (
+            <div style={{ 
+              padding: '20px',
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+            }}>
+              <div style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.56)',
+                backdropFilter: 'blur(28px)',
+                borderRadius: '24px',
+                padding: '24px',
+                maxWidth: '460px',
+                textAlign: 'center',
+              }}>
+                <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '18px', fontWeight: 'bold' }}>
+                  Не удалось загрузить вопросы
+                </h2>
+                <p style={{ color: '#475467', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px' }}>
+                  Похоже, прогресс анкеты сохранился некорректно. Нажмите «Начать заново», чтобы увидеть вопросы.
+                </p>
+                <button
+                  onClick={() => {
+                    startOver().catch((err) => {
+                      console.error('startOver failed:', err);
+                      window.location.reload();
+                    });
+                  }}
+                  style={{
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Начать заново
+                </button>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div style={{ 
             padding: '20px',
@@ -5639,12 +5693,20 @@ export default function QuizPage() {
   // Если вопрос все еще не найден после всех проверок
   // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
   if (!currentQuestion) {
+    const answersCount = Object.keys(answers || {}).length;
+    const looksLikeCompletion =
+      questionnaire !== null &&
+      !loading &&
+      allQuestions.length > 0 &&
+      currentQuestionIndex >= allQuestions.length &&
+      answersCount > 0;
+
     // ИСПРАВЛЕНО: Показываем лоадер "Создаем ваш план ухода..." только если:
     // 1. isSubmitting === true (ответы отправлены)
     // 2. loading === false (анкета уже загружена)
     // 3. questionnaire !== null (анкета существует)
     // Это предотвращает показ лоадера при загрузке анкеты
-    if (isSubmitting && !loading && questionnaire !== null) {
+    if ((isSubmitting && !loading && questionnaire !== null) || looksLikeCompletion) {
       return (
         <div style={{ 
           padding: '20px',
@@ -5753,9 +5815,61 @@ export default function QuizPage() {
         </div>
       );
     }
-    
-    // Если нет ошибки, но все вопросы пройдены - автоматически показываем лоадер и отправляем
-    // Это заменяет экран "Анкета завершена. Отправить ответы?" на автоматическую отправку
+
+    // Если индекс уже за пределами вопросов, но ответов нет — это некорректное состояние.
+    // Не показываем "Создаем план..." (это вводит в заблуждение), предлагаем начать заново.
+    if (questionnaire !== null && allQuestions.length > 0 && currentQuestionIndex >= allQuestions.length && answersCount === 0) {
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '24px',
+            maxWidth: '460px',
+            textAlign: 'center',
+          }}>
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '18px', fontWeight: 'bold' }}>
+              Не удалось показать вопросы
+            </h2>
+            <p style={{ color: '#475467', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px' }}>
+              Попробуйте начать заново — это сбросит некорректно сохраненный прогресс.
+            </p>
+            <button
+              onClick={() => {
+                startOver().catch((err) => {
+                  console.error('startOver failed:', err);
+                  window.location.reload();
+                });
+              }}
+              style={{
+                padding: '12px 20px',
+                borderRadius: '12px',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+              }}
+            >
+              Начать заново
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Иначе это временное состояние (например, пересчет фильтрации вопросов) — показываем нейтральную загрузку,
+    // а не "Создаем план ухода..."
     return (
       <div style={{ 
         padding: '20px',
@@ -5780,12 +5894,6 @@ export default function QuizPage() {
               to { transform: rotate(360deg); }
             }
           `}</style>
-          <style>{`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
           <div style={{
             width: '64px',
             height: '64px',
@@ -5796,10 +5904,10 @@ export default function QuizPage() {
             margin: '0 auto 24px',
           }} />
           <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-            Создаем ваш план ухода...
+            Загружаем вопросы...
           </h2>
           <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
-            Это займет несколько секунд
+            Пожалуйста, подождите несколько секунд
           </p>
         </div>
       </div>
