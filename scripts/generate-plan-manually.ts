@@ -6,7 +6,8 @@ import { generate28DayPlan } from '../lib/plan-generator';
 import { setCachedPlan } from '../lib/cache';
 
 async function generatePlanManually() {
-  const telegramId = '643160759';
+  // ИСПРАВЛЕНО: Принимаем telegramId как аргумент командной строки
+  const telegramId = process.argv[2] || '643160759';
   
   console.log('🔧 Ручная генерация плана для пользователя:', telegramId);
   console.log('='.repeat(60));
