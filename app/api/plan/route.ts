@@ -72,19 +72,12 @@ export async function GET(request: NextRequest) {
       return ApiResponse.notFound('No skin profile found', { userId });
     }
 
-    // Проверяем кэш - только кэш, без генерации
-    logger.debug('Checking cache for plan (no generation)', { userId, profileVersion: profile.version });
-    const cachedPlan = await getCachedPlan(userId, profile.version);
+    // ИСПРАВЛЕНО: Сначала проверяем БД, а не кэш
+    // Это гарантирует, что после генерации плана мы получим свежий план из БД, а не старый из кэша
+    // Кэш может содержать старую версию плана с 2 продуктами вместо 5
+    logger.debug('Checking database first (before cache) to get fresh plan', { userId, profileVersion: profile.version });
     
-    if (cachedPlan && cachedPlan.plan28) {
-      const duration = Date.now() - startTime;
-      logger.info('Plan retrieved from cache', { userId, profileVersion: profile.version });
-      logApiRequest(method, path, 200, duration, userId);
-      return ApiResponse.success(cachedPlan);
-    }
-
-    // ИСПРАВЛЕНО: Если план не найден в кэше, проверяем БД
-    logger.debug('Plan not found in cache, checking database', { userId, profileVersion: profile.version });
+    // Проверяем БД сначала
     const planFromDb = await prisma.plan28.findFirst({
       where: {
         userId,
@@ -92,9 +85,10 @@ export async function GET(request: NextRequest) {
       },
       select: {
         planData: true,
+        updatedAt: true,
       },
     });
-
+    
     if (planFromDb && planFromDb.planData) {
       // ИСПРАВЛЕНО: Используем правильный тип для planData из БД
       const planData = planFromDb.planData as { days?: Array<{ dayIndex: number }>; mainGoals?: string[] };
@@ -121,17 +115,20 @@ export async function GET(request: NextRequest) {
         const duration = Date.now() - startTime;
         logApiRequest(method, path, 200, duration, userId);
         return ApiResponse.success(planResponse);
-      } else {
-        logger.warn('Plan found in DB but has invalid structure', {
-          userId,
-          profileVersion: profile.version,
-          hasPlanData: !!planData,
-          hasDays: !!planData?.days,
-          daysIsArray: Array.isArray(planData?.days),
-          daysLength: Array.isArray(planData?.days) ? planData.days.length : 0,
-        });
       }
     }
+    
+    // Если план не найден в БД, проверяем кэш (fallback)
+    logger.debug('Plan not found in DB, checking cache', { userId, profileVersion: profile.version });
+    const cachedPlan = await getCachedPlan(userId, profile.version);
+    
+    if (cachedPlan && cachedPlan.plan28) {
+      const duration = Date.now() - startTime;
+      logger.info('Plan retrieved from cache (fallback)', { userId, profileVersion: profile.version });
+      logApiRequest(method, path, 200, duration, userId);
+      return ApiResponse.success(cachedPlan);
+    }
+
 
     // ВАЖНО: При перепрохождении анкеты НЕ возвращаем план из старой версии
     // Пользователь должен получить план, соответствующий новым ответам
