@@ -161,16 +161,6 @@ export default function QuizPage() {
   const progressLoadInProgressRef = useRef(false);
 
   useEffect(() => {
-    // ТЕСТ: Отправляем тестовый лог при загрузке страницы
-    // ВАЖНО: Используем warn/error чтобы логи отправлялись даже в production
-    if (typeof window !== 'undefined') {
-      clientLogger.warn('⚠️ Quiz page loaded - test warning log (should appear in KV)');
-      // Отправляем через небольшую задержку, чтобы убедиться что все инициализировано
-      setTimeout(() => {
-        clientLogger.warn('⚠️ Quiz page initialization complete - second test log');
-      }, 1000);
-    }
-
     // ИСПРАВЛЕНО: Проверяем, не была ли анкета только что отправлена
     // КРИТИЧНО: Проверяем флаг quiz_just_submitted САМЫМ ПЕРВЫМ, до любых других проверок
     // Это предотвращает редирект на первый экран после отправки ответов
@@ -1174,18 +1164,21 @@ export default function QuizPage() {
       
       const data = await Promise.race([loadPromise, timeoutPromise]);
       const questionnaireData = data as Questionnaire;
+      // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
+      const groups = questionnaireData.groups || [];
+      const questions = questionnaireData.questions || [];
       addDebugLog('📥 Questionnaire loaded', {
         questionnaireId: questionnaireData.id,
         name: questionnaireData.name,
         version: questionnaireData.version,
-        groupsCount: questionnaireData.groups.length,
-        questionsCount: questionnaireData.questions.length,
-        totalQuestions: questionnaireData.groups.reduce((sum, g) => sum + g.questions.length, 0) + questionnaireData.questions.length,
+        groupsCount: groups.length,
+        questionsCount: questions.length,
+        totalQuestions: groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length,
         questionIds: (() => {
           // ВАЖНО: Удаляем дубликаты questionId, так как вопросы могут быть и в groups, и в questions
           const allIds = [
-            ...questionnaireData.groups.flatMap((g: any) => g.questions.map((q: Question) => q.id)),
-            ...questionnaireData.questions.map((q: Question) => q.id),
+            ...groups.flatMap((g: any) => (g.questions || []).map((q: Question) => q.id)),
+            ...questions.map((q: Question) => q.id),
           ];
           return Array.from(new Set(allIds));
         })(),
@@ -4049,9 +4042,12 @@ export default function QuizPage() {
     }
     
     // Получаем все вопросы с фильтрацией
+    // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
+    const groups = questionnaire.groups || [];
+    const questions = questionnaire.questions || [];
     const allQuestionsRaw = [
-      ...questionnaire.groups.flatMap((g) => g.questions),
-      ...questionnaire.questions,
+      ...groups.flatMap((g) => g.questions || []),
+      ...questions,
     ];
     
     // Фильтруем вопросы на основе ответов
@@ -4785,9 +4781,10 @@ export default function QuizPage() {
   // или уже продолжил анкету
   if (showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current) {
     // Получаем все вопросы с фильтрацией
+    // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
     const allQuestionsRaw = questionnaire ? [
-      ...questionnaire.groups.flatMap((g) => g.questions),
-      ...questionnaire.questions,
+      ...(questionnaire.groups || []).flatMap((g) => g.questions || []),
+      ...(questionnaire.questions || []),
     ] : [];
     
     // Фильтруем вопросы на основе ответов

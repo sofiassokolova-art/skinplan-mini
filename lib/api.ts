@@ -211,6 +211,26 @@ async function request<T>(
       throw new Error(errorData.error || `Запрос был перенаправлен`);
     }
     
+    // ИСПРАВЛЕНО: Для 405 ошибок (Method Not Allowed) - обычно означает неправильный метод запроса
+    if (response.status === 405) {
+      const errorText = await response.text().catch(() => '');
+      let errorData: any = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText || 'Method not allowed' };
+      }
+      const errorMessage = errorData.error || 'Method not allowed';
+      
+      // Логируем 405 ошибки (они указывают на проблему в коде)
+      console.error('❌ 405 Method Not Allowed:', { endpoint, method: options.method || 'GET', errorMessage });
+      
+      const methodError = new Error(`HTTP 405: ${errorMessage}`) as any;
+      methodError.status = 405;
+      methodError.isMethodError = true;
+      throw methodError;
+    }
+    
     // Для 404 ошибок (Not Found) - обычно означает отсутствие профиля
     // Это нормальная ситуация для новых пользователей или когда профиль не найден
     if (response.status === 404) {

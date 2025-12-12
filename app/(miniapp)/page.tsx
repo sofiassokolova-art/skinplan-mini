@@ -62,20 +62,30 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     initialize();
+    setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true сразу при монтировании
     
     // Загружаем данные (пользователь идентифицируется автоматически через initData)
     const initAndLoad = async () => {
       // Проверяем, что приложение открыто через Telegram
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
         clientLogger.log('Telegram WebApp не доступен, перенаправляем на анкету');
+        setLoading(false);
         router.push('/quiz');
         return;
       }
 
       // ОПТИМИЗИРОВАНО: Загружаем имя пользователя асинхронно, не блокируя основную загрузку
-      // Загружаем имя в фоне после основной загрузки рекомендаций
+      // ИСПРАВЛЕНО: Добавляем кэширование в localStorage для уменьшения rate limiting
       const loadUserNameAsync = async () => {
         try {
+          // ИСПРАВЛЕНО: Проверяем кэш в localStorage сначала
+          const cachedName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
+          if (cachedName) {
+            setUserName(cachedName);
+            clientLogger.log('✅ User name loaded from cache:', cachedName);
+            return;
+          }
+          
           // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
           const userAnswers = await api.getUserAnswers() as any;
           if (userAnswers && Array.isArray(userAnswers)) {
@@ -83,6 +93,10 @@ export default function HomePage() {
             if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
               const userNameFromAnswer = String(nameAnswer.answerValue).trim();
               setUserName(userNameFromAnswer);
+              // ИСПРАВЛЕНО: Сохраняем в кэш
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('user_name', userNameFromAnswer);
+              }
               clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
               return;
             }
@@ -91,15 +105,29 @@ export default function HomePage() {
           const userProfile = await api.getUserProfile();
           if (userProfile?.firstName) {
             setUserName(userProfile.firstName);
+            // ИСПРАВЛЕНО: Сохраняем в кэш
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('user_name', userProfile.firstName);
+            }
             clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
           }
-        } catch (err) {
-          // Не критично, если не удалось загрузить имя
-          clientLogger.warn('Could not load user name:', err);
+        } catch (err: any) {
+          // ИСПРАВЛЕНО: Не логируем 429 и 405 ошибки как warning
+          // 429 - это нормально при rate limiting
+          // 405 - может быть временной проблемой с endpoint
+          if (err?.status !== 429 && err?.status !== 405) {
+            clientLogger.warn('Could not load user name:', err);
+          } else if (err?.status === 405) {
+            // HTTP 405 - логируем только в development, это проблема с endpoint
+            if (process.env.NODE_ENV === 'development') {
+              clientLogger.warn('HTTP 405 when loading user name - check endpoint:', err);
+            }
+          }
         }
       };
 
       // Загружаем рекомендации (initData передается автоматически в запросе)
+      // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true
       await loadRecommendations();
       
       // Загружаем имя в фоне после загрузки рекомендаций
@@ -110,6 +138,7 @@ export default function HomePage() {
   }, [router]);
 
   const loadRecommendations = async () => {
+    setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true перед началом загрузки
     try {
       const data = await api.getRecommendations() as Recommendation;
       setRecommendations(data);
@@ -263,14 +292,19 @@ export default function HomePage() {
       // Проверяем тип ошибки
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('401') || error?.message?.includes('initData')) {
         // Ошибка идентификации - перенаправляем на анкету
+        setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading в false перед редиректом
         router.push('/quiz');
         return;
       }
       
-      if (error?.message?.includes('404') || error?.message?.includes('No skin profile')) {
-        // Профиль не найден - перенаправляем на анкету
-        clientLogger.log('Профиль не найден, перенаправляем на анкету');
-        router.push('/quiz');
+      // ИСПРАВЛЕНО: Проверяем статус 404 или isNotFound флаг
+      if (error?.status === 404 || error?.isNotFound || error?.message?.includes('404') || error?.message?.includes('No skin profile') || error?.message?.includes('Not found')) {
+        // Профиль не найден - показываем пейволл вместо редиректа
+        clientLogger.log('Профиль не найден, показываем пейволл');
+        setError(null); // Очищаем ошибку, чтобы показать пейволл
+        setMorningItems([]);
+        setEveningItems([]);
+        setLoading(false);
         return;
       }
       

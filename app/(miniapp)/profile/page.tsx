@@ -106,12 +106,43 @@ export default function PersonalCabinet() {
       // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
       let userNameFromAnswer: string | null = null;
       try {
-        const userAnswers = await api.getUserAnswers() as any;
+        const userAnswersResponse = await api.getUserAnswers() as any;
+        
+        // ИСПРАВЛЕНО: Нормализуем формат ответа - API может возвращать массив напрямую или обернутый в объект
+        let userAnswers: any[] = [];
+        if (Array.isArray(userAnswersResponse)) {
+          userAnswers = userAnswersResponse;
+        } else if (userAnswersResponse && typeof userAnswersResponse === 'object') {
+          // Проверяем, есть ли поле data или items
+          if (Array.isArray(userAnswersResponse.data)) {
+            userAnswers = userAnswersResponse.data;
+          } else if (Array.isArray(userAnswersResponse.items)) {
+            userAnswers = userAnswersResponse.items;
+          } else if (Array.isArray(userAnswersResponse.answers)) {
+            userAnswers = userAnswersResponse.answers;
+          } else {
+            // Если это объект с ответами, преобразуем в массив
+            const values = Object.values(userAnswersResponse);
+            if (values.length > 0 && Array.isArray(values[0])) {
+              userAnswers = values[0] as any[];
+            } else {
+              clientLogger.warn('⚠️ Не удалось нормализовать формат ответов', { 
+                type: typeof userAnswersResponse,
+                keys: Object.keys(userAnswersResponse || {}),
+                isArray: Array.isArray(userAnswersResponse)
+              });
+            }
+          }
+        }
+        
         clientLogger.log('📋 Загружены ответы пользователя:', { 
-          count: userAnswers?.length || 0,
-          hasArray: Array.isArray(userAnswers)
+          count: userAnswers.length,
+          originalType: typeof userAnswersResponse,
+          isOriginalArray: Array.isArray(userAnswersResponse),
+          normalizedCount: userAnswers.length
         });
-        if (userAnswers && Array.isArray(userAnswers)) {
+        
+        if (userAnswers.length > 0) {
           const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
           clientLogger.log('🔍 Поиск ответа USER_NAME:', { 
             found: !!nameAnswer,
@@ -129,7 +160,10 @@ export default function PersonalCabinet() {
             });
           }
         } else {
-          clientLogger.warn('⚠️ Ответы пользователя не являются массивом', { type: typeof userAnswers });
+          clientLogger.warn('⚠️ Ответы пользователя пусты или не найдены', { 
+            originalResponse: userAnswersResponse,
+            normalizedCount: userAnswers.length
+          });
         }
       } catch (err) {
         clientLogger.warn('Could not load user answers for name:', err);

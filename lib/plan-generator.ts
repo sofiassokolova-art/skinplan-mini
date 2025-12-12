@@ -399,14 +399,41 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   // ИСПРАВЛЕНО: Нормализуем тип кожи для выбора шаблона
   // Шаблоны могут использовать "combo", "combination_dry", "combination_oily"
   // selectCarePlanTemplate сам нормализует, но для единообразия используем оригинальный тип
+  
+  // ИСПРАВЛЕНО: Для dry кожи с medium/high sensitivity автоматически добавляем barrier/dehydration в mainGoals
+  // Это гарантирует выбор правильного шаблона dry_sensitive_barrier вместо default_balanced
+  const finalMainGoals = [...mainGoals];
+  if ((profile.skinType === 'dry' || profile.skinType === 'combination_dry') && 
+      (profile.sensitivityLevel === 'medium' || profile.sensitivityLevel === 'high' || profile.sensitivityLevel === 'very_high')) {
+    if (!finalMainGoals.includes('barrier') && !finalMainGoals.includes('dehydration')) {
+      finalMainGoals.push('barrier');
+      logger.info('Auto-added barrier goal for dry sensitive skin', {
+        userId,
+        skinType: profile.skinType,
+        sensitivityLevel: profile.sensitivityLevel,
+        finalMainGoals,
+      });
+    }
+  }
+  
   const carePlanProfileInput: CarePlanProfileInput = {
     skinType: profile.skinType || 'normal',
-    mainGoals: mainGoals.length > 0 ? mainGoals : ['general'],
+    mainGoals: finalMainGoals.length > 0 ? finalMainGoals : ['general'],
     sensitivityLevel: profile.sensitivityLevel || 'low',
     routineComplexity,
   };
 
   const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
+  
+  // ИСПРАВЛЕНО: Логируем выбранный шаблон для диагностики
+  logger.info('Care plan template selected', {
+    userId,
+    templateId: carePlanTemplate.id,
+    skinType: profile.skinType,
+    sensitivityLevel: profile.sensitivityLevel,
+    mainGoals: finalMainGoals,
+    routineComplexity,
+  });
   
   // ВАЖНО: Заменяем treatment_antiage на подходящий treatment, если у пользователя нет проблем с морщинами
   const hasWrinklesGoal = mainGoals.includes('wrinkles') || mainGoals.some(g => g.toLowerCase().includes('wrinkle'));
@@ -427,6 +454,20 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           return [];
         }
       }
+      
+      // ИСПРАВЛЕНО: Для dry кожи заменяем moisturizer_light на moisturizer_barrier
+      // moisturizer_light не разрешен для dry кожи (только для normal, combination_dry, combination_oily)
+      // Это исправляет проблему, когда выбирается default_balanced шаблон с moisturizer_light
+      if (step === 'moisturizer_light' && (profile.skinType === 'dry' || profile.skinType === 'combination_dry')) {
+        logger.info('Replacing moisturizer_light with moisturizer_barrier for dry skin', {
+          userId,
+          skinType: profile.skinType,
+          originalStep: step,
+          replacementStep: 'moisturizer_barrier',
+        });
+        return ['moisturizer_barrier'];
+      }
+      
       return [step];
     });
   };
@@ -1019,9 +1060,17 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     } else if (stepStr.startsWith('moisturizer_soothing') || stepStr.includes('soothing') || categoryStr.includes('soothing')) {
       categories.push('moisturizer_soothing');
     } else if (stepStr === 'moisturizer' || stepStr === 'cream' || categoryStr === 'moisturizer' || categoryStr === 'cream') {
-      // Если просто 'moisturizer' или 'cream' без уточнения, пробуем основные варианты
-      categories.push('moisturizer_light');
-      categories.push('moisturizer_balancing');
+      // ИСПРАВЛЕНО: Если просто 'moisturizer' или 'cream' без уточнения, пробуем варианты в зависимости от типа кожи
+      // Для dry кожи приоритет - moisturizer_barrier, для других - moisturizer_light
+      if (profile.skinType === 'dry' || profile.skinType === 'combination_dry') {
+        categories.push('moisturizer_barrier');
+        categories.push('moisturizer_soothing');
+        categories.push('moisturizer_light');
+      } else {
+        categories.push('moisturizer_light');
+        categories.push('moisturizer_balancing');
+        categories.push('moisturizer_barrier');
+      }
     }
     
     if (stepStr.startsWith('spf_50_face') || stepStr === 'spf' || category === 'spf') {
@@ -1205,7 +1254,12 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         fallbackCategories.push('treatment_antiage', 'treatment_exfoliant_mild');
       }
       if (stepStr.includes('moisturizer') || stepStr.includes('cream') || categoryStr.includes('moisturizer') || categoryStr.includes('cream') || categoryStr.includes('крем')) {
-        fallbackCategories.push('moisturizer_light', 'moisturizer_balancing');
+        // ИСПРАВЛЕНО: Для dry кожи добавляем moisturizer_barrier, для других - moisturizer_light и balancing
+        if (profile.skinType === 'dry' || profile.skinType === 'combination_dry') {
+          fallbackCategories.push('moisturizer_barrier', 'moisturizer_soothing', 'moisturizer_light');
+        } else {
+          fallbackCategories.push('moisturizer_light', 'moisturizer_balancing', 'moisturizer_barrier');
+        }
       }
       if (stepStr.includes('spf') || categoryStr.includes('spf') || categoryStr.includes('защит')) {
         fallbackCategories.push('spf_50_face');

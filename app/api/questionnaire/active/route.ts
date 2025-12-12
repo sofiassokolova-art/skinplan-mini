@@ -45,15 +45,19 @@ export async function GET() {
 
     // Форматируем данные в структуру, похожую на Quiz.tsx
     // Для совместимости с существующим фронтендом
+    // ИСПРАВЛЕНО: Гарантируем, что groups и questions всегда являются массивами
+    const questionGroups = questionnaire.questionGroups || [];
+    const questions = questionnaire.questions || [];
+    
     const formatted = {
       id: questionnaire.id,
       name: questionnaire.name,
       version: questionnaire.version,
-      groups: questionnaire.questionGroups.map(group => ({
+      groups: questionGroups.map(group => ({
         id: group.id,
         title: group.title,
         position: group.position,
-        questions: group.questions.map(q => ({
+        questions: (group.questions || []).map(q => ({
           id: q.id,
           code: q.code,
           text: q.text,
@@ -61,7 +65,7 @@ export async function GET() {
           position: q.position,
           isRequired: q.isRequired,
           description: null, // Можно добавить в схему позже
-          options: q.answerOptions.map(opt => ({
+          options: (q.answerOptions || []).map(opt => ({
             id: opt.id,
             value: opt.value,
             label: opt.label,
@@ -70,7 +74,7 @@ export async function GET() {
         })),
       })),
       // Вопросы без группы (если есть)
-      questions: questionnaire.questions.map(q => ({
+      questions: questions.map(q => ({
         id: q.id,
         code: q.code,
         text: q.text,
@@ -78,7 +82,7 @@ export async function GET() {
         position: q.position,
         isRequired: q.isRequired,
         description: null,
-        options: q.answerOptions.map(opt => ({
+        options: (q.answerOptions || []).map(opt => ({
           id: opt.id,
           value: opt.value,
           label: opt.label,
