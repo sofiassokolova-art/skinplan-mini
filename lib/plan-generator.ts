@@ -1903,12 +1903,52 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         ...templateEveningAdditional, // Всегда все средства с первого дня
       ]);
 
-      const allowedMorningSteps = rawMorningSteps.filter((step) =>
-        isStepAllowedForProfile(step, stepProfile)
-      );
-      const allowedEveningSteps = rawEveningSteps.filter((step) =>
-        isStepAllowedForProfile(step, stepProfile)
-      );
+      // ИСПРАВЛЕНО: Логируем фильтрацию шагов для диагностики
+      const allowedMorningSteps = rawMorningSteps.filter((step) => {
+        const isAllowed = isStepAllowedForProfile(step, stepProfile);
+        if (!isAllowed) {
+          logger.warn('Step filtered out by isStepAllowedForProfile (morning)', {
+            step,
+            skinType: stepProfile.skinType,
+            sensitivity: stepProfile.sensitivity,
+            diagnoses: stepProfile.diagnoses,
+            userId,
+            dayIndex,
+          });
+        }
+        return isAllowed;
+      });
+      const allowedEveningSteps = rawEveningSteps.filter((step) => {
+        const isAllowed = isStepAllowedForProfile(step, stepProfile);
+        if (!isAllowed) {
+          logger.warn('Step filtered out by isStepAllowedForProfile (evening)', {
+            step,
+            skinType: stepProfile.skinType,
+            sensitivity: stepProfile.sensitivity,
+            diagnoses: stepProfile.diagnoses,
+            userId,
+            dayIndex,
+          });
+        }
+        return isAllowed;
+      });
+      
+      // ИСПРАВЛЕНО: Если после фильтрации осталось только 2 шага (cleanser и SPF), логируем предупреждение
+      if (allowedMorningSteps.length <= 2 && allowedEveningSteps.length <= 1) {
+        logger.warn('CRITICAL: Only minimal steps after filtering', {
+          userId,
+          dayIndex,
+          rawMorningSteps,
+          rawEveningSteps,
+          allowedMorningSteps,
+          allowedEveningSteps,
+          stepProfile: {
+            skinType: stepProfile.skinType,
+            sensitivity: stepProfile.sensitivity,
+            diagnoses: stepProfile.diagnoses,
+          },
+        });
+      }
 
       const morningSteps = ensureStepPresence(
         ensureStepPresence(allowedMorningSteps, isCleanserStep, CLEANER_FALLBACK_STEP),

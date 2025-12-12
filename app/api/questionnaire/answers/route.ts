@@ -9,6 +9,7 @@ import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
 import { MAX_DUPLICATE_SUBMISSION_WINDOW_MS } from '@/lib/constants';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
+import type { QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 
 export const runtime = 'nodejs';
 
@@ -717,6 +718,67 @@ export async function POST(request: NextRequest) {
         orderBy: { priority: 'desc' },
       });
 
+      // ИСПРАВЛЕНО: Вычисляем skin scores перед проверкой правил (как в /api/recommendations)
+      // Правила могут использовать поля из scores (inflammation, oiliness, hydration, barrier, pigmentation, photoaging)
+      // которые не хранятся в профиле, а вычисляются из ответов
+      const { calculateSkinAxes } = await import('@/lib/skin-analysis-engine');
+      
+      // Формируем QuestionnaireAnswers для вычисления scores
+      const questionnaireAnswers: QuestionnaireAnswers = {
+        skinType: profile.skinType || 'normal',
+        age: profile.ageGroup || '25-34',
+        concerns: [],
+        diagnoses: [],
+        allergies: [],
+        sensitivityLevel: profile.sensitivityLevel || 'low',
+        acneLevel: profile.acneLevel || 0,
+      };
+      
+      // Извлекаем данные из ответов
+      for (const answer of fullAnswers) {
+        const code = answer.question?.code || '';
+        if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
+          questionnaireAnswers.concerns = answer.answerValues as string[];
+        } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
+          questionnaireAnswers.diagnoses = answer.answerValues as string[];
+        } else if (code === 'allergies' && Array.isArray(answer.answerValues)) {
+          questionnaireAnswers.allergies = answer.answerValues as string[];
+        } else if (code === 'habits' && Array.isArray(answer.answerValues)) {
+          questionnaireAnswers.habits = answer.answerValues as string[];
+        }
+      }
+      
+      // Вычисляем skin scores
+      const skinScores = calculateSkinAxes(questionnaireAnswers);
+      
+      // Создаем расширенный профиль с вычисленными scores для проверки правил
+      const profileWithScores: any = {
+        ...profile,
+        // Добавляем вычисленные scores
+        inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
+        oiliness: skinScores.find(s => s.axis === 'oiliness')?.value || 0,
+        hydration: skinScores.find(s => s.axis === 'hydration')?.value || 0,
+        barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
+        pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
+        photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
+        // Также добавляем поля для совместимости с разными форматами правил
+        skin_type: profile.skinType,
+        skinType: profile.skinType,
+        sensitivity_level: profile.sensitivityLevel,
+        age_group: profile.ageGroup,
+        age: profile.ageGroup,
+      };
+      
+      logger.info('Profile with calculated scores for rule matching', {
+        userId,
+        profileId: profile.id,
+        skinType: profile.skinType,
+        inflammation: profileWithScores.inflammation,
+        oiliness: profileWithScores.oiliness,
+        hydration: profileWithScores.hydration,
+        barrier: profileWithScores.barrier,
+      });
+
       // Находим подходящее правило
       let matchedRule: any = null;
       
@@ -729,9 +791,10 @@ export async function POST(request: NextRequest) {
           let profileValue: any;
           if (key === 'diagnoses') {
             // Извлекаем diagnoses из medicalMarkers
-            profileValue = (profile.medicalMarkers as any)?.diagnoses || [];
+            profileValue = (profileWithScores.medicalMarkers as any)?.diagnoses || [];
           } else {
-            profileValue = (profile as any)[key];
+            // ИСПРАВЛЕНО: Используем profileWithScores вместо profile, чтобы получить вычисленные scores
+            profileValue = profileWithScores[key];
           }
 
           if (Array.isArray(condition)) {
@@ -755,7 +818,14 @@ export async function POST(request: NextRequest) {
               continue; // Переходим к следующему условию
             }
             
-            if (typeof profileValue === 'number') {
+            // ИСПРАВЛЕНО: Обрабатываем случаи, когда profileValue undefined или null
+            // Для числовых условий (gte/lte) отсутствие значения = несоответствие
+            if (profileValue === undefined || profileValue === null) {
+              if ('gte' in conditionObj || 'lte' in conditionObj) {
+                matches = false;
+                break;
+              }
+            } else if (typeof profileValue === 'number') {
               if ('gte' in conditionObj && typeof conditionObj.gte === 'number') {
                 const gteValue = conditionObj.gte as number;
                 if (profileValue < gteValue) {
