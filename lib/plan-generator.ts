@@ -2514,7 +2514,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     // ИСПРАВЛЕНО: всегда используем getProductsForStep для plan28, не полагаемся на dayData.products
     // dayData.products может содержать только cleanser и SPF из-за фильтрации в старом формате
     // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
-    const morningSteps: DayStep[] = dayData.morning.map((step: string) => {
+    // ИСПРАВЛЕНО: Используем async цикл вместо map для поддержки await в fallback через БД
+    const morningSteps: DayStep[] = [];
+    for (const step of dayData.morning) {
       const stepCategory = step as StepCategory;
       let stepProducts = getProductsForStep(stepCategory, phase);
       
@@ -2546,16 +2548,46 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             stepProducts = filterProductsByPhase(stepProducts, phase, stepCategory);
           }
           
-          // ИСПРАВЛЕНО: Убрали await из map - fallback через БД будет искаться асинхронно позже
-          // Если продуктов все еще нет, оставляем productId как null - план все равно создастся
+          // ИСПРАВЛЕНО: Если продуктов все еще нет, ищем через БД (асинхронный fallback)
           if (stepProducts.length === 0) {
-            logger.warn('No products found for step after all fallbacks (morning)', {
+            logger.warn('No products found for step after all fallbacks, searching DB (morning)', {
               stepCategory,
               baseStep,
               dayIndex,
               phase,
               userId,
             });
+            
+            // Последняя попытка: ищем через findFallbackProduct в БД
+            try {
+              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+              if (fallbackProduct) {
+                // Регистрируем fallback продукт для этого шага
+                registerProductForStep(stepCategory, fallbackProduct);
+                stepProducts = [fallbackProduct];
+                logger.info('Fallback product found from DB (morning)', {
+                  stepCategory,
+                  baseStep,
+                  productId: fallbackProduct.id,
+                  productName: fallbackProduct.name,
+                  userId,
+                });
+              } else {
+                logger.warn('No fallback product found in DB (morning)', {
+                  stepCategory,
+                  baseStep,
+                  dayIndex,
+                  userId,
+                });
+              }
+            } catch (fallbackError) {
+              logger.error('Error searching fallback product in DB (morning)', {
+                stepCategory,
+                baseStep,
+                error: fallbackError,
+                userId,
+              });
+            }
           }
         }
       }
@@ -2576,18 +2608,20 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         });
       }
       
-      // Всегда используем продукты из getProductsForStep, который использует productsByStepMap
-      // Это гарантирует, что будут использованы все найденные продукты для каждого шага
-      return {
+      // ВАЖНО: Всегда добавляем шаг в план, даже если productId = null
+      // Это гарантирует, что все шаги из шаблона попадают в план
+      morningSteps.push({
         stepCategory: stepCategory,
         productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
         alternatives,
-      };
-    });
+      });
+    }
     
     // Преобразуем evening steps
     // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
-    const eveningSteps: DayStep[] = dayData.evening.map((step: string) => {
+    // ИСПРАВЛЕНО: Используем async цикл вместо map для поддержки await в fallback через БД
+    const eveningSteps: DayStep[] = [];
+    for (const step of dayData.evening) {
       const stepCategory = step as StepCategory;
       let stepProducts = getProductsForStep(stepCategory, phase);
       
@@ -2619,16 +2653,46 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             stepProducts = filterProductsByPhase(stepProducts, phase, stepCategory);
           }
           
-          // ИСПРАВЛЕНО: Убрали await из map - fallback через БД будет искаться асинхронно позже
-          // Если продуктов все еще нет, оставляем productId как null - план все равно создастся
+          // ИСПРАВЛЕНО: Если продуктов все еще нет, ищем через БД (асинхронный fallback)
           if (stepProducts.length === 0) {
-            logger.warn('No products found for step after all fallbacks (evening)', {
+            logger.warn('No products found for step after all fallbacks, searching DB (evening)', {
               stepCategory,
               baseStep,
               dayIndex,
               phase,
               userId,
             });
+            
+            // Последняя попытка: ищем через findFallbackProduct в БД
+            try {
+              const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+              if (fallbackProduct) {
+                // Регистрируем fallback продукт для этого шага
+                registerProductForStep(stepCategory, fallbackProduct);
+                stepProducts = [fallbackProduct];
+                logger.info('Fallback product found from DB (evening)', {
+                  stepCategory,
+                  baseStep,
+                  productId: fallbackProduct.id,
+                  productName: fallbackProduct.name,
+                  userId,
+                });
+              } else {
+                logger.warn('No fallback product found in DB (evening)', {
+                  stepCategory,
+                  baseStep,
+                  dayIndex,
+                  userId,
+                });
+              }
+            } catch (fallbackError) {
+              logger.error('Error searching fallback product in DB (evening)', {
+                stepCategory,
+                baseStep,
+                error: fallbackError,
+                userId,
+              });
+            }
           }
         }
       }
@@ -2649,13 +2713,14 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         });
       }
       
-      // Всегда используем продукты из getProductsForStep
-      return {
+      // ВАЖНО: Всегда добавляем шаг в план, даже если productId = null
+      // Это гарантирует, что все шаги из шаблона попадают в план
+      eveningSteps.push({
         stepCategory: stepCategory,
         productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
         alternatives,
-      };
-    });
+      });
+    }
     
     // Преобразуем weekly steps (если это день для недельного ухода)
     // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
