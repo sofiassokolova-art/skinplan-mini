@@ -390,9 +390,12 @@ export async function GET(request: NextRequest) {
       acneLevel: profile.acneLevel || 0,
     };
 
-    // Извлекаем данные из ответов
+    // ИСПРАВЛЕНО: Извлекаем все необходимые данные из ответов для правильного вычисления scores
     for (const answer of answersForScores) {
       const code = answer.question?.code || '';
+      const value = answer.answerValue || 
+        (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
+      
       if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
         questionnaireAnswers.concerns = answer.answerValues as string[];
       } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
@@ -401,6 +404,14 @@ export async function GET(request: NextRequest) {
         questionnaireAnswers.allergies = answer.answerValues as string[];
       } else if (code === 'habits' && Array.isArray(answer.answerValues)) {
         questionnaireAnswers.habits = answer.answerValues as string[];
+      } else if (code === 'season_change' || code === 'seasonChange') {
+        questionnaireAnswers.seasonChange = value as string;
+      } else if (code === 'retinol_reaction' || code === 'retinolReaction') {
+        questionnaireAnswers.retinolReaction = value as string;
+      } else if (code === 'spf_frequency' || code === 'spfFrequency') {
+        questionnaireAnswers.spfFrequency = value as string;
+      } else if (code === 'sun_exposure' || code === 'sunExposure') {
+        questionnaireAnswers.sunExposure = value as string;
       }
     }
 
