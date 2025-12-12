@@ -798,8 +798,12 @@ export async function POST(request: NextRequest) {
       };
       
       // Извлекаем данные из ответов
+      // ИСПРАВЛЕНО: Извлекаем все необходимые поля для правильного вычисления scores
       for (const answer of fullAnswers) {
         const code = answer.question?.code || '';
+        const value = answer.answerValue || 
+          (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
+        
         if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
           questionnaireAnswers.concerns = answer.answerValues as string[];
         } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
@@ -808,11 +812,56 @@ export async function POST(request: NextRequest) {
           questionnaireAnswers.allergies = answer.answerValues as string[];
         } else if (code === 'habits' && Array.isArray(answer.answerValues)) {
           questionnaireAnswers.habits = answer.answerValues as string[];
+        } else if (code === 'season_change' || code === 'seasonChange') {
+          questionnaireAnswers.seasonChange = value as string;
+        } else if (code === 'retinol_reaction' || code === 'retinolReaction') {
+          questionnaireAnswers.retinolReaction = value as string;
+        } else if (code === 'spf_frequency' || code === 'spfFrequency') {
+          questionnaireAnswers.spfFrequency = value as string;
+        } else if (code === 'sun_exposure' || code === 'sunExposure') {
+          questionnaireAnswers.sunExposure = value as string;
         }
       }
       
+      // ИСПРАВЛЕНО: Добавляем детальное логирование перед вычислением scores
+      logger.info('QuestionnaireAnswers prepared for score calculation', {
+        userId,
+        profileId: profile.id,
+        skinType: questionnaireAnswers.skinType,
+        age: questionnaireAnswers.age,
+        concernsCount: questionnaireAnswers.concerns?.length || 0,
+        concerns: questionnaireAnswers.concerns,
+        diagnosesCount: questionnaireAnswers.diagnoses?.length || 0,
+        diagnoses: questionnaireAnswers.diagnoses,
+        allergiesCount: questionnaireAnswers.allergies?.length || 0,
+        habitsCount: questionnaireAnswers.habits?.length || 0,
+        habits: questionnaireAnswers.habits,
+        seasonChange: questionnaireAnswers.seasonChange,
+        retinolReaction: questionnaireAnswers.retinolReaction,
+        acneLevel: questionnaireAnswers.acneLevel,
+        sensitivityLevel: questionnaireAnswers.sensitivityLevel,
+      });
+      
       // Вычисляем skin scores
       const skinScores = calculateSkinAxes(questionnaireAnswers);
+      
+      // ИСПРАВЛЕНО: Добавляем детальное логирование вычисленных scores
+      logger.info('Skin scores calculated', {
+        userId,
+        profileId: profile.id,
+        scores: skinScores.map(s => ({
+          axis: s.axis,
+          value: s.value,
+          level: s.level,
+          title: s.title,
+        })),
+        inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
+        oiliness: skinScores.find(s => s.axis === 'oiliness')?.value || 0,
+        hydration: skinScores.find(s => s.axis === 'hydration')?.value || 0,
+        barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
+        pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
+        photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
+      });
       
       // Создаем расширенный профиль с вычисленными scores для проверки правил
       const profileWithScores: any = {
@@ -844,18 +893,38 @@ export async function POST(request: NextRequest) {
         userId,
         profileId: profile.id,
         skinType: profile.skinType,
+        normalizedSkinType: normalizedSkinType,
+        normalizedSensitivity: normalizedSensitivity,
         inflammation: profileWithScores.inflammation,
         oiliness: profileWithScores.oiliness,
         hydration: profileWithScores.hydration,
         barrier: profileWithScores.barrier,
+        pigmentation: profileWithScores.pigmentation,
+        photoaging: profileWithScores.photoaging,
+        ageGroup: profile.ageGroup,
+        acneLevel: profile.acneLevel,
+        diagnoses: (profile.medicalMarkers as any)?.diagnoses || [],
       });
 
       // Находим подходящее правило
       let matchedRule: any = null;
       
+      logger.info('Checking rules for match', {
+        userId,
+        profileId: profile.id,
+        rulesCount: rules.length,
+        rules: rules.map(r => ({
+          id: r.id,
+          name: r.name,
+          priority: r.priority,
+          conditions: r.conditionsJson,
+        })),
+      });
+      
       for (const rule of rules) {
         const conditions = rule.conditionsJson as any;
         let matches = true;
+        const failedConditions: string[] = [];
 
         for (const [key, condition] of Object.entries(conditions)) {
           // ВАЖНО: diagnoses хранятся в medicalMarkers, а не в корне профиля
@@ -871,6 +940,7 @@ export async function POST(request: NextRequest) {
           if (Array.isArray(condition)) {
             if (!condition.includes(profileValue)) {
               matches = false;
+              failedConditions.push(`${key}: expected one of [${condition.join(', ')}], got ${profileValue}`);
               break;
             }
           } else if (typeof condition === 'object' && condition !== null) {
@@ -884,6 +954,7 @@ export async function POST(request: NextRequest) {
               const hasMatch = hasSomeArray.some(item => profileArray.includes(item));
               if (!hasMatch) {
                 matches = false;
+                failedConditions.push(`${key}: expected hasSome of [${hasSomeArray.join(', ')}], got [${profileArray.join(', ')}]`);
                 break;
               }
               continue; // Переходим к следующему условию
@@ -894,6 +965,7 @@ export async function POST(request: NextRequest) {
             if (profileValue === undefined || profileValue === null) {
               if ('gte' in conditionObj || 'lte' in conditionObj) {
                 matches = false;
+                failedConditions.push(`${key}: value is ${profileValue}, but condition requires ${'gte' in conditionObj ? `>= ${conditionObj.gte}` : ''}${'lte' in conditionObj ? `<= ${conditionObj.lte}` : ''}`);
                 break;
               }
             } else if (typeof profileValue === 'number') {
@@ -901,6 +973,7 @@ export async function POST(request: NextRequest) {
                 const gteValue = conditionObj.gte as number;
                 if (profileValue < gteValue) {
                   matches = false;
+                  failedConditions.push(`${key}: ${profileValue} < ${gteValue} (gte)`);
                   break;
                 }
               }
@@ -908,20 +981,57 @@ export async function POST(request: NextRequest) {
                 const lteValue = conditionObj.lte as number;
                 if (profileValue > lteValue) {
                   matches = false;
+                  failedConditions.push(`${key}: ${profileValue} > ${lteValue} (lte)`);
                   break;
                 }
               }
             }
           } else if (condition !== profileValue) {
             matches = false;
+            failedConditions.push(`${key}: expected "${condition}", got "${profileValue}"`);
             break;
           }
         }
 
         if (matches) {
+          logger.info('Rule matched successfully', {
+            userId,
+            profileId: profile.id,
+            ruleId: rule.id,
+            ruleName: rule.name,
+            rulePriority: rule.priority,
+          });
           matchedRule = rule;
           break;
+        } else {
+          logger.debug('Rule did not match', {
+            userId,
+            profileId: profile.id,
+            ruleId: rule.id,
+            ruleName: rule.name,
+            failedConditions,
+          });
         }
+      }
+      
+      if (!matchedRule) {
+        logger.warn('No rule matched for profile', {
+          userId,
+          profileId: profile.id,
+          rulesChecked: rules.length,
+          profileWithScores: {
+            skinType: profileWithScores.skinType,
+            normalizedSkinType: profileWithScores.skin_type,
+            inflammation: profileWithScores.inflammation,
+            oiliness: profileWithScores.oiliness,
+            hydration: profileWithScores.hydration,
+            barrier: profileWithScores.barrier,
+            pigmentation: profileWithScores.pigmentation,
+            photoaging: profileWithScores.photoaging,
+            ageGroup: profileWithScores.age_group,
+            diagnoses: (profileWithScores.medicalMarkers as any)?.diagnoses || [],
+          },
+        });
       }
 
       // Если найдено правило, создаем RecommendationSession

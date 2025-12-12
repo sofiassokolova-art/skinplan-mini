@@ -188,7 +188,73 @@ export async function GET(request: NextRequest) {
     // Сохраняем план в PostgreSQL
     if (plan.plan28) {
       try {
-        logger.info('Saving plan to database', { userId, profileVersion: profile.version, skinProfileId: profile.id });
+        // ИСПРАВЛЕНО: Детальная проверка структуры плана перед сохранением
+        const plan28Structure = {
+          hasUserId: !!plan.plan28.userId,
+          hasSkinProfileId: !!plan.plan28.skinProfileId,
+          hasDays: !!plan.plan28.days,
+          daysIsArray: Array.isArray(plan.plan28.days),
+          daysLength: Array.isArray(plan.plan28.days) ? plan.plan28.days.length : 0,
+          hasMainGoals: !!plan.plan28.mainGoals,
+          mainGoalsIsArray: Array.isArray(plan.plan28.mainGoals),
+          mainGoalsLength: Array.isArray(plan.plan28.mainGoals) ? plan.plan28.mainGoals.length : 0,
+        };
+        
+        logger.info('Plan28 structure before saving', {
+          userId,
+          profileVersion: profile.version,
+          skinProfileId: profile.id,
+          structure: plan28Structure,
+        });
+        
+        // ИСПРАВЛЕНО: Проверяем, что план не пустой перед сохранением
+        if (!plan.plan28.days || !Array.isArray(plan.plan28.days) || plan.plan28.days.length === 0) {
+          logger.error('❌ Cannot save plan: plan28.days is empty or invalid', undefined, {
+            userId,
+            profileVersion: profile.version,
+            plan28Structure,
+            plan28Keys: Object.keys(plan.plan28),
+            plan28DaysType: typeof plan.plan28.days,
+            plan28DaysIsArray: Array.isArray(plan.plan28.days),
+            plan28DaysLength: Array.isArray(plan.plan28.days) ? plan.plan28.days.length : 'N/A',
+          });
+          throw new Error('Plan28.days is empty or invalid - cannot save to database');
+        }
+        
+        // ИСПРАВЛЕНО: Проверяем, что хотя бы в одном дне есть продукты
+        const daysWithProducts = plan.plan28.days.filter((day: any) => {
+          const morningHasProducts = day.morning?.some((step: any) => step.productId);
+          const eveningHasProducts = day.evening?.some((step: any) => step.productId);
+          const weeklyHasProducts = day.weekly?.some((step: any) => step.productId);
+          return morningHasProducts || eveningHasProducts || weeklyHasProducts;
+        });
+        
+        logger.info('Plan28 days analysis', {
+          userId,
+          profileVersion: profile.version,
+          totalDays: plan.plan28.days.length,
+          daysWithProducts: daysWithProducts.length,
+          firstDayMorningSteps: plan.plan28.days[0]?.morning?.length || 0,
+          firstDayEveningSteps: plan.plan28.days[0]?.evening?.length || 0,
+          firstDayMorningWithProducts: plan.plan28.days[0]?.morning?.filter((s: any) => s.productId).length || 0,
+          firstDayEveningWithProducts: plan.plan28.days[0]?.evening?.filter((s: any) => s.productId).length || 0,
+        });
+        
+        if (daysWithProducts.length === 0) {
+          logger.warn('⚠️ Plan28 has no days with products, but saving anyway', {
+            userId,
+            profileVersion: profile.version,
+            totalDays: plan.plan28.days.length,
+          });
+        }
+        
+        logger.info('Saving plan to database', { 
+          userId, 
+          profileVersion: profile.version, 
+          skinProfileId: profile.id,
+          plan28Structure,
+        });
+        
         await prisma.plan28.upsert({
           where: {
             userId_profileVersion: {
@@ -207,11 +273,45 @@ export async function GET(request: NextRequest) {
             planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
           },
         });
+        
+        // ИСПРАВЛЕНО: Проверяем, что план действительно сохранился
+        const savedPlan = await prisma.plan28.findUnique({
+          where: {
+            userId_profileVersion: {
+              userId: userId,
+              profileVersion: profile.version,
+            },
+          },
+          select: {
+            id: true,
+            planData: true,
+          },
+        });
+        
+        if (!savedPlan) {
+          logger.error('❌ Plan was not saved to database', undefined, {
+            userId,
+            profileVersion: profile.version,
+          });
+          throw new Error('Plan was not saved to database');
+        }
+        
+        // Проверяем структуру сохраненного плана
+        const savedPlanData = savedPlan.planData as any;
+        const savedPlanStructure = {
+          hasDays: !!savedPlanData?.days,
+          daysIsArray: Array.isArray(savedPlanData?.days),
+          daysLength: Array.isArray(savedPlanData?.days) ? savedPlanData.days.length : 0,
+          hasMainGoals: !!savedPlanData?.mainGoals,
+        };
+        
         logger.info('Plan saved to database successfully', { 
           userId, 
           profileVersion: profile.version,
+          planId: savedPlan.id,
           hasPlan28: !!plan.plan28,
           plan28Days: plan.plan28.days?.length || 0,
+          savedPlanStructure,
         });
       } catch (dbError: any) {
         // Ошибка сохранения в БД не должна блокировать возврат плана
@@ -220,6 +320,10 @@ export async function GET(request: NextRequest) {
           profileVersion: profile.version,
           errorMessage: dbError?.message,
           errorStack: dbError?.stack?.substring(0, 500),
+          plan28Structure: plan.plan28 ? {
+            hasDays: !!plan.plan28.days,
+            daysLength: Array.isArray(plan.plan28.days) ? plan.plan28.days.length : 0,
+          } : null,
         });
       }
     }

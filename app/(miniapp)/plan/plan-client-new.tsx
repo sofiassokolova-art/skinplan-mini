@@ -77,12 +77,26 @@ export function PlanPageClientNew({
       try {
         const profile = await api.getCurrentProfile();
         if (profile) {
+          // ИСПРАВЛЕНО: Используем функции форматирования для единообразия
+          const { formatAgeGroup, formatSkinType, formatMainGoal } = await import('@/lib/format-helpers');
+          
           // Получаем пол и возраст из ответов
           const analysis = await api.getAnalysis();
           const gender = analysis?.profile?.gender || null;
-          const age = analysis?.profile?.age ? `${analysis.profile.age} лет` : profile.ageGroup || null;
-          const skinType = profile.skinTypeRu || profile.skinType || null;
-          const mainConcern = plan28.mainGoals?.[0] || null;
+          
+          // Форматируем возраст: приоритет analysis.profile.age, затем profile.ageGroup
+          const age = analysis?.profile?.age 
+            ? formatAgeGroup(analysis.profile.age) 
+            : formatAgeGroup(profile.ageGroup);
+          
+          // Форматируем тип кожи: приоритет profile.skinTypeRu, затем profile.skinType
+          const skinType = profile.skinTypeRu 
+            ? formatSkinType(profile.skinTypeRu) 
+            : formatSkinType(profile.skinType);
+          
+          // Форматируем основной запрос: переводим код в читаемый текст
+          const mainConcernRaw = plan28.mainGoals?.[0] || null;
+          const mainConcern = mainConcernRaw ? formatMainGoal(mainConcernRaw) : null;
           
           setUserInfo({
             gender: gender === 'female' ? 'Девушка' : gender === 'male' ? 'Парень' : null,
