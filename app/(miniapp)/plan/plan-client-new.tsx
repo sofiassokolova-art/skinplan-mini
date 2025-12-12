@@ -422,8 +422,9 @@ export function PlanPageClientNew({
 
       {/* Header с целями */}
       <PlanHeader 
-        mainGoals={plan28.mainGoals}
+        mainGoals={plan28.mainGoals || []}
         userInfo={userInfo || undefined}
+        userName={userName}
       />
 
       {/* Основные проблемы кожи */}
