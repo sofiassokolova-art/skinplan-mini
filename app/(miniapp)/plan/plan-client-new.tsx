@@ -34,6 +34,7 @@ interface PlanPageClientNewProps {
   wishlist: number[];
   currentDay: number;
   completedDays: number[];
+  planExpired?: boolean; // Флаг истечения плана (28+ дней)
 }
 
 export function PlanPageClientNew({
@@ -42,6 +43,7 @@ export function PlanPageClientNew({
   wishlist,
   currentDay: initialCurrentDay,
   completedDays: initialCompletedDays,
+  planExpired = false,
 }: PlanPageClientNewProps) {
   // Защита от undefined products
   const products = productsProp || new Map();
@@ -187,6 +189,7 @@ export function PlanPageClientNew({
   // ИСПРАВЛЕНО: needsFirstPayment должен быть false по умолчанию - убираем блюр для покупки
   // Платеж не должен показываться автоматически при первой генерации плана
   const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
+  const [shouldShowPaymentGate, setShouldShowPaymentGate] = useState(false);
 
   const currentDayPlan = useMemo(() => {
     // ИСПРАВЛЕНО: Ищем день по dayIndex, с защитой от undefined
@@ -231,8 +234,37 @@ export function PlanPageClientNew({
     loadCart();
   }, [plan28]);
 
-  // ИСПРАВЛЕНО: Убрана автоматическая проверка needsFirstPayment - блюр не должен показываться автоматически
-  // Платеж должен показываться только при явном запросе пользователя
+  // ИСПРАВЛЕНО: Определяем, нужно ли показывать PaymentGate
+  // PaymentGate должен показываться только если:
+  // 1. План истек (28+ дней) - нужно оплатить новый план
+  // 2. Это перепрохождение анкеты (isRetaking)
+  // НЕ показываем при первой генерации плана
+  useEffect(() => {
+    // Проверяем, есть ли флаг перепрохождения
+    const isRetaking = typeof window !== 'undefined' ? 
+      (localStorage.getItem('is_retaking_quiz') === 'true' || 
+       localStorage.getItem('full_retake_from_home') === 'true') : false;
+    
+    if (isRetaking) {
+      // Перепрохождение - показываем PaymentGate
+      clientLogger.log('✅ PaymentGate: показываем из-за перепрохождения анкеты');
+      setShouldShowPaymentGate(true);
+      return;
+    }
+    
+    // Проверяем, истек ли план (используем prop, переданный из родительского компонента)
+    if (planExpired) {
+      // План истек - показываем PaymentGate
+      clientLogger.log('✅ PaymentGate: показываем из-за истечения плана (28+ дней)');
+      setShouldShowPaymentGate(true);
+      return;
+    }
+    
+    // При первой генерации плана НЕ показываем PaymentGate
+    // План существует и активен - не нужно показывать оплату
+    clientLogger.log('✅ PaymentGate: НЕ показываем - план активен, это первая генерация');
+    setShouldShowPaymentGate(false);
+  }, [plan28, planExpired]);
 
   const loadCart = async () => {
     // ИСПРАВЛЕНО: Защита от множественных вызовов
@@ -500,68 +532,130 @@ export function PlanPageClientNew({
         }}
       />
 
-      {/* ИСПРАВЛЕНО: Возвращен PaymentGate - блюр для покупки должен показываться */}
-      <PaymentGate
-        price={199}
-        isRetaking={false}
-        onPaymentComplete={() => {
-          setNeedsFirstPayment(false);
-          clientLogger.log('✅ Payment completed on plan page');
-        }}
-      >
-      {/* Инфографика прогресса по целям */}
-      <GoalProgressInfographic
-        goals={plan28.mainGoals}
-        currentDay={selectedDay}
-      />
-
-      {/* Календарь */}
-      <div style={{ marginBottom: '24px' }}>
-        <PlanCalendar
-          currentDay={initialCurrentDay}
-          completedDays={Array.from(completedDays)}
-          onDaySelect={(day) => {
-            setSelectedDay(day);
-            // Прокручиваем к DayView при выборе дня
-            setTimeout(() => {
-              const dayViewElement = document.getElementById(`day-view-${day}`);
-              if (dayViewElement) {
-                dayViewElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }, 100);
+      {/* ИСПРАВЛЕНО: PaymentGate показывается только если нужно (план истек или перепрохождение) */}
+      {shouldShowPaymentGate ? (
+        <PaymentGate
+          price={199}
+          isRetaking={typeof window !== 'undefined' ? 
+            (localStorage.getItem('is_retaking_quiz') === 'true' || 
+             localStorage.getItem('full_retake_from_home') === 'true') : false}
+          onPaymentComplete={() => {
+            setNeedsFirstPayment(false);
+            setShouldShowPaymentGate(false);
+            clientLogger.log('✅ Payment completed on plan page');
           }}
-        />
-      </div>
-
-      {/* Отображение выбранного дня */}
-      {currentDayPlan && (
-        <div id={`day-view-${selectedDay}`} style={{ marginBottom: '24px' }}>
-          <DayView
-            dayPlan={currentDayPlan}
-            mainGoals={plan28.mainGoals}
-            products={products}
-            wishlistProductIds={wishlistProductIds}
-            cartQuantities={cartQuantities}
-            onToggleWishlist={toggleWishlist}
-            onAddToCart={handleAddToCart}
-            onReplace={handleReplace}
+        >
+          {/* Контент внутри PaymentGate (показывается с блюром до оплаты) */}
+          {/* Инфографика прогресса по целям */}
+          <GoalProgressInfographic
+            goals={plan28.mainGoals}
+            currentDay={selectedDay}
           />
-        </div>
+
+          {/* Календарь */}
+          <div style={{ marginBottom: '24px' }}>
+            <PlanCalendar
+              currentDay={initialCurrentDay}
+              completedDays={Array.from(completedDays)}
+              onDaySelect={(day) => {
+                setSelectedDay(day);
+                // Прокручиваем к DayView при выборе дня
+                setTimeout(() => {
+                  const dayViewElement = document.getElementById(`day-view-${day}`);
+                  if (dayViewElement) {
+                    dayViewElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }, 100);
+              }}
+            />
+          </div>
+
+          {/* Отображение выбранного дня */}
+          {currentDayPlan && (
+            <div id={`day-view-${selectedDay}`} style={{ marginBottom: '24px' }}>
+              <DayView
+                dayPlan={currentDayPlan}
+                mainGoals={plan28.mainGoals}
+                products={products}
+                wishlistProductIds={wishlistProductIds}
+                cartQuantities={cartQuantities}
+                onToggleWishlist={toggleWishlist}
+                onAddToCart={handleAddToCart}
+                onReplace={handleReplace}
+              />
+            </div>
+          )}
+
+          {/* Блок обратной связи в конце страницы */}
+          <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+            <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
+          </div>
+
+          {/* Модалка замены продукта */}
+          <ReplaceProductModal
+            product={replaceProduct}
+            isOpen={!!replaceProduct}
+            onClose={() => setReplaceProduct(null)}
+            onReplace={handleReplaceConfirm}
+          />
+        </PaymentGate>
+      ) : (
+        <>
+          {/* Контент без PaymentGate (первая генерация плана или план активен) */}
+          {/* Инфографика прогресса по целям */}
+          <GoalProgressInfographic
+            goals={plan28.mainGoals}
+            currentDay={selectedDay}
+          />
+
+          {/* Календарь */}
+          <div style={{ marginBottom: '24px' }}>
+            <PlanCalendar
+              currentDay={initialCurrentDay}
+              completedDays={Array.from(completedDays)}
+              onDaySelect={(day) => {
+                setSelectedDay(day);
+                // Прокручиваем к DayView при выборе дня
+                setTimeout(() => {
+                  const dayViewElement = document.getElementById(`day-view-${day}`);
+                  if (dayViewElement) {
+                    dayViewElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }, 100);
+              }}
+            />
+          </div>
+
+          {/* Отображение выбранного дня */}
+          {currentDayPlan && (
+            <div id={`day-view-${selectedDay}`} style={{ marginBottom: '24px' }}>
+              <DayView
+                dayPlan={currentDayPlan}
+                mainGoals={plan28.mainGoals}
+                products={products}
+                wishlistProductIds={wishlistProductIds}
+                cartQuantities={cartQuantities}
+                onToggleWishlist={toggleWishlist}
+                onAddToCart={handleAddToCart}
+                onReplace={handleReplace}
+              />
+            </div>
+          )}
+
+          {/* Блок обратной связи в конце страницы */}
+          <div style={{ marginTop: '48px', marginBottom: '24px' }}>
+            <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
+          </div>
+
+          {/* Модалка замены продукта */}
+          <ReplaceProductModal
+            product={replaceProduct}
+            isOpen={!!replaceProduct}
+            onClose={() => setReplaceProduct(null)}
+            onReplace={handleReplaceConfirm}
+          />
+        </>
       )}
-
-      {/* Блок обратной связи в конце страницы */}
-      <div style={{ marginTop: '48px', marginBottom: '24px' }}>
-        <FeedbackBlock onSubmit={handleFeedbackSubmit} feedbackType="plan_recommendations" />
-      </div>
-
-      {/* Модалка замены продукта */}
-      <ReplaceProductModal
-        product={replaceProduct}
-        isOpen={!!replaceProduct}
-        onClose={() => setReplaceProduct(null)}
-        onReplace={handleReplaceConfirm}
-      />
-      </PaymentGate>
     </div>
   );
 }

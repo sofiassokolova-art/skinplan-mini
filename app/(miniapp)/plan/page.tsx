@@ -24,6 +24,7 @@ interface PlanData {
     imageUrl?: string | null;
     description?: string;
   }>;
+  planExpired?: boolean; // Флаг истечения плана (28+ дней)
   // Старый формат (для обратной совместимости)
   user?: {
     id: string;
@@ -584,6 +585,10 @@ export default function PlanPage() {
       // При передаче через setState Map сохраняется корректно
       clientLogger.log('💾 Setting planData with productsMap size:', productsMap.size);
 
+      // ИСПРАВЛЕНО: Сохраняем флаг expired из ответа API
+      const planResponse = plan as any;
+      const planExpired = planResponse?.expired === true;
+      
       safeSetPlanData({
         plan28: plan28 || undefined,
         weeks: plan.weeks || [],
@@ -605,6 +610,7 @@ export default function PlanPage() {
         todayProducts,
         todayMorning,
         todayEvening,
+        planExpired, // Сохраняем флаг истечения плана
       });
 
       safeSetLoading(false);
@@ -1618,6 +1624,7 @@ export default function PlanPage() {
         wishlist={planData.wishlist}
         currentDay={planData.currentDay}
         completedDays={planData.progress?.completedDays || []}
+        planExpired={planData.planExpired || false}
       />
       </Suspense>
     );
