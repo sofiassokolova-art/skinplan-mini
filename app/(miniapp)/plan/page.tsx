@@ -780,8 +780,21 @@ export default function PlanPage() {
           stack: planError?.stack,
         });
         
-        // Если план не найден (404), пробуем сгенерировать план
+        // Если план не найден (404), проверяем, не идет ли уже rate limit cooldown
+        // ИСПРАВЛЕНО: Проверяем rate limit ПЕРЕД попыткой генерации, чтобы избежать лишних запросов
         if (planError?.status === 404) {
+          // Проверяем, есть ли активный cooldown от предыдущих попыток
+          if (hasActivePlanGenerationCooldown()) {
+            const waitMs = getPlanCooldownMsRemaining();
+            const waitSeconds = Math.ceil(waitMs / 1000);
+            clientLogger.warn(`🔄 Plan not found but rate limit cooldown active (${waitSeconds}s), waiting before retry...`);
+            
+            if (scheduleRetryAfterCooldown('Plan generation temporarily unavailable due to rate limit. ')) {
+              return;
+            }
+          }
+          
+          // Пробуем сгенерировать план только если нет активного cooldown
           const generatedPlan = await tryGeneratePlan({ 
             checkProfile: true,
             logPrefix: '🔄 Plan not in cache, '
@@ -792,6 +805,7 @@ export default function PlanPage() {
             return;
           }
           
+          // Если генерация не удалась и есть cooldown - ждем
           if (scheduleRetryAfterCooldown('Plan generation temporarily unavailable. ')) {
             return;
           }
@@ -887,6 +901,20 @@ export default function PlanPage() {
             safeSetError(null);
             
             try {
+              // ИСПРАВЛЕНО: Проверяем rate limit cooldown ПЕРЕД попыткой генерации
+              if (hasActivePlanGenerationCooldown()) {
+                const waitMs = getPlanCooldownMsRemaining();
+                const waitSeconds = Math.ceil(waitMs / 1000);
+                clientLogger.warn(`🔄 Plan not found but rate limit cooldown active (${waitSeconds}s), waiting before retry...`, {
+                  profileId: profileCheck.id,
+                  profileVersion: profileCheck.version,
+                });
+                
+                if (scheduleRetryAfterCooldown('Plan generation temporarily paused (profile exists, rate limit). ')) {
+                  return;
+                }
+              }
+              
               const generatedPlan = await generatePlanWithHandling('🔄 Plan not found but profile exists - ');
 
               if (!generatedPlan && scheduleRetryAfterCooldown('Plan generation temporarily paused (profile exists). ')) {
@@ -1061,6 +1089,18 @@ export default function PlanPage() {
           (progressCheck.value.completedDays?.length > 0 || progressCheck.value.currentDay > 1);
         
         if (hasProfile || hasProgress) {
+          // План должен существовать - но сначала проверяем, не идет ли rate limit cooldown
+          if (hasActivePlanGenerationCooldown()) {
+            const waitMs = getPlanCooldownMsRemaining();
+            const waitSeconds = Math.ceil(waitMs / 1000);
+            clientLogger.warn(`🔄 Plan should exist but rate limit cooldown active (${waitSeconds}s), waiting...`);
+            
+            if (scheduleRetryAfterCooldown('Plan regeneration paused due to rate limit cooldown. ')) {
+              progressCheckInProgress = false;
+              return;
+            }
+          }
+          
           // План должен существовать - пробуем регенерировать
           clientLogger.log('🔄 Plan should exist, attempting to regenerate...');
           safeSetLoading(true);
@@ -1068,6 +1108,7 @@ export default function PlanPage() {
           try {
             const generatedPlan = await generatePlanWithHandling('🔄 Plan should exist - ');
             if (!generatedPlan && scheduleRetryAfterCooldown('Plan regeneration paused due to cooldown. ')) {
+              progressCheckInProgress = false;
               return;
             }
             if (generatedPlan && (generatedPlan.plan28 || generatedPlan.weeks)) {
@@ -1266,6 +1307,28 @@ export default function PlanPage() {
                 if (process.env.NODE_ENV === 'development') {
                   clientLogger.log('🔄 User requested plan generation...');
                 }
+                
+                // ИСПРАВЛЕНО: Проверяем rate limit cooldown ПЕРЕД попыткой генерации
+                if (hasActivePlanGenerationCooldown()) {
+                  const waitMs = getPlanCooldownMsRemaining();
+                  const waitSeconds = Math.ceil(waitMs / 1000);
+                  clientLogger.log(`⏳ Manual refresh delayed due to rate limit cooldown (${waitSeconds}s).`);
+                  
+                  // Ждем окончания cooldown перед повторной попыткой
+                  safeSetLoading(true);
+                  safeSetError(null);
+                  if (loadPlanTimeoutRef.current) {
+                    clearTimeout(loadPlanTimeoutRef.current);
+                  }
+                  loadPlanTimeoutRef.current = setTimeout(() => {
+                    loadPlanTimeoutRef.current = null;
+                    if (isMountedRef.current) {
+                      loadPlan(0);
+                    }
+                  }, waitMs);
+                  return;
+                }
+                
                 const generatedPlan = await generatePlanWithHandling('🔄 Manual refresh - ');
                 if (!generatedPlan) {
                   if (hasActivePlanGenerationCooldown()) {

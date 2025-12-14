@@ -78,6 +78,13 @@ export async function GET(request: NextRequest) {
     logger.debug('Checking database first (before cache) to get fresh plan', { userId, profileVersion: profile.version });
     
     // Проверяем БД сначала
+    // ИСПРАВЛЕНО: Добавляем логирование для диагностики медленной загрузки
+    logger.info('Looking for plan in DB', {
+      userId,
+      profileVersion: profile.version,
+      timestamp: new Date().toISOString(),
+    });
+    
     const planFromDb = await prisma.plan28.findFirst({
       where: {
         userId,
@@ -86,21 +93,56 @@ export async function GET(request: NextRequest) {
       select: {
         planData: true,
         updatedAt: true,
+        id: true,
+        createdAt: true,
       },
+    });
+    
+    logger.info('Plan lookup result', {
+      userId,
+      profileVersion: profile.version,
+      found: !!planFromDb,
+      planId: planFromDb?.id,
+      hasPlanData: !!planFromDb?.planData,
+      createdAt: planFromDb?.createdAt?.toISOString(),
+      updatedAt: planFromDb?.updatedAt?.toISOString(),
     });
     
     if (planFromDb && planFromDb.planData) {
       // ИСПРАВЛЕНО: Используем правильный тип для planData из БД
-      const planData = planFromDb.planData as { days?: Array<{ dayIndex: number }>; mainGoals?: string[] };
+      const planData = planFromDb.planData as any;
+      
+      // Детальное логирование для диагностики
+      logger.debug('Plan found in DB, checking structure', {
+        userId,
+        profileVersion: profile.version,
+        hasPlanData: !!planData,
+        planDataType: typeof planData,
+        planDataKeys: planData ? Object.keys(planData) : [],
+        hasDays: !!planData?.days,
+        daysType: typeof planData?.days,
+        daysIsArray: Array.isArray(planData?.days),
+        daysLength: Array.isArray(planData?.days) ? planData.days.length : 0,
+      });
       
       // Проверяем, что план имеет правильную структуру
-      const hasPlan28 = planData && planData.days && Array.isArray(planData.days) && planData.days.length > 0;
+      // ИСПРАВЛЕНО: Более гибкая проверка структуры плана
+      const hasPlan28 = planData && 
+                        planData.days && 
+                        Array.isArray(planData.days) && 
+                        planData.days.length > 0;
       
       if (hasPlan28) {
         // Формируем ответ в формате, который ожидает клиент
         const planResponse: PlanResponse = {
           plan28: planData as Plan28,
         };
+        
+        logger.info('Plan retrieved from DB successfully', {
+          userId,
+          profileVersion: profile.version,
+          daysCount: planData.days.length,
+        });
         
         // Попытаемся сохранить в кэш для будущих запросов
         try {
@@ -115,7 +157,25 @@ export async function GET(request: NextRequest) {
         const duration = Date.now() - startTime;
         logApiRequest(method, path, 200, duration, userId);
         return ApiResponse.success(planResponse);
+      } else {
+        // План есть в БД, но структура некорректна
+        logger.warn('Plan found in DB but structure is invalid', {
+          userId,
+          profileVersion: profile.version,
+          hasPlanData: !!planData,
+          hasDays: !!planData?.days,
+          daysIsArray: Array.isArray(planData?.days),
+          daysLength: Array.isArray(planData?.days) ? planData.days.length : 0,
+          planDataKeys: planData ? Object.keys(planData) : [],
+        });
       }
+    } else {
+      logger.debug('Plan not found in DB for profile version', {
+        userId,
+        profileVersion: profile.version,
+        hasPlanFromDb: !!planFromDb,
+        hasPlanData: !!planFromDb?.planData,
+      });
     }
     
     // Если план не найден в БД, проверяем кэш (fallback)

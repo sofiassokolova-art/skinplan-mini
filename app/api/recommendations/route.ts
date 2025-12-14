@@ -176,10 +176,26 @@ export async function GET(request: NextRequest) {
       });
 
       // Группируем продукты по шагам
+      // ИСПРАВЛЕНО: Исключаем неподходящие продукты (lip_balm, eye_cream и т.д.)
+      const excludedProducts = ['lip_balm', 'eye_cream', 'eye_serum', 'lip_care', 'eye'];
+      
       const steps: Record<string, any[]> = {};
       for (const product of products) {
+        const productStep = product.step || '';
+        const productCategory = product.category || '';
+        
+        // Исключаем неподходящие продукты (бальзам для губ, средства для глаз и т.д.)
+        if (excludedProducts.some(excluded => 
+          productStep.toLowerCase().includes(excluded) || 
+          productCategory.toLowerCase().includes(excluded) ||
+          product.name.toLowerCase().includes('lip balm') ||
+          product.name.toLowerCase().includes('бальзам для губ')
+        )) {
+          continue; // Пропускаем неподходящие продукты
+        }
+        
         // Нормализуем step: serum, treatment, essence -> serum для совместимости
-        let step = product.step || 'other';
+        let step = productStep;
         if (step === 'treatment' || step === 'essence') {
           step = 'serum'; // Объединяем treatment и essence в serum для главной страницы
         }
@@ -305,11 +321,27 @@ export async function GET(request: NextRequest) {
             });
             
             // Фильтруем в памяти по шагам, начинающимся с базового
+            // ИСПРАВЛЕНО: Исключаем неподходящие продукты (lip_balm, eye_cream и т.д.)
             fallbackProducts = allProducts.filter((p: any) => {
               const productStep = p.step || '';
-              return productStep.startsWith(missingStep) || 
-                     productStep === missingStep ||
-                     p.category === missingStep;
+              const productCategory = p.category || '';
+              
+              // Исключаем неподходящие продукты для каждого шага
+              const excludedSteps: Record<string, string[]> = {
+                'moisturizer': ['lip_balm', 'eye_cream', 'eye_serum', 'lip_care'],
+                'serum': ['lip_balm', 'eye_cream', 'eye_serum', 'lip_care'],
+                'cleanser': ['lip_balm', 'eye_cream', 'lip_care'],
+                'toner': ['lip_balm', 'eye_cream', 'lip_care'],
+                'spf': ['lip_balm', 'eye_cream', 'lip_care'],
+              };
+              
+              const excluded = excludedSteps[missingStep] || [];
+              if (excluded.some(excludedStep => productStep.includes(excludedStep) || productCategory.includes(excludedStep))) {
+                return false; // Исключаем неподходящие продукты
+              }
+              
+              // Проверяем step (не category, так как category может быть неточным)
+              return productStep.startsWith(missingStep) || productStep === missingStep;
             });
           }
           
