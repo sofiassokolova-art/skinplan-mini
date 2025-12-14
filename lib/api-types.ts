@@ -115,6 +115,8 @@ export interface PlanResponse {
   products?: PlanProduct[];
   profile?: PlanProfile;
   warnings?: string[];
+  expired?: boolean; // Флаг истечения плана (28+ дней)
+  daysSinceCreation?: number; // Количество дней с момента создания плана
 }
 
 export interface WishlistResponse {

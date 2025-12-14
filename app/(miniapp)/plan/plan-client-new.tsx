@@ -104,9 +104,36 @@ export function PlanPageClientNew({
           return;
         }
         
+        // ИСПРАВЛЕНО: Проверяем кэш ответов пользователя перед запросом к API
+        // Это предотвращает rate limit ошибки при частых загрузках
+        const cachedAnswers = typeof window !== 'undefined' ? localStorage.getItem('user_answers_cache') : null;
+        if (cachedAnswers) {
+          try {
+            const userAnswers = JSON.parse(cachedAnswers);
+            if (Array.isArray(userAnswers)) {
+              const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+              if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+                const userNameFromAnswer = String(nameAnswer.answerValue).trim();
+                setUserName(userNameFromAnswer);
+                localStorage.setItem('user_name', userNameFromAnswer);
+                clientLogger.log('✅ User name loaded from cached answers:', userNameFromAnswer);
+                return;
+              }
+            }
+          } catch (parseError) {
+            // Если кэш поврежден, игнорируем и продолжаем
+            clientLogger.log('⚠️ Failed to parse cached answers, will fetch from API');
+          }
+        }
+        
         // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
         const userAnswers = await api.getUserAnswers() as any;
         if (userAnswers && Array.isArray(userAnswers)) {
+          // ИСПРАВЛЕНО: Сохраняем ответы в кэш для будущих запросов
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('user_answers_cache', JSON.stringify(userAnswers));
+          }
+          
           const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
           if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
             const userNameFromAnswer = String(nameAnswer.answerValue).trim();

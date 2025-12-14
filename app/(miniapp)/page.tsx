@@ -140,8 +140,19 @@ export default function HomePage() {
   const loadRecommendations = async () => {
     setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true перед началом загрузки
     try {
-      const data = await api.getRecommendations() as Recommendation;
-      setRecommendations(data);
+      const data = await api.getRecommendations() as any;
+      
+      // ИСПРАВЛЕНО: Проверяем, истек ли план (28+ дней)
+      if (data?.expired === true) {
+        // План истек - показываем экран оплаты
+        setError('plan_expired');
+        setMorningItems([]);
+        setEveningItems([]);
+        setLoading(false);
+        return;
+      }
+      
+      setRecommendations(data as Recommendation);
       
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
       const morning: RoutineItem[] = [];
@@ -218,6 +229,22 @@ export default function HomePage() {
             steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
             volume: '~1.5–2 мл',
             tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
+          },
+          done: false,
+        });
+      }
+      
+      // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех
+      if (data?.steps?.lip_balm) {
+        morning.push({
+          id: 'morning-lip-balm',
+          title: 'Бальзам для губ',
+          subtitle: data.steps.lip_balm[0]?.name || 'Бальзам для губ',
+          icon: ICONS.cream, // Используем иконку крема как временную
+          howto: {
+            steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
+            volume: 'Тонкий слой',
+            tip: 'Регулярное использование предотвращает сухость и трещины.',
           },
           done: false,
         });

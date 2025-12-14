@@ -139,9 +139,9 @@ export async function GET(request: NextRequest) {
       return ApiResponse.success(cachedRecommendations);
     }
 
-    // ИСПРАВЛЕНО: Сначала проверяем наличие плана (Plan28) для синхронизации с главной страницей
-    // Если план существует, используем продукты из первого дня плана для рекомендаций
-    // Это гарантирует, что средства на главной совпадают со средствами в плане
+    // ИСПРАВЛЕНО: Используем текущий день плана для рекомендаций на главной
+    // День 1 = день генерации плана, день 2 = второй день из plan28, и так до 28
+    // После 28 дней показываем экран оплаты
     const existingPlan = await prisma.plan28.findFirst({
       where: {
         userId,
@@ -149,25 +149,58 @@ export async function GET(request: NextRequest) {
       },
       select: {
         planData: true,
+        createdAt: true,
       },
     });
 
     if (existingPlan && existingPlan.planData) {
       const planData = existingPlan.planData as any;
       if (planData?.days && Array.isArray(planData.days) && planData.days.length > 0) {
-        const firstDay = planData.days[0];
-        if (firstDay && (firstDay.morning || firstDay.evening)) {
-          logger.info('Using products from Plan28 first day for recommendations synchronization', { userId, profileVersion: profile.version });
+        // Проверяем, прошло ли 28 дней с момента создания плана
+        const planCreatedAt = existingPlan.createdAt;
+        const daysSinceCreation = Math.floor((Date.now() - planCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysSinceCreation >= 28) {
+          // План истек - возвращаем флаг для показа экрана оплаты
+          logger.info('Plan expired (28+ days), showing payment screen', { 
+            userId, 
+            profileVersion: profile.version,
+            daysSinceCreation,
+          });
+          return ApiResponse.success({
+            expired: true,
+            daysSinceCreation,
+            message: 'План завершен. Оформите новый план для продолжения.',
+          });
+        }
+        
+        // Получаем текущий день из PlanProgress
+        const progress = await prisma.planProgress.findUnique({
+          where: { userId },
+          select: { currentDay: true },
+        });
+        
+        const currentDay = progress?.currentDay || 1;
+        const dayIndex = Math.min(currentDay - 1, planData.days.length - 1); // Индекс в массиве (0-based)
+        const dayData = planData.days[dayIndex];
+        
+        if (dayData && (dayData.morning || dayData.evening)) {
+          logger.info('Using products from Plan28 current day for recommendations', { 
+            userId, 
+            profileVersion: profile.version,
+            currentDay,
+            dayIndex: dayIndex + 1,
+          });
           
-          // Собираем продукты из первого дня плана
+          // Собираем продукты из текущего дня плана
           const productIds = new Set<number>();
-          if (firstDay.morning) {
-            firstDay.morning.forEach((step: any) => {
+          if (dayData.morning) {
+            dayData.morning.forEach((step: any) => {
               if (step.productId) productIds.add(Number(step.productId));
             });
           }
-          if (firstDay.evening) {
-            firstDay.evening.forEach((step: any) => {
+          if (dayData.evening) {
+            dayData.evening.forEach((step: any) => {
               if (step.productId) productIds.add(Number(step.productId));
             });
           }
@@ -184,19 +217,39 @@ export async function GET(request: NextRequest) {
             });
             
             // Группируем продукты по шагам (используя ту же логику, что и для RecommendationSession)
-            const excludedProducts = ['lip_balm', 'eye_cream', 'eye_serum', 'lip_care', 'eye'];
+            // ИСПРАВЛЕНО: Не исключаем lip_balm - он теперь показывается как отдельная рекомендация утром
+            const excludedProducts = ['eye_cream', 'eye_serum', 'eye'];
             const steps: Record<string, any[]> = {};
+            const lipBalms: any[] = []; // Собираем бальзамы для губ отдельно
             
             for (const product of planProducts) {
               const productStep = product.step || '';
               const productCategory = product.category || '';
+              const productName = product.name.toLowerCase();
               
-              // Исключаем неподходящие продукты
+              // Собираем бальзамы для губ отдельно для добавления утром
+              if (productStep.toLowerCase().includes('lip_balm') || 
+                  productCategory.toLowerCase().includes('lip') ||
+                  productName.includes('lip balm') ||
+                  productName.includes('бальзам для губ')) {
+                lipBalms.push({
+                  id: product.id,
+                  name: product.name,
+                  brand: product.brand.name,
+                  line: product.line,
+                  category: product.category,
+                  step: product.step,
+                  description: product.descriptionUser,
+                  marketLinks: product.marketLinks,
+                  imageUrl: product.imageUrl,
+                });
+                continue; // Пропускаем добавление в основные шаги
+              }
+              
+              // Исключаем только крем для глаз (его добавляем отдельно для тех, у кого темные круги)
               if (excludedProducts.some(excluded => 
                 productStep.toLowerCase().includes(excluded) || 
-                productCategory.toLowerCase().includes(excluded) ||
-                product.name.toLowerCase().includes('lip balm') ||
-                product.name.toLowerCase().includes('бальзам для губ')
+                productCategory.toLowerCase().includes(excluded)
               )) {
                 continue;
               }
@@ -237,6 +290,11 @@ export async function GET(request: NextRequest) {
               });
             }
             
+            // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех
+            if (lipBalms.length > 0 && !steps.lip_balm) {
+              steps.lip_balm = [lipBalms[0]]; // Берем первый бальзам для губ
+            }
+            
             // Формируем ответ в формате рекомендаций
             const recommendations = {
               profile_summary: {
@@ -249,6 +307,7 @@ export async function GET(request: NextRequest) {
                 name: 'Персональный план ухода',
               },
               steps,
+              currentDay, // Добавляем текущий день для информации
             };
             
             // Сохраняем в кэш

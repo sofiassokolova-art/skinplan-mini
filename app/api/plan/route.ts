@@ -133,15 +133,23 @@ export async function GET(request: NextRequest) {
                         planData.days.length > 0;
       
       if (hasPlan28) {
+        // ИСПРАВЛЕНО: Проверяем, прошло ли 28 дней с момента создания плана
+        const planCreatedAt = planFromDb.createdAt;
+        const daysSinceCreation = Math.floor((Date.now() - planCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+        
         // Формируем ответ в формате, который ожидает клиент
         const planResponse: PlanResponse = {
           plan28: planData as Plan28,
+          expired: daysSinceCreation >= 28, // Флаг истечения плана
+          daysSinceCreation, // Количество дней с момента создания
         };
         
         logger.info('Plan retrieved from DB successfully', {
           userId,
           profileVersion: profile.version,
           daysCount: planData.days.length,
+          daysSinceCreation,
+          expired: daysSinceCreation >= 28,
         });
         
         // Попытаемся сохранить в кэш для будущих запросов
