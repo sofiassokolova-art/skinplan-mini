@@ -139,6 +139,133 @@ export async function GET(request: NextRequest) {
       return ApiResponse.success(cachedRecommendations);
     }
 
+    // ИСПРАВЛЕНО: Сначала проверяем наличие плана (Plan28) для синхронизации с главной страницей
+    // Если план существует, используем продукты из первого дня плана для рекомендаций
+    // Это гарантирует, что средства на главной совпадают со средствами в плане
+    const existingPlan = await prisma.plan28.findFirst({
+      where: {
+        userId,
+        profileVersion: profile.version,
+      },
+      select: {
+        planData: true,
+      },
+    });
+
+    if (existingPlan && existingPlan.planData) {
+      const planData = existingPlan.planData as any;
+      if (planData?.days && Array.isArray(planData.days) && planData.days.length > 0) {
+        const firstDay = planData.days[0];
+        if (firstDay && (firstDay.morning || firstDay.evening)) {
+          logger.info('Using products from Plan28 first day for recommendations synchronization', { userId, profileVersion: profile.version });
+          
+          // Собираем продукты из первого дня плана
+          const productIds = new Set<number>();
+          if (firstDay.morning) {
+            firstDay.morning.forEach((step: any) => {
+              if (step.productId) productIds.add(Number(step.productId));
+            });
+          }
+          if (firstDay.evening) {
+            firstDay.evening.forEach((step: any) => {
+              if (step.productId) productIds.add(Number(step.productId));
+            });
+          }
+          
+          if (productIds.size > 0) {
+            const planProducts = await prisma.product.findMany({
+              where: {
+                id: { in: Array.from(productIds) },
+                published: true as any,
+              } as any,
+              include: {
+                brand: true,
+              },
+            });
+            
+            // Группируем продукты по шагам (используя ту же логику, что и для RecommendationSession)
+            const excludedProducts = ['lip_balm', 'eye_cream', 'eye_serum', 'lip_care', 'eye'];
+            const steps: Record<string, any[]> = {};
+            
+            for (const product of planProducts) {
+              const productStep = product.step || '';
+              const productCategory = product.category || '';
+              
+              // Исключаем неподходящие продукты
+              if (excludedProducts.some(excluded => 
+                productStep.toLowerCase().includes(excluded) || 
+                productCategory.toLowerCase().includes(excluded) ||
+                product.name.toLowerCase().includes('lip balm') ||
+                product.name.toLowerCase().includes('бальзам для губ')
+              )) {
+                continue;
+              }
+              
+              // Нормализуем step
+              let step = productStep;
+              if (step === 'treatment' || step === 'essence') {
+                step = 'serum';
+              }
+              
+              // Нормализуем базовые шаги для группировки
+              let normalizedStep = step;
+              if (step.startsWith('cleanser')) {
+                normalizedStep = 'cleanser';
+              } else if (step.startsWith('spf')) {
+                normalizedStep = 'spf';
+              } else if (step.startsWith('moisturizer')) {
+                normalizedStep = 'moisturizer';
+              } else if (step.startsWith('toner')) {
+                normalizedStep = 'toner';
+              } else if (step.startsWith('serum') || step.startsWith('treatment')) {
+                normalizedStep = 'serum';
+              }
+              
+              if (!steps[normalizedStep]) {
+                steps[normalizedStep] = [];
+              }
+              steps[normalizedStep].push({
+                id: product.id,
+                name: product.name,
+                brand: product.brand.name,
+                line: product.line,
+                category: product.category,
+                step: product.step,
+                description: product.descriptionUser,
+                marketLinks: product.marketLinks,
+                imageUrl: product.imageUrl,
+              });
+            }
+            
+            // Формируем ответ в формате рекомендаций
+            const recommendations = {
+              profile_summary: {
+                skinType: profile.skinType,
+                sensitivityLevel: profile.sensitivityLevel,
+                acneLevel: profile.acneLevel,
+                notes: profile.notes,
+              },
+              rule: {
+                name: 'Персональный план ухода',
+              },
+              steps,
+            };
+            
+            // Сохраняем в кэш
+            await setCachedRecommendations(userId, profile.version, recommendations);
+            
+            logger.info('Recommendations generated from Plan28 first day', { 
+              userId, 
+              profileVersion: profile.version,
+              stepsCount: Object.keys(steps).length,
+            });
+            
+            return ApiResponse.success(recommendations);
+          }
+        }
+      }
+    }
+
     // Проверяем, есть ли уже сессия рекомендаций для этого профиля
     // ВАЖНО: При перепрохождении анкеты старые сессии должны быть удалены,
     // поэтому ищем только сессии для текущего profileId
