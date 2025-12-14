@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
+import { PaymentGate } from '@/components/PaymentGate';
 
 interface RoutineItem {
   id: string;
@@ -142,16 +143,8 @@ export default function HomePage() {
     try {
       const data = await api.getRecommendations() as any;
       
-      // ИСПРАВЛЕНО: Проверяем, истек ли план (28+ дней)
-      if (data?.expired === true) {
-        // План истек - показываем экран оплаты
-        setError('plan_expired');
-        setMorningItems([]);
-        setEveningItems([]);
-        setLoading(false);
-        return;
-      }
-      
+      // ИСПРАВЛЕНО: Убрана проверка expired - PaymentGate сам проверит статус оплаты
+      // Загружаем рекомендации даже если план истек - PaymentGate покажет блюр
       setRecommendations(data as Recommendation);
       
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
@@ -504,7 +497,20 @@ export default function HomePage() {
   const completedCount = routineItems.filter((item) => item.done).length;
   const totalCount = routineItems.length;
 
+  // ИСПРАВЛЕНО: План - это платный продукт, поэтому PaymentGate показывается ВСЕГДА
+  // PaymentGate сам проверит статус оплаты через localStorage и БД
+  // Если не оплачено - покажет блюр с экраном оплаты
+  // Если оплачено - покажет контент без блюра
   return (
+    <PaymentGate
+      price={199}
+      isRetaking={false}
+      onPaymentComplete={() => {
+        clientLogger.log('✅ Payment completed on homepage');
+        // После оплаты перезагружаем рекомендации
+        loadRecommendations();
+      }}
+    >
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
@@ -817,5 +823,6 @@ export default function HomePage() {
         </div>
       )}
     </div>
+    </PaymentGate>
   );
 }
