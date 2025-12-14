@@ -96,6 +96,14 @@ export function PlanPageClientNew({
     
     const loadUserName = async () => {
       try {
+        // ИСПРАВЛЕНО: Проверяем кэш в localStorage сначала для уменьшения rate limiting
+        const cachedName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
+        if (cachedName) {
+          setUserName(cachedName);
+          clientLogger.log('✅ User name loaded from cache:', cachedName);
+          return;
+        }
+        
         // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
         const userAnswers = await api.getUserAnswers() as any;
         if (userAnswers && Array.isArray(userAnswers)) {
@@ -103,6 +111,10 @@ export function PlanPageClientNew({
           if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
             const userNameFromAnswer = String(nameAnswer.answerValue).trim();
             setUserName(userNameFromAnswer);
+            // ИСПРАВЛЕНО: Сохраняем в кэш
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('user_name', userNameFromAnswer);
+            }
             clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
             return;
           }
@@ -111,11 +123,24 @@ export function PlanPageClientNew({
         const userProfile = await api.getUserProfile();
         if (userProfile?.firstName) {
           setUserName(userProfile.firstName);
+          // ИСПРАВЛЕНО: Сохраняем в кэш
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('user_name', userProfile.firstName);
+          }
           clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
         }
-      } catch (err) {
-        // Не критично, если не удалось загрузить имя
-        clientLogger.warn('Could not load user name:', err);
+      } catch (err: any) {
+        // ИСПРАВЛЕНО: Не логируем 429 и 405 ошибки как warning
+        // 429 - это нормально при rate limiting
+        // 405 - может быть временной проблемой с endpoint
+        if (err?.status !== 429 && err?.status !== 405) {
+          clientLogger.warn('Could not load user name:', err);
+        } else if (err?.status === 405) {
+          // HTTP 405 - логируем только в development, это проблема с endpoint
+          if (process.env.NODE_ENV === 'development') {
+            clientLogger.warn('HTTP 405 when loading user name - check endpoint:', err);
+          }
+        }
       }
     };
     

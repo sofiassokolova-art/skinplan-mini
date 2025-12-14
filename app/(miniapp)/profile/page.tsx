@@ -98,8 +98,11 @@ export default function PersonalCabinet() {
       let dbUser: any = null;
       try {
         dbUser = await api.getUserProfile() as any;
-      } catch (err) {
-        clientLogger.warn('Could not load user profile from DB:', err);
+      } catch (err: any) {
+        // ИСПРАВЛЕНО: Не логируем 429 ошибки как warning (rate limiting)
+        if (err?.status !== 429) {
+          clientLogger.warn('Could not load user profile from DB:', err);
+        }
       }
 
       // ИСПРАВЛЕНО: Имя должно браться из ответа пользователя на вопрос USER_NAME
@@ -165,8 +168,11 @@ export default function PersonalCabinet() {
             normalizedCount: userAnswers.length
           });
         }
-      } catch (err) {
-        clientLogger.warn('Could not load user answers for name:', err);
+      } catch (err: any) {
+        // ИСПРАВЛЕНО: Не логируем 429 ошибки как warning (rate limiting)
+        if (err?.status !== 429) {
+          clientLogger.warn('Could not load user answers for name:', err);
+        }
       }
       
       // Данные пользователя: сначала из ответа USER_NAME, потом из БД, потом из Telegram
