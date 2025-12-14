@@ -3974,6 +3974,27 @@ export default function QuizPage() {
     }
   }, [allQuestions]);
 
+  // ИСПРАВЛЕНО: Корректируем currentQuestionIndex если он выходит за пределы и отправка не идет
+  // Это важно для предотвращения показа лоадера вместо первого вопроса
+  useEffect(() => {
+    if (!questionnaire || allQuestions.length === 0 || loading) return;
+    
+    // Если индекс выходит за пределы, но отправка не идет - сбрасываем индекс на 0
+    // Это может произойти при неправильно сохраненном прогрессе или при первой загрузке
+    if (currentQuestionIndex >= allQuestions.length && !isSubmitting && !hasResumed && !showResumeScreen) {
+      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, но isSubmitting = false. Сбрасываем индекс на 0', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        answersCount: Object.keys(answers).length,
+        isSubmitting,
+        hasResumed,
+        showResumeScreen,
+      });
+      setCurrentQuestionIndex(0);
+      return;
+    }
+  }, [questionnaire, allQuestions, currentQuestionIndex, isSubmitting, loading, hasResumed, showResumeScreen, answers]);
+
   // Корректируем currentQuestionIndex после восстановления прогресса
   // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
   useEffect(() => {
@@ -5547,74 +5568,28 @@ export default function QuizPage() {
   if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
-      // Проверяем, не выходит ли индекс за пределы
-      if (currentQuestionIndex >= allQuestions.length) {
-        // Это последний вопрос - автоматически показываем лоадер и отправляем ответы
-        // Не показываем экран "Анкета завершена. Отправить ответы?" - сразу лоадер
-        // ИСПРАВЛЕНО: Но только если нет pendingInfoScreen (инфо-экран должен показаться первым)
+      // ИСПРАВЛЕНО: Если индекс выходит за пределы, но отправка не идет - useEffect исправит это
+      // Не показываем ошибку здесь, если индекс вышел за пределы - useEffect исправит индекс на следующем рендере
+      // Показываем ошибку только если индекс в пределах массива, но вопрос все равно не найден
+      if (currentQuestionIndex < allQuestions.length) {
+        console.error('❌ currentQuestion is null but should exist', {
+          currentQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+          hasResumed,
+          showResumeScreen,
+          currentInfoScreenIndex,
+          isShowingInitialInfoScreen,
+          pendingInfoScreen: !!pendingInfoScreen,
+        });
         return (
-          <div style={{ 
-            padding: '20px',
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-          }}>
-            <div style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.56)',
-              backdropFilter: 'blur(28px)',
-              borderRadius: '24px',
-              padding: '48px',
-              maxWidth: '400px',
-              textAlign: 'center',
-            }}>
-              <style>{`
-                @keyframes spin {
-                  from { transform: rotate(0deg); }
-                  to { transform: rotate(360deg); }
-                }
-              `}</style>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                border: '4px solid #0A5F59',
-                borderTop: '4px solid transparent',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 24px',
-              }} />
-              <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-                Создаем ваш план ухода...
-              </h2>
-              <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
-                Это займет несколько секунд
-              </p>
-            </div>
+          <div style={{ padding: '20px' }}>
+            <h1>Ошибка загрузки вопроса</h1>
+            <p>Попробуйте обновить страницу</p>
+            <button onClick={() => window.location.reload()}>Обновить страницу</button>
           </div>
         );
       }
-    }
-    
-    // Если вопрос не найден и это не ожидаемое состояние - показываем ошибку
-    if (questionnaire && allQuestions.length > 0) {
-      console.error('❌ currentQuestion is null but should exist', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        hasResumed,
-        showResumeScreen,
-        currentInfoScreenIndex,
-        isShowingInitialInfoScreen,
-        pendingInfoScreen: !!pendingInfoScreen,
-      });
-      return (
-        <div style={{ padding: '20px' }}>
-          <h1>Ошибка загрузки вопроса</h1>
-          <p>Попробуйте обновить страницу</p>
-          <button onClick={() => window.location.reload()}>Обновить страницу</button>
-        </div>
-      );
+      // Если индекс вышел за пределы и отправка не идет - useEffect исправит это, просто ждем следующего рендера
     }
     
     // Если анкета еще не загружена - показываем загрузку
@@ -5754,54 +5729,68 @@ export default function QuizPage() {
       );
     }
     
-    // Если нет ошибки, но все вопросы пройдены - автоматически показываем лоадер и отправляем
-    // Это заменяет экран "Анкета завершена. Отправить ответы?" на автоматическую отправку
-    return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.56)',
-          backdropFilter: 'blur(28px)',
-          borderRadius: '24px',
-          padding: '48px',
-          maxWidth: '400px',
-          textAlign: 'center',
+    // ИСПРАВЛЕНО: Если нет ошибки и нет вопроса, но отправка не идет и индекс вышел за пределы - 
+    // это означает, что индекс неправильно установлен. useEffect исправит это на следующем рендере.
+    // Показываем лоадер только если действительно идет отправка ответов (isSubmitting === true).
+    // В противном случае, если индекс вышел за пределы, показываем загрузку, пока useEffect не исправит индекс
+    if (isSubmitting || (questionnaire && allQuestions.length > 0 && currentQuestionIndex >= allQuestions.length && Object.keys(answers).length > 0)) {
+      // Если нет ошибки, но все вопросы пройдены - автоматически показываем лоадер и отправляем
+      // Это заменяет экран "Анкета завершена. Отправить ответы?" на автоматическую отправку
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
         }}>
-          <style>{`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-          <style>{`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
           <div style={{
-            width: '64px',
-            height: '64px',
-            border: '4px solid #0A5F59',
-            borderTop: '4px solid transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 24px',
-          }} />
-          <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-            Создаем ваш план ухода...
-          </h2>
-          <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
-            Это займет несколько секунд
-          </p>
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <style>{`
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+            <style>{`
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              border: '4px solid #0A5F59',
+              borderTop: '4px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 24px',
+            }} />
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Создаем ваш план ухода...
+            </h2>
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+              Это займет несколько секунд
+            </p>
+          </div>
         </div>
+      );
+    }
+    
+    // Если вопрос не найден, но отправка не идет и индекс в пределах массива - показываем загрузку
+    // Это может быть временное состояние, пока useEffect исправляет индекс
+    return (
+      <div style={{ padding: '20px', textAlign: 'center' }}>
+        <div>Загрузка...</div>
       </div>
     );
   }
