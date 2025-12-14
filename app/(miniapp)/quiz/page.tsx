@@ -5681,11 +5681,12 @@ export default function QuizPage() {
       answersCount > 0;
 
     // ИСПРАВЛЕНО: Показываем лоадер "Создаем ваш план ухода..." только если:
-    // 1. isSubmitting === true (ответы отправлены)
-    // 2. loading === false (анкета уже загружена)
-    // 3. questionnaire !== null (анкета существует)
-    // Это предотвращает показ лоадера при загрузке анкеты
-    if ((isSubmitting && !loading && questionnaire !== null) || looksLikeCompletion) {
+    // 1. НЕТ pendingInfoScreen (инфо-экран уже закрыт или его нет)
+    // 2. isSubmitting === true (ответы отправлены)
+    // 3. loading === false (анкета уже загружена)
+    // 4. questionnaire !== null (анкета существует)
+    // Это предотвращает показ лоадера при загрузке анкеты или пока показывается инфо-экран
+    if (!pendingInfoScreen && ((isSubmitting && !loading && questionnaire !== null) || looksLikeCompletion)) {
       return (
         <div style={{ 
           padding: '20px',
