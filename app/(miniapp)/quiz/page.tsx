@@ -4280,14 +4280,16 @@ export default function QuizPage() {
   // Текущий вопрос (показывается после начальных инфо-экранов)
   const currentQuestion = useMemo(() => {
     // Убираем все console.log из useMemo - они могут вызывать проблемы с рендерингом
-    if (isShowingInitialInfoScreen || pendingInfoScreen) {
+    // ВАЖНО: При перепрохождении (retake) мы пропускаем info screens,
+    // поэтому pendingInfoScreen не должен блокировать отображение вопросов.
+    if (isShowingInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz)) {
       return null;
     }
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
       return allQuestions[currentQuestionIndex];
     }
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, currentQuestionIndex, allQuestions]);
+  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
   useEffect(() => {
@@ -5568,10 +5570,63 @@ export default function QuizPage() {
   if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
-      // ИСПРАВЛЕНО: Если индекс выходит за пределы, но отправка не идет - useEffect исправит это
-      // Не показываем ошибку здесь, если индекс вышел за пределы - useEffect исправит индекс на следующем рендере
-      // Показываем ошибку только если индекс в пределах массива, но вопрос все равно не найден
-      if (currentQuestionIndex < allQuestions.length) {
+      // ИСПРАВЛЕНО: Если индекс выходит за пределы и нет ответов - показываем сообщение "Начать заново"
+      // Это состояние может возникнуть при неправильно сохраненном прогрессе
+      if (currentQuestionIndex >= allQuestions.length) {
+        const answersCount = Object.keys(answers || {}).length;
+        if (answersCount === 0) {
+          return (
+            <div style={{ 
+              padding: '20px',
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+            }}>
+              <div style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.56)',
+                backdropFilter: 'blur(28px)',
+                borderRadius: '24px',
+                padding: '24px',
+                maxWidth: '460px',
+                textAlign: 'center',
+              }}>
+                <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '18px', fontWeight: 'bold' }}>
+                  Не удалось загрузить вопросы
+                </h2>
+                <p style={{ color: '#475467', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px' }}>
+                  Похоже, прогресс анкеты сохранился некорректно. Нажмите «Начать заново», чтобы увидеть вопросы.
+                </p>
+                <button
+                  onClick={() => {
+                    startOver().catch((err) => {
+                      console.error('startOver failed:', err);
+                      window.location.reload();
+                    });
+                  }}
+                  style={{
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    backgroundColor: '#0A5F59',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Начать заново
+                </button>
+              </div>
+            </div>
+          );
+        }
+        // Если индекс вышел за пределы, но есть ответы - это нормальное состояние после завершения анкеты
+        // Продолжаем выполнение, чтобы показать лоадер ниже
+      } else if (currentQuestionIndex < allQuestions.length) {
+        // Индекс в пределах массива, но вопрос не найден - это ошибка
         console.error('❌ currentQuestion is null but should exist', {
           currentQuestionIndex,
           allQuestionsLength: allQuestions.length,
@@ -5589,7 +5644,6 @@ export default function QuizPage() {
           </div>
         );
       }
-      // Если индекс вышел за пределы и отправка не идет - useEffect исправит это, просто ждем следующего рендера
     }
     
     // Если анкета еще не загружена - показываем загрузку
@@ -5614,12 +5668,20 @@ export default function QuizPage() {
   // Если вопрос все еще не найден после всех проверок
   // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
   if (!currentQuestion) {
+    const answersCount = Object.keys(answers || {}).length;
+    const looksLikeCompletion =
+      questionnaire !== null &&
+      !loading &&
+      allQuestions.length > 0 &&
+      currentQuestionIndex >= allQuestions.length &&
+      answersCount > 0;
+
     // ИСПРАВЛЕНО: Показываем лоадер "Создаем ваш план ухода..." только если:
     // 1. isSubmitting === true (ответы отправлены)
     // 2. loading === false (анкета уже загружена)
     // 3. questionnaire !== null (анкета существует)
     // Это предотвращает показ лоадера при загрузке анкеты
-    if (isSubmitting && !loading && questionnaire !== null) {
+    if ((isSubmitting && !loading && questionnaire !== null) || looksLikeCompletion) {
       return (
         <div style={{ 
           padding: '20px',
@@ -5728,12 +5790,11 @@ export default function QuizPage() {
         </div>
       );
     }
-    
-    // ИСПРАВЛЕНО: Если нет ошибки и нет вопроса, но отправка не идет и индекс вышел за пределы - 
-    // это означает, что индекс неправильно установлен. useEffect исправит это на следующем рендере.
-    // Показываем лоадер только если действительно идет отправка ответов (isSubmitting === true).
-    // В противном случае, если индекс вышел за пределы, показываем загрузку, пока useEffect не исправит индекс
-    if (isSubmitting || (questionnaire && allQuestions.length > 0 && currentQuestionIndex >= allQuestions.length && Object.keys(answers).length > 0)) {
+
+    // ИСПРАВЛЕНО: Показываем лоадер только если действительно идет отправка ответов или все вопросы пройдены с ответами
+    // Случай когда индекс вышел за пределы и нет ответов уже обработан выше
+    const answersCount = Object.keys(answers || {}).length;
+    if (isSubmitting || (questionnaire && allQuestions.length > 0 && currentQuestionIndex >= allQuestions.length && answersCount > 0)) {
       // Если нет ошибки, но все вопросы пройдены - автоматически показываем лоадер и отправляем
       // Это заменяет экран "Анкета завершена. Отправить ответы?" на автоматическую отправку
       return (
@@ -5760,12 +5821,6 @@ export default function QuizPage() {
                 to { transform: rotate(360deg); }
               }
             `}</style>
-            <style>{`
-              @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-              }
-            `}</style>
             <div style={{
               width: '64px',
               height: '64px',
@@ -5782,6 +5837,52 @@ export default function QuizPage() {
               Это займет несколько секунд
             </p>
           </div>
+        </div>
+      );
+    }
+
+    // Иначе это временное состояние (например, пересчет фильтрации вопросов) — показываем нейтральную загрузку,
+    // а не "Создаем план ухода..."
+    return (
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.56)',
+          backdropFilter: 'blur(28px)',
+          borderRadius: '24px',
+          padding: '48px',
+          maxWidth: '400px',
+          textAlign: 'center',
+        }}>
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            border: '4px solid #0A5F59',
+            borderTop: '4px solid transparent',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 24px',
+          }} />
+          <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+            Загружаем вопросы...
+          </h2>
+          <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+            Пожалуйста, подождите несколько секунд
+          </p>
+>>>>>>> origin/cursor/care-plan-prompt-issue-505b
         </div>
       );
     }

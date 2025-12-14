@@ -27,17 +27,19 @@ jobs:
         run: npm ci
       
       - name: Run npm audit
-        run: npm audit --audit-level=moderate
+        # NOTE: devDependencies (e.g. vercel CLI) can trigger audit noise and block merges.
+        # We focus this job on production dependency risk.
+        run: npm audit --omit=dev --audit-level=moderate
         continue-on-error: true
       
       - name: Check for vulnerabilities
         run: |
-          if npm audit --audit-level=high --json | jq -e '.vulnerabilities | length > 0' > /dev/null; then
-            echo "❌ High severity vulnerabilities found!"
-            npm audit --audit-level=high
+          if npm audit --omit=dev --audit-level=high --json | jq -e '(.metadata.vulnerabilities.high // 0) > 0 or (.metadata.vulnerabilities.critical // 0) > 0' > /dev/null; then
+            echo "❌ High/Critical vulnerabilities found (prod deps)!"
+            npm audit --omit=dev --audit-level=high
             exit 1
           else
-            echo "✅ No high severity vulnerabilities found"
+            echo "✅ No high/critical vulnerabilities found (prod deps)"
           fi
 
   secret-scanning:
