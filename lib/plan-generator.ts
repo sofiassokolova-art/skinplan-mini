@@ -363,6 +363,19 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     if (problemLower.includes('обезвоженность') || problemLower.includes('dehydration') || problemLower.includes('сухость') || problemLower.includes('dryness')) {
       if (!mainGoals.includes('dehydration')) mainGoals.push('dehydration');
     }
+    // ИСПРАВЛЕНО: Добавляем проверку темных кругов под глазами
+    if (problemLower.includes('темные круги') || problemLower.includes('dark circles') || problemLower.includes('круги под глазами')) {
+      if (!mainGoals.includes('dark_circles')) mainGoals.push('dark_circles');
+    }
+  }
+  
+  // ИСПРАВЛЕНО: Также проверяем concerns для темных кругов
+  if (concerns.some((c: string) => 
+    c.toLowerCase().includes('темные круги') || 
+    c.toLowerCase().includes('dark circles') ||
+    c.toLowerCase().includes('круги под глазами')
+  )) {
+    if (!mainGoals.includes('dark_circles')) mainGoals.push('dark_circles');
   }
   
   // Если keyProblems пустые, используем fallback на основе primaryFocus и concerns
@@ -2754,6 +2767,79 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
         alternatives,
       });
+    }
+    
+    // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех пользователей
+    // Подбираем в зависимости от типа кожи
+    // Для разных типов кожи можно использовать разные варианты lip_care
+    // Сейчас используем универсальный lip_care
+    const lipBalmStep: StepCategory = 'lip_care';
+    
+    // Проверяем, есть ли продукты для бальзама для губ
+    let lipBalmProducts = getProductsForStep(lipBalmStep, phase);
+    if (lipBalmProducts.length === 0) {
+      // Пробуем найти через fallback в БД
+      try {
+        const fallbackLipBalm = await findFallbackProduct('lip_care', profileClassification);
+        if (fallbackLipBalm) {
+          registerProductForStep(lipBalmStep, fallbackLipBalm);
+          lipBalmProducts = [fallbackLipBalm];
+        }
+      } catch (err) {
+        logger.warn('Could not find lip balm product', { userId, dayIndex });
+      }
+    }
+    
+    // Добавляем бальзам для губ только если есть продукт
+    if (lipBalmProducts.length > 0) {
+      const alternatives = lipBalmProducts.slice(1, 4).map(p => String(p.id));
+      morningSteps.push({
+        stepCategory: lipBalmStep,
+        productId: String(lipBalmProducts[0].id),
+        alternatives,
+      });
+      logger.debug('Added lip balm to morning routine', {
+        userId,
+        dayIndex,
+        productId: lipBalmProducts[0].id,
+      });
+    }
+    
+    // ИСПРАВЛЕНО: Добавляем крем для глаз только для тех, у кого проблема с темными кругами
+    // Проверяем наличие цели dark_circles в mainGoals (уже добавлено выше)
+    const hasDarkCircles = mainGoals.includes('dark_circles');
+    
+    if (hasDarkCircles) {
+      const eyeCreamStep: StepCategory = 'eye_cream_dark_circles';
+      let eyeCreamProducts = getProductsForStep(eyeCreamStep, phase);
+      
+      if (eyeCreamProducts.length === 0) {
+        // Пробуем найти через fallback в БД
+        try {
+          const fallbackEyeCream = await findFallbackProduct('eye_cream_dark_circles', profileClassification);
+          if (fallbackEyeCream) {
+            registerProductForStep(eyeCreamStep, fallbackEyeCream);
+            eyeCreamProducts = [fallbackEyeCream];
+          }
+        } catch (err) {
+          logger.warn('Could not find eye cream product for dark circles', { userId, dayIndex });
+        }
+      }
+      
+      // Добавляем крем для глаз только если есть продукт
+      if (eyeCreamProducts.length > 0) {
+        const alternatives = eyeCreamProducts.slice(1, 4).map(p => String(p.id));
+        morningSteps.push({
+          stepCategory: eyeCreamStep,
+          productId: String(eyeCreamProducts[0].id),
+          alternatives,
+        });
+        logger.debug('Added eye cream for dark circles to morning routine', {
+          userId,
+          dayIndex,
+          productId: eyeCreamProducts[0].id,
+        });
+      }
     }
     
     // Преобразуем evening steps
