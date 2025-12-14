@@ -313,6 +313,34 @@ export async function GET(request: NextRequest) {
           plan28Days: plan.plan28.days?.length || 0,
           savedPlanStructure,
         });
+        
+        // ИСПРАВЛЕНО: Создаем PlanProgress, если его еще нет
+        // Это важно для корректного отображения текущего дня и прогресса
+        try {
+          await prisma.planProgress.upsert({
+            where: { userId },
+            update: {}, // Не обновляем, если уже существует
+            create: {
+              userId,
+              currentDay: 1,
+              completedDays: [],
+              currentStreak: 0,
+              longestStreak: 0,
+              totalCompletedDays: 0,
+            },
+          });
+          logger.info('PlanProgress created/updated successfully', {
+            userId,
+            profileVersion: profile.version,
+          });
+        } catch (progressError: any) {
+          // Ошибка создания PlanProgress не критична - он создастся при первом обновлении прогресса
+          logger.warn('Failed to create PlanProgress (non-critical)', {
+            userId,
+            profileVersion: profile.version,
+            error: progressError?.message,
+          });
+        }
       } catch (dbError: any) {
         // Ошибка сохранения в БД не должна блокировать возврат плана
         logger.error('Failed to save plan to database (non-critical)', dbError, {

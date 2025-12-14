@@ -298,10 +298,12 @@ export default function HomePage() {
       }
       
       // ИСПРАВЛЕНО: Проверяем статус 404 или isNotFound флаг
+      // 404 не является критической ошибкой - это означает, что профиль/рекомендации еще не созданы
       if (error?.status === 404 || error?.isNotFound || error?.message?.includes('404') || error?.message?.includes('No skin profile') || error?.message?.includes('Not found')) {
-        // Профиль не найден - показываем пейволл вместо редиректа
-        clientLogger.log('Профиль не найден, показываем пейволл');
-        setError(null); // Очищаем ошибку, чтобы показать пейволл
+        // Профиль/рекомендации не найдены - это нормально, если пользователь еще не прошел анкету
+        // Не логируем это как ошибку, а просто очищаем рекомендации
+        clientLogger.log('Рекомендации не найдены (профиль еще не создан или анкета не завершена)');
+        setError(null); // Очищаем ошибку
         setMorningItems([]);
         setEveningItems([]);
         setLoading(false);

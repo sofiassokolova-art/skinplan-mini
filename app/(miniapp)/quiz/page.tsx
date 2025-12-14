@@ -5793,7 +5793,7 @@ export default function QuizPage() {
 
     // ИСПРАВЛЕНО: Показываем лоадер только если действительно идет отправка ответов или все вопросы пройдены с ответами
     // Случай когда индекс вышел за пределы и нет ответов уже обработан выше
-    const answersCount = Object.keys(answers || {}).length;
+    // answersCount уже объявлен выше в этом блоке
     if (isSubmitting || (questionnaire && allQuestions.length > 0 && currentQuestionIndex >= allQuestions.length && answersCount > 0)) {
       // Если нет ошибки, но все вопросы пройдены - автоматически показываем лоадер и отправляем
       // Это заменяет экран "Анкета завершена. Отправить ответы?" на автоматическую отправку
@@ -5882,16 +5882,7 @@ export default function QuizPage() {
           <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
             Пожалуйста, подождите несколько секунд
           </p>
->>>>>>> origin/cursor/care-plan-prompt-issue-505b
         </div>
-      );
-    }
-    
-    // Если вопрос не найден, но отправка не идет и индекс в пределах массива - показываем загрузку
-    // Это может быть временное состояние, пока useEffect исправляет индекс
-    return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <div>Загрузка...</div>
       </div>
     );
   }

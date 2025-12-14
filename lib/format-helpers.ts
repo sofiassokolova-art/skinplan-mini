@@ -112,3 +112,4 @@ export function formatSensitivityLevel(level: string | null | undefined): string
   
   return labels[level.toLowerCase()] || level;
 }
+
