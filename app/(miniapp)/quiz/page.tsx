@@ -2547,31 +2547,36 @@ export default function QuizPage() {
       };
       clientLogger.log('🔍 Проверка shouldGeneratePlan:', logData);
       
-      // ВАЖНО: Отправляем лог на сервер для диагностики
-      try {
-        const currentInitData = await getInitData();
-        if (currentInitData) {
-          await fetch('/api/logs', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': currentInitData,
-            },
-            body: JSON.stringify({
-              level: 'info',
-              message: 'shouldGeneratePlan check result',
-              context: logData,
-            }),
-          }).catch(() => {});
+      // ВАЖНО: Отправляем лог на сервер для диагностики (неблокирующе)
+      const logPromise = (async () => {
+        try {
+          const currentInitData = await getInitData();
+          if (currentInitData) {
+            await fetch('/api/logs', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'X-Telegram-Init-Data': currentInitData,
+              },
+              body: JSON.stringify({
+                level: 'info',
+                message: 'shouldGeneratePlan check result',
+                context: logData,
+              }),
+            }).catch(() => {});
+          }
+        } catch (logError) {
+          // Игнорируем ошибки логирования
         }
-      } catch (logError) {
-        // Игнорируем ошибки логирования
-      }
+      })();
       
       if (shouldGeneratePlan) {
-        // Запускаем генерацию плана и ждем её завершения
-        try {
-          // ИСПРАВЛЕНО: Логируем вызов генерации плана на сервер для диагностики
+        // ИСПРАВЛЕНО: Запускаем генерацию плана ПАРАЛЛЕЛЬНО с показом лоадера
+        // Генерация начинается сразу, не дожидаясь завершения других операций
+        clientLogger.log('🔄 Начинаем генерацию плана параллельно с показом лоадера');
+        
+        // ИСПРАВЛЕНО: Логируем вызов генерации плана на сервер для диагностики (неблокирующе)
+        const logGenerationPromise = (async () => {
           try {
             const currentInitData = await getInitData();
             if (currentInitData) {
@@ -2596,10 +2601,16 @@ export default function QuizPage() {
           } catch (logError) {
             // Игнорируем ошибки логирования
           }
-          
-          clientLogger.log('🔄 Вызываем api.generatePlan()...');
-          let generatedPlan: any;
+        })();
+        
+        // ИСПРАВЛЕНО: Запускаем генерацию плана СРАЗУ, не дожидаясь логирования
+        // Генерация будет происходить на фоне, пока показывается лоадер
+        const planGenerationPromise = (async () => {
           try {
+              // ИСПРАВЛЕНО: Начинаем генерацию плана СРАЗУ, параллельно с показом лоадера
+            // Генерация будет происходить на фоне
+            clientLogger.log('🔄 Начинаем генерацию плана (параллельно с показом лоадера)...');
+            
             // ИСПРАВЛЕНО: Добавляем таймаут для генерации плана (максимум 30 секунд)
             const PLAN_GENERATION_TIMEOUT = 30000; // 30 секунд
             const generatePromise = api.generatePlan() as Promise<any>;
@@ -2607,7 +2618,8 @@ export default function QuizPage() {
               setTimeout(() => reject(new Error('Plan generation timeout (30s)')), PLAN_GENERATION_TIMEOUT)
             );
             
-            generatedPlan = await Promise.race([generatePromise, timeoutPromise]) as any;
+            // Генерация запущена, будет выполнена в фоне
+            const generatedPlan = await Promise.race([generatePromise, timeoutPromise]) as any;
             
             // ВАЖНО: Проверяем, что план действительно сгенерирован
             // ApiResponse.success() возвращает данные напрямую, поэтому проверяем структуру плана
@@ -2634,6 +2646,8 @@ export default function QuizPage() {
               plan28Days: generatedPlan?.plan28?.days?.length || 0,
               weeksCount: generatedPlan?.weeks?.length || 0,
             });
+            
+            return generatedPlan;
           } catch (planGenError: any) {
             // ИСПРАВЛЕНО: Детальное логирование ошибки генерации плана
             console.error('❌ Ошибка при вызове api.generatePlan():', {
@@ -2676,72 +2690,62 @@ export default function QuizPage() {
             
             throw planGenError;
           }
+        })();
+        
+        // ИСПРАВЛЕНО: Ждем завершения генерации плана, но она уже запущена параллельно
+        // Генерация происходит на фоне, пока показывается лоадер
+        try {
+          const generatedPlan = await planGenerationPromise;
           
-          // Логируем успешную генерацию на сервер
-          try {
-            const currentInitData = await getInitData();
-            if (currentInitData) {
-              try {
-                const logResponse = await fetch('/api/logs', {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json',
-                    'X-Telegram-Init-Data': currentInitData,
-                  },
-                  body: JSON.stringify({
-                    level: 'info',
-                    message: 'Plan generated successfully',
-                    context: { 
-                      hasPlan28: !!generatedPlan?.plan28,
-                      hasWeeks: !!generatedPlan?.weeks,
-                      plan28Days: generatedPlan?.plan28?.days?.length || 0,
-                      weeksCount: generatedPlan?.weeks?.length || 0,
-                    },
-                  }),
-                });
-                
-                if (!logResponse.ok) {
-                  const errorText = await logResponse.text().catch(() => 'Unknown error');
-                  console.error('❌ Ошибка сохранения лога (plan generated):', {
-                    status: logResponse.status,
-                    statusText: logResponse.statusText,
-                    error: errorText,
-                  });
-                }
-              } catch (fetchError) {
-                console.error('❌ Ошибка при вызове /api/logs (plan generated):', fetchError);
-              }
-            }
-          } catch (logError) {
-            // Игнорируем ошибки логирования
-            clientLogger.warn('⚠️ Ошибка при логировании:', logError);
-          }
-          
-          // Логируем ошибку на сервер для диагностики
-          if (!generatedPlan || (!generatedPlan.plan28 && !generatedPlan.weeks)) {
-            console.error('❌ План сгенерирован, но пустой:', generatedPlan);
-            // Отправляем лог на сервер
+          // Логируем успешную генерацию на сервер (неблокирующе)
+          const logSuccessPromise = (async () => {
             try {
               const currentInitData = await getInitData();
               if (currentInitData) {
-                await fetch('/api/logs', {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json',
-                    'X-Telegram-Init-Data': currentInitData,
-                  },
-                  body: JSON.stringify({
-                    level: 'error',
-                    message: 'Plan generated but empty',
-                    context: { generatedPlan },
-                  }),
-                }).catch((err) => clientLogger.warn('⚠️ Не удалось сохранить лог:', err));
+                try {
+                  const logResponse = await fetch('/api/logs', {
+                    method: 'POST',
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'X-Telegram-Init-Data': currentInitData,
+                    },
+                    body: JSON.stringify({
+                      level: 'info',
+                      message: 'Plan generated successfully',
+                      context: { 
+                        hasPlan28: !!generatedPlan?.plan28,
+                        hasWeeks: !!generatedPlan?.weeks,
+                        plan28Days: generatedPlan?.plan28?.days?.length || 0,
+                        weeksCount: generatedPlan?.weeks?.length || 0,
+                      },
+                    }),
+                  });
+                  
+                  if (!logResponse.ok) {
+                    const errorText = await logResponse.text().catch(() => 'Unknown error');
+                    console.error('❌ Ошибка сохранения лога (plan generated):', {
+                      status: logResponse.status,
+                      statusText: logResponse.statusText,
+                      error: errorText,
+                    });
+                  }
+                } catch (fetchError) {
+                  console.error('❌ Ошибка при вызове /api/logs (plan generated):', fetchError);
+                }
               }
             } catch (logError) {
               // Игнорируем ошибки логирования
               clientLogger.warn('⚠️ Ошибка при логировании:', logError);
             }
+          })();
+          
+          // Проверяем результат генерации
+          if (!generatedPlan || (!generatedPlan.plan28 && !generatedPlan.weeks)) {
+            console.error('❌ План сгенерирован, но пустой:', generatedPlan);
+            throw new Error('Plan generation returned empty result');
           }
+          
+          clientLogger.log('✅ Генерация плана завершена успешно, продолжаем редирект');
         } catch (genError: any) {
           // Детальное логирование ошибки
           console.error('❌ Ошибка при генерации плана:', {
