@@ -126,6 +126,23 @@ export async function POST(request: NextRequest) {
       // Игнорируем ошибки
     }
 
+    // 4. Очищаем теги пользователя (включая флаг оплаты)
+    // Это делает пользователя полностью "новым" с точки зрения статусов и сегментов.
+    try {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          // Полностью очищаем массив tags, чтобы убрать 'payment_completed' и любые связанные флаги
+          tags: {
+            set: [],
+          },
+        },
+      });
+      logger.info('User tags cleared (including payment status)', { userId });
+    } catch (tagError: any) {
+      logger.warn('Failed to clear user tags during cleanup (non-critical)', tagError, { userId });
+    }
+
     logger.info('User data cleanup completed', { userId, results });
 
     return ApiResponse.success({
