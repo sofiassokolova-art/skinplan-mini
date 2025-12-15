@@ -288,86 +288,81 @@ export default function PlanPage() {
         throw new Error('Plan has no valid data (no plan28 and no weeks)');
       }
 
-      // Получаем профиль для scores и другой информации
-      // НЕ требуем профиль для показа плана, если план уже есть
-      let profile;
-      try {
-        profile = await api.getCurrentProfile() as ProfileResponse | null;
-      } catch (profileError: any) {
-        // Если профиль не найден, но план есть - это нормально, продолжаем с план28
-        // Профиль нужен только для старого формата плана
-        if (process.env.NODE_ENV === 'development') {
-          clientLogger.warn('Could not load profile, but plan exists - continuing with plan only');
-        }
-        profile = null;
-      }
-      
-      // Если план есть в новом формате plan28, можем продолжать без профиля
-      if (plan.plan28) {
-        if (process.env.NODE_ENV === 'development') {
-          clientLogger.log('✅ Using plan28 format, profile not required');
-        }
-        // Продолжаем дальше без проверки профиля
-      } else if (!profile && plan.weeks) {
-        // Для старого формата нужен профиль
-        safeSetError('no_profile');
-        safeSetLoading(false);
-        return;
-      }
+      // Для нового формата plan28 профиль не обязателен, поэтому запрашиваем его
+      // только для старого формата (weeks), чтобы не тратить лишнее время
+      const usingPlan28 = !!plan.plan28;
+      const needsProfile = !usingPlan28 && !!plan.weeks && plan.weeks.length > 0;
 
-      // Получаем wishlist
+      let profile: ProfileResponse | null = null;
       let wishlist: number[] = [];
-      try {
-        const wishlistData = await api.getWishlist() as any;
-        wishlist = (wishlistData.items || []).map((item: any) => 
-          item.product?.id || item.productId
-        ).filter((id: any): id is number => typeof id === 'number');
-      } catch (err) {
-        if (process.env.NODE_ENV === 'development') {
-          clientLogger.warn('Could not load wishlist:', err);
-        }
-      }
-
-      // Загружаем прогресс плана из БД (синхронизация между устройствами)
-      // ИСПРАВЛЕНО: Защита от множественных вызовов - используем локальный ref в функции
       let planProgress: { currentDay: number; completedDays: number[] } = {
         currentDay: 1,
         completedDays: [],
       };
 
-      // ИСПРАВЛЕНО: Защита от множественных вызовов - проверяем через замыкание
-      let progressLoadInProgress = false;
-      if (!progressLoadInProgress) {
-        progressLoadInProgress = true;
       try {
-        const progressResponse = await api.getPlanProgress() as {
-          currentDay: number;
-          completedDays: number[];
-        };
-        if (
-          progressResponse &&
-          typeof progressResponse.currentDay === 'number' &&
-          Array.isArray(progressResponse.completedDays)
-        ) {
-          planProgress = {
-            currentDay:
-              progressResponse.currentDay < 1
-                ? 1
-                : progressResponse.currentDay > 28
-                ? 28
-                : progressResponse.currentDay,
-            completedDays: progressResponse.completedDays,
-          };
-        }
-      } catch (progressError: any) {
-        // Если ошибка авторизации — это означает, что initData не валиден,
-        // но до этого мы уже прошли все проверки Telegram, поэтому просто логируем
-        if (process.env.NODE_ENV === 'development') {
-          clientLogger.warn('Could not load plan progress, using defaults:', progressError);
+        const [profileResult, wishlistResult, progressResult] = await Promise.allSettled([
+          needsProfile ? (api.getCurrentProfile() as Promise<ProfileResponse | null>) : Promise.resolve(null),
+          api.getWishlist() as Promise<any>,
+          api.getPlanProgress() as Promise<{ currentDay: number; completedDays: number[] }>,
+        ]);
+
+        // Профиль нужен только для старого формата
+        if (needsProfile) {
+          if (profileResult.status === 'fulfilled') {
+            profile = profileResult.value;
+          } else {
+            if (process.env.NODE_ENV === 'development') {
+              clientLogger.warn('Could not load profile for legacy plan format:', profileResult.reason);
+            }
+            profile = null;
           }
-        } finally {
-          progressLoadInProgress = false;
+
+          if (!profile) {
+            // Для старого формата без профиля отображать план некорректно
+            safeSetError('no_profile');
+            safeSetLoading(false);
+            return;
+          }
+        } else if (usingPlan28 && process.env.NODE_ENV === 'development') {
+          clientLogger.log('✅ Using plan28 format, skipping profile load');
         }
+
+        // Wishlist
+        if (wishlistResult.status === 'fulfilled' && wishlistResult.value) {
+          const wishlistData = wishlistResult.value;
+          wishlist = (wishlistData.items || [])
+            .map((item: any) => item.product?.id || item.productId)
+            .filter((id: any): id is number => typeof id === 'number');
+        } else if (wishlistResult.status === 'rejected' && process.env.NODE_ENV === 'development') {
+          clientLogger.warn('Could not load wishlist:', wishlistResult.reason);
+        }
+
+        // Прогресс плана (синхронизация между устройствами)
+        if (progressResult.status === 'fulfilled' && progressResult.value) {
+          const progressResponse = progressResult.value;
+          if (
+            typeof progressResponse.currentDay === 'number' &&
+            Array.isArray(progressResponse.completedDays)
+          ) {
+            planProgress = {
+              currentDay:
+                progressResponse.currentDay < 1
+                  ? 1
+                  : progressResponse.currentDay > 28
+                  ? 28
+                  : progressResponse.currentDay,
+              completedDays: progressResponse.completedDays,
+            };
+          }
+        } else if (progressResult.status === 'rejected' && process.env.NODE_ENV === 'development') {
+          clientLogger.warn('Could not load plan progress, using defaults:', progressResult.reason);
+        }
+      } catch (parallelError: any) {
+        if (process.env.NODE_ENV === 'development') {
+          clientLogger.warn('Parallel profile/wishlist/progress load failed, using partial data:', parallelError);
+        }
+        // В случае общей ошибки оставляем значения по умолчанию
       }
 
       // Обрабатываем данные для передачи в компонент
