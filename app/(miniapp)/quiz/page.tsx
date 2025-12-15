@@ -408,8 +408,14 @@ export default function QuizPage() {
         // Но только если она еще не загружена
         if (!questionnaire) {
           const loadedQuestionnaire = await loadQuestionnaire();
-          if (loadedQuestionnaire && loading) {
+          // ИСПРАВЛЕНО: Устанавливаем loading = false независимо от результата загрузки
+          // чтобы не было бесконечного лоадера при ошибке
+          if (loading) {
             setLoading(false);
+          }
+          // Если анкета не загрузилась, показываем ошибку
+          if (!loadedQuestionnaire) {
+            setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
           }
         } else if (loading) {
           setLoading(false);
@@ -5681,6 +5687,56 @@ export default function QuizPage() {
   // Если вопрос все еще не найден после всех проверок
   // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
   if (!currentQuestion) {
+    // ИСПРАВЛЕНО: Если анкета не загружена и есть ошибка - показываем ошибку, а не бесконечный лоадер
+    if (!questionnaire && !loading && error) {
+      return (
+        <div style={{ 
+          padding: '20px', 
+          textAlign: 'center',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            borderRadius: '24px',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          }}>
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Ошибка загрузки анкеты
+            </h2>
+            <p style={{ color: '#475467', marginBottom: '24px', lineHeight: '1.6' }}>
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                width: '100%',
+                padding: '16px 24px',
+                borderRadius: '12px',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+              }}
+            >
+              Обновить страницу
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const answersCount = Object.keys(answers || {}).length;
     const looksLikeCompletion =
       questionnaire !== null &&
@@ -5855,50 +5911,101 @@ export default function QuizPage() {
       );
     }
 
+    // ИСПРАВЛЕНО: Если анкета не загружена, показываем ошибку или загрузку
+    // Не показываем бесконечный лоадер "Загружаем вопросы..." если анкета не загрузилась
+    if (!questionnaire && loading) {
+      // Анкета еще загружается
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <style>{`
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              border: '4px solid #0A5F59',
+              borderTop: '4px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 24px',
+            }} />
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Загружаем вопросы...
+            </h2>
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+              Пожалуйста, подождите несколько секунд
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     // Иначе это временное состояние (например, пересчет фильтрации вопросов) — показываем нейтральную загрузку,
     // а не "Создаем план ухода..."
-    return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.56)',
-          backdropFilter: 'blur(28px)',
-          borderRadius: '24px',
-          padding: '48px',
-          maxWidth: '400px',
-          textAlign: 'center',
+    // ИСПРАВЛЕНО: Показываем этот лоадер только если анкета загружена, но вопрос еще не найден
+    if (questionnaire && allQuestions.length > 0) {
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
         }}>
-          <style>{`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
           <div style={{
-            width: '64px',
-            height: '64px',
-            border: '4px solid #0A5F59',
-            borderTop: '4px solid transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 24px',
-          }} />
-          <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-            Загружаем вопросы...
-          </h2>
-          <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
-            Пожалуйста, подождите несколько секунд
-          </p>
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <style>{`
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              border: '4px solid #0A5F59',
+              borderTop: '4px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 24px',
+            }} />
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Загружаем вопросы...
+            </h2>
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+              Пожалуйста, подождите несколько секунд
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return (
