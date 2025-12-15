@@ -94,14 +94,16 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
   },
   // --- Тоники ---
+  // ИСПРАВЛЕНО: Разрешаем мягкие увлажняющие/успокаивающие тонеры и для жирной кожи,
+  // особенно при высокой чувствительности — раньше oily полностью отсеивалась
   toner_hydrating: {
-    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily"],
+    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
     avoidIfContra: [],
     preferGoals: ["dryness", "maintenance", "wrinkles"],
     avoidDiagnoses: []
   },
   toner_soothing: {
-    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily"],
+    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
     avoidIfContra: [],
     preferGoals: ["sensitivity", "redness"],
     avoidDiagnoses: []
@@ -229,8 +231,10 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
   },
   // --- Увлажняющие кремы ---
+  // ИСПРАВЛЕНО: Лёгкий крем теперь доступен и для жирной кожи
+  // (раньше oily не попадала в список и крем выфильтровывался полностью)
   moisturizer_light: {
-    skinTypesAllowed: ["normal", "combination_dry", "combination_oily"],
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
     avoidIfContra: [],
     preferGoals: ["maintenance", "oiliness"],
     avoidDiagnoses: []
