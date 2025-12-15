@@ -277,8 +277,10 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     avoidDiagnoses: []
   },
   // --- SPF ---
+  // ИСПРАВЛЕНО: Универсальный SPF 50 подходит и для жирной кожи,
+  // поэтому добавляем "oily", чтобы шаг не вырезался из плана
   spf_50_face: {
-    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily"],
+    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
     avoidIfContra: [],
     preferGoals: ["maintenance", "pigmentation", "wrinkles"],
     avoidDiagnoses: []
