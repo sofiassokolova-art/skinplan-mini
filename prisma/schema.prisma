@@ -15,34 +15,35 @@ datasource db {
 // ============================================
 
 model User {
-  id              String       @id @default(cuid())
-  telegramId      String       @unique @map("telegram_id")
-  username        String?
-  firstName       String?      @map("first_name")
-  lastName        String?      @map("last_name")
-  language        String       @default("ru")
-  phoneNumber     String?      @map("phone_number") // Номер телефона пользователя
-  tags            String[]     @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
-  currentProfileId String?     @map("current_profile_id") // ИСПРАВЛЕНО: Указатель на текущий активный профиль
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-  lastActive      DateTime?    @map("last_active") // Обновляется при активности
+  id               String    @id @default(cuid())
+  telegramId       String    @unique @map("telegram_id")
+  username         String?
+  firstName        String?   @map("first_name")
+  lastName         String?   @map("last_name")
+  language         String    @default("ru")
+  phoneNumber      String?   @map("phone_number") // Номер телефона пользователя
+  tags             String[]  @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
+  currentProfileId String?   @map("current_profile_id") // ИСПРАВЛЕНО: Указатель на текущий активный профиль
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  lastActive       DateTime? @map("last_active") // Обновляется при активности
 
-  currentProfile            SkinProfile? @relation("CurrentProfile", fields: [currentProfileId], references: [id], onDelete: SetNull)
-  skinProfiles              SkinProfile[]
-  userAnswers                UserAnswer[]
-  recommendationSessions     RecommendationSession[]
-  planFeedbacks              PlanFeedback[]
-  plan28s                    Plan28[]
-  planProgress               PlanProgress?
-  wishlist                   Wishlist[]
-  wishlistFeedbacks          WishlistFeedback[]
-  cart                       Cart[]
-  productReplacements        ProductReplacement[]
-  botMessages                BotMessage[]
-  broadcastLogs              BroadcastLog[]
-  supportChats               SupportChat[]
-  clientLogs                 ClientLog[]
+  currentProfile           SkinProfile?              @relation("CurrentProfile", fields: [currentProfileId], references: [id], onDelete: SetNull)
+  skinProfiles             SkinProfile[]
+  userAnswers              UserAnswer[]
+  recommendationSessions   RecommendationSession[]
+  planFeedbacks            PlanFeedback[]
+  plan28s                  Plan28[]
+  planProgress             PlanProgress?
+  wishlist                 Wishlist[]
+  wishlistFeedbacks        WishlistFeedback[]
+  cart                     Cart[]
+  productReplacements      ProductReplacement[]
+  botMessages              BotMessage[]
+  broadcastLogs            BroadcastLog[]
+  supportChats             SupportChat[]
+  clientLogs               ClientLog[]
+  questionnaireSubmissions QuestionnaireSubmission[]
 
   @@index([lastActive])
   @@index([currentProfileId])
@@ -66,10 +67,11 @@ model SkinProfile {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currentProfileUsers    User[]                  @relation("CurrentProfile") // ИСПРАВЛЕНО: Обратная связь для currentProfileId
-  recommendationSessions RecommendationSession[]
-  plan28s                Plan28[]
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentProfileUsers      User[]                    @relation("CurrentProfile") // ИСПРАВЛЕНО: Обратная связь для currentProfileId
+  recommendationSessions   RecommendationSession[]
+  plan28s                  Plan28[]
+  questionnaireSubmissions QuestionnaireSubmission[] // ИСПРАВЛЕНО: Обратная связь для QuestionnaireSubmission.profile
 
   @@unique([userId, version])
   @@index([userId])
@@ -158,11 +160,11 @@ model UserAnswer {
   questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
   question      Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
+  // Гарантируем один ответ на вопрос для пользователя и анкеты (устраняем дубли при гонках)
+  @@unique([userId, questionnaireId, questionId])
   @@index([userId])
   @@index([questionnaireId])
   @@index([questionId])
-  // Гарантируем один ответ на вопрос для пользователя и анкеты (устраняем дубли при гонках)
-  @@unique([userId, questionnaireId, questionId])
   @@map("user_answers")
 }
 
