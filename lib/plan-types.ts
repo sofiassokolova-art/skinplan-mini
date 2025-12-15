@@ -174,6 +174,26 @@ export function getStepDescription(stepCategory: StepCategory, skinIssues?: stri
       subtitle: "Снимает покраснения и раздражения, укрепляет защитный барьер",
       defaultTags: ["успокаивает", "снимает покраснения", "для чувствительной кожи"],
     },
+    toner_exfoliant: {
+      name: "Тоник (эксфолиант)",
+      subtitle: "Кислоты мягко отшелушивают и улучшают текстуру кожи",
+      defaultTags: ["эксфолиация", "кислоты", "текстура"],
+    },
+    toner_acid: {
+      name: "Тоник с кислотами",
+      subtitle: "Сочетание кислот помогает при акне и пигментации",
+      defaultTags: ["кислоты", "при акне", "пигментация"],
+    },
+    toner_aha: {
+      name: "Тоник с AHA",
+      subtitle: "AHA-кислоты осветляют тон и выравнивают поверхность кожи",
+      defaultTags: ["AHA", "осветляет", "выравнивает тон"],
+    },
+    toner_bha: {
+      name: "Тоник с BHA",
+      subtitle: "BHA проникают в поры, уменьшая воспаления и очищая себум",
+      defaultTags: ["BHA", "при акне", "очищает поры"],
+    },
     // Сыворотки
     serum_hydrating: {
       name: "Сыворотка (увлажняющая)",
@@ -200,6 +220,21 @@ export function getStepDescription(stepCategory: StepCategory, skinIssues?: stri
       subtitle: "Мягко осветляет пигментные пятна и выравнивает тон кожи",
       defaultTags: ["осветляет пигментацию", "выравнивает тон", "для чувствительной кожи"],
     },
+    serum_peptide: {
+      name: "Сыворотка (пептиды)",
+      subtitle: "Пептиды поддерживают упругость и восстановление кожи",
+      defaultTags: ["антиэйдж", "упругость", "восстановление"],
+    },
+    serum_antiage: {
+      name: "Сыворотка (anti-age)",
+      subtitle: "Активы против морщин и для повышения плотности кожи",
+      defaultTags: ["антиэйдж", "морщины", "упругость"],
+    },
+    serum_exfoliant: {
+      name: "Сыворотка (эксфолиант)",
+      subtitle: "Кислоты в сыворотке выравнивают текстуру и уменьшают высыпания",
+      defaultTags: ["кислоты", "при акне", "текстура"],
+    },
     // Лечение
     treatment_acne_bpo: {
       name: "Лечение акне (BPO)",
@@ -225,6 +260,11 @@ export function getStepDescription(stepCategory: StepCategory, skinIssues?: stri
       name: "Эксфолиант (сильный)",
       subtitle: "Глубоко очищает поры и выравнивает текстуру кожи",
       defaultTags: ["для жирной кожи", "глубокое очищение", "выравнивает текстуру"],
+    },
+    treatment_acid: {
+      name: "Кислотный уход",
+      subtitle: "Кислоты контролируют акне, пигментацию и улучшают текстуру",
+      defaultTags: ["кислоты", "при акне", "пигментация"],
     },
     treatment_pigmentation: {
       name: "Лечение пигментации",
@@ -310,6 +350,21 @@ export function getStepDescription(stepCategory: StepCategory, skinIssues?: stri
       subtitle: "Работает всю ночь, восстанавливая и увлажняя кожу",
       defaultTags: ["ночное восстановление", "интенсивный уход"],
     },
+    mask_enzyme: {
+      name: "Маска (энзимная)",
+      subtitle: "Энзимы мягко растворяют ороговевший слой без раздражения",
+      defaultTags: ["энзимы", "мягкое отшелушивание", "для чувствительной кожи"],
+    },
+    mask_acid: {
+      name: "Маска с кислотами",
+      subtitle: "Кислотный пилинг для выравнивания текстуры и тона",
+      defaultTags: ["кислоты", "пилинг", "текстура"],
+    },
+    mask_peel: {
+      name: "Пилинг-маска",
+      subtitle: "Интенсивное отшелушивание для гладкости и сияния кожи",
+      defaultTags: ["пилинг", "гладкость", "сияние"],
+    },
     // Доп. уход
     spot_treatment: {
       name: "Точечное лечение",
@@ -336,16 +391,24 @@ export function getStepDescription(stepCategory: StepCategory, skinIssues?: stri
       cleanser_deep: "Очищение (глубокое)",
       toner_hydrating: "Тоник (увлажняющий)",
       toner_soothing: "Тоник (успокаивающий)",
+      toner_exfoliant: "Тоник (эксфолиант)",
+      toner_acid: "Тоник с кислотами",
+      toner_aha: "Тоник с AHA",
+      toner_bha: "Тоник с BHA",
       serum_hydrating: "Сыворотка (увлажняющая)",
       serum_niacinamide: "Сыворотка (ниацинамид)",
       serum_vitc: "Сыворотка (витамин C)",
       serum_anti_redness: "Сыворотка (против покраснений)",
       serum_brightening_soft: "Сыворотка (осветляющая)",
+      serum_peptide: "Сыворотка (пептиды)",
+      serum_antiage: "Сыворотка (anti-age)",
+      serum_exfoliant: "Сыворотка (эксфолиант)",
       treatment_acne_bpo: "Лечение акне (BPO)",
       treatment_acne_azelaic: "Лечение акне (азелаиновая кислота)",
       treatment_acne_local: "Лечение акне (точечное)",
       treatment_exfoliant_mild: "Эксфолиант (мягкий)",
       treatment_exfoliant_strong: "Эксфолиант (сильный)",
+      treatment_acid: "Кислотный уход",
       treatment_pigmentation: "Лечение пигментации",
       treatment_antiage: "Антиэйдж",
       moisturizer_light: "Увлажнение (легкое)",
@@ -362,6 +425,9 @@ export function getStepDescription(stepCategory: StepCategory, skinIssues?: stri
       mask_hydrating: "Маска (увлажняющая)",
       mask_soothing: "Маска (успокаивающая)",
       mask_sleeping: "Маска (ночная)",
+      mask_enzyme: "Маска (энзимная)",
+      mask_acid: "Маска с кислотами",
+      mask_peel: "Пилинг-маска",
       spot_treatment: "Точечное лечение",
       lip_care: "Уход за губами",
       balm_barrier_repair: "Бальзам (восстановление барьера)",
