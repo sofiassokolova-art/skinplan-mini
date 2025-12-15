@@ -757,8 +757,8 @@ export default function PlanPage() {
         return;
       }
 
-      // Логируем только в development
-      if (process.env.NODE_ENV === 'development') {
+      // Логируем только в development и только если initData реально есть
+      if (process.env.NODE_ENV === 'development' && initData) {
         clientLogger.log('✅ initData available, length:', initData.length);
       }
 

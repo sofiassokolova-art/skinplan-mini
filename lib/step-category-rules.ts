@@ -246,7 +246,9 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     avoidDiagnoses: ["atopic_dermatitis"]
   },
   moisturizer_barrier: {
-    skinTypesAllowed: ["dry", "combination_dry", "normal"],
+    // ИСПРАВЛЕНО: Барьерный крем теперь доступен и для комбинированной с жирной Т‑зоной кожи,
+    // чтобы при профиле combination_oily + высокая чувствительность мы не выкидывали шаг крема.
+    skinTypesAllowed: ["dry", "combination_dry", "normal", "combination_oily"],
     avoidIfContra: [],
     preferGoals: ["dryness", "sensitivity", "atopic_dermatitis", "maintenance"],
     avoidDiagnoses: []
