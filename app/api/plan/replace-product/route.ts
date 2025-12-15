@@ -95,8 +95,16 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (plan28 && plan28.days) {
-      const days = plan28.days as any;
+    if (plan28 && plan28.planData) {
+      // ИСПРАВЛЕНО: days находится внутри planData (Json поле)
+      const planData = plan28.planData as any;
+      const days = (planData.days || []) as any[];
+      
+      if (!Array.isArray(days) || days.length === 0) {
+        logger.warn('Plan28 has no days or invalid structure', { userId, planId: plan28.id });
+        return ApiResponse.success({ success: true, message: 'Plan has no days to update' });
+      }
+      
       let updatedDays = false;
       
       // Проходим по всем дням и заменяем productId
@@ -178,10 +186,14 @@ export async function POST(request: NextRequest) {
       });
       
       if (updatedDays) {
+        // ИСПРАВЛЕНО: Обновляем planData, а не days напрямую
         await prisma.plan28.update({
           where: { id: plan28.id },
           data: {
-            days: updatedDaysArray,
+            planData: {
+              ...planData,
+              days: updatedDaysArray,
+            } as any,
           },
         });
         

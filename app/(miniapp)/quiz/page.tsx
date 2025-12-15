@@ -596,8 +596,9 @@ export default function QuizPage() {
       // Это предотвращает повторные вызовы в Telegram Mini App, где могут быть особенности с рендерингом
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && !hasResumed && 
-          !loadProgressInProgressRef.current && !progressLoadInProgressRef.current &&
-          !initCompletedRef.current) { // ИСПРАВЛЕНО: Не загружаем прогресс, если инициализация уже завершена
+          !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
+          // ИСПРАВЛЕНО: Убрали проверку initCompletedRef, чтобы прогресс загружался даже после инициализации
+          // Это важно для первого заполнения анкеты, когда пользователь возвращается
         // ИСПРАВЛЕНО: Дополнительная проверка hasResumed перед установкой progressLoadInProgressRef
         // Это предотвращает начало загрузки, если пользователь уже продолжил анкету
         if (hasResumedRef.current || hasResumed || loadProgressInProgressRef.current || progressLoadInProgressRef.current) {
@@ -657,8 +658,13 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Устанавливаем loading = false только после загрузки прогресса
       // Это гарантирует, что экран resume покажется до того, как пользователь увидит первый экран анкеты
-      setLoading(false);
-      initCompletedRef.current = true;
+      // ВАЖНО: Если showResumeScreen был установлен в loadSavedProgressFromServer, не устанавливаем loading = false здесь
+      // чтобы экран resume успел отрендериться
+      if (!showResumeScreen && !savedProgress) {
+        setLoading(false);
+      }
+      // ИСПРАВЛЕНО: Не устанавливаем initCompletedRef сразу, чтобы не блокировать загрузку прогресса при возврате
+      // initCompletedRef.current = true;
       initInProgressRef.current = false;
       
       // ВАЖНО: Если это была повторная инициализация после "Начать заново",
