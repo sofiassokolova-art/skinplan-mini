@@ -76,21 +76,26 @@ export function filterByProtocol(
 
 /**
  * Проверяет совместимость продукта с уже выбранными продуктами
+ * ИСПРАВЛЕНО: Использует реальные activeIngredients из продуктов
  */
 export function checkCompatibilityWithSelected(
   product: ProductWithBrand,
   context: ProductSelectionContext
 ): ProductSelectionResult {
-  // Преобразуем ProductWithBrand в формат для проверки совместимости
+  // ИСПРАВЛЕНО: Импортируем функции проверки совместимости синхронно
+  const { canUseTogether, getOptimalTimeOfDay } = require('./ingredient-compatibility');
+  
+  // ИСПРАВЛЕНО: Используем реальные activeIngredients из продукта
   const productForCompatibility = {
-    activeIngredients: [] as string[], // Будет определяться по step/category
+    activeIngredients: product.activeIngredients || [],
     composition: undefined as string | undefined,
   };
   
+  // ИСПРАВЛЕНО: Используем реальные activeIngredients из уже выбранных продуктов
   const compatibility = canUseTogether(
     productForCompatibility,
     context.alreadySelected.map(p => ({
-      activeIngredients: [] as string[],
+      activeIngredients: p.activeIngredients || [],
       composition: undefined as string | undefined,
     })),
     context.timeOfDay

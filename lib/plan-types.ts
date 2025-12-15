@@ -32,6 +32,9 @@ export interface Plan28 {
   mainGoals: string[];   // из SkinProfile
 }
 
+// Нормализованный тип продукта для DomainContext (обёртка над ProductWithBrand)
+export type Product = import('./product-fallback').ProductWithBrand;
+
 // Типы для инфографики прогресса по целям
 export interface GoalProgressPoint {
   day: number;

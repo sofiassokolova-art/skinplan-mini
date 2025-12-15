@@ -68,8 +68,8 @@ export default function HomePage() {
     setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true сразу при монтировании
     setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при инициализации компонента
     
-    // Загружаем данные (пользователь идентифицируется автоматически через initData)
-    const initAndLoad = async () => {
+      // Загружаем данные (пользователь идентифицируется автоматически через initData)
+      const initAndLoad = async () => {
       // Проверяем, что приложение открыто через Telegram
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
         clientLogger.log('Telegram WebApp не доступен, перенаправляем на анкету');
@@ -180,6 +180,26 @@ export default function HomePage() {
           }
         }
       };
+
+      // Сначала проверяем, существует ли профиль, чтобы не дергать тяжёлые эндпоинты без профиля
+      try {
+        const profile = await api.getCurrentProfile();
+        if (!profile) {
+          // Профиля нет - считаем, что пользователь ещё не проходил анкету
+          setLoading(false);
+          router.replace('/quiz');
+          return;
+        }
+      } catch (err: any) {
+        // Если бэкенд вернул 404 / isNotFound - это нормальный случай "нет профиля"
+        if (err?.status === 404 || err?.isNotFound) {
+          setLoading(false);
+          router.replace('/quiz');
+          return;
+        }
+        // Другие ошибки не блокируют загрузку - просто логируем и продолжаем
+        clientLogger.warn('Could not check current profile before loading home data', err);
+      }
 
       // Загружаем рекомендации (initData передается автоматически в запросе)
       // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true
@@ -509,8 +529,10 @@ export default function HomePage() {
         return;
       }
       
-      // ИСПРАВЛЕНО: При 404 / профиле, которого нет, считаем, что пользователь ещё не прошёл анкету
-      // и сразу отправляем его на /quiz, не строя фолбэков.
+      // ИСПРАВЛЕНО: При 404 / профиле, которого нет
+      // - если у пользователя УЖЕ есть план, не редиректим на /quiz, а остаёмся на главной
+      //   и пробуем собрать рутину напрямую из план28 (fallback),
+      // - если плана нет, считаем, что пользователь ещё не прошёл анкету и отправляем на /quiz.
       if (
         error?.status === 404 ||
         error?.isNotFound ||
@@ -519,8 +541,20 @@ export default function HomePage() {
         error?.message?.includes('Not found') ||
         error?.message?.includes('profile not found')
       ) {
-        clientLogger.log('Рекомендации не найдены (профиль ещё не создан) — редирект на /quiz');
         setLoading(false);
+        // Если уже есть валидный план — остаёмся на главной и пробуем фолбэк-рутину из плана
+        if (hasPlan) {
+          clientLogger.log('Рекомендации не найдены, но план уже существует — остаёмся на главной и пробуем fallback из plan28');
+          try {
+            await buildRoutineFromPlan();
+          } catch (fallbackErr) {
+            clientLogger.warn('Не удалось построить фолбэк-рутину из plan28 при ошибке рекомендаций', fallbackErr);
+          }
+          return;
+        }
+
+        // Плана нет — это действительно новый пользователь → отправляем на анкету
+        clientLogger.log('Рекомендации не найдены (профиль ещё не создан, плана нет) — редирект на /quiz');
         if (typeof window !== 'undefined') {
           router.replace('/quiz');
         }

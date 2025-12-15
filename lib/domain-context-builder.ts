@@ -1,0 +1,154 @@
+// lib/domain-context-builder.ts
+// ИСПРАВЛЕНО: Функция buildDomainContext для создания единого доменного контекста
+// Все правила, оси, план работают ТОЛЬКО через DomainContext
+
+import type { DomainContext, AnswersMap, ContextMeta } from './domain-context';
+import type { Questionnaire, Question } from './questionnaire-types';
+import type { SkinProfile, SkinAxes, MedicalMarkers, Preferences } from './skinprofile-types';
+import type { Product } from './plan-types';
+import { calculateSkinAxes, type QuestionnaireAnswers } from './skin-analysis-engine';
+import { logger } from './logger';
+
+export interface BuildDomainContextInput {
+  meta: ContextMeta;
+  questionnaire: Questionnaire;
+  allQuestionsRaw: Question[];
+  answers: AnswersMap;
+  profileSnapshot: SkinProfile; // Снимок профиля из БД
+  products?: Product[]; // Опционально: каталог продуктов
+}
+
+/**
+ * Строит единый доменный контекст из ответов и профиля
+ * ИСПРАВЛЕНО: Центральная функция для создания DomainContext
+ * Все правила, фильтры, генераторы планов должны работать ТОЛЬКО через DomainContext
+ */
+export function buildDomainContext(input: BuildDomainContextInput): DomainContext {
+  const {
+    meta,
+    questionnaire,
+    allQuestionsRaw,
+    answers,
+    profileSnapshot,
+    products = [],
+  } = input;
+
+  // ИСПРАВЛЕНО: Вычисляем axes ТОЛЬКО из answers (источник правды)
+  // Profile - это snapshot, не источник для расчета axes
+  const questionnaireAnswers: QuestionnaireAnswers = {};
+  
+  // Преобразуем answers в QuestionnaireAnswers для расчета axes
+  for (const [key, value] of Object.entries(answers)) {
+    const question = allQuestionsRaw.find(q => q.code === key || String(q.id) === key);
+    if (!question) continue;
+
+    const code = question.code || key;
+    
+    if (code === 'skin_type' || code === 'skinType') {
+      questionnaireAnswers.skinType = Array.isArray(value) ? value[0] : value as string;
+    } else if (code === 'age' || code === 'age_group') {
+      questionnaireAnswers.age = Array.isArray(value) ? value[0] : value as string;
+    } else if (code === 'concerns' || code === 'skin_concerns') {
+      questionnaireAnswers.concerns = Array.isArray(value) ? value : [value as string];
+    } else if (code === 'habits') {
+      questionnaireAnswers.habits = Array.isArray(value) ? value : [value as string];
+    } else if (code === 'diagnoses') {
+      questionnaireAnswers.diagnoses = Array.isArray(value) ? value : [value as string];
+    } else if (code === 'allergies') {
+      questionnaireAnswers.allergies = Array.isArray(value) ? value : [value as string];
+    } else if (code === 'season_change' || code === 'seasonChange') {
+      questionnaireAnswers.seasonChange = Array.isArray(value) ? value[0] : value as string;
+    } else if (code === 'retinol_reaction' || code === 'retinolReaction') {
+      questionnaireAnswers.retinolReaction = Array.isArray(value) ? value[0] : value as string;
+    } else if (code === 'spf_frequency' || code === 'spfFrequency') {
+      questionnaireAnswers.spfFrequency = Array.isArray(value) ? value[0] : value as string;
+    } else if (code === 'sun_exposure' || code === 'sunExposure') {
+      questionnaireAnswers.sunExposure = Array.isArray(value) ? value[0] : value as string;
+    } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
+      questionnaireAnswers.sensitivityLevel = Array.isArray(value) ? value[0] : (value as string) || 'low';
+    } else if (code === 'acne_level' || code === 'acneLevel') {
+      const numValue = Array.isArray(value) ? parseInt(value[0] as string) : parseInt(value as string);
+      questionnaireAnswers.acneLevel = isNaN(numValue) ? 0 : numValue;
+    } else if (code === 'pregnant' || code === 'has_pregnancy' || code === 'pregnancy_breastfeeding') {
+      const boolValue = Array.isArray(value) ? value[0] : value;
+      questionnaireAnswers.pregnant = boolValue === 'yes' || boolValue === 'true' || boolValue === true;
+    }
+  }
+
+  // ИСПРАВЛЕНО: Вычисляем axes ТОЛЬКО из answers
+  const axes: SkinAxes = calculateSkinAxes(questionnaireAnswers);
+
+  // ИСПРАВЛЕНО: Извлекаем medical markers из profileSnapshot
+  const medicalMarkers = (profileSnapshot as any).medicalMarkers || {};
+  const medical: MedicalMarkers = {
+    diagnoses: medicalMarkers.diagnoses || profileSnapshot.diagnoses || [],
+    pregnancyStatus: profileSnapshot.pregnancyStatus || medicalMarkers.pregnancyStatus || 'none',
+    allergies: medicalMarkers.allergies || [],
+    gender: medicalMarkers.gender || profileSnapshot.gender,
+    rosaceaRisk: medicalMarkers.rosaceaRisk,
+    atopyRisk: medicalMarkers.atopyRisk,
+  };
+
+  // ИСПРАВЛЕНО: Извлекаем preferences из profileSnapshot
+  const preferences: Preferences = {
+    budgetSegment: profileSnapshot.budgetSegment || 'any',
+    routineComplexity: profileSnapshot.routineComplexity || 'any',
+    carePreference: profileSnapshot.carePreference || 'any',
+    dislikedIngredients: medicalMarkers.dislikedIngredients || [],
+    preferredTextures: medicalMarkers.preferredTextures || [],
+    brandBlacklist: medicalMarkers.brandBlacklist || [],
+    brandWhitelist: medicalMarkers.brandWhitelist || [],
+  };
+
+  // ИСПРАВЛЕНО: Создаем нормализованный profile из profileSnapshot
+  // Profile - это snapshot, но мы нормализуем его для использования в правилах
+  const normalizedProfile: SkinProfile = {
+    skinType: profileSnapshot.skinType,
+    sensitivity: profileSnapshot.sensitivity,
+    mainGoals: profileSnapshot.mainGoals || [],
+    secondaryGoals: profileSnapshot.secondaryGoals || [],
+    diagnoses: medical.diagnoses || [],
+    seasonality: profileSnapshot.seasonality,
+    pregnancyStatus: medical.pregnancyStatus,
+    contraindications: profileSnapshot.contraindications || [],
+    currentTopicals: profileSnapshot.currentTopicals || [],
+    currentOralMeds: profileSnapshot.currentOralMeds || [],
+    spfHabit: profileSnapshot.spfHabit || 'never',
+    makeupFrequency: profileSnapshot.makeupFrequency || 'rarely',
+    lifestyleFactors: profileSnapshot.lifestyleFactors || [],
+    carePreference: preferences.carePreference,
+    routineComplexity: preferences.routineComplexity,
+    budgetSegment: preferences.budgetSegment,
+    ageGroup: profileSnapshot.ageGroup,
+    gender: medical.gender,
+  };
+
+  const context: DomainContext = {
+    meta,
+    questionnaire,
+    allQuestionsRaw,
+    answers,
+    profile: normalizedProfile,
+    axes,
+    medical,
+    preferences,
+    catalog: {
+      products,
+    },
+    trace: {
+      flags: [],
+      reasons: [],
+      warnings: [],
+    },
+  };
+
+  logger.debug('DomainContext built', {
+    userId: meta.userId,
+    answersCount: Object.keys(answers).length,
+    axesCount: axes.length,
+    productsCount: products.length,
+  });
+
+  return context;
+}
+

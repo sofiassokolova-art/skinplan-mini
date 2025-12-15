@@ -2,27 +2,19 @@
 // Вспомогательные функции для работы с планом ухода
 
 import type { StepCategory } from './step-category-rules';
+// ИСПРАВЛЕНО: Используем StepType для базовых шагов
+import { StepType, getStepTypeFromCategory } from './step-type';
 
 /**
  * Получает базовый шаг из StepCategory
+ * ИСПРАВЛЕНО: Использует StepType enum для согласованности
  * Например: 'toner_hydrating' -> 'toner', 'serum_niacinamide' -> 'serum'
  */
+
 export function getBaseStepFromStepCategory(stepCategory: StepCategory): string {
-  if (stepCategory === 'cleanser_oil') return 'cleanser_oil';
-  if (stepCategory.startsWith('cleanser_')) return 'cleanser';
-  if (stepCategory.startsWith('toner_')) return 'toner';
-  if (stepCategory.startsWith('serum_')) return 'serum';
-  if (stepCategory.startsWith('treatment_')) return 'treatment';
-  if (stepCategory.startsWith('moisturizer_')) return 'moisturizer';
-  if (stepCategory.startsWith('eye_cream_')) return 'eye_cream';
-  if (stepCategory.startsWith('spf_')) return 'spf';
-  if (stepCategory.startsWith('mask_')) return 'mask';
-  if (stepCategory.startsWith('spot_treatment')) return 'treatment';
-  if (stepCategory.startsWith('lip_care')) return 'lip_care';
-  if (stepCategory.startsWith('balm_')) return 'moisturizer';
-  
-  // Если не начинается с известного префикса, возвращаем как есть
-  return stepCategory;
+  // ИСПРАВЛЕНО: Используем StepType для согласованности
+  const stepType = getStepTypeFromCategory(stepCategory);
+  return stepType; // StepType enum value is already a string
 }
 
 /**

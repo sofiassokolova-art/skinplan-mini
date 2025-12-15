@@ -30,9 +30,24 @@ export function validateTelegramInitData(
       return { valid: false, error: 'Empty initData' };
     }
 
-    // Логируем первые 200 символов для отладки (без чувствительных данных)
-    const debugSample = initDataRaw.substring(0, 200);
-    console.log('🔍 Validating initData, sample:', debugSample, 'length:', initDataRaw.length);
+    // ИСПРАВЛЕНО: Безопасность - НЕ логируем initData полностью
+    // Логируем только hash prefix и длину для отладки
+    // SECURITY: initData содержит чувствительные данные (user info, auth_date, hash)
+    // Никогда не логируем полный initData - только hash prefix для идентификации
+    const hashMatch = initDataRaw.match(/hash=([^&]+)/);
+    const hashPrefix = hashMatch ? hashMatch[1].substring(0, 8) : 'no-hash';
+    const userIdMatch = initDataRaw.match(/user=%7B%22id%22%3A(\d+)/) || initDataRaw.match(/user=\{"id":(\d+)/);
+    const telegramId = userIdMatch ? userIdMatch[1] : 'unknown';
+    
+    // Логируем только безопасные данные: hash prefix, telegramId, длина
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Validating initData', {
+        hashPrefix,
+        telegramId,
+        length: initDataRaw.length,
+        // SECURITY: НЕ логируем полный initData
+      });
+    }
 
     // Парсим initDataRaw вручную, чтобы сохранить оригинальные значения
     // initData может прийти как URL-encoded строка или уже декодированная

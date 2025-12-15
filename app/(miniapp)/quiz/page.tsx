@@ -13,6 +13,7 @@ import { getAllTopics } from '@/lib/quiz-topics';
 import type { QuizTopic } from '@/lib/quiz-topics';
 import { PaymentGate } from '@/components/PaymentGate';
 import { clientLogger } from '@/lib/client-logger';
+import { filterQuestions, getEffectiveAnswers } from '@/lib/quiz/filterQuestions';
 
 interface Question {
   id: number;
@@ -68,6 +69,17 @@ export default function QuizPage() {
     questionIndex: number;
     infoScreenIndex: number;
   } | null>(null);
+  
+  // ИСПРАВЛЕНО: Используем getEffectiveAnswers для подсчета общего количества ответов
+  // Это включает как текущие ответы, так и сохраненные из savedProgress
+  // Должен быть объявлен ПОСЛЕ savedProgress
+  const effectiveAnswers = useMemo(() => 
+    getEffectiveAnswers(answers, savedProgress?.answers), 
+    [answers, savedProgress?.answers]
+  );
+  // ИСПРАВЛЕНО: Мемоизируем answersCount для стабильности зависимостей
+  // Используем effectiveAnswers для точного подсчета
+  const answersCount = useMemo(() => Object.keys(effectiveAnswers).length, [effectiveAnswers]);
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [showRetakeScreen, setShowRetakeScreen] = useState(false); // Флаг: показывать экран выбора тем для повторного прохождения
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
@@ -85,6 +97,30 @@ export default function QuizPage() {
   const submitAnswersRef = useRef<(() => Promise<void>) | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Дебаунсинг для сохранения метаданных позиции
   const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null); // Последний сохраненный ответ для дедупликации
+  
+  // ИСПРАВЛЕНО: Храним значения из localStorage в state после mount, чтобы избежать hydration mismatch
+  const [paidTopics, setPaidTopics] = useState<Set<string>>(new Set());
+  const [hasRetakingPayment, setHasRetakingPayment] = useState(false);
+  const [hasFullRetakePayment, setHasFullRetakePayment] = useState(false);
+  
+  // ИСПРАВЛЕНО: Загружаем значения из localStorage после mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Загружаем оплаченные темы
+    const topicKeys = ['payment_retaking_completed', 'payment_full_retake_completed'];
+    const paidSet = new Set<string>();
+    topicKeys.forEach(key => {
+      if (localStorage.getItem(key) === 'true') {
+        paidSet.add(key);
+      }
+    });
+    setPaidTopics(paidSet);
+    
+    // Загружаем флаги оплаты
+    setHasRetakingPayment(localStorage.getItem('payment_retaking_completed') === 'true');
+    setHasFullRetakePayment(localStorage.getItem('payment_full_retake_completed') === 'true');
+  }, []);
   
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
   // ИСПРАВЛЕНО: Проверяем флаг из localStorage при монтировании
@@ -3722,281 +3758,14 @@ export default function QuizPage() {
     try {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
     
-    // Фильтруем вопросы
-    const filteredQuestions = allQuestionsRaw.filter((question) => {
-        try {
-    // При повторном прохождении исключаем вопросы про пол и возраст
-    // Эти данные уже записаны в профиле пользователя после первой анкеты
-    if (isRetakingQuiz && !showRetakeScreen) {
-      // Исключаем вопросы про пол и возраст при полном перепрохождении
-      if (question.code === 'gender' || question.code === 'GENDER' || 
-          question.code === 'age' || question.code === 'AGE' ||
-          question.text?.toLowerCase().includes('ваш пол') ||
-          question.text?.toLowerCase().includes('сколько вам лет')) {
-        return false;
-      }
-    }
-    
-    // Проверяем, является ли это вопросом про реакцию на ретинол (retinoid_reaction)
-    // Этот вопрос должен показываться только если на вопрос retinoid_usage ответили "Да"
-    const isRetinoidReactionQuestion = question.code === 'retinoid_reaction' ||
-                                       question.text?.toLowerCase().includes('как кожа реагировала');
-    
-    if (isRetinoidReactionQuestion) {
-      // Ищем ответ на вопрос о использовании ретинола (retinoid_usage)
-      let retinoidUsageValue: string | undefined;
-      let retinoidUsageQuestion: Question | undefined;
-      
-      for (const q of allQuestionsRaw) {
-        if (q.code === 'retinoid_usage') {
-          retinoidUsageQuestion = q;
-          if (answers[q.id]) {
-            const answerValue = Array.isArray(answers[q.id]) 
-              ? (answers[q.id] as string[])[0] 
-              : (answers[q.id] as string);
-            
-            retinoidUsageValue = answerValue;
-            
-            // Если это не похоже на текст (может быть ID), ищем опцию
-            if (q.options && q.options.length > 0) {
-              const matchingOption = q.options.find(opt => 
-                opt.id.toString() === answerValue || 
-                opt.value === answerValue ||
-                opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
-                opt.label?.toLowerCase() === answerValue?.toLowerCase()
-              );
-              if (matchingOption) {
-                retinoidUsageValue = matchingOption.value || matchingOption.label || answerValue;
-              }
-            }
-            break;
-          }
-        }
-      }
-      
-      // Показываем вопрос только если на вопрос о ретиноле ответили "Да"
-      const answeredYes = retinoidUsageValue?.toLowerCase().includes('да') ||
-                          retinoidUsageValue?.toLowerCase() === 'yes' ||
-                          retinoidUsageValue === 'Да' ||
-                          (retinoidUsageQuestion?.options?.some(opt => 
-                            (opt.value?.toLowerCase().includes('да') || 
-                             opt.label?.toLowerCase().includes('да')) &&
-                            (answers[retinoidUsageQuestion.id] === opt.value || 
-                             answers[retinoidUsageQuestion.id] === opt.id.toString() ||
-                             answers[retinoidUsageQuestion.id] === opt.label)
-                          ));
-      
-      const shouldShow = answeredYes === true;
-      if (!shouldShow) {
-        clientLogger.log('🚫 Question filtered out (retinoid_reaction without "Да" on retinoid_usage):', question.code);
-      }
-      return shouldShow;
-    }
-    
-    // Проверяем, является ли это вопросом про макияж
-    const isMakeupQuestion = question.code === 'makeup_frequency' ||
-                              question.code === 'MAKEUP_FREQUENCY' ||
-                              question.text?.toLowerCase().includes('декоративную косметику') ||
-                              question.text?.toLowerCase().includes('макияж');
-    
-    // Проверяем, является ли это вопросом про беременность/кормление
-    const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
-                                question.code === 'pregnancy' ||
-                                question.text?.toLowerCase().includes('беременн') ||
-                                question.text?.toLowerCase().includes('кормлен');
-    
-    // Если это не вопрос про беременность и не про макияж, показываем его
-    if (!isPregnancyQuestion && !isMakeupQuestion) {
-      return true; // Показываем все остальные вопросы
-    }
-    
-    // Для вопроса про макияж проверяем пол (аналогично беременности)
-    if (isMakeupQuestion) {
-      // Ищем ответ на вопрос о поле (gender) - используем ту же логику, что и для беременности
-      let genderValue: string | undefined;
-      let genderQuestion: Question | undefined;
-      let genderOption: { id: number; value: string; label: string } | undefined;
-      
-      for (const q of allQuestionsRaw) {
-        if (q.code === 'gender') {
-          genderQuestion = q;
-          if (answers[q.id]) {
-            const answerValue = Array.isArray(answers[q.id]) 
-              ? (answers[q.id] as string[])[0] 
-              : String(answers[q.id]);
-            
-            if (q.options && q.options.length > 0) {
-              genderOption = q.options.find(opt => 
-                opt.id.toString() === answerValue || 
-                String(opt.id) === answerValue ||
-                opt.value === answerValue ||
-                opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
-                opt.label === answerValue ||
-                opt.label?.toLowerCase() === answerValue?.toLowerCase()
-              );
-              
-              if (genderOption) {
-                genderValue = genderOption.label || genderOption.value || answerValue;
-              } else {
-                genderValue = answerValue;
-              }
-            } else {
-              genderValue = answerValue;
-            }
-            break;
-          }
-        }
-      }
-      
-      // Если пол не выбран, показываем вопрос (на всякий случай)
-      if (!genderValue && !genderQuestion) {
-        return true;
-      }
-      
-      // Проверяем, является ли выбранный пол "мужской"
-      let isMale = false;
-      
-      if (genderOption) {
-        const optLabel = (genderOption.label || '').toLowerCase().trim();
-        const optValue = (genderOption.value || '').toLowerCase().trim();
-        isMale = optLabel.includes('мужск') || 
-                 optValue.includes('мужск') ||
-                 optValue.includes('male') ||
-                 optLabel.includes('male') ||
-                 optValue === 'gender_2' ||
-                 optLabel === 'мужской';
-      } else if (genderValue) {
-        const normalizedValue = genderValue.toLowerCase().trim();
-        isMale = normalizedValue.includes('мужск') || 
-                 normalizedValue.includes('male') ||
-                 normalizedValue === 'male' ||
-                 normalizedValue === 'мужской' ||
-                 normalizedValue === 'gender_2' ||
-                 normalizedValue === '137';
-      } else if (genderQuestion && answers[genderQuestion.id]) {
-        const answerValue = String(answers[genderQuestion.id]);
-        isMale = answerValue === '137' || 
-                 answerValue === 'gender_2' ||
-                 answerValue.toLowerCase().includes('мужск') ||
-                 answerValue.toLowerCase().includes('male');
-      }
-      
-      const shouldShow = !isMale; // Показываем только если не мужчина
-      if (!shouldShow) {
-        clientLogger.log('🚫 Question filtered out (makeup question for male):', question.code, {
-          genderValue,
-          genderOption: genderOption ? { id: genderOption.id, value: genderOption.value, label: genderOption.label } : null,
-          answerValue: genderQuestion ? answers[genderQuestion.id] : undefined,
-          isMale,
-        });
-      }
-      return shouldShow;
-    }
-    
-    // Для вопроса про беременность проверяем пол
-    // Ищем ответ на вопрос о поле (gender)
-    const genderAnswer = Object.values(answers).find((_, idx) => {
-      const questionId = Object.keys(answers)[idx];
-      const q = allQuestionsRaw.find((q: Question) => q.id.toString() === questionId);
-      return q?.code === 'gender';
+    // ИСПРАВЛЕНО: Используем единую функцию filterQuestions вместо дублирующей логики
+    return filterQuestions({
+      questions: allQuestionsRaw,
+      answers,
+      savedProgressAnswers: savedProgress?.answers,
+      isRetakingQuiz,
+      showRetakeScreen,
     });
-    
-    // Или ищем по коду вопроса gender
-    let genderValue: string | undefined;
-    let genderQuestion: Question | undefined;
-    let genderOption: { id: number; value: string; label: string } | undefined;
-    
-    for (const q of allQuestionsRaw) {
-      if (q.code === 'gender') {
-        genderQuestion = q;
-        if (answers[q.id]) {
-          const answerValue = Array.isArray(answers[q.id]) 
-            ? (answers[q.id] as string[])[0] 
-            : String(answers[q.id]);
-          
-          // Ищем соответствующую опцию по ID, value или label
-          if (q.options && q.options.length > 0) {
-            genderOption = q.options.find(opt => 
-              opt.id.toString() === answerValue || 
-              String(opt.id) === answerValue ||
-              opt.value === answerValue ||
-              opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
-              opt.label === answerValue ||
-              opt.label?.toLowerCase() === answerValue?.toLowerCase()
-            );
-            
-            if (genderOption) {
-              genderValue = genderOption.label || genderOption.value || answerValue;
-            } else {
-              genderValue = answerValue;
-            }
-          } else {
-            genderValue = answerValue;
-          }
-          break;
-        }
-      }
-    }
-    
-    // Если пол не выбран, показываем вопрос (на всякий случай)
-    if (!genderValue && !genderQuestion) {
-      // Пол еще не выбран - показываем вопрос (он будет скрыт позже, когда пол будет выбран)
-      return true;
-    }
-    
-    // Проверяем, является ли выбранный пол "мужской"
-    let isMale = false;
-    
-    if (genderOption) {
-      // Если нашли опцию, проверяем её label и value
-      const optLabel = (genderOption.label || '').toLowerCase().trim();
-      const optValue = (genderOption.value || '').toLowerCase().trim();
-      isMale = optLabel.includes('мужск') || 
-               optValue.includes('мужск') ||
-               optValue.includes('male') ||
-               optLabel.includes('male') ||
-               optValue === 'gender_2' || // Мужской вариант
-               optLabel === 'мужской';
-    } else if (genderValue) {
-      // Если опцию не нашли, проверяем значение напрямую
-      const normalizedValue = genderValue.toLowerCase().trim();
-      isMale = normalizedValue.includes('мужск') || 
-               normalizedValue.includes('male') ||
-               normalizedValue === 'male' ||
-               normalizedValue === 'мужской' ||
-               normalizedValue === 'gender_2' || // Мужской вариант
-               normalizedValue === '137'; // ID мужской опции
-    } else if (genderQuestion && answers[genderQuestion.id]) {
-      // Если не нашли опцию, но есть ответ, проверяем напрямую по ID/value
-      const answerValue = String(answers[genderQuestion.id]);
-      isMale = answerValue === '137' || // ID мужской опции
-               answerValue === 'gender_2' || // value мужской опции
-               answerValue.toLowerCase().includes('мужск') ||
-               answerValue.toLowerCase().includes('male');
-    }
-    
-    const shouldShow = !isMale; // Показываем только если не мужчина
-    if (!shouldShow) {
-      clientLogger.log('🚫 Question filtered out (pregnancy question for male):', question.code, {
-        genderValue,
-        genderOption: genderOption ? { id: genderOption.id, value: genderOption.value, label: genderOption.label } : null,
-        answerValue: genderQuestion ? answers[genderQuestion.id] : undefined,
-        isMale,
-      });
-    }
-    return shouldShow;
-        } catch (filterErr) {
-          console.error('❌ Error filtering question:', filterErr, question);
-          // В случае ошибки показываем вопрос (безопасный вариант)
-          return true;
-        }
-      });
-      
-      // ИСПРАВЛЕНО: НЕ сортируем после фильтрации, чтобы сохранить порядок групп
-      // Фильтрация сохраняет относительный порядок элементов
-      // Порядок из allQuestionsRaw уже правильный (с учетом групп)
-      // Сортировка по position нарушит порядок групп, если position пересекаются между группами
-      return filteredQuestions;
     } catch (err) {
       console.error('❌ Error computing allQuestions:', err, {
         allQuestionsRawLength: allQuestionsRaw?.length,
@@ -4005,7 +3774,7 @@ export default function QuizPage() {
       // В случае ошибки возвращаем все вопросы из allQuestionsRaw (уже отсортированные)
       return allQuestionsRaw || [];
     }
-  }, [allQuestionsRaw, answers, isRetakingQuiz, showRetakeScreen]);
+  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen]);
   
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
@@ -4019,10 +3788,22 @@ export default function QuizPage() {
     }
   }, [allQuestions]);
 
-  // ИСПРАВЛЕНО: Корректируем currentQuestionIndex если он выходит за пределы и отправка не идет
-  // Это важно для предотвращения показа лоадера вместо первого вопроса
+  // ИСПРАВЛЕНО: Обработка edge case - когда allQuestions.length === 0
+  // Показываем явное сообщение вместо поломанного UI
   useEffect(() => {
-    if (!questionnaire || allQuestions.length === 0 || loading) return;
+    if (!questionnaire || loading) return;
+    
+    // ИСПРАВЛЕНО: Если после фильтрации не осталось вопросов, но есть ответы - это проблема
+    if (allQuestions.length === 0 && Object.keys(answers).length > 0) {
+      clientLogger.error('⚠️ Edge case: allQuestions.length === 0 but answers exist', {
+        answersCount: Object.keys(answers).length,
+        questionnaireId: questionnaire.id,
+        allQuestionsRawLength: questionnaire.groups?.flatMap(g => g.questions || []).length + (questionnaire.questions || []).length,
+      });
+      // Не показываем ошибку пользователю, просто логируем - возможно это временная ситуация
+    }
+    
+    if (allQuestions.length === 0) return;
     
     // Если индекс выходит за пределы, но отправка не идет - сбрасываем индекс на 0
     // Это может произойти при неправильно сохраненном прогрессе или при первой загрузке
@@ -4116,119 +3897,14 @@ export default function QuizPage() {
       ...questions,
     ];
     
-    // Фильтруем вопросы на основе ответов
-    const allQuestions = allQuestionsRaw.filter((question) => {
-      // При повторном прохождении исключаем вопросы про пол и возраст
-      if (isRetakingQuiz && !showRetakeScreen) {
-        if (question.code === 'gender' || question.code === 'GENDER' || 
-            question.code === 'age' || question.code === 'AGE' ||
-            question.text?.toLowerCase().includes('ваш пол') ||
-            question.text?.toLowerCase().includes('сколько вам лет')) {
-          return false;
-        }
-      }
-      
-      // Проверяем, является ли это вопросом про реакцию на ретинол (retinoid_reaction)
-      const isRetinoidReactionQuestion = question.code === 'retinoid_reaction' ||
-                                         question.text?.toLowerCase().includes('как кожа реагировала');
-      
-      if (isRetinoidReactionQuestion) {
-        // Ищем ответ на вопрос о использовании ретинола (retinoid_usage)
-        let retinoidUsageValue: string | undefined;
-        let retinoidUsageQuestion: Question | undefined;
-        
-        for (const q of allQuestionsRaw) {
-          if (q.code === 'retinoid_usage') {
-            retinoidUsageQuestion = q;
-            if (answers[q.id]) {
-              const answerValue = Array.isArray(answers[q.id]) 
-                ? (answers[q.id] as string[])[0] 
-                : (answers[q.id] as string);
-              
-              retinoidUsageValue = answerValue;
-              
-              if (q.options && q.options.length > 0) {
-                const matchingOption = q.options.find(opt => 
-                  opt.id.toString() === answerValue || 
-                  opt.value === answerValue ||
-                  opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
-                  opt.label?.toLowerCase() === answerValue?.toLowerCase()
-                );
-                if (matchingOption) {
-                  retinoidUsageValue = matchingOption.value || matchingOption.label || answerValue;
-                }
-              }
-              break;
-            }
-          }
-        }
-        
-        const answeredYes = retinoidUsageValue?.toLowerCase().includes('да') ||
-                            retinoidUsageValue?.toLowerCase() === 'yes' ||
-                            retinoidUsageValue === 'Да' ||
-                            (retinoidUsageQuestion?.options?.some(opt => 
-                              (opt.value?.toLowerCase().includes('да') || 
-                               opt.label?.toLowerCase().includes('да')) &&
-                              (answers[retinoidUsageQuestion.id] === opt.value || 
-                               answers[retinoidUsageQuestion.id] === opt.id.toString() ||
-                               answers[retinoidUsageQuestion.id] === opt.label)
-                            ));
-        
-        return answeredYes === true;
-      }
-      
-      const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
-                                  question.code === 'pregnancy' ||
-                                  question.text?.toLowerCase().includes('беременн') ||
-                                  question.text?.toLowerCase().includes('кормлен');
-      
-      if (!isPregnancyQuestion) {
-        return true;
-      }
-      
-      let genderValue: string | undefined;
-      let genderQuestion: Question | undefined;
-      
-      for (const q of allQuestionsRaw) {
-        if (q.code === 'gender' || q.code === 'GENDER') {
-          genderQuestion = q;
-          // Проверяем текущие ответы (включая сохраненные при повторном прохождении)
-          if (answers[q.id]) {
-            const answerValue = Array.isArray(answers[q.id]) 
-              ? (answers[q.id] as string[])[0] 
-              : (answers[q.id] as string);
-            
-            genderValue = answerValue;
-            
-            if (q.options && q.options.length > 0) {
-              const matchingOption = q.options.find(opt => 
-                opt.id.toString() === answerValue || 
-                opt.value === answerValue ||
-                opt.value?.toLowerCase() === answerValue?.toLowerCase()
-              );
-              if (matchingOption) {
-                genderValue = matchingOption.value || matchingOption.label || answerValue;
-              }
-            }
-            break;
-          }
-        }
-      }
-      
-      const isMale = genderValue?.toLowerCase().includes('мужчин') || 
-                     genderValue?.toLowerCase().includes('male') ||
-                     genderValue === 'male' ||
-                     genderValue === 'мужской' ||
-                     genderValue?.toLowerCase() === 'мужской' ||
-                     (genderQuestion?.options?.some(opt => 
-                       (opt.value?.toLowerCase().includes('мужчин') || 
-                        opt.label?.toLowerCase().includes('мужчин') ||
-                        opt.value?.toLowerCase().includes('male')) &&
-                       (answers[genderQuestion.id] === opt.value || 
-                        answers[genderQuestion.id] === opt.id.toString())
-                     ));
-      
-      return !isMale;
+    // ИСПРАВЛЕНО: Используем единую функцию filterQuestions вместо дублирующей логики
+    // В этом контексте savedProgress уже проверен выше (если он есть, мы return), поэтому он null здесь
+    const allQuestions = filterQuestions({
+      questions: allQuestionsRaw,
+      answers,
+      savedProgressAnswers: undefined, // В этом контексте savedProgress всегда null (проверено выше)
+      isRetakingQuiz,
+      showRetakeScreen,
     });
     
     // ВАЖНО: При полном перепрохождении (isRetakingQuiz && !showRetakeScreen) пропускаем все инфо-экраны
@@ -4238,11 +3914,14 @@ export default function QuizPage() {
       const initialInfoScreensCount = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode).length;
       // ВАЖНО: Всегда устанавливаем currentInfoScreenIndex в initialInfoScreensCount при перепрохождении
       // Это гарантирует, что начальные инфо-экраны не будут показаны
-      // ИСПРАВЛЕНО: Используем ref для отслеживания, чтобы избежать бесконечного цикла
-      if (currentInfoScreenIndex < initialInfoScreensCount) {
-        setCurrentInfoScreenIndex(initialInfoScreensCount);
-        clientLogger.log('✅ Full retake: Setting currentInfoScreenIndex to skip all initial info screens');
-      }
+      // ИСПРАВЛЕНО: Используем функциональное обновление, чтобы избежать stale closure
+      setCurrentInfoScreenIndex((prev) => {
+        if (prev < initialInfoScreensCount) {
+          clientLogger.log('✅ Full retake: Setting currentInfoScreenIndex to skip all initial info screens');
+          return initialInfoScreensCount;
+        }
+        return prev;
+      });
       // Если currentQuestionIndex = 0 и нет ответов, это начало перепрохождения
       if (currentQuestionIndex === 0 && Object.keys(answers).length === 0) {
         setCurrentQuestionIndex(0);
@@ -4374,8 +4053,10 @@ export default function QuizPage() {
       // ВАЖНО: Сохраняем ID таймера для очистки при размонтировании
       // ВАЖНО: Используем ref для submitAnswers, чтобы избежать проблем с зависимостями useEffect
       const timeoutId = setTimeout(() => {
-        // ВАЖНО: Проверяем, что компонент еще смонтирован и questionnaire существует
-        if (isMountedRef.current && submitAnswersRef.current && questionnaire) {
+        // ИСПРАВЛЕНО: Проверяем, что компонент еще смонтирован, questionnaire существует, и нет активной отправки
+        if (isMountedRef.current && submitAnswersRef.current && questionnaire && !isSubmittingRef.current) {
+          // ИСПРАВЛЕНО: Устанавливаем флаг перед вызовом, чтобы предотвратить двойную отправку
+          isSubmittingRef.current = true;
           // ВАЖНО: Не обновляем состояние после вызова submitAnswers, чтобы избежать React Error #300
           submitAnswersRef.current().catch((err) => {
             console.error('❌ Ошибка при автоматической отправке ответов:', err);
@@ -4403,7 +4084,7 @@ export default function QuizPage() {
         clearTimeout(timeoutId);
       };
     }
-  }, [currentQuestionIndex, allQuestions.length, Object.keys(answers).length, questionnaire, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen]);
+  }, [currentQuestionIndex, allQuestions.length, answersCount, questionnaire, isSubmitting, showResumeScreen, autoSubmitTriggered, error, pendingInfoScreen]);
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
@@ -4593,32 +4274,50 @@ export default function QuizPage() {
         // Показываем PaymentGate для полного перепрохождения
         return;
       }
-      clientLogger.log('✅ Full retake payment completed, allowing full retake');
+
+      clientLogger.log('✅ Full retake payment completed, starting full questionnaire reset');
+
       // Сбрасываем флаг оплаты после использования
       if (typeof window !== 'undefined') {
         localStorage.removeItem('payment_full_retake_completed');
         clientLogger.log('🔄 Full retake payment flag cleared');
       }
-      // Полное перепрохождение - скрываем экран выбора тем и показываем все вопросы
+
+      // Полное перепрохождение:
+      // - скрываем экран выбора тем
+      // - очищаем ответы и сохранённый прогресс
+      // - сбрасываем индексы и флаги "продолжить"
       setShowRetakeScreen(false);
-      // ВАЖНО: Устанавливаем флаг перепрохождения, чтобы пропустить все info screens
-      setIsRetakingQuiz(true);
-      // ВАЖНО: НЕ очищаем ответы при перепрохождении - пользователь может хотеть изменить только часть ответов
-      // Очищаем только если пользователь явно выбрал "Пройти всю анкету заново"
-      // setAnswers({}); // УДАЛЕНО - не очищаем ответы
-      // Пропускаем все начальные info screens - переходим сразу к вопросам
+      setIsRetakingQuiz(true); // остаёмся в режиме перепрохождения, но с чистой анкетой
+
+      // Отмечаем, что пользователь начинает заново
+      setIsStartingOver(true);
+      isStartingOverRef.current = true;
+
+      // Полный сброс ответов и прогресса
+      setAnswers({});
+      setSavedProgress(null);
+      setShowResumeScreen(false);
+      setHasResumed(false);
+      hasResumedRef.current = false;
+
+      autoSubmitTriggeredRef.current = false;
+      setAutoSubmitTriggered(false);
+      setError(null);
+
+      if (typeof window !== 'undefined') {
+        // Очищаем локальный прогресс и флаги перепрохождения
+        localStorage.removeItem('quiz_progress');
+        localStorage.removeItem('is_retaking_quiz');
+        localStorage.removeItem('full_retake_from_home');
+      }
+
+      // Начинаем анкету с самого начала
       if (questionnaire) {
-        const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
-        setCurrentInfoScreenIndex(initialInfoScreens.length);
+        setCurrentInfoScreenIndex(0); // показываем все инфо-экраны заново
         setCurrentQuestionIndex(0);
-        // Очищаем pending info screen, если он был установлен
         setPendingInfoScreen(null);
-        // ВАЖНО: НЕ очищаем сохраненный прогресс - он может содержать полезные данные
-        // Очищаем только если пользователь явно выбрал "Пройти всю анкету заново"
-        // if (typeof window !== 'undefined') {
-        //   localStorage.removeItem('quiz_progress');
-        // }
-        clientLogger.log('✅ Full retake: Skipping all info screens, starting from first question (answers preserved)');
+        clientLogger.log('✅ Full retake: answers and progress cleared, starting from first info screen');
       }
     };
 
@@ -4905,118 +4604,22 @@ export default function QuizPage() {
       ...(questionnaire.questions || []),
     ] : [];
     
-    // Фильтруем вопросы на основе ответов
-    const allQuestions = allQuestionsRaw.filter((question) => {
-      // Проверяем, является ли это вопросом про реакцию на ретинол (retinoid_reaction)
-      const isRetinoidReactionQuestion = question.code === 'retinoid_reaction' ||
-                                         question.text?.toLowerCase().includes('как кожа реагировала');
-      
-      if (isRetinoidReactionQuestion) {
-        // Ищем ответ на вопрос о использовании ретинола (retinoid_usage)
-        // Используем все ответы, включая сохраненные из savedProgress
-        const allAnswers = { ...answers, ...(savedProgress?.answers || {}) };
-        let retinoidUsageValue: string | undefined;
-        let retinoidUsageQuestion: Question | undefined;
-        
-        for (const q of allQuestionsRaw) {
-          if (q.code === 'retinoid_usage') {
-            retinoidUsageQuestion = q;
-            if (allAnswers[q.id]) {
-              const answerValue = Array.isArray(allAnswers[q.id]) 
-                ? (allAnswers[q.id] as string[])[0] 
-                : (allAnswers[q.id] as string);
-              
-              retinoidUsageValue = answerValue;
-              
-              if (q.options && q.options.length > 0) {
-                const matchingOption = q.options.find(opt => 
-                  opt.id.toString() === answerValue || 
-                  opt.value === answerValue ||
-                  opt.value?.toLowerCase() === answerValue?.toLowerCase() ||
-                  opt.label?.toLowerCase() === answerValue?.toLowerCase()
-                );
-                if (matchingOption) {
-                  retinoidUsageValue = matchingOption.value || matchingOption.label || answerValue;
-                }
-              }
-              break;
-            }
-          }
-        }
-        
-        const answeredYes = retinoidUsageValue?.toLowerCase().includes('да') ||
-                            retinoidUsageValue?.toLowerCase() === 'yes' ||
-                            retinoidUsageValue === 'Да' ||
-                            (retinoidUsageQuestion?.options?.some(opt => 
-                              (opt.value?.toLowerCase().includes('да') || 
-                               opt.label?.toLowerCase().includes('да')) &&
-                              (allAnswers[retinoidUsageQuestion.id] === opt.value || 
-                               allAnswers[retinoidUsageQuestion.id] === opt.id.toString() ||
-                               allAnswers[retinoidUsageQuestion.id] === opt.label)
-                            ));
-        
-        return answeredYes === true;
-      }
-      
-      const isPregnancyQuestion = question.code === 'pregnancy_breastfeeding' || 
-                                  question.code === 'pregnancy' ||
-                                  question.text?.toLowerCase().includes('беременн') ||
-                                  question.text?.toLowerCase().includes('кормлен');
-      
-      if (!isPregnancyQuestion) {
-        return true;
-      }
-      
-      // Проверяем пол из сохраненных ответов (включая ответы из savedProgress)
-      let genderValue: string | undefined;
-      let genderQuestion: Question | undefined;
-      
-      // Сначала проверяем savedProgress (может содержать сохраненные ответы)
-      const allAnswers = { ...answers, ...(savedProgress?.answers || {}) };
-      
-      for (const q of allQuestionsRaw) {
-        if (q.code === 'gender' || q.code === 'GENDER') {
-          genderQuestion = q;
-          // Проверяем как текущие ответы, так и сохраненные
-          if (allAnswers[q.id]) {
-            const answerValue = Array.isArray(allAnswers[q.id]) 
-              ? (allAnswers[q.id] as string[])[0] 
-              : (allAnswers[q.id] as string);
-            
-            genderValue = answerValue;
-            
-            if (q.options && q.options.length > 0) {
-              const matchingOption = q.options.find(opt => 
-                opt.id.toString() === answerValue || 
-                opt.value === answerValue ||
-                opt.value?.toLowerCase() === answerValue?.toLowerCase()
-              );
-              if (matchingOption) {
-                genderValue = matchingOption.value || matchingOption.label || answerValue;
-              }
-            }
-            break;
-          }
-        }
-      }
-      
-      const isMale = genderValue?.toLowerCase().includes('мужчин') || 
-                     genderValue?.toLowerCase().includes('male') ||
-                     genderValue === 'male' ||
-                     genderValue === 'мужской' ||
-                     genderValue?.toLowerCase() === 'мужской' ||
-                     (genderQuestion?.options?.some(opt => 
-                       (opt.value?.toLowerCase().includes('мужчин') || 
-                        opt.label?.toLowerCase().includes('мужчин') ||
-                        opt.value?.toLowerCase().includes('male')) &&
-                       (answers[genderQuestion.id] === opt.value || 
-                        answers[genderQuestion.id] === opt.id.toString())
-                     ));
-      
-      return !isMale;
+    // ИСПРАВЛЕНО: Используем единую функцию filterQuestions вместо дублирующей логики
+    // filterQuestions уже использует allAnswers (answers + savedProgress.answers) внутри
+    const allQuestions = filterQuestions({
+      questions: allQuestionsRaw,
+      answers,
+      savedProgressAnswers: savedProgress?.answers,
+      isRetakingQuiz,
+      showRetakeScreen,
     });
     
-    const answeredCount = Object.keys(savedProgress.answers).length;
+    // ИСПРАВЛЕНО: Считаем только ответы на вопросы, которые остались в allQuestions после фильтрации
+    // Это предотвращает завышение прогресса, когда часть вопросов была отфильтрована (например, pregnancy для мужчин)
+    const relevantQuestionIds = new Set(allQuestions.map(q => q.id.toString()));
+    const answeredCount = Object.keys(savedProgress.answers).filter(
+      questionId => relevantQuestionIds.has(questionId)
+    ).length;
     const totalQuestions = allQuestions.length;
     const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 

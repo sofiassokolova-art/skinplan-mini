@@ -35,7 +35,12 @@ function matchesRule(profile: any, rule: Rule): boolean {
   const conditions = rule.conditionsJson;
 
   for (const [key, condition] of Object.entries(conditions)) {
-    const profileValue = profile[key];
+    // ИСПРАВЛЕНО: Нормализуем diagnoses - если правило проверяет diagnoses,
+    // но они не на корневом уровне, берем из medicalMarkers
+    let profileValue = profile[key];
+    if (key === 'diagnoses' && (profileValue === undefined || profileValue === null)) {
+      profileValue = (profile.medicalMarkers as any)?.diagnoses || [];
+    }
 
     // ИСПРАВЛЕНО: Если поле отсутствует в профиле, правило не соответствует
     // (кроме случаев, когда условие может быть опциональным)
@@ -598,24 +603,31 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Формируем QuestionnaireAnswers для вычисления scores
+    // ИСПРАВЛЕНО: Формируем QuestionnaireAnswers ТОЛЬКО из ответов, не из профиля
+    // axes должны вычисляться ТОЛЬКО из answers для детерминированности
+    // Profile - это snapshot, не source of truth
     const questionnaireAnswers: QuestionnaireAnswers = {
-      skinType: profile.skinType || 'normal',
-      age: profile.ageGroup || '25-34',
+      skinType: 'normal', // Будет перезаписано из answers
+      age: '25-34', // Будет перезаписано из answers
       concerns: [],
       diagnoses: [],
       allergies: [],
-      sensitivityLevel: profile.sensitivityLevel || 'low',
-      acneLevel: profile.acneLevel || 0,
+      sensitivityLevel: 'low', // Будет перезаписано из answers
+      acneLevel: 0, // Будет перезаписано из answers
     };
 
     // ИСПРАВЛЕНО: Извлекаем все необходимые данные из ответов для правильного вычисления scores
+    // НЕ используем данные из profile, только из answers
     for (const answer of answersForScores) {
       const code = answer.question?.code || '';
       const value = answer.answerValue || 
         (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
       
-      if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
+      if (code === 'skin_type' || code === 'skinType') {
+        questionnaireAnswers.skinType = (value as string) || 'normal';
+      } else if (code === 'age' || code === 'age_group' || code === 'ageGroup') {
+        questionnaireAnswers.age = (value as string) || '25-34';
+      } else if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
         questionnaireAnswers.concerns = answer.answerValues as string[];
       } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
         questionnaireAnswers.diagnoses = answer.answerValues as string[];
@@ -631,6 +643,12 @@ export async function GET(request: NextRequest) {
         questionnaireAnswers.spfFrequency = value as string;
       } else if (code === 'sun_exposure' || code === 'sunExposure') {
         questionnaireAnswers.sunExposure = value as string;
+      } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
+        questionnaireAnswers.sensitivityLevel = (value as string) || 'low';
+      } else if (code === 'acne_level' || code === 'acneLevel') {
+        questionnaireAnswers.acneLevel = typeof value === 'number' ? value : (parseInt(value as string) || 0);
+      } else if (code === 'pregnant' || code === 'has_pregnancy' || code === 'pregnancy_breastfeeding') {
+        questionnaireAnswers.pregnant = value === 'yes' || value === 'true' || value === true;
       }
     }
 
@@ -642,23 +660,15 @@ export async function GET(request: NextRequest) {
     const normalizedSkinType = normalizeSkinTypeForRules(profile.skinType, { userId });
     const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivityLevel);
 
-    // Создаем расширенный профиль с вычисленными scores для проверки правил
+    // ИСПРАВЛЕНО: Используем buildRuleContext для создания типизированного контекста правил
+    // Это обеспечивает единую точку маппинга полей и консистентность
+    const { buildRuleContext } = await import('@/lib/rule-context');
+    const ruleContext = buildRuleContext(profile, skinScores, normalizedSkinType, normalizedSensitivity);
+    
+    // Используем ruleContext как profileWithScores для обратной совместимости
     const profileWithScores: any = {
       ...profile,
-      // Добавляем вычисленные scores
-      inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
-      oiliness: skinScores.find(s => s.axis === 'oiliness')?.value || 0,
-      hydration: skinScores.find(s => s.axis === 'hydration')?.value || 0,
-      barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
-      pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
-      photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
-      // ИСПРАВЛЕНО: Используем нормализованные значения для совместимости с правилами
-      skin_type: normalizedSkinType,
-      skinType: normalizedSkinType,
-      sensitivity_level: normalizedSensitivity,
-      sensitivity: normalizedSensitivity,
-      age_group: profile.ageGroup,
-      age: profile.ageGroup,
+      ...ruleContext,
     };
 
     logger.info('Profile with calculated scores for rule matching', {

@@ -524,9 +524,14 @@ export const api = {
     return request<QuizProgressResponse>('/questionnaire/progress');
   },
 
-  async clearQuizProgress() {
-    return request('/questionnaire/progress', {
-      method: 'DELETE',
+  // ИСПРАВЛЕНО: Используем новый идемпотентный эндпоинт для очистки ответов
+  async clearQuizProgress(profileVersion?: number, cleanupId?: string) {
+    return request('/questionnaire/answers/cleanup', {
+      method: 'POST',
+      body: JSON.stringify({
+        profileVersion,
+        cleanupId,
+      }),
     });
   },
 

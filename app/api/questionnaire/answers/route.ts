@@ -9,7 +9,6 @@ import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
 import { MAX_DUPLICATE_SUBMISSION_WINDOW_MS } from '@/lib/constants';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
-import type { QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 
 export const runtime = 'nodejs';
 
@@ -113,7 +112,11 @@ export async function POST(request: NextRequest) {
     userId = userIdResult; // Теперь userId гарантированно string
 
     const body = await request.json();
-    const { questionnaireId, answers } = body;
+    const { questionnaireId, answers, clientSubmissionId } = body as {
+      questionnaireId: number;
+      answers: AnswerInput[];
+      clientSubmissionId?: string | null;
+    };
 
     // ВАЖНО: Логируем полученные данные для диагностики
     logger.debug('Received answers submission', {
@@ -179,6 +182,66 @@ export async function POST(request: NextRequest) {
       return ApiResponse.notFound('Questionnaire not found');
     }
 
+    // Идемпотентность: если клиент прислал clientSubmissionId и мы уже обрабатывали этот сабмит,
+    // сразу возвращаем существующий результат без повторной тяжелой работы.
+    if (clientSubmissionId) {
+      try {
+        const existingSubmission = await (prisma as any).questionnaireSubmission.findUnique({
+          where: {
+            userId_questionnaireId_clientSubmissionId: {
+              userId,
+              questionnaireId,
+              clientSubmissionId,
+            },
+          },
+        });
+
+        if (existingSubmission && existingSubmission.profileId && existingSubmission.profileVersion !== null) {
+          logger.info('Idempotent questionnaire submission detected, returning existing profile', {
+            userId,
+            questionnaireId,
+            clientSubmissionId,
+            profileId: existingSubmission.profileId,
+            profileVersion: existingSubmission.profileVersion,
+          });
+
+          const existingProfile = await prisma.skinProfile.findUnique({
+            where: { id: existingSubmission.profileId },
+          });
+
+          if (existingProfile) {
+            const duration = Date.now() - startTime;
+            logApiRequest(method, path, 200, duration, userId || undefined);
+
+            return ApiResponse.success({
+              success: true,
+              profile: {
+                id: existingProfile.id,
+                version: existingProfile.version,
+                skinType: existingProfile.skinType,
+                sensitivityLevel: existingProfile.sensitivityLevel,
+                acneLevel: existingProfile.acneLevel,
+                dehydrationLevel: existingProfile.dehydrationLevel,
+                rosaceaRisk: existingProfile.rosaceaRisk,
+                pigmentationRisk: existingProfile.pigmentationRisk,
+                ageGroup: existingProfile.ageGroup,
+                notes: existingProfile.notes,
+              },
+              answersCount: undefined,
+              isDuplicate: true,
+            });
+          }
+        }
+      } catch (idempotencyCheckError) {
+        logger.warn('Failed to check questionnaire submission idempotency, continuing as new submission', {
+          userId,
+          questionnaireId,
+          clientSubmissionId,
+          error: (idempotencyCheckError as any)?.message,
+        });
+      }
+    }
+
     // Проверяем, не отправлял ли пользователь ответы недавно (защита от повторной отправки)
     // Если пользователь отправил ответы менее чем 5 секунд назад - считаем это дубликатом
     const recentSubmission = await prisma.userAnswer.findFirst({
@@ -238,6 +301,130 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // ИСПРАВЛЕНО: Серверная валидация критических медицинских условий
+    // Не доверяем UI фильтрации - проверяем на сервере
+    const validateMedicalConditions = async () => {
+      // Получаем все вопросы анкеты для проверки кодов
+      const allQuestions = await prisma.question.findMany({
+        where: { questionnaireId },
+        select: { id: true, code: true, type: true, answerOptions: true },
+      });
+
+      // Создаем мапу ответов по questionId
+      const answersMap = new Map<number, { value?: string; values?: string[] }>();
+      validAnswers.forEach((a: AnswerInput) => {
+        answersMap.set(a.questionId, { value: a.answerValue, values: a.answerValues });
+      });
+
+      // Находим вопрос про пол
+      const genderQuestion = allQuestions.find(q => q.code === 'gender' || q.code === 'sex');
+      const genderAnswer = genderQuestion ? answersMap.get(genderQuestion.id) : null;
+      
+      // Определяем, является ли пользователь мужчиной
+      const isMale = (() => {
+        if (!genderAnswer || !genderQuestion) return false;
+        const value = genderAnswer.value || (Array.isArray(genderAnswer.values) ? genderAnswer.values[0] : null);
+        if (!value) return false;
+        
+        const option = genderQuestion.answerOptions?.find((opt: any) => 
+          opt.id.toString() === value || 
+          opt.value === value ||
+          opt.value?.toLowerCase() === value?.toLowerCase() ||
+          opt.label?.toLowerCase().includes('мужск') ||
+          opt.label?.toLowerCase().includes('male')
+        );
+        
+        const normalizedValue = String(value).toLowerCase();
+        return normalizedValue.includes('мужск') || 
+               normalizedValue.includes('male') ||
+               normalizedValue === 'gender_2' ||
+               normalizedValue === '137' ||
+               option?.label?.toLowerCase().includes('мужск') ||
+               option?.label?.toLowerCase().includes('male') ||
+               option?.value?.toLowerCase().includes('мужск') ||
+               option?.value?.toLowerCase().includes('male');
+      })();
+
+      // Проверяем вопрос про беременность - не должен быть у мужчин
+      const pregnancyQuestion = allQuestions.find(q => 
+        q.code === 'pregnancy' || 
+        q.code === 'pregnancy_breastfeeding' ||
+        q.code === 'pregnancy_breastfeeding_status'
+      );
+      if (pregnancyQuestion && isMale) {
+        const pregnancyAnswer = answersMap.get(pregnancyQuestion.id);
+        if (pregnancyAnswer && (pregnancyAnswer.value || (pregnancyAnswer.values && pregnancyAnswer.values.length > 0))) {
+          logger.warn('CRITICAL: Male user has pregnancy answer - removing invalid answer', {
+            userId,
+            questionId: pregnancyQuestion.id,
+            questionCode: pregnancyQuestion.code,
+          });
+          // Удаляем невалидный ответ из validAnswers
+          const index = validAnswers.findIndex((a: AnswerInput) => a.questionId === pregnancyQuestion.id);
+          if (index >= 0) {
+            validAnswers.splice(index, 1);
+          }
+        }
+      }
+
+      // Проверяем вопрос про ретинол - должен быть только если используется ретинол
+      const retinoidUsageQuestion = allQuestions.find(q => 
+        q.code === 'retinoid_usage' || 
+        q.code === 'retinol_usage' ||
+        q.code === 'retinoid_current'
+      );
+      const retinoidReactionQuestion = allQuestions.find(q => 
+        q.code === 'retinoid_reaction' || 
+        q.code === 'retinol_reaction'
+      );
+      
+      if (retinoidUsageQuestion && retinoidReactionQuestion) {
+        const retinoidUsageAnswer = answersMap.get(retinoidUsageQuestion.id);
+        const retinoidReactionAnswer = answersMap.get(retinoidReactionQuestion.id);
+        
+        // Проверяем, использует ли пользователь ретинол
+        const usesRetinoid = (() => {
+          if (!retinoidUsageAnswer) return false;
+          const value = retinoidUsageAnswer.value || (Array.isArray(retinoidUsageAnswer.values) ? retinoidUsageAnswer.values[0] : null);
+          if (!value) return false;
+          
+          const option = retinoidUsageQuestion.answerOptions?.find((opt: any) => 
+            opt.id.toString() === value || 
+            opt.value === value ||
+            opt.value?.toLowerCase() === value?.toLowerCase()
+          );
+          
+          const normalizedValue = String(value).toLowerCase();
+          const optionValue = option?.value?.toLowerCase() || '';
+          const optionLabel = option?.label?.toLowerCase() || '';
+          
+          return normalizedValue === 'yes' || 
+                 optionValue === 'yes' ||
+                 optionLabel.includes('да') ||
+                 optionLabel.includes('использую') ||
+                 optionLabel.includes('yes');
+        })();
+        
+        // Если не использует ретинол, но есть ответ на реакцию - удаляем
+        if (!usesRetinoid && retinoidReactionAnswer && 
+            (retinoidReactionAnswer.value || (retinoidReactionAnswer.values && retinoidReactionAnswer.values.length > 0))) {
+          logger.warn('CRITICAL: User does not use retinoid but has reaction answer - removing invalid answer', {
+            userId,
+            questionId: retinoidReactionQuestion.id,
+            questionCode: retinoidReactionQuestion.code,
+          });
+          // Удаляем невалидный ответ из validAnswers
+          const index = validAnswers.findIndex((a: AnswerInput) => a.questionId === retinoidReactionQuestion.id);
+          if (index >= 0) {
+            validAnswers.splice(index, 1);
+          }
+        }
+      }
+    };
+
+    // Выполняем валидацию перед транзакцией
+    await validateMedicalConditions();
+
     // ВАЖНО: Логируем перед началом транзакции
     logger.debug('Starting transaction for answers submission', {
       userId,
@@ -268,44 +455,22 @@ export async function POST(request: NextRequest) {
       
       const savedAnswers = await Promise.all(
         validAnswers.map(async (answer: AnswerInput) => {
-          // Проверяем, существует ли уже ответ
-          const existingAnswer = await tx.userAnswer.findFirst({
+          // Используем upsert по уникальному ключу (userId, questionnaireId, questionId),
+          // чтобы при гонках не создавать дублирующие ответы
+          const upserted = await (tx.userAnswer as any).upsert({
             where: {
-              userId,
+              userId_questionnaireId_questionId: {
+                userId: userId!,
               questionnaireId,
               questionId: answer.questionId,
             },
-          });
-
-          if (existingAnswer) {
-            // Обновляем существующий ответ (updatedAt обновляется автоматически через @updatedAt)
+            },
+            update: {
             // ВАЖНО: Сохраняем answerValue как есть (включая пустую строку), только undefined преобразуем в null
-            const updated = await tx.userAnswer.update({
-              where: { id: existingAnswer.id },
-              data: {
                 answerValue: answer.answerValue !== undefined ? answer.answerValue : null,
                 answerValues: answer.answerValues !== undefined ? (answer.answerValues as any) : null,
               },
-              include: {
-                question: {
-                  include: {
-                    answerOptions: true,
-                  },
-                },
-              },
-            });
-            logger.debug('Answer updated', {
-              userId,
-              questionId: answer.questionId,
-              answerValue: answer.answerValue,
-              answerValues: answer.answerValues,
-            });
-            return updated;
-          } else {
-            // Создаем новый ответ
-            // ВАЖНО: Сохраняем answerValue как есть (включая пустую строку), только undefined преобразуем в null
-            const created = await tx.userAnswer.create({
-              data: {
+            create: {
                 userId: userId!,
                 questionnaireId,
                 questionId: answer.questionId,
@@ -320,14 +485,15 @@ export async function POST(request: NextRequest) {
                 },
               },
             });
-            logger.debug('Answer created', {
+
+          logger.debug('Answer upserted', {
               userId,
               questionId: answer.questionId,
               answerValue: answer.answerValue,
               answerValues: answer.answerValues,
             });
-            return created;
-          }
+
+          return upserted;
         })
       );
       
@@ -338,7 +504,7 @@ export async function POST(request: NextRequest) {
       });
 
       // ИСПРАВЛЕНО: Сохраняем имя пользователя из ответа на вопрос USER_NAME
-      const nameAnswer = savedAnswers.find(a => a.question?.code === 'USER_NAME');
+      const nameAnswer = (savedAnswers as any[]).find(a => a.question?.code === 'USER_NAME');
       if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
         const userName = String(nameAnswer.answerValue).trim();
         await tx.user.update({
@@ -457,6 +623,12 @@ export async function POST(request: NextRequest) {
         extractedData.mainGoals = profileFromRules.mainGoals;
       }
 
+      // ВАЖНО: Профили делаем append-only: каждая отправка анкеты создает НОВУЮ версию профиля,
+      // старые записи не перезаписываются.
+      // Берём последнюю версию и инкрементируем её; если профиля не было — стартуем с версии анкеты.
+      const lastVersion = existingProfile?.version ?? 0;
+      const newVersion = lastVersion > 0 ? lastVersion + 1 : questionnaire.version;
+      
       // Подготавливаем данные для Prisma
       // При повторном прохождении анкеты сохраняем некоторые данные из старого профиля
       const existingMarkers = (existingProfile?.medicalMarkers as any) || {};
@@ -466,9 +638,40 @@ export async function POST(request: NextRequest) {
         // ВАЖНО: Перезаписываем diagnoses и mainGoals из новых ответов
         ...extractedData,
       };
-      // Сохраняем gender из старого профиля, если он был
+      // ИСПРАВЛЕНО: Сохраняем gender из старого профиля при retake (immutable contract)
+      // Gender устанавливается один раз при первом прохождении и не изменяется при retake
+      // Это обеспечивает консистентность: пол не может измениться между прохождениями
       if (existingMarkers?.gender) {
         mergedMarkers.gender = existingMarkers.gender;
+        logger.info('Gender preserved from existing profile (immutable)', {
+          userId,
+          gender: existingMarkers.gender,
+          oldVersion: existingProfile?.version,
+          newVersion: newVersion,
+        });
+      } else {
+        // Если gender нет в старом профиле, пытаемся извлечь из текущих ответов
+        const genderAnswer = fullAnswers.find((a: any) => 
+          a.question?.code === 'gender' || a.question?.code === 'sex'
+        );
+        if (genderAnswer) {
+          const genderValue = genderAnswer.answerValue || 
+            (Array.isArray(genderAnswer.answerValues) ? genderAnswer.answerValues[0] : null);
+          if (genderValue) {
+            // Нормализуем gender для хранения
+            const normalizedGender = String(genderValue).toLowerCase().includes('мужск') || 
+                                    String(genderValue).toLowerCase().includes('male') ||
+                                    String(genderValue) === 'gender_2' ||
+                                    String(genderValue) === '137'
+              ? 'male' : 'female';
+            mergedMarkers.gender = normalizedGender;
+            logger.info('Gender extracted from answers (first pass)', {
+              userId,
+              gender: normalizedGender,
+              rawValue: genderValue,
+            });
+          }
+        }
       }
       // ВАЖНО: Валидируем данные перед созданием профиля
       // Проверяем, что все обязательные поля присутствуют
@@ -496,11 +699,6 @@ export async function POST(request: NextRequest) {
         medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
       };
       
-      // ВАЖНО: Используем upsert для избежания конфликтов уникальности при повторных отправках
-      // Если профиль существует, обновляем его с новой версией
-      // Если нет - создаем новый
-      const newVersion = existingProfile ? existingProfile.version + 1 : questionnaire.version;
-      
       // ВАЖНО: Логируем данные перед созданием профиля для диагностики
       logger.debug('Profile data for Prisma', {
         userId,
@@ -513,41 +711,12 @@ export async function POST(request: NextRequest) {
         newVersion,
       });
       
-      // Проверяем, не существует ли уже профиль с новой версией (защита от race condition)
-      const existingProfileWithNewVersion = await tx.skinProfile.findUnique({
-        where: {
-          userId_version: {
-            userId: userId!,
-            version: newVersion,
-          },
-        },
-      });
-      
-      // Если профиль с новой версией уже существует, используем его (повторная отправка)
-      if (existingProfileWithNewVersion) {
-        logger.warn('Profile with new version already exists, using existing profile', {
-          userId,
-          existingVersion: existingProfile?.version,
-          newVersion,
-          profileId: existingProfileWithNewVersion.id,
-        });
-        const profile = await tx.skinProfile.update({
-          where: { id: existingProfileWithNewVersion.id },
-          data: {
-            ...profileDataForPrisma,
-            updatedAt: new Date(),
-          },
-        });
-        return { savedAnswers, fullAnswers, profile, existingProfile };
-      }
-      
-      // Если существующий профиль есть, обновляем его с новой версией
-      // Если нет - создаем новый
-      // ВАЖНО: Используем try-catch для обработки unique constraint ошибок при race condition
-      let profile: any = null; // ИСПРАВЛЕНО: Инициализируем как null для проверки
+      // ВАЖНО: Создаём НОВУЮ запись профиля (append‑only).
+      // При гонке (два запроса одновременно) одна из вставок может поймать P2002 по (userId, version) —
+      // в этом случае просто используем уже созданный профиль.
+      let profile: any = null;
       try {
-        // ИСПРАВЛЕНО: Детальное логирование перед созданием/обновлением профиля
-        logger.debug('Attempting to create/update profile', {
+        logger.debug('Attempting to create new profile version (append-only)', {
           userId,
           hasExistingProfile: !!existingProfile,
           existingProfileId: existingProfile?.id,
@@ -555,16 +724,7 @@ export async function POST(request: NextRequest) {
           profileDataKeys: Object.keys(profileDataForPrisma),
         });
         
-        profile = existingProfile
-          ? await tx.skinProfile.update({
-              where: { id: existingProfile.id },
-              data: {
-                ...profileDataForPrisma,
-                version: newVersion, // Инкрементируем версию при обновлении профиля
-                updatedAt: new Date(),
-              },
-            })
-          : await tx.skinProfile.create({
+        profile = await tx.skinProfile.create({
               data: {
                 userId: userId!,
                 version: newVersion,
@@ -572,18 +732,23 @@ export async function POST(request: NextRequest) {
               },
             });
         
-        // ИСПРАВЛЕНО: Логируем успешное создание/обновление профиля
-        logger.debug('Profile created/updated successfully', {
+        // ИСПРАВЛЕНО: Обновляем currentProfileId в User для быстрого доступа к текущему профилю
+        // ИСПРАВЛЕНО: Используем as any, так как currentProfileId может быть не в типах Prisma до регенерации
+        await (tx.user as any).update({
+          where: { id: userId! },
+          data: { currentProfileId: profile.id },
+        });
+        
+        logger.debug('Profile created successfully (append-only)', {
           userId,
           profileId: profile?.id,
           version: profile?.version,
-          wasUpdate: !!existingProfile,
+          previousVersion: existingProfile?.version,
         });
       } catch (updateError: any) {
-        // Если возникла ошибка unique constraint, значит профиль с новой версией уже был создан
-        // (race condition - два запроса одновременно)
+        // Если возникла ошибка уникальности по (userId, version), значит профиль уже был создан параллельным запросом.
         if (updateError?.code === 'P2002' && updateError?.meta?.target?.includes('user_id') && updateError?.meta?.target?.includes('version')) {
-          logger.warn('Unique constraint error during profile update (race condition), fetching existing profile', {
+          logger.warn('Unique constraint error during profile create (race condition), fetching existing profile version', {
             userId,
             newVersion,
             error: updateError.message,
@@ -600,21 +765,15 @@ export async function POST(request: NextRequest) {
           });
           
           if (raceConditionProfile) {
-            // Обновляем существующий профиль без изменения версии
-            profile = await tx.skinProfile.update({
-              where: { id: raceConditionProfile.id },
-              data: {
-                ...profileDataForPrisma,
-                updatedAt: new Date(),
-              },
-            });
-            logger.info('Profile updated after race condition resolution', {
+            // Используем уже созданный профиль как результат
+            profile = raceConditionProfile;
+            logger.info('Existing profile version reused after race condition', {
               userId,
               profileId: profile.id,
               version: profile.version,
             });
           } else {
-            // Если профиль не найден, это странно - пробуем найти последний профиль
+            // Если профиль не найден, пробуем fallback: берем последний доступный профиль
             const lastProfile = await tx.skinProfile.findFirst({
               where: { userId: userId! },
               orderBy: { version: 'desc' },
@@ -745,18 +904,28 @@ export async function POST(request: NextRequest) {
           newVersion: profile.version,
         });
         
-        // Удаляем старую RecommendationSession, чтобы план перегенерировался с новыми продуктами
-        // ВАЖНО: Удаляем только по userId, так как новая сессия будет создана позже
+        // ИСПРАВЛЕНО: Удаляем старую RecommendationSession и PlanProgress по userId
+        // Семантика: при создании нового профиля (новая версия) удаляем ВСЕ сессии и прогресс пользователя
+        // Это гарантирует чистый старт для новой версии профиля
+        // Новая сессия будет создана позже через /api/recommendations или /api/plan/generate
         await prisma.recommendationSession.deleteMany({
           where: { userId },
         });
-        logger.info('RecommendationSession deleted for plan regeneration', { userId });
+        logger.info('RecommendationSession deleted for plan regeneration (all user sessions)', { 
+          userId,
+          oldProfileVersion: existingProfile.version,
+          newProfileVersion: profile.version,
+        });
         
         // ВАЖНО: Также удаляем старый прогресс плана, чтобы не было конфликтов
         await prisma.planProgress.deleteMany({
           where: { userId },
         });
-        logger.info('PlanProgress deleted for plan regeneration', { userId });
+        logger.info('PlanProgress deleted for plan regeneration (all user progress)', { 
+          userId,
+          oldProfileVersion: existingProfile.version,
+          newProfileVersion: profile.version,
+        });
         
         // ВАЖНО: Генерацию плана переносим ПОСЛЕ создания RecommendationSession
         // Это гарантирует, что план будет использовать продукты из новой сессии
@@ -772,889 +941,57 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Автоматически создаем рекомендации после создания профиля
-    // Импортируем логику из recommendations/route.ts
-    try {
-      // Получаем все активные правила
-      const rules = await prisma.recommendationRule.findMany({
-        where: { isActive: true },
-        orderBy: { priority: 'desc' },
-      });
-
-      // ИСПРАВЛЕНО: Вычисляем skin scores перед проверкой правил (как в /api/recommendations)
-      // Правила могут использовать поля из scores (inflammation, oiliness, hydration, barrier, pigmentation, photoaging)
-      // которые не хранятся в профиле, а вычисляются из ответов
-      const { calculateSkinAxes } = await import('@/lib/skin-analysis-engine');
-      
-      // Формируем QuestionnaireAnswers для вычисления scores
-      const questionnaireAnswers: QuestionnaireAnswers = {
-        skinType: profile.skinType || 'normal',
-        age: profile.ageGroup || '25-34',
-        concerns: [],
-        diagnoses: [],
-        allergies: [],
-        sensitivityLevel: profile.sensitivityLevel || 'low',
-        acneLevel: profile.acneLevel || 0,
-      };
-      
-      // Извлекаем данные из ответов
-      // ИСПРАВЛЕНО: Извлекаем все необходимые поля для правильного вычисления scores
-      for (const answer of fullAnswers) {
-        const code = answer.question?.code || '';
-        const value = answer.answerValue || 
-          (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
-        
-        if (code === 'skin_concerns' && Array.isArray(answer.answerValues)) {
-          questionnaireAnswers.concerns = answer.answerValues as string[];
-        } else if (code === 'diagnoses' && Array.isArray(answer.answerValues)) {
-          questionnaireAnswers.diagnoses = answer.answerValues as string[];
-        } else if (code === 'allergies' && Array.isArray(answer.answerValues)) {
-          questionnaireAnswers.allergies = answer.answerValues as string[];
-        } else if (code === 'habits' && Array.isArray(answer.answerValues)) {
-          questionnaireAnswers.habits = answer.answerValues as string[];
-        } else if (code === 'season_change' || code === 'seasonChange') {
-          questionnaireAnswers.seasonChange = value as string;
-        } else if (code === 'retinol_reaction' || code === 'retinolReaction') {
-          questionnaireAnswers.retinolReaction = value as string;
-        } else if (code === 'spf_frequency' || code === 'spfFrequency') {
-          questionnaireAnswers.spfFrequency = value as string;
-        } else if (code === 'sun_exposure' || code === 'sunExposure') {
-          questionnaireAnswers.sunExposure = value as string;
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Добавляем детальное логирование перед вычислением scores
-      logger.info('QuestionnaireAnswers prepared for score calculation', {
-        userId,
-        profileId: profile.id,
-        skinType: questionnaireAnswers.skinType,
-        age: questionnaireAnswers.age,
-        concernsCount: questionnaireAnswers.concerns?.length || 0,
-        concerns: questionnaireAnswers.concerns,
-        diagnosesCount: questionnaireAnswers.diagnoses?.length || 0,
-        diagnoses: questionnaireAnswers.diagnoses,
-        allergiesCount: questionnaireAnswers.allergies?.length || 0,
-        habitsCount: questionnaireAnswers.habits?.length || 0,
-        habits: questionnaireAnswers.habits,
-        seasonChange: questionnaireAnswers.seasonChange,
-        retinolReaction: questionnaireAnswers.retinolReaction,
-        acneLevel: questionnaireAnswers.acneLevel,
-        sensitivityLevel: questionnaireAnswers.sensitivityLevel,
-      });
-      
-      // Вычисляем skin scores
-      const skinScores = calculateSkinAxes(questionnaireAnswers);
-      
-      // ИСПРАВЛЕНО: Добавляем детальное логирование вычисленных scores
-      logger.info('Skin scores calculated', {
-        userId,
-        profileId: profile.id,
-        scores: skinScores.map(s => ({
-          axis: s.axis,
-          value: s.value,
-          level: s.level,
-          title: s.title,
-        })),
-        inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
-        oiliness: skinScores.find(s => s.axis === 'oiliness')?.value || 0,
-        hydration: skinScores.find(s => s.axis === 'hydration')?.value || 0,
-        barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
-        pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
-        photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
-      });
-      
-      // Создаем расширенный профиль с вычисленными scores для проверки правил
-      const profileWithScores: any = {
-        ...profile,
-        // Добавляем вычисленные scores
-        inflammation: skinScores.find(s => s.axis === 'inflammation')?.value || 0,
-        oiliness: skinScores.find(s => s.axis === 'oiliness')?.value || 0,
-        hydration: skinScores.find(s => s.axis === 'hydration')?.value || 0,
-        barrier: skinScores.find(s => s.axis === 'barrier')?.value || 0,
-        pigmentation: skinScores.find(s => s.axis === 'pigmentation')?.value || 0,
-        photoaging: skinScores.find(s => s.axis === 'photoaging')?.value || 0,
-      };
-      
-      // ИСПРАВЛЕНО: Нормализуем тип кожи и чувствительность для совместимости с правилами
-      // Правила используют "combination_dry" и "combination_oily", но в БД используется "combo"
-      const { normalizeSkinTypeForRules, normalizeSensitivityForRules } = await import('@/lib/skin-type-normalizer');
-      const normalizedSkinType = normalizeSkinTypeForRules(profile.skinType, { userId });
-      const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivityLevel);
-      
-      // Добавляем нормализованные значения в profileWithScores
-      profileWithScores.skin_type = normalizedSkinType;
-      profileWithScores.skinType = normalizedSkinType;
-      profileWithScores.sensitivity_level = normalizedSensitivity;
-      profileWithScores.sensitivity = normalizedSensitivity;
-      profileWithScores.age_group = profile.ageGroup;
-      profileWithScores.age = profile.ageGroup;
-      
-      logger.info('Profile with calculated scores for rule matching', {
-        userId,
-        profileId: profile.id,
-        skinType: profile.skinType,
-        normalizedSkinType: normalizedSkinType,
-        normalizedSensitivity: normalizedSensitivity,
-        inflammation: profileWithScores.inflammation,
-        oiliness: profileWithScores.oiliness,
-        hydration: profileWithScores.hydration,
-        barrier: profileWithScores.barrier,
-        pigmentation: profileWithScores.pigmentation,
-        photoaging: profileWithScores.photoaging,
-        ageGroup: profile.ageGroup,
-        acneLevel: profile.acneLevel,
-        diagnoses: (profile.medicalMarkers as any)?.diagnoses || [],
-      });
-
-      // Находим подходящее правило
-      let matchedRule: any = null;
-      
-      logger.info('Checking rules for match', {
-        userId,
-        profileId: profile.id,
-        rulesCount: rules.length,
-        rules: rules.map(r => ({
-          id: r.id,
-          name: r.name,
-          priority: r.priority,
-          conditions: r.conditionsJson,
-        })),
-      });
-      
-      for (const rule of rules) {
-        const conditions = rule.conditionsJson as any;
-        let matches = true;
-        const failedConditions: string[] = [];
-
-        for (const [key, condition] of Object.entries(conditions)) {
-          // ВАЖНО: diagnoses хранятся в medicalMarkers, а не в корне профиля
-          let profileValue: any;
-          if (key === 'diagnoses') {
-            // Извлекаем diagnoses из medicalMarkers
-            profileValue = (profileWithScores.medicalMarkers as any)?.diagnoses || [];
-          } else {
-            // ИСПРАВЛЕНО: Используем profileWithScores вместо profile, чтобы получить вычисленные scores
-            profileValue = profileWithScores[key];
-          }
-
-          if (Array.isArray(condition)) {
-            if (!condition.includes(profileValue)) {
-              matches = false;
-              failedConditions.push(`${key}: expected one of [${condition.join(', ')}], got ${profileValue}`);
-              break;
-            }
-          } else if (typeof condition === 'object' && condition !== null) {
-            const conditionObj = condition as Record<string, unknown>;
-            
-            // Обработка hasSome для массивов (например, diagnoses: { hasSome: ["atopic_dermatitis"] })
-            if ('hasSome' in conditionObj && Array.isArray(conditionObj.hasSome)) {
-              const hasSomeArray = conditionObj.hasSome as any[];
-              const profileArray = Array.isArray(profileValue) ? profileValue : [];
-              // Проверяем, есть ли хотя бы один элемент из hasSome в profileValue
-              const hasMatch = hasSomeArray.some(item => profileArray.includes(item));
-              if (!hasMatch) {
-                matches = false;
-                failedConditions.push(`${key}: expected hasSome of [${hasSomeArray.join(', ')}], got [${profileArray.join(', ')}]`);
-                break;
-              }
-              continue; // Переходим к следующему условию
-            }
-            
-            // ИСПРАВЛЕНО: Обрабатываем случаи, когда profileValue undefined или null
-            // Для числовых условий (gte/lte) отсутствие значения = несоответствие
-            if (profileValue === undefined || profileValue === null) {
-              if ('gte' in conditionObj || 'lte' in conditionObj) {
-                matches = false;
-                failedConditions.push(`${key}: value is ${profileValue}, but condition requires ${'gte' in conditionObj ? `>= ${conditionObj.gte}` : ''}${'lte' in conditionObj ? `<= ${conditionObj.lte}` : ''}`);
-                break;
-              }
-            } else if (typeof profileValue === 'number') {
-              if ('gte' in conditionObj && typeof conditionObj.gte === 'number') {
-                const gteValue = conditionObj.gte as number;
-                if (profileValue < gteValue) {
-                  matches = false;
-                  failedConditions.push(`${key}: ${profileValue} < ${gteValue} (gte)`);
-                  break;
-                }
-              }
-              if ('lte' in conditionObj && typeof conditionObj.lte === 'number') {
-                const lteValue = conditionObj.lte as number;
-                if (profileValue > lteValue) {
-                  matches = false;
-                  failedConditions.push(`${key}: ${profileValue} > ${lteValue} (lte)`);
-                  break;
-                }
-              }
-            }
-          } else if (condition !== profileValue) {
-            matches = false;
-            failedConditions.push(`${key}: expected "${condition}", got "${profileValue}"`);
-            break;
-          }
-        }
-
-        if (matches) {
-          logger.info('Rule matched successfully', {
-            userId,
-            profileId: profile.id,
-            ruleId: rule.id,
-            ruleName: rule.name,
-            rulePriority: rule.priority,
-          });
-          matchedRule = rule;
-          break;
-        } else {
-          logger.debug('Rule did not match', {
-            userId,
-            profileId: profile.id,
-            ruleId: rule.id,
-            ruleName: rule.name,
-            failedConditions,
-          });
-        }
-      }
-      
-      if (!matchedRule) {
-        logger.warn('No rule matched for profile', {
-          userId,
-          profileId: profile.id,
-          rulesChecked: rules.length,
-          profileWithScores: {
-            skinType: profileWithScores.skinType,
-            normalizedSkinType: profileWithScores.skin_type,
-            inflammation: profileWithScores.inflammation,
-            oiliness: profileWithScores.oiliness,
-            hydration: profileWithScores.hydration,
-            barrier: profileWithScores.barrier,
-            pigmentation: profileWithScores.pigmentation,
-            photoaging: profileWithScores.photoaging,
-            ageGroup: profileWithScores.age_group,
-            diagnoses: (profileWithScores.medicalMarkers as any)?.diagnoses || [],
-          },
-        });
-      }
-
-      // Если найдено правило, создаем RecommendationSession
-      // ВАЖНО: Перед созданием новой сессии удаляем все старые сессии для этого профиля
-      // Это гарантирует, что при перепрохождении анкеты будут использоваться новые продукты
-      await prisma.recommendationSession.deleteMany({
-        where: {
-          userId,
-          profileId: profile.id,
-        },
-      });
-      logger.info('Old RecommendationSessions deleted before creating new one', {
-        userId,
-        profileId: profile.id,
-      });
-      
-      if (matchedRule) {
-        const stepsJson = matchedRule.stepsJson as any;
-
-        // Получаем бюджет пользователя из ответов (если есть)
-        const budgetAnswer = fullAnswers.find(a => a.question?.code === 'budget');
-        const userBudget = budgetAnswer?.answerValue || 'любой';
-        
-        // Маппинг бюджета из ответов в формат для фильтрации
-        const budgetMapping: Record<string, string> = {
-          'budget': 'mass',
-          'medium': 'mid',
-          'premium': 'premium',
-          'any': null as any,
-          'любой': null as any,
-        };
-        
-        const userPriceSegment = budgetMapping[userBudget] || null;
-
-        // Импортируем функцию getProductsForStep из общего модуля
-        // ВАЖНО: Используем ту же логику подбора продуктов, что и в /api/recommendations
-        // Это гарантирует консистентность между главной страницей и планом
-        const { getProductsForStep: getProductsForStepFromLib } = await import('@/lib/product-selection');
-        
-        // Обертка для совместимости с локальной сигнатурой
-        const getProductsForStep = async (stepConfig: any) => {
-          return await getProductsForStepFromLib(stepConfig, userPriceSegment);
-        };
-        
-        // Старая локальная реализация (будет удалена после полного рефакторинга)
-        const getProductsForStepOld = async (stepConfig: any) => {
-          const where: any = {
-            published: true,
-            brand: {
-              isActive: true,
-            },
-          };
-
-          // SPF универсален для всех типов кожи - не фильтруем по типу кожи
-          const isSPF = stepConfig.category?.includes('spf') || stepConfig.category?.some((c: string) => c.toLowerCase().includes('spf'));
-
-          // Строим условия для category/step
-          if (stepConfig.category && stepConfig.category.length > 0) {
-            const categoryConditions: any[] = [];
-            
-            // Маппинг категорий из правил в категории БД
-            const categoryMapping: Record<string, string[]> = {
-              'cream': ['moisturizer'], // В правилах используется "cream", в БД - "moisturizer"
-              'moisturizer': ['moisturizer'],
-              'cleanser': ['cleanser'],
-              'serum': ['serum'],
-              'toner': ['toner'],
-              'treatment': ['treatment'],
-              'spf': ['spf'],
-              'mask': ['mask'],
-            };
-            
-            for (const cat of stepConfig.category) {
-              const normalizedCats = categoryMapping[cat] || [cat];
-              
-              for (const normalizedCat of normalizedCats) {
-                // Точное совпадение по category
-                categoryConditions.push({ category: normalizedCat });
-                // Точное совпадение по step (на случай, если в БД step = category)
-                categoryConditions.push({ step: normalizedCat });
-                // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
-                categoryConditions.push({ step: { startsWith: normalizedCat } });
-              }
-            }
-            
-            where.OR = categoryConditions;
-          }
-
-          // Нормализуем skinTypes: combo -> combination_dry, combination_oily, или просто combo
-          if (stepConfig.skin_types && stepConfig.skin_types.length > 0 && !isSPF) {
-            const normalizedSkinTypes: string[] = [];
-            
-            for (const skinType of stepConfig.skin_types) {
-              normalizedSkinTypes.push(skinType);
-              // Если ищем 'combo', также ищем варианты
-              if (skinType === 'combo') {
-                normalizedSkinTypes.push('combination_dry');
-                normalizedSkinTypes.push('combination_oily');
-              }
-              // Если ищем 'dry', также ищем 'combination_dry'
-              if (skinType === 'dry') {
-                normalizedSkinTypes.push('combination_dry');
-              }
-              // Если ищем 'oily', также ищем 'combination_oily'
-              if (skinType === 'oily') {
-                normalizedSkinTypes.push('combination_oily');
-              }
-            }
-            
-            where.skinTypes = { hasSome: normalizedSkinTypes };
-          }
-
-          // Concerns: если указаны, ищем по ним, но не блокируем, если не найдено
-          if (stepConfig.concerns && stepConfig.concerns.length > 0) {
-            const concernsCondition = {
-              OR: [
-                { concerns: { hasSome: stepConfig.concerns } },
-                { concerns: { isEmpty: true } }, // Также берем продукты без concerns
-              ],
-            };
-            
-            if (where.AND) {
-              where.AND = Array.isArray(where.AND) ? [...where.AND, concernsCondition] : [where.AND, concernsCondition];
-            } else {
-              where.AND = [concernsCondition];
-            }
-          }
-
-          if (stepConfig.is_non_comedogenic === true) {
-            where.isNonComedogenic = true;
-          }
-
-          if (stepConfig.is_fragrance_free === true) {
-            where.isFragranceFree = true;
-          }
-
-          // Фильтрация по бюджету (priceSegment)
-          const ruleBudget = stepConfig.budget;
-          if (ruleBudget && ruleBudget !== 'любой') {
-            const budgetMapping: Record<string, string> = {
-              'бюджетный': 'mass',
-              'средний': 'mid',
-              'премиум': 'premium',
-            };
-            const priceSegment = budgetMapping[ruleBudget];
-            if (priceSegment) {
-              where.priceSegment = priceSegment;
-            }
-          } else if (userPriceSegment) {
-            // Если в правиле не указан бюджет, используем бюджет пользователя
-            where.priceSegment = userPriceSegment;
-          }
-
-          // Фильтрация по натуральности (если указано)
-          if (stepConfig.is_natural === true) {
-            // ПРИМЕЧАНИЕ: В текущей схеме БД нет поля isNatural
-            // Можно добавить проверку по composition, если нужно
-          }
-          
-          // Фильтрация по активным ингредиентам (если указано в правиле)
-          // ВАЖНО: Если продуктов с указанными ингредиентами нет, не блокируем поиск - используем fallback
-          if (stepConfig.active_ingredients && Array.isArray(stepConfig.active_ingredients) && stepConfig.active_ingredients.length > 0) {
-            // Нормализуем названия ингредиентов: убираем проценты, дополнительные слова
-            const normalizeIngredient = (ing: string): string[] => {
-              let normalized = ing.replace(/\s*\d+[–\-]\d+\s*%/gi, '');
-              normalized = normalized.replace(/\s*\d+\s*%/gi, '');
-              normalized = normalized.replace(/\s*%\s*/gi, '');
-              normalized = normalized.split('(')[0].split(',')[0].trim();
-              normalized = normalized.toLowerCase().trim();
-              
-              const variants = [normalized];
-              if (normalized.includes('_')) {
-                variants.push(normalized.replace(/_/g, ''));
-              }
-              
-              return variants;
-            };
-            
-            const normalizedIngredients: string[] = [];
-            for (const ingredient of stepConfig.active_ingredients) {
-              const variants = normalizeIngredient(ingredient);
-              normalizedIngredients.push(...variants);
-            }
-            
-            const activeIngredientsCondition = {
-              OR: [
-                ...normalizedIngredients.map((ingredient: string) => ({
-                  activeIngredients: { has: ingredient },
-                })),
-                { activeIngredients: { isEmpty: true } },
-              ],
-            };
-            
-            if (where.AND) {
-              where.AND = Array.isArray(where.AND) ? [...where.AND, activeIngredientsCondition] : [where.AND, activeIngredientsCondition];
-            } else {
-              where.AND = [activeIngredientsCondition];
-            }
-          }
-
-          // Первая попытка: точный поиск
-          let products = await prisma.product.findMany({
-            where,
-            include: {
-              brand: true,
-            },
-            take: (stepConfig.max_items || 3) * 3,
-          });
-
-          // Дополнительная фильтрация по ингредиентам с частичным совпадением
-          if (stepConfig.active_ingredients && Array.isArray(stepConfig.active_ingredients) && stepConfig.active_ingredients.length > 0 && products.length > 0) {
-            // Импортируем функцию нормализации из общего модуля
-            const { normalizeIngredientSimple } = await import('@/lib/ingredient-normalizer');
-
-            const normalizedRuleIngredients = stepConfig.active_ingredients.map(normalizeIngredientSimple);
-            
-            products = products.filter(product => {
-              if (product.activeIngredients.length === 0) {
-                return true;
-              }
-              
-              return product.activeIngredients.some(productIng => {
-                const normalizedProductIng = productIng.toLowerCase().trim();
-                return normalizedRuleIngredients.some((ruleIng: string) => {
-                  if (normalizedProductIng === ruleIng) return true;
-                  if (normalizedProductIng.includes(ruleIng) || ruleIng.includes(normalizedProductIng)) return true;
-                  const productIngNoUnderscore = normalizedProductIng.replace(/_/g, '');
-                  const ruleIngNoUnderscore = ruleIng.replace(/_/g, '');
-                  if (productIngNoUnderscore === ruleIngNoUnderscore) return true;
-                  if (productIngNoUnderscore.includes(ruleIngNoUnderscore) || ruleIngNoUnderscore.includes(productIngNoUnderscore)) return true;
-                  return false;
-                });
-              });
-            });
-          }
-
-          // Если не нашли достаточно продуктов, делаем более мягкий поиск
-          if (products.length < (stepConfig.max_items || 3)) {
-            const fallbackWhere: any = {
-              published: true,
-              brand: {
-                isActive: true,
-              },
-            };
-
-            // Более мягкий поиск по category/step
-            if (stepConfig.category && stepConfig.category.length > 0) {
-              const fallbackConditions: any[] = [];
-              for (const cat of stepConfig.category) {
-                fallbackConditions.push({ category: { contains: cat } });
-                fallbackConditions.push({ step: { contains: cat } });
-              }
-              fallbackWhere.OR = fallbackConditions;
-            }
-
-            // Убираем фильтры по skinTypes и concerns для fallback
-            const fallbackProducts = await prisma.product.findMany({
-              where: fallbackWhere,
-              include: {
-                brand: true,
-              },
-              take: (stepConfig.max_items || 3) * 2,
-            });
-
-            // Объединяем результаты, убирая дубликаты
-            const existingIds = new Set(products.map(p => p.id));
-            const newProducts = fallbackProducts.filter(p => !existingIds.has(p.id));
-            products = [...products, ...newProducts];
-          }
-          
-          // Сортируем в памяти по приоритету и isHero
-          const sorted = products.sort((a: any, b: any) => {
-            if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
-            if (a.priority !== b.priority) return b.priority - a.priority;
-            return b.createdAt.getTime() - a.createdAt.getTime();
-          });
-          
-          return sorted.slice(0, stepConfig.max_items || 3);
-        };
-
-        // Собираем ID продуктов из всех шагов, используя улучшенную логику
-        const productIdsSet = new Set<number>(); // Используем Set для автоматической дедупликации
-        
-        // ИСПРАВЛЕНО: Увеличиваем количество продуктов на шаг для более полных рекомендаций
-        // Дерматологическая логика: для каждого шага берем 3-5 продуктов вместо 1-3
-        // ВАЖНО: Теперь все обязательные шаги (toner, serum) уже есть в правилах в БД,
-        // поэтому не нужно добавлять их программно
-        const enhancedStepsJson: Record<string, any> = { ...stepsJson };
-        
-        // Увеличиваем max_items для всех шагов
-        for (const [stepName, stepConfig] of Object.entries(enhancedStepsJson)) {
-          const step = stepConfig as any;
-          // Увеличиваем max_items: минимум 3, максимум 5 для каждого шага
-          if (!step.max_items || step.max_items < 3) {
-            step.max_items = 3;
-          } else if (step.max_items > 5) {
-            step.max_items = 5;
-          }
-        }
-        
-        // Используем только шаги из правила (все обязательные шаги уже добавлены в БД)
-        const allSteps = enhancedStepsJson;
-        
-        for (const [stepName, stepConfig] of Object.entries(allSteps)) {
-          const step = stepConfig as any;
-          
-          // ВАЖНО: Если в правиле нет category, определяем его из имени шага
-          // Это нужно, чтобы treatment, serum и другие шаги корректно находили продукты
-          if (!step.category || step.category.length === 0) {
-            // Маппинг имени шага в категорию
-            const stepNameToCategory: Record<string, string[]> = {
-              'treatment': ['treatment'],
-              'serum': ['serum'],
-              'toner': ['toner'],
-              'cleanser': ['cleanser'],
-              'moisturizer': ['moisturizer'],
-              'cream': ['moisturizer'],
-              'spf': ['spf'],
-              'mask': ['mask'],
-            };
-            
-            if (stepNameToCategory[stepName]) {
-              step.category = stepNameToCategory[stepName];
-            }
-          }
-          
-          // Если в правиле не указан бюджет, используем бюджет пользователя
-          const stepWithBudget = {
-            ...step,
-            budget: step.budget || (userPriceSegment ? 
-              (userPriceSegment === 'mass' ? 'бюджетный' : 
-               userPriceSegment === 'mid' ? 'средний' : 
-               userPriceSegment === 'premium' ? 'премиум' : 'любой') : 'любой'),
-          };
-          
-          const products = await getProductsForStep(stepWithBudget);
-          logger.info(`Products selected for step ${stepName}`, {
-            stepName,
-            productCount: products.length,
-            productIds: products.map(p => p.id),
-            productNames: products.map(p => p.name),
-            stepConfig: stepWithBudget,
-            userId,
-          });
-          
-          // Добавляем продукты в Set (автоматически убирает дубликаты)
-          products.forEach(p => productIdsSet.add(p.id));
-        }
-        
-        // Конвертируем Set обратно в массив
-        const productIds = Array.from(productIdsSet);
-        
-        // ИСПРАВЛЕНО: Детальное логирование подбора средств для диагностики
-        logger.info('Final product selection summary', {
-          userId,
-          totalProductIds: productIds.length,
-          uniqueProductIds: productIds,
-          stepsCount: Object.keys(stepsJson).length,
-          hasProducts: productIds.length > 0,
-          userBudget,
-          userPriceSegment,
-          ruleId: matchedRule.id,
-          ruleName: matchedRule.name,
-        });
-        
-        // ВАЖНО: Проверяем, что средства подобраны
-        if (productIds.length === 0) {
-          logger.error('❌ No products selected for RecommendationSession', {
-            userId,
-            profileId: profile.id,
-            ruleId: matchedRule.id,
-            stepsCount: Object.keys(stepsJson).length,
-            userBudget,
-            userPriceSegment,
-          });
-        } else {
-          logger.info('✅ Products successfully selected', {
-            userId,
-            productCount: productIds.length,
-            productIds: productIds.slice(0, 20), // Первые 20 для логирования
-          });
-        }
-
-        // Создаем RecommendationSession
-        // ВАЖНО: Логируем для диагностики, особенно при перепрохождении
-        logger.info('Creating RecommendationSession with products', {
+    // ВАЖНО: Не создаём рекомендации и не подбираем продукты внутри POST /answers.
+    // Этот эндпоинт должен быть максимально быстрым и атомарным: сохранить ответы, создать новый профиль,
+    // инвалидация кэша — а дальше клиент отдельно дергает /api/recommendations и /api/plan.
+    logger.info('Skipping in-transaction recommendations build in /api/questionnaire/answers. Recommendations will be built via /api/recommendations.', {
           userId,
           profileId: profile.id,
           profileVersion: profile.version,
-          ruleId: matchedRule.id,
-          productCount: productIds.length,
-          productIds: productIds.slice(0, 10), // Первые 10 для логирования
-          isRetaking: !!existingProfile,
-          oldProfileVersion: existingProfile?.version,
-        });
-        
-        await prisma.recommendationSession.create({
-          data: {
-            userId,
-            profileId: profile.id,
-            ruleId: matchedRule.id,
-            products: productIds,
-          },
-        });
+    });
 
-        // Очищаем кэш рекомендаций для текущего профиля, чтобы новые рекомендации загрузились
-        try {
-          const { invalidateCache } = await import('@/lib/cache');
-          await invalidateCache(userId, profile.version);
-          logger.info('Recommendations cache invalidated after creating new session', {
-            userId,
-            profileVersion: profile.version,
-          });
-        } catch (cacheError: any) {
-          // NOPERM ошибки - это ожидаемо, если используется read-only токен
-          // Не критично, так как кэш будет обновлен при следующей генерации плана
-          if (cacheError?.message?.includes('NOPERM') || cacheError?.message?.includes('no permissions')) {
-            // Не логируем NOPERM ошибки, так как они не критичны
-          } else {
-            logger.warn('Failed to invalidate recommendations cache', { error: cacheError });
-          }
-        }
-
-        logger.info('RecommendationSession created', {
-          userId,
-          productCount: productIds.length,
-          ruleId: matchedRule.id,
-        });
-      } else {
-        // Если правило не найдено, создаем fallback сессию с базовыми продуктами
-        // ВАЖНО: Старые сессии уже удалены выше
-        logger.warn('No matching rule found, creating fallback session', {
-          userId,
-          profileId: profile.id,
-        });
-        
-        const fallbackProductIds: number[] = [];
-        
-        // ГАРАНТИРУЕМ наличие обязательных шагов: cleanser, toner, moisturizer, spf
-        // Остальное (serum, treatment и т.д.) только по потребностям (правилам)
-        // ВАЖНО: Используем расширенные названия шагов (cleanser_gentle, toner_hydrating и т.д.)
-        const stepPatterns: Record<string, string[]> = {
-          'cleanser': ['cleanser_gentle', 'cleanser_balancing', 'cleanser_deep'],
-          'toner': ['toner_hydrating', 'toner_soothing'],
-          'moisturizer': ['moisturizer_light', 'moisturizer_balancing', 'moisturizer_barrier', 'moisturizer_soothing'],
-          'spf': ['spf_50_face', 'spf_50_oily', 'spf_50_sensitive'],
-        };
-        
-        const requiredSteps = ['cleanser', 'toner', 'moisturizer', 'spf'];
-        
-        for (const step of requiredSteps) {
-          const stepVariants = stepPatterns[step] || [step];
-          let foundProduct = false;
-          
-          // Пробуем найти продукты по вариантам шага
-          for (const stepVariant of stepVariants) {
-            const products = await prisma.product.findMany({
+    // ВАЖНО: Если clientSubmissionId передан, фиксируем успешный сабмит в QuestionnaireSubmission,
+    // чтобы повторные запросы с тем же ключом отдавали уже созданный профиль.
+    if (clientSubmissionId) {
+      try {
+        await (prisma as any).questionnaireSubmission.upsert({
               where: {
-                published: true,
-                step: stepVariant,
-                brand: {
-                  isActive: true,
-                },
-                // SPF универсален, для остальных учитываем тип кожи
-                ...(step !== 'spf' && profile.skinType ? {
-                  skinTypes: { has: profile.skinType },
-                } : {}),
-              } as any,
-              take: 1,
-              orderBy: [
-                { isHero: 'desc' },
-                { priority: 'desc' },
-                { createdAt: 'desc' },
-              ],
-            });
-            
-            if (products.length > 0) {
-              fallbackProductIds.push(products[0].id);
-              logger.debug('Added fallback product', { 
+            userId_questionnaireId_clientSubmissionId: {
                 userId, 
-                step, 
-                stepVariant,
-                productName: products[0].name,
-                productId: products[0].id,
-              });
-              foundProduct = true;
-              break; // Нашли продукт, переходим к следующему шагу
-            }
-          }
-          
-          if (!foundProduct) {
-            logger.warn('No fallback product found for required step', { userId, step, stepVariants });
-          }
-        }
-        
-        // Добавляем дополнительные продукты (toner, serum) если есть
-        const optionalSteps = ['toner', 'serum'];
-        for (const step of optionalSteps) {
-          const products = await prisma.product.findMany({
-            where: {
-              published: true,
-              step: step,
-              ...(profile.skinType ? {
-                skinTypes: { has: profile.skinType },
-              } : {}),
+              questionnaireId,
+              clientSubmissionId,
             },
-            take: 1,
-            orderBy: { createdAt: 'desc' },
-          });
-          
-          if (products.length > 0 && !fallbackProductIds.includes(products[0].id)) {
-            fallbackProductIds.push(products[0].id);
-          }
-        }
-
-        if (fallbackProductIds.length > 0) {
-          await prisma.recommendationSession.create({
-            data: {
-              userId,
-              profileId: profile.id,
-              ruleId: null,
-              products: fallbackProductIds,
-            },
-          });
-
-          // Очищаем кэш рекомендаций для текущего профиля
-          try {
-            const { invalidateCache } = await import('@/lib/cache');
-            await invalidateCache(userId, profile.version);
-            logger.info('Recommendations cache invalidated after creating fallback session', {
-              userId,
-              profileVersion: profile.version,
-            });
-          } catch (cacheError) {
-            logger.warn('Failed to invalidate recommendations cache', { error: cacheError });
-          }
-          
-          // ИСПРАВЛЕНО: Детальное логирование fallback сессии
-          logger.info('✅ Fallback RecommendationSession created', {
-            userId,
-            productCount: fallbackProductIds.length,
-            productIds: fallbackProductIds,
+          },
+          update: {
             profileId: profile.id,
             profileVersion: profile.version,
-            skinType: profile.skinType,
-          });
-        } else {
-          // ИСПРАВЛЕНО: Детальное логирование ошибки отсутствия продуктов
-          logger.error('❌ No products available for fallback session', { 
+            status: 'completed',
+            errorMessage: null,
+          },
+          create: {
             userId,
+            questionnaireId,
+            clientSubmissionId,
             profileId: profile.id,
             profileVersion: profile.version,
-            skinType: profile.skinType,
-            requiredSteps,
-          });
-          // ИСПРАВЛЕНО: Если fallback сессия не создана из-за отсутствия продуктов - это критическая ошибка
-          // Но не блокируем сохранение ответов - план может быть сгенерирован с базовыми продуктами
-          logger.warn('⚠️ Fallback RecommendationSession could not be created - no products found. Plan may use all products.', {
-            userId,
-            profileId: profile.id,
-            profileVersion: profile.version,
-            skinType: profile.skinType,
-          });
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Проверяем, что RecommendationSession была создана
-      const createdSession = await prisma.recommendationSession.findFirst({
-        where: {
-          userId,
-          profileId: profile.id,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      
-      if (createdSession) {
-        logger.info('✅ RecommendationSession created successfully', {
-          userId,
-          profileId: profile.id,
-          sessionId: createdSession.id,
-          productsCount: Array.isArray(createdSession.products) ? createdSession.products.length : 0,
-          ruleId: createdSession.ruleId,
+            status: 'completed',
+          },
         });
-      } else {
-        logger.warn('⚠️ RecommendationSession was not created after answers submission', {
+        logger.info('QuestionnaireSubmission stored for idempotency', {
           userId,
+          questionnaireId,
+          clientSubmissionId,
           profileId: profile.id,
           profileVersion: profile.version,
         });
-      }
-      
-      // ВАЖНО: Финальная проверка перед возвратом ответа
-      logger.info('✅ Final check before returning response', {
+      } catch (submissionError: any) {
+        logger.warn('Failed to store QuestionnaireSubmission (idempotency)', {
         userId,
         questionnaireId,
-        profileId: profile.id,
-        profileVersion: profile.version,
-        hasProfile: !!profile,
-        profileSkinType: profile.skinType,
-        profileSensitivityLevel: profile.sensitivityLevel,
-        savedAnswersCount: savedAnswers?.length || 0,
-        hasRecommendationSession: !!createdSession,
-      });
-      
-      // ВАЖНО: Генерируем план ПОСЛЕ создания RecommendationSession
-      // Это гарантирует, что план будет использовать продукты из новой сессии
-      // РЕШЕНИЕ ПРОБЛЕМЫ ДОЛГОЙ ГЕНЕРАЦИИ: Запускаем генерацию асинхронно в фоне
-      // ВАЖНО: НЕ запускаем генерацию плана здесь!
-      // Генерация плана запускается на клиенте в quiz/page.tsx после отправки ответов
-      // Это гарантирует, что:
-      // 1. План генерируется с правильными данными (ответы еще не удалены)
-      // 2. Пользователь видит лоадер во время генерации
-      // 3. Редирект происходит только когда план готов
-      // 4. Ответы удаляются только после успешной генерации плана
-      logger.info('Plan generation will be triggered by client after answers submission', { 
-        userId, 
-        profileVersion: profile.version,
-        hasRecommendationSession: !!createdSession,
-        sessionProductsCount: createdSession ? (Array.isArray(createdSession.products) ? createdSession.products.length : 0) : 0,
-      });
-    } catch (recommendationError) {
-      // Не блокируем сохранение ответов, если рекомендации не создались
-      logger.error('Error creating recommendations', recommendationError, { userId });
+          clientSubmissionId,
+          error: submissionError?.message,
+        });
+      }
     }
 
     // ВАЖНО: НЕ удаляем ответы здесь!
@@ -1693,6 +1030,7 @@ export async function POST(request: NextRequest) {
       success: true,
       profile: {
         id: profile.id,
+        version: profile.version,
         skinType: profile.skinType,
         sensitivityLevel: profile.sensitivityLevel,
         acneLevel: profile.acneLevel,

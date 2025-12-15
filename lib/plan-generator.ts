@@ -107,8 +107,11 @@ export interface GeneratedPlan {
 }
 
 // Вспомогательная функция: определение бюджетного сегмента
-function getBudgetTier(price: number | null | undefined): 'бюджетный' | 'средний' | 'премиум' {
-  if (!price || price < 2000) return 'бюджетный';
+// ИСПРАВЛЕНО: Если цена неизвестна (null/undefined), возвращаем 'любой' вместо 'бюджетный'
+// чтобы не пускать дорогие продукты в бюджетные режимы по умолчанию
+function getBudgetTier(price: number | null | undefined): 'бюджетный' | 'средний' | 'премиум' | 'любой' {
+  if (price === null || price === undefined) return 'любой';
+  if (price < 2000) return 'бюджетный';
   if (price < 5000) return 'средний';
   return 'премиум';
 }
@@ -169,10 +172,18 @@ function getFallbackStep(step: string): StepCategory | undefined {
 /**
  * Генерирует 28-дневный план на основе профиля и ответов анкеты
  */
+/**
+ * ИСПРАВЛЕНО: Оригинальная функция для обратной совместимости
+ * В будущем должна быть мигрирована на generate28DayPlanFromContext
+ * TODO: Полная миграция на DomainContext - все данные должны приходить через context
+ */
 export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
   logger.info('🚀 Starting plan generation', { userId, timestamp: new Date().toISOString() });
   
   try {
+    // ИСПРАВЛЕНО: В будущем эта функция должна принимать DomainContext
+    // Пока оставляем для обратной совместимости
+    
     // Получаем профиль кожи
     logger.debug('🔍 Looking for skin profile', { userId });
     // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
@@ -251,20 +262,23 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   });
 
   // Дерматологический анализ - рассчитываем 6 осей кожи
+  // ИСПРАВЛЕНО: axes должны вычисляться ТОЛЬКО из answers, а не из profile
+  // Profile - это snapshot, не source of truth. При retake topic меняются только answers,
+  // но profile может быть еще не обновлен, что создает недетерминированность
   const questionnaireAnswers: QuestionnaireAnswers = {
-    skinType: profile.skinType || 'normal',
-    age: profile.ageGroup || answers.age || '25-34',
+    skinType: answers.skin_type || answers.skinType || 'normal', // ИСПРАВЛЕНО: из answers, не из profile
+    age: answers.age || answers.age_group || answers.ageGroup || '25-34', // ИСПРАВЛЕНО: из answers
     concerns: Array.isArray(answers.skin_concerns) ? answers.skin_concerns : [],
     diagnoses: Array.isArray(answers.diagnoses) ? answers.diagnoses : [],
     allergies: Array.isArray(answers.allergies) ? answers.allergies : [],
     seasonChange: answers.season_change || answers.seasonChange,
     habits: Array.isArray(answers.habits) ? answers.habits : [],
     retinolReaction: answers.retinol_reaction || answers.retinolReaction,
-    pregnant: profile.hasPregnancy || false,
+    pregnant: answers.pregnant || answers.has_pregnancy || false, // ИСПРАВЛЕНО: из answers
     spfFrequency: answers.spf_frequency || answers.spfFrequency,
     sunExposure: answers.sun_exposure || answers.sunExposure,
-    sensitivityLevel: profile.sensitivityLevel || 'low',
-    acneLevel: profile.acneLevel || 0,
+    sensitivityLevel: answers.sensitivity_level || answers.sensitivityLevel || 'low', // ИСПРАВЛЕНО: из answers
+    acneLevel: answers.acne_level || (typeof answers.acneLevel === 'number' ? answers.acneLevel : 0), // ИСПРАВЛЕНО: из answers
     ...answers, // дополнительные поля
   };
   
@@ -311,13 +325,20 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     mainGoals: Array.isArray(medicalMarkers.mainGoals) ? medicalMarkers.mainGoals : [],
   };
 
+  // ИСПРАВЛЕНО: Нормализуем diagnoses - берем из medicalMarkers (источник истины), 
+  // если их там нет, берем из answers для обратной совместимости
+  // Это обеспечивает консистентность: все правила работают с одной структурой
+  const normalizedDiagnoses = Array.isArray(medicalMarkers.diagnoses) && medicalMarkers.diagnoses.length > 0
+    ? medicalMarkers.diagnoses
+    : (Array.isArray(answers.diagnoses) ? answers.diagnoses : []);
+  
   const profileClassification: ProfileClassification = {
     focus: goals.filter((g: string) => 
       ['Акне и высыпания', 'Сократить видимость пор', 'Выровнять пигментацию', 'Морщины и мелкие линии'].includes(g)
     )[0] || 'general', // Берем первую цель как основной фокус
     skinType: profile.skinType || 'normal',
     concerns: concerns,
-    diagnoses: Array.isArray(answers.diagnoses) ? answers.diagnoses : [],
+    diagnoses: normalizedDiagnoses, // ИСПРАВЛЕНО: Используем нормализованные diagnoses
     ageGroup: profile.ageGroup || '25-34',
     exclude: Array.isArray(answers.exclude_ingredients) ? answers.exclude_ingredients : [],
     budget: answers.budget || 'средний',
@@ -327,19 +348,31 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     sensitivityLevel: profile.sensitivityLevel || 'medium',
   };
 
-  // Определяем основной фокус (приоритет по частоте упоминаний)
+  // ИСПРАВЛЕНО: Определяем основной фокус используя единую таксономию concerns
+  // Используем normalizePrimaryFocus для согласованности с product.concerns
+  const { normalizePrimaryFocus, normalizeConcerns } = await import('./concern-taxonomy');
+  
+  // Нормализуем concerns к каноническим ключам
+  const normalizedConcerns = normalizeConcerns(concerns);
+  
+  // Определяем primaryFocus на основе goals и normalized concerns
   let primaryFocus = 'general';
-  if (goals.includes('Акне и высыпания') || concerns.includes('Акне')) {
+  if (goals.includes('Акне и высыпания') || normalizedConcerns.includes('acne')) {
     primaryFocus = 'acne';
-  } else if (goals.includes('Сократить видимость пор') || concerns.includes('Расширенные поры')) {
+  } else if (goals.includes('Сократить видимость пор') || normalizedConcerns.includes('pores')) {
     primaryFocus = 'pores';
-  } else if (concerns.includes('Сухость')) {
+  } else if (normalizedConcerns.includes('dryness') || normalizedConcerns.includes('dehydration')) {
     primaryFocus = 'dryness';
-  } else if (goals.includes('Выровнять пигментацию') || concerns.includes('Пигментация')) {
+  } else if (goals.includes('Выровнять пигментацию') || normalizedConcerns.includes('pigmentation')) {
     primaryFocus = 'pigmentation';
-  } else if (goals.includes('Морщины и мелкие линии') || concerns.includes('Морщины')) {
+  } else if (goals.includes('Морщины и мелкие линии') || normalizedConcerns.includes('wrinkles')) {
     primaryFocus = 'wrinkles';
+  } else if (normalizedConcerns.includes('barrier') || normalizedConcerns.includes('sensitivity')) {
+    primaryFocus = 'barrier';
   }
+  
+  // ИСПРАВЛЕНО: Нормализуем primaryFocus к каноническому значению
+  primaryFocus = normalizePrimaryFocus(primaryFocus, normalizedConcerns);
 
   // Маппим цели в mainGoals для CarePlanTemplate
   // ВАЖНО: Используем keyProblems (вычисленные из ответов) вместо fallback значений
@@ -449,18 +482,20 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   });
   
   // ВАЖНО: Заменяем treatment_antiage на подходящий treatment, если у пользователя нет проблем с морщинами
-  const hasWrinklesGoal = mainGoals.includes('wrinkles') || mainGoals.some(g => g.toLowerCase().includes('wrinkle'));
+  // ИСПРАВЛЕНО: Используем finalMainGoals и проверяем 'antiage' (а не 'wrinkles'), так как primaryFocus='wrinkles' маппится в 'antiage'
+  const hasWrinklesGoal = finalMainGoals.includes('antiage') || finalMainGoals.includes('wrinkles');
   
   const adjustTemplateSteps = (steps: StepCategory[]): StepCategory[] => {
     return steps.flatMap((step) => {
       // Если это treatment_antiage, но нет проблем с морщинами - заменяем на подходящее лечение
       if (step === 'treatment_antiage' && !hasWrinklesGoal) {
         // Ищем другие проблемы, для которых нужны treatments
-        if (mainGoals.includes('acne')) {
+        // ИСПРАВЛЕНО: Используем finalMainGoals вместо mainGoals
+        if (finalMainGoals.includes('acne')) {
           return ['treatment_acne_azelaic'];
-        } else if (mainGoals.includes('pigmentation')) {
+        } else if (finalMainGoals.includes('pigmentation')) {
           return ['treatment_pigmentation'];
-        } else if (mainGoals.includes('pores') || mainGoals.includes('oiliness')) {
+        } else if (finalMainGoals.includes('pores') || finalMainGoals.includes('oiliness')) {
           return ['treatment_exfoliant_mild'];
         } else {
           // Если нет специфических проблем - просто убираем treatment
@@ -668,6 +703,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         await prisma.recommendationSession.delete({
           where: { id: existingSession.id },
         });
+        // ИСПРАВЛЕНО: Обнуляем existingSession после удаления, чтобы не использовать удаленную сессию дальше
+        existingSession = null;
         // Продолжаем без этой сессии - будем генерировать с нуля
         logger.info('Deleted empty RecommendationSession, will generate plan from scratch', {
           userId,
@@ -682,8 +719,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       }
     }
     
+    // ИСПРАВЛЕНО: Используем продукты из сессии только если сессия существует и не была удалена
     // Используем продукты из сессии, если их больше 0
-    if (productIds.length > 0) {
+    if (existingSession && productIds.length > 0) {
       logger.info('Using products from RecommendationSession for plan generation', { 
         userId,
         sessionId: existingSession.id,
@@ -772,60 +810,34 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       userId
     });
   } else {
-    // Если нет RecommendationSession, фильтруем продукты по критериям
-    logger.info('No RecommendationSession - filtering products from scratch', { userId });
-    filteredProducts = allProducts.filter((product: any) => {
-      const productPrice = (product as any).price as number | null | undefined;
-      const productSkinTypes: string[] = product.skinTypes || [];
-      const productConcerns: string[] = product.concerns || [];
-      const productAvoidIf: string[] = product.avoidIf || [];
-
-      // SPF универсален для всех типов кожи - пропускаем проверку типа кожи
-      const isSPF = product.step === 'spf' || product.category === 'spf';
-      
-      // Проверка типа кожи (кроме SPF)
-      const skinTypeMatches =
-        isSPF ||
-        productSkinTypes.length === 0 ||
-        (profileClassification.skinType && productSkinTypes.includes(profileClassification.skinType));
-
-      // Проверка бюджета (если указан)
-      const budgetMatches =
-        !profileClassification.budget ||
-        profileClassification.budget === 'любой' ||
-        !productPrice ||
-        getBudgetTier(productPrice) === profileClassification.budget;
-
-      // Проверка исключенных ингредиентов (по admin-полю concerns + ответу exclude_ingredients)
-      const noExcludedIngredients = !containsExcludedIngredients(
-        productConcerns,
-        profileClassification.exclude || []
-      );
-
-      // Явные противопоказания из админки:
-      // - avoidIf: ['pregnant', 'retinol_allergy', ...]
-      // - беременность: profileClassification.pregnant (из профиля / ответов)
-      const safeForPregnancy =
-        !profileClassification.pregnant || !productAvoidIf.includes('pregnant');
-
-      // Аллергия на ретинол / сильные кислоты:
-      // если в ответах пользователь исключил ретинол, то избегаем продуктов с avoidIf 'retinol_allergy'
-      const hasRetinolContraInAnswers = Array.isArray(profileClassification.exclude) && profileClassification.exclude.length > 0
-        ? profileClassification.exclude.some((ex: string) =>
-            ex.toLowerCase().includes('ретинол') || ex.toLowerCase().includes('retinol')
-          )
-        : false;
-      const safeForRetinolAllergy =
-        !hasRetinolContraInAnswers || !productAvoidIf.includes('retinol_allergy');
-
-      return (
-        skinTypeMatches &&
-        budgetMatches &&
-        noExcludedIngredients &&
-        safeForPregnancy &&
-        safeForRetinolAllergy
-      );
+    // ИСПРАВЛЕНО: Используем единый фильтр продуктов вместо дублирующейся логики
+    const { filterProductsBasic } = await import('./unified-product-filter');
+    
+    // Нормализуем продукты к ProductWithBrand перед фильтрацией
+    const normalizedProducts = allProducts.map((product: any) => {
+      const productBrand = product.brand as any;
+      return {
+        id: product.id,
+        name: product.name,
+        brand: {
+          id: productBrand?.id || 0,
+          name: productBrand?.name || '',
+          isActive: productBrand?.isActive ?? true,
+        },
+        step: product.step || '',
+        category: product.category || null,
+        price: product.price ?? null,
+        imageUrl: product.imageUrl || null,
+        isHero: product.isHero ?? false,
+        priority: product.priority ?? 0,
+        skinTypes: product.skinTypes || [],
+        published: product.published ?? true,
+        activeIngredients: product.activeIngredients || [],
+      } as ProductWithBrand;
     });
+    
+    logger.info('No RecommendationSession - filtering products from scratch using unified filter', { userId });
+    filteredProducts = filterProductsBasic(normalizedProducts, profileClassification, 'soft');
   }
 
   // Сортируем продукты по релевантности (приоритет основному фокусу, затем isHero и priority)
@@ -846,21 +858,50 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     return bPriority - aPriority;
   });
 
+  // ИСПРАВЛЕНО: Адаптер для нормализации продуктов к единому типу ProductWithBrand
+  const normalizeToProductWithBrand = (product: any): ProductWithBrand => {
+    // Если продукт уже в правильном формате, возвращаем как есть
+    if (product.brand && typeof product.brand === 'object' && 'name' in product.brand) {
+      return {
+        id: product.id,
+        name: product.name,
+        brand: {
+          id: product.brand.id,
+          name: product.brand.name,
+          isActive: product.brand.isActive ?? true,
+        },
+        step: product.step || '',
+        category: product.category || null,
+        price: product.price ?? null,
+        imageUrl: product.imageUrl || null,
+        isHero: product.isHero ?? false,
+        priority: product.priority ?? 0,
+        skinTypes: product.skinTypes || [],
+        published: product.published ?? true,
+        activeIngredients: product.activeIngredients || [],
+      };
+    }
+    // Если бренд в другом формате, пытаемся адаптировать
+    throw new Error(`Cannot normalize product to ProductWithBrand: missing or invalid brand structure for product ${product.id}`);
+  };
+
   // ВАЖНО: Если используем продукты из RecommendationSession, используем их ВСЕ без ограничений
   // Это гарантирует, что план будет содержать те же продукты, что и главная страница
   // Иначе ограничиваем количество продуктов (3 утро + 3 вечер = максимум 6)
-  let selectedProducts: any[];
+  let selectedProducts: ProductWithBrand[];
   
   if (recommendationProducts.length > 0) {
     // Используем ВСЕ продукты из RecommendationSession - не ограничиваем количество
-    selectedProducts = sortedProducts;
+    // ИСПРАВЛЕНО: Нормализуем все продукты к ProductWithBrand
+    selectedProducts = sortedProducts.map(normalizeToProductWithBrand);
     logger.info('Using ALL products from RecommendationSession for plan (no limit)', {
       count: selectedProducts.length,
       userId
     });
   } else {
     // Ограничиваем только если генерируем с нуля
-    selectedProducts = sortedProducts.slice(0, 6);
+    // ИСПРАВЛЕНО: Нормализуем все продукты к ProductWithBrand
+    selectedProducts = sortedProducts.slice(0, 6).map(normalizeToProductWithBrand);
     logger.info('Limited products count (generating from scratch)', {
       count: selectedProducts.length,
       userId
@@ -882,8 +923,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   
   if (hasRecentProfileUpdate) {
     // Пользователь недавно проходил анкету - делаем автозамену продуктов с неактивными брендами
+    // ИСПРАВЛЕНО: selectedProducts уже нормализован к ProductWithBrand
     const replacedProducts = await Promise.all(
-      selectedProducts.map(async (product: any) => {
+      selectedProducts.map(async (product: ProductWithBrand) => {
         // Проверяем, активен ли бренд
         const productBrand = (product as any).brand;
         if (productBrand && !productBrand.isActive) {
@@ -902,9 +944,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
               ...(product.skinTypes && product.skinTypes.length > 0 ? {
                 skinTypes: { hasSome: product.skinTypes },
               } : {}),
-              ...(product.concerns && product.concerns.length > 0 ? {
-                concerns: { hasSome: product.concerns },
-              } : {}),
+              // ИСПРАВЛЕНО: concerns не существует в ProductWithBrand, используем activeIngredients
+              // concerns - это проблемы кожи, не ингредиенты
             } as any,
             include: { brand: true },
             take: 10,
@@ -920,7 +961,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           if (replacementCandidates.length > 0) {
             const replacement = replacementCandidates[0];
             logger.info('Product replaced', { oldProduct: product.name, newProduct: replacement.name, userId });
-            return replacement;
+            // ИСПРАВЛЕНО: Нормализуем замененный продукт к ProductWithBrand
+            return normalizeToProductWithBrand(replacement);
           } else {
             // Если не нашли похожий, ищем любой продукт того же шага
             const anyReplacementCandidates = await prisma.product.findMany({
@@ -946,10 +988,12 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             if (anyReplacementCandidates.length > 0) {
               const anyReplacement = anyReplacementCandidates[0];
               logger.info('Product replaced with any available', { oldProduct: product.name, newProduct: anyReplacement.name, userId });
-              return anyReplacement;
+              // ИСПРАВЛЕНО: Нормализуем замененный продукт к ProductWithBrand
+              return normalizeToProductWithBrand(anyReplacement);
             }
           }
         }
+        // ИСПРАВЛЕНО: product уже нормализован, возвращаем как есть
         return product;
       })
     );
@@ -964,7 +1008,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     count: selectedProducts.length, 
     source: recommendationProducts.length > 0 ? 'recommendationSession' : 'filtering',
     userId,
-    productIds: selectedProducts.map((p: any) => ({ id: p.id, name: p.name, step: p.step, category: p.category })).slice(0, 10),
+    productIds: selectedProducts.map((p: ProductWithBrand) => ({ id: p.id, name: p.name, step: p.step, category: p.category })).slice(0, 10),
   });
 
   // Группируем продукты по шагам (используем Map для лучшей типизации)
@@ -998,7 +1042,13 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     
     // Маппинг старого формата в StepCategory
     // Проверяем и step, и category для более точного маппинга
-    if (stepStr === 'cleanser_oil' || categoryStr.includes('oil') || stepStr.includes('oil')) {
+    // ИСПРАВЛЕНО: Ужесточаем проверку 'oil' - используем regex с границами слова
+    // чтобы избежать ложных срабатываний на "spoiler", "boil", "oily" и т.п.
+    const oilPattern = /\b(oil|масло)\b/i;
+    if (stepStr === 'cleanser_oil' || 
+        stepStr.includes('_oil') || 
+        oilPattern.test(stepStr) ||
+        (categoryStr === 'oil' || categoryStr.includes('_oil') || oilPattern.test(categoryStr))) {
       categories.push('cleanser_oil');
       // Также ищем по ключевым словам: гидрофильное, масло, oil, double cleans
       categories.push('cleanser_gentle'); // Базовый поиск для совместимости
@@ -1113,11 +1163,13 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     }
     
     // ИСПРАВЛЕНО: Проверяем специфичные варианты SPF ПЕРВЫМИ, чтобы не маппить sensitive/oily на face
-    if (stepStr.startsWith('spf_50_sensitive') || (stepStr.includes('spf') && stepStr.includes('sensitive'))) {
+    // Используем более точные проверки с границами слова для 'spf'
+    const spfPattern = /\b(spf|sunscreen|защит)\b/i;
+    if (stepStr.startsWith('spf_50_sensitive') || (spfPattern.test(stepStr) && /\bsensitive\b/i.test(stepStr))) {
       categories.push('spf_50_sensitive');
-    } else if (stepStr.startsWith('spf_50_oily') || (stepStr.includes('spf') && stepStr.includes('oily'))) {
+    } else if (stepStr.startsWith('spf_50_oily') || (spfPattern.test(stepStr) && /\boily\b/i.test(stepStr))) {
       categories.push('spf_50_oily');
-    } else if (stepStr.startsWith('spf_50_face') || stepStr === 'spf' || categoryStr === 'spf') {
+    } else if (stepStr.startsWith('spf_50_face') || stepStr === 'spf' || categoryStr === 'spf' || spfPattern.test(stepStr)) {
       categories.push('spf_50_face');
     }
     
@@ -1400,7 +1452,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     
     // Определяем, какие stepCategory подходят для каждой фазы
     // ИСПРАВЛЕНО: Используем только существующие категории из БД
-    const adaptationSteps = [
+    const adaptationSteps: StepCategory[] = [
       'cleanser_gentle', 'toner_hydrating', 'toner_soothing',
       'serum_hydrating', 'serum_anti_redness',
       'moisturizer_barrier', 'moisturizer_soothing', 'moisturizer_light',
@@ -1446,8 +1498,14 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       
       if (phase === 'adaptation') {
         // Фаза 1: только мягкие продукты
-        // Проверяем stepCategory
-        if (adaptationSteps.some(adaptStep => stepCategory === adaptStep || stepCategory.startsWith(adaptStep.split('_')[0]))) {
+        // ИСПРАВЛЕНО: Используем точное совпадение или сравнение базовых шагов вместо startsWith(split('_')[0])
+        // чтобы избежать ложных совпадений (например, serum_vitc не должен проходить для serum_hydrating)
+        const stepBaseStep = getBaseStepFromStepCategory(stepCategory);
+        if (adaptationSteps.some((adaptStep: StepCategory) => {
+          if (stepCategory === adaptStep) return true;
+          const adaptBaseStep = getBaseStepFromStepCategory(adaptStep);
+          return stepBaseStep === adaptBaseStep && stepBaseStep !== 'serum' && stepBaseStep !== 'treatment';
+        })) {
           return true;
         }
         
@@ -1464,8 +1522,14 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         return hasGentleActive || activeIngredientsStr.length === 0; // Если нет активных ингредиентов, тоже подходит
       } else if (phase === 'active') {
         // Фаза 2: активные ингредиенты
-        // Проверяем stepCategory
-        if (activeSteps.some(activeStep => stepCategory === activeStep || stepCategory.startsWith(activeStep.split('_')[0]))) {
+        // ИСПРАВЛЕНО: Используем точное совпадение или сравнение базовых шагов вместо startsWith(split('_')[0])
+        const stepBaseStep = getBaseStepFromStepCategory(stepCategory);
+        if (activeSteps.some(activeStep => {
+          if (stepCategory === activeStep) return true;
+          const activeBaseStep = getBaseStepFromStepCategory(activeStep as StepCategory);
+          // Для активной фазы разрешаем только точные совпадения или совпадения базовых шагов для определенных категорий
+          return stepBaseStep === activeBaseStep && (stepBaseStep === 'mask' || stepBaseStep === 'cleanser');
+        })) {
           return true;
         }
         
@@ -1479,8 +1543,13 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         return hasStrongActive || hasModerateActive;
       } else {
         // Фаза 3: поддерживающие продукты
-        // Проверяем stepCategory
-        if (supportSteps.some(supportStep => stepCategory === supportStep || stepCategory.startsWith(supportStep.split('_')[0]))) {
+        // ИСПРАВЛЕНО: Используем точное совпадение или сравнение базовых шагов вместо startsWith(split('_')[0])
+        const stepBaseStep = getBaseStepFromStepCategory(stepCategory);
+        if (supportSteps.some(supportStep => {
+          if (stepCategory === supportStep) return true;
+          const supportBaseStep = getBaseStepFromStepCategory(supportStep as StepCategory);
+          return stepBaseStep === supportBaseStep;
+        })) {
           return true;
         }
         
@@ -1979,6 +2048,70 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       requiredSteps: Array.from(requiredStepCategories),
       productsByStepMapKeys: Array.from(productsByStepMap.keys()),
     });
+    
+    // ИСПРАВЛЕНО: Для каждого missing step пробуем найти fallback через иерархию
+    // Например, для moisturizer_light пробуем: moisturizer_barrier, moisturizer_balancing, moisturizer
+    for (const missingStep of missingSteps) {
+      const baseStep = getBaseStepFromStepCategory(missingStep);
+      
+      // Для moisturizer пробуем иерархию fallback
+      if (baseStep === 'moisturizer' || missingStep.startsWith('moisturizer_')) {
+        const moisturizerFallbackHierarchy = [
+          'moisturizer_barrier',
+          'moisturizer_balancing',
+          'moisturizer_soothing',
+          'moisturizer_light',
+          'moisturizer',
+        ];
+        
+        logger.info('Trying moisturizer fallback hierarchy for missing step', {
+          missingStep,
+          baseStep,
+          hierarchy: moisturizerFallbackHierarchy,
+        });
+        
+        for (const fallbackCategory of moisturizerFallbackHierarchy) {
+          const fallbackProduct = await findFallbackProduct(fallbackCategory, profileClassification);
+          if (fallbackProduct) {
+            // Регистрируем fallback продукт для missing step
+            registerProductForStep(missingStep, fallbackProduct);
+            logger.info('Found moisturizer fallback from hierarchy for missing step', {
+              missingStep,
+              fallbackCategory,
+              productId: fallbackProduct.id,
+              productName: fallbackProduct.name,
+            });
+            break;
+          }
+        }
+      } else {
+        // Для других шагов пробуем базовый fallback
+        const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
+        if (fallbackProduct) {
+          registerProductForStep(missingStep, fallbackProduct);
+          logger.info('Found fallback product for missing step', {
+            missingStep,
+            baseStep,
+            productId: fallbackProduct.id,
+            productName: fallbackProduct.name,
+          });
+        }
+      }
+    }
+    
+    // Проверяем еще раз после fallback попыток
+    const stillMissingSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => {
+      const stepProducts = getProductsForStep(step);
+      return stepProducts.length === 0;
+    });
+    
+    if (stillMissingSteps.length > 0) {
+      logger.error('CRITICAL: Still missing products after fallback hierarchy attempts', {
+        userId,
+        stillMissingSteps,
+        note: 'Plan will be generated with placeholder steps (productId = null)',
+      });
+    }
   }
   
     logger.info('ProductsByStepMap summary AFTER ensureRequiredProducts', {
@@ -2007,6 +2140,45 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
 
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
+  
+  // ИСПРАВЛЕНО: Кэшируем результаты isStepAllowedForProfile для всех возможных шагов
+  // Шаги одинаковые для всех дней (шаблон не меняется), поэтому проверяем один раз
+  const stepAllowanceCache = new Map<StepCategory, boolean>();
+  const allPossibleSteps = new Set<StepCategory>([
+    ...adjustedMorning,
+    ...adjustedEvening,
+    ...(adjustedWeekly || []),
+    'cleanser_oil', // Может быть добавлен динамически
+  ]);
+  
+  logger.info('Caching step allowance results', {
+    userId,
+    totalSteps: allPossibleSteps.size,
+    steps: Array.from(allPossibleSteps),
+  });
+  
+  // Проверяем все возможные шаги один раз
+  const stepAllowancePromises = Array.from(allPossibleSteps).map(async (step) => {
+    const isAllowed = await isStepAllowedForProfile(step, stepProfile);
+    stepAllowanceCache.set(step, isAllowed);
+    if (!isAllowed) {
+      logger.debug('Step not allowed for profile (cached)', {
+        step,
+        skinType: stepProfile.skinType,
+        sensitivity: stepProfile.sensitivity,
+        diagnoses: stepProfile.diagnoses,
+        userId,
+      });
+    }
+    return { step, isAllowed };
+  });
+  await Promise.all(stepAllowancePromises);
+  
+  logger.info('Step allowance cache populated', {
+    userId,
+    cachedCount: stepAllowanceCache.size,
+    allowedCount: Array.from(stepAllowanceCache.values()).filter(Boolean).length,
+  });
   
   for (let weekNum = 1; weekNum <= PLAN_WEEKS_TOTAL; weekNum++) {
     const days: PlanDay[] = [];
@@ -2054,41 +2226,30 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         ...templateEveningAdditional, // Всегда все средства с первого дня
       ]);
 
-      // ИСПРАВЛЕНО: Логируем фильтрацию шагов для диагностики
-      // ИСПРАВЛЕНО: isStepAllowedForProfile теперь async, используем Promise.all
-      const allowedMorningStepsPromises = rawMorningSteps.map(async (step) => {
-        const isAllowed = await isStepAllowedForProfile(step, stepProfile);
+      // ИСПРАВЛЕНО: Используем кэш вместо повторных вызовов isStepAllowedForProfile
+      const allowedMorningSteps = rawMorningSteps.filter((step) => {
+        const isAllowed = stepAllowanceCache.get(step) ?? true; // По умолчанию разрешено, если не в кэше
         if (!isAllowed) {
-          logger.warn('Step filtered out by isStepAllowedForProfile (morning)', {
+          logger.debug('Step filtered out by isStepAllowedForProfile (morning, from cache)', {
             step,
-            skinType: stepProfile.skinType,
-            sensitivity: stepProfile.sensitivity,
-            diagnoses: stepProfile.diagnoses,
             userId,
             day,
           });
         }
-        return { step, isAllowed };
+        return isAllowed;
       });
-      const allowedMorningResults = await Promise.all(allowedMorningStepsPromises);
-      const allowedMorningSteps = allowedMorningResults.filter(r => r.isAllowed).map(r => r.step);
       
-      const allowedEveningStepsPromises = rawEveningSteps.map(async (step) => {
-        const isAllowed = await isStepAllowedForProfile(step, stepProfile);
+      const allowedEveningSteps = rawEveningSteps.filter((step) => {
+        const isAllowed = stepAllowanceCache.get(step) ?? true; // По умолчанию разрешено, если не в кэше
         if (!isAllowed) {
-          logger.warn('Step filtered out by isStepAllowedForProfile (evening)', {
+          logger.debug('Step filtered out by isStepAllowedForProfile (evening, from cache)', {
             step,
-            skinType: stepProfile.skinType,
-            sensitivity: stepProfile.sensitivity,
-            diagnoses: stepProfile.diagnoses,
             userId,
             day,
           });
         }
-        return { step, isAllowed };
+        return isAllowed;
       });
-      const allowedEveningResults = await Promise.all(allowedEveningStepsPromises);
-      const allowedEveningSteps = allowedEveningResults.filter(r => r.isAllowed).map(r => r.step);
       
       // ИСПРАВЛЕНО: Если после фильтрации осталось только 2 шага (cleanser и SPF), логируем предупреждение
       if (allowedMorningSteps.length <= 2 && allowedEveningSteps.length <= 1) {
@@ -2660,12 +2821,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     brand: p.brand.name,
     category: p.category,
     price: (p as any).price || 0,
-    available: (p.marketLinks as any)?.ozon ? 'Ozon' : 
-               (p.marketLinks as any)?.wb ? 'Wildberries' :
-               (p.marketLinks as any)?.apteka ? 'Apteka.ru' :
-               'Доступно в аптеках',
+    available: 'in_stock', // ИСПРАВЛЕНО: marketLinks не существует в ProductWithBrand, используем дефолтное значение
     imageUrl: p.imageUrl || undefined,
-    ingredients: p.concerns || [], // Используем concerns как ингредиенты (можно добавить отдельное поле)
+    // ИСПРАВЛЕНО: Используем activeIngredients вместо concerns (concerns - это проблемы кожи, не ингредиенты)
+    ingredients: (p as any).activeIngredients || [],
   }));
 
   // Генерируем предупреждения об аллергиях и исключениях
@@ -2729,7 +2888,13 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       continue;
     }
     
-    const phase = getPhaseForDay(dayIndex);
+    // ИСПРАВЛЕНО: Используем протокол для определения фазы дня
+    const { getPhaseForDayFromProtocol, isBarrierDay } = await import('./protocol-plan-integration');
+    const basePhase = getPhaseForDay(dayIndex);
+    const protocolPhase = getPhaseForDayFromProtocol(dayIndex, dermatologyProtocol, weekNum);
+    const isBarrier = isBarrierDay(dayIndex, weekNum, dermatologyProtocol);
+    // Используем протоколную фазу, если она более строгая (adaptation вместо active)
+    const phase = (protocolPhase === 'adaptation' && basePhase === 'active') ? 'adaptation' : basePhase;
     const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps, routineComplexity as any);
     
     // Преобразуем morning steps
@@ -3116,12 +3281,182 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     ),
   });
   
-  const plan28: Plan28 = {
+  let plan28: Plan28 = {
     userId,
     skinProfileId: profile.id,
     days: plan28Days,
     mainGoals,
   };
+
+  // ИСПРАВЛЕНО: Проверка инвариантов плана перед возвратом
+  // ИСПРАВЛЕНО: Добавлена проверка совместимости ингредиентов в течение дня
+  const assertPlanInvariants = async (plan: Plan28): Promise<{ isValid: boolean; warnings: string[] }> => {
+    const warnings: string[] = [];
+    const requiredSteps: StepCategory[] = ['cleanser_gentle', 'moisturizer_light', 'spf_50_face'];
+    const requiredBaseSteps = ['cleanser', 'moisturizer', 'spf'];
+    
+    // ИСПРАВЛЕНО: Импортируем функции проверки совместимости ингредиентов
+    const { checkProductCompatibility } = await import('./ingredient-compatibility');
+    
+    // 1. Проверка обязательных шагов (должны быть хотя бы в одном дне)
+    const allStepCategories = new Set<StepCategory>();
+    const allBaseSteps = new Set<string>();
+    plan.days.forEach(day => {
+      [...day.morning, ...day.evening, ...day.weekly].forEach(step => {
+        allStepCategories.add(step.stepCategory);
+        const baseStep = getBaseStepFromStepCategory(step.stepCategory);
+        allBaseSteps.add(baseStep);
+      });
+    });
+    
+    const missingRequiredSteps = requiredBaseSteps.filter(baseStep => {
+      return !Array.from(allBaseSteps).some(step => step === baseStep || step.startsWith(baseStep + '_'));
+    });
+    
+    if (missingRequiredSteps.length > 0) {
+      warnings.push(`Missing required steps: ${missingRequiredSteps.join(', ')}`);
+    }
+    
+    // 2. Проверка дубликатов продуктов в одном дне
+    plan.days.forEach((day, dayIndex) => {
+      const productIdsInDay = new Set<string>();
+      const duplicateProducts: string[] = [];
+      
+      [...day.morning, ...day.evening, ...day.weekly].forEach(step => {
+        if (step.productId) {
+          if (productIdsInDay.has(step.productId)) {
+            duplicateProducts.push(step.productId);
+          } else {
+            productIdsInDay.add(step.productId);
+          }
+        }
+      });
+      
+      // ИСПРАВЛЕНО: Проверка совместимости ингредиентов между morning и evening в течение дня
+      const morningProducts = day.morning
+        .filter(step => step.productId)
+        .map(step => {
+          // ИСПРАВЛЕНО: productId может быть string, но selectedProducts содержит number id
+          const product = selectedProducts.find(p => String(p.id) === step.productId);
+          return product ? {
+            id: product.id,
+            name: product.name,
+            activeIngredients: product.activeIngredients || [],
+          } : null;
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null);
+      
+      const eveningProducts = day.evening
+        .filter(step => step.productId)
+        .map(step => {
+          // ИСПРАВЛЕНО: productId может быть string, но selectedProducts содержит number id
+          const product = selectedProducts.find(p => String(p.id) === step.productId);
+          return product ? {
+            id: product.id,
+            name: product.name,
+            activeIngredients: product.activeIngredients || [],
+          } : null;
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null);
+      
+      // Проверяем совместимость между morning и evening продуктами
+      for (const morningProduct of morningProducts) {
+        for (const eveningProduct of eveningProducts) {
+          const conflict = checkProductCompatibility(morningProduct, eveningProduct);
+          if (conflict && conflict.severity === 'high') {
+            warnings.push(
+              `Day ${dayIndex + 1}: High-severity ingredient conflict between morning product "${morningProduct.name}" and evening product "${eveningProduct.name}": ${conflict.reason}. ${conflict.recommendation}`
+            );
+          } else if (conflict && conflict.severity === 'medium') {
+            warnings.push(
+              `Day ${dayIndex + 1}: Medium-severity ingredient conflict between morning product "${morningProduct.name}" and evening product "${eveningProduct.name}": ${conflict.reason}. ${conflict.recommendation}`
+            );
+          }
+        }
+      }
+      
+      if (duplicateProducts.length > 0) {
+        warnings.push(`Day ${dayIndex + 1}: duplicate products: ${duplicateProducts.join(', ')}`);
+      }
+    });
+    
+    // 3. Проверка максимального количества продуктов на шаг (не более 1 основного + 3 альтернативы)
+    plan.days.forEach((day, dayIndex) => {
+      [...day.morning, ...day.evening, ...day.weekly].forEach(step => {
+        if (step.alternatives.length > 3) {
+          warnings.push(`Day ${dayIndex + 1}, step ${step.stepCategory}: too many alternatives (${step.alternatives.length}, max 3)`);
+        }
+      });
+    });
+    
+    // 4. Проверка, что план не пустой
+    if (plan.days.length === 0) {
+      warnings.push('Plan has no days');
+    }
+    
+    // 5. Проверка, что каждый день имеет хотя бы один шаг
+    plan.days.forEach((day, dayIndex) => {
+      const totalSteps = day.morning.length + day.evening.length + day.weekly.length;
+      if (totalSteps === 0) {
+        warnings.push(`Day ${dayIndex + 1}: no steps in routine`);
+      }
+    });
+    
+    const isValid = warnings.length === 0;
+    
+    if (!isValid) {
+      logger.warn('Plan invariants validation failed', {
+        userId,
+        profileId: profile.id,
+        warnings,
+        planDaysCount: plan.days.length,
+        allStepCategories: Array.from(allStepCategories),
+        allBaseSteps: Array.from(allBaseSteps),
+      });
+    } else {
+      logger.info('Plan invariants validation passed', {
+        userId,
+        profileId: profile.id,
+        planDaysCount: plan.days.length,
+        totalSteps: plan.days.reduce((sum, d) => sum + d.morning.length + d.evening.length + d.weekly.length, 0),
+      });
+    }
+    
+    return { isValid, warnings };
+  };
+  
+  // ИСПРАВЛЕНО: assertPlanInvariants теперь async, используем await
+  const invariantsCheck = await assertPlanInvariants(plan28);
+  if (!invariantsCheck.isValid) {
+    // Логируем предупреждения, но не прерываем генерацию (safe fallback)
+    logger.warn('Plan generated with invariant violations, but continuing', {
+      userId,
+      warnings: invariantsCheck.warnings,
+      note: 'Plan will be returned with violations - UI should handle gracefully',
+    });
+  }
+
+  // ИСПРАВЛЕНО: Валидация плана на совместимость ингредиентов и протоколы
+  const { validatePlan, markIncompatibleDaysAsRecovery } = await import('./plan-validation');
+  const validationResult = await validatePlan(plan28, selectedProducts, {
+    ingredientCompatibility: true,
+    dermatologyProtocols: true,
+    strictMode: false, // Не блокируем план, только предупреждаем
+  });
+
+  if (validationResult.warnings.length > 0 || validationResult.errors.length > 0) {
+    logger.warn('Plan validation found issues', {
+      userId,
+      warnings: validationResult.warnings,
+      errors: validationResult.errors,
+      incompatibleDays: validationResult.incompatibleDays,
+    });
+
+    // Автоматически помечаем несовместимые дни как recovery
+    if (validationResult.incompatibleDays.length > 0) {
+      plan28 = markIncompatibleDaysAsRecovery(plan28, validationResult.incompatibleDays);
+    }
+  }
 
   return {
     profile: {
@@ -3151,7 +3486,11 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       progress: infographicProgress,
       chartConfig,
     },
-    products: formattedProducts,
+    products: formattedProducts.map(p => ({
+      ...p,
+      category: p.category || '', // ИСПРАВЛЕНО: category не может быть null
+      price: typeof p.price === 'number' ? p.price : 0, // ИСПРАВЛЕНО: price должен быть number
+    })),
     warnings: warnings.length > 0 ? warnings : undefined,
     // Новый формат плана Plan28
     plan28,

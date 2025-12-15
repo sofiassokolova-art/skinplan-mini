@@ -3,6 +3,28 @@
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
+// Внутренний троттлинг для отправки логов на сервер, чтобы избежать спама одинаковыми сообщениями
+const LOG_THROTTLE_MS = 10_000; // 10 секунд для одинаковых сообщений
+const lastSentLogMap = new Map<string, number>();
+
+const shouldSendToServer = (
+  level: 'log' | 'warn' | 'debug' | 'error' | 'info',
+  message: string
+): boolean => {
+  // Ключ по уровню и усечённому сообщению
+  const key = `${level}:${message.substring(0, 200)}`;
+  const now = Date.now();
+  const last = lastSentLogMap.get(key) ?? 0;
+
+  if (now - last < LOG_THROTTLE_MS) {
+    // Недавно уже отправляли такой же лог — пропускаем отправку на сервер
+    return false;
+  }
+
+  lastSentLogMap.set(key, now);
+  return true;
+};
+
 // Функция для отправки лога на сервер
 const sendLogToServer = async (
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
@@ -126,7 +148,9 @@ export const clientLogger = {
     // ИСПРАВЛЕНО: Предупреждения всегда отправляем на сервер (и в production, и в development)
     // Добавляем try-catch для безопасности
     try {
-      sendLogToServer('warn', message, args.length > 1 ? args.slice(1) : null);
+      if (shouldSendToServer('warn', message)) {
+        sendLogToServer('warn', message, args.length > 1 ? args.slice(1) : null);
+      }
     } catch (err) {
       // Игнорируем ошибки отправки, чтобы не создать бесконечный цикл
     }
@@ -147,7 +171,9 @@ export const clientLogger = {
     // ИСПРАВЛЕНО: Ошибки всегда отправляем на сервер (и в production, и в development)
     // Добавляем try-catch для безопасности
     try {
-      sendLogToServer('error', message, args.length > 1 ? args.slice(1) : null);
+      if (shouldSendToServer('error', message)) {
+        sendLogToServer('error', message, args.length > 1 ? args.slice(1) : null);
+      }
     } catch (err) {
       // Игнорируем ошибки отправки, чтобы не создать бесконечный цикл
     }
@@ -158,7 +184,9 @@ export const clientLogger = {
     console.info(...args);
     // ИСПРАВЛЕНО: info логи всегда отправляем на сервер (и в production, и в development)
     try {
-      sendLogToServer('info', message, args.length > 1 ? args.slice(1) : null);
+      if (shouldSendToServer('info', message)) {
+        sendLogToServer('info', message, args.length > 1 ? args.slice(1) : null);
+      }
     } catch (err) {
       // Игнорируем ошибки отправки
     }

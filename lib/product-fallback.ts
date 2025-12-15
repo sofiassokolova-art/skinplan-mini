@@ -469,10 +469,41 @@ export async function ensureRequiredProducts(
 
   // Присваиваем fallback продукты шагам
   for (const [baseStep, stepCategories] of baseStepsMap.entries()) {
-    const fallbackProduct = fallbackProducts.get(baseStep);
+    let fallbackProduct = fallbackProducts.get(baseStep);
+    
+    // ИСПРАВЛЕНО: Для moisturizer_light пробуем иерархию fallback категорий
+    if (!fallbackProduct && baseStep === 'moisturizer') {
+      const moisturizerFallbackCategories = [
+        'moisturizer_barrier',
+        'moisturizer_balancing',
+        'moisturizer_soothing',
+        'moisturizer_light',
+        'moisturizer',
+      ];
+      
+      logger.info('Trying moisturizer fallback hierarchy', {
+        baseStep,
+        stepCategories: Array.from(stepCategories),
+        fallbackCategories: moisturizerFallbackCategories,
+      });
+      
+      for (const fallbackCategory of moisturizerFallbackCategories) {
+        const fallbackForCategory = await findFallbackProduct(fallbackCategory, profileClassification);
+        if (fallbackForCategory) {
+          fallbackProduct = fallbackForCategory;
+          logger.info('Found moisturizer fallback from hierarchy', {
+            requestedBaseStep: baseStep,
+            fallbackCategory,
+            productId: fallbackProduct.id,
+            productName: fallbackProduct.name,
+          });
+          break;
+        }
+      }
+    }
     
     if (!fallbackProduct) {
-      logger.warn('Required product not found', {
+      logger.warn('Required product not found even after fallback hierarchy', {
         baseStep,
         stepCategories: Array.from(stepCategories),
       });

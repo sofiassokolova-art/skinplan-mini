@@ -15,34 +15,37 @@ datasource db {
 // ============================================
 
 model User {
-  id          String    @id @default(cuid())
-  telegramId  String    @unique @map("telegram_id")
-  username    String?
-  firstName   String?   @map("first_name")
-  lastName    String?   @map("last_name")
-  language    String    @default("ru")
-  phoneNumber String?   @map("phone_number") // Номер телефона пользователя
-  tags        String[]  @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  lastActive  DateTime? @map("last_active") // Обновляется при активности
+  id              String       @id @default(cuid())
+  telegramId      String       @unique @map("telegram_id")
+  username        String?
+  firstName       String?      @map("first_name")
+  lastName        String?      @map("last_name")
+  language        String       @default("ru")
+  phoneNumber     String?      @map("phone_number") // Номер телефона пользователя
+  tags            String[]     @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
+  currentProfileId String?     @map("current_profile_id") // ИСПРАВЛЕНО: Указатель на текущий активный профиль
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  lastActive      DateTime?    @map("last_active") // Обновляется при активности
 
-  skinProfiles           SkinProfile[]
-  userAnswers            UserAnswer[]
-  recommendationSessions RecommendationSession[]
-  planFeedbacks          PlanFeedback[]
-  plan28s                Plan28[]
-  planProgress           PlanProgress?
-  wishlist               Wishlist[]
-  wishlistFeedbacks      WishlistFeedback[]
-  cart                   Cart[]
-  productReplacements    ProductReplacement[]
-  botMessages            BotMessage[]
-  broadcastLogs          BroadcastLog[]
-  supportChats           SupportChat[]
-  clientLogs             ClientLog[]
+  currentProfile            SkinProfile? @relation("CurrentProfile", fields: [currentProfileId], references: [id], onDelete: SetNull)
+  skinProfiles              SkinProfile[]
+  userAnswers                UserAnswer[]
+  recommendationSessions     RecommendationSession[]
+  planFeedbacks              PlanFeedback[]
+  plan28s                    Plan28[]
+  planProgress               PlanProgress?
+  wishlist                   Wishlist[]
+  wishlistFeedbacks          WishlistFeedback[]
+  cart                       Cart[]
+  productReplacements        ProductReplacement[]
+  botMessages                BotMessage[]
+  broadcastLogs              BroadcastLog[]
+  supportChats               SupportChat[]
+  clientLogs                 ClientLog[]
 
   @@index([lastActive])
+  @@index([currentProfileId])
   @@map("users")
 }
 
@@ -64,6 +67,7 @@ model SkinProfile {
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentProfileUsers    User[]                  @relation("CurrentProfile") // ИСПРАВЛЕНО: Обратная связь для currentProfileId
   recommendationSessions RecommendationSession[]
   plan28s                Plan28[]
 
@@ -86,6 +90,7 @@ model Questionnaire {
   questionGroups QuestionGroup[]
   questions      Question[]
   userAnswers    UserAnswer[]
+  submissions    QuestionnaireSubmission[]
 
   @@unique([version])
   @@map("questionnaires")
@@ -156,7 +161,36 @@ model UserAnswer {
   @@index([userId])
   @@index([questionnaireId])
   @@index([questionId])
+  // Гарантируем один ответ на вопрос для пользователя и анкеты (устраняем дубли при гонках)
+  @@unique([userId, questionnaireId, questionId])
   @@map("user_answers")
+}
+
+/// Фиксирует финальные отправки анкеты и обеспечивает идемпотентность по clientSubmissionId
+model QuestionnaireSubmission {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  questionnaireId    Int      @map("questionnaire_id")
+  clientSubmissionId String?  @map("client_submission_id")
+  profileId          String?  @map("profile_id")
+  profileVersion     Int?     @map("profile_version")
+  createdAt          DateTime @default(now()) @map("created_at")
+  status             String   @default("pending") @map("status") // pending | completed | failed
+  errorMessage       String?  @map("error_message")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  profile       SkinProfile?  @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  // Идемпотентность по clientSubmissionId: одна и та же пара (userId, questionnaireId, clientSubmissionId)
+  // обрабатывается один раз. Для clientSubmissionId = null БД допускает несколько записей между разными пользователями.
+  @@unique([userId, questionnaireId, clientSubmissionId])
+  // Дополнительно гарантируем одну финальную отправку на пару (userId, questionnaireId)
+  @@unique([userId, questionnaireId])
+  @@index([userId])
+  @@index([questionnaireId])
+  @@index([profileId])
+  @@map("questionnaire_submissions")
 }
 
 // ============================================

@@ -314,12 +314,20 @@ export async function GET(request: NextRequest) {
           savedPlanStructure,
         });
         
-        // ИСПРАВЛЕНО: Создаем PlanProgress, если его еще нет
+        // ИСПРАВЛЕНО: Создаем PlanProgress для согласованности триады: profile -> Plan28 -> PlanProgress
         // Это важно для корректного отображения текущего дня и прогресса
+        // ВАЖНО: PlanProgress должен быть создан для той же версии профиля, что и Plan28
         try {
           await prisma.planProgress.upsert({
             where: { userId },
-            update: {}, // Не обновляем, если уже существует
+            update: {
+              // ИСПРАВЛЕНО: Сбрасываем прогресс при создании нового плана для новой версии профиля
+              currentDay: 1,
+              completedDays: [],
+              currentStreak: 0,
+              longestStreak: 0,
+              totalCompletedDays: 0,
+            },
             create: {
               userId,
               currentDay: 1,
@@ -329,9 +337,10 @@ export async function GET(request: NextRequest) {
               totalCompletedDays: 0,
             },
           });
-          logger.info('PlanProgress created/updated successfully', {
+          logger.info('PlanProgress created/updated successfully for profile version', {
             userId,
             profileVersion: profile.version,
+            planId: savedPlan.id,
           });
         } catch (progressError: any) {
           // Ошибка создания PlanProgress не критична - он создастся при первом обновлении прогресса
@@ -339,6 +348,33 @@ export async function GET(request: NextRequest) {
             userId,
             profileVersion: profile.version,
             error: progressError?.message,
+          });
+        }
+        
+        // ИСПРАВЛЕНО: Проверяем согласованность триады: profile -> Plan28 -> PlanProgress
+        // После успешного создания всех трех сущностей логируем подтверждение
+        const progressCheck = await prisma.planProgress.findUnique({
+          where: { userId },
+          select: { id: true, currentDay: true },
+        });
+        
+        if (savedPlan && progressCheck) {
+          logger.info('✅ Coherent trio verified: skinProfile(version) -> Plan28 -> PlanProgress', {
+            userId,
+            profileId: profile.id,
+            profileVersion: profile.version,
+            planId: savedPlan.id,
+            planProfileVersion: savedPlan.profileVersion,
+            progressId: progressCheck.id,
+            progressCurrentDay: progressCheck.currentDay,
+          });
+        } else {
+          logger.warn('⚠️ Coherent trio incomplete after plan generation', {
+            userId,
+            profileId: profile.id,
+            profileVersion: profile.version,
+            hasPlan28: !!savedPlan,
+            hasPlanProgress: !!progressCheck,
           });
         }
       } catch (dbError: any) {

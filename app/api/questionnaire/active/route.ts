@@ -46,19 +46,29 @@ export async function GET() {
       );
     }
 
+    const groups = questionnaire.questionGroups || [];
+    const plainQuestions = questionnaire.questions || [];
+    const groupsQuestionsCount = groups.reduce(
+      (sum, g) => sum + (g.questions?.length || 0),
+      0
+    );
+    const totalQuestionsCount = groupsQuestionsCount + plainQuestions.length;
+
     logger.info('Active questionnaire found', {
       questionnaireId: questionnaire.id,
       name: questionnaire.name,
       version: questionnaire.version,
-      groupsCount: questionnaire.questionGroups?.length || 0,
-      questionsCount: questionnaire.questions?.length || 0,
+      groupsCount: groups.length,
+      questionsCount: totalQuestionsCount,
+      plainQuestionsCount: plainQuestions.length,
+      groupsQuestionsCount,
     });
 
     // Форматируем данные в структуру, похожую на Quiz.tsx
     // Для совместимости с существующим фронтендом
     // ИСПРАВЛЕНО: Гарантируем, что groups и questions всегда являются массивами
-    const questionGroups = questionnaire.questionGroups || [];
-    const questions = questionnaire.questions || [];
+    const questionGroups = groups;
+    const questions = plainQuestions;
     
     const formatted = {
       id: questionnaire.id,
@@ -107,7 +117,8 @@ export async function GET() {
       groupsCount: formatted.groups.length,
       questionsCount: formatted.questions.length,
       totalQuestions: formatted.groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + formatted.questions.length,
-    });
+      totalQuestions: totalQuestionsCount,
+    };
 
     return NextResponse.json(formatted);
   } catch (error: any) {

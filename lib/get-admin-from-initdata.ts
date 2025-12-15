@@ -1,8 +1,8 @@
 // lib/get-admin-from-initdata.ts
 // Утилита для получения админа из Telegram initData с проверкой whitelist
+// ИСПРАВЛЕНО: Использует единый слой валидации validateTelegramInitDataUnified
 
-import { validateTelegramInitData } from './telegram';
-import { prisma } from './db';
+import { validateTelegramInitDataUnified, assertAdmin } from './telegram-validation';
 
 interface AdminUser {
   id: string;
@@ -18,48 +18,23 @@ interface AdminUser {
 export async function getAdminFromInitData(
   initData: string | null
 ): Promise<{ valid: boolean; admin?: AdminUser; error?: string }> {
-  if (!initData) {
-    return { valid: false, error: 'No initData provided' };
-  }
-
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) {
-    return { valid: false, error: 'Bot token not configured' };
-  }
-
-  // Валидируем данные Telegram
-  const validation = validateTelegramInitData(initData, botToken);
+  // ИСПРАВЛЕНО: Используем единый слой валидации
+  const validation = await validateTelegramInitDataUnified(initData);
   
-  if (!validation.valid || !validation.data?.user) {
+  if (!validation.valid || !validation.telegramId) {
     return { valid: false, error: validation.error || 'Invalid initData' };
   }
 
-  const { user } = validation.data;
-  const telegramIdStr = user.id.toString();
+  // ИСПРАВЛЕНО: Проверяем, является ли пользователь админом через assertAdmin
+  const adminCheck = await assertAdmin(validation.telegramId);
   
-  // Проверяем whitelist по telegramId
-  const whitelistEntry = await prisma.adminWhitelist.findFirst({
-    where: {
-      OR: [
-        { telegramId: telegramIdStr },
-        { telegramId: String(user.id) },
-      ],
-      isActive: true,
-    },
-  });
-
-  if (!whitelistEntry) {
-    return { valid: false, error: 'Not in admin whitelist' };
+  if (!adminCheck.valid || !adminCheck.admin) {
+    return { valid: false, error: adminCheck.error || 'Not in admin whitelist' };
   }
 
-  // Возвращаем данные из whitelist
+  // Возвращаем данные админа
   return {
     valid: true,
-    admin: {
-      id: whitelistEntry.id.toString(),
-      telegramId: whitelistEntry.telegramId || user.id.toString(),
-      phoneNumber: whitelistEntry.phoneNumber || '',
-      role: whitelistEntry.role || 'admin',
-    },
+    admin: adminCheck.admin as AdminUser,
   };
 }
