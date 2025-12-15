@@ -12,12 +12,19 @@ export type StepCategory =
   // Тоник / эссенция
   | "toner_hydrating"
   | "toner_soothing"
+  | "toner_exfoliant" // Тонеры с AHA/BHA/PHA, в т.ч. PHA
+  | "toner_acid" // Тонеры с кислотами
+  | "toner_aha" // Тонеры с AHA
+  | "toner_bha" // Тонеры с BHA
   // Сыворотки / активы (базовые)
   | "serum_hydrating"
   | "serum_niacinamide"
   | "serum_vitc"
   | "serum_anti_redness"
   | "serum_brightening_soft"
+  | "serum_peptide" // Пептиды / в т.ч. copper peptide
+  | "serum_antiage" // Anti-age без кислот
+  | "serum_exfoliant" // Сыворотки-эксфолианты (lactic / mandelic)
   // Лечебные/таргетированные средства
   | "treatment_acne_bpo"
   | "treatment_acne_azelaic"
@@ -26,6 +33,7 @@ export type StepCategory =
   | "treatment_exfoliant_strong"
   | "treatment_pigmentation"
   | "treatment_antiage"
+  | "treatment_acid" // Средства с кислотами
   // Увлажняющие кремы
   | "moisturizer_light"
   | "moisturizer_balancing"
@@ -44,6 +52,9 @@ export type StepCategory =
   | "mask_hydrating"
   | "mask_soothing"
   | "mask_sleeping"
+  | "mask_enzyme" // Энзимные маски (enzyme / papain / bromelain)
+  | "mask_acid" // Маски с кислотами (AHA/BHA/PHA + lactic/mandelic)
+  | "mask_peel" // Пилинговые маски
   // Доп. продукты
   | "spot_treatment"
   | "lip_care"
@@ -95,6 +106,30 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     preferGoals: ["sensitivity", "redness"],
     avoidDiagnoses: []
   },
+  toner_exfoliant: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["no_strong_acids", "very_high_sensitivity"],
+    preferGoals: ["texture", "pores", "acne", "pigmentation"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
+  },
+  toner_acid: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["no_strong_acids", "very_high_sensitivity"],
+    preferGoals: ["texture", "pores", "acne", "pigmentation"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
+  },
+  toner_aha: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["no_strong_acids", "very_high_sensitivity"],
+    preferGoals: ["texture", "pores", "pigmentation"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
+  },
+  toner_bha: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["no_strong_acids", "very_high_sensitivity"],
+    preferGoals: ["pores", "acne", "texture"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
+  },
   // --- Сыворотки/активы базовые ---
   serum_hydrating: {
     skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily", "oily"],
@@ -124,6 +159,24 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     skinTypesAllowed: ["normal", "combination_dry", "combination_oily"],
     avoidIfContra: ["no_strong_acids"],
     preferGoals: ["pigmentation", "uneven_tone"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
+  },
+  serum_peptide: {
+    skinTypesAllowed: ["dry", "normal", "combination_dry", "combination_oily"],
+    avoidIfContra: [],
+    preferGoals: ["wrinkles", "maintenance", "barrier_damage"],
+    avoidDiagnoses: []
+  },
+  serum_antiage: {
+    skinTypesAllowed: ["dry", "normal", "combination_dry"],
+    avoidIfContra: [],
+    preferGoals: ["wrinkles", "maintenance"],
+    avoidDiagnoses: []
+  },
+  serum_exfoliant: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["no_strong_acids", "very_high_sensitivity"],
+    preferGoals: ["texture", "pores", "pigmentation"],
     avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
   },
   // --- Лечебные / таргетированные ---
@@ -168,6 +221,12 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     avoidIfContra: ["no_retinol"],
     preferGoals: ["wrinkles"],
     avoidDiagnoses: []
+  },
+  treatment_acid: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["no_strong_acids", "very_high_sensitivity"],
+    preferGoals: ["texture", "pores", "acne", "pigmentation"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
   },
   // --- Увлажняющие кремы ---
   moisturizer_light: {
@@ -256,6 +315,24 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
     avoidIfContra: [],
     preferGoals: ["dryness", "wrinkles", "barrier_damage"],
     avoidDiagnoses: []
+  },
+  mask_enzyme: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["very_high_sensitivity"],
+    preferGoals: ["texture", "pores", "dullness"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
+  },
+  mask_acid: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["no_strong_acids", "very_high_sensitivity"],
+    preferGoals: ["texture", "pores", "acne", "pigmentation"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
+  },
+  mask_peel: {
+    skinTypesAllowed: ["normal", "combination_dry", "combination_oily", "oily"],
+    avoidIfContra: ["no_strong_acids", "very_high_sensitivity"],
+    preferGoals: ["texture", "pores", "acne", "pigmentation"],
+    avoidDiagnoses: ["rosacea", "atopic_dermatitis"]
   },
   // --- Дополнительно ---
   spot_treatment: {

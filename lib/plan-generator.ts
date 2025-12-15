@@ -1019,10 +1019,18 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('toner_hydrating');
     } else if (stepStr.startsWith('toner_soothing') || (stepStr.includes('toner') && (stepStr.includes('soothing') || categoryStr.includes('soothing')))) {
       categories.push('toner_soothing');
+    } else if (stepStr.startsWith('toner_exfoliant') || stepStr.startsWith('toner_acid') || (stepStr.includes('toner') && (stepStr.includes('exfoliant') || stepStr.includes('acid') || stepStr.includes('aha') || stepStr.includes('bha') || stepStr.includes('pha')))) {
+      categories.push('toner_exfoliant');
+      categories.push('toner_acid');
+    } else if (stepStr.startsWith('toner_aha') || (stepStr.includes('toner') && stepStr.includes('aha'))) {
+      categories.push('toner_aha');
+    } else if (stepStr.startsWith('toner_bha') || (stepStr.includes('toner') && stepStr.includes('bha'))) {
+      categories.push('toner_bha');
     } else if (stepStr === 'toner' || categoryStr === 'toner') {
-      // Если просто 'toner' без уточнения, пробуем оба варианта
+      // Если просто 'toner' без уточнения, пробуем основные варианты
       categories.push('toner_hydrating');
       categories.push('toner_soothing');
+      categories.push('toner_exfoliant');
     }
     
     if (stepStr.startsWith('serum_hydrating') || categoryStr.includes('hydrating')) {
@@ -1035,10 +1043,20 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('serum_anti_redness');
     } else if (stepStr.startsWith('serum_brightening') || stepStr.includes('brightening') || categoryStr.includes('brightening')) {
       categories.push('serum_brightening_soft');
+    } else if (stepStr.startsWith('serum_peptide') || stepStr.includes('peptide') || categoryStr.includes('peptide') || stepStr.includes('copper peptide')) {
+      categories.push('serum_peptide');
+    } else if (stepStr.startsWith('serum_antiage') || (stepStr.includes('serum') && (stepStr.includes('antiage') || stepStr.includes('anti-age')))) {
+      categories.push('serum_antiage');
+    } else if (stepStr.startsWith('serum_exfoliant') || (stepStr.includes('serum') && (stepStr.includes('lactic') || stepStr.includes('mandelic') || stepStr.includes('exfoliant')))) {
+      categories.push('serum_exfoliant');
     } else if (stepStr === 'serum' || categoryStr === 'serum') {
       // Если просто 'serum' без уточнения, пробуем основные варианты
       categories.push('serum_hydrating');
       categories.push('serum_niacinamide');
+      categories.push('serum_vitc');
+      categories.push('serum_brightening_soft');
+      categories.push('serum_peptide');
+      categories.push('serum_antiage');
     }
     
     if (stepStr.startsWith('treatment_acne_bpo') || stepStr.includes('benzoyl peroxide')) {
@@ -1055,6 +1073,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('treatment_pigmentation');
     } else if (stepStr.startsWith('treatment_antiage') || stepStr.includes('antiage') || stepStr.includes('anti-age')) {
       categories.push('treatment_antiage');
+    } else if (stepStr.startsWith('treatment_acid') || (stepStr.includes('treatment') && stepStr.includes('acid'))) {
+      categories.push('treatment_acid');
     } else if (stepStr.startsWith('spot_treatment') || stepStr.includes('spot treatment')) {
       categories.push('spot_treatment');
     } else if (stepStr === 'treatment' || categoryStr === 'treatment') {
@@ -1067,6 +1087,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('treatment_exfoliant_strong');
       categories.push('treatment_pigmentation');
       categories.push('treatment_antiage');
+      categories.push('treatment_acid');
     }
     
     if (stepStr.startsWith('moisturizer_light') || categoryStr.includes('light')) {
@@ -1109,9 +1130,14 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('mask_soothing');
     } else if (stepStr.startsWith('mask_sleeping') || (stepStr.includes('mask') && stepStr.includes('sleeping'))) {
       categories.push('mask_sleeping');
+    } else if (stepStr.startsWith('mask_enzyme') || (stepStr.includes('mask') && (stepStr.includes('enzyme') || stepStr.includes('papain') || stepStr.includes('bromelain')))) {
+      categories.push('mask_enzyme');
+    } else if (stepStr.startsWith('mask_acid') || stepStr.startsWith('mask_peel') || (stepStr.includes('mask') && (stepStr.includes('acid') || stepStr.includes('peel') || stepStr.includes('lactic') || stepStr.includes('mandelic')))) {
+      categories.push('mask_acid');
+      categories.push('mask_peel');
     } else if (stepStr === 'mask' || categoryStr === 'mask') {
       // Если просто 'mask' без уточнения, пробуем все варианты
-      categories.push('mask_clay', 'mask_hydrating', 'mask_soothing', 'mask_sleeping');
+      categories.push('mask_clay', 'mask_hydrating', 'mask_soothing', 'mask_sleeping', 'mask_enzyme', 'mask_acid');
     }
     
     // ИСПРАВЛЕНО: Если ничего не найдено, добавляем жесткий fallback
@@ -1387,8 +1413,12 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     // Правила используют простые названия (serum, treatment), которые маппятся на эти stepCategory через mapStepToStepCategory
     const activeSteps = [
       'serum_niacinamide', 'serum_vitc', 'serum_brightening_soft',
+      'serum_peptide', 'serum_antiage', 'serum_exfoliant', // Новые категории сывороток
+      'toner_exfoliant', 'toner_acid', 'toner_aha', 'toner_bha', // Тонеры с кислотами
       'treatment_acne_azelaic', 'treatment_acne_bpo', 'treatment_pigmentation',
       'treatment_antiage', 'treatment_exfoliant_strong', 'treatment_exfoliant_mild',
+      'treatment_acid', // Средства с кислотами
+      'mask_enzyme', 'mask_acid', 'mask_peel', // Маски с активными ингредиентами
       'cleanser_deep' // Очищение с кислотами тоже подходит для активной фазы
     ];
     
