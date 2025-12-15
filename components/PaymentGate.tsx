@@ -18,53 +18,70 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Проверяем, оплатил ли пользователь ранее
-  // ИСПРАВЛЕНО: Проверяем и localStorage, и БД (через API)
-  const checkPaymentStatus = () => {
+  // Локальный кэш статуса оплаты в браузере (ускорение, но не источник правды)
+  const getLocalPaymentFlag = () => {
     if (typeof window === 'undefined') return false;
     const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
     return localStorage.getItem(paymentKey) === 'true';
   };
 
-  const [hasPaid, setHasPaid] = useState(checkPaymentStatus());
+  // hasPaid = "уверены, что оплата есть" (БД или локальный кэш)
+  const [hasPaid, setHasPaid] = useState(getLocalPaymentFlag());
   const [checkingDbPayment, setCheckingDbPayment] = useState(false);
 
-  // ИСПРАВЛЕНО: Проверяем статус оплаты в БД при монтировании
-  // ВАЖНО: Убрали checkingDbPayment из зависимостей, чтобы избежать бесконечного цикла
+  // ПРОДОВСКАЯ ЛОГИКА: источник правды — БД через /api/payment/check-status
+  // localStorage только кэширует результат, но всегда перепроверяется по API
   useEffect(() => {
     let isMounted = true;
-    
+
     const checkDbPaymentStatus = async () => {
-      // Проверяем localStorage сначала - если уже оплачено, не делаем запрос
+      // Если уже знаем, что оплата есть (из предыдущего запроса), можно не дёргать API
       if (hasPaid) return;
-      
-      // Используем ref для предотвращения множественных одновременных запросов
       if (checkingDbPayment) return;
-      
+
       try {
         setCheckingDbPayment(true);
+
+        const initData =
+          typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+        if (!initData) {
+          // В деве может не быть initData — тогда остаёмся на локальном флаге
+          return;
+        }
+
         const response = await fetch('/api/payment/check-status', {
           method: 'GET',
           headers: {
-            'X-Telegram-Init-Data': typeof window !== 'undefined' ? (window.Telegram?.WebApp?.initData || '') : '',
+            'X-Telegram-Init-Data': initData,
           },
         });
-        
-        if (!isMounted) return; // Компонент размонтирован, не обновляем состояние
-        
+
+        if (!isMounted) return;
+
         if (response.ok) {
           const data = await response.json();
-          if (data?.hasPaid) {
-            // Устанавливаем в localStorage для быстрой проверки в будущем
-            const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
+          const dbHasPaid = !!data?.hasPaid;
+
+          const paymentKey = isRetaking
+            ? 'payment_retaking_completed'
+            : 'payment_first_completed';
+
+          if (dbHasPaid) {
+            // Бэкенд говорит "оплачено" — синхронизируем кэш и состояние
             if (typeof window !== 'undefined') {
               localStorage.setItem(paymentKey, 'true');
             }
             setHasPaid(true);
+          } else {
+            // Бэкенд говорит "НЕ оплачено" — чистим локальный флаг, если он был
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem(paymentKey);
+            }
+            setHasPaid(false);
           }
         }
       } catch (error) {
-        // Игнорируем ошибки проверки - используем только localStorage
+        // В проде это просто значит: временно опираемся на локальный флаг
         if (isMounted) {
           console.warn('Could not check payment status from DB:', error);
         }
@@ -76,11 +93,11 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     };
 
     checkDbPaymentStatus();
-    
+
     return () => {
       isMounted = false;
     };
-  }, [isRetaking, hasPaid]); // ИСПРАВЛЕНО: Убрали checkingDbPayment из зависимостей
+  }, [isRetaking, hasPaid, checkingDbPayment]);
 
   const handlePayment = async () => {
     if (!agreedToTerms) {
@@ -89,29 +106,49 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     }
 
     setIsProcessing(true);
-    
-    // Имитация обработки платежа
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Сохраняем статус оплаты
-    if (typeof window !== 'undefined') {
-      const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
-      localStorage.setItem(paymentKey, 'true');
-      
-      // ВАЖНО: НЕ удаляем флаг is_retaking_quiz после оплаты
-      // Этот флаг нужен для логики перепрохождения анкеты
-      // Он будет удален только после завершения перепрохождения
+
+    try {
+      // Имитация API Юкассы: просто отмечаем оплату на бэке через /api/payment/set-status
+      const initData =
+        typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+
+      const response = await fetch('/api/payment/set-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': initData,
+        },
+      });
+
+      if (!response.ok) {
+        // Если по какой-то причине бэк вернул ошибку — не ставим статус "оплачено"
+        const errorText = await response.text().catch(() => '');
+        console.error('Payment set-status failed:', response.status, errorText);
+        toast.error('Не удалось отметить оплату. Попробуйте ещё раз.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Успешно отметили оплату на сервере — синхронизируем локальный кэш
+      if (typeof window !== 'undefined') {
+        const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
+        localStorage.setItem(paymentKey, 'true');
+      }
+
+      setIsPaid(true);
+      setHasPaid(true);
+      toast.success('Оплата успешно обработана!');
+
+      // Небольшая задержка перед callback, чтобы пользователь увидел сообщение
+      setTimeout(() => {
+        onPaymentComplete();
+      }, 500);
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error('Ошибка при обработке оплаты. Попробуйте ещё раз.');
+    } finally {
+      setIsProcessing(false);
     }
-    
-    setIsPaid(true);
-    setHasPaid(true);
-    setIsProcessing(false);
-    toast.success('Оплата успешно обработана!');
-    
-    // Небольшая задержка перед вызовом callback, чтобы пользователь увидел сообщение
-    setTimeout(() => {
-      onPaymentComplete();
-    }, 500);
   };
 
   // Если уже оплачено, показываем контент
