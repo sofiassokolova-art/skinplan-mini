@@ -44,6 +44,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:profile": "vitest tests/profile-generation.test.ts",
+    "test:e2e": "playwright test",
     "test:100-users": "tsx scripts/test-100-users.ts",
     "test:rules": "tsx scripts/test-all-rules.ts",
     "test:client": "tsx scripts/test-client-paths.ts",
@@ -112,7 +113,8 @@
     "typescript-eslint": "^8.39.1",
     "vercel": "^48.10.10",
     "vite": "^7.1.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.15",
+    "@playwright/test": "^1.49.0"
   },
   "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
   "main": "eslint.config.js",

@@ -182,6 +182,12 @@ async function request<T>(
       });
       
       if (!initData) {
+        // В development при отсутствии initData не ломаем UI ошибкой,
+        // а возвращаем "пустой" результат, чтобы можно было разрабатывать без реального Mini App.
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ 401 без initData в dev, возвращаем null вместо ошибки для endpoint:', endpoint);
+          return null as T;
+        }
         throw new Error('Откройте приложение через Telegram Mini App. initData не доступен.');
       } else {
         throw new Error(errorData.error || 'Ошибка авторизации. Попробуйте обновить страницу.');

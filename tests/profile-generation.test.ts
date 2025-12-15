@@ -10,11 +10,15 @@ import { getProductsForStep } from '@/lib/product-selection';
 const prismaTest = new PrismaClient();
 
 // Тестовые данные
+// ВАЖНО: используем testUserId как значение для поля User.id (PK),
+// чтобы внешние ключи (user_answers.user_id и др.) всегда ссылались
+// на гарантированно существующего пользователя в тестах.
 const testUserId = 'test-user-profile-generation';
 let testQuestionnaireId: number | null = null;
 
 // Очистка тестовых данных
 async function cleanupTestData() {
+  // Удаляем всё, что связано с тестовым пользователем (по userId = PK)
   await prismaTest.userAnswer.deleteMany({
     where: { userId: testUserId },
   });
@@ -24,17 +28,54 @@ async function cleanupTestData() {
   await prismaTest.recommendationSession.deleteMany({
     where: { userId: testUserId },
   });
+  await prismaTest.planFeedback.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.plan28.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.planProgress.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.wishlist.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.cart.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.wishlistFeedback.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.productReplacement.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.botMessage.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.supportChat.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.broadcastLog.deleteMany({
+    where: { userId: testUserId },
+  });
+  await prismaTest.clientLog.deleteMany({
+    where: { userId: testUserId },
+  });
+
   await prismaTest.user.deleteMany({
-    where: { telegramId: testUserId },
+    where: { id: testUserId },
   });
 }
 
 // Создание тестового пользователя
 async function createTestUser() {
+  // Создаём / переиспользуем пользователя с фиксированным id = testUserId,
+  // чтобы все внешние ключи в тестах ссылались ровно на одну запись.
   return await prismaTest.user.upsert({
-    where: { telegramId: testUserId },
+    where: { id: testUserId },
     update: {},
     create: {
+      id: testUserId,
       telegramId: testUserId,
       firstName: 'Test',
       lastName: 'User',

@@ -496,11 +496,8 @@ export default function HomePage() {
       setMorningItems(morning);
       setEveningItems(evening);
 
-      // Фолбэк: если по каким‑то причинам рекомендации пустые, пробуем собрать рутину из плана
-      if (morning.length === 0 && evening.length === 0) {
-        clientLogger.warn('Recommendations returned empty routine, building from plan28 fallback');
-        await buildRoutineFromPlan();
-      }
+      // Фолбэк через план для нового пользователя больше не используем:
+      // если нет шагов рутины, дальше логика редиректит на /quiz (см. ниже).
     } catch (error: any) {
       clientLogger.error('Error loading recommendations', error);
       
@@ -512,28 +509,21 @@ export default function HomePage() {
         return;
       }
       
-      // ИСПРАВЛЕНО: Проверяем статус 404 или isNotFound флаг
-      // 404 не является критической ошибкой - это означает, что профиль/рекомендации еще не созданы
-      if (error?.status === 404 || error?.isNotFound || error?.message?.includes('404') || error?.message?.includes('No skin profile') || error?.message?.includes('Not found') || error?.message?.includes('profile not found')) {
-        // Профиль/рекомендации не найдены - это нормально, если пользователь еще не прошел анкету
-        // ИСПРАВЛЕНО: Всегда очищаем ошибку при 404, чтобы не показывать экран ошибки
-        clientLogger.log('Рекомендации не найдены (профиль еще не создан или анкета не завершена)');
-        
-        // ИСПРАВЛЕНО: Всегда очищаем ошибку при 404, независимо от наличия рекомендаций
-        // Это предотвращает показ ошибки "профиль не найден" при обновлении страницы
-        setError(null);
-        
-        // Если рекомендации уже есть (загружены ранее), сохраняем их
-        // Это предотвращает мигание экрана "профиль отсутствует" при временных ошибках
-        if (morningItems.length === 0 && eveningItems.length === 0) {
-          // Рекомендаций нет - показываем экран призыва к действию
-          setMorningItems([]);
-          setEveningItems([]);
-        } else {
-          // Рекомендации уже есть - сохраняем их, не очищаем
-          clientLogger.log('Рекомендации уже загружены, сохраняем их при временной ошибке 404');
-        }
+      // ИСПРАВЛЕНО: При 404 / профиле, которого нет, считаем, что пользователь ещё не прошёл анкету
+      // и сразу отправляем его на /quiz, не строя фолбэков.
+      if (
+        error?.status === 404 ||
+        error?.isNotFound ||
+        error?.message?.includes('404') ||
+        error?.message?.includes('No skin profile') ||
+        error?.message?.includes('Not found') ||
+        error?.message?.includes('profile not found')
+      ) {
+        clientLogger.log('Рекомендации не найдены (профиль ещё не создан) — редирект на /quiz');
         setLoading(false);
+        if (typeof window !== 'undefined') {
+          router.replace('/quiz');
+        }
         return;
       }
       
@@ -628,70 +618,12 @@ export default function HomePage() {
     );
   }
 
-  // Экран CTA "Создайте свой план ухода" показываем только если:
-  // - Нет шагов рутины на сегодня И
-  // - У пользователя НЕТ сохранённого плана (hasPlan === false)
+  // Совсем новый пользователь (нет рутины и нет сохранённого плана) → сразу отправляем на анкету
   if (routineItems.length === 0 && !hasPlan) {
-    return (
-      <div style={{ 
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '20px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '24px',
-          padding: '32px',
-          maxWidth: '500px',
-          width: '100%',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        }}>
-          <div style={{
-            fontSize: '48px',
-            marginBottom: '16px',
-          }}>
-            ✨
-          </div>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
-            Создайте свой план ухода
-          </h2>
-          <p style={{
-            color: '#475467',
-            marginBottom: '24px',
-            lineHeight: '1.6',
-          }}>
-            Пройдите анкету, чтобы получить персональные рекомендации по уходу за кожей
-          </p>
-          <button
-            onClick={() => router.push('/quiz')}
-            style={{
-              width: '100%',
-              padding: '16px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-            }}
-          >
-            Пройти анкету
-          </button>
-        </div>
-      </div>
-    );
+    if (typeof window !== 'undefined') {
+      router.replace('/quiz');
+    }
+    return null;
   }
 
   const completedCount = routineItems.filter((item) => item.done).length;

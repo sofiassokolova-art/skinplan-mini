@@ -77,6 +77,7 @@ interface PlanData {
 
 export default function PlanPage() {
   const router = useRouter();
+  const isDev = process.env.NODE_ENV === 'development';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [planData, setPlanData] = useState<PlanData | null>(null);
@@ -712,7 +713,8 @@ export default function PlanPage() {
       }
 
       // Проверяем, что приложение открыто через Telegram
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp) {
+      // В development не блокируем, чтобы можно было тестировать локально без Mini App
+      if ((typeof window === 'undefined' || !window.Telegram?.WebApp) && !isDev) {
         safeSetError('telegram_required');
         safeSetLoading(false);
         return;
@@ -748,7 +750,7 @@ export default function PlanPage() {
         });
       }
 
-      if (!initData) {
+      if (!initData && !isDev) {
         console.error('❌ initData not available after waiting');
         safeSetError('telegram_required');
         safeSetLoading(false);

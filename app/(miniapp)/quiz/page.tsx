@@ -40,6 +40,7 @@ interface Questionnaire {
 }
 
 export default function QuizPage() {
+  const isDev = process.env.NODE_ENV === 'development';
   const router = useRouter();
   
   // Инициализация useTelegram (хук сам обрабатывает ошибки внутри)
@@ -1916,7 +1917,8 @@ export default function QuizPage() {
       });
 
       // Если мы в Telegram, но initData нет - это может быть preview mode
-      if (isInTelegram && !initData) {
+      // В development не блокируем, чтобы можно было тестировать локально без Mini App
+      if (isInTelegram && !initData && !isDev) {
         clientLogger.error('❌ Telegram WebApp доступен, но initData отсутствует (возможно, preview mode)');
         if (isMountedRef.current) {
           setError('Приложение открыто в режиме предпросмотра. Пожалуйста, откройте его через кнопку бота или используйте ссылку формата: https://t.me/your_bot?startapp=...');
@@ -1926,7 +1928,7 @@ export default function QuizPage() {
         return;
       }
 
-      if (!isInTelegram) {
+      if (!isInTelegram && !isDev) {
         clientLogger.error('❌ Telegram WebApp не доступен - блокируем отправку');
         if (isMountedRef.current) {
           setError('Пожалуйста, откройте приложение через Telegram Mini App (не просто по ссылке, а через кнопку бота).');
@@ -1936,7 +1938,7 @@ export default function QuizPage() {
         return;
       }
 
-      if (!initData) {
+      if (!initData && !isDev) {
         clientLogger.error('❌ Telegram WebApp initData не доступен - блокируем отправку');
         if (isMountedRef.current) {
           setError('Не удалось получить данные авторизации. Попробуйте обновить страницу.');
@@ -4483,10 +4485,60 @@ export default function QuizPage() {
   }
 
   if (!questionnaire) {
+    // Фолбэк, когда анкета ещё не успела загрузиться (например, после холодного старта сервера)
+    // Вместо жёсткой ошибки показываем экран "подготовки" с мягким текстом.
     return (
-      <div style={{ padding: '20px' }}>
-        <h1>Анкета не найдена</h1>
-        <p>Активная анкета не найдена. Обратитесь к администратору.</p>
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}
+      >
+        <div
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            border: '4px solid rgba(10, 95, 89, 0.15)',
+            borderTop: '4px solid #0A5F59',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '24px',
+          }}
+        />
+        <h1
+          style={{
+            fontSize: '22px',
+            fontWeight: 700,
+            color: '#0A5F59',
+            marginBottom: '8px',
+            textAlign: 'center',
+          }}
+        >
+          Подготавливаем анкету
+        </h1>
+        <p
+          style={{
+            fontSize: '14px',
+            color: '#475467',
+            textAlign: 'center',
+            maxWidth: '320px',
+            lineHeight: '1.5',
+          }}
+        >
+          Это может занять несколько секунд при первом запуске.
+          Если экран не пропадает долго, обновите страницу или напишите в поддержку.
+        </p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -5420,7 +5472,7 @@ export default function QuizPage() {
                     initDataLength: initData?.length || 0,
                   });
                   
-                  if (!isInTelegram || !initData) {
+                  if ((!isInTelegram || !initData) && !isDev) {
                     console.error('❌ Telegram WebApp или initData недоступен');
                     setError('Пожалуйста, откройте приложение через Telegram Mini App и обновите страницу.');
                     return;
