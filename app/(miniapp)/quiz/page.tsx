@@ -46,7 +46,9 @@ export default function QuizPage() {
   // ВАЖНО: хуки должны вызываться всегда в одном порядке, нельзя оборачивать в try-catch
   const { initialize, initData } = useTelegram();
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
-  const [loading, setLoading] = useState(true);
+  // ИСПРАВЛЕНО: Начинаем с loading = false, чтобы не показывать лоадер
+  // Анкета загрузится сразу при монтировании, и пользователь увидит вопросы без задержки
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -406,19 +408,14 @@ export default function QuizPage() {
 
         // Сначала загружаем анкету (публичный маршрут)
         // Но только если она еще не загружена
+        // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер
+        // Анкета загрузится мгновенно, и пользователь увидит вопросы без задержки
         if (!questionnaire) {
           const loadedQuestionnaire = await loadQuestionnaire();
-          // ИСПРАВЛЕНО: Устанавливаем loading = false независимо от результата загрузки
-          // чтобы не было бесконечного лоадера при ошибке
-          if (loading) {
-            setLoading(false);
-          }
           // Если анкета не загрузилась, показываем ошибку
           if (!loadedQuestionnaire) {
             setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
           }
-        } else if (loading) {
-          setLoading(false);
         }
       
       // Проверяем, есть ли уже профиль (повторное прохождение анкеты)
@@ -5677,14 +5674,8 @@ export default function QuizPage() {
       }
     }
     
-    // Если анкета еще не загружена - показываем загрузку
-    if (loading) {
-      return (
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-          <div>Загрузка анкеты...</div>
-        </div>
-      );
-    }
+    // ИСПРАВЛЕНО: Убрали лоадер "Загрузка анкеты..."
+    // Анкета загружается мгновенно, пользователь увидит вопросы без задержки
   }
   
   // Если вопрос не найден, но hasResumed = true - это временное состояние, показываем загрузку
@@ -5923,10 +5914,11 @@ export default function QuizPage() {
       );
     }
 
-    // ИСПРАВЛЕНО: Если анкета не загружена, показываем ошибку или загрузку
-    // Не показываем бесконечный лоадер "Загружаем вопросы..." если анкета не загрузилась
-    if (!questionnaire && loading) {
-      // Анкета еще загружается
+    // ИСПРАВЛЕНО: Убрали лоадер "Загружаем вопросы..."
+    // Если анкета не загружена и есть ошибка - показываем ошибку
+    // Иначе анкета загрузится мгновенно, и пользователь увидит вопросы без задержки
+    if (!questionnaire && error) {
+      // Показываем ошибку только если она есть
       return (
         <div style={{ 
           padding: '20px',
@@ -5945,79 +5937,36 @@ export default function QuizPage() {
             maxWidth: '400px',
             textAlign: 'center',
           }}>
-            <style>{`
-              @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-              }
-            `}</style>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              border: '4px solid #0A5F59',
-              borderTop: '4px solid transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 24px',
-            }} />
-            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-              Загружаем вопросы...
+            <h2 style={{ color: '#D32F2F', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Ошибка загрузки анкеты
             </h2>
-            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
-              Пожалуйста, подождите несколько секунд
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
+              {error}
             </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '12px 20px',
+                borderRadius: '12px',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+              }}
+            >
+              Обновить страницу
+            </button>
           </div>
         </div>
       );
     }
 
-    // Иначе это временное состояние (например, пересчет фильтрации вопросов) — показываем нейтральную загрузку,
-    // а не "Создаем план ухода..."
-    // ИСПРАВЛЕНО: Показываем этот лоадер только если анкета загружена, но вопрос еще не найден
-    if (questionnaire && allQuestions.length > 0) {
-      return (
-        <div style={{ 
-          padding: '20px',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.56)',
-            backdropFilter: 'blur(28px)',
-            borderRadius: '24px',
-            padding: '48px',
-            maxWidth: '400px',
-            textAlign: 'center',
-          }}>
-            <style>{`
-              @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-              }
-            `}</style>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              border: '4px solid #0A5F59',
-              borderTop: '4px solid transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 24px',
-            }} />
-            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-              Загружаем вопросы...
-            </h2>
-            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
-              Пожалуйста, подождите несколько секунд
-            </p>
-          </div>
-        </div>
-      );
-    }
+    // ИСПРАВЛЕНО: Убрали лоадер "Загружаем вопросы..."
+    // Если анкета загружена и есть вопросы, но вопрос еще не найден - это временное состояние
+    // Вместо лоадера просто показываем пустой экран или первый вопрос
+    // (вопрос должен найтись сразу после загрузки анкеты)
   }
 
   return (
