@@ -32,8 +32,8 @@ export function useQuizState() {
       try {
         setLoading(true);
         setError(null);
-        const data = await api.getActiveQuestionnaire();
-        setQuestionnaire(data as Questionnaire);
+        const data = await api.getActiveQuestionnaire() as Questionnaire;
+        setQuestionnaire(data);
         clientLogger.log('✅ Questionnaire loaded', { id: data.id, version: data.version });
       } catch (err: any) {
         clientLogger.error('❌ Error loading questionnaire', err);

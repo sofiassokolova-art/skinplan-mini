@@ -648,7 +648,9 @@ export async function GET(request: NextRequest) {
       } else if (code === 'acne_level' || code === 'acneLevel') {
         questionnaireAnswers.acneLevel = typeof value === 'number' ? value : (parseInt(value as string) || 0);
       } else if (code === 'pregnant' || code === 'has_pregnancy' || code === 'pregnancy_breastfeeding') {
-        questionnaireAnswers.pregnant = value === 'yes' || value === 'true' || value === true;
+        // ИСПРАВЛЕНО: Приводим к строке для сравнения, чтобы избежать ошибки типов
+        const strValue = String(value).toLowerCase();
+        questionnaireAnswers.pregnant = strValue === 'yes' || strValue === 'true' || (typeof value === 'boolean' && value === true);
       }
     }
 

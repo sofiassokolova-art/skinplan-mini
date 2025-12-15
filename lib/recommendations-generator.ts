@@ -151,34 +151,43 @@ export async function generateRecommendationsForProfile(
     const ruleSteps = matchedRule.stepsJson as any[];
     const allProductIds: number[] = [];
 
+    // ИСПРАВЛЕНО: budgetSegment не в RuleContext, получаем из профиля или используем null
+    const budgetSegment = (profile as any).budgetSegment || null;
+
     for (const step of ruleSteps) {
-      const products = await getProductsForStep(step, ruleContext.budgetSegment);
+      const products = await getProductsForStep(step, budgetSegment);
       allProductIds.push(...products.map((p: any) => p.id));
     }
 
     // Создаем или обновляем RecommendationSession
-    const session = await prisma.recommendationSession.upsert({
+    // ИСПРАВЛЕНО: Используем findFirst + create/update вместо upsert, так как userId_profileId может не быть уникальным ключом
+    const existingSession = await prisma.recommendationSession.findFirst({
       where: {
-        userId_profileId: {
-          userId,
-          profileId: profile.id,
-        },
-      },
-      update: {
-        ruleId: matchedRule.id,
-        products: allProductIds,
-        updatedAt: new Date(),
-      },
-      create: {
         userId,
         profileId: profile.id,
-        ruleId: matchedRule.id,
-        products: allProductIds,
       },
     });
 
+    const session = existingSession
+      ? await prisma.recommendationSession.update({
+          where: { id: existingSession.id },
+          data: {
+            ruleId: matchedRule.id,
+            products: allProductIds,
+            // ИСПРАВЛЕНО: updatedAt не существует в схеме RecommendationSession
+          },
+        })
+      : await prisma.recommendationSession.create({
+          data: {
+            userId,
+            profileId: profile.id,
+            ruleId: matchedRule.id,
+            products: allProductIds,
+          },
+        });
+
     return {
-      sessionId: session.id,
+      sessionId: String(session.id), // ИСПРАВЛЕНО: Приводим к строке
       ruleId: matchedRule.id,
       products: allProductIds,
     };

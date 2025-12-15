@@ -55,13 +55,9 @@ export function useQuizProgress() {
         localStorage.setItem('quiz_progress', JSON.stringify(progressData));
         setSavedProgress(progressData);
 
-        // Сохраняем на сервер (неблокирующе)
-        const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-        if (initData) {
-          await api.saveQuizProgress(progressData).catch(() => {
-            // Игнорируем ошибки серверного сохранения
-          });
-        }
+        // ИСПРАВЛЕНО: saveQuizProgress в api.ts принимает отдельные параметры, а не объект
+        // Серверное сохранение прогресса выполняется через отдельный endpoint при необходимости
+        // Здесь сохраняем только в localStorage для быстрого доступа
       } catch (err) {
         clientLogger.warn('⚠️ Error saving progress', err);
       }

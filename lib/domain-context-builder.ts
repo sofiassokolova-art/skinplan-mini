@@ -71,7 +71,9 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
       questionnaireAnswers.acneLevel = isNaN(numValue) ? 0 : numValue;
     } else if (code === 'pregnant' || code === 'has_pregnancy' || code === 'pregnancy_breastfeeding') {
       const boolValue = Array.isArray(value) ? value[0] : value;
-      questionnaireAnswers.pregnant = boolValue === 'yes' || boolValue === 'true' || boolValue === true;
+      // ИСПРАВЛЕНО: Приводим к строке для сравнения, чтобы избежать ошибки типов
+      const strValue = String(boolValue).toLowerCase();
+      questionnaireAnswers.pregnant = strValue === 'yes' || strValue === 'true' || (typeof boolValue === 'boolean' && boolValue === true);
     }
   }
 
@@ -109,16 +111,16 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
     secondaryGoals: profileSnapshot.secondaryGoals || [],
     diagnoses: medical.diagnoses || [],
     seasonality: profileSnapshot.seasonality,
-    pregnancyStatus: medical.pregnancyStatus,
+    pregnancyStatus: medical.pregnancyStatus || null, // ИСПРАВЛЕНО: Приводим undefined к null
     contraindications: profileSnapshot.contraindications || [],
     currentTopicals: profileSnapshot.currentTopicals || [],
     currentOralMeds: profileSnapshot.currentOralMeds || [],
     spfHabit: profileSnapshot.spfHabit || 'never',
     makeupFrequency: profileSnapshot.makeupFrequency || 'rarely',
     lifestyleFactors: profileSnapshot.lifestyleFactors || [],
-    carePreference: preferences.carePreference,
-    routineComplexity: preferences.routineComplexity,
-    budgetSegment: preferences.budgetSegment,
+    carePreference: preferences.carePreference || 'any', // ИСПРАВЛЕНО: Fallback для undefined
+    routineComplexity: preferences.routineComplexity || 'any', // ИСПРАВЛЕНО: Fallback для undefined
+    budgetSegment: preferences.budgetSegment || 'any', // ИСПРАВЛЕНО: Fallback для undefined
     ageGroup: profileSnapshot.ageGroup,
     gender: medical.gender,
   };

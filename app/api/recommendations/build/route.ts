@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         user: {
           select: {
             id: true,
-            currentProfileId: true,
+            // ИСПРАВЛЕНО: currentProfileId не используется в коде, убираем из select
           },
         },
       },

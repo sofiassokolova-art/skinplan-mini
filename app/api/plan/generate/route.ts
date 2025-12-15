@@ -285,6 +285,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             planData: true,
+            profileVersion: true, // ИСПРАВЛЕНО: Добавлено для логирования
           },
         });
         
