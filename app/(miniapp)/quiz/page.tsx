@@ -5809,8 +5809,9 @@ export default function QuizPage() {
       );
     }
     
-    // Если есть ошибка, показываем её
-    if (error) {
+    // ИСПРАВЛЕНО: Показываем ошибку только если это не ошибка загрузки анкеты (которая уже исправлена)
+    // Если анкета загружена, но есть ошибка - это может быть ошибка отправки ответов, показываем её
+    if (error && (!error.includes('загрузить анкету') && !error.includes('Invalid questionnaire') && !error.includes('Questionnaire has no questions'))) {
       return (
         <div style={{ 
           padding: '20px',
