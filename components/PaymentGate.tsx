@@ -17,6 +17,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
   const [isPaid, setIsPaid] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [dbChecked, setDbChecked] = useState(false);
 
   // Локальный кэш статуса оплаты в браузере (ускорение, но не источник правды)
   const getLocalPaymentFlag = () => {
@@ -35,8 +36,8 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     let isMounted = true;
 
     const checkDbPaymentStatus = async () => {
-      // Если уже знаем, что оплата есть (из предыдущего запроса), можно не дёргать API
-      if (hasPaid) return;
+      // Если уже отправлен запрос и мы получили ответ от БД — не дёргаем API повторно
+      if (dbChecked) return;
       if (checkingDbPayment) return;
 
       try {
@@ -45,7 +46,11 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
         const initData =
           typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
         if (!initData) {
-          // В деве может не быть initData — тогда остаёмся на локальном флаге
+          // В деве может не быть initData — тогда остаёмся на локальном флаге,
+          // но помечаем, что проверка БД уже сделана, чтобы не спамить консоль
+          if (isMounted) {
+            setDbChecked(true);
+          }
           return;
         }
 
@@ -88,6 +93,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
       } finally {
         if (isMounted) {
           setCheckingDbPayment(false);
+          setDbChecked(true);
         }
       }
     };
@@ -97,7 +103,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     return () => {
       isMounted = false;
     };
-  }, [isRetaking, hasPaid, checkingDbPayment]);
+  }, [isRetaking, dbChecked, checkingDbPayment]);
 
   const handlePayment = async () => {
     if (!agreedToTerms) {
