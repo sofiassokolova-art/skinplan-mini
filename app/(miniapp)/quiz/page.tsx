@@ -412,9 +412,22 @@ export default function QuizPage() {
         // Анкета загрузится мгновенно, и пользователь увидит вопросы без задержки
         if (!questionnaire) {
           const loadedQuestionnaire = await loadQuestionnaire();
-          // Если анкета не загрузилась, показываем ошибку
-          if (!loadedQuestionnaire) {
-            setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+          // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке анкеты
+          // Это предотвращает показ временных ошибок, которые уже исправлены
+          if (loadedQuestionnaire) {
+            setError(null);
+          } else {
+            // Если анкета не загрузилась, показываем ошибку только если её еще нет
+            // (чтобы не перезаписывать более важные ошибки)
+            if (!error) {
+              setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+            }
+          }
+        } else {
+          // ИСПРАВЛЕНО: Если анкета уже загружена, очищаем ошибки загрузки
+          // Это предотвращает показ старых ошибок, которые уже не актуальны
+          if (error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire') || error.includes('Questionnaire has no questions'))) {
+            setError(null);
           }
         }
       
@@ -1208,7 +1221,9 @@ export default function QuizPage() {
         })(),
       });
       setQuestionnaire(questionnaireData);
-      setError(null); // Очищаем ошибки при успешной загрузке
+      // ИСПРАВЛЕНО: Очищаем ошибки при успешной загрузке
+      // Это предотвращает показ временных ошибок, которые уже исправлены
+      setError(null);
       return questionnaireData; // Возвращаем загруженную анкету
     } catch (err: any) {
       addDebugLog('❌ Error loading questionnaire', { error: err.message });
@@ -5690,8 +5705,9 @@ export default function QuizPage() {
   // Если вопрос все еще не найден после всех проверок
   // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
   if (!currentQuestion) {
-    // ИСПРАВЛЕНО: Если анкета не загружена и есть ошибка - показываем ошибку, а не бесконечный лоадер
-    if (!questionnaire && !loading && error) {
+    // ИСПРАВЛЕНО: Показываем ошибку только если анкета не загружена И ошибка связана с загрузкой анкеты
+    // Это предотвращает показ временных ошибок, которые уже исправлены
+    if (!questionnaire && !loading && error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire') || error.includes('Questionnaire has no questions'))) {
       return (
         <div style={{ 
           padding: '20px', 
@@ -5915,9 +5931,9 @@ export default function QuizPage() {
     }
 
     // ИСПРАВЛЕНО: Убрали лоадер "Загружаем вопросы..."
-    // Если анкета не загружена и есть ошибка - показываем ошибку
-    // Иначе анкета загрузится мгновенно, и пользователь увидит вопросы без задержки
-    if (!questionnaire && error) {
+    // Показываем ошибку только если анкета не загружена И ошибка связана с загрузкой анкеты
+    // Это предотвращает показ временных ошибок, которые уже исправлены
+    if (!questionnaire && error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire') || error.includes('Questionnaire has no questions'))) {
       // Показываем ошибку только если она есть
       return (
         <div style={{ 
