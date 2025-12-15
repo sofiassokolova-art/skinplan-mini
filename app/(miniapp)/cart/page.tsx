@@ -38,23 +38,25 @@ export default function CartPage() {
     loadWishlist();
   }, []);
 
-  // ИСПРАВЛЕНО: Обновляем список избранного при возврате на страницу (focus)
+  // ИСПРАВЛЕНО: Обновляем список избранного при возврате на страницу
   useEffect(() => {
     const handleFocus = () => {
       // Обновляем список при возврате на страницу
       loadWishlist();
     };
 
-    window.addEventListener('focus', handleFocus);
-    // Также обновляем при видимости страницы (для мобильных устройств)
-    document.addEventListener('visibilitychange', () => {
+    const handleVisibilityChange = () => {
       if (!document.hidden) {
         loadWishlist();
       }
-    });
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

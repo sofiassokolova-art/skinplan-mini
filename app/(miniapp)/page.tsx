@@ -52,6 +52,7 @@ export default function HomePage() {
   const { initialize, isAvailable } = useTelegram();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasPlan, setHasPlan] = useState(false); // Есть ли сохранённый 28-дневный план
   const [recommendations, setRecommendations] = useState<Recommendation | null>(null);
   const [morningItems, setMorningItems] = useState<RoutineItem[]>([]);
   const [eveningItems, setEveningItems] = useState<RoutineItem[]>([]);
@@ -154,11 +155,37 @@ export default function HomePage() {
         }
       };
 
+      const checkPlanExists = async () => {
+        try {
+          const plan = await api.getPlan() as any;
+          const hasPlan28 =
+            plan &&
+            plan.plan28 &&
+            Array.isArray(plan.plan28.days) &&
+            plan.plan28.days.length > 0;
+          setHasPlan(!!hasPlan28);
+          if (hasPlan28) {
+            clientLogger.log('✅ Plan exists for user, disabling CTA on home');
+          } else {
+            clientLogger.log('ℹ️ Plan not found when checking from home page');
+          }
+        } catch (err: any) {
+          if (err?.status === 404 || err?.isNotFound) {
+            // Плана нет — это нормально для нового пользователя
+            setHasPlan(false);
+            clientLogger.log('ℹ️ Plan not found (404) when checking from home page');
+          } else {
+            clientLogger.warn('Could not check plan existence from home page', err);
+          }
+        }
+      };
+
       // Загружаем рекомендации (initData передается автоматически в запросе)
       // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true
       await loadRecommendations();
-      
-      // Загружаем имя в фоне после загрузки рекомендаций
+      // Проверяем, есть ли уже сохранённый план (чтобы не показывать CTA, если план есть)
+      await checkPlanExists();
+      // Загружаем имя в фоне после загрузки рекомендаций и проверки плана
       loadUserNameAsync();
     };
 
@@ -462,7 +489,10 @@ export default function HomePage() {
     );
   }
 
-  if (routineItems.length === 0) {
+  // Экран CTA "Создайте свой план ухода" показываем только если:
+  // - Нет шагов рутины на сегодня И
+  // - У пользователя НЕТ сохранённого плана (hasPlan === false)
+  if (routineItems.length === 0 && !hasPlan) {
     return (
       <div style={{ 
         minHeight: '100vh',
