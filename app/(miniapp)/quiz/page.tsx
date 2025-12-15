@@ -1179,9 +1179,21 @@ export default function QuizPage() {
       
       const data = await Promise.race([loadPromise, timeoutPromise]);
       const questionnaireData = data as Questionnaire;
+      
+      // ИСПРАВЛЕНО: Проверяем, что данные валидны
+      if (!questionnaireData || !questionnaireData.id) {
+        throw new Error('Invalid questionnaire data received from server');
+      }
+      
       // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
       const groups = questionnaireData.groups || [];
       const questions = questionnaireData.questions || [];
+      
+      // ИСПРАВЛЕНО: Проверяем, что есть хотя бы один вопрос
+      const totalQuestions = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
+      if (totalQuestions === 0) {
+        throw new Error('Questionnaire has no questions');
+      }
       addDebugLog('📥 Questionnaire loaded', {
         questionnaireId: questionnaireData.id,
         name: questionnaireData.name,

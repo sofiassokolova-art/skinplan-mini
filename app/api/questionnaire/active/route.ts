@@ -3,9 +3,11 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
+    logger.info('Fetching active questionnaire');
     const questionnaire = await prisma.questionnaire.findFirst({
       where: { isActive: true },
       include: {
@@ -37,11 +39,20 @@ export async function GET() {
     });
 
     if (!questionnaire) {
+      logger.warn('No active questionnaire found');
       return NextResponse.json(
         { error: 'No active questionnaire found' },
         { status: 404 }
       );
     }
+
+    logger.info('Active questionnaire found', {
+      questionnaireId: questionnaire.id,
+      name: questionnaire.name,
+      version: questionnaire.version,
+      groupsCount: questionnaire.questionGroups?.length || 0,
+      questionsCount: questionnaire.questions?.length || 0,
+    });
 
     // Форматируем данные в структуру, похожую на Quiz.tsx
     // Для совместимости с существующим фронтендом
@@ -91,11 +102,21 @@ export async function GET() {
       })),
     };
 
+    logger.info('Questionnaire formatted successfully', {
+      questionnaireId: formatted.id,
+      groupsCount: formatted.groups.length,
+      questionsCount: formatted.questions.length,
+      totalQuestions: formatted.groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + formatted.questions.length,
+    });
+
     return NextResponse.json(formatted);
-  } catch (error) {
-    console.error('Error fetching active questionnaire:', error);
+  } catch (error: any) {
+    logger.error('Error fetching active questionnaire', error, {
+      errorMessage: error?.message,
+      errorStack: error?.stack?.substring(0, 500),
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: process.env.NODE_ENV === 'development' ? error?.message : undefined },
       { status: 500 }
     );
   }
