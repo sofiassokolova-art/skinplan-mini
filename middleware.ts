@@ -9,7 +9,7 @@ import { rateLimit, getIdentifier } from './lib/rate-limit';
 // Настройки rate limiting для разных endpoints
 const RATE_LIMITS: Record<string, { maxRequests: number; interval: number }> = {
   '/api/plan/generate': { maxRequests: 10, interval: 60 * 1000 }, // 10 запросов в минуту
-  '/api/questionnaire/answers': { maxRequests: 5, interval: 60 * 1000 }, // 5 запросов в минуту
+  '/api/questionnaire/answers': { maxRequests: 10, interval: 60 * 1000 }, // 10 запросов в минуту (увеличено для избежания 429)
   '/api/questionnaire/partial-update': { maxRequests: 5, interval: 60 * 1000 }, // 5 запросов в минуту
   '/api/products/batch': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
   '/api/recommendations': { maxRequests: 20, interval: 60 * 1000 }, // 20 запросов в минуту

@@ -129,11 +129,17 @@ export default function PersonalCabinet() {
             if (values.length > 0 && Array.isArray(values[0])) {
               userAnswers = values[0] as any[];
             } else {
-              clientLogger.warn('⚠️ Не удалось нормализовать формат ответов', { 
-                type: typeof userAnswersResponse,
-                keys: Object.keys(userAnswersResponse || {}),
-                isArray: Array.isArray(userAnswersResponse)
-              });
+              // ИСПРАВЛЕНО: Логируем как warning только если ответ не пустой, иначе это нормально
+              if (userAnswersResponse && typeof userAnswersResponse === 'object' && Object.keys(userAnswersResponse).length > 0) {
+                clientLogger.warn('⚠️ Не удалось нормализовать формат ответов', { 
+                  type: typeof userAnswersResponse,
+                  keys: Object.keys(userAnswersResponse || {}),
+                  isArray: Array.isArray(userAnswersResponse)
+                });
+              } else {
+                // Пустой ответ - это нормально, логируем как info
+                clientLogger.log('ℹ️ Ответы пользователя еще не заполнены');
+              }
             }
           }
         }
@@ -163,10 +169,17 @@ export default function PersonalCabinet() {
             });
           }
         } else {
-          clientLogger.warn('⚠️ Ответы пользователя пусты или не найдены', { 
-            originalResponse: userAnswersResponse,
-            normalizedCount: userAnswers.length
-          });
+          // ИСПРАВЛЕНО: Не логируем как warning, если ответы действительно пусты (это нормально для новых пользователей)
+          // Логируем только если был ответ от API, но он не был распознан
+          if (userAnswersResponse && typeof userAnswersResponse === 'object' && Object.keys(userAnswersResponse).length > 0) {
+            clientLogger.warn('⚠️ Ответы пользователя пусты или не найдены', { 
+              originalResponse: userAnswersResponse,
+              normalizedCount: userAnswers.length
+            });
+          } else {
+            // Просто логируем как info, что ответы пусты (нормально для новых пользователей)
+            clientLogger.log('ℹ️ Ответы пользователя еще не заполнены (нормально для новых пользователей)');
+          }
         }
       } catch (err: any) {
         // ИСПРАВЛЕНО: Не логируем 429 ошибки как warning (rate limiting)

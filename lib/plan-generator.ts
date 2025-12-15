@@ -1058,10 +1058,15 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     } else if (stepStr.startsWith('spot_treatment') || stepStr.includes('spot treatment')) {
       categories.push('spot_treatment');
     } else if (stepStr === 'treatment' || categoryStr === 'treatment') {
-      // Если просто 'treatment' без уточнения, НЕ добавляем fallback
-      // Это позволяет использовать более специфичные фильтры (concerns, activeIngredients)
-      // Fallback будет добавлен через ensureRequiredProducts, если ничего не найдено
-      // Не добавляем ничего, чтобы не засорять выборку неспецифичными продуктами
+      // Если просто 'treatment' без уточнения, пробуем основные варианты
+      // ВАЖНО: Эти категории должны соответствовать тем, что используются в активной фазе плана
+      // Это обеспечивает согласованность между правилами, сессиями рекомендаций и планом
+      categories.push('treatment_acne_azelaic');
+      categories.push('treatment_acne_bpo');
+      categories.push('treatment_exfoliant_mild');
+      categories.push('treatment_exfoliant_strong');
+      categories.push('treatment_pigmentation');
+      categories.push('treatment_antiage');
     }
     
     if (stepStr.startsWith('moisturizer_light') || categoryStr.includes('light')) {
@@ -1331,6 +1336,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   }
 
   // Функция для фильтрации продуктов по фазе плана
+  // ИСПРАВЛЕНО: Базовые продукты (toner, moisturizer) всегда доступны во всех фазах
   const filterProductsByPhase = (
     products: ProductWithBrand[],
     phase: 'adaptation' | 'active' | 'support',
@@ -1338,12 +1344,36 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   ): ProductWithBrand[] => {
     if (products.length === 0) return products;
     
+    // ИСПРАВЛЕНО: Базовые продукты всегда доступны во всех фазах
+    const baseStep = getBaseStepFromStepCategory(stepCategory);
+    const isBaseProduct = baseStep === 'toner' || baseStep === 'moisturizer' || baseStep === 'cleanser' || baseStep === 'spf';
+    
+    // Если это базовый продукт, возвращаем все продукты (но предпочитаем разные по фазам)
+    if (isBaseProduct) {
+      // Для разнообразия по фазам, возвращаем разные продукты, но не фильтруем строго
+      // Просто возвращаем все доступные продукты - они будут распределены по фазам
+      return products;
+    }
+    
     // Определяем, какие активные ингредиенты и stepCategory подходят для каждой фазы
-    const strongActives = ['retinol', 'retinoid', 'tretinoin', 'adapalene', 'benzoyl_peroxide', 'aha', 'bha', 'glycolic', 'salicylic'];
-    const moderateActives = ['azelaic_acid', 'niacinamide', 'vitamin_c', 'alpha_arbutin', 'tranexamic'];
-    const gentleActives = ['hyaluronic_acid', 'glycerin', 'centella', 'panthenol', 'ceramide'];
+    // ИСПРАВЛЕНО: Используем только те ингредиенты и категории, которые реально есть в БД
+    const strongActives = [
+      'retinol', 'retinoid', 'tretinoin', 'adapalene', 'benzoyl_peroxide', 
+      'benzoyl_peroxide_2_5', 'aha', 'bha', 'glycolic', 'salicylic_acid', 
+      'azelaic_acid', 'azelaic_acid_10', 'azelaic_acid_15', 'hydroquinone'
+    ];
+    const moderateActives = [
+      'azelaic_acid', 'azelaic_acid_10', 'azelaic_acid_15', 'niacinamide', 
+      'vitamin_c10', 'vitamin_c15', 'vitamin_c23', 'alpha_arbutin', 
+      'tranexamic_acid', 'ferulic_acid', 'vitamin_e', 'zinc_pca'
+    ];
+    const gentleActives = [
+      'hyaluronic_acid', 'glycerin', 'centella', 'panthenol', 'ceramides', 
+      'squalane', 'shea_butter', 'soothing_complex'
+    ];
     
     // Определяем, какие stepCategory подходят для каждой фазы
+    // ИСПРАВЛЕНО: Используем только существующие категории из БД
     const adaptationSteps = [
       'cleanser_gentle', 'toner_hydrating', 'toner_soothing',
       'serum_hydrating', 'serum_anti_redness',
@@ -1351,10 +1381,15 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       'treatment_exfoliant_mild'
     ];
     
+    // ИСПРАВЛЕНО: Используем существующие категории шагов с активными ингредиентами
+    // В активной фазе должны быть продукты с кислотами и активными ингредиентами
+    // ВАЖНО: Эти категории должны соответствовать тем, что используются в правилах и сессиях рекомендаций
+    // Правила используют простые названия (serum, treatment), которые маппятся на эти stepCategory через mapStepToStepCategory
     const activeSteps = [
       'serum_niacinamide', 'serum_vitc', 'serum_brightening_soft',
       'treatment_acne_azelaic', 'treatment_acne_bpo', 'treatment_pigmentation',
-      'treatment_antiage', 'treatment_exfoliant_strong'
+      'treatment_antiage', 'treatment_exfoliant_strong', 'treatment_exfoliant_mild',
+      'cleanser_deep' // Очищение с кислотами тоже подходит для активной фазы
     ];
     
     const supportSteps = [
@@ -1365,6 +1400,11 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     return products.filter(product => {
       // SPF и очищение всегда подходят для всех фаз
       if (stepCategory.startsWith('spf_') || stepCategory.startsWith('cleanser_')) {
+        return true;
+      }
+      
+      // ИСПРАВЛЕНО: Тонер и крем всегда доступны во всех фазах
+      if (baseStep === 'toner' || baseStep === 'moisturizer') {
         return true;
       }
       
@@ -2670,6 +2710,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     const morningSteps: DayStep[] = [];
     for (const step of dayData.morning) {
       const stepCategory = step as StepCategory;
+      const baseStep = getBaseStepFromStepCategory(stepCategory); // ИСПРАВЛЕНО: Определяем baseStep до использования
       let stepProducts = getProductsForStep(stepCategory, phase);
       
       // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback
@@ -2682,7 +2723,6 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         
         // Если все еще нет, пробуем найти любой продукт для базового шага
         if (stepProducts.length === 0) {
-          const baseStep = getBaseStepFromStepCategory(stepCategory);
           // ИСПРАВЛЕНО: Ищем в productsByStepMap все ключи, которые начинаются с базового шага
           // Например, для 'toner_hydrating' базовый шаг 'toner', ищем все 'toner_*'
           for (const [mapStep, products] of productsByStepMap.entries()) {
@@ -2744,8 +2784,26 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         }
       }
       
+      // ИСПРАВЛЕНО: Выбираем разные продукты для разных фаз для разнообразия
+      // Для базовых продуктов (toner, moisturizer) используем разные продукты по фазам
+      let selectedProductIndex = 0;
+      if (stepProducts.length > 1 && (baseStep === 'toner' || baseStep === 'moisturizer')) {
+        // Выбираем продукт на основе фазы для разнообразия
+        if (phase === 'adaptation') {
+          selectedProductIndex = 0; // Первый продукт для адаптации
+        } else if (phase === 'active') {
+          selectedProductIndex = Math.min(1, stepProducts.length - 1); // Второй продукт для активной фазы
+        } else {
+          selectedProductIndex = Math.min(2, stepProducts.length - 1); // Третий продукт для поддержки
+        }
+        // Если продуктов меньше, чем нужно, используем циклический выбор
+        selectedProductIndex = selectedProductIndex % stepProducts.length;
+      }
+      
+      const selectedProduct = stepProducts.length > 0 ? stepProducts[selectedProductIndex] : null;
       const alternatives = stepProducts
-        .slice(1, 4) // Берем следующие 3 продукта как альтернативы
+        .filter((_, idx) => idx !== selectedProductIndex) // Исключаем выбранный продукт
+        .slice(0, 3) // Берем до 3 продуктов как альтернативы
         .map(p => String(p.id));
       
       // Логируем для отладки (особенно для пользователя 643160759)
@@ -2753,7 +2811,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         logger.warn('Products for step in plan28 morning', {
           step: stepCategory,
           dayIndex,
+          phase,
           productsCount: stepProducts.length,
+          selectedProductIndex,
+          selectedProductId: selectedProduct?.id,
           productIds: stepProducts.map(p => p.id).slice(0, 5),
           productsByStepMapKeys: Array.from(productsByStepMap.keys()),
           userId,
@@ -2764,7 +2825,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       // Это гарантирует, что все шаги из шаблона попадают в план
       morningSteps.push({
         stepCategory: stepCategory,
-        productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
+        productId: selectedProduct ? String(selectedProduct.id) : null,
         alternatives,
       });
     }
@@ -2922,8 +2983,27 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         }
       }
       
-      const alternatives = stepProducts
-        .slice(1, 4)
+      // ИСПРАВЛЕНО: Выбираем разные продукты для разных фаз для разнообразия
+      // Для базовых продуктов (toner, moisturizer) используем разные продукты по фазам
+      const baseStepEvening = getBaseStepFromStepCategory(stepCategory);
+      let selectedProductIndexEvening = 0;
+      if (stepProducts.length > 1 && (baseStepEvening === 'toner' || baseStepEvening === 'moisturizer')) {
+        // Выбираем продукт на основе фазы для разнообразия
+        if (phase === 'adaptation') {
+          selectedProductIndexEvening = 0; // Первый продукт для адаптации
+        } else if (phase === 'active') {
+          selectedProductIndexEvening = Math.min(1, stepProducts.length - 1); // Второй продукт для активной фазы
+        } else {
+          selectedProductIndexEvening = Math.min(2, stepProducts.length - 1); // Третий продукт для поддержки
+        }
+        // Если продуктов меньше, чем нужно, используем циклический выбор
+        selectedProductIndexEvening = selectedProductIndexEvening % stepProducts.length;
+      }
+      
+      const selectedProductEvening = stepProducts.length > 0 ? stepProducts[selectedProductIndexEvening] : null;
+      const alternativesEvening = stepProducts
+        .filter((_, idx) => idx !== selectedProductIndexEvening) // Исключаем выбранный продукт
+        .slice(0, 3) // Берем до 3 продуктов как альтернативы
         .map(p => String(p.id));
       
       // Логируем для отладки (особенно для пользователя 643160759)
@@ -2931,7 +3011,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         logger.warn('Products for step in plan28 evening', {
           step: stepCategory,
           dayIndex,
+          phase,
           productsCount: stepProducts.length,
+          selectedProductIndexEvening,
+          selectedProductId: selectedProductEvening?.id,
           productIds: stepProducts.map(p => p.id).slice(0, 5),
           productsByStepMapKeys: Array.from(productsByStepMap.keys()),
           userId,
@@ -2942,8 +3025,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       // Это гарантирует, что все шаги из шаблона попадают в план
       eveningSteps.push({
         stepCategory: stepCategory,
-        productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
-        alternatives,
+        productId: selectedProductEvening ? String(selectedProductEvening.id) : null,
+        alternatives: alternativesEvening,
       });
     }
     

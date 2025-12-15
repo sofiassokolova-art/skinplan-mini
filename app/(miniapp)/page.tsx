@@ -64,6 +64,7 @@ export default function HomePage() {
     setMounted(true);
     initialize();
     setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true сразу при монтировании
+    setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при инициализации компонента
     
     // Загружаем данные (пользователь идентифицируется автоматически через initData)
     const initAndLoad = async () => {
@@ -76,20 +77,37 @@ export default function HomePage() {
       }
 
       // ОПТИМИЗИРОВАНО: Загружаем имя пользователя асинхронно, не блокируя основную загрузку
-      // ИСПРАВЛЕНО: Добавляем кэширование в localStorage для уменьшения rate limiting
+      // ИСПРАВЛЕНО: Приоритет загрузки имени: ответ USER_NAME > кэш ответов > кэш имени > профиль
       const loadUserNameAsync = async () => {
         try {
-          // ИСПРАВЛЕНО: Проверяем кэш в localStorage сначала
-          const cachedName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
-          if (cachedName) {
-            setUserName(cachedName);
-            clientLogger.log('✅ User name loaded from cache:', cachedName);
-            return;
+          // ИСПРАВЛЕНО: Сначала проверяем кэш ответов (быстрее, чем запрос к API)
+          const cachedAnswers = typeof window !== 'undefined' ? localStorage.getItem('user_answers_cache') : null;
+          if (cachedAnswers) {
+            try {
+              const userAnswers = JSON.parse(cachedAnswers);
+              if (Array.isArray(userAnswers)) {
+                const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+                if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+                  const userNameFromAnswer = String(nameAnswer.answerValue).trim();
+                  setUserName(userNameFromAnswer);
+                  localStorage.setItem('user_name', userNameFromAnswer);
+                  clientLogger.log('✅ User name loaded from cached answers:', userNameFromAnswer);
+                  return;
+                }
+              }
+            } catch (parseError) {
+              // Если кэш поврежден, игнорируем и продолжаем
+            }
           }
           
-          // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
+          // Если кэша ответов нет, запрашиваем ответы из API
           const userAnswers = await api.getUserAnswers() as any;
           if (userAnswers && Array.isArray(userAnswers)) {
+            // ИСПРАВЛЕНО: Сохраняем ответы в кэш для будущих запросов
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('user_answers_cache', JSON.stringify(userAnswers));
+            }
+            
             const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
             if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
               const userNameFromAnswer = String(nameAnswer.answerValue).trim();
@@ -102,7 +120,16 @@ export default function HomePage() {
               return;
             }
           }
-          // Если имени нет в ответах, пробуем из профиля
+          
+          // Если имени нет в ответах, проверяем кэш имени (fallback)
+          const cachedName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
+          if (cachedName) {
+            setUserName(cachedName);
+            clientLogger.log('✅ User name loaded from cache (fallback):', cachedName);
+            return;
+          }
+          
+          // Если кэша нет, пробуем из профиля
           const userProfile = await api.getUserProfile();
           if (userProfile?.firstName) {
             setUserName(userProfile.firstName);
@@ -140,12 +167,14 @@ export default function HomePage() {
 
   const loadRecommendations = async () => {
     setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true перед началом загрузки
+    setError(null); // ИСПРАВЛЕНО: Очищаем ошибку перед началом новой загрузки
     try {
       const data = await api.getRecommendations() as any;
       
       // ИСПРАВЛЕНО: Убрана проверка expired - PaymentGate сам проверит статус оплаты
       // Загружаем рекомендации даже если план истек - PaymentGate покажет блюр
       setRecommendations(data as Recommendation);
+      setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке
       
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
       const morning: RoutineItem[] = [];
@@ -319,17 +348,19 @@ export default function HomePage() {
       
       // ИСПРАВЛЕНО: Проверяем статус 404 или isNotFound флаг
       // 404 не является критической ошибкой - это означает, что профиль/рекомендации еще не созданы
-      if (error?.status === 404 || error?.isNotFound || error?.message?.includes('404') || error?.message?.includes('No skin profile') || error?.message?.includes('Not found')) {
+      if (error?.status === 404 || error?.isNotFound || error?.message?.includes('404') || error?.message?.includes('No skin profile') || error?.message?.includes('Not found') || error?.message?.includes('profile not found')) {
         // Профиль/рекомендации не найдены - это нормально, если пользователь еще не прошел анкету
-        // ИСПРАВЛЕНО: Не очищаем рекомендации сразу, чтобы не показывать экран "профиль отсутствует"
-        // Вместо этого проверяем, есть ли уже загруженные рекомендации
+        // ИСПРАВЛЕНО: Всегда очищаем ошибку при 404, чтобы не показывать экран ошибки
         clientLogger.log('Рекомендации не найдены (профиль еще не создан или анкета не завершена)');
         
-        // Если рекомендации уже есть (загружены ранее), не очищаем их
+        // ИСПРАВЛЕНО: Всегда очищаем ошибку при 404, независимо от наличия рекомендаций
+        // Это предотвращает показ ошибки "профиль не найден" при обновлении страницы
+        setError(null);
+        
+        // Если рекомендации уже есть (загружены ранее), сохраняем их
         // Это предотвращает мигание экрана "профиль отсутствует" при временных ошибках
         if (morningItems.length === 0 && eveningItems.length === 0) {
           // Рекомендаций нет - показываем экран призыва к действию
-          setError(null); // Очищаем ошибку, чтобы не показывать экран ошибки
           setMorningItems([]);
           setEveningItems([]);
         } else {

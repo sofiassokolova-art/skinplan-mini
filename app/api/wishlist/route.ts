@@ -200,18 +200,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    return NextResponse.json({
-      success: true,
-      item: {
-        id: wishlistItem.id,
-        product: {
-          id: wishlistItem.product.id,
-          name: wishlistItem.product.name,
-          brand: wishlistItem.product.brand.name,
-        },
-      },
-    });
   } catch (error: any) {
     const duration = Date.now() - startTime;
     

@@ -87,13 +87,115 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Здесь нужно обновить план пользователя
-    // Так как план генерируется динамически, нужно либо:
-    // 1. Сохранить замены в отдельной таблице и учитывать их при генерации плана
-    // 2. Или обновлять кэш рекомендаций
+    // ИСПРАВЛЕНО: Обновляем plan28 - заменяем продукт во всех днях плана
+    const plan28 = await prisma.plan28.findFirst({
+      where: {
+        userId,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    // Пока просто сохраняем замену - она будет учтена при следующей генерации плана
-    // Можно также обновить RecommendationSession, чтобы использовать новый продукт
+    if (plan28 && plan28.days) {
+      const days = plan28.days as any;
+      let updatedDays = false;
+      
+      // Проходим по всем дням и заменяем productId
+      const updatedDaysArray = days.map((day: any) => {
+        let dayUpdated = false;
+        
+        // Обновляем утренние шаги
+        const updatedMorning = day.morning?.map((step: any) => {
+          if (step.productId === oldProductId) {
+            dayUpdated = true;
+            updatedDays = true;
+            return { ...step, productId: newProductId };
+          }
+          // Также обновляем альтернативы
+          if (step.alternatives && Array.isArray(step.alternatives)) {
+            const updatedAlternatives = step.alternatives.map((altId: number) => 
+              altId === oldProductId ? newProductId : altId
+            );
+            if (JSON.stringify(updatedAlternatives) !== JSON.stringify(step.alternatives)) {
+              dayUpdated = true;
+              updatedDays = true;
+              return { ...step, alternatives: updatedAlternatives };
+            }
+          }
+          return step;
+        }) || day.morning;
+        
+        // Обновляем вечерние шаги
+        const updatedEvening = day.evening?.map((step: any) => {
+          if (step.productId === oldProductId) {
+            dayUpdated = true;
+            updatedDays = true;
+            return { ...step, productId: newProductId };
+          }
+          // Также обновляем альтернативы
+          if (step.alternatives && Array.isArray(step.alternatives)) {
+            const updatedAlternatives = step.alternatives.map((altId: number) => 
+              altId === oldProductId ? newProductId : altId
+            );
+            if (JSON.stringify(updatedAlternatives) !== JSON.stringify(step.alternatives)) {
+              dayUpdated = true;
+              updatedDays = true;
+              return { ...step, alternatives: updatedAlternatives };
+            }
+          }
+          return step;
+        }) || day.evening;
+        
+        // Обновляем еженедельные шаги
+        const updatedWeekly = day.weekly?.map((step: any) => {
+          if (step.productId === oldProductId) {
+            dayUpdated = true;
+            updatedDays = true;
+            return { ...step, productId: newProductId };
+          }
+          // Также обновляем альтернативы
+          if (step.alternatives && Array.isArray(step.alternatives)) {
+            const updatedAlternatives = step.alternatives.map((altId: number) => 
+              altId === oldProductId ? newProductId : altId
+            );
+            if (JSON.stringify(updatedAlternatives) !== JSON.stringify(step.alternatives)) {
+              dayUpdated = true;
+              updatedDays = true;
+              return { ...step, alternatives: updatedAlternatives };
+            }
+          }
+          return step;
+        }) || day.weekly;
+        
+        if (dayUpdated) {
+          return {
+            ...day,
+            morning: updatedMorning,
+            evening: updatedEvening,
+            weekly: updatedWeekly,
+          };
+        }
+        return day;
+      });
+      
+      if (updatedDays) {
+        await prisma.plan28.update({
+          where: { id: plan28.id },
+          data: {
+            days: updatedDaysArray,
+          },
+        });
+        
+        logger.info('Plan28 updated with new product', {
+          userId,
+          plan28Id: plan28.id,
+          oldProductId,
+          newProductId,
+          daysUpdated: updatedDaysArray.filter((d: any, i: number) => 
+            JSON.stringify(d) !== JSON.stringify(days[i])
+          ).length,
+        });
+      }
+    }
 
     // Обновляем активную сессию рекомендаций, если она есть
     const activeSession = await prisma.recommendationSession.findFirst({

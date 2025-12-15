@@ -98,16 +98,8 @@ export function PlanPageClientNew({
     
     const loadUserName = async () => {
       try {
-        // ИСПРАВЛЕНО: Проверяем кэш в localStorage сначала для уменьшения rate limiting
-        const cachedName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
-        if (cachedName) {
-          setUserName(cachedName);
-          clientLogger.log('✅ User name loaded from cache:', cachedName);
-          return;
-        }
-        
-        // ИСПРАВЛЕНО: Проверяем кэш ответов пользователя перед запросом к API
-        // Это предотвращает rate limit ошибки при частых загрузках
+        // ИСПРАВЛЕНО: Приоритет загрузки имени: ответ USER_NAME > кэш ответов > кэш имени > профиль
+        // Сначала проверяем кэш ответов пользователя (быстрее, чем запрос к API)
         const cachedAnswers = typeof window !== 'undefined' ? localStorage.getItem('user_answers_cache') : null;
         if (cachedAnswers) {
           try {
@@ -128,7 +120,7 @@ export function PlanPageClientNew({
           }
         }
         
-        // Сначала пытаемся получить имя из ответов на вопрос USER_NAME
+        // Если кэша ответов нет, запрашиваем ответы из API
         const userAnswers = await api.getUserAnswers() as any;
         if (userAnswers && Array.isArray(userAnswers)) {
           // ИСПРАВЛЕНО: Сохраняем ответы в кэш для будущих запросов
