@@ -228,11 +228,11 @@ export default function HomePage() {
       }
       
       // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех
-      if (data?.steps?.lip_balm) {
+      if (data?.steps?.lip_care) {
         morning.push({
           id: 'morning-lip-balm',
           title: 'Бальзам для губ',
-          subtitle: data.steps.lip_balm[0]?.name || 'Бальзам для губ',
+          subtitle: data.steps.lip_care[0]?.name || 'Бальзам для губ',
           icon: ICONS.cream, // Используем иконку крема как временную
           howto: {
             steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],

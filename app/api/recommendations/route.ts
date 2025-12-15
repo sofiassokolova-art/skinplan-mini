@@ -228,7 +228,8 @@ export async function GET(request: NextRequest) {
               const productName = product.name.toLowerCase();
               
               // Собираем бальзамы для губ отдельно для добавления утром
-              if (productStep.toLowerCase().includes('lip_balm') || 
+              if (productStep.toLowerCase().includes('lip_care') || 
+                  productStep.toLowerCase().includes('lip_balm') || 
                   productCategory.toLowerCase().includes('lip') ||
                   productName.includes('lip balm') ||
                   productName.includes('бальзам для губ')) {
@@ -291,8 +292,8 @@ export async function GET(request: NextRequest) {
             }
             
             // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех
-            if (lipBalms.length > 0 && !steps.lip_balm) {
-              steps.lip_balm = [lipBalms[0]]; // Берем первый бальзам для губ
+            if (lipBalms.length > 0 && !steps.lip_care) {
+              steps.lip_care = [lipBalms[0]]; // Берем первый бальзам для губ
             }
             
             // Формируем ответ в формате рекомендаций

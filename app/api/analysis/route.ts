@@ -478,6 +478,7 @@ export async function GET(request: NextRequest) {
           acid: { name: 'Кислоты', description: 'Отшелушивание и обновление кожи', tags: ['отшелушивание'], isMorning: false },
           moisturizer: { name: 'Увлажнение', description: 'Легкое увлажнение без ощущения тяжести', tags: ['увлажнение'], isMorning: true },
           spf: { name: 'SPF защита', description: 'Защита от УФ-излучения и преждевременного старения', tags: ['защита от УФ', 'предотвращение старения'], isMorning: true },
+          lip_care: { name: 'Бальзам для губ', description: 'Уход за губами и защита от сухости', tags: ['уход за губами'], isMorning: true },
         };
         
         if (recommendationsData.steps) {
