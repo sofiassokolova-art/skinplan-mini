@@ -116,9 +116,8 @@ export async function GET() {
       questionnaireId: formatted.id,
       groupsCount: formatted.groups.length,
       questionsCount: formatted.questions.length,
-      totalQuestions: formatted.groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + formatted.questions.length,
       totalQuestions: totalQuestionsCount,
-    };
+    });
 
     return NextResponse.json(formatted);
   } catch (error: any) {
