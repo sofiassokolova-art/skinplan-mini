@@ -38,6 +38,26 @@ export default function CartPage() {
     loadWishlist();
   }, []);
 
+  // ИСПРАВЛЕНО: Обновляем список избранного при возврате на страницу (focus)
+  useEffect(() => {
+    const handleFocus = () => {
+      // Обновляем список при возврате на страницу
+      loadWishlist();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    // Также обновляем при видимости страницы (для мобильных устройств)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        loadWishlist();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   const loadWishlist = async () => {
     try {
       setLoading(true);

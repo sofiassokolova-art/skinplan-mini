@@ -658,11 +658,14 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Устанавливаем loading = false только после загрузки прогресса
       // Это гарантирует, что экран resume покажется до того, как пользователь увидит первый экран анкеты
-      // ВАЖНО: Если showResumeScreen был установлен в loadSavedProgressFromServer, не устанавливаем loading = false здесь
-      // чтобы экран resume успел отрендериться
-      if (!showResumeScreen && !savedProgress) {
-        setLoading(false);
-      }
+      // ВАЖНО: Если showResumeScreen был установлен в loadSavedProgressFromServer, loading уже установлен в false там
+      // Поэтому здесь проверяем, не был ли уже установлен loading = false
+      // Используем setTimeout, чтобы дать время для установки showResumeScreen в loadSavedProgressFromServer
+      setTimeout(() => {
+        if (!showResumeScreen && !savedProgress) {
+          setLoading(false);
+        }
+      }, 0);
       // ИСПРАВЛЕНО: Не устанавливаем initCompletedRef сразу, чтобы не блокировать загрузку прогресса при возврате
       // initCompletedRef.current = true;
       initInProgressRef.current = false;

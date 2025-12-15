@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { ApiResponse } from '@/lib/api-response';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
