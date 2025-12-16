@@ -595,7 +595,10 @@ export default function QuizPage() {
                   });
                   
                   // Вызываем submitAnswers для создания профиля
-                  await api.submitAnswers(questionnaire.id, answerArray);
+                  await api.submitAnswers({
+                    questionnaireId: questionnaire.id,
+                    answers: answerArray,
+                  });
                   clientLogger.log('✅ Профиль создан автоматически после обнаружения завершенной анкеты');
                   
                   // После создания профиля редиректим на /plan
