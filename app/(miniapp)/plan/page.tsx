@@ -192,10 +192,10 @@ export default function PlanPage() {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
             }
-            // Загружаем план
-            loadPlan();
             // Убираем state=generating из URL
             router.replace('/plan');
+            // Загружаем план (форсируем даже если URL ещё содержал state=generating)
+            loadPlan(0, true);
           }
         }
       }
@@ -237,8 +237,8 @@ export default function PlanPage() {
             pollingIntervalRef.current = null;
           }
           setGeneratingState('ready');
-          loadPlan();
           router.replace('/plan');
+          loadPlan(0, true);
         }
       }, 60000);
     } else {
@@ -771,13 +771,13 @@ export default function PlanPage() {
 
   const MAX_RETRIES = 5;
   
-  const loadPlan = async (retryCount = 0) => {
+  const loadPlan = async (retryCount = 0, force = false) => {
     // ИСПРАВЛЕНО: Не загружаем план, если мы в режиме генерации
     // Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const state = urlParams.get('state');
-      if (state === 'generating') {
+      if (!force && state === 'generating') {
         clientLogger.log('⏸️ Skipping loadPlan - plan is being generated');
         return;
       }
