@@ -1,6 +1,9 @@
 // lib/db-fingerprint.ts
 // Утилита для логирования "отпечатка" БД подключения
 // Помогает диагностировать проблемы с разными БД/схемами между роутами
+// SERVER ONLY: Этот файл используется только в API routes
+
+'use server';
 
 import { prisma } from './db';
 import { logger } from './logger';
@@ -19,11 +22,6 @@ export async function logDbFingerprint(tag: string) {
     `;
     
     const fingerprint = rows[0];
-    
-    // Логируем с высоким приоритетом (warn), чтобы было видно в логах
-    // Это критично для диагностики проблемы "разные БД"
-    const databaseUrl = process.env.DATABASE_URL || '';
-    const urlParts = databaseUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):?(\d+)?\/([^?]+)/);
     
     // Логируем с высоким приоритетом (warn), чтобы было видно в логах
     // Это критично для диагностики проблемы "разные БД"
