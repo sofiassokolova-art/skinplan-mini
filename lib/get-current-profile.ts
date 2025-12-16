@@ -1,14 +1,23 @@
 // lib/get-current-profile.ts
 // Утилита для получения текущего активного профиля пользователя
-// ИСПРАВЛЕНО: Использует currentProfileId для быстрого доступа вместо orderBy
+// Единый резолвер активного профиля для всех эндпоинтов
+// 
+// Логика работы:
+// 1. Если колонка current_profile_id существует в БД - используем её для быстрого доступа
+// 2. Если колонки нет или currentProfileId не установлен - fallback на последний профиль по version DESC
+// 3. Это решает проблему, когда профиль создан, но current_profile_id не обновлен (колонка отсутствует в БД)
 
 import { prisma } from './db';
 import { logger } from './logger';
 
 /**
  * Получает текущий активный профиль пользователя
- * ИСПРАВЛЕНО: Использует currentProfileId для быстрого доступа
- * Fallback на orderBy version DESC если currentProfileId не установлен
+ * 
+ * Единый резолвер для всех эндпоинтов (/api/plan, /api/profile/current и т.д.)
+ * Правильно обрабатывает отсутствие колонки current_profile_id в БД
+ * 
+ * @param userId - ID пользователя
+ * @returns Последний профиль пользователя по version DESC или null если профилей нет
  */
 export async function getCurrentProfile(userId: string) {
   try {

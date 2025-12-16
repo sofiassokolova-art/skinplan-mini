@@ -2,9 +2,9 @@
 // Получение текущего профиля пользователя
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getCurrentProfile } from '@/lib/get-current-profile';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -19,13 +19,9 @@ export async function GET(request: NextRequest) {
     }
     userId = auth.ctx.userId;
 
-    // Получаем последний профиль пользователя
-    // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
-    // При перепрохождении анкеты создается новая версия профиля
-    const profile = await prisma.skinProfile.findFirst({
-      where: { userId },
-      orderBy: { version: 'desc' },
-    });
+    // ИСПРАВЛЕНО: Используем единый резолвер активного профиля
+    // Это обеспечивает консистентность с /api/plan и правильно обрабатывает отсутствие current_profile_id
+    const profile = await getCurrentProfile(userId);
 
     if (!profile) {
       // Это нормальная ситуация для пользователей, которые еще не прошли анкету

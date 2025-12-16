@@ -7,6 +7,7 @@ import { getCachedPlan } from '@/lib/cache';
 import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getCurrentProfile } from '@/lib/get-current-profile';
 import type { Plan28 } from '@/lib/plan-types';
 import type { PlanResponse } from '@/lib/api-types';
 
@@ -27,26 +28,17 @@ export async function GET(request: NextRequest) {
 
     logger.info('User identified from initData', { userId });
     
-    // Получаем профиль для версии
-    // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию
-    // При перепрохождении анкеты создается новая версия профиля, и план должен быть для новой версии
-    // ИСПРАВЛЕНО: Добавляем небольшую задержку и повторную попытку, если профиль не найден
-    // Это решает проблему race condition, когда профиль только что создан, но еще не виден в БД
-    let profile = await prisma.skinProfile.findFirst({
-      where: { userId },
-      orderBy: { version: 'desc' },
-      select: { version: true, updatedAt: true },
-    });
+    // ИСПРАВЛЕНО: Используем единый резолвер активного профиля
+    // Это решает проблему, когда current_profile_id отсутствует в БД
+    // getCurrentProfile правильно обрабатывает отсутствие колонки и использует fallback на последний профиль
+    let profile = await getCurrentProfile(userId);
 
     // Если профиль не найден, ждем немного и пробуем еще раз (race condition fix)
+    // Это решает проблему race condition, когда профиль только что создан, но еще не виден в БД
     if (!profile) {
       logger.warn('Profile not found on first attempt, waiting and retrying...', { userId });
       await new Promise(resolve => setTimeout(resolve, 200)); // Ждем 200ms
-      profile = await prisma.skinProfile.findFirst({
-        where: { userId },
-        orderBy: { version: 'desc' },
-        select: { version: true, updatedAt: true },
-      });
+      profile = await getCurrentProfile(userId);
     }
 
     if (!profile) {
