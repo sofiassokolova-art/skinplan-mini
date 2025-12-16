@@ -3,7 +3,7 @@
 // Оплата должна обрабатываться через вебхук от платежного провайдера
 // Этот endpoint позволяет подделать оплату с клиента - это НЕБЕЗОПАСНО!
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
