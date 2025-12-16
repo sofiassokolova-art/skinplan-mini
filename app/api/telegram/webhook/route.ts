@@ -444,6 +444,97 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, processed: 'clear_command' });
     }
 
+    // Обработка команды /logs - отправка логов пользователя
+    else if (update.message?.text === '/logs' || update.message?.text?.startsWith('/logs')) {
+      const chatId = update.message.chat.id;
+      const telegramId = update.message.from.id;
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
+
+      if (!userId) {
+        await sendMessage(chatId, '❌ Не удалось идентифицировать пользователя', undefined);
+        return NextResponse.json({ ok: true, processed: 'logs_command_error' });
+      }
+
+      try {
+        // Получаем последние логи пользователя
+        const logs = await prisma.clientLog.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        });
+
+        // Получаем информацию о профилях
+        const profiles = await prisma.skinProfile.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        });
+
+        // Получаем информацию о планах
+        const plans = await prisma.plan28.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+        });
+
+        // Получаем информацию о ответах
+        const answersCount = await prisma.userAnswer.count({
+          where: { userId },
+        });
+
+        // Формируем сообщение
+        let message = `📊 <b>Ваши логи и данные</b>\n\n`;
+        
+        message += `👤 <b>Профили:</b> ${profiles.length}\n`;
+        if (profiles.length > 0) {
+          profiles.forEach((p, idx) => {
+            const date = new Date(p.createdAt).toLocaleString('ru-RU');
+            message += `  ${idx + 1}. ID: <code>${p.id}</code>\n`;
+            message += `     Version: ${p.version}, Created: ${date}\n`;
+          });
+        }
+
+        message += `\n📋 <b>Ответы:</b> ${answersCount}\n`;
+        
+        message += `\n📅 <b>Планы:</b> ${plans.length}\n`;
+        if (plans.length > 0) {
+          plans.forEach((p, idx) => {
+            const date = new Date(p.createdAt).toLocaleString('ru-RU');
+            message += `  ${idx + 1}. ProfileVersion: ${p.profileVersion}, Created: ${date}\n`;
+          });
+        }
+
+        message += `\n📝 <b>Последние логи (${logs.length}):</b>\n`;
+        if (logs.length === 0) {
+          message += `  Логов не найдено\n`;
+        } else {
+          logs.slice(0, 10).forEach((log, idx) => {
+            const date = new Date(log.createdAt).toLocaleString('ru-RU');
+            const level = log.level.toUpperCase();
+            const msg = log.message.length > 50 ? log.message.substring(0, 50) + '...' : log.message;
+            message += `  ${idx + 1}. [${date}] ${level}: ${msg}\n`;
+          });
+          if (logs.length > 10) {
+            message += `  ... и ещё ${logs.length - 10} логов\n`;
+          }
+        }
+
+        // Отправляем сообщение
+        await sendMessage(chatId, message, undefined, userId);
+        console.log(`✅ Logs sent to chat ${chatId} for user ${userId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to get/send logs:`, error);
+        await sendMessage(chatId, `❌ Ошибка при получении логов: ${error.message}`, undefined, userId);
+      }
+      
+      return NextResponse.json({ ok: true, processed: 'logs_command' });
+    }
+
     // Обработка команды /help
     else if (update.message?.text === '/help') {
       const chatId = update.message.chat.id;
@@ -461,6 +552,7 @@ export async function POST(request: NextRequest) {
 /help - Показать эту справку
 /clear - Очистить данные анкеты
 /payment - Установить статус оплаты (для тестирования)
+/logs - Показать ваши логи и данные
 
 <b>Что дальше?</b>
 Нажмите на кнопку "Открыть SkinIQ" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями SkinIQ!`;
