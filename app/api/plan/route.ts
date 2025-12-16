@@ -64,14 +64,19 @@ export async function GET(request: NextRequest) {
 
     if (!profile) {
       const duration = Date.now() - startTime;
-      // ИСПРАВЛЕНО: Улучшено логирование для диагностики проблемы "No skin profile found"
-      logger.error('No skin profile found for user after retry', {
+      // ИСПРАВЛЕНО: Возвращаем 200 null вместо 404 для лучшей семантики
+      // Отсутствие профиля - это не ошибка сервера, а нормальное состояние (пользователь еще не прошел анкету)
+      // Это предотвращает проблемы с кэшированием 404 и улучшает UX
+      logger.warn('No skin profile found for user after retry', {
         userId,
         // Эти поля помогут сравнить с /api/questionnaire/answers
         // Если там профиль создался, а здесь не находится - проблема в userId или фильтрах
       });
-      logApiRequest(method, path, 404, duration, userId);
-      return ApiResponse.notFound('No skin profile found', { userId });
+      logApiRequest(method, path, 200, duration, userId);
+      return ApiResponse.success({
+        plan: null,
+        reason: 'no_profile',
+      });
     }
 
     // ИСПРАВЛЕНО: Сначала проверяем БД, а не кэш

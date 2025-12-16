@@ -871,51 +871,65 @@ export async function POST(request: NextRequest) {
     // Извлекаем результат после успешной транзакции
     const { savedAnswers, fullAnswers, profile, existingProfile } = transactionResult;
     
-    // Очищаем кэш плана и рекомендаций при обновлении профиля (вне транзакции)
-    if (existingProfile && existingProfile.version !== profile.version) {
-      logger.info('Profile updated, clearing cache and RecommendationSession', { 
+    // ИСПРАВЛЕНО: Всегда очищаем кэш после создания/обновления профиля
+    // Критично: даже при первом создании профиля нужно очистить кэш,
+    // иначе старый кэш "нет профиля/нет плана" будет возвращаться
+    const isFirstProfile = !existingProfile;
+    const isProfileUpdated = existingProfile && existingProfile.version !== profile.version;
+    
+    if (isFirstProfile || isProfileUpdated) {
+      logger.info('Profile created/updated, clearing cache', { 
         userId: userId || undefined, 
-        oldVersion: existingProfile.version, 
+        isFirstProfile,
+        isProfileUpdated,
+        oldVersion: existingProfile?.version, 
         newVersion: profile.version,
-        isRetaking: !!existingProfile, // Это перепрохождение анкеты
       });
+      
       try {
         const { invalidateCache, invalidateAllUserCache } = await import('@/lib/cache');
-        // Очищаем кэш для старой версии
-        await invalidateCache(userId, existingProfile.version);
-        // Также очищаем кэш для новой версии, чтобы план перегенерировался
-        await invalidateCache(userId, profile.version);
-        // ВАЖНО: Также очищаем весь кэш пользователя для гарантии (все версии)
-        // Это предотвращает загрузку старого плана из кэша
+        
+        // ИСПРАВЛЕНО: Всегда очищаем весь кэш пользователя после создания/обновления профиля
+        // Это критично для первого профиля - иначе старый кэш "нет профиля" останется
         await invalidateAllUserCache(userId);
-        logger.info('Cache cleared for old and new profile versions, plus all user cache', { 
+        logger.info('All user cache cleared', { 
           userId, 
-          oldVersion: existingProfile.version,
-          newVersion: profile.version,
+          profileVersion: profile.version,
         });
         
-        // ИСПРАВЛЕНО: Удаляем старую RecommendationSession и PlanProgress по userId
-        // Семантика: при создании нового профиля (новая версия) удаляем ВСЕ сессии и прогресс пользователя
-        // Это гарантирует чистый старт для новой версии профиля
-        // Новая сессия будет создана позже через /api/recommendations или /api/plan/generate
-        await prisma.recommendationSession.deleteMany({
-          where: { userId },
-        });
-        logger.info('RecommendationSession deleted for plan regeneration (all user sessions)', { 
-          userId,
-          oldProfileVersion: existingProfile.version,
-          newProfileVersion: profile.version,
-        });
-        
-        // ВАЖНО: Также удаляем старый прогресс плана, чтобы не было конфликтов
-        await prisma.planProgress.deleteMany({
-          where: { userId },
-        });
-        logger.info('PlanProgress deleted for plan regeneration (all user progress)', { 
-          userId,
-          oldProfileVersion: existingProfile.version,
-          newProfileVersion: profile.version,
-        });
+        // Если это обновление (не первый профиль) - также очищаем кэш для старой версии
+        if (isProfileUpdated && existingProfile) {
+          await invalidateCache(userId, existingProfile.version);
+          await invalidateCache(userId, profile.version);
+          logger.info('Cache cleared for old and new profile versions', { 
+            userId, 
+            oldVersion: existingProfile.version,
+            newVersion: profile.version,
+          });
+          
+          // ИСПРАВЛЕНО: Удаляем старую RecommendationSession и PlanProgress по userId
+          // Семантика: при создании нового профиля (новая версия) удаляем ВСЕ сессии и прогресс пользователя
+          // Это гарантирует чистый старт для новой версии профиля
+          // Новая сессия будет создана позже через /api/recommendations или /api/plan/generate
+          await prisma.recommendationSession.deleteMany({
+            where: { userId },
+          });
+          logger.info('RecommendationSession deleted for plan regeneration (all user sessions)', { 
+            userId,
+            oldProfileVersion: existingProfile.version,
+            newProfileVersion: profile.version,
+          });
+          
+          // ВАЖНО: Также удаляем старый прогресс плана, чтобы не было конфликтов
+          await prisma.planProgress.deleteMany({
+            where: { userId },
+          });
+          logger.info('PlanProgress deleted for plan regeneration (all user progress)', { 
+            userId,
+            oldProfileVersion: existingProfile.version,
+            newProfileVersion: profile.version,
+          });
+        }
         
         // ВАЖНО: Генерацию плана переносим ПОСЛЕ создания RecommendationSession
         // Это гарантирует, что план будет использовать продукты из новой сессии

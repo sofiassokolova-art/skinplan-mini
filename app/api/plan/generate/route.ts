@@ -9,6 +9,7 @@ import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import '@/lib/env-check'; // Валидация env переменных при старте
 import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getCurrentProfile } from '@/lib/get-current-profile';
 
 export const runtime = 'nodejs';
 
@@ -36,16 +37,64 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
     
-    // Получаем профиль для версии
-    const profile = await prisma.skinProfile.findFirst({
-      where: { userId },
-      orderBy: { version: 'desc' },
-      select: { id: true, version: true },
-    });
+    // ИСПРАВЛЕНО: Поддержка read-your-write через ?profileId= параметр
+    // Это решает проблему read-after-write неконсистентности при использовании реплик/accelerate
+    const { searchParams } = new URL(request.url);
+    const profileIdParam = searchParams.get('profileId');
+    
+    let profile: { id: string; version: number } | null = null;
+    
+    // Если передан profileId - сначала пробуем загрузить профиль по нему (read-your-write)
+    if (profileIdParam) {
+      profile = await prisma.skinProfile.findFirst({
+        where: {
+          id: profileIdParam,
+          userId, // Проверка принадлежности для безопасности
+        },
+        select: { id: true, version: true },
+      });
+      
+      if (profile) {
+        logger.info('Profile found via profileId parameter (read-your-write)', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+        });
+      } else {
+        logger.warn('Profile not found via profileId parameter, falling back to getCurrentProfile', {
+          userId,
+          profileIdParam,
+        });
+      }
+    }
+    
+    // Fallback: используем единый резолвер getCurrentProfile
+    // ИСПРАВЛЕНО: Используем getCurrentProfile вместо прямого запроса для консистентности
+    if (!profile) {
+      const resolvedProfile = await getCurrentProfile(userId);
+      if (resolvedProfile) {
+        profile = {
+          id: resolvedProfile.id,
+          version: resolvedProfile.version || 1,
+        };
+        logger.info('Profile found via getCurrentProfile', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+        });
+      }
+    }
 
     if (!profile) {
-      logger.error('No skin profile found for user', { userId });
-      return ApiResponse.notFound('No skin profile found', { userId });
+      // ИСПРАВЛЕНО: Возвращаем 200 null вместо 404 для лучшей семантики
+      // Отсутствие профиля - это не ошибка сервера, а нормальное состояние
+      const duration = Date.now() - startTime;
+      logger.warn('No skin profile found for user', { userId, profileIdParam });
+      logApiRequest(method, path, 200, duration, userId);
+      return ApiResponse.success({
+        plan: null,
+        reason: 'no_profile',
+      });
     }
 
     logger.info('Plan generation request', {
