@@ -121,6 +121,22 @@ export async function GET(request: NextRequest) {
     
     logger.info('Profile found for recommendations', { userId, profileId: profile.id, version: profile.version });
 
+    // ИСПРАВЛЕНО: Активная анкета — единственный источник правды для questionnaireId
+    // Ранее использовались жестко заданные questionnaireId (2/3), что могло ломать rule-matching и бюджет.
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    });
+    const questionnaireId = activeQuestionnaire?.id ?? null;
+    if (!questionnaireId) {
+      logger.warn('No active questionnaire found; falling back to profile.version (may break rule matching)', {
+        userId,
+        profileId: profile.id,
+        profileVersion: profile.version,
+      });
+    }
+    const answersQuestionnaireId = questionnaireId ?? profile.version;
+
     // Проверяем кэш
     const cachedRecommendations = await getCachedRecommendations(userId, profile.version);
     if (cachedRecommendations) {
@@ -580,7 +596,7 @@ export async function GET(request: NextRequest) {
     const answersForScores = await prisma.userAnswer.findMany({
       where: {
         userId,
-        questionnaireId: 3, // Активная анкета
+        questionnaireId: answersQuestionnaireId, // ИСПРАВЛЕНО: активная анкета (fallback: profile.version)
       },
       include: {
         question: true,
@@ -782,7 +798,7 @@ export async function GET(request: NextRequest) {
     const userAnswers = await prisma.userAnswer.findMany({
       where: {
         userId,
-        questionnaireId: 2,
+        questionnaireId: answersQuestionnaireId,
         question: {
           code: 'budget',
         },

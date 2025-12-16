@@ -4,7 +4,6 @@
 
 import { prisma } from '@/lib/db';
 import { logger } from './logger';
-import { getCurrentProfile } from './get-current-profile';
 import { calculateSkinAxes, getDermatologistRecommendations } from './skin-analysis-engine';
 import { buildRuleContext } from './rule-context';
 import { normalizeSkinTypeForRules, normalizeSensitivityForRules } from './skin-type-normalizer';
@@ -42,13 +41,23 @@ export async function generateRecommendationsForProfile(
       return null;
     }
 
+    // Используем активную анкету как source of truth для answers/scores
+    // ИСПРАВЛЕНО: ранее ошибочно использовали profile.version как questionnaireId
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    });
+    const questionnaireId = activeQuestionnaire?.id ?? null;
+    if (!questionnaireId) {
+      logger.error('No active questionnaire found for recommendations generation', { userId, profileId });
+      return null;
+    }
+
     // Получаем ответы пользователя для расчета axes
     const userAnswers = await prisma.userAnswer.findMany({
       where: {
         userId,
-        question: {
-          questionnaireId: profile.version, // Используем version как questionnaireId
-        },
+        questionnaireId, // ИСПРАВЛЕНО: активная анкета
       },
       include: {
         question: {
@@ -147,15 +156,31 @@ export async function generateRecommendationsForProfile(
     }
 
     // Получаем продукты для каждого шага правила
-    const ruleSteps = matchedRule.stepsJson as any[];
+    const stepsJson = matchedRule.stepsJson as any;
     const allProductIds: number[] = [];
 
     // ИСПРАВЛЕНО: budgetSegment не в RuleContext, получаем из профиля или используем null
     const budgetSegment = (profile as any).budgetSegment || null;
 
-    for (const step of ruleSteps) {
-      const products = await getProductsForStep(step, budgetSegment);
-      allProductIds.push(...products.map((p: any) => p.id));
+    // ИСПРАВЛЕНО: stepsJson в БД обычно объект { stepName: RuleStep }, но поддерживаем и массив для обратной совместимости
+    if (Array.isArray(stepsJson)) {
+      for (const step of stepsJson) {
+        const products = await getProductsForStep(step, budgetSegment);
+        allProductIds.push(...products.map((p: any) => p.id));
+      }
+    } else if (stepsJson && typeof stepsJson === 'object') {
+      for (const stepConfig of Object.values(stepsJson)) {
+        const products = await getProductsForStep(stepConfig as any, budgetSegment);
+        allProductIds.push(...products.map((p: any) => p.id));
+      }
+    } else {
+      logger.warn('Matched rule has invalid stepsJson, cannot select products', {
+        userId,
+        profileId,
+        ruleId: matchedRule.id,
+        stepsJsonType: typeof stepsJson,
+      });
+      return null;
     }
 
     // Создаем или обновляем RecommendationSession
