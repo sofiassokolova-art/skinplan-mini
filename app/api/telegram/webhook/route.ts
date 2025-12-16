@@ -500,31 +500,43 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Получаем информацию о платежах
-        const payments = await prisma.payment.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          take: 3,
-          select: {
-            id: true,
-            status: true,
-            amount: true,
-            currency: true,
-            createdAt: true,
-          },
-        });
+        // Получаем информацию о платежах (с обработкой ошибок, если таблица не существует)
+        let payments: any[] = [];
+        try {
+          payments = await prisma.payment.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: 3,
+            select: {
+              id: true,
+              status: true,
+              amount: true,
+              currency: true,
+              createdAt: true,
+            },
+          });
+        } catch (paymentError: any) {
+          console.warn('⚠️ Failed to fetch payments (table may not exist):', paymentError?.message);
+          // Продолжаем без платежей
+        }
 
-        // Получаем информацию о entitlements
-        const entitlements = await prisma.entitlement.findMany({
-          where: { userId },
-          orderBy: { updatedAt: 'desc' },
-          select: {
-            code: true,
-            active: true,
-            validUntil: true,
-            updatedAt: true,
-          },
-        });
+        // Получаем информацию о entitlements (с обработкой ошибок, если таблица не существует)
+        let entitlements: any[] = [];
+        try {
+          entitlements = await prisma.entitlement.findMany({
+            where: { userId },
+            orderBy: { updatedAt: 'desc' },
+            select: {
+              code: true,
+              active: true,
+              validUntil: true,
+              updatedAt: true,
+            },
+          });
+        } catch (entitlementError: any) {
+          console.warn('⚠️ Failed to fetch entitlements (table may not exist):', entitlementError?.message);
+          // Продолжаем без entitlements
+        }
 
         // Получаем информацию о пользователе
         const user = await prisma.user.findUnique({
