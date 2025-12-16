@@ -73,7 +73,7 @@ export default function LoadingPage() {
           clientSubmissionId: sid,
         });
 
-        const profile = answersRes?.data?.profile;
+        const profile = answersRes?.profile;
         if (!profile?.id || !profile?.version) {
           throw new Error('Профиль не был создан');
         }
@@ -99,7 +99,7 @@ export default function LoadingPage() {
         setStep('generating_plan');
         const generateRes = await api.generatePlan(resolvedProfileId);
         
-        if (!generateRes?.data?.plan28 && !generateRes?.data?.weeks) {
+        if (!generateRes?.plan28 && !generateRes?.weeks) {
           throw new Error('План не был сгенерирован');
         }
 
