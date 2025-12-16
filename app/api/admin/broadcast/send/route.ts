@@ -103,7 +103,8 @@ async function sendTelegramMessage(
       form.append('chat_id', telegramId);
       
       // Создаем Blob из Buffer для FormData
-      const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
+      // Приводим Buffer к Uint8Array для совместимости с BlobPart
+      const blob = new Blob([new Uint8Array(imageBuffer)], { type: 'image/jpeg' });
       form.append('photo', blob, 'image.jpg');
       
       form.append('caption', text);

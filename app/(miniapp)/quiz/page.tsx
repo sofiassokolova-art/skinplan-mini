@@ -63,6 +63,11 @@ export default function QuizPage() {
   useEffect(() => {
     isSubmittingRef.current = isSubmitting;
   }, [isSubmitting]);
+  
+  // Состояния для финализации с лоадером
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalizingStep, setFinalizingStep] = useState<'answers' | 'plan' | 'done'>('answers');
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [pendingInfoScreen, setPendingInfoScreen] = useState<InfoScreen | null>(null); // Информационный экран между вопросами
   const [savedProgress, setSavedProgress] = useState<{
     answers: Record<number, string | string[]>;
@@ -1676,6 +1681,40 @@ export default function QuizPage() {
     return null;
   };
 
+  // Функция для ожидания готовности плана
+  const waitForPlan = useCallback(async (timeoutMs: number = 10000): Promise<boolean> => {
+    const start = Date.now();
+    const pollInterval = 700; // Проверяем каждые 700ms
+    
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const response = await fetch('/api/plan', { 
+          cache: 'no-store',
+          headers: {
+            'X-Telegram-Init-Data': typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Проверяем, что план действительно готов
+          if (data?.data?.plan28?.days?.length || data?.plan28?.days?.length) {
+            return true;
+          }
+        }
+      } catch (error) {
+        // Игнорируем ошибки и продолжаем polling
+        if (process.env.NODE_ENV === 'development') {
+          console.log('⏳ Plan not ready yet, waiting...', error);
+        }
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+    
+    throw new Error('Plan not ready after timeout');
+  }, []);
+
   const submitAnswers = useCallback(async () => {
     clientLogger.log('🚀 submitAnswers вызвана');
     
@@ -1928,6 +1967,12 @@ export default function QuizPage() {
       setIsSubmitting(true);
       setError(null);
       setLoading(false); // ВАЖНО: Устанавливаем loading = false, чтобы не показывался лоадер "Загрузка анкеты..."
+      
+      // Устанавливаем состояния для финализации с лоадером
+      setFinalizing(true);
+      setFinalizingStep('answers');
+      setFinalizeError(null);
+      
       clientLogger.log('✅ Флаг isSubmitting установлен, продолжаем выполнение submitAnswers');
     } else {
       clientLogger.warn('⚠️ Компонент размонтирован, но продолжаем выполнение submitAnswers');
@@ -2295,8 +2340,10 @@ export default function QuizPage() {
           // Не продолжаем редирект, если профиль не создан
           if (isMountedRef.current) {
             setError('Не удалось создать профиль. Пожалуйста, попробуйте еще раз.');
+            setFinalizeError('Не удалось создать профиль');
             // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
             setIsSubmitting(false);
+            setFinalizing(false);
           }
           return;
         }
@@ -2654,6 +2701,11 @@ export default function QuizPage() {
       })();
       
       if (shouldGeneratePlan) {
+        // Обновляем этап финализации
+        if (isMountedRef.current) {
+          setFinalizingStep('plan');
+        }
+        
         // ИСПРАВЛЕНО: Запускаем генерацию плана ПАРАЛЛЕЛЬНО с показом лоадера
         // Генерация начинается сразу, не дожидаясь завершения других операций
         clientLogger.log('🔄 Начинаем генерацию плана параллельно с показом лоадера');
@@ -2829,6 +2881,18 @@ export default function QuizPage() {
           }
           
           clientLogger.log('✅ Генерация плана завершена успешно, продолжаем редирект');
+          
+          // Ждем готовности плана через polling
+          try {
+            if (isMountedRef.current) {
+              setFinalizingStep('plan'); // Остаемся на этапе plan во время polling
+            }
+            await waitForPlan(10000); // Ждем до 10 секунд
+            clientLogger.log('✅ План готов, переходим к редиректу');
+          } catch (waitError) {
+            clientLogger.warn('⚠️ План не готов после ожидания, продолжаем редирект:', waitError);
+            // Продолжаем редирект - план будет сгенерирован на странице /plan
+          }
         } catch (genError: any) {
           // Детальное логирование ошибки
           console.error('❌ Ошибка при генерации плана:', {
@@ -3162,6 +3226,14 @@ export default function QuizPage() {
         }
       }
       
+      // Устанавливаем этап "done" перед редиректом
+      if (isMountedRef.current) {
+        setFinalizingStep('done');
+      }
+      
+      // Небольшая задержка для видимости этапа "done"
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Редирект на страницу плана
       // План уже готов в кэше или будет загружен на странице /plan
       clientLogger.log('🔄 Редирект на /plan (немедленно)', {
@@ -3206,7 +3278,11 @@ export default function QuizPage() {
       // Это предотвращает перерендер компонента и показ первого экрана анкеты
       // ИСПРАВЛЕНО: Добавляем небольшую задержку перед редиректом, чтобы лоадер был виден
       // И устанавливаем isMountedRef.current = false только непосредственно перед редиректом
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Ждем 1.5 секунды для видимости лоадера
+      // Закрываем лоадер финализации перед редиректом
+      if (isMountedRef.current) {
+        setFinalizing(false);
+        setIsSubmitting(false);
+      }
       
       if (typeof window !== 'undefined') {
         try {
@@ -3246,6 +3322,13 @@ export default function QuizPage() {
       }
     } catch (err: any) {
       // ВАЖНО: Все операции должны быть безопасными, чтобы не выбрасывать новые ошибки
+      // Закрываем лоадер финализации при любой ошибке
+      if (isMountedRef.current) {
+        setFinalizing(false);
+        setIsSubmitting(false);
+        setFinalizeError(err?.message || 'Произошла ошибка при обработке ответов');
+      }
+      
       try {
         console.error('❌ Ошибка при отправке ответов:', err);
         console.error('   Error message:', err?.message);
@@ -6077,6 +6160,33 @@ export default function QuizPage() {
           </>
         )}
       </div>
+      
+      {/* Full-screen overlay лоадер для финализации */}
+      {finalizing && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+          <div className="rounded-2xl bg-white/10 border border-white/20 p-6 text-white w-[320px] backdrop-blur-md">
+            <div className="text-lg font-semibold mb-2">Собираем ваш план…</div>
+            <div className="mt-2 text-sm opacity-80 mb-4">
+              {finalizingStep === 'answers' && 'Сохраняем ответы'}
+              {finalizingStep === 'plan' && 'Подбираем средства и строим план'}
+              {finalizingStep === 'done' && 'Готово!'}
+            </div>
+            <div className="mt-4 h-2 w-full bg-white/20 rounded-full overflow-hidden">
+              <div 
+                className="h-2 bg-white rounded-full transition-all duration-300"
+                style={{
+                  width: finalizingStep === 'answers' ? '33%' : finalizingStep === 'plan' ? '66%' : '100%'
+                }}
+              />
+            </div>
+            {finalizeError && (
+              <div className="mt-4 text-sm text-red-300">
+                {finalizeError}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
