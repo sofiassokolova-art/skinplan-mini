@@ -1,7 +1,7 @@
 // lib/get-user-from-telegram-id.ts
 // Утилита для получения userId из Telegram ID (из сообщений бота)
 
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 
 /**
  * Получает userId из telegramId и создает/обновляет пользователя

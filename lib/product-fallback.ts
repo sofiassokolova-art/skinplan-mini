@@ -1,7 +1,7 @@
 // lib/product-fallback.ts
 // Логика поиска fallback продуктов для шагов ухода
 
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 import type { StepCategory } from './step-category-rules';
 import { getBaseStepFromStepCategory } from './plan-helpers';
 import { logger } from './logger';

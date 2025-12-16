@@ -3,7 +3,7 @@
 
 import { headers } from 'next/headers';
 import { validateTelegramInitData } from './telegram';
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 import { calculateSkinAxes } from './skin-analysis-engine';
 import { getUserIdFromInitData } from './get-user-from-initdata';
 

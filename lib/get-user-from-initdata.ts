@@ -3,7 +3,7 @@
 // ИСПРАВЛЕНО: Использует единый слой валидации validateTelegramInitDataUnified
 
 import { validateTelegramInitDataUnified } from './telegram-validation';
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 
 /**
  * Извлекает userId из initData и создает/обновляет пользователя

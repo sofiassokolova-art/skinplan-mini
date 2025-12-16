@@ -2,7 +2,7 @@
 // Вспомогательные функции для генерации плана ухода
 
 import type { StepCategory } from './step-category-rules';
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 import { logger } from './logger';
 import type { Prisma } from '@prisma/client';
 

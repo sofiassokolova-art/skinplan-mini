@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
     // DEBUG: Логируем DB fingerprint для диагностики разных БД
     // Используем console.warn для гарантированного вывода в Vercel logs
     console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Starting DB fingerprint check...');
-    const fingerprint = await logDbFingerprint('/api/questionnaire/answers');
-    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] DB fingerprint:', JSON.stringify(fingerprint, null, 2));
+    const fingerprintAtStart = await logDbFingerprint('/api/questionnaire/answers');
+    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] DB fingerprint at start:', JSON.stringify(fingerprintAtStart, null, 2));
     
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
@@ -1096,17 +1096,33 @@ export async function POST(request: NextRequest) {
     logApiRequest(method, path, 200, duration, userId || undefined);
 
     // КРИТИЧНО: Проверяем, что профиль реально виден в БД после создания
+    // Используем тот же prisma instance для проверки
     // Это поможет диагностировать проблему "разные БД"
     const profileAfterCreate = await prisma.skinProfile.findUnique({
       where: { id: profile.id },
       select: { id: true, userId: true, version: true },
     });
     
+    // Логируем fingerprint БД для сравнения с другими роутами (повторно после создания профиля)
+    const fingerprintAfterCreate = await logDbFingerprint('/api/questionnaire/answers');
+    
     console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Profile verification after create:', JSON.stringify({
       createdProfileId: profile.id,
       foundInDb: !!profileAfterCreate,
       profileAfterCreate: profileAfterCreate,
       userId,
+      fingerprint: fingerprintAfterCreate ? {
+        db: fingerprintAfterCreate.db,
+        schema: fingerprintAfterCreate.schema,
+        user: fingerprintAfterCreate.user,
+        host: fingerprintAfterCreate.host,
+        port: fingerprintAfterCreate.port,
+      } : null,
+      databaseUrl: process.env.DATABASE_URL ? {
+        host: process.env.DATABASE_URL.match(/@([^:]+)/)?.[1],
+        db: process.env.DATABASE_URL.match(/\/([^?]+)/)?.[1],
+        prefix: process.env.DATABASE_URL.substring(0, 50) + '...',
+      } : null,
     }, null, 2));
     
     logger.info('✅ Answers submitted and profile created successfully', {

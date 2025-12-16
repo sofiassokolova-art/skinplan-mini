@@ -2,7 +2,7 @@
 // Утилита для обновления lastActive пользователя
 // Используется в middleware или критичных endpoints для отслеживания активности
 
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 import { logger } from './logger';
 
 /**

@@ -2,7 +2,7 @@
 // ИСПРАВЛЕНО: Вынесенная логика генерации RecommendationSession
 // Используется в /api/recommendations/build для идемпотентной генерации рекомендаций
 
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 import { logger } from './logger';
 import { getCurrentProfile } from './get-current-profile';
 import { calculateSkinAxes, getDermatologistRecommendations } from './skin-analysis-engine';

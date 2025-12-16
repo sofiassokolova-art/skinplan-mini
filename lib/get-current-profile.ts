@@ -8,7 +8,7 @@
 // 3. Fallback на последний профиль по version DESC, затем по createdAt DESC
 // 4. Детальное логирование стратегии резолва для диагностики
 
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 import { logger } from './logger';
 
 // Кэш наличия колонки current_profile_id в module scope с TTL

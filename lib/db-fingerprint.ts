@@ -5,7 +5,7 @@
 
 'use server';
 
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 import { logger } from './logger';
 
 export async function logDbFingerprint(tag: string) {
@@ -28,6 +28,29 @@ export async function logDbFingerprint(tag: string) {
     const databaseUrl = process.env.DATABASE_URL || '';
     const urlParts = databaseUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):?(\d+)?\/([^?]+)/);
     
+    // Парсим все env переменные для сравнения
+    const envVars = {
+      DATABASE_URL: process.env.DATABASE_URL ? {
+        host: urlParts ? urlParts[3] : 'unknown',
+        port: urlParts ? urlParts[4] : 'unknown',
+        db: urlParts ? urlParts[5] : 'unknown',
+        user: urlParts ? urlParts[1] : 'unknown',
+        prefix: databaseUrl.substring(0, 50) + '...',
+      } : null,
+      POSTGRES_URL: process.env.POSTGRES_URL ? {
+        exists: true,
+        prefix: process.env.POSTGRES_URL.substring(0, 50) + '...',
+      } : null,
+      POSTGRES_PRISMA_URL: process.env.POSTGRES_PRISMA_URL ? {
+        exists: true,
+        prefix: process.env.POSTGRES_PRISMA_URL.substring(0, 50) + '...',
+      } : null,
+      NEON_DATABASE_URL: process.env.NEON_DATABASE_URL ? {
+        exists: true,
+        prefix: process.env.NEON_DATABASE_URL.substring(0, 50) + '...',
+      } : null,
+    };
+    
     // Используем console.warn напрямую для гарантированного вывода в Vercel logs
     console.warn('🔍 DB_FINGERPRINT', JSON.stringify({
       tag,
@@ -39,14 +62,8 @@ export async function logDbFingerprint(tag: string) {
         host: fingerprint.host,
         port: fingerprint.port,
       },
-      // Информация о DATABASE_URL (для сравнения между роутами)
-      databaseUrlInfo: {
-        hasDatabaseUrl: !!process.env.DATABASE_URL,
-        urlHost: urlParts ? urlParts[3] : 'unknown',
-        urlPort: urlParts ? urlParts[4] : 'unknown',
-        urlDb: urlParts ? urlParts[5] : 'unknown',
-        urlPrefix: databaseUrl.substring(0, 30) + '...',
-      },
+      // Информация о env переменных (для сравнения между роутами)
+      envVars,
       // Проверка конфликтующих переменных
       conflictingVars: {
         hasPostgresUrl: !!process.env.POSTGRES_URL,
@@ -65,14 +82,12 @@ export async function logDbFingerprint(tag: string) {
         host: fingerprint.host,
         port: fingerprint.port,
       },
-      databaseUrlInfo: {
-        hasDatabaseUrl: !!process.env.DATABASE_URL,
-        urlHost: urlParts ? urlParts[3] : 'unknown',
-        urlPort: urlParts ? urlParts[4] : 'unknown',
-        urlDb: urlParts ? urlParts[5] : 'unknown',
-        urlPrefix: databaseUrl.substring(0, 30) + '...',
-      },
-      conflictingVars: {
+      envVars: {
+        DATABASE_URL: process.env.DATABASE_URL ? {
+          host: urlParts ? urlParts[3] : 'unknown',
+          port: urlParts ? urlParts[4] : 'unknown',
+          db: urlParts ? urlParts[5] : 'unknown',
+        } : null,
         hasPostgresUrl: !!process.env.POSTGRES_URL,
         hasPostgresPrismaUrl: !!process.env.POSTGRES_PRISMA_URL,
         hasNeonDatabaseUrl: !!process.env.NEON_DATABASE_URL,

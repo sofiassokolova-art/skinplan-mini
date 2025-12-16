@@ -1681,39 +1681,6 @@ export default function QuizPage() {
     return null;
   };
 
-  // Функция для ожидания готовности плана
-  const waitForPlan = useCallback(async (timeoutMs: number = 10000): Promise<boolean> => {
-    const start = Date.now();
-    const pollInterval = 700; // Проверяем каждые 700ms
-    
-    while (Date.now() - start < timeoutMs) {
-      try {
-        const response = await fetch('/api/plan', { 
-          cache: 'no-store',
-          headers: {
-            'X-Telegram-Init-Data': typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '',
-          },
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          // Проверяем, что план действительно готов
-          if (data?.data?.plan28?.days?.length || data?.plan28?.days?.length) {
-            return true;
-          }
-        }
-      } catch (error) {
-        // Игнорируем ошибки и продолжаем polling
-        if (process.env.NODE_ENV === 'development') {
-          console.log('⏳ Plan not ready yet, waiting...', error);
-        }
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-    }
-    
-    throw new Error('Plan not ready after timeout');
-  }, []);
 
   const submitAnswers = useCallback(async () => {
     clientLogger.log('🚀 submitAnswers вызвана');
@@ -2703,23 +2670,6 @@ export default function QuizPage() {
       // ВАЖНО: Генерация плана теперь происходит на бэкенде в submitAnswers
       // Не нужно генерировать план на клиенте - просто редиректим на /plan?state=generating
       clientLogger.log('✅ Профиль создан, генерация плана запущена на бэкенде, редиректим на /plan?state=generating');
-                    waitTime: MAX_WAIT_TIME,
-                    waitDuration,
-                    checkInterval: CHECK_INTERVAL,
-                    timestamp: new Date().toISOString(),
-                  },
-                }),
-              }).catch(() => {});
-            }
-          } catch (logError) {
-            // Игнорируем ошибки логирования
-          }
-          
-          // ИСПРАВЛЕНО: Продолжаем редирект даже если план не готов
-          // План будет сгенерирован на странице /plan при загрузке
-          clientLogger.log('🔄 Продолжаем редирект на /plan - план будет сгенерирован там');
-        }
-      }
       
       // ВАЖНО: Очищаем флаги перепрохождения ПЕРЕД редиректом, чтобы при возврате на /quiz не показывался экран "что хотите изменить?"
       try {
@@ -2740,15 +2690,12 @@ export default function QuizPage() {
       // Небольшая задержка для видимости этапа "done"
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Редирект на страницу плана
-      // План уже готов в кэше или будет загружен на странице /plan
-      clientLogger.log('🔄 Редирект на /plan (немедленно)', {
+      // Редирект на страницу плана с состоянием generating
+      clientLogger.log('🔄 Редирект на /plan?state=generating', {
         hasResult: !!result,
         resultSuccess: result?.success,
         hasError: !!result?.error,
         answersCount: Object.keys(answers).length,
-        allQuestionsLength: allQuestions.length,
-        planIsReady,
       });
       
       // ИСПРАВЛЕНО: Логируем на сервер перед редиректом для диагностики

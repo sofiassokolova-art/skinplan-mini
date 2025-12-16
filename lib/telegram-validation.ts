@@ -4,7 +4,7 @@
 // Hash validation выполняется строго один раз
 
 import { validateTelegramInitData } from './telegram';
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 import { logger } from './logger';
 
 export interface TelegramValidationResult {

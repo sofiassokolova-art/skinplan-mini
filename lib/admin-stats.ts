@@ -1,7 +1,7 @@
 // lib/admin-stats.ts
 // Расширенная статистика для админ-дашборда
 
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 
 interface MetricsStats {
   // Базовые метрики
