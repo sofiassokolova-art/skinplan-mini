@@ -3426,6 +3426,72 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   };
   
   // ИСПРАВЛЕНО: assertPlanInvariants теперь async, используем await
+  // ИСПРАВЛЕНО: устраняем дубли продуктов в рамках одного дня
+  // В прод-логах видно массовое нарушение инварианта: "Day N: duplicate products: 577, 479, 577"
+  // Это приводит к повтору одного и того же продукта в нескольких шагах одного дня.
+  const fixDuplicateProductsInDay = (day: any, dayIndex: number) => {
+    const used = new Set<number>();
+    const parseId = (v: any): number | null => {
+      if (v === null || v === undefined) return null;
+      const n = typeof v === 'number' ? v : Number(String(v));
+      return Number.isFinite(n) ? n : null;
+    };
+    const findReplacementFromAlternatives = (step: any): number | null => {
+      const alts = Array.isArray(step?.alternatives) ? step.alternatives : [];
+      for (const alt of alts) {
+        const altId = parseId(alt?.productId ?? alt?.id);
+        if (altId && !used.has(altId)) return altId;
+      }
+      return null;
+    };
+    const findReplacementFromSelectedProducts = (step: any): number | null => {
+      // Пытаемся найти продукт того же базового шага, но не использованный в этом дне
+      const stepCategory = step?.stepCategory as any;
+      const base = stepCategory ? getBaseStepFromStepCategory(stepCategory) : null;
+      if (!base) return null;
+      for (const p of selectedProducts) {
+        if (!p?.id) continue;
+        if (used.has(p.id)) continue;
+        const pStep = String((p as any).step || '').toLowerCase();
+        if (pStep === base || pStep.startsWith(base)) {
+          return p.id;
+        }
+      }
+      return null;
+    };
+    const processStep = (step: any, slot: 'morning' | 'evening' | 'weekly') => {
+      const currentId = parseId(step?.productId);
+      if (!currentId) return;
+      if (!used.has(currentId)) {
+        used.add(currentId);
+        return;
+      }
+
+      // Дубликат — пробуем заменить
+      let replacementId = findReplacementFromAlternatives(step);
+      if (!replacementId) {
+        replacementId = findReplacementFromSelectedProducts(step);
+      }
+
+      if (replacementId) {
+        const old = currentId;
+        step.productId = String(replacementId);
+        used.add(replacementId);
+        warnings.push(`Day ${dayIndex + 1}: duplicate product replaced in ${slot}/${step.stepCategory} (${old} → ${replacementId})`);
+      } else {
+        // Последний fallback: убираем productId, чтобы не повторять один и тот же продукт
+        step.productId = null;
+        warnings.push(`Day ${dayIndex + 1}: duplicate product removed in ${slot}/${step.stepCategory} (${currentId})`);
+      }
+    };
+
+    for (const step of Array.isArray(day?.morning) ? day.morning : []) processStep(step, 'morning');
+    for (const step of Array.isArray(day?.evening) ? day.evening : []) processStep(step, 'evening');
+    for (const step of Array.isArray(day?.weekly) ? day.weekly : []) processStep(step, 'weekly');
+  };
+
+  plan28.days.forEach((day: any, idx: number) => fixDuplicateProductsInDay(day, idx));
+
   const invariantsCheck = await assertPlanInvariants(plan28);
   if (!invariantsCheck.isValid) {
     // Логируем предупреждения, но не прерываем генерацию (safe fallback)
