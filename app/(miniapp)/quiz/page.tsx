@@ -3347,18 +3347,24 @@ export default function QuizPage() {
     
     if (allQuestions.length === 0) return;
     
-    // Если индекс выходит за пределы, но отправка не идет - сбрасываем индекс на 0
-    // Это может произойти при неправильно сохраненном прогрессе или при первой загрузке
-    if (currentQuestionIndex >= allQuestions.length && !isSubmitting && !hasResumed && !showResumeScreen) {
-      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, но isSubmitting = false. Сбрасываем индекс на 0', {
+    // ИСПРАВЛЕНО: Проверяем и корректируем currentQuestionIndex, если он выходит за пределы
+    // Это может произойти при неправильно сохраненном прогрессе, после фильтрации вопросов или при первой загрузке
+    if (currentQuestionIndex >= allQuestions.length && !isSubmitting && !showResumeScreen) {
+      // Если все вопросы отвечены, устанавливаем индекс на последний вопрос
+      // Это позволит автоматической отправке сработать корректно
+      const correctedIndex = allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0;
+      
+      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
+        correctedIndex,
         answersCount: Object.keys(answers).length,
         isSubmitting,
         hasResumed,
         showResumeScreen,
       });
-      setCurrentQuestionIndex(0);
+      
+      setCurrentQuestionIndex(correctedIndex);
       return;
     }
   }, [questionnaire, allQuestions, currentQuestionIndex, isSubmitting, loading, hasResumed, showResumeScreen, answers]);
@@ -3366,18 +3372,24 @@ export default function QuizPage() {
   // Корректируем currentQuestionIndex после восстановления прогресса
   // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
   useEffect(() => {
-    if (!hasResumed || !questionnaire || allQuestions.length === 0) return;
+    if (!questionnaire || allQuestions.length === 0) return;
     
     // ИСПРАВЛЕНО: Проверяем, что currentQuestionIndex валиден для текущего allQuestions
     // Это важно после изменения фильтрации (например, после ответа на вопрос про бюджет)
-    if (currentQuestionIndex >= allQuestions.length) {
-      // Логируем только в консоль, не используем addDebugLog чтобы избежать проблем с хуками
-      clientLogger.log('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
+    // Проверяем независимо от hasResumed, так как фильтрация может измениться в любой момент
+    if (currentQuestionIndex >= allQuestions.length && !isSubmitting && !showResumeScreen) {
+      // Если все вопросы отвечены, устанавливаем индекс на последний вопрос
+      // Это позволит автоматической отправке сработать корректно
+      const correctedIndex = allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0;
+      
+      clientLogger.log('⚠️ currentQuestionIndex выходит за пределы после фильтрации, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
+        correctedIndex,
+        hasResumed,
         questionIds: allQuestions.map((q: Question) => q.id),
       });
-      setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
+      setCurrentQuestionIndex(correctedIndex);
       return;
     }
     
