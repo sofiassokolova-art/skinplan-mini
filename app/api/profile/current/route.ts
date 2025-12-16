@@ -3,8 +3,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -13,30 +13,11 @@ export async function GET(request: NextRequest) {
   let userId: string | undefined;
 
   try {
-    // Получаем initData из заголовков (пробуем оба варианта)
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-
-    if (!initData) {
-      logger.warn('Missing initData in headers', {
-        availableHeaders: Array.from(request.headers.keys()),
-      });
-      return NextResponse.json(
-        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
-        { status: 401 }
-      );
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) {
+      return auth.response;
     }
-
-    // Получаем userId из initData
-    const userIdResult = await getUserIdFromInitData(initData);
-    userId = userIdResult || undefined;
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
+    userId = auth.ctx.userId;
 
     // Получаем последний профиль пользователя
     // ВАЖНО: Используем orderBy по version DESC, чтобы получить последнюю версию

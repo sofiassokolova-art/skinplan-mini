@@ -4,7 +4,7 @@
 import { NextRequest } from 'next/server';
 import { ApiResponse } from '@/lib/api-response';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCachedRecommendations, setCachedRecommendations } from '@/lib/cache';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { getProductsForStep, type RuleStep } from '@/lib/product-selection';
@@ -101,26 +101,10 @@ export async function GET(request: NextRequest) {
   
   try {
     logger.info('📥 Recommendations request started', { timestamp: new Date().toISOString() });
-    
-    // Получаем initData из заголовков
-    // Пробуем оба варианта заголовка (регистронезависимо)
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
 
-    if (!initData) {
-      logger.warn('Missing initData in recommendations request', {
-        availableHeaders: Array.from(request.headers.keys()),
-      });
-      return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
-    }
-
-    // Получаем userId из initData
-    userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
-      logger.warn('Invalid or expired initData in recommendations request');
-      return ApiResponse.unauthorized('Invalid or expired initData');
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
     
     logger.info('User identified for recommendations', { userId });
 

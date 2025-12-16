@@ -9,6 +9,27 @@ export class ApiResponse {
     return NextResponse.json(data, { status });
   }
 
+  static failure(params: {
+    status: number;
+    code: string;
+    message: string;
+    details?: any;
+    context?: Record<string, any>;
+  }) {
+    const { status, code, message, details, context } = params;
+    if (context) {
+      logger.error('API Failure', undefined, { code, message, status, details, ...context });
+    }
+    return NextResponse.json(
+      {
+        error: message,
+        code,
+        ...(process.env.NODE_ENV === 'development' && details !== undefined ? { details } : {}),
+      },
+      { status }
+    );
+  }
+
   static error(
     message: string,
     status = 500,

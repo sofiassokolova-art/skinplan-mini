@@ -4,19 +4,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminFromInitData } from '@/lib/get-admin-from-initdata';
 import jwt from 'jsonwebtoken';
+import { getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // POST - авторизация через Telegram initData
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { initData } = body;
-
+    // ВАЖНО: единый источник initData — только headers
+    const initData = getTelegramInitDataFromHeaders(request);
     if (!initData) {
       return NextResponse.json(
-        { error: 'initData is required' },
-        { status: 400 }
+        { error: 'Missing Telegram initData', code: 'AUTH_MISSING_INITDATA' },
+        { status: 401 }
       );
     }
 
@@ -24,10 +24,12 @@ export async function POST(request: NextRequest) {
     const result = await getAdminFromInitData(initData);
 
     if (!result.valid || !result.admin) {
-      
+      const message = result.error || 'Unauthorized';
+      const isDbError =
+        /prisma|database|P20\\d\\d|ECONN|timeout/i.test(message);
       return NextResponse.json(
-        { error: result.error || 'Unauthorized' },
-        { status: 401 }
+        { error: message, code: isDbError ? 'DB_ERROR' : 'AUTH_UNAUTHORIZED' },
+        { status: isDbError ? 503 : 401 }
       );
     }
 

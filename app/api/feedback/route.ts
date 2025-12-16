@@ -3,30 +3,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 // POST - сохранение отзыва
 export async function POST(request: NextRequest) {
   try {
-    // Пробуем оба варианта заголовка (регистронезависимо)
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-
-    if (!initData) {
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
-    }
-
-    const userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    const userId = auth.ctx.userId;
 
     const body = await request.json();
     
@@ -100,25 +84,9 @@ export async function POST(request: NextRequest) {
 // GET - получение последнего отзыва (для проверки, показывать ли поп-ап)
 export async function GET(request: NextRequest) {
   try {
-    // Пробуем оба варианта заголовка (регистронезависимо)
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-
-    if (!initData) {
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
-    }
-
-    const userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    const userId = auth.ctx.userId;
 
     // Получаем последний отзыв пользователя (по умолчанию plan_recommendations)
     const { searchParams } = new URL(request.url);

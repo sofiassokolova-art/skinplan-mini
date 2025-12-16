@@ -3,9 +3,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { logger } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export const runtime = 'nodejs';
 
@@ -21,20 +21,9 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
-    // Получаем initData из заголовков
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-
-    if (!initData) {
-      return ApiResponse.unauthorized('Missing Telegram initData');
-    }
-
-    // Получаем userId
-    const userIdResult = await getUserIdFromInitData(initData);
-    if (!userIdResult) {
-      return ApiResponse.unauthorized('Invalid or expired initData');
-    }
-    userId = userIdResult;
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
     const body = await request.json() as DailyTipRequest;
 

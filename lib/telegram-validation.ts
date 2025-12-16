@@ -62,35 +62,14 @@ export async function validateTelegramInitDataUnified(
   const { user } = validation.data;
   const telegramId = user.id.toString();
 
-  // ИСПРАВЛЕНО: Проверяем, является ли пользователь админом
-  // Это делается после валидации hash, но до создания пользователя
-  let isAdmin = false;
-  try {
-    const whitelistEntry = await prisma.adminWhitelist.findFirst({
-      where: {
-        OR: [
-          { telegramId },
-          { telegramId: String(user.id) },
-        ],
-        isActive: true,
-      },
-      select: { id: true },
-    });
-    isAdmin = !!whitelistEntry;
-  } catch (error: any) {
-    // Ошибка проверки whitelist не критична - просто считаем, что не админ
-    logger.warn('Error checking admin whitelist', {
-      telegramId,
-      error: error?.message,
-    });
-  }
+  // ВАЖНО: validateTelegramInitDataUnified — это слой AUTH (HMAC), без обращения к БД.
+  // Проверка админа/whitelist делается отдельно через assertAdmin().
 
   // SECURITY: Логируем только безопасные данные
   const hashMatch = initData.match(/hash=([^&]+)/);
   const hashPrefix = hashMatch ? hashMatch[1].substring(0, 8) : 'no-hash';
   logger.info('Telegram initData validated successfully', {
     telegramId,
-    isAdmin,
     hashPrefix,
     // SECURITY: НЕ логируем полный initData
   });
@@ -98,7 +77,6 @@ export async function validateTelegramInitDataUnified(
   return {
     valid: true,
     telegramId,
-    isAdmin,
     payload: validation.data,
   };
 }
