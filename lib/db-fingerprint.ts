@@ -25,7 +25,13 @@ export async function logDbFingerprint(tag: string) {
     const databaseUrl = process.env.DATABASE_URL || '';
     const urlParts = databaseUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):?(\d+)?\/([^?]+)/);
     
-    logger.warn('DB_FINGERPRINT', {
+    // Логируем с высоким приоритетом (warn), чтобы было видно в логах
+    // Это критично для диагностики проблемы "разные БД"
+    const databaseUrl = process.env.DATABASE_URL || '';
+    const urlParts = databaseUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):?(\d+)?\/([^?]+)/);
+    
+    // Используем console.warn напрямую для гарантированного вывода в Vercel logs
+    console.warn('🔍 DB_FINGERPRINT', JSON.stringify({
       tag,
       // Отпечаток БД подключения (должен быть одинаковым во всех роутах)
       fingerprint: {
@@ -44,6 +50,30 @@ export async function logDbFingerprint(tag: string) {
         urlPrefix: databaseUrl.substring(0, 30) + '...',
       },
       // Проверка конфликтующих переменных
+      conflictingVars: {
+        hasPostgresUrl: !!process.env.POSTGRES_URL,
+        hasPostgresPrismaUrl: !!process.env.POSTGRES_PRISMA_URL,
+        hasNeonDatabaseUrl: !!process.env.NEON_DATABASE_URL,
+      },
+    }, null, 2));
+    
+    // Также логируем через logger для структурированных логов
+    logger.warn('DB_FINGERPRINT', {
+      tag,
+      fingerprint: {
+        db: fingerprint.db,
+        schema: fingerprint.schema,
+        user: fingerprint.user,
+        host: fingerprint.host,
+        port: fingerprint.port,
+      },
+      databaseUrlInfo: {
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        urlHost: urlParts ? urlParts[3] : 'unknown',
+        urlPort: urlParts ? urlParts[4] : 'unknown',
+        urlDb: urlParts ? urlParts[5] : 'unknown',
+        urlPrefix: databaseUrl.substring(0, 30) + '...',
+      },
       conflictingVars: {
         hasPostgresUrl: !!process.env.POSTGRES_URL,
         hasPostgresPrismaUrl: !!process.env.POSTGRES_PRISMA_URL,

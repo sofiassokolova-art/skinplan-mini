@@ -713,12 +713,15 @@ export async function POST(request: NextRequest) {
         
         // DEBUG: Проверяем, что запись реально создана в транзакции
         const countInsideTx = await tx.skinProfile.count({ where: { userId: userId! } });
-        logger.warn('DEBUG: profiles count inside TX after create', { 
+        const debugInfo = { 
           userId, 
           createdId: profile.id, 
           countInsideTx,
           profileVersion: profile.version,
-        });
+        };
+        // Логируем через console.warn для гарантированного вывода в Vercel
+        console.warn('🔍 DEBUG: profiles count inside TX after create', JSON.stringify(debugInfo, null, 2));
+        logger.warn('DEBUG: profiles count inside TX after create', debugInfo);
         
         // DEBUG: Проверяем идентичность БД
         try {
