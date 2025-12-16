@@ -706,6 +706,14 @@ export async function POST(request: NextRequest) {
           profileDataKeys: Object.keys(profileDataForPrisma),
         });
         
+        // КРИТИЧНО: Логируем перед созданием профиля
+        console.warn('🔍 [TX] About to create profile', JSON.stringify({
+          userId,
+          newVersion,
+          hasProfileData: !!profileDataForPrisma,
+          skinType: profileDataForPrisma.skinType,
+        }, null, 2));
+        
         profile = await tx.skinProfile.create({
               data: {
                 userId: userId!,
@@ -714,11 +722,24 @@ export async function POST(request: NextRequest) {
               },
             });
         
+        // КРИТИЧНО: Логируем сразу после создания
+        console.warn('🔍 [TX] Profile created', JSON.stringify({
+          profileId: profile.id,
+          userId: profile.userId,
+          version: profile.version,
+        }, null, 2));
+        
         // КРИТИЧНО: Проверяем, что профиль виден ВНУТРИ транзакции сразу после создания
         const profileInTx = await tx.skinProfile.findUnique({
           where: { id: profile.id },
           select: { id: true, userId: true, version: true },
         });
+        
+        console.warn('🔍 [TX] Profile lookup result', JSON.stringify({
+          profileId: profile.id,
+          foundInTx: !!profileInTx,
+          profileInTx: profileInTx,
+        }, null, 2));
         
         // DEBUG: Проверяем, что запись реально создана в транзакции
         const countInsideTx = await tx.skinProfile.count({ where: { userId: userId! } });
