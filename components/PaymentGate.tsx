@@ -252,15 +252,14 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
             }
           }, 1000);
         } else {
-          // Для Telegram Payments используем window.Telegram.WebApp.openInvoice
+          // Для Telegram Payments можно использовать window.Telegram.WebApp.openInvoice
           // Для других провайдеров - window.open
-          if (typeof window !== 'undefined' && window.Telegram?.WebApp?.openInvoice) {
-            // TODO: Реализовать открытие Telegram Invoice
-            // window.Telegram.WebApp.openInvoice(paymentData.paymentUrl, (status) => { ... });
-            window.open(paymentData.paymentUrl, '_blank');
-          } else {
-            window.open(paymentData.paymentUrl, '_blank');
-          }
+          // TODO: Реализовать открытие Telegram Invoice когда будет доступно
+          // if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openInvoice) {
+          //   (window as any).Telegram.WebApp.openInvoice(paymentData.paymentUrl, (status: string) => { ... });
+          // } else {
+          window.open(paymentData.paymentUrl, '_blank');
+          // }
         }
       } else {
         // Если нет paymentUrl, возможно это Telegram Payments или другой провайдер
