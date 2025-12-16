@@ -22,16 +22,23 @@ async function verifyWebhookSignature(request: NextRequest): Promise<boolean> {
   // const body = await request.text();
   // return verifyYooKassaSignature(body, signature);
   
-  // Для разработки можно временно возвращать true
-  // В продакшене ОБЯЗАТЕЛЬНО проверять подпись!
-  if (process.env.NODE_ENV === 'development') {
+  // В dev можно временно возвращать true
+  if (process.env.NODE_ENV !== 'production') {
     logger.warn('Webhook signature verification skipped in development');
     return true;
   }
   
-  // В продакшене всегда проверяем
-  logger.error('Webhook signature verification not implemented');
-  return false;
+  // ИСПРАВЛЕНО: минимальная проверка через shared secret header.
+  // Настройте PAYMENTS_WEBHOOK_SECRET и передавайте его в заголовке X-Webhook-Secret.
+  const secret = process.env.PAYMENTS_WEBHOOK_SECRET;
+  if (!secret) {
+    logger.error('PAYMENTS_WEBHOOK_SECRET is missing; cannot verify webhook');
+    return false;
+  }
+  const provided =
+    request.headers.get('x-webhook-secret') || request.headers.get('X-Webhook-Secret') || '';
+  if (!provided) return false;
+  return provided === secret;
 }
 
 function mapProviderStatus(provider: string, providerStatus: string): string {
@@ -66,6 +73,13 @@ function mapProviderStatus(provider: string, providerStatus: string): string {
   };
 
   return statusMap[provider]?.[providerStatus] || 'pending';
+}
+
+function entitlementCodeForProduct(productCode: string): string {
+  if (productCode === 'plan_access') return 'paid_access';
+  if (productCode === 'retake_topic') return 'retake_topic_access';
+  // По умолчанию — доступ к плану (обратная совместимость)
+  return 'paid_access';
 }
 
 export async function POST(request: NextRequest) {
@@ -162,15 +176,19 @@ export async function POST(request: NextRequest) {
 
       // Если платеж успешен - создаем/обновляем Entitlement
       if (newStatus === 'succeeded') {
+        const entitlementCode = entitlementCodeForProduct(payment.productCode);
+
         // Определяем срок действия доступа в зависимости от типа продукта
         const validUntil = new Date();
         if (payment.productCode === 'subscription_month') {
           // Подписка на месяц - доступ на 1 месяц
           validUntil.setMonth(validUntil.getMonth() + 1);
         } else if (payment.productCode === 'plan_access') {
-          // Доступ к плану - можно установить срок (например, 1 год) или сделать постоянным
-          // Сейчас устанавливаем 1 год для безопасности
-          validUntil.setFullYear(validUntil.getFullYear() + 1);
+          // Доступ к плану: 28 дней (после этого план снова лочится)
+          validUntil.setDate(validUntil.getDate() + 28);
+        } else if (payment.productCode === 'retake_topic') {
+          // Ретейк темы — короткий доступ, "съедается" после успешного partial-update
+          validUntil.setDate(validUntil.getDate() + 1);
         } else {
           // Для других продуктов - по умолчанию 1 год
           validUntil.setFullYear(validUntil.getFullYear() + 1);
@@ -181,7 +199,7 @@ export async function POST(request: NextRequest) {
           where: {
             userId_code: {
               userId: payment.userId,
-              code: 'paid_access',
+              code: entitlementCode,
             },
           },
           update: {
@@ -192,7 +210,7 @@ export async function POST(request: NextRequest) {
           },
           create: {
             userId: payment.userId,
-            code: 'paid_access',
+            code: entitlementCode,
             active: true,
             validUntil,
             lastPaymentId: payment.id,

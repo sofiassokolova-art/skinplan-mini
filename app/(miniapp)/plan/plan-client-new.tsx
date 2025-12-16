@@ -492,6 +492,7 @@ export function PlanPageClientNew({
       {/* PaymentGate сам проверяет статус оплаты и показывает блюр только если не оплачено */}
       <PaymentGate
         price={199}
+        productCode="plan_access"
         isRetaking={typeof window !== 'undefined' ? 
           (localStorage.getItem('is_retaking_quiz') === 'true' || 
            localStorage.getItem('full_retake_from_home') === 'true') : false}
@@ -499,6 +500,7 @@ export function PlanPageClientNew({
           setNeedsFirstPayment(false);
           clientLogger.log('✅ Payment completed on plan page');
         }}
+        retakeCta={planExpired ? { text: 'Изменились цели? Перепройти анкету', href: '/quiz' } : undefined}
       >
         {/* Контент внутри PaymentGate (показывается с блюром до оплаты, без блюра после оплаты) */}
         {/* Инфографика плана */}

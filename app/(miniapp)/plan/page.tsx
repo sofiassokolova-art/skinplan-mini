@@ -192,10 +192,10 @@ export default function PlanPage() {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
             }
-            // Загружаем план
-            loadPlan();
             // Убираем state=generating из URL
             router.replace('/plan');
+            // Загружаем план (форсируем даже если URL ещё содержал state=generating)
+            loadPlan(0, true);
           }
         }
       }
@@ -237,8 +237,8 @@ export default function PlanPage() {
             pollingIntervalRef.current = null;
           }
           setGeneratingState('ready');
-          loadPlan();
           router.replace('/plan');
+          loadPlan(0, true);
         }
       }, 60000);
     } else {
@@ -771,13 +771,13 @@ export default function PlanPage() {
 
   const MAX_RETRIES = 5;
   
-  const loadPlan = async (retryCount = 0) => {
+  const loadPlan = async (retryCount = 0, force = false) => {
     // ИСПРАВЛЕНО: Не загружаем план, если мы в режиме генерации
     // Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const state = urlParams.get('state');
-      if (state === 'generating') {
+      if (!force && state === 'generating') {
         clientLogger.log('⏸️ Skipping loadPlan - plan is being generated');
         return;
       }
@@ -1188,14 +1188,9 @@ export default function PlanPage() {
         return;
       }
 
-      // ИСПРАВЛЕНО: Проверяем, истек ли план (28+ дней)
-      const planResponse = plan as any;
-      if (planResponse?.expired === true) {
-        // План истек - показываем экран оплаты
-        safeSetError('plan_expired');
-        safeSetLoading(false);
-        return;
-      }
+      // План может быть истёкшим (28+ дней) — UX: не редиректим и не показываем отдельный экран.
+      // PaymentGate заблюрит контент и покажет оплату, а ниже будет ссылка "Перепройти анкету".
+      // Флаг expired сохраняется внутри processPlanData → planExpired.
       
       // Используем общую функцию обработки плана (избегаем дублирования кода)
       await processPlanData(plan);
@@ -1376,74 +1371,8 @@ export default function PlanPage() {
     );
   }
 
-  // ИСПРАВЛЕНО: Показываем экран оплаты если план истек (28+ дней)
-  if (error === 'plan_expired') {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '24px',
-          padding: '32px',
-          maxWidth: '500px',
-          width: '100%',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        }}>
-          <div style={{
-            fontSize: '48px',
-            marginBottom: '16px',
-          }}>
-            ⏰
-          </div>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
-            План завершен
-          </h2>
-          <p style={{
-            color: '#475467',
-            marginBottom: '24px',
-            lineHeight: '1.6',
-          }}>
-            Ваш 28-дневный план ухода завершен. Оформите новый план для продолжения использования приложения.
-          </p>
-          <button
-            onClick={() => {
-              // Переходим на страницу анкеты для создания нового плана
-              if (typeof window !== 'undefined') {
-                window.location.href = '/quiz';
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '16px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-            }}
-          >
-            Оформить новый план
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // План с истекшим сроком теперь не имеет отдельного экрана:
+  // PaymentGate отработает как paywall + блюр, а ретейк-ссылка отображается в оверлее PaymentGate.
 
   if (error === 'telegram_required') {
     return (

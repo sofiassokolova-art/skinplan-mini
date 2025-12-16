@@ -49,15 +49,9 @@ export async function middleware(request: NextRequest) {
   for (const [route, limits] of Object.entries(RATE_LIMITS)) {
     if (pathname.startsWith(route)) {
       const identifier = getIdentifier(request);
-      
-      // Определяем тип лимитера
-      let limiterType: 'plan' | 'answers' | 'recommendations' | 'admin' = 'plan';
-      if (route.includes('plan/generate') || route.includes('plan/progress')) limiterType = 'plan';
-      else if (route.includes('questionnaire/answers') || route.includes('questionnaire/partial-update')) limiterType = 'answers';
-      else if (route.includes('recommendations') || route.includes('products/batch') || route.includes('wishlist') || route.includes('cart')) limiterType = 'recommendations';
-      else if (route.includes('admin/login')) limiterType = 'admin';
-      
-      const result = await rateLimit(identifier, limits, limiterType);
+      // ИСПРАВЛЕНО: разделяем лимиты по endpoint'ам (route),
+      // чтобы /api/plan/generate и /api/plan/progress не "съедали" один общий лимит.
+      const result = await rateLimit(identifier, limits, route);
       
       if (!result.success) {
         const retryAfter = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));

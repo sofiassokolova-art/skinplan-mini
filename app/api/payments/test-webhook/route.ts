@@ -10,6 +10,13 @@ import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export const runtime = 'nodejs';
 
+function entitlementCodeForProduct(productCode: string): string {
+  if (productCode === 'plan_access') return 'paid_access';
+  if (productCode === 'retake_topic') return 'retake_topic_access';
+  // По умолчанию — доступ к плану (обратная совместимость)
+  return 'paid_access';
+}
+
 /**
  * Тестовый endpoint для симуляции успешного платежа через вебхук ЮKassa
  * Используется только в development/test окружении
@@ -21,8 +28,9 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   // В продакшене блокируем этот endpoint
   if (process.env.NODE_ENV === 'production') {
-    logger.error('Test webhook endpoint called in production! This is a security risk!');
-    return NextResponse.json({ error: 'This endpoint is disabled in production' }, { status: 403 });
+    // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* пути)
+    // и не раскрываем наличие endpoint'а.
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
   try {
@@ -108,11 +116,14 @@ export async function POST(request: NextRequest) {
       });
 
       // Создаем или обновляем Entitlement
+      const entitlementCode = entitlementCodeForProduct(payment.productCode);
       const validUntil = new Date();
       if (payment.productCode === 'subscription_month') {
         validUntil.setMonth(validUntil.getMonth() + 1);
       } else if (payment.productCode === 'plan_access') {
-        validUntil.setFullYear(validUntil.getFullYear() + 1);
+        validUntil.setDate(validUntil.getDate() + 28);
+      } else if (payment.productCode === 'retake_topic') {
+        validUntil.setDate(validUntil.getDate() + 1);
       } else {
         validUntil.setFullYear(validUntil.getFullYear() + 1);
       }
@@ -121,7 +132,7 @@ export async function POST(request: NextRequest) {
         where: {
           userId_code: {
             userId: payment.userId,
-            code: 'paid_access',
+            code: entitlementCode,
           },
         },
         update: {
@@ -132,7 +143,7 @@ export async function POST(request: NextRequest) {
         },
         create: {
           userId: payment.userId,
-          code: 'paid_access',
+          code: entitlementCode,
           active: true,
           validUntil,
           lastPaymentId: payment.id,

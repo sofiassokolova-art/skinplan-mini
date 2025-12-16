@@ -5,9 +5,11 @@ import type { NextRequest } from 'next/server';
 import { getRedis } from './redis';
 
 // Пробуем использовать Upstash Redis для production
-let ratelimit: any = null;
 let useRedis = false;
 let redisDisabled = false; // Флаг для отслеживания, был ли Redis отключен из-за ошибок
+let redisClient: any = null;
+let RatelimitCtor: any = null;
+const redisLimiterCache = new Map<string, any>();
 
 // Функция для инициализации Redis rate limiting
 function initializeRedisRateLimit() {
@@ -28,35 +30,8 @@ function initializeRedisRateLimit() {
     if (redis && hasUpstashVars) {
       // Динамический импорт, чтобы не падать, если пакеты не установлены
       const { Ratelimit } = require('@upstash/ratelimit');
-
-      // Создаем разные лимитеры для разных endpoints
-      ratelimit = {
-        // Для генерации плана - 10 запросов в минуту
-        plan: new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(10, '1 m'),
-          analytics: true,
-        }),
-        // Для ответов анкеты - 5 запросов в минуту
-        answers: new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(5, '1 m'),
-          analytics: true,
-        }),
-        // Для рекомендаций - 20 запросов в минуту
-        recommendations: new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(20, '1 m'),
-          analytics: true,
-        }),
-        // Для админки - 3 попытки за 15 минут
-        admin: new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(3, '15 m'),
-          analytics: true,
-        }),
-      };
-
+      RatelimitCtor = Ratelimit;
+      redisClient = redis;
       useRedis = true;
       console.log('✅ Using Upstash Redis for rate limiting');
     } else {
@@ -66,6 +41,8 @@ function initializeRedisRateLimit() {
     console.warn('⚠️ Upstash Redis not available, using in-memory fallback:', error);
     useRedis = false;
     redisDisabled = true;
+    redisClient = null;
+    RatelimitCtor = null;
   }
 }
 
@@ -137,18 +114,38 @@ function rateLimitInMemory(
   };
 }
 
+function intervalToWindowString(intervalMs: number): string {
+  if (intervalMs <= 0) return '60 s';
+  if (intervalMs % (60 * 1000) === 0) {
+    return `${Math.max(1, Math.round(intervalMs / (60 * 1000)))} m`;
+  }
+  const seconds = Math.max(1, Math.ceil(intervalMs / 1000));
+  return `${seconds} s`;
+}
+
 /**
  * Rate limiter с поддержкой Redis (Upstash) и fallback
  */
 export async function rateLimit(
   identifier: string,
   options: RateLimitOptions,
-  limiterType: 'plan' | 'answers' | 'recommendations' | 'admin' = 'plan'
+  limiterKey = 'default'
 ): Promise<RateLimitResult> {
   // Используем Redis, если доступен
-  if (useRedis && ratelimit && ratelimit[limiterType]) {
+  if (useRedis && redisClient && RatelimitCtor) {
     try {
-      const result = await ratelimit[limiterType].limit(identifier);
+      const cacheKey = `${limiterKey}:${options.maxRequests}:${options.interval}`;
+      let limiter = redisLimiterCache.get(cacheKey);
+      if (!limiter) {
+        limiter = new RatelimitCtor({
+          redis: redisClient,
+          limiter: RatelimitCtor.slidingWindow(options.maxRequests, intervalToWindowString(options.interval)),
+          analytics: true,
+        });
+        redisLimiterCache.set(cacheKey, limiter);
+      }
+
+      const result = await limiter.limit(identifier);
       
       return {
         success: result.success,
@@ -168,19 +165,21 @@ export async function rateLimit(
           console.warn('⚠️ Redis permission error (NOPERM), disabling Redis for rate limiting. Using in-memory fallback.');
         }
         useRedis = false;
-        ratelimit = null;
         redisDisabled = true; // Помечаем, что Redis отключен
+        redisClient = null;
+        RatelimitCtor = null;
+        redisLimiterCache.clear();
       } else if (!redisDisabled) {
         // Другие ошибки Redis - логируем только если Redis еще не отключен
         console.error('Redis rate limit error, falling back to in-memory:', error);
       }
       // Fallback на in-memory при ошибке Redis
-      return rateLimitInMemory(identifier, options);
+      return rateLimitInMemory(`${limiterKey}:${identifier}`, options);
     }
   }
 
   // Fallback на in-memory для разработки
-  return rateLimitInMemory(identifier, options);
+  return rateLimitInMemory(`${limiterKey}:${identifier}`, options);
 }
 
 /**

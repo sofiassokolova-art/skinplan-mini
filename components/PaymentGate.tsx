@@ -7,13 +7,57 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 
 interface PaymentGateProps {
-  price: number;
+  price?: number;
+  productCode?: 'plan_access' | 'subscription_month' | 'retake_topic';
   isRetaking: boolean;
   onPaymentComplete: () => void;
+  retakeCta?: { text: string; href: string };
   children: React.ReactNode;
 }
 
-export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: PaymentGateProps) {
+const PRODUCT_PRICES: Record<string, number> = {
+  plan_access: 199,
+  retake_topic: 99,
+  subscription_month: 499,
+};
+
+// Глобальный кеш — чтобы множество PaymentGate (на /quiz) не спамили /api/me/entitlements
+let entitlementsCache: { codes: string[]; ts: number } | null = null;
+let entitlementsPromise: Promise<string[]> | null = null;
+const ENTITLEMENTS_TTL_MS = 5000;
+
+function requiredEntitlementCode(productCode: string): string {
+  if (productCode === 'plan_access') return 'paid_access';
+  if (productCode === 'retake_topic') return 'retake_topic_access';
+  // Для подписки пока не вводим отдельный код — считаем, что она тоже даёт paid_access
+  return 'paid_access';
+}
+
+async function fetchEntitlementCodes(initData: string): Promise<string[]> {
+  const response = await fetch('/api/me/entitlements', {
+    method: 'GET',
+    headers: {
+      'X-Telegram-Init-Data': initData,
+    },
+  });
+
+  if (!response.ok) return [];
+  const data = await response.json();
+  const entitlements = data?.data?.entitlements;
+  if (!Array.isArray(entitlements)) return [];
+  return entitlements
+    .map((e: any) => (typeof e?.code === 'string' ? e.code : null))
+    .filter((c: any): c is string => typeof c === 'string');
+}
+
+export function PaymentGate({
+  price,
+  productCode = 'plan_access',
+  isRetaking,
+  onPaymentComplete,
+  retakeCta,
+  children,
+}: PaymentGateProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
@@ -48,25 +92,29 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
           return;
         }
 
-        const response = await fetch('/api/me/entitlements', {
-          method: 'GET',
-          headers: {
-            'X-Telegram-Init-Data': initData,
-          },
-        });
-
-        if (!isMounted) return;
-
-        if (response.ok) {
-          const data = await response.json();
-          const paid = !!data?.data?.paid;
-
-          if (paid) {
-            setHasPaid(true);
-          } else {
-            setHasPaid(false);
+        const now = Date.now();
+        if (entitlementsCache && now - entitlementsCache.ts < ENTITLEMENTS_TTL_MS) {
+          if (isMounted) {
+            const required = requiredEntitlementCode(productCode);
+            setHasPaid(entitlementsCache.codes.includes(required));
           }
+          return;
         }
+
+        if (!entitlementsPromise) {
+          entitlementsPromise = fetchEntitlementCodes(initData)
+            .then((codes) => {
+              entitlementsCache = { codes, ts: Date.now() };
+              return codes;
+            })
+            .finally(() => {
+              entitlementsPromise = null;
+            });
+        }
+
+        const codes = await entitlementsPromise;
+        const required = requiredEntitlementCode(productCode);
+        if (isMounted) setHasPaid(codes.includes(required));
       } catch (error) {
         // В проде это просто значит: временно опираемся на локальный флаг
         if (isMounted) {
@@ -85,7 +133,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     return () => {
       isMounted = false;
     };
-  }, [isRetaking, dbChecked, checkingDbPayment]);
+  }, [isRetaking, dbChecked, checkingDbPayment, productCode]);
 
   // Polling для проверки статуса оплаты после создания платежа
   useEffect(() => {
@@ -97,29 +145,21 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
       if (!initData) return;
 
       try {
-        const response = await fetch('/api/me/entitlements', {
-          method: 'GET',
-          headers: {
-            'X-Telegram-Init-Data': initData,
-          },
-        });
+        const codes = await fetchEntitlementCodes(initData);
+        entitlementsCache = { codes, ts: Date.now() };
+        const required = requiredEntitlementCode(productCode);
 
-        if (response.ok) {
-          const data = await response.json();
-          const paid = !!data?.data?.paid;
-
-          if (paid) {
-            setHasPaid(true);
-            setPaymentId(null);
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            toast.success('Оплата успешно обработана!');
-            setTimeout(() => {
-              onPaymentComplete();
-            }, 500);
+        if (codes.includes(required)) {
+          setHasPaid(true);
+          setPaymentId(null);
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
           }
+          toast.success('Оплата успешно обработана!');
+          setTimeout(() => {
+            onPaymentComplete();
+          }, 500);
         }
       } catch (error) {
         console.warn('Could not check payment status:', error);
@@ -135,7 +175,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
         pollingIntervalRef.current = null;
       }
     };
-  }, [paymentId, onPaymentComplete]);
+  }, [paymentId, onPaymentComplete, productCode]);
 
   const handlePayment = async () => {
     if (!agreedToTerms) {
@@ -157,7 +197,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
           'X-Telegram-Init-Data': initData,
         },
         body: JSON.stringify({
-          productCode: 'plan_access', // или 'subscription_month' для подписки
+          productCode,
         }),
       });
 
@@ -198,8 +238,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
       }
 
       // В тестовой среде автоматически симулируем успешный платеж
-      const isTestEnv = process.env.NODE_ENV === 'development' || 
-                       paymentData.paymentUrl?.includes('/payments/test');
+      const isTestEnv = process.env.NODE_ENV === 'development';
       
       if (isTestEnv && paymentData.paymentId) {
         // Автоматически симулируем вебхук от ЮKassa в тестовой среде
@@ -293,6 +332,9 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     return <>{children}</>;
   }
 
+  const displayPrice =
+    typeof price === 'number' && Number.isFinite(price) ? price : (PRODUCT_PRICES[productCode] ?? 0);
+
   return (
     <div style={{ position: 'relative' }}>
       {/* Замыленный контент */}
@@ -344,7 +386,11 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
             color: '#0A5F59',
             marginBottom: '12px',
           }}>
-            {isRetaking ? 'Обновите доступ к плану' : 'Получите полный доступ к плану'}
+            {productCode === 'retake_topic'
+              ? 'Перепройдите тему'
+              : isRetaking
+                ? 'Обновите доступ к плану'
+                : 'Получите полный доступ к плану'}
           </h2>
           
           <p style={{
@@ -353,9 +399,11 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
             marginBottom: '24px',
             lineHeight: '1.6',
           }}>
-            {isRetaking 
-              ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
-              : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
+            {productCode === 'retake_topic'
+              ? 'Выберите тему, оплатите 99 ₽ и обновите только затронутые части рекомендаций.'
+              : isRetaking 
+                ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
+                : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
           </p>
 
           {/* Цена */}
@@ -378,7 +426,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
               fontWeight: 'bold',
               color: '#0A5F59',
             }}>
-              {price} ₽
+              {displayPrice} ₽
             </div>
           </div>
 
@@ -454,7 +502,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
               ? 'Ожидаем подтверждения оплаты...' 
               : isProcessing 
                 ? 'Создание платежа...' 
-                : `Оплатить ${price} ₽`}
+                : `Оплатить ${displayPrice} ₽`}
           </button>
 
           {paymentId && (
@@ -474,6 +522,36 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
           }}>
             Платеж обрабатывается безопасно через сервер
           </p>
+
+          {retakeCta && (
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  // ИСПРАВЛЕНО: ретейк-ссылка должна открывать экран выбора тем
+                  // (/quiz показывает экран выбора тем, когда is_retaking_quiz=true)
+                  try {
+                    localStorage.setItem('is_retaking_quiz', 'true');
+                  } catch {
+                    // ignore
+                  }
+                  window.location.href = retakeCta.href;
+                }
+              }}
+              style={{
+                marginTop: '16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#0A5F59',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 600,
+              }}
+            >
+              {retakeCta.text}
+            </button>
+          )}
         </div>
       </div>
     </div>

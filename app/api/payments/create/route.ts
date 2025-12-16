@@ -13,7 +13,11 @@ export const runtime = 'nodejs';
 // Конфигурация продуктов
 const PRODUCTS: Record<string, { amount: number; currency: string }> = {
   plan_access: {
-    amount: 99000, // 990 рублей в копейках
+    amount: 19900, // 199 рублей в копейках
+    currency: 'RUB',
+  },
+  retake_topic: {
+    amount: 9900, // 99 рублей в копейках
     currency: 'RUB',
   },
   subscription_month: {
@@ -22,6 +26,13 @@ const PRODUCTS: Record<string, { amount: number; currency: string }> = {
   },
 };
 
+function entitlementCodeForProduct(productCode: string): string {
+  if (productCode === 'plan_access') return 'paid_access';
+  if (productCode === 'retake_topic') return 'retake_topic_access';
+  // По умолчанию — доступ к плану (обратная совместимость)
+  return 'paid_access';
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
@@ -29,6 +40,14 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
+    // ИСПРАВЛЕНО: В production нельзя отдавать "test" paymentUrl и симулировать провайдера.
+    // Если реальная интеграция не настроена — возвращаем понятную ошибку, чтобы пользователь не застревал в pending.
+    if (process.env.NODE_ENV === 'production') {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 501, duration);
+      return ApiResponse.error('Payments are not configured in production yet', 501);
+    }
+
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
@@ -71,8 +90,9 @@ export async function POST(request: NextRequest) {
 
       // Если платеж уже успешен - возвращаем информацию о доступе
       if (existingPayment.status === 'succeeded') {
+        const entitlementCode = entitlementCodeForProduct(productCode);
         const entitlement = await prisma.entitlement.findUnique({
-          where: { userId_code: { userId, code: 'paid_access' } },
+          where: { userId_code: { userId, code: entitlementCode } },
           select: { active: true, validUntil: true },
         });
 

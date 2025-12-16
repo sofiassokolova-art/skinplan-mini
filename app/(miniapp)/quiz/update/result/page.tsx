@@ -27,10 +27,8 @@ function QuizUpdateResultContent() {
     // Устанавливаем флаг о перепрохождении анкеты
     if (typeof window !== 'undefined') {
       localStorage.setItem('is_retaking_quiz', 'true');
-      // Сбрасываем флаг оплаты после завершения обновления темы
-      // Каждая тема требует отдельной оплаты 49₽
-      localStorage.removeItem('payment_retaking_completed');
-      clientLogger.log('🔄 Payment flag cleared after topic update completion - next topic will require new payment');
+      // Оплата ретейка теперь проверяется на сервере через entitlement (retake_topic_access),
+      // поэтому localStorage-флаги больше не нужны.
     }
   }, [topicId]);
 

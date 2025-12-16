@@ -496,8 +496,25 @@ export default function HomePage() {
     try {
       const data = await api.getRecommendations() as any;
       
-      // ИСПРАВЛЕНО: Убрана проверка expired - PaymentGate сам проверит статус оплаты
-      // Загружаем рекомендации даже если план истек - PaymentGate покажет блюр
+      // Если план истёк (28+ дней) — показываем понятный экран с предложением перепройти анкету
+      // (после перепрохождения в конце снова будет оплата/гейт).
+      if (data?.expired === true) {
+        // План истёк: оставляем UX на месте (не редиректим),
+        // строим рутину из plan28 и показываем блюр через PaymentGate.
+        setRecommendations(null as any);
+        setError(null);
+        try {
+          await buildRoutineFromPlan();
+        } catch (fallbackErr) {
+          clientLogger.warn('Failed to build routine from plan28 for expired plan', fallbackErr);
+          setMorningItems([]);
+          setEveningItems([]);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       setRecommendations(data as Recommendation);
       setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке
       
@@ -764,6 +781,8 @@ export default function HomePage() {
   // Получаем текущие элементы в зависимости от вкладки
   const routineItems = tab === 'AM' ? morningItems : eveningItems;
   
+  // План истёк: не показываем отдельный экран — paywall + блюр от PaymentGate.
+
   if (error && routineItems.length === 0) {
     return (
       <div style={{ 
@@ -815,12 +834,14 @@ export default function HomePage() {
   return (
     <PaymentGate
       price={199}
+      productCode="plan_access"
       isRetaking={false}
       onPaymentComplete={() => {
         clientLogger.log('✅ Payment completed on homepage');
         // После оплаты перезагружаем рекомендации
         loadRecommendations();
       }}
+      retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz' }}
     >
     <div style={{
       minHeight: '100vh',
@@ -893,6 +914,34 @@ export default function HomePage() {
             {completedCount}/{totalCount} шагов
           </div>
         )}
+      </div>
+
+      {/* Ретейк ссылка на главной (всегда видна, даже если доступ уже оплачен) */}
+      <div style={{ padding: '0 20px', marginTop: '8px' }}>
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              localStorage.setItem('is_retaking_quiz', 'true');
+            } catch {
+              // ignore
+            }
+            router.push('/quiz');
+          }}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: '#0A5F59',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 600,
+            padding: '10px 0',
+          }}
+        >
+          Изменились цели? Перепройти анкету
+        </button>
       </div>
 
       {/* Toggle AM/PM */}
