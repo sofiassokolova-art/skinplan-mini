@@ -11,6 +11,7 @@ interface PaymentGateProps {
   productCode?: 'plan_access' | 'subscription_month';
   isRetaking: boolean;
   onPaymentComplete: () => void;
+  retakeCta?: { text: string; href: string };
   children: React.ReactNode;
 }
 
@@ -42,6 +43,7 @@ export function PaymentGate({
   productCode = 'plan_access',
   isRetaking,
   onPaymentComplete,
+  retakeCta,
   children,
 }: PaymentGateProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -499,6 +501,29 @@ export function PaymentGate({
           }}>
             Платеж обрабатывается безопасно через сервер
           </p>
+
+          {retakeCta && (
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.href = retakeCta.href;
+                }
+              }}
+              style={{
+                marginTop: '16px',
+                background: 'transparent',
+                border: 'none',
+                color: '#0A5F59',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 600,
+              }}
+            >
+              {retakeCta.text}
+            </button>
+          )}
         </div>
       </div>
     </div>

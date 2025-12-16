@@ -500,6 +500,7 @@ export function PlanPageClientNew({
           setNeedsFirstPayment(false);
           clientLogger.log('✅ Payment completed on plan page');
         }}
+        retakeCta={planExpired ? { text: 'Изменились цели? Перепройти анкету', href: '/quiz' } : undefined}
       >
         {/* Контент внутри PaymentGate (показывается с блюром до оплаты, без блюра после оплаты) */}
         {/* Инфографика плана */}
