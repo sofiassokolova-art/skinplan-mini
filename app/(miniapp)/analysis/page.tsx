@@ -137,7 +137,11 @@ function AnalysisPageContent() {
       } else {
         clientLogger.info('Adding product to wishlist', { productId });
         await api.addToWishlist(productId);
-        setWishlistProductIds(prev => new Set(prev).add(productId));
+        setWishlistProductIds(prev => {
+          const newSet = new Set(prev);
+          newSet.add(productId);
+          return newSet;
+        });
         toast.success('Добавлено в избранное');
       }
     } catch (err: any) {
