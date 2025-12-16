@@ -487,9 +487,69 @@ export async function POST(request: NextRequest) {
           where: { userId },
         });
 
+        // Получаем последние ответы
+        const lastAnswers = await prisma.userAnswer.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            questionId: true,
+            value: true,
+            createdAt: true,
+          },
+        });
+
+        // Получаем информацию о платежах
+        const payments = await prisma.payment.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+          select: {
+            id: true,
+            status: true,
+            amount: true,
+            currency: true,
+            createdAt: true,
+          },
+        });
+
+        // Получаем информацию о entitlements
+        const entitlements = await prisma.entitlement.findMany({
+          where: { userId },
+          orderBy: { updatedAt: 'desc' },
+          select: {
+            code: true,
+            active: true,
+            validUntil: true,
+            updatedAt: true,
+          },
+        });
+
+        // Получаем информацию о пользователе
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            telegramId: true,
+            createdAt: true,
+            tags: true,
+          },
+        });
+
         // Формируем сообщение
         let message = `📊 <b>Ваши логи и данные</b>\n\n`;
         
+        // Информация о пользоватеle
+        if (user) {
+          const userDate = new Date(user.createdAt).toLocaleString('ru-RU');
+          message += `👤 <b>Пользователь:</b>\n`;
+          message += `  Telegram ID: <code>${user.telegramId}</code>\n`;
+          message += `  Создан: ${userDate}\n`;
+          if (user.tags && user.tags.length > 0) {
+            message += `  Теги: ${user.tags.join(', ')}\n`;
+          }
+          message += `\n`;
+        }
+
         message += `👤 <b>Профили:</b> ${profiles.length}\n`;
         if (profiles.length > 0) {
           profiles.forEach((p, idx) => {
@@ -497,9 +557,23 @@ export async function POST(request: NextRequest) {
             message += `  ${idx + 1}. ID: <code>${p.id}</code>\n`;
             message += `     Version: ${p.version}, Created: ${date}\n`;
           });
+        } else {
+          message += `  ⚠️ Профили не найдены (это может быть проблемой)\n`;
         }
 
         message += `\n📋 <b>Ответы:</b> ${answersCount}\n`;
+        if (lastAnswers.length > 0) {
+          const lastAnswerDate = new Date(lastAnswers[0].createdAt).toLocaleString('ru-RU');
+          message += `  Последний ответ: ${lastAnswerDate}\n`;
+          message += `  Последние вопросы:\n`;
+          lastAnswers.slice(0, 3).forEach((a, idx) => {
+            const date = new Date(a.createdAt).toLocaleString('ru-RU');
+            const value = a.value && typeof a.value === 'string' && a.value.length > 30 
+              ? a.value.substring(0, 30) + '...' 
+              : String(a.value || 'null');
+            message += `    ${idx + 1}. Q:${a.questionId} = ${value}\n`;
+          });
+        }
         
         message += `\n📅 <b>Планы:</b> ${plans.length}\n`;
         if (plans.length > 0) {
@@ -509,7 +583,34 @@ export async function POST(request: NextRequest) {
           });
         }
 
+        message += `\n💳 <b>Платежи:</b> ${payments.length}\n`;
+        if (payments.length > 0) {
+          payments.forEach((p, idx) => {
+            const date = new Date(p.createdAt).toLocaleString('ru-RU');
+            message += `  ${idx + 1}. ${p.status}: ${p.amount} ${p.currency} (${date})\n`;
+          });
+        }
+
+        message += `\n🔐 <b>Доступ (Entitlements):</b> ${entitlements.length}\n`;
+        if (entitlements.length > 0) {
+          entitlements.forEach((e, idx) => {
+            const date = new Date(e.updatedAt).toLocaleString('ru-RU');
+            const validUntil = e.validUntil ? new Date(e.validUntil).toLocaleString('ru-RU') : 'без ограничений';
+            message += `  ${idx + 1}. ${e.code}: ${e.active ? '✅' : '❌'} (до ${validUntil})\n`;
+          });
+        }
+
+        // Подсчитываем ошибки в логах
+        const errorLogs = logs.filter(l => l.level === 'error');
+        const warnLogs = logs.filter(l => l.level === 'warn');
+
         message += `\n📝 <b>Последние логи (${logs.length}):</b>\n`;
+        if (errorLogs.length > 0) {
+          message += `  ⚠️ Ошибок: ${errorLogs.length}\n`;
+        }
+        if (warnLogs.length > 0) {
+          message += `  ⚠️ Предупреждений: ${warnLogs.length}\n`;
+        }
         if (logs.length === 0) {
           message += `  Логов не найдено\n`;
         } else {
@@ -517,7 +618,8 @@ export async function POST(request: NextRequest) {
             const date = new Date(log.createdAt).toLocaleString('ru-RU');
             const level = log.level.toUpperCase();
             const msg = log.message.length > 50 ? log.message.substring(0, 50) + '...' : log.message;
-            message += `  ${idx + 1}. [${date}] ${level}: ${msg}\n`;
+            const icon = log.level === 'error' ? '❌' : log.level === 'warn' ? '⚠️' : 'ℹ️';
+            message += `  ${idx + 1}. ${icon} [${date}] ${level}: ${msg}\n`;
           });
           if (logs.length > 10) {
             message += `  ... и ещё ${logs.length - 10} логов\n`;
