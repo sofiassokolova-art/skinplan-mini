@@ -170,9 +170,12 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
       }
 
       const data = await response.json();
-      const paymentData = data?.data;
+      // ИСПРАВЛЕНО: ApiResponse.success() возвращает данные напрямую, без обертки в { data: ... }
+      // Проверяем оба варианта для совместимости
+      const paymentData = data?.data || data;
 
-      if (!paymentData) {
+      if (!paymentData || typeof paymentData !== 'object') {
+        console.error('Invalid payment response:', data);
         toast.error('Неверный ответ от сервера');
         setIsProcessing(false);
         return;
