@@ -229,7 +229,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
       if (paymentData.paymentUrl) {
         // В тестовой среде показываем информацию о тестовом платеже
         if (isTestEnv) {
-          toast.info('Тестовый платеж создан. Симулируем оплату...', { duration: 2000 });
+          toast('Тестовый платеж создан. Симулируем оплату...', { duration: 2000 });
           // Небольшая задержка перед симуляцией для реалистичности
           setTimeout(async () => {
             try {
