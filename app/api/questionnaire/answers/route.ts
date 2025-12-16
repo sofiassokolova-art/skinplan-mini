@@ -714,6 +714,12 @@ export async function POST(request: NextRequest) {
               },
             });
         
+        // КРИТИЧНО: Проверяем, что профиль виден ВНУТРИ транзакции сразу после создания
+        const profileInTx = await tx.skinProfile.findUnique({
+          where: { id: profile.id },
+          select: { id: true, userId: true, version: true },
+        });
+        
         // DEBUG: Проверяем, что запись реально создана в транзакции
         const countInsideTx = await tx.skinProfile.count({ where: { userId: userId! } });
         const debugInfo = { 
@@ -721,10 +727,23 @@ export async function POST(request: NextRequest) {
           createdId: profile.id, 
           countInsideTx,
           profileVersion: profile.version,
+          foundInTx: !!profileInTx,
+          profileInTx: profileInTx,
         };
         // Логируем через console.warn для гарантированного вывода в Vercel
         console.warn('🔍 DEBUG: profiles count inside TX after create', JSON.stringify(debugInfo, null, 2));
         logger.warn('DEBUG: profiles count inside TX after create', debugInfo);
+        
+        // КРИТИЧНО: Если профиль не виден в транзакции - это серьезная проблема
+        if (!profileInTx) {
+          logger.error('CRITICAL: Profile not visible in transaction after create', {
+            userId,
+            createdProfileId: profile.id,
+            profileVersion: profile.version,
+            countInsideTx,
+          });
+          throw new Error('Profile not visible in transaction after create - possible transaction isolation issue');
+        }
         
         // DEBUG: Проверяем идентичность БД
         try {
