@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 // Конфигурация продуктов
 const PRODUCTS: Record<string, { amount: number; currency: string }> = {
   plan_access: {
-    amount: 99000, // 990 рублей в копейках
+    amount: 19900, // 199 рублей в копейках
     currency: 'RUB',
   },
   subscription_month: {

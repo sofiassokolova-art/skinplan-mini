@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       if (payment.productCode === 'subscription_month') {
         validUntil.setMonth(validUntil.getMonth() + 1);
       } else if (payment.productCode === 'plan_access') {
-        validUntil.setFullYear(validUntil.getFullYear() + 1);
+        validUntil.setDate(validUntil.getDate() + 28);
       } else {
         validUntil.setFullYear(validUntil.getFullYear() + 1);
       }

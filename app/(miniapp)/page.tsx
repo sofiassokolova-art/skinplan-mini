@@ -496,8 +496,17 @@ export default function HomePage() {
     try {
       const data = await api.getRecommendations() as any;
       
-      // ИСПРАВЛЕНО: Убрана проверка expired - PaymentGate сам проверит статус оплаты
-      // Загружаем рекомендации даже если план истек - PaymentGate покажет блюр
+      // Если план истёк (28+ дней) — показываем понятный экран с предложением перепройти анкету
+      // (после перепрохождения в конце снова будет оплата/гейт).
+      if (data?.expired === true) {
+        setRecommendations(null as any);
+        setMorningItems([]);
+        setEveningItems([]);
+        setError('plan_expired');
+        setLoading(false);
+        return;
+      }
+
       setRecommendations(data as Recommendation);
       setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке
       
@@ -764,6 +773,43 @@ export default function HomePage() {
   // Получаем текущие элементы в зависимости от вкладки
   const routineItems = tab === 'AM' ? morningItems : eveningItems;
   
+  // План истёк (28+ дней) — предлагаем перепройти анкету
+  if (error === 'plan_expired') {
+    return (
+      <div style={{ 
+        padding: '20px', 
+        textAlign: 'center',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏰</div>
+        <h1 style={{ color: '#0A5F59', marginBottom: '12px' }}>План завершен</h1>
+        <p style={{ color: '#475467', marginBottom: '24px', maxWidth: '420px', lineHeight: 1.6 }}>
+          Ваш 28‑дневный план завершен. Пройдите анкету заново, чтобы сформировать новый план (в конце снова будет оплата).
+        </p>
+        <button
+          onClick={() => router.push('/quiz')}
+          style={{
+            padding: '12px 24px',
+            borderRadius: '12px',
+            backgroundColor: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          }}
+        >
+          Пройти анкету заново
+        </button>
+      </div>
+    );
+  }
+
   if (error && routineItems.length === 0) {
     return (
       <div style={{ 
@@ -814,7 +860,7 @@ export default function HomePage() {
   // Если оплачено - покажет контент без блюра
   return (
     <PaymentGate
-      price={990}
+      price={199}
       productCode="plan_access"
       isRetaking={false}
       onPaymentComplete={() => {

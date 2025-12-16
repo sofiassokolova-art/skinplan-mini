@@ -137,13 +137,6 @@ export async function GET(request: NextRequest) {
     }
     const answersQuestionnaireId = questionnaireId ?? profile.version;
 
-    // Проверяем кэш
-    const cachedRecommendations = await getCachedRecommendations(userId, profile.version);
-    if (cachedRecommendations) {
-      logger.info('Recommendations retrieved from cache', { userId, profileVersion: profile.version });
-      return ApiResponse.success(cachedRecommendations);
-    }
-
     // ИСПРАВЛЕНО: Используем текущий день плана для рекомендаций на главной
     // День 1 = день генерации плана, день 2 = второй день из plan28, и так до 28
     // После 28 дней показываем экран оплаты
@@ -329,6 +322,13 @@ export async function GET(request: NextRequest) {
           }
         }
       }
+    }
+
+    // Проверяем кэш (после проверки срока плана, чтобы кэш не обходил 28-day lock)
+    const cachedRecommendations = await getCachedRecommendations(userId, profile.version);
+    if (cachedRecommendations) {
+      logger.info('Recommendations retrieved from cache', { userId, profileVersion: profile.version });
+      return ApiResponse.success(cachedRecommendations);
     }
 
     // Проверяем, есть ли уже сессия рекомендаций для этого профиля

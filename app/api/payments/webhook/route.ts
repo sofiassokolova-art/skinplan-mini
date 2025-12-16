@@ -175,9 +175,8 @@ export async function POST(request: NextRequest) {
           // Подписка на месяц - доступ на 1 месяц
           validUntil.setMonth(validUntil.getMonth() + 1);
         } else if (payment.productCode === 'plan_access') {
-          // Доступ к плану - можно установить срок (например, 1 год) или сделать постоянным
-          // Сейчас устанавливаем 1 год для безопасности
-          validUntil.setFullYear(validUntil.getFullYear() + 1);
+          // Доступ к плану: 28 дней (после этого план снова лочится)
+          validUntil.setDate(validUntil.getDate() + 28);
         } else {
           // Для других продуктов - по умолчанию 1 год
           validUntil.setFullYear(validUntil.getFullYear() + 1);

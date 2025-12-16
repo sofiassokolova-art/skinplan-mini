@@ -15,7 +15,7 @@ interface PaymentGateProps {
 }
 
 const PRODUCT_PRICES: Record<string, number> = {
-  plan_access: 990,
+  plan_access: 199,
   subscription_month: 499,
 };
 
