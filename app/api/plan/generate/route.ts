@@ -3,14 +3,12 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
-import { setCachedPlan } from '@/lib/cache';
 import { generate28DayPlan } from '@/lib/plan-generator';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import '@/lib/env-check'; // Валидация env переменных при старте
 import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
-import type { PlanResponse } from '@/lib/api-types';
 
 export const runtime = 'nodejs';
 
@@ -87,14 +85,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (!profile) {
-      // ИСПРАВЛЕНО: Возвращаем 200 null вместо 404 для лучшей семантики
+      // ИСПРАВЛЕНО: Правильная семантика - 200 + null для отсутствия профиля
       // Отсутствие профиля - это не ошибка сервера, а нормальное состояние
       const duration = Date.now() - startTime;
       logger.warn('No skin profile found for user', { userId, profileIdParam });
       logApiRequest(method, path, 200, duration, userId);
       return ApiResponse.success({
-        plan: null,
-        reason: 'no_profile',
+        plan28: null,
+        state: 'no_profile',
       });
     }
 
@@ -439,41 +437,18 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // ИСПРАВЛЕНО: Сохраняем в кэш в формате PlanResponse для единообразия
-    // Это гарантирует, что /api/plan и /api/plan/generate используют одинаковый формат кэша
-    try {
-      logger.info('Caching plan in PlanResponse format', { userId, profileVersion: profile.version });
-      
-      // Преобразуем GeneratedPlan в PlanResponse для единого формата кэша
-      const planResponse: PlanResponse = {
-        plan28: plan.plan28,
-        weeks: plan.weeks,
-        products: plan.products,
-        profile: plan.profile,
-        warnings: plan.warnings,
-        // expired и daysSinceCreation будут добавлены при чтении из кэша в /api/plan
-      };
-      
-      await setCachedPlan(userId, profile.version, planResponse);
-      logger.info('Plan cached successfully in PlanResponse format', { 
-        userId, 
-        profileVersion: profile.version,
-        hasPlan28: !!planResponse.plan28,
-        hasWeeks: !!planResponse.weeks,
-        plan28DaysCount: planResponse?.plan28?.days?.length || 0,
-        // ИСПРАВЛЕНО: Логируем количество продуктов для диагностики
-        day1MorningProducts: planResponse?.plan28?.days?.[0]?.morning?.filter((s: any) => s.productId).length || 0,
-        day1EveningProducts: planResponse?.plan28?.days?.[0]?.evening?.filter((s: any) => s.productId).length || 0,
-      });
-    } catch (cacheError: any) {
-      // Ошибка кэширования не должна блокировать возврат плана
-      logger.error('Failed to cache plan (non-critical)', cacheError, {
-        userId,
-        profileVersion: profile.version,
-        errorMessage: cacheError?.message,
-        errorStack: cacheError?.stack?.substring(0, 500),
-      });
-    }
+    // ИСПРАВЛЕНО: НЕ кэшируем из /api/plan/generate
+    // Кэширование - это ответственность /api/plan, который:
+    // 1. Читает из БД
+    // 2. Формирует PlanResponse с правильными expired и daysSinceCreation
+    // 3. Кладёт в кэш в едином формате
+    // Это гарантирует единый контракт кэша и предотвращает несоответствия форматов
+    logger.info('Plan generated and saved to DB, caching will be done by /api/plan', {
+      userId,
+      profileVersion: profile.version,
+      hasPlan28: !!plan.plan28,
+      plan28DaysCount: plan?.plan28?.days?.length || 0,
+    });
     
     logger.info('Plan generated successfully', {
       userId,

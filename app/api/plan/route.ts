@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     if (!profile) {
       const duration = Date.now() - startTime;
-      // ИСПРАВЛЕНО: Возвращаем 200 null вместо 404 для лучшей семантики
+      // ИСПРАВЛЕНО: Правильная семантика - 200 + null для отсутствия профиля
       // Отсутствие профиля - это не ошибка сервера, а нормальное состояние (пользователь еще не прошел анкету)
       // Это предотвращает проблемы с кэшированием 404 и улучшает UX
       logger.warn('No skin profile found for user after retry', {
@@ -107,8 +107,8 @@ export async function GET(request: NextRequest) {
       });
       logApiRequest(method, path, 200, duration, userId);
       return ApiResponse.success({
-        plan: null,
-        reason: 'no_profile',
+        plan28: null,
+        state: 'no_profile',
       });
     }
 
@@ -238,19 +238,28 @@ export async function GET(request: NextRequest) {
     }
 
 
+    // ИСПРАВЛЕНО: Правильная семантика - 404 для отсутствия плана (но есть профиль)
+    // Это триггерит генерацию на фронте
     // ВАЖНО: При перепрохождении анкеты НЕ возвращаем план из старой версии
     // Пользователь должен получить план, соответствующий новым ответам
-    // Если план не найден для текущей версии - возвращаем 404, чтобы триггерить генерацию
     logger.debug('Plan not found in cache or DB for current version - will trigger generation', { 
       userId, 
       currentVersion: profile.version 
     });
 
-    // План не найден ни в кэше, ни в БД - возвращаем 404
+    // План не найден ни в кэше, ни в БД - возвращаем 404 (есть профиль, но нет плана)
     const duration = Date.now() - startTime;
-    logger.info('Plan not found in cache or DB for any version', { userId, profileVersion: profile.version });
+    logger.info('Plan not found in cache or DB for any version', { 
+      userId, 
+      profileVersion: profile.version,
+      profileId: profile.id,
+    });
     logApiRequest(method, path, 404, duration, userId);
-    return ApiResponse.notFound('Plan not found. Please generate a plan first.', { userId });
+    return ApiResponse.notFound('plan_not_found', { 
+      userId,
+      profileId: profile.id,
+      profileVersion: profile.version,
+    });
     
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
