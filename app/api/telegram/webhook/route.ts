@@ -494,7 +494,8 @@ export async function POST(request: NextRequest) {
           take: 5,
           select: {
             questionId: true,
-            value: true,
+            answerValue: true,
+            answerValues: true,
             createdAt: true,
           },
         });
@@ -568,10 +569,16 @@ export async function POST(request: NextRequest) {
           message += `  Последние вопросы:\n`;
           lastAnswers.slice(0, 3).forEach((a, idx) => {
             const date = new Date(a.createdAt).toLocaleString('ru-RU');
-            const value = a.value && typeof a.value === 'string' && a.value.length > 30 
-              ? a.value.substring(0, 30) + '...' 
-              : String(a.value || 'null');
-            message += `    ${idx + 1}. Q:${a.questionId} = ${value}\n`;
+            // Используем answerValue (для single/scale) или answerValues (для multi)
+            const value = a.answerValue 
+              ? (a.answerValue.length > 30 ? a.answerValue.substring(0, 30) + '...' : a.answerValue)
+              : (a.answerValues 
+                  ? (Array.isArray(a.answerValues) ? a.answerValues.join(', ') : JSON.stringify(a.answerValues))
+                  : 'null');
+            const displayValue = typeof value === 'string' && value.length > 30 
+              ? value.substring(0, 30) + '...' 
+              : String(value);
+            message += `    ${idx + 1}. Q:${a.questionId} = ${displayValue}\n`;
           });
         }
         
