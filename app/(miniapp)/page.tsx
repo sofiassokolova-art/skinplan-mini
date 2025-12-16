@@ -814,7 +814,8 @@ export default function HomePage() {
   // Если оплачено - покажет контент без блюра
   return (
     <PaymentGate
-      price={199}
+      price={990}
+      productCode="plan_access"
       isRetaking={false}
       onPaymentComplete={() => {
         clientLogger.log('✅ Payment completed on homepage');

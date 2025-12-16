@@ -7,13 +7,43 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 
 interface PaymentGateProps {
-  price: number;
+  price?: number;
+  productCode?: 'plan_access' | 'subscription_month';
   isRetaking: boolean;
   onPaymentComplete: () => void;
   children: React.ReactNode;
 }
 
-export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: PaymentGateProps) {
+const PRODUCT_PRICES: Record<string, number> = {
+  plan_access: 990,
+  subscription_month: 499,
+};
+
+// Глобальный кеш — чтобы множество PaymentGate (на /quiz) не спамили /api/me/entitlements
+let entitlementsCache: { paid: boolean; ts: number } | null = null;
+let entitlementsPromise: Promise<boolean> | null = null;
+const ENTITLEMENTS_TTL_MS = 5000;
+
+async function fetchPaidEntitlement(initData: string): Promise<boolean> {
+  const response = await fetch('/api/me/entitlements', {
+    method: 'GET',
+    headers: {
+      'X-Telegram-Init-Data': initData,
+    },
+  });
+
+  if (!response.ok) return false;
+  const data = await response.json();
+  return !!data?.data?.paid;
+}
+
+export function PaymentGate({
+  price,
+  productCode = 'plan_access',
+  isRetaking,
+  onPaymentComplete,
+  children,
+}: PaymentGateProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
@@ -48,25 +78,27 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
           return;
         }
 
-        const response = await fetch('/api/me/entitlements', {
-          method: 'GET',
-          headers: {
-            'X-Telegram-Init-Data': initData,
-          },
-        });
-
-        if (!isMounted) return;
-
-        if (response.ok) {
-          const data = await response.json();
-          const paid = !!data?.data?.paid;
-
-          if (paid) {
-            setHasPaid(true);
-          } else {
-            setHasPaid(false);
+        const now = Date.now();
+        if (entitlementsCache && now - entitlementsCache.ts < ENTITLEMENTS_TTL_MS) {
+          if (isMounted) {
+            setHasPaid(entitlementsCache.paid);
           }
+          return;
         }
+
+        if (!entitlementsPromise) {
+          entitlementsPromise = fetchPaidEntitlement(initData)
+            .then((paid) => {
+              entitlementsCache = { paid, ts: Date.now() };
+              return paid;
+            })
+            .finally(() => {
+              entitlementsPromise = null;
+            });
+        }
+
+        const paid = await entitlementsPromise;
+        if (isMounted) setHasPaid(paid);
       } catch (error) {
         // В проде это просто значит: временно опираемся на локальный флаг
         if (isMounted) {
@@ -97,29 +129,20 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
       if (!initData) return;
 
       try {
-        const response = await fetch('/api/me/entitlements', {
-          method: 'GET',
-          headers: {
-            'X-Telegram-Init-Data': initData,
-          },
-        });
+        const paid = await fetchPaidEntitlement(initData);
+        entitlementsCache = { paid, ts: Date.now() };
 
-        if (response.ok) {
-          const data = await response.json();
-          const paid = !!data?.data?.paid;
-
-          if (paid) {
-            setHasPaid(true);
-            setPaymentId(null);
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            toast.success('Оплата успешно обработана!');
-            setTimeout(() => {
-              onPaymentComplete();
-            }, 500);
+        if (paid) {
+          setHasPaid(true);
+          setPaymentId(null);
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
           }
+          toast.success('Оплата успешно обработана!');
+          setTimeout(() => {
+            onPaymentComplete();
+          }, 500);
         }
       } catch (error) {
         console.warn('Could not check payment status:', error);
@@ -157,7 +180,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
           'X-Telegram-Init-Data': initData,
         },
         body: JSON.stringify({
-          productCode: 'plan_access', // или 'subscription_month' для подписки
+          productCode,
         }),
       });
 
@@ -198,8 +221,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
       }
 
       // В тестовой среде автоматически симулируем успешный платеж
-      const isTestEnv = process.env.NODE_ENV === 'development' || 
-                       paymentData.paymentUrl?.includes('/payments/test');
+      const isTestEnv = process.env.NODE_ENV === 'development';
       
       if (isTestEnv && paymentData.paymentId) {
         // Автоматически симулируем вебхук от ЮKassa в тестовой среде
@@ -293,6 +315,9 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     return <>{children}</>;
   }
 
+  const displayPrice =
+    typeof price === 'number' && Number.isFinite(price) ? price : (PRODUCT_PRICES[productCode] ?? 0);
+
   return (
     <div style={{ position: 'relative' }}>
       {/* Замыленный контент */}
@@ -378,7 +403,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
               fontWeight: 'bold',
               color: '#0A5F59',
             }}>
-              {price} ₽
+              {displayPrice} ₽
             </div>
           </div>
 
@@ -454,7 +479,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
               ? 'Ожидаем подтверждения оплаты...' 
               : isProcessing 
                 ? 'Создание платежа...' 
-                : `Оплатить ${price} ₽`}
+                : `Оплатить ${displayPrice} ₽`}
           </button>
 
           {paymentId && (

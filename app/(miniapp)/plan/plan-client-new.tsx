@@ -491,7 +491,8 @@ export function PlanPageClientNew({
       {/* ИСПРАВЛЕНО: PaymentGate показывается ВСЕГДА - план это платный продукт */}
       {/* PaymentGate сам проверяет статус оплаты и показывает блюр только если не оплачено */}
       <PaymentGate
-        price={199}
+        price={990}
+        productCode="plan_access"
         isRetaking={typeof window !== 'undefined' ? 
           (localStorage.getItem('is_retaking_quiz') === 'true' || 
            localStorage.getItem('full_retake_from_home') === 'true') : false}

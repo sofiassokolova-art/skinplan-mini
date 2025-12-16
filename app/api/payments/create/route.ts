@@ -29,6 +29,14 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
+    // ИСПРАВЛЕНО: В production нельзя отдавать "test" paymentUrl и симулировать провайдера.
+    // Если реальная интеграция не настроена — возвращаем понятную ошибку, чтобы пользователь не застревал в pending.
+    if (process.env.NODE_ENV === 'production') {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 501, duration);
+      return ApiResponse.error('Payments are not configured in production yet', 501);
+    }
+
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
