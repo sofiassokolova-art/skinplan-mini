@@ -1055,12 +1055,27 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId || undefined);
 
+    // КРИТИЧНО: Проверяем, что профиль реально виден в БД после создания
+    // Это поможет диагностировать проблему "разные БД"
+    const profileAfterCreate = await prisma.skinProfile.findUnique({
+      where: { id: profile.id },
+      select: { id: true, userId: true, version: true },
+    });
+    
+    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Profile verification after create:', JSON.stringify({
+      createdProfileId: profile.id,
+      foundInDb: !!profileAfterCreate,
+      profileAfterCreate: profileAfterCreate,
+      userId,
+    }, null, 2));
+    
     logger.info('✅ Answers submitted and profile created successfully', {
       userId,
       profileId: profile.id,
       profileVersion: profile.version,
       answersCount: savedAnswers.length,
       duration,
+      profileFoundAfterCreate: !!profileAfterCreate,
     });
 
     return ApiResponse.success({
