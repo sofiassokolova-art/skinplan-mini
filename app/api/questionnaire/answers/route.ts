@@ -1118,6 +1118,39 @@ export async function POST(request: NextRequest) {
       profileFoundAfterCreate: !!profileAfterCreate,
     });
 
+    // ВАЖНО: Запускаем генерацию плана асинхронно (не блокируя ответ)
+    // План будет сгенерирован в фоне, клиент будет polling /api/plan/status
+    const initData = request.headers.get('X-Telegram-Init-Data') || request.headers.get('x-telegram-init-data');
+    if (initData) {
+      // Запускаем генерацию плана в фоне (не ждем завершения)
+      // Используем абсолютный URL для внутреннего вызова
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      
+      fetch(`${baseUrl}/api/plan/generate?profileId=${profile.id}`, {
+        method: 'GET',
+        headers: {
+          'X-Telegram-Init-Data': initData,
+        },
+      }).catch(err => {
+        logger.warn('Background plan generation failed (non-critical)', { 
+          userId, 
+          profileId: profile.id,
+          error: err?.message 
+        });
+        // Не критично - план пересоберется при следующем запросе
+      });
+      
+      logger.info('🚀 Plan generation started in background', {
+        userId,
+        profileId: profile.id,
+        profileVersion: profile.version,
+      });
+    } else {
+      logger.warn('Cannot trigger plan generation: initData missing', { userId });
+    }
+
     return ApiResponse.success({
       success: true,
       profile: {

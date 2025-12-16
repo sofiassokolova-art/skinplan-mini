@@ -5,7 +5,7 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PlanPageClientNew } from './plan-client-new';
 import { PlanPageClient } from './plan-client';
@@ -77,14 +77,17 @@ interface PlanData {
 
 export default function PlanPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isDev = process.env.NODE_ENV === 'development';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [planData, setPlanData] = useState<PlanData | null>(null);
+  const [generatingState, setGeneratingState] = useState<'generating' | 'ready' | null>(null);
   const isMountedRef = useRef(true);
   const loadPlanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const planGenerationCooldownRef = useRef<number>(0);
   const planGenerationInFlightRef = useRef<Promise<GeneratedPlan | null> | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Безопасные обертки для setState (проверяют mounted перед обновлением)
   const safeSetLoading = (value: boolean) => {
@@ -168,22 +171,80 @@ export default function PlanPage() {
     }
   };
 
+  // Polling статуса генерации плана
+  const pollPlanStatus = async () => {
+    try {
+      const response = await fetch('/api/plan/status', {
+        cache: 'no-store',
+        headers: {
+          'X-Telegram-Init-Data': typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.data?.ready) {
+          // План готов - переходим к загрузке
+          if (isMountedRef.current) {
+            setGeneratingState('ready');
+            // Очищаем polling
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            // Загружаем план
+            loadPlan();
+            // Убираем state=generating из URL
+            router.replace('/plan');
+          }
+        }
+      }
+    } catch (error) {
+      clientLogger.warn('Error polling plan status:', error);
+    }
+  };
+
   useEffect(() => {
     isMountedRef.current = true;
     
-    // ВАЖНО: Очищаем кэш профиля при загрузке страницы плана
-    // Это гарантирует, что мы получим актуальные данные профиля, даже если он был только что создан
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.removeItem('profile_check_cache');
-        sessionStorage.removeItem('profile_check_cache_timestamp');
-        clientLogger.log('✅ Кэш профиля очищен при загрузке страницы плана');
-      } catch (cacheError) {
-        clientLogger.warn('⚠️ Не удалось очистить кэш профиля при загрузке:', cacheError);
+    // Проверяем, есть ли state=generating в URL
+    const state = searchParams?.get('state');
+    if (state === 'generating') {
+      setGeneratingState('generating');
+      safeSetLoading(true);
+      
+      // Начинаем polling статуса плана
+      pollingIntervalRef.current = setInterval(pollPlanStatus, 1500);
+      
+      // Таймаут на 60 секунд
+      setTimeout(() => {
+        if (isMountedRef.current && generatingState === 'generating') {
+          clientLogger.warn('Plan generation timeout, loading plan anyway');
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          setGeneratingState('ready');
+          loadPlan();
+          router.replace('/plan');
+        }
+      }, 60000);
+    } else {
+      // Обычная загрузка плана
+      // ВАЖНО: Очищаем кэш профиля при загрузке страницы плана
+      // Это гарантирует, что мы получим актуальные данные профиля, даже если он был только что создан
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('profile_check_cache');
+          sessionStorage.removeItem('profile_check_cache_timestamp');
+          clientLogger.log('✅ Кэш профиля очищен при загрузке страницы плана');
+        } catch (cacheError) {
+          clientLogger.warn('⚠️ Не удалось очистить кэш профиля при загрузке:', cacheError);
+        }
       }
+      
+      loadPlan();
     }
-    
-    loadPlan();
     
     return () => {
       isMountedRef.current = false;
@@ -192,7 +253,12 @@ export default function PlanPage() {
         clearTimeout(loadPlanTimeoutRef.current);
         loadPlanTimeoutRef.current = null;
       }
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Функция для генерации плана с проверкой профиля
@@ -1211,6 +1277,51 @@ export default function PlanPage() {
   // Старый код обработки плана удален - теперь используется processPlanData
 
   // Остальная часть UI компонента
+
+  // Показываем специальный экран генерации плана
+  if (generatingState === 'generating') {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh', 
+        flexDirection: 'column', 
+        gap: '24px',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #0A5F59 0%, #0d7a72 100%)',
+        color: 'white'
+      }}>
+        <div style={{ fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
+          Подбираем уход под вашу кожу…
+        </div>
+        <div style={{ 
+          width: '280px', 
+          height: '8px', 
+          backgroundColor: 'rgba(255,255,255,0.2)', 
+          borderRadius: '4px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            height: '100%',
+            width: '66%',
+            backgroundColor: 'white',
+            borderRadius: '4px',
+            animation: 'pulse 2s ease-in-out infinite',
+          }} />
+        </div>
+        <div style={{ fontSize: '14px', opacity: 0.9, textAlign: 'center', maxWidth: '300px' }}>
+          Анализ кожи → Подбор средств → Формирование плана
+        </div>
+        <style jsx>{`
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
