@@ -21,11 +21,22 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
 
-    const body = await request.json();
-    const { profileId, forceRebuild = false } = body;
+    // ИСПРАВЛЕНО: Поддержка profileId через query параметры (для /loading pipeline)
+    const { searchParams } = new URL(request.url);
+    const profileIdParam = searchParams.get('profileId');
+    
+    let body: any = {};
+    try {
+      body = await request.json().catch(() => ({}));
+    } catch {
+      // Body может быть пустым, если profileId в query
+    }
+    
+    const profileId = profileIdParam || body.profileId;
+    const forceRebuild = body.forceRebuild || false;
 
     if (!profileId) {
-      return ApiResponse.badRequest('Missing profileId parameter');
+      return ApiResponse.badRequest('Missing profileId parameter (query or body)');
     }
 
     // Проверяем, что профиль принадлежит пользователю

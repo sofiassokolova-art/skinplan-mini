@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         logger.warn('Profile not found via profileId parameter, falling back to getCurrentProfile', {
           userId,
           profileIdParam,
-        });
+    });
       }
     }
     
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
           profileId: profile.id,
           profileVersion: profile.version,
           profileUserId: profile.userId,
-        });
+      });
       }
     }
 

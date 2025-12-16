@@ -90,13 +90,13 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
     if (!columnState || now - columnState.checkedAt > COLUMN_CHECK_TTL) {
       try {
         await prisma.user.findUnique({
-          where: { id: userId },
-          select: { currentProfileId: true },
-        });
+        where: { id: userId },
+        select: { currentProfileId: true },
+      });
         // Если запрос успешен - колонка существует
         columnState = { value: true, checkedAt: now };
-      } catch (err: any) {
-        if (isMissingCurrentProfileColumn(err)) {
+    } catch (err: any) {
+      if (isMissingCurrentProfileColumn(err)) {
           columnState = { value: false, checkedAt: now };
         } else {
           // Другая ошибка - пробрасываем дальше
@@ -112,7 +112,7 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { currentProfileId: true },
-      });
+        });
 
       // ИСПРАВЛЕНО: Проверка на отсутствие user записи
       if (!user) {
@@ -126,9 +126,9 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
             id: user.currentProfileId,
             userId: userId, // Проверка принадлежности в одном запросе
           },
-        });
+      });
 
-        if (profile) {
+      if (profile) {
           // Профиль валиден - возвращаем его
           return {
             profile,
@@ -143,21 +143,21 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
               createdAt: profile.createdAt,
             },
           };
-        }
+      }
 
         // Профиль невалиден (удален или принадлежит другому userId) - очищаем и fallback
         logger.warn('Current profile invalid, clearing currentProfileId', {
-          userId,
-          currentProfileId: user.currentProfileId,
-        });
+        userId,
+        currentProfileId: user.currentProfileId,
+      });
 
-        try {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { currentProfileId: null },
-            select: { id: true },
-          });
-        } catch (err: any) {
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { currentProfileId: null },
+          select: { id: true },
+        });
+      } catch (err: any) {
           // Игнорируем ошибки обновления (колонка может исчезнуть между проверками)
           if (!isMissingCurrentProfileColumn(err)) {
             logger.warn('Failed to clear invalid currentProfileId', { userId, error: err });

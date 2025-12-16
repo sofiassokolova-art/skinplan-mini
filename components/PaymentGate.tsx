@@ -1,9 +1,9 @@
 // components/PaymentGate.tsx
-// Компонент имитации оплаты для плана
+// Компонент оплаты для плана через платежный провайдер + вебхук
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 
 interface PaymentGateProps {
@@ -14,28 +14,22 @@ interface PaymentGateProps {
 }
 
 export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: PaymentGateProps) {
-  const [isPaid, setIsPaid] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [dbChecked, setDbChecked] = useState(false);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Локальный кэш статуса оплаты в браузере (ускорение, но не источник правды)
-  const getLocalPaymentFlag = () => {
-    if (typeof window === 'undefined') return false;
-    const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
-    return localStorage.getItem(paymentKey) === 'true';
-  };
-
-  // hasPaid = "уверены, что оплата есть" (БД или локальный кэш)
-  const [hasPaid, setHasPaid] = useState(getLocalPaymentFlag());
+  // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement)
+  const [hasPaid, setHasPaid] = useState(false);
   const [checkingDbPayment, setCheckingDbPayment] = useState(false);
 
-  // ПРОДОВСКАЯ ЛОГИКА: источник правды — БД через /api/payment/check-status
-  // localStorage только кэширует результат, но всегда перепроверяется по API
+  // ПРАВИЛЬНАЯ ЛОГИКА: источник правды — БД через /api/me/entitlements
+  // Проверяем Entitlement, а не теги пользователя
   useEffect(() => {
     let isMounted = true;
 
-    const checkDbPaymentStatus = async () => {
+    const checkEntitlements = async () => {
       // Если уже отправлен запрос и мы получили ответ от БД — не дёргаем API повторно
       if (dbChecked) return;
       if (checkingDbPayment) return;
@@ -54,7 +48,7 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
           return;
         }
 
-        const response = await fetch('/api/payment/check-status', {
+        const response = await fetch('/api/me/entitlements', {
           method: 'GET',
           headers: {
             'X-Telegram-Init-Data': initData,
@@ -65,30 +59,18 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
 
         if (response.ok) {
           const data = await response.json();
-          const dbHasPaid = !!data?.hasPaid;
+          const paid = !!data?.data?.paid;
 
-          const paymentKey = isRetaking
-            ? 'payment_retaking_completed'
-            : 'payment_first_completed';
-
-          if (dbHasPaid) {
-            // Бэкенд говорит "оплачено" — синхронизируем кэш и состояние
-            if (typeof window !== 'undefined') {
-              localStorage.setItem(paymentKey, 'true');
-            }
+          if (paid) {
             setHasPaid(true);
           } else {
-            // Бэкенд говорит "НЕ оплачено" — чистим локальный флаг, если он был
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem(paymentKey);
-            }
             setHasPaid(false);
           }
         }
       } catch (error) {
         // В проде это просто значит: временно опираемся на локальный флаг
         if (isMounted) {
-          console.warn('Could not check payment status from DB:', error);
+          console.warn('Could not check entitlements from DB:', error);
         }
       } finally {
         if (isMounted) {
@@ -98,12 +80,62 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
       }
     };
 
-    checkDbPaymentStatus();
+    checkEntitlements();
 
     return () => {
       isMounted = false;
     };
   }, [isRetaking, dbChecked, checkingDbPayment]);
+
+  // Polling для проверки статуса оплаты после создания платежа
+  useEffect(() => {
+    if (!paymentId) return;
+
+    const checkPaymentStatus = async () => {
+      const initData =
+        typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      if (!initData) return;
+
+      try {
+        const response = await fetch('/api/me/entitlements', {
+          method: 'GET',
+          headers: {
+            'X-Telegram-Init-Data': initData,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const paid = !!data?.data?.paid;
+
+          if (paid) {
+            setHasPaid(true);
+            setPaymentId(null);
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            toast.success('Оплата успешно обработана!');
+            setTimeout(() => {
+              onPaymentComplete();
+            }, 500);
+          }
+        }
+      } catch (error) {
+        console.warn('Could not check payment status:', error);
+      }
+    };
+
+    // Проверяем каждые 2 секунды
+    pollingIntervalRef.current = setInterval(checkPaymentStatus, 2000);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [paymentId, onPaymentComplete]);
 
   const handlePayment = async () => {
     if (!agreedToTerms) {
@@ -114,48 +146,145 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
     setIsProcessing(true);
 
     try {
-      // Имитация API Юкассы: просто отмечаем оплату на бэке через /api/payment/set-status
       const initData =
         typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
 
-      const response = await fetch('/api/payment/set-status', {
+      // Создаем платеж через правильный endpoint
+      const response = await fetch('/api/payments/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Telegram-Init-Data': initData,
         },
+        body: JSON.stringify({
+          productCode: 'plan_access', // или 'subscription_month' для подписки
+        }),
       });
 
       if (!response.ok) {
-        // Если по какой-то причине бэк вернул ошибку — не ставим статус "оплачено"
         const errorText = await response.text().catch(() => '');
-        console.error('Payment set-status failed:', response.status, errorText);
-        toast.error('Не удалось отметить оплату. Попробуйте ещё раз.');
+        console.error('Payment creation failed:', response.status, errorText);
+        toast.error('Не удалось создать платеж. Попробуйте ещё раз.');
         setIsProcessing(false);
         return;
       }
 
-      // Успешно отметили оплату на сервере — синхронизируем локальный кэш
-      if (typeof window !== 'undefined') {
-        const paymentKey = isRetaking ? 'payment_retaking_completed' : 'payment_first_completed';
-        localStorage.setItem(paymentKey, 'true');
+      const data = await response.json();
+      const paymentData = data?.data;
+
+      if (!paymentData) {
+        toast.error('Неверный ответ от сервера');
+        setIsProcessing(false);
+        return;
       }
 
-      setIsPaid(true);
-      setHasPaid(true);
-      toast.success('Оплата успешно обработана!');
+      // Если платеж уже успешен (идемпотентность)
+      if (paymentData.status === 'succeeded' && paymentData.hasAccess) {
+        setHasPaid(true);
+        toast.success('Оплата успешно обработана!');
+        setTimeout(() => {
+          onPaymentComplete();
+        }, 500);
+        setIsProcessing(false);
+        return;
+      }
 
-      // Небольшая задержка перед callback, чтобы пользователь увидел сообщение
-      setTimeout(() => {
-        onPaymentComplete();
-      }, 500);
+      // Сохраняем paymentId для polling
+      if (paymentData.paymentId) {
+        setPaymentId(paymentData.paymentId);
+      }
+
+      // В тестовой среде автоматически симулируем успешный платеж
+      const isTestEnv = process.env.NODE_ENV === 'development' || 
+                       paymentData.paymentUrl?.includes('/payments/test');
+      
+      if (isTestEnv && paymentData.paymentId) {
+        // Автоматически симулируем вебхук от ЮKassa в тестовой среде
+        try {
+          const webhookResponse = await fetch('/api/payments/test-webhook', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Telegram-Init-Data': initData,
+            },
+            body: JSON.stringify({
+              paymentId: paymentData.paymentId,
+            }),
+          });
+
+          if (webhookResponse.ok) {
+            // Платеж успешно симулирован, polling автоматически обнаружит изменение
+            toast.success('Тестовая оплата успешно обработана!');
+            setPaymentId(paymentData.paymentId);
+            setIsProcessing(false);
+            return;
+          }
+        } catch (webhookError) {
+          console.warn('Failed to simulate webhook in test environment:', webhookError);
+          // Продолжаем обычный поток
+        }
+      }
+
+      // Если есть paymentUrl - открываем его (для внешних платежных систем)
+      if (paymentData.paymentUrl) {
+        // В тестовой среде показываем информацию о тестовом платеже
+        if (isTestEnv) {
+          toast.info('Тестовый платеж создан. Симулируем оплату...', { duration: 2000 });
+          // Небольшая задержка перед симуляцией для реалистичности
+          setTimeout(async () => {
+            try {
+              const webhookResponse = await fetch('/api/payments/test-webhook', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Telegram-Init-Data': initData,
+                },
+                body: JSON.stringify({
+                  paymentId: paymentData.paymentId,
+                }),
+              });
+
+              if (webhookResponse.ok) {
+                setPaymentId(paymentData.paymentId);
+              }
+            } catch (error) {
+              console.warn('Failed to simulate webhook:', error);
+            }
+          }, 1000);
+        } else {
+          // Для Telegram Payments используем window.Telegram.WebApp.openInvoice
+          // Для других провайдеров - window.open
+          if (typeof window !== 'undefined' && window.Telegram?.WebApp?.openInvoice) {
+            // TODO: Реализовать открытие Telegram Invoice
+            // window.Telegram.WebApp.openInvoice(paymentData.paymentUrl, (status) => { ... });
+            window.open(paymentData.paymentUrl, '_blank');
+          } else {
+            window.open(paymentData.paymentUrl, '_blank');
+          }
+        }
+      } else {
+        // Если нет paymentUrl, возможно это Telegram Payments или другой провайдер
+        // В этом случае просто ждем вебхук через polling
+        toast.success('Платеж создан. Ожидаем подтверждения...');
+      }
+
+      setIsProcessing(false);
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error('Ошибка при обработке оплаты. Попробуйте ещё раз.');
-    } finally {
+      toast.error('Ошибка при создании платежа. Попробуйте ещё раз.');
       setIsProcessing(false);
     }
   };
+
+  // Очистка polling при размонтировании
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   // Если уже оплачено, показываем контент
   if (hasPaid) {
@@ -299,35 +428,49 @@ export function PaymentGate({ price, isRetaking, onPaymentComplete, children }: 
           {/* Кнопка оплаты */}
           <button
             onClick={handlePayment}
-            disabled={!agreedToTerms || isProcessing}
+            disabled={!agreedToTerms || isProcessing || !!paymentId}
             style={{
               width: '100%',
               padding: '16px',
               borderRadius: '16px',
               border: 'none',
-              background: agreedToTerms && !isProcessing
+              background: agreedToTerms && !isProcessing && !paymentId
                 ? 'linear-gradient(to right, #0A5F59, #059669)'
                 : '#D1D5DB',
               color: 'white',
               fontSize: '18px',
               fontWeight: 'bold',
-              cursor: agreedToTerms && !isProcessing ? 'pointer' : 'not-allowed',
-              boxShadow: agreedToTerms && !isProcessing
+              cursor: agreedToTerms && !isProcessing && !paymentId ? 'pointer' : 'not-allowed',
+              boxShadow: agreedToTerms && !isProcessing && !paymentId
                 ? '0 8px 24px rgba(10, 95, 89, 0.4)'
                 : 'none',
               transition: 'all 0.2s',
-              opacity: agreedToTerms && !isProcessing ? 1 : 0.6,
+              opacity: agreedToTerms && !isProcessing && !paymentId ? 1 : 0.6,
             }}
           >
-            {isProcessing ? 'Обработка...' : `Оплатить ${price} ₽`}
+            {paymentId 
+              ? 'Ожидаем подтверждения оплаты...' 
+              : isProcessing 
+                ? 'Создание платежа...' 
+                : `Оплатить ${price} ₽`}
           </button>
+
+          {paymentId && (
+            <p style={{
+              fontSize: '12px',
+              color: '#0A5F59',
+              marginTop: '12px',
+            }}>
+              Платеж создан. Ожидаем подтверждения от платежной системы...
+            </p>
+          )}
 
           <p style={{
             fontSize: '12px',
             color: '#9CA3AF',
-            marginTop: '16px',
+            marginTop: paymentId ? '8px' : '16px',
           }}>
-            Платеж обрабатывается безопасно
+            Платеж обрабатывается безопасно через сервер
           </p>
         </div>
       </div>

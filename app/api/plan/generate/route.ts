@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
           id: profileIdParam,
           userId, // Проверка принадлежности для безопасности
         },
-        select: { id: true, version: true },
-      });
+      select: { id: true, version: true },
+    });
       
       if (profile) {
         logger.info('Profile found via profileId parameter (read-your-write)', {
@@ -444,10 +444,10 @@ export async function GET(request: NextRequest) {
     // 3. Кладёт в кэш в едином формате
     // Это гарантирует единый контракт кэша и предотвращает несоответствия форматов
     logger.info('Plan generated and saved to DB, caching will be done by /api/plan', {
-      userId,
-      profileVersion: profile.version,
-      hasPlan28: !!plan.plan28,
-      plan28DaysCount: plan?.plan28?.days?.length || 0,
+        userId, 
+        profileVersion: profile.version,
+        hasPlan28: !!plan.plan28,
+        plan28DaysCount: plan?.plan28?.days?.length || 0,
     });
     
     logger.info('Plan generated successfully', {

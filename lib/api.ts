@@ -343,11 +343,16 @@ export const api = {
     return request('/questionnaire/active');
   },
 
-  async submitAnswers(questionnaireId: number, answers: Array<{
-    questionId: number;
-    answerValue?: string;
-    answerValues?: string[];
-  }>): Promise<SubmitAnswersResponse> {
+  async submitAnswers(params: {
+    questionnaireId: number;
+    answers: Array<{
+      questionId: number;
+      answerValue?: string;
+      answerValues?: string[];
+    }>;
+    clientSubmissionId?: string;
+  }): Promise<SubmitAnswersResponse> {
+    const { questionnaireId, answers, clientSubmissionId } = params;
     // ВАЖНО: Логируем перед отправкой запроса
     if (typeof window !== 'undefined') {
       console.log('📤 api.submitAnswers called:', {
@@ -361,7 +366,7 @@ export const api = {
     try {
       const result = await request<SubmitAnswersResponse>('/questionnaire/answers', {
         method: 'POST',
-        body: JSON.stringify({ questionnaireId, answers }),
+        body: JSON.stringify({ questionnaireId, answers, clientSubmissionId }),
       });
       
       // ВАЖНО: Логируем после получения ответа
@@ -490,13 +495,22 @@ export const api = {
   },
 
   // План ухода (28 дней) - получает план БЕЗ генерации (только из кэша)
-  async getPlan(): Promise<PlanResponse> {
-    return request<PlanResponse>('/plan');
+  async getPlan(profileId?: string): Promise<PlanResponse> {
+    const url = profileId ? `/plan?profileId=${profileId}` : '/plan';
+    return request<PlanResponse>(url);
   },
 
   // Генерация плана ухода (28 дней) - явная генерация
-  async generatePlan(): Promise<PlanResponse> {
-    return request<PlanResponse>('/plan/generate');
+  async generatePlan(profileId?: string): Promise<PlanResponse> {
+    const url = profileId ? `/plan/generate?profileId=${profileId}` : '/plan/generate';
+    return request<PlanResponse>(url);
+  },
+
+  // Подбор рекомендаций (создание RecommendationSession)
+  async buildRecommendations(profileId: string) {
+    return request(`/recommendations/build?profileId=${profileId}`, {
+      method: 'POST',
+    });
   },
 
   // Прогресс плана (28 дней)

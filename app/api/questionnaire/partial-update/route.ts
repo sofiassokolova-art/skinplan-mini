@@ -255,18 +255,18 @@ export async function POST(request: NextRequest) {
         // Получаем initData из заголовков для передачи в фоновый запрос
         const initData = getTelegramInitDataFromHeaders(request);
         if (initData) {
-          // Вызываем генерацию плана асинхронно (не ждем завершения)
-          // Это улучшает UX - пользователь не ждет долгой генерации
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/plan/generate`, {
-            method: 'GET',
-            headers: {
-              'X-Telegram-Init-Data': initData,
-            },
-          }).catch(err => {
-            logger.warn('Background plan regeneration failed', { userId, error: err });
-            // Не критично - план пересоберется при следующем запросе
-          });
-          planRegenerated = true;
+        // Вызываем генерацию плана асинхронно (не ждем завершения)
+        // Это улучшает UX - пользователь не ждет долгой генерации
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/plan/generate`, {
+          method: 'GET',
+          headers: {
+            'X-Telegram-Init-Data': initData,
+          },
+        }).catch(err => {
+          logger.warn('Background plan regeneration failed', { userId, error: err });
+          // Не критично - план пересоберется при следующем запросе
+        });
+        planRegenerated = true;
         } else {
           logger.warn('Cannot trigger plan regeneration: initData missing', { userId });
         }
