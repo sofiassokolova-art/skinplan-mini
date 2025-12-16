@@ -16,11 +16,22 @@ const PRODUCTS: Record<string, { amount: number; currency: string }> = {
     amount: 19900, // 199 рублей в копейках
     currency: 'RUB',
   },
+  retake_topic: {
+    amount: 9900, // 99 рублей в копейках
+    currency: 'RUB',
+  },
   subscription_month: {
     amount: 49900, // 499 рублей в копейках
     currency: 'RUB',
   },
 };
+
+function entitlementCodeForProduct(productCode: string): string {
+  if (productCode === 'plan_access') return 'paid_access';
+  if (productCode === 'retake_topic') return 'retake_topic_access';
+  // По умолчанию — доступ к плану (обратная совместимость)
+  return 'paid_access';
+}
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -79,8 +90,9 @@ export async function POST(request: NextRequest) {
 
       // Если платеж уже успешен - возвращаем информацию о доступе
       if (existingPayment.status === 'succeeded') {
+        const entitlementCode = entitlementCodeForProduct(productCode);
         const entitlement = await prisma.entitlement.findUnique({
-          where: { userId_code: { userId, code: 'paid_access' } },
+          where: { userId_code: { userId, code: entitlementCode } },
           select: { active: true, validUntil: true },
         });
 

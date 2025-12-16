@@ -75,6 +75,13 @@ function mapProviderStatus(provider: string, providerStatus: string): string {
   return statusMap[provider]?.[providerStatus] || 'pending';
 }
 
+function entitlementCodeForProduct(productCode: string): string {
+  if (productCode === 'plan_access') return 'paid_access';
+  if (productCode === 'retake_topic') return 'retake_topic_access';
+  // По умолчанию — доступ к плану (обратная совместимость)
+  return 'paid_access';
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Проверяем подпись вебхука
@@ -169,6 +176,8 @@ export async function POST(request: NextRequest) {
 
       // Если платеж успешен - создаем/обновляем Entitlement
       if (newStatus === 'succeeded') {
+        const entitlementCode = entitlementCodeForProduct(payment.productCode);
+
         // Определяем срок действия доступа в зависимости от типа продукта
         const validUntil = new Date();
         if (payment.productCode === 'subscription_month') {
@@ -177,6 +186,9 @@ export async function POST(request: NextRequest) {
         } else if (payment.productCode === 'plan_access') {
           // Доступ к плану: 28 дней (после этого план снова лочится)
           validUntil.setDate(validUntil.getDate() + 28);
+        } else if (payment.productCode === 'retake_topic') {
+          // Ретейк темы — короткий доступ, "съедается" после успешного partial-update
+          validUntil.setDate(validUntil.getDate() + 1);
         } else {
           // Для других продуктов - по умолчанию 1 год
           validUntil.setFullYear(validUntil.getFullYear() + 1);
@@ -187,7 +199,7 @@ export async function POST(request: NextRequest) {
           where: {
             userId_code: {
               userId: payment.userId,
-              code: 'paid_access',
+              code: entitlementCode,
             },
           },
           update: {
@@ -198,7 +210,7 @@ export async function POST(request: NextRequest) {
           },
           create: {
             userId: payment.userId,
-            code: 'paid_access',
+            code: entitlementCode,
             active: true,
             validUntil,
             lastPaymentId: payment.id,

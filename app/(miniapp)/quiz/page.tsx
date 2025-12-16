@@ -3783,7 +3783,7 @@ export default function QuizPage() {
   if (showRetakeScreen && isRetakingQuiz) {
     const retakeTopics = getAllTopics();
     
-    // Проверяем, оплатил ли пользователь перепрохождение (тема - 49₽, полное - 99₽)
+    // Проверяем, оплатил ли пользователь перепрохождение (устаревшие флаги localStorage)
     const hasRetakingPayment = typeof window !== 'undefined' 
       ? localStorage.getItem('payment_retaking_completed') === 'true'
       : false;
@@ -3799,25 +3799,7 @@ export default function QuizPage() {
     });
     
     const handleTopicSelect = (topic: QuizTopic) => {
-      // Проверяем, оплатил ли пользователь перепрохождение темы
-      const topicPaymentKey = `payment_topic_${topic.id}_completed`;
-      const hasTopicPayment = typeof window !== 'undefined' 
-        ? localStorage.getItem(topicPaymentKey) === 'true'
-        : false;
-      
-      if (!hasTopicPayment) {
-        clientLogger.log('⚠️ Payment not completed for topic, showing payment gate');
-        // PaymentGate будет показан для этой темы
-        return;
-      }
-      
-      clientLogger.log('✅ Payment completed for topic, allowing topic selection:', topic.id);
-      // Сбрасываем флаг оплаты после выбора темы - каждая тема требует отдельной оплаты
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(topicPaymentKey);
-        clientLogger.log('🔄 Payment flag cleared - next topic will require new payment');
-      }
-      // Перенаправляем на страницу обновления по теме только после оплаты
+      // В paid-состоянии PaymentGate отдаёт children, и клик по карточке работает.
       router.push(`/quiz/update/${topic.id}`);
     };
 
@@ -3945,11 +3927,6 @@ export default function QuizPage() {
           marginBottom: '24px',
         }}>
           {retakeTopics.map((topic) => {
-            const topicPaymentKey = `payment_topic_${topic.id}_completed`;
-            const hasTopicPayment = typeof window !== 'undefined' 
-              ? localStorage.getItem(topicPaymentKey) === 'true'
-              : false;
-            
             const topicButton = (
               <button
                 key={topic.id}
@@ -4011,27 +3988,22 @@ export default function QuizPage() {
               </button>
             );
             
-            // Если оплата не пройдена, оборачиваем в PaymentGate
-            if (!hasTopicPayment) {
-              return (
-                <PaymentGate
-                  key={topic.id}
-                  price={49}
-                  isRetaking={true}
-                  onPaymentComplete={() => {
-                    if (typeof window !== 'undefined') {
-                      localStorage.setItem(topicPaymentKey, 'true');
-                      // После оплаты разрешаем выбор темы
-                      clientLogger.log('✅ Payment completed for topic, allowing selection');
-                    }
-                  }}
-                >
-                  {topicButton}
-                </PaymentGate>
-              );
-            }
-            
-            return topicButton;
+            // ИСПРАВЛЕНО: ретейк темы = 99₽ (через productCode=retake_topic).
+            // После оплаты сразу переходим в /quiz/update/{topicId}.
+            return (
+              <PaymentGate
+                key={topic.id}
+                price={99}
+                productCode="retake_topic"
+                isRetaking={true}
+                onPaymentComplete={() => {
+                  clientLogger.log('✅ Retake topic payment completed, navigating to topic', { topicId: topic.id });
+                  router.push(`/quiz/update/${topic.id}`);
+                }}
+              >
+                {topicButton}
+              </PaymentGate>
+            );
           })}
         </div>
 

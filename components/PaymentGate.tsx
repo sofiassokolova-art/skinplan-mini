@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 interface PaymentGateProps {
   price?: number;
-  productCode?: 'plan_access' | 'subscription_month';
+  productCode?: 'plan_access' | 'subscription_month' | 'retake_topic';
   isRetaking: boolean;
   onPaymentComplete: () => void;
   retakeCta?: { text: string; href: string };
@@ -17,15 +17,23 @@ interface PaymentGateProps {
 
 const PRODUCT_PRICES: Record<string, number> = {
   plan_access: 199,
+  retake_topic: 99,
   subscription_month: 499,
 };
 
 // Глобальный кеш — чтобы множество PaymentGate (на /quiz) не спамили /api/me/entitlements
-let entitlementsCache: { paid: boolean; ts: number } | null = null;
-let entitlementsPromise: Promise<boolean> | null = null;
+let entitlementsCache: { codes: string[]; ts: number } | null = null;
+let entitlementsPromise: Promise<string[]> | null = null;
 const ENTITLEMENTS_TTL_MS = 5000;
 
-async function fetchPaidEntitlement(initData: string): Promise<boolean> {
+function requiredEntitlementCode(productCode: string): string {
+  if (productCode === 'plan_access') return 'paid_access';
+  if (productCode === 'retake_topic') return 'retake_topic_access';
+  // Для подписки пока не вводим отдельный код — считаем, что она тоже даёт paid_access
+  return 'paid_access';
+}
+
+async function fetchEntitlementCodes(initData: string): Promise<string[]> {
   const response = await fetch('/api/me/entitlements', {
     method: 'GET',
     headers: {
@@ -33,9 +41,13 @@ async function fetchPaidEntitlement(initData: string): Promise<boolean> {
     },
   });
 
-  if (!response.ok) return false;
+  if (!response.ok) return [];
   const data = await response.json();
-  return !!data?.data?.paid;
+  const entitlements = data?.data?.entitlements;
+  if (!Array.isArray(entitlements)) return [];
+  return entitlements
+    .map((e: any) => (typeof e?.code === 'string' ? e.code : null))
+    .filter((c: any): c is string => typeof c === 'string');
 }
 
 export function PaymentGate({
@@ -83,24 +95,26 @@ export function PaymentGate({
         const now = Date.now();
         if (entitlementsCache && now - entitlementsCache.ts < ENTITLEMENTS_TTL_MS) {
           if (isMounted) {
-            setHasPaid(entitlementsCache.paid);
+            const required = requiredEntitlementCode(productCode);
+            setHasPaid(entitlementsCache.codes.includes(required));
           }
           return;
         }
 
         if (!entitlementsPromise) {
-          entitlementsPromise = fetchPaidEntitlement(initData)
-            .then((paid) => {
-              entitlementsCache = { paid, ts: Date.now() };
-              return paid;
+          entitlementsPromise = fetchEntitlementCodes(initData)
+            .then((codes) => {
+              entitlementsCache = { codes, ts: Date.now() };
+              return codes;
             })
             .finally(() => {
               entitlementsPromise = null;
             });
         }
 
-        const paid = await entitlementsPromise;
-        if (isMounted) setHasPaid(paid);
+        const codes = await entitlementsPromise;
+        const required = requiredEntitlementCode(productCode);
+        if (isMounted) setHasPaid(codes.includes(required));
       } catch (error) {
         // В проде это просто значит: временно опираемся на локальный флаг
         if (isMounted) {
@@ -119,7 +133,7 @@ export function PaymentGate({
     return () => {
       isMounted = false;
     };
-  }, [isRetaking, dbChecked, checkingDbPayment]);
+  }, [isRetaking, dbChecked, checkingDbPayment, productCode]);
 
   // Polling для проверки статуса оплаты после создания платежа
   useEffect(() => {
@@ -131,10 +145,11 @@ export function PaymentGate({
       if (!initData) return;
 
       try {
-        const paid = await fetchPaidEntitlement(initData);
-        entitlementsCache = { paid, ts: Date.now() };
+        const codes = await fetchEntitlementCodes(initData);
+        entitlementsCache = { codes, ts: Date.now() };
+        const required = requiredEntitlementCode(productCode);
 
-        if (paid) {
+        if (codes.includes(required)) {
           setHasPaid(true);
           setPaymentId(null);
           if (pollingIntervalRef.current) {
@@ -160,7 +175,7 @@ export function PaymentGate({
         pollingIntervalRef.current = null;
       }
     };
-  }, [paymentId, onPaymentComplete]);
+  }, [paymentId, onPaymentComplete, productCode]);
 
   const handlePayment = async () => {
     if (!agreedToTerms) {
@@ -371,7 +386,11 @@ export function PaymentGate({
             color: '#0A5F59',
             marginBottom: '12px',
           }}>
-            {isRetaking ? 'Обновите доступ к плану' : 'Получите полный доступ к плану'}
+            {productCode === 'retake_topic'
+              ? 'Перепройдите тему'
+              : isRetaking
+                ? 'Обновите доступ к плану'
+                : 'Получите полный доступ к плану'}
           </h2>
           
           <p style={{
@@ -380,9 +399,11 @@ export function PaymentGate({
             marginBottom: '24px',
             lineHeight: '1.6',
           }}>
-            {isRetaking 
-              ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
-              : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
+            {productCode === 'retake_topic'
+              ? 'Выберите тему, оплатите 99 ₽ и обновите только затронутые части рекомендаций.'
+              : isRetaking 
+                ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
+                : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
           </p>
 
           {/* Цена */}
@@ -507,6 +528,13 @@ export function PaymentGate({
               type="button"
               onClick={() => {
                 if (typeof window !== 'undefined') {
+                  // ИСПРАВЛЕНО: ретейк-ссылка должна открывать экран выбора тем
+                  // (/quiz показывает экран выбора тем, когда is_retaking_quiz=true)
+                  try {
+                    localStorage.setItem('is_retaking_quiz', 'true');
+                  } catch {
+                    // ignore
+                  }
                   window.location.href = retakeCta.href;
                 }
               }}

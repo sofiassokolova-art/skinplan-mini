@@ -21,6 +21,24 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
 
+    // ИСПРАВЛЕНО: ретейк темы — платная операция (99₽).
+    // Проверяем entitlement, иначе любой может вызвать partial-update напрямую без оплаты.
+    const retakeEntitlement = await prisma.entitlement.findUnique({
+      where: { userId_code: { userId, code: 'retake_topic_access' } },
+      select: { active: true, validUntil: true },
+    });
+    const hasRetakeAccess =
+      retakeEntitlement?.active === true &&
+      (!retakeEntitlement.validUntil || retakeEntitlement.validUntil > new Date());
+    if (!hasRetakeAccess) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 402, duration, userId);
+      return NextResponse.json(
+        { error: 'Payment required for topic retake' },
+        { status: 402 }
+      );
+    }
+
     const body = await request.json();
     const { topicId, answers } = body;
 
@@ -277,6 +295,20 @@ export async function POST(request: NextRequest) {
 
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId);
+
+    // ИСПРАВЛЕНО: "съедаем" ретейк-доступ после успешного применения обновления,
+    // чтобы следующий ретейк снова требовал оплату.
+    try {
+      await prisma.entitlement.update({
+        where: { userId_code: { userId, code: 'retake_topic_access' } },
+        data: { active: false, updatedAt: new Date() },
+      });
+    } catch (consumeErr) {
+      logger.warn('Could not consume retake_topic_access entitlement (non-critical)', {
+        userId,
+        error: consumeErr,
+      });
+    }
 
     return NextResponse.json({
       success: true,

@@ -916,6 +916,34 @@ export default function HomePage() {
         )}
       </div>
 
+      {/* Ретейк ссылка на главной (всегда видна, даже если доступ уже оплачен) */}
+      <div style={{ padding: '0 20px', marginTop: '8px' }}>
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              localStorage.setItem('is_retaking_quiz', 'true');
+            } catch {
+              // ignore
+            }
+            router.push('/quiz');
+          }}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: '#0A5F59',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 600,
+            padding: '10px 0',
+          }}
+        >
+          Изменились цели? Перепройти анкету
+        </button>
+      </div>
+
       {/* Toggle AM/PM */}
       <div style={{
         display: 'flex',
