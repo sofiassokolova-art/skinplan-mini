@@ -4,26 +4,28 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { logger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
+import { tryGetTelegramIdentityFromRequest } from '@/lib/auth/telegram-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // Получаем initData из заголовков
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-
     // ИСПРАВЛЕНО: initData не обязателен - можем логировать даже без него
     let userId: string | null = null;
-    if (initData) {
+    const identity = tryGetTelegramIdentityFromRequest(request);
+    if (identity.ok) {
       try {
-        userId = await getUserIdFromInitData(initData);
-      } catch (userIdError: any) {
-        console.warn('⚠️ /api/logs: Error getting userId from initData (continuing without userId):', {
-          error: userIdError?.message,
+        const existing = await prisma.user.findUnique({
+          where: { telegramId: identity.telegramId },
+          select: { id: true },
         });
-        // Продолжаем без userId - логируем как анонимный лог
+        userId = existing?.id || null;
+      } catch (userIdError: any) {
+        // DB ошибка ≠ auth ошибка: логирование не должно ломать продукт
+        console.warn('⚠️ /api/logs: DB error while mapping telegramId->userId (continuing without userId):', {
+          error: userIdError?.message,
+          code: userIdError?.code,
+        });
       }
     }
 

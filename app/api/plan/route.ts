@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 import { getCachedPlan } from '@/lib/cache';
 import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import type { Plan28 } from '@/lib/plan-types';
 import type { PlanResponse } from '@/lib/api-types';
 
@@ -17,29 +17,13 @@ export async function GET(request: NextRequest) {
   let userId: string | undefined;
   
   try {
-    // Получаем initData из заголовков
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-    
-    if (!initData) {
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) {
       const duration = Date.now() - startTime;
-      logger.error('Missing initData in headers for plan retrieval', {
-        availableHeaders: Array.from(request.headers.keys()),
-      });
       logApiRequest(method, path, 401, duration);
-      return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
+      return auth.response;
     }
-
-    // Получаем userId из initData
-    const userIdResult = await getUserIdFromInitData(initData);
-    userId = userIdResult || undefined;
-    
-    if (!userId) {
-      const duration = Date.now() - startTime;
-      logger.error('Invalid or expired initData');
-      logApiRequest(method, path, 401, duration);
-      return ApiResponse.unauthorized('Invalid or expired Telegram initData');
-    }
+    userId = auth.ctx.userId;
 
     logger.info('User identified from initData', { userId });
     

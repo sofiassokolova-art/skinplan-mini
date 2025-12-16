@@ -8,6 +8,7 @@ import { generate28DayPlan } from '@/lib/plan-generator';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import '@/lib/env-check'; // Валидация env переменных при старте
 import { ApiResponse } from '@/lib/api-response';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export const runtime = 'nodejs';
 
@@ -26,29 +27,9 @@ export async function GET(request: NextRequest) {
   });
   
   try {
-    // Получаем initData из заголовков
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-    
-    if (!initData) {
-      logger.error('Missing initData in headers for plan generation', {
-        availableHeaders: Array.from(request.headers.keys()),
-      });
-      return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
-    }
-
-    // Получаем userId из initData (автоматически создает/обновляет пользователя)
-    const { getUserIdFromInitData } = await import('@/lib/get-user-from-initdata');
-    const userIdResult = await getUserIdFromInitData(initData);
-    userId = userIdResult || undefined;
-    
-    if (!userId) {
-      logger.error('Invalid or expired initData', undefined, {
-        initDataLength: initData.length,
-        initDataPrefix: initData.substring(0, 50),
-      });
-      return ApiResponse.unauthorized('Invalid or expired Telegram initData');
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
     logger.info('User identified from initData', {
       userId,

@@ -3,10 +3,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { calculateSkinAxes } from '@/lib/skin-analysis-engine';
 import type { QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 interface SkinIssue {
   id: string;
@@ -277,28 +277,10 @@ export async function GET(request: NextRequest) {
   
   try {
     logger.info('📥 Analysis request started', { timestamp: new Date().toISOString() });
-    
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
 
-    if (!initData) {
-      logger.warn('Missing initData in analysis request', {
-        availableHeaders: Array.from(request.headers.keys()),
-      });
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
-    }
-
-    userId = await getUserIdFromInitData(initData);
-    if (!userId) {
-      logger.warn('Invalid or expired initData in analysis request');
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
     
     logger.info('User identified for analysis', { userId });
 

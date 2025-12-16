@@ -62,9 +62,12 @@ export default function AdminLogin() {
 
       const response = await fetch('/api/admin/auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': initData,
+        },
         credentials: 'include',
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify({}), // initData передаётся только через headers
       });
 
       const data = await response.json();

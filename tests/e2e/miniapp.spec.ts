@@ -119,6 +119,6 @@ test.describe('Miniapp basic flows (Telegram / оплата / план)', () => 
       page.locator('text=Ваш план ухода').or(page.locator('text=Личный кабинет')),
     ).toBeVisible();
   });
-}
+});
 
 

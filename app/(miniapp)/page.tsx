@@ -164,8 +164,9 @@ export default function HomePage() {
             plan.plan28 &&
             Array.isArray(plan.plan28.days) &&
             plan.plan28.days.length > 0;
-          setHasPlan(!!hasPlan28);
-          if (hasPlan28) {
+          const hasWeeks = plan && Array.isArray(plan.weeks) && plan.weeks.length > 0;
+          setHasPlan(!!hasPlan28 || !!hasWeeks);
+          if (hasPlan28 || hasWeeks) {
             clientLogger.log('✅ Plan exists for user, disabling CTA on home');
           } else {
             clientLogger.log('ℹ️ Plan not found when checking from home page');
@@ -217,129 +218,259 @@ export default function HomePage() {
   const buildRoutineFromPlan = async () => {
     try {
       const plan = await api.getPlan() as any;
-      if (!plan || !plan.plan28 || !Array.isArray(plan.plan28.days) || plan.plan28.days.length === 0) {
-        clientLogger.warn('Fallback plan: no plan28 data available');
+      if (!plan) {
+        clientLogger.warn('Fallback plan: plan is empty');
         return;
       }
 
-      const plan28 = plan.plan28;
-      const currentDay =
-        plan.progress?.currentDay && plan.progress.currentDay >= 1 && plan.progress.currentDay <= 28
-          ? plan.progress.currentDay
-          : 1;
-
-      const dayData =
-        plan28.days.find((d: any) => d.dayIndex === currentDay) ||
-        plan28.days[0];
-
-      if (!dayData) {
-        clientLogger.warn('Fallback plan: no day data found');
-        return;
-      }
-
-      const productsArray: any[] = Array.isArray(plan.products) ? plan.products : [];
-      const getProduct = (id: number) => productsArray.find(p => p.id === id);
-
-      const buildItems = (steps: any[], time: 'AM' | 'PM'): RoutineItem[] => {
-        const items: RoutineItem[] = [];
-        steps.forEach((step, idx) => {
-          const productId = Number(step.productId);
-          if (!productId) return;
-          const product = getProduct(productId);
-          if (!product) return;
-
-          const baseStep = getBaseStepFromStepCategory(step.stepCategory);
-
-          // Маппинг метаданных по базовому шагу
-          let title = '';
-          let icon = ICONS.cleanser;
-          let howto: RoutineItem['howto'] = {
-            steps: [],
-            volume: '',
-            tip: '',
-          };
-
-          if (baseStep === 'cleanser') {
-            title = 'Очищение';
-            icon = ICONS.cleanser;
-            howto = {
-              steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
-              volume: '1–2 нажатия',
-              tip: 'Если кожа сухая утром — можно умыться только водой.',
-            };
-          } else if (baseStep === 'toner') {
-            title = 'Тонер';
-            icon = ICONS.toner;
-            howto = {
-              steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
-              volume: '3–5 капель',
-              tip: 'Избегайте ватных дисков — тратите меньше продукта.',
-            };
-          } else if (baseStep === 'serum' || baseStep === 'treatment') {
-            title = time === 'AM' ? 'Актив' : 'Сыворотка';
-            icon = ICONS.serum;
-            howto = {
-              steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
-              volume: '3–6 капель',
-              tip: 'При раздражении сделайте паузу в использовании актива.',
-            };
-          } else if (baseStep === 'moisturizer') {
-            title = 'Крем';
-            icon = ICONS.cream;
-            howto = {
-              steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
-              volume: 'Горошина',
-              tip: 'Не забывайте шею и линию подбородка.',
-            };
-          } else if (baseStep === 'spf') {
-            title = 'SPF-защита';
-            icon = ICONS.spf;
-            howto = {
-              steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
-              volume: '~1.5–2 мл',
-              tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
-            };
-          } else if (baseStep === 'lip_care') {
-            title = 'Бальзам для губ';
-            icon = ICONS.cream;
-            howto = {
-              steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
-              volume: 'Тонкий слой',
-              tip: 'Регулярное использование предотвращает сухость и трещины.',
-            };
-          } else {
-            // Неизвестные шаги пока пропускаем, чтобы не ломать верстку
-            return;
+      // Определяем текущий день (сначала из локального кэша прогресса)
+      let currentDay = 1;
+      try {
+        const cachedProgress = typeof window !== 'undefined' ? localStorage.getItem('plan_progress') : null;
+        if (cachedProgress) {
+          const parsed = JSON.parse(cachedProgress);
+          if (typeof parsed?.currentDay === 'number' && parsed.currentDay >= 1 && parsed.currentDay <= 28) {
+            currentDay = parsed.currentDay;
           }
+        }
+      } catch {
+        // ignore
+      }
 
-          items.push({
-            id: `${time}-${baseStep}-${idx}-${productId}`,
-            title,
-            subtitle: product.name || title,
-            icon,
-            howto,
-            done: false,
+      // 1) Новый формат: plan28
+      if (plan.plan28 && Array.isArray(plan.plan28.days) && plan.plan28.days.length > 0) {
+        const plan28 = plan.plan28;
+
+        const dayData =
+          plan28.days.find((d: any) => d.dayIndex === currentDay) ||
+          plan28.days[0];
+
+        if (!dayData) {
+          clientLogger.warn('Fallback plan: no day data found');
+          return;
+        }
+
+        const productsArray: any[] = Array.isArray(plan.products) ? plan.products : [];
+        const getProduct = (id: number) => productsArray.find(p => p.id === id);
+
+        const buildItems = (steps: any[], time: 'AM' | 'PM'): RoutineItem[] => {
+          const items: RoutineItem[] = [];
+          steps.forEach((step, idx) => {
+            const productId = Number(step.productId);
+            if (!productId) return;
+            const product = getProduct(productId);
+            if (!product) return;
+
+            const baseStep = getBaseStepFromStepCategory(step.stepCategory);
+
+            // Маппинг метаданных по базовому шагу
+            let title = '';
+            let icon = ICONS.cleanser;
+            let howto: RoutineItem['howto'] = {
+              steps: [],
+              volume: '',
+              tip: '',
+            };
+
+            if (baseStep === 'cleanser') {
+              title = 'Очищение';
+              icon = ICONS.cleanser;
+              howto = {
+                steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
+                volume: '1–2 нажатия',
+                tip: 'Если кожа сухая утром — можно умыться только водой.',
+              };
+            } else if (baseStep === 'toner') {
+              title = 'Тонер';
+              icon = ICONS.toner;
+              howto = {
+                steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
+                volume: '3–5 капель',
+                tip: 'Избегайте ватных дисков — тратите меньше продукта.',
+              };
+            } else if (baseStep === 'serum' || baseStep === 'treatment') {
+              title = time === 'AM' ? 'Актив' : 'Сыворотка';
+              icon = ICONS.serum;
+              howto = {
+                steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
+                volume: '3–6 капель',
+                tip: 'При раздражении сделайте паузу в использовании актива.',
+              };
+            } else if (baseStep === 'moisturizer') {
+              title = 'Крем';
+              icon = ICONS.cream;
+              howto = {
+                steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
+                volume: 'Горошина',
+                tip: 'Не забывайте шею и линию подбородка.',
+              };
+            } else if (baseStep === 'spf') {
+              title = 'SPF-защита';
+              icon = ICONS.spf;
+              howto = {
+                steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
+                volume: '~1.5–2 мл',
+                tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
+              };
+            } else if (baseStep === 'lip_care') {
+              title = 'Бальзам для губ';
+              icon = ICONS.cream;
+              howto = {
+                steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
+                volume: 'Тонкий слой',
+                tip: 'Регулярное использование предотвращает сухость и трещины.',
+              };
+            } else {
+              // Неизвестные шаги пока пропускаем, чтобы не ломать верстку
+              return;
+            }
+
+            items.push({
+              id: `${time}-${baseStep}-${idx}-${productId}`,
+              title,
+              subtitle: product.name || title,
+              icon,
+              howto,
+              done: false,
+            });
           });
+          return items;
+        };
+
+        const fallbackMorning = buildItems(dayData.morning || [], 'AM');
+        const fallbackEvening = buildItems(dayData.evening || [], 'PM');
+
+        if (fallbackMorning.length === 0 && fallbackEvening.length === 0) {
+          clientLogger.warn('Fallback plan: no routine items built from plan28');
+          return;
+        }
+
+        clientLogger.log('✅ Fallback routine built from plan28', {
+          currentDay,
+          morningCount: fallbackMorning.length,
+          eveningCount: fallbackEvening.length,
         });
-        return items;
-      };
 
-      const fallbackMorning = buildItems(dayData.morning || [], 'AM');
-      const fallbackEvening = buildItems(dayData.evening || [], 'PM');
-
-      if (fallbackMorning.length === 0 && fallbackEvening.length === 0) {
-        clientLogger.warn('Fallback plan: no routine items built from plan28');
+        setMorningItems(fallbackMorning);
+        setEveningItems(fallbackEvening);
         return;
       }
 
-      clientLogger.log('✅ Fallback routine built from plan28', {
-        currentDay,
-        morningCount: fallbackMorning.length,
-        eveningCount: fallbackEvening.length,
-      });
+      // 2) Legacy формат: weeks (без plan28)
+      if (Array.isArray(plan.weeks) && plan.weeks.length > 0) {
+        const weekIndex = Math.max(0, Math.min(Math.floor((currentDay - 1) / 7), plan.weeks.length - 1));
+        const weekData = plan.weeks[weekIndex];
+        const days = Array.isArray(weekData?.days) ? weekData.days : [];
+        const dayIndex = Math.max(0, Math.min((currentDay - 1) % 7, days.length - 1));
+        const dayData = days[dayIndex] || days[0];
 
-      setMorningItems(fallbackMorning);
-      setEveningItems(fallbackEvening);
+        if (!dayData) {
+          clientLogger.warn('Fallback plan: no day data found in legacy weeks');
+          return;
+        }
+
+        const productsArray: any[] = Array.isArray(plan.products) ? plan.products : [];
+        const getProduct = (id: number) => productsArray.find(p => p.id === id);
+
+        const buildItemsFromIds = (ids: any[], time: 'AM' | 'PM'): RoutineItem[] => {
+          const items: RoutineItem[] = [];
+          (Array.isArray(ids) ? ids : []).forEach((rawId, idx) => {
+            const productId = Number(rawId);
+            if (!productId) return;
+            const product = getProduct(productId);
+            if (!product) return;
+
+            // В legacy формате нет stepCategory → берём category продукта как “категорию шага”
+            const baseStep = getBaseStepFromStepCategory((product.category || product.step || 'serum') as any);
+
+            let title = '';
+            let icon = ICONS.cleanser;
+            let howto: RoutineItem['howto'] = { steps: [], volume: '', tip: '' };
+
+            if (baseStep === 'cleanser') {
+              title = 'Очищение';
+              icon = ICONS.cleanser;
+              howto = {
+                steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
+                volume: '1–2 нажатия',
+                tip: 'Если кожа сухая утром — можно умыться только водой.',
+              };
+            } else if (baseStep === 'toner') {
+              title = 'Тонер';
+              icon = ICONS.toner;
+              howto = {
+                steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
+                volume: '3–5 капель',
+                tip: 'Избегайте ватных дисков — тратите меньше продукта.',
+              };
+            } else if (baseStep === 'serum' || baseStep === 'treatment') {
+              title = time === 'AM' ? 'Актив' : 'Сыворотка';
+              icon = ICONS.serum;
+              howto = {
+                steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
+                volume: '3–6 капель',
+                tip: 'При раздражении сделайте паузу в использовании актива.',
+              };
+            } else if (baseStep === 'moisturizer') {
+              title = 'Крем';
+              icon = ICONS.cream;
+              howto = {
+                steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
+                volume: 'Горошина',
+                tip: 'Не забывайте шею и линию подбородка.',
+              };
+            } else if (baseStep === 'spf') {
+              title = 'SPF-защита';
+              icon = ICONS.spf;
+              howto = {
+                steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
+                volume: '~1.5–2 мл',
+                tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
+              };
+            } else if (baseStep === 'lip_care') {
+              title = 'Бальзам для губ';
+              icon = ICONS.cream;
+              howto = {
+                steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
+                volume: 'Тонкий слой',
+                tip: 'Регулярное использование предотвращает сухость и трещины.',
+              };
+            } else {
+              return;
+            }
+
+            items.push({
+              id: `${time}-${baseStep}-${idx}-${productId}`,
+              title,
+              subtitle: product.name || title,
+              icon,
+              howto,
+              done: false,
+            });
+          });
+          return items;
+        };
+
+        const fallbackMorning = buildItemsFromIds(dayData.morning || [], 'AM');
+        const fallbackEvening = buildItemsFromIds(dayData.evening || [], 'PM');
+
+        if (fallbackMorning.length === 0 && fallbackEvening.length === 0) {
+          clientLogger.warn('Fallback plan: no routine items built from legacy weeks');
+          return;
+        }
+
+        clientLogger.log('✅ Fallback routine built from legacy weeks', {
+          currentDay,
+          morningCount: fallbackMorning.length,
+          eveningCount: fallbackEvening.length,
+        });
+
+        setMorningItems(fallbackMorning);
+        setEveningItems(fallbackEvening);
+        return;
+      }
+
+      clientLogger.warn('Fallback plan: no plan28 and no weeks data available');
     } catch (err: any) {
       clientLogger.warn('Fallback plan: failed to build routine from plan28', err);
     }

@@ -3,28 +3,17 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    // Получаем initData из заголовков
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-    
-    if (!initData) {
-      return ApiResponse.unauthorized('Missing Telegram initData');
-    }
-
-    // Получаем userId из initData
-    const userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
-      return ApiResponse.unauthorized('Invalid or expired initData');
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    const userId = auth.ctx.userId;
 
     // Устанавливаем флаг оплаты в БД через тег пользователя
     const user = await prisma.user.findUnique({
@@ -41,6 +30,8 @@ export async function POST(request: NextRequest) {
         data: {
           tags: { push: 'payment_completed' },
         },
+        // ВАЖНО: не возвращаем все поля User (может упасть при рассинхроне схемы БД)
+        select: { id: true },
       });
       logger.info('Payment status set via API', { userId });
     }

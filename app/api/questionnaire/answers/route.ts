@@ -4,11 +4,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createSkinProfile } from '@/lib/profile-calculator';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
 import { MAX_DUPLICATE_SUBMISSION_WINDOW_MS } from '@/lib/constants';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export const runtime = 'nodejs';
 
@@ -26,18 +26,9 @@ export async function GET(request: NextRequest) {
   let userId: string | undefined;
 
   try {
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-
-    if (!initData) {
-      return ApiResponse.unauthorized('Missing Telegram initData');
-    }
-
-    const userIdResult = await getUserIdFromInitData(initData);
-    if (!userIdResult) {
-      return ApiResponse.unauthorized('Invalid or expired initData');
-    }
-    userId = userIdResult;
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
     // Получаем активную анкету
     const questionnaire = await prisma.questionnaire.findFirst({
@@ -88,28 +79,9 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
-    // Получаем initData из заголовков (пробуем оба варианта регистра)
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-
-    if (!initData) {
-      logger.warn('Missing initData in headers for questionnaire answers', {
-        availableHeaders: Array.from(request.headers.keys()),
-        userAgent: request.headers.get('user-agent'),
-      });
-      return ApiResponse.unauthorized('Missing Telegram initData. Please open the app through Telegram Mini App.');
-    }
-    
-    logger.debug('initData received', { length: initData.length });
-
-    // Получаем userId из initData (автоматически создает/обновляет пользователя)
-    const userIdResult = await getUserIdFromInitData(initData);
-    
-    if (!userIdResult) {
-      return ApiResponse.unauthorized('Invalid or expired initData');
-    }
-    
-    userId = userIdResult; // Теперь userId гарантированно string
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
     const body = await request.json();
     const { questionnaireId, answers, clientSubmissionId } = body as {
@@ -507,9 +479,11 @@ export async function POST(request: NextRequest) {
       const nameAnswer = (savedAnswers as any[]).find(a => a.question?.code === 'USER_NAME');
       if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
         const userName = String(nameAnswer.answerValue).trim();
+        // ВАЖНО: ограничиваем select, чтобы не падать при рассинхроне схемы БД
         await tx.user.update({
           where: { id: userId! },
           data: { firstName: userName },
+          select: { id: true },
         });
         logger.info('User name saved', {
           userId,
@@ -733,11 +707,27 @@ export async function POST(request: NextRequest) {
             });
         
         // ИСПРАВЛЕНО: Обновляем currentProfileId в User для быстрого доступа к текущему профилю
-        // ИСПРАВЛЕНО: Используем as any, так как currentProfileId может быть не в типах Prisma до регенерации
-        await (tx.user as any).update({
-          where: { id: userId! },
-          data: { currentProfileId: profile.id },
-        });
+        // Но не ломаем транзакцию, если миграция в БД не применена и колонки нет.
+        try {
+          await (tx.user as any).update({
+            where: { id: userId! },
+            data: { currentProfileId: profile.id },
+            select: { id: true },
+          });
+        } catch (err: any) {
+          if (
+            err?.code === 'P2022' &&
+            (err?.meta?.column === 'users.current_profile_id' ||
+              (typeof err?.message === 'string' && err.message.includes('current_profile_id')))
+          ) {
+            logger.warn('users.current_profile_id missing in DB; skipping currentProfileId update', {
+              userId,
+              profileId: profile.id,
+            });
+          } else {
+            throw err;
+          }
+        }
         
         logger.debug('Profile created successfully (append-only)', {
           userId,

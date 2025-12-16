@@ -3,10 +3,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
 import { getQuestionCodesForTopic, topicRequiresPlanRebuild, type QuestionTopicId } from '@/lib/questionnaire-topics';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export const runtime = 'nodejs';
 
@@ -21,19 +21,9 @@ interface UpdateRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const initData =
-      request.headers.get('x-telegram-init-data') ||
-      request.headers.get('X-Telegram-Init-Data') ||
-      null;
-
-    if (!initData) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const userId = await getUserIdFromInitData(initData);
-    if (!userId) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    const userId = auth.ctx.userId;
 
     const body: UpdateRequest = await request.json();
     const { topicId, answers } = body;
