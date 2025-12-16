@@ -207,9 +207,21 @@ export default function PlanPage() {
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Проверяем, есть ли state=generating в URL
-    const state = searchParams?.get('state');
+    // ИСПРАВЛЕНО: Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
+    let state: string | null = null;
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      state = urlParams.get('state');
+    }
+    
+    // Также проверяем searchParams для надежности
+    const stateFromParams = searchParams?.get('state');
+    if (stateFromParams) {
+      state = stateFromParams;
+    }
+    
     if (state === 'generating') {
+      clientLogger.log('✅ State=generating detected, starting polling');
       setGeneratingState('generating');
       safeSetLoading(true);
       
@@ -760,6 +772,17 @@ export default function PlanPage() {
   const MAX_RETRIES = 5;
   
   const loadPlan = async (retryCount = 0) => {
+    // ИСПРАВЛЕНО: Не загружаем план, если мы в режиме генерации
+    // Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const state = urlParams.get('state');
+      if (state === 'generating') {
+        clientLogger.log('⏸️ Skipping loadPlan - plan is being generated');
+        return;
+      }
+    }
+    
     const scheduleRetryAfterCooldown = (context: string) => {
       if (!hasActivePlanGenerationCooldown()) {
         return false;
