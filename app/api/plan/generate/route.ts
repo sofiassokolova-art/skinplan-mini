@@ -10,6 +10,7 @@ import '@/lib/env-check'; // Валидация env переменных при 
 import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
+import type { PlanResponse } from '@/lib/api-types';
 
 export const runtime = 'nodejs';
 
@@ -438,19 +439,31 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Сохраняем в кэш
+    // ИСПРАВЛЕНО: Сохраняем в кэш в формате PlanResponse для единообразия
+    // Это гарантирует, что /api/plan и /api/plan/generate используют одинаковый формат кэша
     try {
-      logger.info('Caching plan', { userId, profileVersion: profile.version });
-      await setCachedPlan(userId, profile.version, plan);
-      logger.info('Plan cached successfully', { 
+      logger.info('Caching plan in PlanResponse format', { userId, profileVersion: profile.version });
+      
+      // Преобразуем GeneratedPlan в PlanResponse для единого формата кэша
+      const planResponse: PlanResponse = {
+        plan28: plan.plan28,
+        weeks: plan.weeks,
+        products: plan.products,
+        profile: plan.profile,
+        warnings: plan.warnings,
+        // expired и daysSinceCreation будут добавлены при чтении из кэша в /api/plan
+      };
+      
+      await setCachedPlan(userId, profile.version, planResponse);
+      logger.info('Plan cached successfully in PlanResponse format', { 
         userId, 
         profileVersion: profile.version,
-        hasPlan28: !!plan.plan28,
-        hasWeeks: !!plan.weeks,
-        plan28DaysCount: plan?.plan28?.days?.length || 0,
+        hasPlan28: !!planResponse.plan28,
+        hasWeeks: !!planResponse.weeks,
+        plan28DaysCount: planResponse?.plan28?.days?.length || 0,
         // ИСПРАВЛЕНО: Логируем количество продуктов для диагностики
-        day1MorningProducts: plan?.plan28?.days?.[0]?.morning?.filter((s: any) => s.productId).length || 0,
-        day1EveningProducts: plan?.plan28?.days?.[0]?.evening?.filter((s: any) => s.productId).length || 0,
+        day1MorningProducts: planResponse?.plan28?.days?.[0]?.morning?.filter((s: any) => s.productId).length || 0,
+        day1EveningProducts: planResponse?.plan28?.days?.[0]?.evening?.filter((s: any) => s.productId).length || 0,
       });
     } catch (cacheError: any) {
       // Ошибка кэширования не должна блокировать возврат плана

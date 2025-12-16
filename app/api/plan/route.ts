@@ -28,10 +28,43 @@ export async function GET(request: NextRequest) {
 
     logger.info('User identified from initData', { userId });
     
+    // ИСПРАВЛЕНО: Поддержка read-your-write через ?profileId= параметр
+    // Это решает проблему read-after-write неконсистентности при использовании реплик/accelerate
+    const { searchParams } = new URL(request.url);
+    const profileIdParam = searchParams.get('profileId');
+    
+    let profile: Awaited<ReturnType<typeof getCurrentProfile>> | null = null;
+    
+    // Если передан profileId - сначала пробуем загрузить профиль по нему (read-your-write)
+    if (profileIdParam) {
+      profile = await prisma.skinProfile.findFirst({
+        where: {
+          id: profileIdParam,
+          userId, // Проверка принадлежности для безопасности
+        },
+      });
+      
+      if (profile) {
+        logger.info('Profile found via profileId parameter (read-your-write)', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+        });
+      } else {
+        logger.warn('Profile not found via profileId parameter, falling back to getCurrentProfile', {
+          userId,
+          profileIdParam,
+        });
+      }
+    }
+    
+    // Fallback: используем единый резолвер getCurrentProfile
     // ИСПРАВЛЕНО: Используем единый резолвер активного профиля
     // Это решает проблему, когда current_profile_id отсутствует в БД
     // getCurrentProfile правильно обрабатывает отсутствие колонки и использует fallback на последний профиль
-    let profile = await getCurrentProfile(userId);
+    if (!profile) {
+      profile = await getCurrentProfile(userId);
+    }
 
     // ИСПРАВЛЕНО: Логируем результат getCurrentProfile для диагностики
     if (profile) {
