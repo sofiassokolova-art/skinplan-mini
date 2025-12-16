@@ -211,14 +211,14 @@ export default function QuizPage() {
     if (typeof window !== 'undefined') {
       const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
       if (justSubmitted) {
-        clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan (ранняя проверка)');
+        clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
         // Очищаем флаг
         sessionStorage.removeItem('quiz_just_submitted');
         // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
         initCompletedRef.current = true;
         setLoading(false);
-        // Редиректим на /plan СРАЗУ, без задержек
-        window.location.replace('/plan');
+        // Редиректим на /plan?state=generating СРАЗУ, без задержек
+        window.location.replace('/plan?state=generating');
         return;
       }
       
@@ -236,7 +236,7 @@ export default function QuizPage() {
     // Это критично, чтобы предотвратить редирект на первый экран после отправки ответов
     const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
     if (justSubmitted) {
-      clientLogger.log('✅ Флаг quiz_just_submitted установлен - пропускаем проверку профиля и редиректим на /plan');
+      clientLogger.log('✅ Флаг quiz_just_submitted установлен - пропускаем проверку профиля и редиректим на /plan?state=generating');
       // Очищаем флаг
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('quiz_just_submitted');
@@ -244,9 +244,9 @@ export default function QuizPage() {
       // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
       initCompletedRef.current = true;
       setLoading(false);
-      // Редиректим на /plan
+      // Редиректим на /plan?state=generating
       if (typeof window !== 'undefined') {
-        window.location.replace('/plan');
+        window.location.replace('/plan?state=generating');
       }
       return;
     }

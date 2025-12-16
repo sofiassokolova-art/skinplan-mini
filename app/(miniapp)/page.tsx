@@ -182,17 +182,31 @@ export default function HomePage() {
         }
       };
 
+      // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД проверкой профиля
+      // Это предотвращает редирект на /quiz сразу после отправки анкеты
+      const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+      if (justSubmitted) {
+        clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('quiz_just_submitted');
+          window.location.replace('/plan?state=generating');
+        }
+        return;
+      }
+
       // Сначала проверяем, существует ли профиль, чтобы не дергать тяжёлые эндпоинты без профиля
       try {
         const profile = await api.getCurrentProfile();
         if (!profile) {
           // Профиля нет - считаем, что пользователь ещё не проходил анкету
+          // НО: не редиректим, если только что отправили анкету (уже обработано выше)
           setLoading(false);
           router.replace('/quiz');
           return;
         }
       } catch (err: any) {
         // Если бэкенд вернул 404 / isNotFound - это нормальный случай "нет профиля"
+        // НО: не редиректим, если только что отправили анкету (уже обработано выше)
         if (err?.status === 404 || err?.isNotFound) {
           setLoading(false);
           router.replace('/quiz');

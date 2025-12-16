@@ -484,20 +484,6 @@ export function PlanPageClientNew({
         </div>
       )}
 
-      {/* Инфографика плана */}
-      <PlanInfographic 
-        plan28={plan28} 
-        products={products}
-        wishlistProductIds={wishlistProductIds}
-        cartQuantities={cartQuantities}
-        onToggleWishlist={toggleWishlist}
-        onAddToCart={handleAddToCart}
-        onReplace={(product) => {
-          // Обертка для handleReplace - передаем только productId, stepCategory не нужен для PlanInfographic
-          handleReplace('', product.id);
-        }}
-      />
-
       {/* ИСПРАВЛЕНО: PaymentGate показывается ВСЕГДА - план это платный продукт */}
       {/* PaymentGate сам проверяет статус оплаты и показывает блюр только если не оплачено */}
       <PaymentGate
@@ -511,6 +497,20 @@ export function PlanPageClientNew({
         }}
       >
         {/* Контент внутри PaymentGate (показывается с блюром до оплаты, без блюра после оплаты) */}
+        {/* Инфографика плана */}
+        <PlanInfographic 
+          plan28={plan28} 
+          products={products}
+          wishlistProductIds={wishlistProductIds}
+          cartQuantities={cartQuantities}
+          onToggleWishlist={toggleWishlist}
+          onAddToCart={handleAddToCart}
+          onReplace={(product) => {
+            // Обертка для handleReplace - передаем только productId, stepCategory не нужен для PlanInfographic
+            handleReplace('', product.id);
+          }}
+        />
+
         {/* Инфографика прогресса по целям */}
         <GoalProgressInfographic
           goals={plan28.mainGoals}
