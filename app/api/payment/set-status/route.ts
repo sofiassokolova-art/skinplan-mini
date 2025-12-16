@@ -26,8 +26,9 @@ export async function POST(request: NextRequest) {
   try {
     // В продакшене блокируем этот endpoint
     if (process.env.NODE_ENV === 'production') {
-      logger.error('DEPRECATED endpoint /api/payment/set-status called in production! This is a security risk!');
-      return ApiResponse.error('This endpoint is disabled in production for security reasons', 403);
+      // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* и deprecated пути)
+      // и не раскрываем наличие endpoint'а.
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     logger.warn('DEPRECATED: /api/payment/set-status is deprecated. Use /api/payments/create + webhook instead.');
