@@ -2221,7 +2221,10 @@ export default function QuizPage() {
           }).catch(() => {}); // Игнорируем ошибки логирования
         }
         
-        result = await api.submitAnswers(questionnaire.id, answerArray);
+        result = await api.submitAnswers({
+          questionnaireId: questionnaire.id,
+          answers: answerArray,
+        });
         
         // ВАЖНО: Логируем на сервер после получения ответа (неблокирующе)
         if (currentInitData) {
