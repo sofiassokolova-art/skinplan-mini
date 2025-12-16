@@ -11,11 +11,13 @@
 import { prisma } from './db';
 import { logger } from './logger';
 
-// Кэш наличия колонки current_profile_id в module scope
-// Определяется один раз при первом запросе, который читает currentProfileId
-let hasCurrentProfileColumn: boolean | null = null;
+// Кэш наличия колонки current_profile_id в module scope с TTL
+// ИСПРАВЛЕНО: Добавлен TTL для безопасной работы на serverless (Vercel)
+// После миграции или rollback кэш автоматически обновится
+const COLUMN_CHECK_TTL = 60_000; // 60 секунд
+let columnState: { value: boolean; checkedAt: number } | null = null;
 
-type ResolveStrategy = 'db_column' | 'fallback_version' | 'fallback_createdAt' | 'none';
+type ResolveStrategy = 'db_column' | 'fallback_latest' | 'none';
 
 interface ResolveResult {
   profile: any | null;
@@ -23,7 +25,12 @@ interface ResolveResult {
   hasCurrentProfileColumn: boolean;
   currentProfileId: string | null;
   resolvedProfileId: string | null;
-  profilesCount?: number;
+  profileDetails?: {
+    id: string;
+    userId: string;
+    version: number | null;
+    createdAt: Date;
+  };
   reason?: string;
 }
 
@@ -57,13 +64,14 @@ export async function getCurrentProfile(userId: string) {
       reason: result.reason,
     });
   } else {
+    // ИСПРАВЛЕНО: Добавлены детали профиля для сравнения с /api/questionnaire/answers
     logger.debug('Profile resolved', {
       userId,
       strategy: result.strategy,
       hasCurrentProfileColumn: result.hasCurrentProfileColumn,
       currentProfileId: result.currentProfileId,
       resolvedProfileId: result.resolvedProfileId,
-      profilesCount: result.profilesCount,
+      profileDetails: result.profileDetails,
     });
   }
   
@@ -76,25 +84,28 @@ export async function getCurrentProfile(userId: string) {
  */
 async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResult> {
   try {
-    // Шаг 1: Определяем наличие колонки current_profile_id
-    // Если еще не определили - пытаемся прочитать currentProfileId
-    if (hasCurrentProfileColumn === null) {
+    // Шаг 1: Определяем наличие колонки current_profile_id с TTL
+    // ИСПРАВЛЕНО: Кэш с TTL для безопасной работы на serverless
+    const now = Date.now();
+    if (!columnState || now - columnState.checkedAt > COLUMN_CHECK_TTL) {
       try {
         await prisma.user.findUnique({
           where: { id: userId },
           select: { currentProfileId: true },
         });
         // Если запрос успешен - колонка существует
-        hasCurrentProfileColumn = true;
+        columnState = { value: true, checkedAt: now };
       } catch (err: any) {
         if (isMissingCurrentProfileColumn(err)) {
-          hasCurrentProfileColumn = false;
+          columnState = { value: false, checkedAt: now };
         } else {
           // Другая ошибка - пробрасываем дальше
           throw err;
         }
       }
     }
+
+    const hasCurrentProfileColumn = columnState.value;
 
     // Шаг 2: Если колонка есть - пытаемся использовать currentProfileId
     if (hasCurrentProfileColumn) {
@@ -103,13 +114,21 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
         select: { currentProfileId: true },
       });
 
-      if (user?.currentProfileId) {
-        // Проверяем валидность профиля: существует ли он и принадлежит ли userId
-        const profile = await prisma.skinProfile.findUnique({
-          where: { id: user.currentProfileId },
+      // ИСПРАВЛЕНО: Проверка на отсутствие user записи
+      if (!user) {
+        logger.warn('User not found in DB', { userId });
+        // Продолжаем в fallback - возможно профиль есть, но user записи нет
+      } else if (user.currentProfileId) {
+        // ИСПРАВЛЕНО: Оптимизированная проверка - ищем профиль сразу с where: { id, userId }
+        // Это дешевле, чем отдельная проверка profile.userId === userId
+        const profile = await prisma.skinProfile.findFirst({
+          where: {
+            id: user.currentProfileId,
+            userId: userId, // Проверка принадлежности в одном запросе
+          },
         });
 
-        if (profile && profile.userId === userId) {
+        if (profile) {
           // Профиль валиден - возвращаем его
           return {
             profile,
@@ -117,6 +136,12 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
             hasCurrentProfileColumn: true,
             currentProfileId: user.currentProfileId,
             resolvedProfileId: profile.id,
+            profileDetails: {
+              id: profile.id,
+              userId: profile.userId,
+              version: profile.version,
+              createdAt: profile.createdAt,
+            },
           };
         }
 
@@ -124,8 +149,6 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
         logger.warn('Current profile invalid, clearing currentProfileId', {
           userId,
           currentProfileId: user.currentProfileId,
-          profileExists: !!profile,
-          profileUserId: profile?.userId,
         });
 
         try {
@@ -144,7 +167,8 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
     }
 
     // Шаг 3: Fallback - получаем последний профиль
-    // Используем множественный orderBy для надежности
+    // ИСПРАВЛЕНО: Используем множественный orderBy для надежности
+    // ИСПРАВЛЕНО: Убран count() - он не нужен для функциональности, только для логов
     const profiles = await prisma.skinProfile.findMany({
       where: { userId },
       orderBy: [
@@ -154,10 +178,6 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
       take: 1,
     });
 
-    const profilesCount = await prisma.skinProfile.count({
-      where: { userId },
-    });
-
     if (profiles.length === 0) {
       return {
         profile: null,
@@ -165,19 +185,14 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
         hasCurrentProfileColumn: hasCurrentProfileColumn || false,
         currentProfileId: null,
         resolvedProfileId: null,
-        profilesCount: 0,
         reason: 'no profiles for user',
       };
     }
 
     const latestProfile = profiles[0];
 
-    // Определяем стратегию по тому, как нашли профиль
-    // Если version не null и > 0 - использовали version, иначе createdAt
-    const strategy: ResolveStrategy =
-      latestProfile.version != null && latestProfile.version > 0
-        ? 'fallback_version'
-        : 'fallback_createdAt';
+    // ИСПРАВЛЕНО: Упрощена стратегия - всегда fallback_latest
+    // version всегда >= 1, поэтому различать fallback_version и fallback_createdAt не имеет смысла
 
     // Если колонка current_profile_id есть - обновляем её для следующих запросов
     if (hasCurrentProfileColumn) {
@@ -197,11 +212,16 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
 
     return {
       profile: latestProfile,
-      strategy,
+      strategy: 'fallback_latest',
       hasCurrentProfileColumn: hasCurrentProfileColumn || false,
       currentProfileId: null,
       resolvedProfileId: latestProfile.id,
-      profilesCount,
+      profileDetails: {
+        id: latestProfile.id,
+        userId: latestProfile.userId,
+        version: latestProfile.version,
+        createdAt: latestProfile.createdAt,
+      },
     };
   } catch (error: any) {
     logger.error('Error getting current profile', error, { userId });

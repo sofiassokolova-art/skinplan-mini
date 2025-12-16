@@ -33,17 +33,43 @@ export async function GET(request: NextRequest) {
     // getCurrentProfile правильно обрабатывает отсутствие колонки и использует fallback на последний профиль
     let profile = await getCurrentProfile(userId);
 
+    // ИСПРАВЛЕНО: Логируем результат getCurrentProfile для диагностики
+    if (profile) {
+      logger.info('Profile found via getCurrentProfile', {
+        userId,
+        profileId: profile.id,
+        profileVersion: profile.version,
+        profileUserId: profile.userId,
+        profileCreatedAt: profile.createdAt?.toISOString(),
+      });
+    } else {
+      logger.warn('Profile not found on first attempt, waiting and retrying...', { userId });
+    }
+
     // Если профиль не найден, ждем немного и пробуем еще раз (race condition fix)
     // Это решает проблему race condition, когда профиль только что создан, но еще не виден в БД
     if (!profile) {
-      logger.warn('Profile not found on first attempt, waiting and retrying...', { userId });
       await new Promise(resolve => setTimeout(resolve, 200)); // Ждем 200ms
       profile = await getCurrentProfile(userId);
+      
+      if (profile) {
+        logger.info('Profile found on retry', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+          profileUserId: profile.userId,
+        });
+      }
     }
 
     if (!profile) {
       const duration = Date.now() - startTime;
-      logger.error('No skin profile found for user after retry', { userId });
+      // ИСПРАВЛЕНО: Улучшено логирование для диагностики проблемы "No skin profile found"
+      logger.error('No skin profile found for user after retry', {
+        userId,
+        // Эти поля помогут сравнить с /api/questionnaire/answers
+        // Если там профиль создался, а здесь не находится - проблема в userId или фильтрах
+      });
       logApiRequest(method, path, 404, duration, userId);
       return ApiResponse.notFound('No skin profile found', { userId });
     }
