@@ -44,6 +44,8 @@ model User {
   supportChats             SupportChat[]
   clientLogs               ClientLog[]
   questionnaireSubmissions QuestionnaireSubmission[]
+  payments                 Payment[]
+  entitlements             Entitlement[]
 
   @@index([lastActive])
   @@index([currentProfileId])
@@ -602,31 +604,31 @@ model ClientLog {
 // ============================================
 
 model Payment {
-  id                String   @id @default(cuid())
-  userId            String   @map("user_id")
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Что покупаем
-  productCode       String   @map("product_code") // "plan_access" | "subscription_month" etc
-  amount            Int      // в копейках/центах
-  currency          String   @default("RUB")
-  
+  productCode String @map("product_code") // "plan_access" | "subscription_month" etc
+  amount      Int // в копейках/центах
+  currency    String @default("RUB")
+
   // Провайдер оплаты
-  provider          String   // "yookassa" | "cloudpayments" | "stripe" | "telegram"
-  providerPaymentId String?  @unique @map("provider_payment_id")
-  providerPayload   Json?    @map("provider_payload") // Полные данные от провайдера
-  
+  provider          String // "yookassa" | "cloudpayments" | "stripe" | "telegram"
+  providerPaymentId String? @unique @map("provider_payment_id")
+  providerPayload   Json?   @map("provider_payload") // Полные данные от провайдера
+
   // Статус оплаты
-  status            String   // "pending" | "succeeded" | "failed" | "canceled" | "refunded"
-  
+  status String // "pending" | "succeeded" | "failed" | "canceled" | "refunded"
+
   // Идемпотентность
-  idempotencyKey    String?  @unique @map("idempotency_key") // Чтобы create не дублировался
-  
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  
-  entitlements      Entitlement[] @relation("EntitlementPayment")
-  
+  idempotencyKey String? @unique @map("idempotency_key") // Чтобы create не дублировался
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  entitlements Entitlement[] @relation("EntitlementPayment")
+
   @@index([userId, createdAt])
   @@index([providerPaymentId])
   @@index([status])
@@ -635,20 +637,20 @@ model Payment {
 }
 
 model Entitlement {
-  id            String    @id @default(cuid())
-  userId        String    @map("user_id")
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  code          String    // "paid_access" | "subscription_active" etc
-  active        Boolean   @default(false)
-  validUntil    DateTime? @map("valid_until")
-  
-  lastPaymentId String?   @map("last_payment_id") // Связь с последним успешным платежом
-  lastPayment   Payment?  @relation("EntitlementPayment", fields: [lastPaymentId], references: [id], onDelete: SetNull)
-  
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code       String // "paid_access" | "subscription_active" etc
+  active     Boolean   @default(false)
+  validUntil DateTime? @map("valid_until")
+
+  lastPaymentId String?  @map("last_payment_id") // Связь с последним успешным платежом
+  lastPayment   Payment? @relation("EntitlementPayment", fields: [lastPaymentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@unique([userId, code])
   @@index([userId])
   @@index([active, validUntil])
