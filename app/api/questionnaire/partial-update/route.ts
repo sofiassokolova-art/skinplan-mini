@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { getTopicById, shouldRebuildPlan } from '@/lib/quiz-topics';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
-import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { requireTelegramAuth, getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 
 export const runtime = 'nodejs';
 
@@ -252,18 +252,24 @@ export async function POST(request: NextRequest) {
     let planRegenerated = false;
     if (needsPlanRebuild) {
       try {
-        // Вызываем генерацию плана асинхронно (не ждем завершения)
-        // Это улучшает UX - пользователь не ждет долгой генерации
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/plan/generate`, {
-          method: 'GET',
-          headers: {
-            'X-Telegram-Init-Data': initData,
-          },
-        }).catch(err => {
-          logger.warn('Background plan regeneration failed', { userId, error: err });
-          // Не критично - план пересоберется при следующем запросе
-        });
-        planRegenerated = true;
+        // Получаем initData из заголовков для передачи в фоновый запрос
+        const initData = getTelegramInitDataFromHeaders(request);
+        if (initData) {
+          // Вызываем генерацию плана асинхронно (не ждем завершения)
+          // Это улучшает UX - пользователь не ждет долгой генерации
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/plan/generate`, {
+            method: 'GET',
+            headers: {
+              'X-Telegram-Init-Data': initData,
+            },
+          }).catch(err => {
+            logger.warn('Background plan regeneration failed', { userId, error: err });
+            // Не критично - план пересоберется при следующем запросе
+          });
+          planRegenerated = true;
+        } else {
+          logger.warn('Cannot trigger plan regeneration: initData missing', { userId });
+        }
       } catch (err) {
         logger.warn('Could not trigger plan regeneration', { userId, error: err });
       }
