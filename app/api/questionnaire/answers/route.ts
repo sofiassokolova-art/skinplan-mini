@@ -82,7 +82,10 @@ export async function POST(request: NextRequest) {
 
   try {
     // DEBUG: Логируем DB fingerprint для диагностики разных БД
-    await logDbFingerprint('/api/questionnaire/answers');
+    // Используем console.warn для гарантированного вывода в Vercel logs
+    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] Starting DB fingerprint check...');
+    const fingerprint = await logDbFingerprint('/api/questionnaire/answers');
+    console.warn('🔍 [QUESTIONNAIRE/ANSWERS] DB fingerprint:', JSON.stringify(fingerprint, null, 2));
     
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
