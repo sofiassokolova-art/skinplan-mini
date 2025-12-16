@@ -21,18 +21,34 @@ export async function logDbFingerprint(tag: string) {
     const fingerprint = rows[0];
     
     // Логируем с высоким приоритетом (warn), чтобы было видно в логах
+    // Это критично для диагностики проблемы "разные БД"
+    const databaseUrl = process.env.DATABASE_URL || '';
+    const urlParts = databaseUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):?(\d+)?\/([^?]+)/);
+    
     logger.warn('DB_FINGERPRINT', {
       tag,
-      db: fingerprint.db,
-      schema: fingerprint.schema,
-      user: fingerprint.user,
-      host: fingerprint.host,
-      port: fingerprint.port,
-      // Также логируем env переменные для диагностики
-      hasDatabaseUrl: !!process.env.DATABASE_URL,
-      databaseUrlPrefix: process.env.DATABASE_URL?.substring(0, 20) || 'not set',
-      hasPostgresUrl: !!process.env.POSTGRES_URL,
-      hasPostgresPrismaUrl: !!process.env.POSTGRES_PRISMA_URL,
+      // Отпечаток БД подключения (должен быть одинаковым во всех роутах)
+      fingerprint: {
+        db: fingerprint.db,
+        schema: fingerprint.schema,
+        user: fingerprint.user,
+        host: fingerprint.host,
+        port: fingerprint.port,
+      },
+      // Информация о DATABASE_URL (для сравнения между роутами)
+      databaseUrlInfo: {
+        hasDatabaseUrl: !!process.env.DATABASE_URL,
+        urlHost: urlParts ? urlParts[3] : 'unknown',
+        urlPort: urlParts ? urlParts[4] : 'unknown',
+        urlDb: urlParts ? urlParts[5] : 'unknown',
+        urlPrefix: databaseUrl.substring(0, 30) + '...',
+      },
+      // Проверка конфликтующих переменных
+      conflictingVars: {
+        hasPostgresUrl: !!process.env.POSTGRES_URL,
+        hasPostgresPrismaUrl: !!process.env.POSTGRES_PRISMA_URL,
+        hasNeonDatabaseUrl: !!process.env.NEON_DATABASE_URL,
+      },
     });
     
     return fingerprint;
