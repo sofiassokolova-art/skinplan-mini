@@ -7,7 +7,10 @@ import { createSkinProfile } from '@/lib/profile-calculator';
 import { getProductsForStep } from '@/lib/product-selection';
 // Используем PrismaClient напрямую для тестов
 
-const prismaTest = new PrismaClient();
+const hasDatabase = !!process.env.DATABASE_URL;
+const prismaTest = hasDatabase
+  ? new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL! } } })
+  : new PrismaClient();
 
 // Тестовые данные
 // ВАЖНО: используем testUserId как значение для поля User.id (PK),
@@ -229,7 +232,7 @@ async function createTestAnswers(userId: string, questionnaireId: number) {
   return createdAnswers;
 }
 
-describe('Profile Generation and Product Selection', () => {
+describe.skipIf(!hasDatabase)('Profile Generation and Product Selection', () => {
   beforeAll(async () => {
     // Очищаем тестовые данные перед началом
     await cleanupTestData();

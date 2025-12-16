@@ -32,7 +32,6 @@ export async function generateRecommendationsForProfile(
         user: {
           select: {
             id: true,
-            currentProfileId: true,
           },
         },
       },

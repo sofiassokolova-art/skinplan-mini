@@ -11,7 +11,9 @@ import { logger } from './logger';
  */
 export async function updateUserActivity(userId: string): Promise<void> {
   try {
-    await prisma.user.update({
+    // ВАЖНО: используем updateMany, чтобы Prisma не делал RETURNING со всеми колонками User
+    // (это ломается, если в БД не применены миграции и отсутствуют новые поля).
+    await prisma.user.updateMany({
       where: { id: userId },
       data: { lastActive: new Date() },
     });

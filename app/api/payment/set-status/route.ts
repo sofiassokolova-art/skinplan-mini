@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
         data: {
           tags: { push: 'payment_completed' },
         },
+        // ВАЖНО: не возвращаем все поля User (может упасть при рассинхроне схемы БД)
+        select: { id: true },
       });
       logger.info('Payment status set via API', { userId });
     }

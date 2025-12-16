@@ -137,6 +137,8 @@ export async function POST(request: NextRequest) {
             set: [],
           },
         },
+        // ВАЖНО: не возвращаем все поля User (может упасть при рассинхроне схемы БД)
+        select: { id: true },
       });
       logger.info('User tags cleared (including payment status)', { userId });
     } catch (tagError: any) {

@@ -22,6 +22,8 @@ export async function getUserIdFromTelegramId(telegramId: number, userData?: {
     const now = new Date();
     const dbUser = await prisma.user.upsert({
       where: { telegramId: telegramId.toString() },
+      // ВАЖНО: ограничиваем select, чтобы не падать при рассинхроне схемы БД
+      select: { id: true },
       update: {
         ...(userData?.firstName && { firstName: userData.firstName }),
         ...(userData?.lastName && { lastName: userData.lastName }),

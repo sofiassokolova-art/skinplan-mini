@@ -43,6 +43,9 @@ export async function getUserIdFromInitData(initData: string | null): Promise<st
     try {
       const dbUser = await prisma.user.upsert({
         where: { telegramId: telegramIdStr },
+        // ВАЖНО: ограничиваем select, чтобы не падать, если в БД нет новых колонок
+        // (например users.current_profile_id при рассинхроне миграций)
+        select: { id: true },
         update: {
           username: user.username,
           firstName: user.first_name,
@@ -73,6 +76,7 @@ export async function getUserIdFromInitData(initData: string | null): Promise<st
           try {
             const existingUser = await prisma.user.findUnique({
               where: { telegramId: telegramIdStr },
+              select: { id: true },
             });
             if (existingUser) {
               // Пользователь был создан другим запросом - обновляем его
@@ -86,6 +90,7 @@ export async function getUserIdFromInitData(initData: string | null): Promise<st
                   lastActive: now,
                   updatedAt: now,
                 },
+                select: { id: true },
               });
               return updatedUser.id;
             }

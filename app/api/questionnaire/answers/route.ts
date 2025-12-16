@@ -507,9 +507,11 @@ export async function POST(request: NextRequest) {
       const nameAnswer = (savedAnswers as any[]).find(a => a.question?.code === 'USER_NAME');
       if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
         const userName = String(nameAnswer.answerValue).trim();
+        // ВАЖНО: ограничиваем select, чтобы не падать при рассинхроне схемы БД
         await tx.user.update({
           where: { id: userId! },
           data: { firstName: userName },
+          select: { id: true },
         });
         logger.info('User name saved', {
           userId,
@@ -733,11 +735,27 @@ export async function POST(request: NextRequest) {
             });
         
         // ИСПРАВЛЕНО: Обновляем currentProfileId в User для быстрого доступа к текущему профилю
-        // ИСПРАВЛЕНО: Используем as any, так как currentProfileId может быть не в типах Prisma до регенерации
-        await (tx.user as any).update({
-          where: { id: userId! },
-          data: { currentProfileId: profile.id },
-        });
+        // Но не ломаем транзакцию, если миграция в БД не применена и колонки нет.
+        try {
+          await (tx.user as any).update({
+            where: { id: userId! },
+            data: { currentProfileId: profile.id },
+            select: { id: true },
+          });
+        } catch (err: any) {
+          if (
+            err?.code === 'P2022' &&
+            (err?.meta?.column === 'users.current_profile_id' ||
+              (typeof err?.message === 'string' && err.message.includes('current_profile_id')))
+          ) {
+            logger.warn('users.current_profile_id missing in DB; skipping currentProfileId update', {
+              userId,
+              profileId: profile.id,
+            });
+          } else {
+            throw err;
+          }
+        }
         
         logger.debug('Profile created successfully (append-only)', {
           userId,
