@@ -11,6 +11,8 @@ import { getCurrentProfile } from '@/lib/get-current-profile';
 import type { Plan28 } from '@/lib/plan-types';
 import type { PlanResponse } from '@/lib/api-types';
 
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const method = 'GET';
@@ -27,6 +29,19 @@ export async function GET(request: NextRequest) {
     userId = auth.ctx.userId;
 
     logger.info('User identified from initData', { userId });
+    
+    // DEBUG: Проверяем идентичность БД
+    try {
+      const dbIdentity = await prisma.$queryRaw<Array<{ current_database: string; current_schema: string }>>`
+        SELECT current_database() as current_database, current_schema() as current_schema
+      `;
+      logger.warn('DEBUG: DB identity in /api/plan', { 
+        userId,
+        dbIdentity: dbIdentity[0],
+      });
+    } catch (dbIdentityError) {
+      logger.warn('DEBUG: Failed to get DB identity in /api/plan', { error: (dbIdentityError as any)?.message });
+    }
     
     // ИСПРАВЛЕНО: Поддержка read-your-write через ?profileId= параметр
     // Это решает проблему read-after-write неконсистентности при использовании реплик/accelerate

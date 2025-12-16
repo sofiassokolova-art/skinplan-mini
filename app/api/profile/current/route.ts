@@ -5,6 +5,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
+import { prisma } from '@/lib/db';
+
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -18,6 +21,24 @@ export async function GET(request: NextRequest) {
       return auth.response;
     }
     userId = auth.ctx.userId;
+
+    // DEBUG: Проверяем идентичность БД
+    try {
+      const dbIdentity = await prisma.$queryRaw<Array<{ current_database: string; current_schema: string }>>`
+        SELECT current_database() as current_database, current_schema() as current_schema
+      `;
+      logger.warn('DEBUG: DB identity in profile/current', { 
+        userId,
+        dbIdentity: dbIdentity[0],
+        databaseUrl: process.env.DATABASE_URL ? 'set' : 'not set',
+      });
+    } catch (dbIdentityError) {
+      logger.warn('DEBUG: Failed to get DB identity in profile/current', { error: (dbIdentityError as any)?.message });
+    }
+
+    // DEBUG: Проверяем количество профилей до вызова getCurrentProfile
+    const profilesCountBefore = await prisma.skinProfile.count({ where: { userId } });
+    logger.warn('DEBUG: profiles count before getCurrentProfile', { userId, profilesCountBefore });
 
     // ИСПРАВЛЕНО: Используем единый резолвер активного профиля
     // Это обеспечивает консистентность с /api/plan и правильно обрабатывает отсутствие current_profile_id

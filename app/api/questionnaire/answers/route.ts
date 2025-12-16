@@ -706,6 +706,28 @@ export async function POST(request: NextRequest) {
               },
             });
         
+        // DEBUG: Проверяем, что запись реально создана в транзакции
+        const countInsideTx = await tx.skinProfile.count({ where: { userId: userId! } });
+        logger.warn('DEBUG: profiles count inside TX after create', { 
+          userId, 
+          createdId: profile.id, 
+          countInsideTx,
+          profileVersion: profile.version,
+        });
+        
+        // DEBUG: Проверяем идентичность БД
+        try {
+          const dbIdentity = await tx.$queryRaw<Array<{ current_database: string; current_schema: string }>>`
+            SELECT current_database() as current_database, current_schema() as current_schema
+          `;
+          logger.warn('DEBUG: DB identity in questionnaire/answers', { 
+            userId,
+            dbIdentity: dbIdentity[0],
+          });
+        } catch (dbIdentityError) {
+          logger.warn('DEBUG: Failed to get DB identity', { error: (dbIdentityError as any)?.message });
+        }
+        
         // ИСПРАВЛЕНО: Обновляем currentProfileId в User для быстрого доступа к текущему профилю
         // Но не ломаем транзакцию, если миграция в БД не применена и колонки нет.
         try {
