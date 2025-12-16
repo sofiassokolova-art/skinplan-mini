@@ -7,9 +7,16 @@ import { invalidateAllUserCache } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 import { ApiResponse } from '@/lib/api-response';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { logDbFingerprint } from '@/lib/db-fingerprint';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // DEBUG: Логируем DB fingerprint для диагностики разных БД
+    await logDbFingerprint('/api/user/clear-data');
+    
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
     const userId = auth.ctx.userId;

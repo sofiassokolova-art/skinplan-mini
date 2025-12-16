@@ -12,14 +12,19 @@ function createPrismaClient() {
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   };
 
-  // ВАЖНО: не передаем url: undefined (иначе Prisma падает при импорте)
-  if (process.env.DATABASE_URL) {
-    baseOptions.datasources = {
-      db: { url: process.env.DATABASE_URL },
-    };
-  } else if (process.env.NODE_ENV !== 'production') {
-    // В dev/test это нормально — часть скриптов/утилит может работать без БД
+  // КРИТИЧНО: Используем ТОЛЬКО DATABASE_URL как единственный источник правды
+  // Не используем POSTGRES_URL, POSTGRES_PRISMA_URL или другие переменные
+  const url = process.env.DATABASE_URL;
+  
+  if (!url) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('DATABASE_URL is missing in production!');
+    }
     console.warn('⚠️ DATABASE_URL is not set; Prisma will require it for DB operations.');
+  } else {
+    baseOptions.datasources = {
+      db: { url },
+    };
   }
 
   return new PrismaClient(baseOptions);

@@ -6,8 +6,10 @@ import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
 import { prisma } from '@/lib/db';
+import { logDbFingerprint } from '@/lib/db-fingerprint';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -16,6 +18,9 @@ export async function GET(request: NextRequest) {
   let userId: string | undefined;
 
   try {
+    // DEBUG: Логируем DB fingerprint для диагностики разных БД
+    await logDbFingerprint('/api/profile/current');
+    
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) {
       return auth.response;

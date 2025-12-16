@@ -8,10 +8,12 @@ import { ApiResponse } from '@/lib/api-response';
 import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
+import { logDbFingerprint } from '@/lib/db-fingerprint';
 import type { Plan28 } from '@/lib/plan-types';
 import type { PlanResponse } from '@/lib/api-types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -20,6 +22,9 @@ export async function GET(request: NextRequest) {
   let userId: string | undefined;
   
   try {
+    // DEBUG: Логируем DB fingerprint для диагностики разных БД
+    await logDbFingerprint('/api/plan');
+    
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) {
       const duration = Date.now() - startTime;

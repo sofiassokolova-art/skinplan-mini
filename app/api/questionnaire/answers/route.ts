@@ -9,8 +9,10 @@ import { ApiResponse } from '@/lib/api-response';
 import { MAX_DUPLICATE_SUBMISSION_WINDOW_MS } from '@/lib/constants';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { logDbFingerprint } from '@/lib/db-fingerprint';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 interface AnswerInput {
   questionId: number;
@@ -79,6 +81,9 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
+    // DEBUG: Логируем DB fingerprint для диагностики разных БД
+    await logDbFingerprint('/api/questionnaire/answers');
+    
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
