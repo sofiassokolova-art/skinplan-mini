@@ -21,8 +21,9 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   // В продакшене блокируем этот endpoint
   if (process.env.NODE_ENV === 'production') {
-    logger.error('Test webhook endpoint called in production! This is a security risk!');
-    return NextResponse.json({ error: 'This endpoint is disabled in production' }, { status: 403 });
+    // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* пути)
+    // и не раскрываем наличие endpoint'а.
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
   try {

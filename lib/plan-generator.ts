@@ -1039,6 +1039,14 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     const stepStr = (step || category || '').toLowerCase();
     const categoryStr = (category || '').toLowerCase();
     const categories: StepCategory[] = [];
+    const isCleanserContext = stepStr.includes('cleanser') || categoryStr === 'cleanser';
+    const isTonerContext = stepStr.includes('toner') || categoryStr === 'toner';
+    const isSerumContext = stepStr.includes('serum') || categoryStr === 'serum';
+    const isMoisturizerContext =
+      stepStr.includes('moisturizer') ||
+      stepStr.includes('cream') ||
+      categoryStr === 'moisturizer' ||
+      categoryStr === 'cream';
     
     // Маппинг старого формата в StepCategory
     // Проверяем и step, и category для более точного маппинга
@@ -1052,11 +1060,11 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('cleanser_oil');
       // Также ищем по ключевым словам: гидрофильное, масло, oil, double cleans
       categories.push('cleanser_gentle'); // Базовый поиск для совместимости
-    } else if (stepStr.startsWith('cleanser_gentle') || categoryStr.includes('gentle')) {
+    } else if (stepStr.startsWith('cleanser_gentle') || (isCleanserContext && stepStr.includes('gentle'))) {
       categories.push('cleanser_gentle');
-    } else if (stepStr.startsWith('cleanser_balancing') || (stepStr.includes('cleanser') && (stepStr.includes('balancing') || categoryStr.includes('balancing')))) {
+    } else if (stepStr.startsWith('cleanser_balancing') || (isCleanserContext && stepStr.includes('balancing'))) {
       categories.push('cleanser_balancing');
-    } else if (stepStr.startsWith('cleanser_deep') || stepStr.includes('deep') || categoryStr.includes('deep')) {
+    } else if (stepStr.startsWith('cleanser_deep') || (isCleanserContext && stepStr.includes('deep'))) {
       categories.push('cleanser_deep');
     } else if (stepStr.startsWith('cleanser') || categoryStr === 'cleanser' || stepStr === 'cleanser') {
       // Если просто 'cleanser' без уточнения, пробуем все варианты для максимальной совместимости
@@ -1065,16 +1073,17 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('cleanser_deep');
     }
     
-    if (stepStr.startsWith('toner_hydrating') || categoryStr.includes('hydrating')) {
+    // ВАЖНО: не маппим по "hydrating/soothing" без контекста шага — иначе один продукт попадает в toner/serum/moisturizer одновременно
+    if (stepStr.startsWith('toner_hydrating') || (isTonerContext && stepStr.includes('hydrating'))) {
       categories.push('toner_hydrating');
-    } else if (stepStr.startsWith('toner_soothing') || (stepStr.includes('toner') && (stepStr.includes('soothing') || categoryStr.includes('soothing')))) {
+    } else if (stepStr.startsWith('toner_soothing') || (isTonerContext && stepStr.includes('soothing'))) {
       categories.push('toner_soothing');
-    } else if (stepStr.startsWith('toner_exfoliant') || stepStr.startsWith('toner_acid') || (stepStr.includes('toner') && (stepStr.includes('exfoliant') || stepStr.includes('acid') || stepStr.includes('aha') || stepStr.includes('bha') || stepStr.includes('pha')))) {
+    } else if (stepStr.startsWith('toner_exfoliant') || stepStr.startsWith('toner_acid') || (isTonerContext && (stepStr.includes('exfoliant') || stepStr.includes('acid') || stepStr.includes('aha') || stepStr.includes('bha') || stepStr.includes('pha')))) {
       categories.push('toner_exfoliant');
       categories.push('toner_acid');
-    } else if (stepStr.startsWith('toner_aha') || (stepStr.includes('toner') && stepStr.includes('aha'))) {
+    } else if (stepStr.startsWith('toner_aha') || (isTonerContext && stepStr.includes('aha'))) {
       categories.push('toner_aha');
-    } else if (stepStr.startsWith('toner_bha') || (stepStr.includes('toner') && stepStr.includes('bha'))) {
+    } else if (stepStr.startsWith('toner_bha') || (isTonerContext && stepStr.includes('bha'))) {
       categories.push('toner_bha');
     } else if (stepStr === 'toner' || categoryStr === 'toner') {
       // Если просто 'toner' без уточнения, пробуем основные варианты
@@ -1083,21 +1092,21 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('toner_exfoliant');
     }
     
-    if (stepStr.startsWith('serum_hydrating') || categoryStr.includes('hydrating')) {
+    if (stepStr.startsWith('serum_hydrating') || (isSerumContext && stepStr.includes('hydrating'))) {
       categories.push('serum_hydrating');
-    } else if (stepStr.startsWith('serum_niacinamide') || stepStr.includes('niacinamide') || categoryStr.includes('niacinamide')) {
+    } else if (stepStr.startsWith('serum_niacinamide') || (isSerumContext && stepStr.includes('niacinamide'))) {
       categories.push('serum_niacinamide');
-    } else if (stepStr.startsWith('serum_vitc') || stepStr.includes('vitamin c') || stepStr.includes('vitc') || categoryStr.includes('vitamin c')) {
+    } else if (stepStr.startsWith('serum_vitc') || (isSerumContext && (stepStr.includes('vitamin c') || stepStr.includes('vitc')))) {
       categories.push('serum_vitc');
-    } else if (stepStr.startsWith('serum_anti_redness') || stepStr.includes('anti-redness') || categoryStr.includes('anti-redness')) {
+    } else if (stepStr.startsWith('serum_anti_redness') || (isSerumContext && stepStr.includes('anti-redness'))) {
       categories.push('serum_anti_redness');
-    } else if (stepStr.startsWith('serum_brightening') || stepStr.includes('brightening') || categoryStr.includes('brightening')) {
+    } else if (stepStr.startsWith('serum_brightening') || (isSerumContext && stepStr.includes('brightening'))) {
       categories.push('serum_brightening_soft');
-    } else if (stepStr.startsWith('serum_peptide') || stepStr.includes('peptide') || categoryStr.includes('peptide') || stepStr.includes('copper peptide')) {
+    } else if (stepStr.startsWith('serum_peptide') || (isSerumContext && (stepStr.includes('peptide') || stepStr.includes('copper peptide')))) {
       categories.push('serum_peptide');
-    } else if (stepStr.startsWith('serum_antiage') || (stepStr.includes('serum') && (stepStr.includes('antiage') || stepStr.includes('anti-age')))) {
+    } else if (stepStr.startsWith('serum_antiage') || (isSerumContext && (stepStr.includes('antiage') || stepStr.includes('anti-age')))) {
       categories.push('serum_antiage');
-    } else if (stepStr.startsWith('serum_exfoliant') || (stepStr.includes('serum') && (stepStr.includes('lactic') || stepStr.includes('mandelic') || stepStr.includes('exfoliant')))) {
+    } else if (stepStr.startsWith('serum_exfoliant') || (isSerumContext && (stepStr.includes('lactic') || stepStr.includes('mandelic') || stepStr.includes('exfoliant')))) {
       categories.push('serum_exfoliant');
     } else if (stepStr === 'serum' || categoryStr === 'serum') {
       // Если просто 'serum' без уточнения, пробуем основные варианты
@@ -1140,13 +1149,13 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       categories.push('treatment_acid');
     }
     
-    if (stepStr.startsWith('moisturizer_light') || categoryStr.includes('light')) {
+    if (stepStr.startsWith('moisturizer_light') || (isMoisturizerContext && stepStr.includes('light'))) {
       categories.push('moisturizer_light');
-    } else if (stepStr.startsWith('moisturizer_balancing') || stepStr.includes('balancing') || categoryStr.includes('balancing')) {
+    } else if (stepStr.startsWith('moisturizer_balancing') || (isMoisturizerContext && stepStr.includes('balancing'))) {
       categories.push('moisturizer_balancing');
-    } else if (stepStr.startsWith('moisturizer_barrier') || stepStr.includes('barrier') || categoryStr.includes('barrier')) {
+    } else if (stepStr.startsWith('moisturizer_barrier') || (isMoisturizerContext && stepStr.includes('barrier'))) {
       categories.push('moisturizer_barrier');
-    } else if (stepStr.startsWith('moisturizer_soothing') || (stepStr.includes('moisturizer') && (stepStr.includes('soothing') || categoryStr.includes('soothing')))) {
+    } else if (stepStr.startsWith('moisturizer_soothing') || (isMoisturizerContext && stepStr.includes('soothing'))) {
       categories.push('moisturizer_soothing');
     } else if (stepStr === 'moisturizer' || stepStr === 'cream' || categoryStr === 'moisturizer' || categoryStr === 'cream') {
       // ИСПРАВЛЕНО: Если просто 'moisturizer' или 'cream' без уточнения, пробуем варианты в зависимости от типа кожи
@@ -3318,17 +3327,18 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     }
     
     // 2. Проверка дубликатов продуктов в одном дне
+    // ИСПРАВЛЕНО: повтор одного и того же продукта в рамках ОДНОГО базового шага (например cleanser утром+вечером)
+    // допустим. Предупреждаем только если один productId используется в РАЗНЫХ базовых шагах в рамках дня,
+    // что указывает на ошибку маппинга "продукт → stepCategory".
     plan.days.forEach((day, dayIndex) => {
-      const productIdsInDay = new Set<string>();
-      const duplicateProducts: string[] = [];
+      const productBaseSteps = new Map<string, Set<string>>();
       
       [...day.morning, ...day.evening, ...day.weekly].forEach(step => {
         if (step.productId) {
-          if (productIdsInDay.has(step.productId)) {
-            duplicateProducts.push(step.productId);
-          } else {
-            productIdsInDay.add(step.productId);
-          }
+          const base = getBaseStepFromStepCategory(step.stepCategory as StepCategory);
+          const set = productBaseSteps.get(step.productId) ?? new Set<string>();
+          set.add(base);
+          productBaseSteps.set(step.productId, set);
         }
       });
       
@@ -3375,8 +3385,12 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         }
       }
       
-      if (duplicateProducts.length > 0) {
-        warnings.push(`Day ${dayIndex + 1}: duplicate products: ${duplicateProducts.join(', ')}`);
+      const crossBaseDuplicates = Array.from(productBaseSteps.entries())
+        .filter(([, bases]) => bases.size > 1)
+        .map(([productId]) => productId);
+
+      if (crossBaseDuplicates.length > 0) {
+        warnings.push(`Day ${dayIndex + 1}: duplicate products across different steps: ${crossBaseDuplicates.join(', ')}`);
       }
     });
     
@@ -3426,21 +3440,37 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   };
   
   // ИСПРАВЛЕНО: assertPlanInvariants теперь async, используем await
-  // ИСПРАВЛЕНО: устраняем дубли продуктов в рамках одного дня
+  // ИСПРАВЛЕНО: устраняем дубли продуктов в рамках одного дня МЕЖДУ разными базовыми шагами.
   // В прод-логах видно массовое нарушение инварианта: "Day N: duplicate products: 577, 479, 577"
-  // Это приводит к повтору одного и того же продукта в нескольких шагах одного дня.
+  // Это признак того, что один и тот же продукт используется в разных stepCategory (например, toner/moisturizer),
+  // что неверно. При этом повтор одного и того же продукта утром и вечером в рамках ОДНОГО базового шага
+  // (например, cleanser) допустим и не должен принудительно "разводиться" разными продуктами.
   const fixDuplicateProductsInDay = (day: any, dayIndex: number) => {
-    const used = new Set<number>();
+    const productToBaseStep = new Map<number, string>();
     const parseId = (v: any): number | null => {
       if (v === null || v === undefined) return null;
       const n = typeof v === 'number' ? v : Number(String(v));
       return Number.isFinite(n) ? n : null;
     };
+    const getStepBase = (step: any): string | null => {
+      const stepCategory = step?.stepCategory as any;
+      if (!stepCategory) return null;
+      try {
+        return getBaseStepFromStepCategory(stepCategory);
+      } catch {
+        return null;
+      }
+    };
     const findReplacementFromAlternatives = (step: any): number | null => {
+      const base = getStepBase(step);
       const alts = Array.isArray(step?.alternatives) ? step.alternatives : [];
       for (const alt of alts) {
         const altId = parseId(alt?.productId ?? alt?.id);
-        if (altId && !used.has(altId)) return altId;
+        if (!altId) continue;
+        const existingBase = productToBaseStep.get(altId);
+        if (!existingBase || (base && existingBase === base)) {
+          return altId;
+        }
       }
       return null;
     };
@@ -3451,7 +3481,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       if (!base) return null;
       for (const p of selectedProducts) {
         if (!p?.id) continue;
-        if (used.has(p.id)) continue;
+        const existingBase = productToBaseStep.get(p.id);
+        if (existingBase && existingBase !== base) continue;
         const pStep = String((p as any).step || '').toLowerCase();
         if (pStep === base || pStep.startsWith(base)) {
           return p.id;
@@ -3462,8 +3493,14 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     const processStep = (step: any, slot: 'morning' | 'evening' | 'weekly') => {
       const currentId = parseId(step?.productId);
       if (!currentId) return;
-      if (!used.has(currentId)) {
-        used.add(currentId);
+      const base = getStepBase(step) || 'unknown';
+      const existingBase = productToBaseStep.get(currentId);
+      if (!existingBase) {
+        productToBaseStep.set(currentId, base);
+        return;
+      }
+      // Повтор того же продукта в рамках одного базового шага допустим (например cleanser утром+вечером)
+      if (existingBase === base) {
         return;
       }
 
@@ -3476,7 +3513,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       if (replacementId) {
         const old = currentId;
         step.productId = String(replacementId);
-        used.add(replacementId);
+        productToBaseStep.set(replacementId, base);
         warnings.push(`Day ${dayIndex + 1}: duplicate product replaced in ${slot}/${step.stepCategory} (${old} → ${replacementId})`);
       } else {
         // Последний fallback: убираем productId, чтобы не повторять один и тот же продукт
