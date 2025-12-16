@@ -92,16 +92,17 @@ export async function PUT(request: NextRequest) {
 
           if (activeQuestionnaire) {
             // Обновляем или создаем ответ USER_NAME
+            // ИСПРАВЛЕНО: Используем правильный unique constraint [userId, questionnaireId, questionId]
             await tx.userAnswer.upsert({
               where: {
-                userId_questionId: {
+                userId_questionnaireId_questionId: {
                   userId,
+                  questionnaireId: activeQuestionnaire.id,
                   questionId: nameQuestion.id,
                 },
               },
               update: {
                 answerValue: firstName || null,
-                updatedAt: new Date(),
               },
               create: {
                 userId,
