@@ -293,8 +293,10 @@ export default function PlanPage() {
       // только для старого формата (weeks), чтобы не тратить лишнее время
       const usingPlan28 = !!plan.plan28;
       const needsProfile = !usingPlan28 && !!plan.weeks && plan.weeks.length > 0;
+      const needsLegacyFields = !usingPlan28 && !!plan.weeks && plan.weeks.length > 0;
 
       let profile: ProfileResponse | null = null;
+      let userProfile: any | null = null;
       let wishlist: number[] = [];
       let planProgress: { currentDay: number; completedDays: number[] } = {
         currentDay: 1,
@@ -302,10 +304,11 @@ export default function PlanPage() {
       };
 
       try {
-        const [profileResult, wishlistResult, progressResult] = await Promise.allSettled([
+        const [profileResult, wishlistResult, progressResult, userResult] = await Promise.allSettled([
           needsProfile ? (api.getCurrentProfile() as Promise<ProfileResponse | null>) : Promise.resolve(null),
           api.getWishlist() as Promise<any>,
           api.getPlanProgress() as Promise<{ currentDay: number; completedDays: number[] }>,
+          needsLegacyFields ? (api.getUserProfile() as Promise<any>) : Promise.resolve(null),
         ]);
 
         // Профиль нужен только для старого формата
@@ -327,6 +330,15 @@ export default function PlanPage() {
           }
         } else if (usingPlan28 && process.env.NODE_ENV === 'development') {
           clientLogger.log('✅ Using plan28 format, skipping profile load');
+        }
+
+        // User profile нужен только для legacy-компонента (старый формат weeks)
+        if (needsLegacyFields) {
+          if (userResult.status === 'fulfilled') {
+            userProfile = userResult.value;
+          } else if (process.env.NODE_ENV === 'development') {
+            clientLogger.warn('Could not load user profile for legacy plan format:', userResult.reason);
+          }
         }
 
         // Wishlist
@@ -590,6 +602,18 @@ export default function PlanPage() {
         weeks: plan.weeks || [],
         productsMap: productsMap, // Map передается напрямую
         products: productsMap, // Также сохраняем в products для обратной совместимости
+        // Legacy-поля: нужны, если пришёл старый формат (weeks без plan28)
+        user: needsLegacyFields && userProfile ? {
+          id: String(userProfile.id || ''),
+          telegramId: String(userProfile.telegramId || ''),
+          firstName: userProfile.firstName ?? null,
+          lastName: userProfile.lastName ?? null,
+        } : (needsLegacyFields ? {
+          id: '',
+          telegramId: '',
+          firstName: null,
+          lastName: null,
+        } : undefined),
         profile: profile ? {
           id: String(profile.id), // Преобразуем id в строку для совместимости
           skinType: profile.skinType,
@@ -599,10 +623,18 @@ export default function PlanPage() {
           acneLevel: profile.acneLevel || null,
           scores: profile.scores || [], // Значение по умолчанию
         } : undefined,
+        plan: needsLegacyFields ? {
+          weeks: (plan.weeks || []).map((w: any) => ({
+            week: w.week,
+            days: Array.isArray(w.days) ? w.days : [],
+          })),
+        } : undefined,
+        progress: planProgress,
         scores,
         wishlist,
         currentDay: currentDayGlobal,
-        currentWeek: currentWeekIndex,
+        // В legacy-компоненте ожидается номер недели (1..4), а не индекс 0..3
+        currentWeek,
         todayProducts,
         todayMorning,
         todayEvening,
