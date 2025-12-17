@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
+    const origin = request.nextUrl.origin;
+
     // ВАЖНО: На Vercel `NODE_ENV=production` может быть и в preview окружениях.
     // Для разделения "боевой прод" vs "тест/preview" используем `VERCEL_ENV`.
     // - production: запрещаем симуляцию (нужна реальная интеграция)
@@ -114,8 +116,10 @@ export async function POST(request: NextRequest) {
       return ApiResponse.success({
         paymentId: existingPayment.id,
         status: existingPayment.status,
+        // ИСПРАВЛЕНО: в preview/dev мы используем тестовый checkout (/payments/test).
+        // Возвращаем его и для идемпотентных платежей, иначе PaymentGate не сможет симулировать вебхук.
         paymentUrl: existingPayment.providerPaymentId
-          ? `https://payment-provider.com/pay/${existingPayment.providerPaymentId}`
+          ? `${origin}/payments/test?payment_id=${existingPayment.providerPaymentId}`
           : null,
       });
     }
@@ -170,7 +174,8 @@ export async function POST(request: NextRequest) {
     const providerPaymentId = crypto.randomUUID();
     
     // Тестовая ссылка на оплату (в реальности это будет confirmation.confirmation_url от ЮKassa)
-    const paymentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payments/test?payment_id=${providerPaymentId}`;
+    // ИСПРАВЛЕНО: используем origin текущего deployment (preview тоже будет корректным)
+    const paymentUrl = `${origin}/payments/test?payment_id=${providerPaymentId}`;
 
     // Обновляем платеж с providerPaymentId и данными от ЮKassa
     await prisma.payment.update({

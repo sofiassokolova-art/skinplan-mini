@@ -237,71 +237,34 @@ export function PaymentGate({
         setPaymentId(paymentData.paymentId);
       }
 
-      // В тестовой среде автоматически симулируем успешный платеж
-      const isTestEnv = process.env.NODE_ENV === 'development';
-      
-      if (isTestEnv && paymentData.paymentId) {
-        // Автоматически симулируем вебхук от ЮKassa в тестовой среде
-        try {
-          const webhookResponse = await fetch('/api/payments/test-webhook', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Telegram-Init-Data': initData,
-            },
-            body: JSON.stringify({
-              paymentId: paymentData.paymentId,
-            }),
-          });
-
-          if (webhookResponse.ok) {
-            // Платеж успешно симулирован, polling автоматически обнаружит изменение
-            toast.success('Тестовая оплата успешно обработана!');
-            setPaymentId(paymentData.paymentId);
-            setIsProcessing(false);
-            return;
-          }
-        } catch (webhookError) {
-          console.warn('Failed to simulate webhook in test environment:', webhookError);
-          // Продолжаем обычный поток
-        }
-      }
+      const paymentUrl = typeof paymentData.paymentUrl === 'string' ? paymentData.paymentUrl : '';
+      const isSimulatedCheckout = paymentUrl.includes('/payments/test');
 
       // Если есть paymentUrl - открываем его (для внешних платежных систем)
-      if (paymentData.paymentUrl) {
-        // В тестовой среде показываем информацию о тестовом платеже
-        if (isTestEnv) {
+      if (paymentUrl) {
+        if (isSimulatedCheckout && paymentData.paymentId) {
+          // ИСПРАВЛЕНО: preview deployment на Vercel имеет NODE_ENV=production,
+          // поэтому нельзя завязываться на NODE_ENV для симуляции.
+          // Критерий симуляции: checkout URL ведет на /payments/test.
           toast('Тестовый платеж создан. Симулируем оплату...', { duration: 2000 });
-          // Небольшая задержка перед симуляцией для реалистичности
           setTimeout(async () => {
             try {
-              const webhookResponse = await fetch('/api/payments/test-webhook', {
+              await fetch('/api/payments/test-webhook', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Telegram-Init-Data': initData,
                 },
-                body: JSON.stringify({
-                  paymentId: paymentData.paymentId,
-                }),
+                body: JSON.stringify({ paymentId: paymentData.paymentId }),
               });
-
-              if (webhookResponse.ok) {
-                setPaymentId(paymentData.paymentId);
-              }
+              // Polling добьёт entitlement; дополнительно держим paymentId установленным.
+              setPaymentId(paymentData.paymentId);
             } catch (error) {
               console.warn('Failed to simulate webhook:', error);
             }
-          }, 1000);
+          }, 800);
         } else {
-          // Для Telegram Payments можно использовать window.Telegram.WebApp.openInvoice
-          // Для других провайдеров - window.open
-          // TODO: Реализовать открытие Telegram Invoice когда будет доступно
-          // if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openInvoice) {
-          //   (window as any).Telegram.WebApp.openInvoice(paymentData.paymentUrl, (status: string) => { ... });
-          // } else {
-          window.open(paymentData.paymentUrl, '_blank');
-          // }
+          window.open(paymentUrl, '_blank');
         }
       } else {
         // Если нет paymentUrl, возможно это Telegram Payments или другой провайдер
