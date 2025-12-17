@@ -28,6 +28,11 @@ export async function logDbFingerprint(tag: string) {
     const databaseUrl = process.env.DATABASE_URL || '';
     const urlParts = databaseUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):?(\d+)?\/([^?]+)/);
     
+    // ИСПРАВЛЕНО: Для Neon pooler inet_server_addr() возвращает 127.0.0.1/32
+    // Это нормально для pooled connections. Используем реальный хост из DATABASE_URL для сравнения.
+    const actualHost = urlParts ? urlParts[3] : fingerprint.host;
+    const actualPort = urlParts ? (urlParts[4] ? parseInt(urlParts[4], 10) : 5432) : fingerprint.port;
+    
     // Парсим все env переменные для сравнения
     const envVars = {
       DATABASE_URL: process.env.DATABASE_URL ? {
@@ -59,8 +64,13 @@ export async function logDbFingerprint(tag: string) {
         db: fingerprint.db,
         schema: fingerprint.schema,
         user: fingerprint.user,
-        host: fingerprint.host,
-        port: fingerprint.port,
+        // ИСПРАВЛЕНО: Для Neon pooler показываем реальный хост из DATABASE_URL
+        // inet_server_addr() возвращает 127.0.0.1/32 для pooled connections (это нормально)
+        host: actualHost,
+        port: actualPort,
+        // Дополнительно показываем, что видит PostgreSQL (может быть localhost для pooler)
+        pgServerHost: fingerprint.host,
+        pgServerPort: fingerprint.port,
       },
       // Информация о env переменных (для сравнения между роутами)
       envVars,
@@ -79,8 +89,12 @@ export async function logDbFingerprint(tag: string) {
         db: fingerprint.db,
         schema: fingerprint.schema,
         user: fingerprint.user,
-        host: fingerprint.host,
-        port: fingerprint.port,
+        // ИСПРАВЛЕНО: Показываем реальный хост из DATABASE_URL
+        host: actualHost,
+        port: actualPort,
+        // Дополнительно показываем, что видит PostgreSQL
+        pgServerHost: fingerprint.host,
+        pgServerPort: fingerprint.port,
       },
       envVars: {
         DATABASE_URL: process.env.DATABASE_URL ? {

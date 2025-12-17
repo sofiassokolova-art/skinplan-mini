@@ -3349,16 +3349,28 @@ export default function QuizPage() {
     
     // ИСПРАВЛЕНО: Проверяем и корректируем currentQuestionIndex, если он выходит за пределы
     // Это может произойти при неправильно сохраненном прогрессе, после фильтрации вопросов или при первой загрузке
-    if (currentQuestionIndex >= allQuestions.length && !isSubmitting && !showResumeScreen) {
-      // Если все вопросы отвечены, устанавливаем индекс на последний вопрос
-      // Это позволит автоматической отправке сработать корректно
-      const correctedIndex = allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0;
+    const answersCount = Object.keys(answers).length;
+    const isQuizCompleted = allQuestions.length > 0 && answersCount >= allQuestions.length;
+    
+    // ВАЖНО: currentQuestionIndex === allQuestions.length — это валидное состояние
+    // (все вопросы отвечены, автоотправка проверяет `>= allQuestions.length`).
+    const isOutOfBounds =
+      currentQuestionIndex > allQuestions.length ||
+      (currentQuestionIndex === allQuestions.length && !isQuizCompleted);
+    
+    if (isOutOfBounds && !isSubmitting && !showResumeScreen) {
+      // Если анкета завершена — держим индекс на allQuestions.length для автоотправки.
+      // Иначе корректируем на последний валидный вопрос.
+      const correctedIndex = isQuizCompleted
+        ? allQuestions.length
+        : (allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0);
       
       clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         correctedIndex,
-        answersCount: Object.keys(answers).length,
+        answersCount,
+        isQuizCompleted,
         isSubmitting,
         hasResumed,
         showResumeScreen,
@@ -3377,15 +3389,24 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Проверяем, что currentQuestionIndex валиден для текущего allQuestions
     // Это важно после изменения фильтрации (например, после ответа на вопрос про бюджет)
     // Проверяем независимо от hasResumed, так как фильтрация может измениться в любой момент
-    if (currentQuestionIndex >= allQuestions.length && !isSubmitting && !showResumeScreen) {
-      // Если все вопросы отвечены, устанавливаем индекс на последний вопрос
-      // Это позволит автоматической отправке сработать корректно
-      const correctedIndex = allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0;
+    const answersCount = Object.keys(answers).length;
+    const isQuizCompleted = allQuestions.length > 0 && answersCount >= allQuestions.length;
+    
+    const isOutOfBounds =
+      currentQuestionIndex > allQuestions.length ||
+      (currentQuestionIndex === allQuestions.length && !isQuizCompleted);
+    
+    if (isOutOfBounds && !isSubmitting && !showResumeScreen) {
+      const correctedIndex = isQuizCompleted
+        ? allQuestions.length
+        : (allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0);
       
       clientLogger.log('⚠️ currentQuestionIndex выходит за пределы после фильтрации, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         correctedIndex,
+        answersCount,
+        isQuizCompleted,
         hasResumed,
         questionIds: allQuestions.map((q: Question) => q.id),
       });

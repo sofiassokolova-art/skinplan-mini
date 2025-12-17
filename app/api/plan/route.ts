@@ -120,14 +120,69 @@ export async function GET(request: NextRequest) {
 
     if (!profile) {
       const duration = Date.now() - startTime;
-      // ИСПРАВЛЕНО: Правильная семантика - 200 + null для отсутствия профиля
-      // Отсутствие профиля - это не ошибка сервера, а нормальное состояние (пользователь еще не прошел анкету)
-      // Это предотвращает проблемы с кэшированием 404 и улучшает UX
       logger.warn('No skin profile found for user after retry', {
         userId,
         // Эти поля помогут сравнить с /api/questionnaire/answers
         // Если там профиль создался, а здесь не находится - проблема в userId или фильтрах
       });
+      
+      // ИСПРАВЛЕНО: Даже без профиля пользователь может иметь уже сохранённый план (например, временная
+      // read-after-write неконсистентность, проблемы с current_profile_id, или ручные операции с профилем).
+      // В этом случае НЕ вынуждаем проходить анкету заново — пробуем отдать последний план по userId.
+      try {
+        const latestPlanAnyVersion = await prisma.plan28.findFirst({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            planData: true,
+            createdAt: true,
+            profileVersion: true,
+            id: true,
+          },
+        });
+        
+        const planData = latestPlanAnyVersion?.planData as any;
+        const hasPlan28 =
+          !!planData &&
+          Array.isArray(planData?.days) &&
+          planData.days.length > 0;
+        
+        if (latestPlanAnyVersion && hasPlan28) {
+          const daysSinceCreation = Math.floor(
+            (Date.now() - latestPlanAnyVersion.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          
+          const planResponse: PlanResponse = {
+            plan28: planData as Plan28,
+            expired: daysSinceCreation >= 28,
+            daysSinceCreation,
+          };
+          
+          logger.warn('Returning latest plan without resolved profile (fallback)', {
+            userId,
+            planId: latestPlanAnyVersion.id,
+            planProfileVersion: latestPlanAnyVersion.profileVersion,
+            daysSinceCreation,
+            expired: daysSinceCreation >= 28,
+          });
+          
+          logApiRequest(method, path, 200, duration, userId);
+          return ApiResponse.success({
+            ...planResponse,
+            state: 'plan_found_without_profile',
+            profileVersion: latestPlanAnyVersion.profileVersion,
+          } as any);
+        }
+      } catch (fallbackErr: any) {
+        logger.warn('Failed to load latest plan without profile (non-critical)', {
+          userId,
+          error: fallbackErr?.message,
+        });
+      }
+      
+      // Правильная семантика - 200 + null для отсутствия профиля
+      // Отсутствие профиля - это не ошибка сервера, а нормальное состояние (пользователь еще не прошел анкету)
+      // Это предотвращает проблемы с кэшированием 404 и улучшает UX
       logApiRequest(method, path, 200, duration, userId);
       return ApiResponse.success({
         plan28: null,
