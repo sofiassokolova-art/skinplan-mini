@@ -156,7 +156,7 @@ export default function HomePage() {
         }
       };
 
-      const checkPlanExists = async () => {
+      const checkPlanExists = async (): Promise<boolean> => {
         try {
           const plan = await api.getPlan() as any;
           const hasPlan28 =
@@ -165,19 +165,24 @@ export default function HomePage() {
             Array.isArray(plan.plan28.days) &&
             plan.plan28.days.length > 0;
           const hasWeeks = plan && Array.isArray(plan.weeks) && plan.weeks.length > 0;
-          setHasPlan(!!hasPlan28 || !!hasWeeks);
+          const exists = !!hasPlan28 || !!hasWeeks;
+          setHasPlan(exists);
           if (hasPlan28 || hasWeeks) {
             clientLogger.log('✅ Plan exists for user, disabling CTA on home');
           } else {
             clientLogger.log('ℹ️ Plan not found when checking from home page');
           }
+          return exists;
         } catch (err: any) {
           if (err?.status === 404 || err?.isNotFound) {
             // Плана нет — это нормально для нового пользователя
             setHasPlan(false);
             clientLogger.log('ℹ️ Plan not found (404) when checking from home page');
+            return false;
           } else {
             clientLogger.warn('Could not check plan existence from home page', err);
+            // Не знаем наверняка — считаем, что плана нет, но не редиректим тут.
+            return false;
           }
         }
       };
@@ -194,23 +199,31 @@ export default function HomePage() {
         return;
       }
 
+      // Сначала проверяем, есть ли уже сохранённый план (чтобы НЕ редиректить на анкету ошибочно,
+      // если профиль временно не читается / есть лаг реплики / есть план без профиля).
+      const planExists = await checkPlanExists();
+
       // Сначала проверяем, существует ли профиль, чтобы не дергать тяжёлые эндпоинты без профиля
       try {
         const profile = await api.getCurrentProfile();
         if (!profile) {
-          // Профиля нет - считаем, что пользователь ещё не проходил анкету
-          // НО: не редиректим, если только что отправили анкету (уже обработано выше)
+          // Профиля нет. Если плана тоже нет — пользователь действительно новый → /quiz.
+          // Если план уже есть — остаёмся на главной и пробуем загрузить контент.
           setLoading(false);
-          router.replace('/quiz');
-          return;
+          if (!planExists) {
+            router.replace('/quiz');
+            return;
+          }
         }
       } catch (err: any) {
         // Если бэкенд вернул 404 / isNotFound - это нормальный случай "нет профиля"
         // НО: не редиректим, если только что отправили анкету (уже обработано выше)
         if (err?.status === 404 || err?.isNotFound) {
           setLoading(false);
-          router.replace('/quiz');
-          return;
+          if (!planExists) {
+            router.replace('/quiz');
+            return;
+          }
         }
         // Другие ошибки не блокируют загрузку - просто логируем и продолжаем
         clientLogger.warn('Could not check current profile before loading home data', err);
@@ -219,8 +232,6 @@ export default function HomePage() {
       // Загружаем рекомендации (initData передается автоматически в запросе)
       // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true
       await loadRecommendations();
-      // Проверяем, есть ли уже сохранённый план (чтобы не показывать CTA, если план есть)
-      await checkPlanExists();
       // Загружаем имя в фоне после загрузки рекомендаций и проверки плана
       loadUserNameAsync();
     };
