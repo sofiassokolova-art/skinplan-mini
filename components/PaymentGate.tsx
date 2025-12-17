@@ -43,11 +43,20 @@ async function fetchEntitlementCodes(initData: string): Promise<string[]> {
 
   if (!response.ok) return [];
   const data = await response.json();
-  const entitlements = data?.data?.entitlements;
-  if (!Array.isArray(entitlements)) return [];
-  return entitlements
-    .map((e: any) => (typeof e?.code === 'string' ? e.code : null))
-    .filter((c: any): c is string => typeof c === 'string');
+  // ApiResponse.success() в проекте возвращает payload напрямую (без { data: ... }),
+  // но поддерживаем оба формата на всякий случай.
+  const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
+
+  const entitlements = payload?.entitlements;
+  if (Array.isArray(entitlements)) {
+    return entitlements
+      .map((e: any) => (typeof e?.code === 'string' ? e.code : null))
+      .filter((c: any): c is string => typeof c === 'string');
+  }
+
+  // Fallback: если API вернул только paid=true без списка
+  if (payload?.paid === true) return ['paid_access'];
+  return [];
 }
 
 export function PaymentGate({
