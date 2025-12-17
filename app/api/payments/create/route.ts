@@ -33,6 +33,16 @@ function entitlementCodeForProduct(productCode: string): string {
   return 'paid_access';
 }
 
+function formatAmountForProvider(amountMinor: number): string {
+  // YooKassa ожидает строку с 2 знаками после запятой (в рублях)
+  const value = Math.max(0, Math.round(amountMinor)) / 100;
+  return value.toFixed(2);
+}
+
+function hasYooKassaConfig(): boolean {
+  return Boolean(process.env.YOOKASSA_SHOP_ID && process.env.YOOKASSA_SECRET_KEY);
+}
+
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const method = 'POST';
@@ -40,14 +50,6 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
-    // ИСПРАВЛЕНО: В production нельзя отдавать "test" paymentUrl и симулировать провайдера.
-    // Если реальная интеграция не настроена — возвращаем понятную ошибку, чтобы пользователь не застревал в pending.
-    if (process.env.NODE_ENV === 'production') {
-      const duration = Date.now() - startTime;
-      logApiRequest(method, path, 501, duration);
-      return ApiResponse.error('Payments are not configured in production yet', 501);
-    }
-
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
@@ -106,9 +108,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.success({
         paymentId: existingPayment.id,
         status: existingPayment.status,
-        paymentUrl: existingPayment.providerPaymentId
-          ? `https://payment-provider.com/pay/${existingPayment.providerPaymentId}`
-          : null,
+        paymentUrl: null,
       });
     }
 
@@ -141,53 +141,106 @@ export async function POST(request: NextRequest) {
       provider: 'yookassa',
     });
 
-    // ИМИТАЦИЯ ЮKassa для тестовой среды
-    // В реальной среде здесь будет вызов API ЮKassa:
-    // const yooKassaResponse = await fetch('https://api.yookassa.ru/v3/payments', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': `Basic ${Buffer.from(`${shopId}:${secretKey}`).toString('base64')}`,
-    //     'Idempotence-Key': finalIdempotencyKey,
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     amount: { value: (product.amount / 100).toFixed(2), currency: product.currency },
-    //     confirmation: { type: 'redirect', return_url: `${process.env.NEXT_PUBLIC_APP_URL}/plan` },
-    //     description: `Оплата ${productCode}`,
-    //   }),
-    // });
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    // Генерируем тестовый providerPaymentId в формате ЮKassa (UUID)
-    const crypto = await import('crypto');
-    const providerPaymentId = crypto.randomUUID();
-    
-    // Тестовая ссылка на оплату (в реальности это будет confirmation.confirmation_url от ЮKassa)
-    const paymentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payments/test?payment_id=${providerPaymentId}`;
+    // В production создаём реальный платёж через YooKassa, если настроены креды.
+    // Если не настроены — возвращаем 501 (как и раньше), чтобы пользователь не застревал в pending.
+    let providerPaymentId: string | null = null;
+    let paymentUrl: string | null = null;
+    let providerPayload: any = null;
 
-    // Обновляем платеж с providerPaymentId и данными от ЮKassa
+    if (isProduction) {
+      if (!hasYooKassaConfig()) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 501, duration, userId);
+        return ApiResponse.error(
+          'Payments are not configured in production (missing YOOKASSA_SHOP_ID/YOOKASSA_SECRET_KEY)',
+          501
+        );
+      }
+
+      const shopId = process.env.YOOKASSA_SHOP_ID!;
+      const secretKey = process.env.YOOKASSA_SECRET_KEY!;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_APP_URL_FALLBACK || '';
+      const returnUrl = appUrl ? `${appUrl}/plan` : undefined;
+
+      const authHeader = `Basic ${Buffer.from(`${shopId}:${secretKey}`).toString('base64')}`;
+
+      const yooBody: any = {
+        amount: { value: formatAmountForProvider(product.amount), currency: product.currency },
+        capture: true,
+        description: `Оплата ${productCode}`,
+        metadata: {
+          paymentId: payment.id,
+          userId,
+          productCode,
+        },
+        confirmation: {
+          type: 'redirect',
+          ...(returnUrl ? { return_url: returnUrl } : {}),
+        },
+      };
+
+      const yooResp = await fetch('https://api.yookassa.ru/v3/payments', {
+        method: 'POST',
+        headers: {
+          Authorization: authHeader,
+          'Idempotence-Key': finalIdempotencyKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(yooBody),
+      });
+
+      const yooText = await yooResp.text();
+      if (!yooResp.ok) {
+        logger.error('YooKassa payment creation failed', {
+          userId,
+          paymentId: payment.id,
+          status: yooResp.status,
+          body: yooText?.slice?.(0, 2000),
+        });
+
+        // оставляем payment pending (можно будет ретраить) и возвращаем ошибку
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 502, duration, userId);
+        return ApiResponse.error('Payment provider error', 502);
+      }
+
+      providerPayload = yooText ? JSON.parse(yooText) : null;
+      providerPaymentId = providerPayload?.id || null;
+      paymentUrl = providerPayload?.confirmation?.confirmation_url || null;
+    } else {
+      // DEV: имитация YooKassa как раньше
+      const crypto = await import('crypto');
+      providerPaymentId = crypto.randomUUID();
+      paymentUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payments/test?payment_id=${providerPaymentId}`;
+      providerPayload = {
+        id: providerPaymentId,
+        status: 'pending',
+        amount: {
+          value: formatAmountForProvider(product.amount),
+          currency: product.currency,
+        },
+        confirmation: {
+          type: 'redirect',
+          confirmation_url: paymentUrl,
+        },
+        created_at: new Date().toISOString(),
+        description: `Оплата ${productCode}`,
+        metadata: {
+          paymentId: payment.id,
+          userId,
+          productCode,
+        },
+      };
+    }
+
+    // Обновляем платеж данными провайдера (или тестовой имитации)
     await prisma.payment.update({
       where: { id: payment.id },
       data: {
-        providerPaymentId,
-        providerPayload: {
-          // Имитация структуры ответа от ЮKassa
-          id: providerPaymentId,
-          status: 'pending',
-          amount: {
-            value: (product.amount / 100).toFixed(2),
-            currency: product.currency,
-          },
-          confirmation: {
-            type: 'redirect',
-            confirmation_url: paymentUrl,
-          },
-          created_at: new Date().toISOString(),
-          description: `Оплата ${productCode}`,
-          metadata: {
-            paymentId: payment.id,
-            userId,
-          },
-        },
+        providerPaymentId: providerPaymentId || null,
+        providerPayload: providerPayload || null,
       },
       select: { id: true },
     });
@@ -197,7 +250,7 @@ export async function POST(request: NextRequest) {
 
     return ApiResponse.success({
       paymentId: payment.id,
-      paymentUrl,
+      paymentUrl: paymentUrl || null,
       status: 'pending',
     });
   } catch (error: unknown) {
