@@ -115,7 +115,8 @@ export async function GET() {
     logger.info('Questionnaire formatted successfully', {
       questionnaireId: formatted.id,
       groupsCount: formatted.groups.length,
-      questionsCount: formatted.questions.length,
+      plainQuestionsCount: formatted.questions.length,
+      groupsQuestionsCount,
       totalQuestions: totalQuestionsCount,
     });
 

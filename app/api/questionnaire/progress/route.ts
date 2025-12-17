@@ -123,15 +123,34 @@ export async function GET(request: NextRequest) {
     }
 
     // Получаем все вопросы анкеты для определения индексов
-    const allQuestions = await prisma.question.findMany({
-      where: {
-        questionnaireId: activeQuestionnaire.id,
+    // ВАЖНО: порядок вопросов должен совпадать с `/api/questionnaire/active`
+    // и тем, как фронтенд формирует allQuestionsRaw:
+    // 1) группы по group.position asc, внутри группы вопросы по question.position asc
+    // 2) затем вопросы без группы по question.position asc
+    const questionnaireForOrdering = await prisma.questionnaire.findFirst({
+      where: { id: activeQuestionnaire.id },
+      include: {
+        questionGroups: {
+          include: {
+            questions: {
+              orderBy: { position: 'asc' },
+              select: { id: true },
+            },
+          },
+          orderBy: { position: 'asc' },
+        },
+        questions: {
+          where: { groupId: null },
+          orderBy: { position: 'asc' },
+          select: { id: true },
+        },
       },
-      orderBy: [
-        { groupId: 'asc' },
-        { position: 'asc' },
-      ],
     });
+
+    const allQuestions = [
+      ...(questionnaireForOrdering?.questionGroups ?? []).flatMap((g) => g.questions ?? []),
+      ...(questionnaireForOrdering?.questions ?? []),
+    ];
 
     // Находим последний отвеченный вопрос
     const answeredQuestionIds = new Set(userAnswers.map(a => a.questionId));
