@@ -26,8 +26,14 @@ function entitlementCodeForProduct(productCode: string): string {
  * Body: { paymentId: "payment_id_from_db" }
  */
 export async function POST(request: NextRequest) {
-  // В продакшене блокируем этот endpoint
-  if (process.env.NODE_ENV === 'production') {
+  // В продакшене блокируем этот endpoint.
+  // ВАЖНО: На Vercel `NODE_ENV=production` может быть и в preview окружениях,
+  // поэтому ориентируемся на `VERCEL_ENV`.
+  const vercelEnv = process.env.VERCEL_ENV; // 'production' | 'preview' | 'development' | undefined
+  const isProductionDeployment =
+    vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
+
+  if (isProductionDeployment) {
     // ИСПРАВЛЕНО: не спамим error-логами в проде (часто сканеры/боты дергают /test-* пути)
     // и не раскрываем наличие endpoint'а.
     return NextResponse.json({ error: 'Not found' }, { status: 404 });

@@ -40,9 +40,17 @@ export async function POST(request: NextRequest) {
   let userId: string | undefined;
 
   try {
-    // ИСПРАВЛЕНО: В production нельзя отдавать "test" paymentUrl и симулировать провайдера.
+    // ВАЖНО: На Vercel `NODE_ENV=production` может быть и в preview окружениях.
+    // Для разделения "боевой прод" vs "тест/preview" используем `VERCEL_ENV`.
+    // - production: запрещаем симуляцию (нужна реальная интеграция)
+    // - preview/development/локально: разрешаем симуляцию
+    const vercelEnv = process.env.VERCEL_ENV; // 'production' | 'preview' | 'development' | undefined
+    const isProductionDeployment =
+      vercelEnv === 'production' || (!vercelEnv && process.env.NODE_ENV === 'production');
+
+    // В production нельзя отдавать "test" paymentUrl и симулировать провайдера.
     // Если реальная интеграция не настроена — возвращаем понятную ошибку, чтобы пользователь не застревал в pending.
-    if (process.env.NODE_ENV === 'production') {
+    if (isProductionDeployment) {
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 501, duration);
       return ApiResponse.error('Payments are not configured in production yet', 501);
