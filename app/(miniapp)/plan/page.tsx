@@ -183,7 +183,10 @@ export default function PlanPage() {
       
       if (response.ok) {
         const data = await response.json();
-        if (data?.data?.ready) {
+        // ApiResponse.success() возвращает payload напрямую (без { data: ... }),
+        // но поддерживаем оба формата.
+        const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
+        if (payload?.ready) {
           // План готов - переходим к загрузке
           if (isMountedRef.current) {
             setGeneratingState('ready');
@@ -201,6 +204,23 @@ export default function PlanPage() {
       }
     } catch (error) {
       clientLogger.warn('Error polling plan status:', error);
+    }
+  };
+
+  const getPlanStatus = async (): Promise<{ status?: string; ready?: boolean } | null> => {
+    try {
+      const response = await fetch('/api/plan/status', {
+        cache: 'no-store',
+        headers: {
+          'X-Telegram-Init-Data': typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '',
+        },
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
+      return payload && typeof payload === 'object' ? payload : null;
+    } catch {
+      return null;
     }
   };
 
@@ -1025,6 +1045,21 @@ export default function PlanPage() {
             safeSetError(null);
             
             try {
+              // ИСПРАВЛЕНО: сначала проверяем status, чтобы не дергать /api/plan/generate лишний раз
+              // (особенно важно при 429 и при параллельной генерации после submitAnswers).
+              const status = await getPlanStatus();
+              if (status?.status === 'generating' && status.ready === false) {
+                clientLogger.log('⏳ Plan status=generating, starting polling instead of calling generate', {
+                  profileId: profileCheck.id,
+                  profileVersion: profileCheck.version,
+                });
+                setGeneratingState('generating');
+                if (!pollingIntervalRef.current) {
+                  pollingIntervalRef.current = setInterval(pollPlanStatus, 1500);
+                }
+                return;
+              }
+
               // ИСПРАВЛЕНО: Проверяем rate limit cooldown ПЕРЕД попыткой генерации
               if (hasActivePlanGenerationCooldown()) {
                 const waitMs = getPlanCooldownMsRemaining();
