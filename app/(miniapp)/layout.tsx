@@ -196,8 +196,7 @@ function LayoutFallback() {
   const hideNav = pathname === '/quiz' || 
                  pathname.startsWith('/quiz/') ||
                  pathname === '/loading' ||
-                 pathname.startsWith('/loading/') ||
-                 pathname === '/plan';
+                 pathname.startsWith('/loading/');
   
   return (
     <>

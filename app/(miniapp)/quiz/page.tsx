@@ -3663,6 +3663,47 @@ export default function QuizPage() {
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
+
+  // ИСПРАВЛЕНО: убираем "мигание" лоадера анкеты при редиректе на /plan.
+  // Когда ответы уже отправлены, мы ставим quiz_just_submitted и делаем window.location.replace('/plan?...').
+  // До реального ухода со страницы React может успеть отрендерить ветку loading -> "Загрузка анкеты...".
+  // Вместо этого показываем нейтральный лоадер "создаём план".
+  const justSubmittedUiGuard =
+    typeof window !== 'undefined' && sessionStorage.getItem('quiz_just_submitted') === 'true';
+  if (justSubmittedUiGuard) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '16px',
+        background: 'linear-gradient(135deg, #0A5F59 0%, #0d7a72 100%)',
+        color: 'white',
+        padding: '20px',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(255, 255, 255, 0.25)',
+          borderTop: '4px solid rgba(255, 255, 255, 0.95)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }} />
+        <div style={{ fontSize: '16px', fontWeight: 600 }}>Создаем ваш план ухода…</div>
+        <div style={{ fontSize: '13px', opacity: 0.85 }}>Это может занять до 1 минуты</div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={{ 

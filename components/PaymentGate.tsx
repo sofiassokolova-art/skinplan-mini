@@ -69,13 +69,32 @@ export function PaymentGate({
 }: PaymentGateProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [dbChecked, setDbChecked] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // hasPaid = "уверены, что оплата есть" (проверяется через Entitlement)
   const [hasPaid, setHasPaid] = useState(false);
   const [checkingDbPayment, setCheckingDbPayment] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  // ВАЖНО: paywall один на главной и плане.
+  // Если пользователь оплатил на одном экране и сразу перешел на другой,
+  // второй PaymentGate может успеть смонтироваться ДО обновления entitlement.
+  // Поэтому для plan_access мы короткое время перепроверяем entitlement в фоне.
+  useEffect(() => {
+    if (hasPaid) return;
+    if (productCode !== 'plan_access') return;
+
+    // До 30 секунд после монтирования обновляем статус раз в 2 секунды.
+    // Глобальный cache/promise внутри PaymentGate не даст спамить API слишком сильно.
+    const intervalId = setInterval(() => setRefreshTick((t) => t + 1), 2000);
+    const timeoutId = setTimeout(() => clearInterval(intervalId), 30000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, [hasPaid, productCode]);
 
   // ПРАВИЛЬНАЯ ЛОГИКА: источник правды — БД через /api/me/entitlements
   // Проверяем Entitlement, а не теги пользователя
@@ -83,8 +102,6 @@ export function PaymentGate({
     let isMounted = true;
 
     const checkEntitlements = async () => {
-      // Если уже отправлен запрос и мы получили ответ от БД — не дёргаем API повторно
-      if (dbChecked) return;
       if (checkingDbPayment) return;
 
       try {
@@ -93,11 +110,7 @@ export function PaymentGate({
         const initData =
           typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
         if (!initData) {
-          // В деве может не быть initData — тогда остаёмся на локальном флаге,
-          // но помечаем, что проверка БД уже сделана, чтобы не спамить консоль
-          if (isMounted) {
-            setDbChecked(true);
-          }
+          // В деве может не быть initData — тогда не можем проверить БД.
           return;
         }
 
@@ -132,7 +145,6 @@ export function PaymentGate({
       } finally {
         if (isMounted) {
           setCheckingDbPayment(false);
-          setDbChecked(true);
         }
       }
     };
@@ -142,7 +154,7 @@ export function PaymentGate({
     return () => {
       isMounted = false;
     };
-  }, [isRetaking, dbChecked, checkingDbPayment, productCode]);
+  }, [isRetaking, checkingDbPayment, productCode, refreshTick]);
 
   // Polling для проверки статуса оплаты после создания платежа
   useEffect(() => {
