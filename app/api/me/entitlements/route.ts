@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId);
 
-    return ApiResponse.success({
+    const payload = {
       paid,
       validUntil: paidAccess?.validUntil?.toISOString() || null,
       entitlements: entitlements.map((e) => ({
@@ -55,6 +55,13 @@ export async function GET(request: NextRequest) {
         active: e.active,
         validUntil: e.validUntil?.toISOString() || null,
       })),
+    };
+
+    // ИСПРАВЛЕНО: совместимость со старым фронтом, который ожидает обертку { data: ... }.
+    // ApiResponse.success() исторически возвращает payload напрямую, поэтому отдаем оба формата.
+    return ApiResponse.success({
+      ...payload,
+      data: payload,
     });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
