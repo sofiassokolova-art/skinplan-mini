@@ -64,13 +64,17 @@ export async function GET(request: NextRequest) {
       badFeedbackCount,
       replacementsCount,
       recentFeedback,
+      retakingUsersCount,
     ] = await Promise.all([
       prisma.product.count({ where: { published: true } }).catch(err => {
         console.error('❌ Error counting products:', err);
         return 0;
       }),
-      prisma.skinProfile.count().catch(err => {
-        console.error('❌ Error counting skin profiles:', err);
+      // Считаем количество уникальных пользователей с активными планами
+      prisma.skinProfile.groupBy({
+        by: ['userId'],
+      }).then(groups => groups.length).catch(err => {
+        console.error('❌ Error counting active plans:', err);
         return 0;
       }),
       prisma.wishlistFeedback.count({ where: { feedback: 'bought_bad' } }).catch(err => {
@@ -105,6 +109,18 @@ export async function GET(request: NextRequest) {
       }).catch(err => {
         console.error('❌ Error fetching recent feedback:', err);
         return [];
+      }),
+      // Считаем пользователей, которые перепрошли анкету (профили с version > 1)
+      prisma.skinProfile.groupBy({
+        by: ['userId'],
+        where: {
+          version: {
+            gt: 1, // Версия больше 1 означает перепрохождение
+          },
+        },
+      }).then(groups => groups.length).catch(err => {
+        console.error('❌ Error counting retaking users:', err);
+        return 0;
       }),
     ]);
 
@@ -271,6 +287,7 @@ export async function GET(request: NextRequest) {
         badFeedback: badFeedbackCount,
         replacements: replacementsCount,
         revenue,
+        retakingUsers: retakingUsersCount, // Пользователи, которые перепрошли анкету
         // Расширенные метрики (если доступны)
         ...(metrics && {
           churnRate: metrics.churnRate,

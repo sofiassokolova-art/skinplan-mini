@@ -2,58 +2,63 @@
 // Получение текущего профиля пользователя
 
 import { NextRequest, NextResponse } from 'next/server';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getCurrentProfile } from '@/lib/get-current-profile';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logDbFingerprint } from '@/lib/db-fingerprint';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/profile/current';
+  let userId: string | undefined;
+
   try {
-    // Получаем initData из заголовков (пробуем оба варианта)
-    const initData = request.headers.get('x-telegram-init-data') ||
-                     request.headers.get('X-Telegram-Init-Data');
-
-    if (!initData) {
-      console.error('⚠️ Missing initData in headers:', {
-        availableHeaders: Array.from(request.headers.keys()),
-      });
-      return NextResponse.json(
-        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
-        { status: 401 }
-      );
-    }
-
-    // Получаем userId из initData
-    const userId = await getUserIdFromInitData(initData);
+    // DEBUG: Логируем DB fingerprint для диагностики разных БД
+    // Используем console.warn для гарантированного вывода в Vercel logs
+    console.warn('🔍 [PROFILE/CURRENT] Starting DB fingerprint check...');
+    const fingerprint = await logDbFingerprint('/api/profile/current');
+    console.warn('🔍 [PROFILE/CURRENT] DB fingerprint:', JSON.stringify(fingerprint, null, 2));
     
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) {
+      return auth.response;
+    }
+    userId = auth.ctx.userId;
+
+    // DEBUG: Проверяем идентичность БД
+    try {
+      const dbIdentity = await prisma.$queryRaw<Array<{ current_database: string; current_schema: string }>>`
+        SELECT current_database() as current_database, current_schema() as current_schema
+      `;
+      logger.warn('DEBUG: DB identity in profile/current', { 
+        userId,
+        dbIdentity: dbIdentity[0],
+        databaseUrl: process.env.DATABASE_URL ? 'set' : 'not set',
+      });
+    } catch (dbIdentityError) {
+      logger.warn('DEBUG: Failed to get DB identity in profile/current', { error: (dbIdentityError as any)?.message });
     }
 
-    // Получаем последний профиль пользователя
-    const profile = await prisma.skinProfile.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+    // DEBUG: Проверяем количество профилей до вызова getCurrentProfile
+    const profilesCountBefore = await prisma.skinProfile.count({ where: { userId } });
+    logger.warn('DEBUG: profiles count before getCurrentProfile', { userId, profilesCountBefore });
+
+    // ИСПРАВЛЕНО: Используем единый резолвер активного профиля
+    // Это обеспечивает консистентность с /api/plan и правильно обрабатывает отсутствие current_profile_id
+    const profile = await getCurrentProfile(userId);
 
     if (!profile) {
-      console.error(`⚠️ Profile not found for userId: ${userId}`);
+      // Это нормальная ситуация для пользователей, которые еще не прошли анкету
+      // Возвращаем 200 с null вместо 404 для более RESTful подхода
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       
-      // Проверяем, существует ли пользователь
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-      console.error(`   User exists: ${!!user}, userId: ${userId}`);
-      
-      // Проверяем, есть ли вообще профили в БД
-      const totalProfiles = await prisma.skinProfile.count();
-      console.error(`   Total profiles in DB: ${totalProfiles}`);
-      
-      return NextResponse.json(
-        { error: 'No profile found' },
-        { status: 404 }
-      );
+      return NextResponse.json(null, { status: 200 });
     }
 
     // Преобразуем тип кожи в русский для отображения
@@ -64,6 +69,9 @@ export async function GET(request: NextRequest) {
       normal: 'Нормальная',
       sensitive: 'Чувствительная',
     };
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
 
     return NextResponse.json({
       id: profile.id,
@@ -83,7 +91,9 @@ export async function GET(request: NextRequest) {
       primaryConcernRu: 'Акне', // TODO: Вычислить из профиля
     });
   } catch (error) {
-    console.error('Error fetching profile:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

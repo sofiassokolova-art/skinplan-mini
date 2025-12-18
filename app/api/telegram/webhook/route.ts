@@ -410,6 +410,252 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, processed: 'admin_command' });
     }
 
+    // Обработка команды /clear
+    else if (update.message?.text === '/clear' || update.message?.text === '/reset') {
+      const chatId = update.message.chat.id;
+      const telegramId = update.message.from.id;
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
+
+      const clearText = `🧹 <b>Очистка данных</b>\n\nНажмите на кнопку ниже, чтобы очистить все данные анкеты из браузера.\n\nЭто удалит:\n• Прогресс анкеты\n• Сохраненные ответы\n• Кэш профиля\n\nПосле очистки вы сможете пройти анкету заново.`;
+
+      const replyMarkup = {
+        inline_keyboard: [
+          [
+            {
+              text: '🧹 Очистить данные',
+              web_app: { url: MINI_APP_URL + '/clear-storage' },
+            },
+          ],
+        ],
+      };
+
+      try {
+        await sendMessage(chatId, clearText, replyMarkup, userId || undefined);
+        console.log(`✅ Clear command processed for chat ${chatId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to send clear message:`, error);
+      }
+      
+      return NextResponse.json({ ok: true, processed: 'clear_command' });
+    }
+
+    // Обработка команды /logs - отправка логов пользователя
+    else if (update.message?.text === '/logs' || update.message?.text?.startsWith('/logs')) {
+      const chatId = update.message.chat.id;
+      const telegramId = update.message.from.id;
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
+
+      if (!userId) {
+        await sendMessage(chatId, '❌ Не удалось идентифицировать пользователя', undefined);
+        return NextResponse.json({ ok: true, processed: 'logs_command_error' });
+      }
+
+      try {
+        // Получаем последние логи пользователя
+        const logs = await prisma.clientLog.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        });
+
+        // Получаем информацию о профилях
+        const profiles = await prisma.skinProfile.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        });
+
+        // Получаем информацию о планах
+        const plans = await prisma.plan28.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 3,
+        });
+
+        // Получаем информацию о ответах
+        const answersCount = await prisma.userAnswer.count({
+          where: { userId },
+        });
+
+        // Получаем последние ответы
+        const lastAnswers = await prisma.userAnswer.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: {
+            questionId: true,
+            answerValue: true,
+            answerValues: true,
+            createdAt: true,
+          },
+        });
+
+        // Получаем информацию о платежах (с обработкой ошибок, если таблица не существует)
+        let payments: any[] = [];
+        try {
+          payments = await prisma.payment.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: 3,
+            select: {
+              id: true,
+              status: true,
+              amount: true,
+              currency: true,
+              createdAt: true,
+            },
+          });
+        } catch (paymentError: any) {
+          console.warn('⚠️ Failed to fetch payments (table may not exist):', paymentError?.message);
+          // Продолжаем без платежей
+        }
+
+        // Получаем информацию о entitlements (с обработкой ошибок, если таблица не существует)
+        let entitlements: any[] = [];
+        try {
+          entitlements = await prisma.entitlement.findMany({
+            where: { userId },
+            orderBy: { updatedAt: 'desc' },
+            select: {
+              code: true,
+              active: true,
+              validUntil: true,
+              updatedAt: true,
+            },
+          });
+        } catch (entitlementError: any) {
+          console.warn('⚠️ Failed to fetch entitlements (table may not exist):', entitlementError?.message);
+          // Продолжаем без entitlements
+        }
+
+        // Получаем информацию о пользователе
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            telegramId: true,
+            createdAt: true,
+            tags: true,
+          },
+        });
+
+        // Формируем сообщение
+        let message = `📊 <b>Ваши логи и данные</b>\n\n`;
+        
+        // Информация о пользоватеle
+        if (user) {
+          const userDate = new Date(user.createdAt).toLocaleString('ru-RU');
+          message += `👤 <b>Пользователь:</b>\n`;
+          message += `  Telegram ID: <code>${user.telegramId}</code>\n`;
+          message += `  Создан: ${userDate}\n`;
+          if (user.tags && user.tags.length > 0) {
+            message += `  Теги: ${user.tags.join(', ')}\n`;
+          }
+          message += `\n`;
+        }
+
+        message += `👤 <b>Профили:</b> ${profiles.length}\n`;
+        if (profiles.length > 0) {
+          profiles.forEach((p, idx) => {
+            const date = new Date(p.createdAt).toLocaleString('ru-RU');
+            message += `  ${idx + 1}. ID: <code>${p.id}</code>\n`;
+            message += `     Version: ${p.version}, Created: ${date}\n`;
+          });
+        } else {
+          message += `  ⚠️ Профили не найдены (это может быть проблемой)\n`;
+        }
+
+        message += `\n📋 <b>Ответы:</b> ${answersCount}\n`;
+        if (lastAnswers.length > 0) {
+          const lastAnswerDate = new Date(lastAnswers[0].createdAt).toLocaleString('ru-RU');
+          message += `  Последний ответ: ${lastAnswerDate}\n`;
+          message += `  Последние вопросы:\n`;
+          lastAnswers.slice(0, 3).forEach((a, idx) => {
+            const date = new Date(a.createdAt).toLocaleString('ru-RU');
+            // Используем answerValue (для single/scale) или answerValues (для multi)
+            const value = a.answerValue 
+              ? (a.answerValue.length > 30 ? a.answerValue.substring(0, 30) + '...' : a.answerValue)
+              : (a.answerValues 
+                  ? (Array.isArray(a.answerValues) ? a.answerValues.join(', ') : JSON.stringify(a.answerValues))
+                  : 'null');
+            const displayValue = typeof value === 'string' && value.length > 30 
+              ? value.substring(0, 30) + '...' 
+              : String(value);
+            message += `    ${idx + 1}. Q:${a.questionId} = ${displayValue}\n`;
+          });
+        }
+        
+        message += `\n📅 <b>Планы:</b> ${plans.length}\n`;
+        if (plans.length > 0) {
+          plans.forEach((p, idx) => {
+            const date = new Date(p.createdAt).toLocaleString('ru-RU');
+            message += `  ${idx + 1}. ProfileVersion: ${p.profileVersion}, Created: ${date}\n`;
+          });
+        }
+
+        message += `\n💳 <b>Платежи:</b> ${payments.length}\n`;
+        if (payments.length > 0) {
+          payments.forEach((p, idx) => {
+            const date = new Date(p.createdAt).toLocaleString('ru-RU');
+            message += `  ${idx + 1}. ${p.status}: ${p.amount} ${p.currency} (${date})\n`;
+          });
+        }
+
+        message += `\n🔐 <b>Доступ (Entitlements):</b> ${entitlements.length}\n`;
+        if (entitlements.length > 0) {
+          entitlements.forEach((e, idx) => {
+            const date = new Date(e.updatedAt).toLocaleString('ru-RU');
+            const validUntil = e.validUntil ? new Date(e.validUntil).toLocaleString('ru-RU') : 'без ограничений';
+            message += `  ${idx + 1}. ${e.code}: ${e.active ? '✅' : '❌'} (до ${validUntil})\n`;
+          });
+        }
+
+        // Подсчитываем ошибки в логах
+        const errorLogs = logs.filter(l => l.level === 'error');
+        const warnLogs = logs.filter(l => l.level === 'warn');
+
+        message += `\n📝 <b>Последние логи (${logs.length}):</b>\n`;
+        if (errorLogs.length > 0) {
+          message += `  ⚠️ Ошибок: ${errorLogs.length}\n`;
+        }
+        if (warnLogs.length > 0) {
+          message += `  ⚠️ Предупреждений: ${warnLogs.length}\n`;
+        }
+        if (logs.length === 0) {
+          message += `  Логов не найдено\n`;
+        } else {
+          logs.slice(0, 10).forEach((log, idx) => {
+            const date = new Date(log.createdAt).toLocaleString('ru-RU');
+            const level = log.level.toUpperCase();
+            const msg = log.message.length > 50 ? log.message.substring(0, 50) + '...' : log.message;
+            const icon = log.level === 'error' ? '❌' : log.level === 'warn' ? '⚠️' : 'ℹ️';
+            message += `  ${idx + 1}. ${icon} [${date}] ${level}: ${msg}\n`;
+          });
+          if (logs.length > 10) {
+            message += `  ... и ещё ${logs.length - 10} логов\n`;
+          }
+        }
+
+        // Отправляем сообщение
+        await sendMessage(chatId, message, undefined, userId);
+        console.log(`✅ Logs sent to chat ${chatId} for user ${userId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to get/send logs:`, error);
+        await sendMessage(chatId, `❌ Ошибка при получении логов: ${error.message}`, undefined, userId);
+      }
+      
+      return NextResponse.json({ ok: true, processed: 'logs_command' });
+    }
+
     // Обработка команды /help
     else if (update.message?.text === '/help') {
       const chatId = update.message.chat.id;
@@ -425,6 +671,9 @@ export async function POST(request: NextRequest) {
 <b>Команды:</b>
 /start - Начать работу с ботом
 /help - Показать эту справку
+/clear - Очистить данные анкеты
+/payment - Установить статус оплаты (для тестирования)
+/logs - Показать ваши логи и данные
 
 <b>Что дальше?</b>
 Нажмите на кнопку "Открыть SkinIQ" в сообщении /start, чтобы открыть мини-приложение и начать пользоваться всеми возможностями SkinIQ!`;
@@ -437,6 +686,59 @@ export async function POST(request: NextRequest) {
       }
       
       return NextResponse.json({ ok: true, processed: 'help_command' });
+    }
+
+    // Обработка команды /payment - устанавливает статус оплаты для тестирования
+    else if (update.message?.text === '/payment' || update.message?.text?.startsWith('/payment')) {
+      const chatId = update.message.chat.id;
+      const telegramId = update.message.from.id;
+      const userId = await getUserIdFromTelegramId(telegramId, {
+        firstName: update.message.from.first_name,
+        lastName: update.message.from.last_name,
+        username: update.message.from.username,
+        languageCode: update.message.from.language_code,
+      });
+
+      if (!userId) {
+        await sendMessage(chatId, '❌ Не удалось идентифицировать пользователя', undefined);
+        return NextResponse.json({ ok: true, processed: 'payment_command_error' });
+      }
+
+      // Устанавливаем флаг оплаты в БД через тег пользователя
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { tags: true },
+        });
+
+        const tags = user?.tags || [];
+        const hasPaymentTag = tags.includes('payment_completed');
+
+        if (!hasPaymentTag) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              tags: { push: 'payment_completed' },
+            },
+            // ВАЖНО: не возвращаем все поля User (может упасть при рассинхроне схемы БД)
+            select: { id: true },
+          });
+        }
+
+        const paymentText = `✅ <b>Статус оплаты установлен!</b>
+
+Теперь откройте Mini App и обновите страницу - план должен отобразиться без блюра.
+
+<b>Примечание:</b> Это команда для тестирования. В продакшене оплата обрабатывается через платежную систему.`;
+
+        await sendMessage(chatId, paymentText, undefined, userId);
+        console.log(`✅ Payment status set for user ${userId} (telegramId: ${telegramId})`);
+      } catch (error: any) {
+        console.error(`❌ Failed to set payment status:`, error);
+        await sendMessage(chatId, '❌ Ошибка при установке статуса оплаты', undefined, userId);
+      }
+      
+      return NextResponse.json({ ok: true, processed: 'payment_command' });
     }
 
     // Если это сообщение, но не команда - логируем для отладки

@@ -1,8 +1,9 @@
 // lib/get-user-from-initdata.ts
 // Утилита для получения userId из Telegram initData
+// ИСПРАВЛЕНО: Использует единый слой валидации validateTelegramInitDataUnified
 
-import { validateTelegramInitData } from './telegram';
-import { prisma } from './db';
+import { validateTelegramInitDataUnified } from './telegram-validation';
+import { prisma } from '@/lib/db';
 
 /**
  * Извлекает userId из initData и создает/обновляет пользователя
@@ -10,44 +11,42 @@ import { prisma } from './db';
  */
 export async function getUserIdFromInitData(initData: string | null): Promise<string | null> {
   if (!initData) {
+    console.warn('⚠️ getUserIdFromInitData: initData is null or empty');
     return null;
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
-    console.error('Bot token not configured');
+    console.error('❌ getUserIdFromInitData: Bot token not configured');
     return null;
   }
 
-  // Валидируем данные Telegram
-  const validation = validateTelegramInitData(initData, botToken);
+  // ИСПРАВЛЕНО: Используем единый слой валидации
+  const validation = await validateTelegramInitDataUnified(initData);
   
-  if (!validation.valid || !validation.data?.user) {
-    console.error('Invalid initData:', validation.error);
+  if (!validation.valid || !validation.telegramId || !validation.payload?.user) {
     return null;
   }
 
-  const { user } = validation.data;
-  
-  // Создаем или обновляем пользователя
-  const dbUser = await prisma.user.upsert({
-    where: { telegramId: user.id.toString() },
-    update: {
-      username: user.username,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      language: user.language_code || 'ru',
-      updatedAt: new Date(),
-    },
-    create: {
-      telegramId: user.id.toString(),
-      username: user.username,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      language: user.language_code || 'ru',
-    },
-  });
+  const { user } = validation.payload;
+  const telegramIdStr = user.id.toString();
 
-  return dbUser.id;
+  // ВАЖНО: auth-слой не должен писать в БД.
+  // Здесь только маппинг telegramId -> userId (если уже создан).
+  try {
+    const existing = await prisma.user.findUnique({
+      where: { telegramId: telegramIdStr },
+      select: { id: true },
+    });
+    return existing?.id || null;
+  } catch (dbError: any) {
+    console.error('❌ getUserIdFromInitData: Database error (should not be treated as auth error):', {
+      error: dbError?.message,
+      code: dbError?.code,
+      meta: dbError?.meta,
+      telegramId: telegramIdStr,
+    });
+    return null;
+  }
 }
 

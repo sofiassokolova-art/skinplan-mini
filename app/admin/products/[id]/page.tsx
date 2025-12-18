@@ -8,6 +8,8 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ChevronDown, Plus, X, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SelectWithSearch } from '@/components/admin/SelectWithSearch';
+import { MultiSelectWithSearch } from '@/components/admin/MultiSelectWithSearch';
 
 interface Brand {
   id: number;
@@ -33,13 +35,49 @@ const CONCERNS = [
 ];
 
 const STEPS = [
-  { value: 'cleanser', label: 'Очищение' },
-  { value: 'toner', label: 'Тонер' },
-  { value: 'serum', label: 'Сыворотка' },
-  { value: 'moisturizer', label: 'Увлажнение' },
-  { value: 'spf', label: 'SPF' },
-  { value: 'treatment', label: 'Лечение (кислоты, ретинол)' },
-  { value: 'mask', label: 'Маска' },
+  // Очищение
+  { value: 'cleanser_gentle', label: 'Очищение (мягкое)' },
+  { value: 'cleanser_balancing', label: 'Очищение (балансирующее)' },
+  { value: 'cleanser_deep', label: 'Очищение (глубокое/кислотное)' },
+  // Тоник
+  { value: 'toner_hydrating', label: 'Тоник (увлажняющий)' },
+  { value: 'toner_soothing', label: 'Тоник (успокаивающий)' },
+  // Сыворотки
+  { value: 'serum_hydrating', label: 'Сыворотка (увлажняющая)' },
+  { value: 'serum_niacinamide', label: 'Сыворотка (ниацинамид)' },
+  { value: 'serum_vitc', label: 'Сыворотка (витамин C)' },
+  { value: 'serum_anti_redness', label: 'Сыворотка (против покраснений)' },
+  { value: 'serum_brightening_soft', label: 'Сыворотка (осветляющая)' },
+  // Лечебные средства
+  { value: 'treatment_acne_bpo', label: 'Лечение акне (BPO)' },
+  { value: 'treatment_acne_azelaic', label: 'Лечение акне (азелаиновая кислота)' },
+  { value: 'treatment_acne_local', label: 'Лечение акне (точечное)' },
+  { value: 'treatment_exfoliant_mild', label: 'Эксфолиант (мягкий)' },
+  { value: 'treatment_exfoliant_strong', label: 'Эксфолиант (сильный)' },
+  { value: 'treatment_pigmentation', label: 'Лечение пигментации' },
+  { value: 'treatment_antiage', label: 'Антиэйдж' },
+  // Увлажняющие кремы
+  { value: 'moisturizer_light', label: 'Увлажнение (легкое)' },
+  { value: 'moisturizer_balancing', label: 'Увлажнение (балансирующее)' },
+  { value: 'moisturizer_barrier', label: 'Увлажнение (барьерное)' },
+  { value: 'moisturizer_soothing', label: 'Увлажнение (успокаивающее)' },
+  // Кремы для век
+  { value: 'eye_cream_basic', label: 'Крем для век (базовый)' },
+  { value: 'eye_cream_dark_circles', label: 'Крем для век (темные круги)' },
+  { value: 'eye_cream_puffiness', label: 'Крем для век (отеки)' },
+  // SPF
+  { value: 'spf_50_face', label: 'SPF 50 (для лица)' },
+  { value: 'spf_50_oily', label: 'SPF 50 (для жирной кожи)' },
+  { value: 'spf_50_sensitive', label: 'SPF 50 (для чувствительной кожи)' },
+  // Маски
+  { value: 'mask_clay', label: 'Маска (глиняная)' },
+  { value: 'mask_hydrating', label: 'Маска (увлажняющая)' },
+  { value: 'mask_soothing', label: 'Маска (успокаивающая)' },
+  { value: 'mask_sleeping', label: 'Маска (ночная)' },
+  // Доп. уход
+  { value: 'spot_treatment', label: 'Точечное лечение' },
+  { value: 'lip_care', label: 'Уход за губами' },
+  { value: 'balm_barrier_repair', label: 'Бальзам (восстановление барьера)' },
 ];
 
 export default function EditProductPage() {
@@ -171,7 +209,7 @@ export default function EditProductPage() {
 
     try {
       let imageUrl = form.imageUrl;
-      
+
       const token = localStorage.getItem('admin_token');
       const response = await fetch(`/api/admin/products/${productId}`, {
         method: 'PUT',
@@ -223,7 +261,7 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-32">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-48">
       <div className="max-w-5xl mx-auto">
         {/* Заголовок страницы */}
         <h1 className="text-4xl font-black text-gray-900 mb-2">Редактировать продукт</h1>
@@ -235,49 +273,44 @@ export default function EditProductPage() {
             <h2 className="text-2xl font-bold text-gray-900 mb-8">Основная информация</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Название продукта */}
-              <div>
+          <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Название продукта *
                 </label>
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Название продукта"
-                />
-              </div>
+            />
+          </div>
 
               {/* Бренд */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Бренд *
-                </label>
+          <div>
                 <div className="space-y-2">
-                  <div className="relative">
-                    <select
-                      required
-                      value={form.brandId}
-                      onChange={(e) => {
-                        if (e.target.value === 'new') {
-                          setShowNewBrandInput(true);
-                        } else {
-                          setForm({ ...form, brandId: e.target.value });
-                          setShowNewBrandInput(false);
-                        }
-                      }}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
-                    >
-                      <option value="">Выберите бренд</option>
-                      {brands.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name}
-                        </option>
-                      ))}
-                      <option value="new">+ Завести новый бренд</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                  </div>
+                  <SelectWithSearch
+                    label="Бренд"
+                    required
+                    value={form.brandId}
+                    onChange={(value) => {
+                      if (value === 'new') {
+                        setShowNewBrandInput(true);
+                      } else {
+                        setForm({ ...form, brandId: value });
+                        setShowNewBrandInput(false);
+                      }
+                    }}
+                    options={[
+                      ...brands.map((b) => ({
+                        value: String(b.id),
+                        label: b.name,
+                      })),
+                      { value: 'new', label: '+ Завести новый бренд' },
+                    ]}
+                    placeholder="Выберите бренд"
+                    allowClear
+                  />
                   {showNewBrandInput && (
                     <div className="flex gap-2">
                       <input
@@ -308,90 +341,90 @@ export default function EditProductPage() {
                     </div>
                   )}
                 </div>
-              </div>
+          </div>
 
               {/* Цена */}
-              <div>
+          <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Цена (₽) *
                 </label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    required
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
+            <input
+              type="number"
+              required
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
                     className="w-full px-4 py-3 pr-12 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="0"
-                  />
+            />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₽</span>
                 </div>
-              </div>
+          </div>
 
               {/* Объём / вес */}
-              <div>
+          <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Объём / вес
                 </label>
-                <input
-                  placeholder="30 мл"
-                  value={form.volume}
-                  onChange={(e) => setForm({ ...form, volume: e.target.value })}
+            <input
+              placeholder="30 мл"
+              value={form.volume}
+              onChange={(e) => setForm({ ...form, volume: e.target.value })}
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
+            />
+          </div>
 
               {/* Гиперссылка на покупку */}
-              <div className="md:col-span-2">
+          <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Гиперссылка на покупку
-                </label>
-                <input
-                  placeholder="https://..."
-                  value={form.link}
-                  onChange={(e) => setForm({ ...form, link: e.target.value })}
+            </label>
+            <input
+              placeholder="https://..."
+              value={form.link}
+              onChange={(e) => setForm({ ...form, link: e.target.value })}
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
+            />
+          </div>
 
               {/* Описание */}
-              <div className="md:col-span-2">
+          <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Описание (для карточки)
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+            </label>
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
                   placeholder="Краткое описание продукта"
-                />
-              </div>
+            />
+          </div>
 
               {/* Полный состав */}
-              <div className="md:col-span-2">
+          <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Полный состав
-                </label>
-                <textarea
-                  rows={4}
-                  value={form.composition}
-                  onChange={(e) => setForm({ ...form, composition: e.target.value })}
+            </label>
+            <textarea
+              rows={4}
+              value={form.composition}
+              onChange={(e) => setForm({ ...form, composition: e.target.value })}
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
                   placeholder="через запятую или с новой строки"
-                />
-              </div>
+            />
+          </div>
 
               {/* Фото продукта */}
-              <div className="md:col-span-2">
+          <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Фото продукта
                 </label>
                 <div className="space-y-4">
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-400 transition-colors">
-                    <input
-                      type="file"
-                      accept="image/*"
+            <input
+              type="file"
+              accept="image/*"
                       onChange={handleImageUpload}
                       className="hidden"
                       id="image-upload"
@@ -406,17 +439,17 @@ export default function EditProductPage() {
                       </span>
                     </label>
                   </div>
-                  {(form.imageFile || form.imageUrl) && (
+            {(form.imageFile || form.imageUrl) && (
                     <div className="relative inline-block">
-                      <img
-                        src={
-                          form.imageFile
-                            ? URL.createObjectURL(form.imageFile)
-                            : form.imageUrl
-                        }
-                        alt="preview"
+              <img
+                src={
+                  form.imageFile
+                    ? URL.createObjectURL(form.imageFile)
+                    : form.imageUrl
+                }
+                alt="preview"
                         className="w-64 h-64 object-contain rounded-lg border border-gray-200 bg-gray-50"
-                      />
+              />
                       <button
                         type="button"
                         onClick={() => setForm({ ...form, imageFile: null, imageUrl: '' })}
@@ -425,191 +458,142 @@ export default function EditProductPage() {
                         <X size={16} />
                       </button>
                     </div>
-                  )}
-                  {!form.imageFile && !form.imageUrl && (
+            )}
+            {!form.imageFile && !form.imageUrl && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Или введите URL изображения
-                      </label>
-                      <input
-                        type="url"
-                        placeholder="https://..."
-                        value={form.imageUrl}
-                        onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                  Или введите URL изображения
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={form.imageUrl}
+                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
                         className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-                  )}
-                </div>
+                />
               </div>
-            </div>
+            )}
+                </div>
           </div>
+        </div>
+      </div>
 
           {/* Фильтры для рекомендаций */}
           <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-10">
             <h2 className="text-2xl font-bold text-gray-900 mb-8">
-              Фильтры для рекомендаций (обязательно!)
+          Фильтры для рекомендаций (обязательно!)
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Тип кожи */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-4">Тип кожи</label>
-                <div className="space-y-3">
-                  {SKIN_TYPES.map((t) => (
-                    <label key={t.value} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={form.skinTypes.includes(t.value)}
-                        onChange={(e) => {
-                          setForm((prev) => ({
-                            ...prev,
-                            skinTypes: e.target.checked
-                              ? [...prev.skinTypes, t.value]
-                              : prev.skinTypes.filter((x) => x !== t.value),
-                          }));
-                        }}
-                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                      />
-                      <span className="text-gray-700 group-hover:text-gray-900">{t.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+          <div>
+                <MultiSelectWithSearch
+                  label="Тип кожи"
+                  value={form.skinTypes}
+                  onChange={(value) => setForm({ ...form, skinTypes: value })}
+                  options={SKIN_TYPES.map((t) => ({
+                    value: t.value,
+                    label: t.label,
+                  }))}
+                  placeholder="Выберите типы кожи"
+                  maxDisplay={3}
+                />
+          </div>
 
               {/* Проблемы кожи */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-4">Проблемы кожи</label>
-                <div className="space-y-3">
-                  {CONCERNS.map((c) => (
-                    <label key={c.value} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={form.concerns.includes(c.value)}
-                        onChange={(e) => {
-                          setForm((prev) => ({
-                            ...prev,
-                            concerns: e.target.checked
-                              ? [...prev.concerns, c.value]
-                              : prev.concerns.filter((x) => x !== c.value),
-                          }));
-                        }}
-                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                      />
-                      <span className="text-gray-700 group-hover:text-gray-900">{c.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+          <div>
+                <MultiSelectWithSearch
+                  label="Проблемы кожи"
+                  value={form.concerns}
+                  onChange={(value) => setForm({ ...form, concerns: value })}
+                  options={CONCERNS.map((c) => ({
+                    value: c.value,
+                    label: c.label,
+                  }))}
+                  placeholder="Выберите проблемы кожи"
+                  maxDisplay={3}
+                />
+          </div>
 
               {/* Шаг ухода */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Шаг ухода *</label>
-                <div className="relative">
-                  <select
-                    required
-                    value={form.step}
-                    onChange={(e) => setForm({ ...form, step: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none"
-                  >
-                    <option value="">Выберите шаг</option>
-                    {STEPS.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                </div>
-              </div>
+          <div>
+                <SelectWithSearch
+                  label="Шаг ухода"
+                  required
+                  value={form.step}
+                  onChange={(value) => setForm({ ...form, step: value })}
+                  options={STEPS.map((s) => ({
+                    value: s.value,
+                    label: s.label,
+                  }))}
+                  placeholder="Выберите шаг"
+                />
+          </div>
 
               {/* Активные ингредиенты */}
-              <div>
+          <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Активные ингредиенты
-                </label>
-                <input
-                  value={form.activeIngredients}
-                  onChange={(e) =>
-                    setForm({ ...form, activeIngredients: e.target.value })
-                  }
+            </label>
+            <input
+              value={form.activeIngredients}
+              onChange={(e) =>
+                setForm({ ...form, activeIngredients: e.target.value })
+              }
                   className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="ретинол, ниацинамид, азелаиновая кислота"
-                />
+            />
                 <p className="mt-2 text-xs text-gray-500">Введите через запятую</p>
-              </div>
+          </div>
 
               {/* Избегать при */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-900 mb-4">Избегать при</label>
-                <div className="flex flex-wrap gap-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.avoidIf.includes('pregnant')}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          avoidIf: e.target.checked
-                            ? [...prev.avoidIf, 'pregnant']
-                            : prev.avoidIf.filter((x) => x !== 'pregnant'),
-                        }))
-                      }
-                      className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                    />
-                    <span className="text-gray-700">Беременность / ГВ</span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.avoidIf.includes('retinol_allergy')}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          avoidIf: e.target.checked
-                            ? [...prev.avoidIf, 'retinol_allergy']
-                            : prev.avoidIf.filter((x) => x !== 'retinol_allergy'),
-                        }))
-                      }
-                      className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                    />
-                    <span className="text-gray-700">Аллергия на ретинол / кислоты</span>
-                  </label>
-                </div>
+                <MultiSelectWithSearch
+                  label="Избегать при"
+                  value={form.avoidIf}
+                  onChange={(value) => setForm({ ...form, avoidIf: value })}
+                  options={[
+                    { value: 'pregnant', label: 'Беременность / ГВ' },
+                    { value: 'retinol_allergy', label: 'Аллергия на ретинол / кислоты' },
+                  ]}
+                  placeholder="Выберите противопоказания"
+                  maxDisplay={2}
+                />
               </div>
+            </div>
 
               {/* Герой-рекомендация */}
               <div className="md:col-span-2">
                 <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                   <div className="flex items-center justify-between mb-6">
                     <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.isHero}
-                        onChange={(e) => setForm({ ...form, isHero: e.target.checked })}
+                <input
+                  type="checkbox"
+                  checked={form.isHero}
+                  onChange={(e) => setForm({ ...form, isHero: e.target.checked })}
                         className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                      />
+                />
                       <span className="font-semibold text-gray-900">
                         Герой-рекомендация
-                      </span>
-                    </label>
+                </span>
+              </label>
                   </div>
                   {form.isHero && (
-                    <div>
+              <div>
                       <label className="block text-sm font-semibold text-gray-900 mb-3">
                         Приоритет (1–100)
                       </label>
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="range"
-                          min="1"
-                          max="100"
-                          value={form.priority}
-                          onChange={(e) =>
-                            setForm({ ...form, priority: Number(e.target.value) })
-                          }
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={form.priority}
+                    onChange={(e) =>
+                      setForm({ ...form, priority: Number(e.target.value) })
+                    }
                           className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                        />
+                  />
                         <span className="font-bold text-gray-900 text-xl min-w-[3rem] text-center">
                           {form.priority}
                         </span>
@@ -619,7 +603,6 @@ export default function EditProductPage() {
                 </div>
               </div>
             </div>
-          </div>
         </form>
       </div>
 
@@ -629,18 +612,18 @@ export default function EditProductPage() {
           <Link
             href="/admin/products"
             className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2"
-          >
+        >
             <ArrowLeft size={18} />
             ← Назад к списку
           </Link>
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => router.back()}
+      <button
+          type="button"
+        onClick={() => router.back()}
               className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-            >
-              Отмена
-            </button>
+      >
+          Отмена
+      </button>
             <button
               type="submit"
               form="product-form"

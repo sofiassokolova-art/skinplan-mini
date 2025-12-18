@@ -3,43 +3,88 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logApiRequest, logApiError } from '@/lib/logger';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 // GET - загрузка прогресса
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/questionnaire/progress';
+  let userId: string | null = null;
+
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
-    if (!initData) {
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
-    }
-
-    const userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
-
-    // Проверяем наличие профиля, но разрешаем загрузку ответов для повторного прохождения
-    // Если есть параметр ?retaking=true, возвращаем предыдущие ответы даже при наличии профиля
+    // ИСПРАВЛЕНО: Проверяем наличие профиля
+    // Если профиля НЕТ, но есть ответы - это незавершенная анкета, возвращаем прогресс
+    // Если профиль ЕСТЬ и не повторное прохождение - анкета завершена, прогресс не нужен
     const retaking = request.nextUrl.searchParams.get('retaking') === 'true';
     const existingProfile = await prisma.skinProfile.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
 
+    // ИСПРАВЛЕНО: Если профиля нет, но есть ответы - это незавершенная анкета
+    // Возвращаем прогресс, чтобы пользователь мог продолжить
+    // Если профиль есть и не повторное прохождение - анкета завершена
+    // ВАЖНО: Возвращаем явное поле isCompleted: true, чтобы фронтенд мог правильно определить завершенность
     if (existingProfile && !retaking) {
-      // Анкета завершена, прогресс не нужен (если не повторное прохождение)
+      // Анкета завершена, возвращаем информацию о завершенности
+      // Получаем ответы для проверки
+      const activeQuestionnaire = await prisma.questionnaire.findFirst({
+        where: { isActive: true },
+      });
+
+      if (!activeQuestionnaire) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return NextResponse.json({
+          progress: null,
+          isCompleted: true,
+        });
+      }
+
+      const userAnswers = await prisma.userAnswer.findMany({
+        where: {
+          userId,
+          questionnaireId: activeQuestionnaire.id,
+        },
+        include: {
+          question: true,
+        },
+      });
+
+      // Преобразуем ответы в формат для фронтенда
+      const answers: Record<number, string | string[]> = {};
+      for (const answer of userAnswers) {
+        if (answer.questionId === -1) {
+          continue;
+        }
+        if (answer.answerValues) {
+          answers[answer.questionId] = answer.answerValues as string[];
+        } else if (answer.answerValue) {
+          answers[answer.questionId] = answer.answerValue;
+        }
+      }
+
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
-        progress: null,
+        progress: {
+          answers,
+          questionIndex: 0,
+          infoScreenIndex: 0,
+          timestamp: Date.now(),
+        },
+        isCompleted: true,
       });
     }
+    
+    // Если профиля нет - это либо новый пользователь, либо незавершенная анкета
+    // Продолжаем загрузку ответов ниже
 
     // Получаем последние ответы пользователя для активной анкеты
     const activeQuestionnaire = await prisma.questionnaire.findFirst({
@@ -47,8 +92,11 @@ export async function GET(request: NextRequest) {
     });
 
     if (!activeQuestionnaire) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
         progress: null,
+        isCompleted: false,
       });
     }
 
@@ -66,21 +114,43 @@ export async function GET(request: NextRequest) {
     });
 
     if (userAnswers.length === 0) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
         progress: null,
+        isCompleted: false,
       });
     }
 
     // Получаем все вопросы анкеты для определения индексов
-    const allQuestions = await prisma.question.findMany({
-      where: {
-        questionnaireId: activeQuestionnaire.id,
+    // ВАЖНО: порядок вопросов должен совпадать с `/api/questionnaire/active`
+    // и тем, как фронтенд формирует allQuestionsRaw:
+    // 1) группы по group.position asc, внутри группы вопросы по question.position asc
+    // 2) затем вопросы без группы по question.position asc
+    const questionnaireForOrdering = await prisma.questionnaire.findFirst({
+      where: { id: activeQuestionnaire.id },
+      include: {
+        questionGroups: {
+          include: {
+            questions: {
+              orderBy: { position: 'asc' },
+              select: { id: true },
+            },
+          },
+          orderBy: { position: 'asc' },
+        },
+        questions: {
+          where: { groupId: null },
+          orderBy: { position: 'asc' },
+          select: { id: true },
+        },
       },
-      orderBy: [
-        { groupId: 'asc' },
-        { position: 'asc' },
-      ],
     });
+
+    const allQuestions = [
+      ...(questionnaireForOrdering?.questionGroups ?? []).flatMap((g) => g.questions ?? []),
+      ...(questionnaireForOrdering?.questions ?? []),
+    ];
 
     // Находим последний отвеченный вопрос
     const answeredQuestionIds = new Set(userAnswers.map(a => a.questionId));
@@ -93,8 +163,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Преобразуем ответы в формат для фронтенда
+    // Исключаем метаданные с questionId = -1 (если они еще есть в БД от старых версий)
     const answers: Record<number, string | string[]> = {};
+    
     for (const answer of userAnswers) {
+      // Пропускаем метаданные позиции (questionId = -1) - они больше не используются
+      if (answer.questionId === -1) {
+        continue;
+      }
+      
       if (answer.answerValues) {
         answers[answer.questionId] = answer.answerValues as string[];
       } else if (answer.answerValue) {
@@ -102,16 +179,31 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Вычисляем позицию на основе последнего отвеченного вопроса
+    // Метаданные позиции больше не хранятся в БД, они только локально
+    const finalQuestionIndex = lastAnsweredIndex + 1; // Следующий вопрос после последнего отвеченного
+    const finalInfoScreenIndex = 0; // По умолчанию 0
+
+    // Проверяем, все ли вопросы анкеты отвечены
+    const totalQuestions = allQuestions.filter(q => q.id !== -1).length;
+    const answeredQuestionsCount = Object.keys(answers).length;
+    const isCompleted = answeredQuestionsCount >= totalQuestions;
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       progress: {
         answers,
-        questionIndex: lastAnsweredIndex + 1, // Следующий вопрос после последнего отвеченного
-        infoScreenIndex: 0, // Информационные экраны пропускаем, так как они только в начале
+        questionIndex: finalQuestionIndex,
+        infoScreenIndex: finalInfoScreenIndex,
         timestamp: userAnswers[0]?.createdAt.getTime() || Date.now(),
       },
+      isCompleted,
     });
   } catch (error) {
-    console.error('Error loading progress:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -121,32 +213,168 @@ export async function GET(request: NextRequest) {
 
 // POST - сохранение прогресса (ответы)
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/questionnaire/progress';
+  let userId: string | null = null;
+
   try {
-    const initData = request.headers.get('x-telegram-init-data');
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
-    if (!initData) {
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
+    let { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
+
+    // Логируем только в development режиме
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📝 Saving quiz progress:', { 
+        userId, 
+        questionnaireId, 
+        questionId, 
+        questionIdType: typeof questionId,
+        hasAnswerValue: !!answerValue, 
+        hasAnswerValues: !!answerValues,
+        questionIndex,
+        infoScreenIndex,
+      });
     }
 
-    const userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
+    if (!questionnaireId) {
       return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
-
-    const { questionnaireId, questionId, answerValue, answerValues } = await request.json();
-
-    if (!questionnaireId || !questionId) {
-      return NextResponse.json(
-        { error: 'Missing questionnaireId or questionId' },
+        { error: 'Missing questionnaireId' },
         { status: 400 }
       );
+    }
+
+    let savedAnswer = null;
+
+    // Если questionId = -1, это только метаданные позиции
+    // НЕ сохраняем их в БД, так как это нарушает внешний ключ
+    // Метаданные позиции хранятся только локально на клиенте
+    if (questionId === -1 || questionId === '-1') {
+      // Логируем только в development режиме
+      if (process.env.NODE_ENV === 'development') {
+        console.log('ℹ️ Metadata position update (not saved to DB, stored locally only):', {
+          questionIndex,
+          infoScreenIndex,
+        });
+      }
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 200, duration, userId);
+      return NextResponse.json({
+        success: true,
+        answer: null, // Метаданные не сохраняются в БД
+      });
+    }
+
+    // Обычный ответ на вопрос - валидируем, что вопрос существует
+    if (questionId === null || questionId === undefined) {
+      return NextResponse.json(
+        { error: 'Missing questionId' },
+        { status: 400 }
+      );
+    }
+
+    // Преобразуем questionId в число, если это строка
+    const questionIdNum = typeof questionId === 'string' ? parseInt(questionId, 10) : questionId;
+    
+    if (isNaN(questionIdNum) || questionIdNum <= 0) {
+      console.error('Invalid questionId:', { questionId, questionIdNum, questionnaireId, userId });
+      return NextResponse.json(
+        { 
+          error: `Invalid questionId: ${questionId} (must be a positive number)`,
+          questionId,
+          questionnaireId,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Проверяем, что активная анкета существует
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    });
+
+    if (!activeQuestionnaire) {
+      console.error('No active questionnaire found');
+      return NextResponse.json(
+        { error: 'No active questionnaire found' },
+        { status: 404 }
+      );
+    }
+
+    // Проверяем, что вопрос существует в активной анкете
+    const question = await prisma.question.findFirst({
+      where: {
+        id: questionIdNum,
+        questionnaireId: activeQuestionnaire.id, // Используем ID активной анкеты
+      },
+    });
+
+    if (!question) {
+      // Проверяем, существует ли вопрос вообще (может быть в другой анкете)
+      const questionInAnyQuestionnaire = await prisma.question.findFirst({
+        where: {
+          id: questionIdNum,
+        },
+        select: {
+          id: true,
+          questionnaireId: true,
+          code: true,
+        },
+      });
+
+      // Получаем список всех вопросов в активной анкете для отладки
+      const allQuestionsInActive = await prisma.question.findMany({
+        where: {
+          questionnaireId: activeQuestionnaire.id,
+        },
+        select: {
+          id: true,
+          code: true,
+          text: true,
+        },
+        take: 10, // Первые 10 для примера
+      });
+
+      console.error('❌ Question not found in active questionnaire:', { 
+        questionId: questionIdNum, 
+        requestedQuestionnaireId: questionnaireId,
+        activeQuestionnaireId: activeQuestionnaire.id,
+        userId,
+        questionExistsInOtherQuestionnaire: !!questionInAnyQuestionnaire,
+        actualQuestionnaireId: questionInAnyQuestionnaire?.questionnaireId,
+        questionCode: questionInAnyQuestionnaire?.code,
+        sampleQuestionsInActive: allQuestionsInActive.map(q => ({ id: q.id, code: q.code })),
+      });
+
+      return NextResponse.json(
+        { 
+          error: `Question with id ${questionIdNum} not found in active questionnaire`,
+          questionId: questionIdNum,
+          requestedQuestionnaireId: questionnaireId,
+          activeQuestionnaireId: activeQuestionnaire.id,
+          questionExistsInOtherQuestionnaire: !!questionInAnyQuestionnaire,
+          sampleQuestionsInActive: allQuestionsInActive.map(q => ({ id: q.id, code: q.code })),
+        },
+        { status: 404 }
+      );
+    }
+
+    // Проверяем, что questionnaireId совпадает с активной анкетой
+    if (questionnaireId !== activeQuestionnaire.id) {
+      // Логируем только в development режиме
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Questionnaire ID mismatch:', {
+          requestedQuestionnaireId: questionnaireId,
+          activeQuestionnaireId: activeQuestionnaire.id,
+          questionId: questionIdNum,
+          userId,
+        });
+      }
+      // Используем ID активной анкеты вместо запрошенного
+      questionnaireId = activeQuestionnaire.id;
     }
 
     // Удаляем старый ответ на этот вопрос (если есть)
@@ -154,32 +382,94 @@ export async function POST(request: NextRequest) {
       where: {
         userId,
         questionnaireId,
-        questionId,
+        questionId: questionIdNum,
       },
     });
 
     // Сохраняем новый ответ
-    const answer = await prisma.userAnswer.create({
+    savedAnswer = await prisma.userAnswer.create({
       data: {
         userId,
         questionnaireId,
-        questionId,
+        questionId: questionIdNum,
         answerValue: answerValue || null,
         answerValues: answerValues ? (answerValues as any) : null,
       },
     });
 
+    // Метаданные позиции (questionIndex, infoScreenIndex) больше не сохраняются в БД
+    // Они хранятся только локально на клиенте в localStorage
+    // Позицию можно вычислить на основе последнего отвеченного вопроса
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       success: true,
       answer: {
-        id: answer.id,
-        questionId: answer.questionId,
-        answerValue: answer.answerValue,
-        answerValues: answer.answerValues,
+        id: savedAnswer.id,
+        questionId: savedAnswer.questionId,
+        answerValue: savedAnswer.answerValue,
+        answerValues: savedAnswer.answerValues,
       },
     });
   } catch (error) {
-    console.error('Error saving progress:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - очистка прогресса анкеты
+export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'DELETE';
+  const path = '/api/questionnaire/progress';
+  let userId: string | null = null;
+
+  try {
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
+
+    // Получаем активную анкету
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+    });
+
+    if (!activeQuestionnaire) {
+      return NextResponse.json(
+        { error: 'No active questionnaire found' },
+        { status: 404 }
+      );
+    }
+
+    // Удаляем все ответы пользователя для активной анкеты
+    const deletedCount = await prisma.userAnswer.deleteMany({
+      where: {
+        userId,
+        questionnaireId: activeQuestionnaire.id,
+      },
+    });
+
+    // Логируем только в development режиме
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Quiz progress cleared for user ${userId}, deleted ${deletedCount.count} answers`);
+    }
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: deletedCount.count,
+    });
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

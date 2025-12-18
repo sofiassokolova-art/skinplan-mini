@@ -1,0 +1,84 @@
+// lib/env-check.ts
+// Валидация обязательных переменных окружения при старте приложения
+
+const REQUIRED_ENV_VARS = {
+  // Критичные для работы приложения
+  DATABASE_URL: 'Строка подключения к базе данных',
+  TELEGRAM_BOT_TOKEN: 'Токен Telegram бота',
+  JWT_SECRET: 'Секретный ключ для JWT токенов (обязателен для production)',
+} as const;
+
+const OPTIONAL_ENV_VARS = {
+  ADMIN_SECRET: 'Секретное слово для входа в админ-панель (опционально)',
+  KV_REST_API_URL: 'Vercel KV REST API URL (опционально, для кэширования)',
+  KV_REST_API_TOKEN: 'Vercel KV REST API Token (опционально, для кэширования)',
+  UPSTASH_REDIS_REST_URL: 'Upstash Redis URL (опционально, для rate limiting)',
+  UPSTASH_REDIS_REST_TOKEN: 'Upstash Redis Token (опционально, для rate limiting)',
+  SENTRY_DSN: 'Sentry DSN для мониторинга ошибок',
+} as const;
+
+export function validateEnv(): { valid: boolean; missing: string[]; warnings: string[] } {
+  const missing: string[] = [];
+  const warnings: string[] = [];
+
+  // Проверяем обязательные переменные
+  for (const [key, description] of Object.entries(REQUIRED_ENV_VARS)) {
+    if (!process.env[key]) {
+      missing.push(`${key} - ${description}`);
+    }
+  }
+
+  // Предупреждения для опциональных, но важных переменных
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+    warnings.push('KV_REST_API_URL и KV_REST_API_TOKEN не установлены - кэширование будет отключено');
+  }
+
+  if (!process.env.ADMIN_SECRET || process.env.ADMIN_SECRET === '') {
+    warnings.push('ADMIN_SECRET не установлен - вход в админ-панель будет недоступен');
+  }
+
+  // ИСПРАВЛЕНО: JWT_SECRET теперь обязателен, проверяем его в REQUIRED_ENV_VARS
+  if (process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
+    warnings.push('JWT_SECRET использует дефолтное значение - это небезопасно для production');
+  }
+
+  return {
+    valid: missing.length === 0,
+    missing,
+    warnings,
+  };
+}
+
+export function logEnvStatus(): void {
+  const { valid, missing, warnings } = validateEnv();
+
+  if (!valid) {
+    console.error('❌ Отсутствуют обязательные переменные окружения:');
+    missing.forEach((msg) => console.error(`  - ${msg}`));
+    console.error('\n⚠️ Приложение может работать некорректно!\n');
+  }
+
+  if (warnings.length > 0) {
+    console.warn('⚠️ Предупреждения о переменных окружения:');
+    warnings.forEach((msg) => console.warn(`  - ${msg}`));
+    console.warn('');
+  }
+
+  if (valid && warnings.length === 0) {
+    console.log('✅ Все переменные окружения настроены корректно\n');
+  }
+}
+
+// ИСПРАВЛЕНО: Проверяем env переменные только в runtime, а не при сборке
+// При сборке Next.js переменные окружения могут быть недоступны
+// В Vercel переменные окружения доступны только в runtime, не во время сборки
+// Проверка выполняется только когда код действительно выполняется (в API routes или server components)
+if (typeof window === 'undefined' && 
+    process.env.NODE_ENV !== 'test' && 
+    process.env.NEXT_PHASE !== 'phase-production-build' &&
+    !process.env.VERCEL_ENV) {
+  // В Vercel переменные окружения доступны только в runtime
+  // Проверяем только если это не фаза сборки и не Vercel build
+  logEnvStatus();
+}
+

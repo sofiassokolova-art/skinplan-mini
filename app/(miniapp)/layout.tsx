@@ -3,21 +3,27 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
+import PageTransition from '@/components/PageTransition';
+import { NetworkStatus } from '@/components/NetworkStatus';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { ServiceFeedbackPopup } from '@/components/ServiceFeedbackPopup';
 import { tg, useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
 
-export default function MiniappLayout({
+function LayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(false); // Флаг: идет ли проверка профиля на главной странице
 
   useEffect(() => {
     try {
@@ -44,26 +50,85 @@ export default function MiniappLayout({
     }
   }, [initData, isAuthorized, initialize]);
 
-  // Скрываем навигацию на определенных страницах
-  const hideNav = pathname === '/quiz' || pathname.startsWith('/quiz/');
+  // Проверяем наличие профиля на главной странице, чтобы скрыть навигацию для новых пользователей
+  // ИСПРАВЛЕНО: Убираем проверку профиля из layout, так как она дублируется на главной странице
+  // Это вызывает множественные запросы и лаги
+  useEffect(() => {
+    // Не проверяем профиль в layout - это делает главная страница
+    // Просто скрываем навигацию на главной странице до загрузки
+    if (pathname === '/') {
+      // Небольшая задержка для плавности, но не проверяем профиль
+      setIsCheckingProfile(true);
+      setTimeout(() => setIsCheckingProfile(false), 500);
+    } else {
+      setIsCheckingProfile(false);
+    }
+  }, [pathname]);
   
-  // Скрываем логотип на главной странице (там он уже есть) и на странице незавершенной анкеты
-  const showLogo = pathname !== '/';
+  // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
+  /* useEffect(() => {
+    if (pathname === '/' && initData) {
+      setIsCheckingProfile(true);
+      // Проверяем профиль асинхронно
+      const checkProfile = async () => {
+        try {
+          const profile = await api.getCurrentProfile();
+          if (profile && (profile as any).id) {
+            // Профиль есть - показываем навигацию после небольшой задержки
+            setTimeout(() => setIsCheckingProfile(false), 100);
+          } else {
+            // Профиля нет - скрываем навигацию (будет редирект на анкету)
+            setIsCheckingProfile(false);
+          }
+        } catch (err: any) {
+          // Профиля нет (404) - скрываем навигацию
+          const isNotFound = err?.status === 404 || 
+                            err?.message?.includes('404') || 
+                            err?.message?.includes('No profile') ||
+                            err?.message?.includes('Profile not found');
+          if (isNotFound) {
+            setIsCheckingProfile(false);
+          } else {
+            // Другая ошибка - через небольшую задержку показываем навигацию
+            setTimeout(() => setIsCheckingProfile(false), 500);
+          }
+        }
+      };
+      checkProfile();
+    } else if (pathname !== '/') {
+      // Не на главной странице - не проверяем профиль
+      setIsCheckingProfile(false);
+    }
+  }, [pathname, initData]); */
+
+  // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
+  const isResumeScreen = searchParams?.get('resume') === 'true';
+  
+  // Скрываем навигацию на определенных страницах, на экране прогресса и во время проверки профиля на главной
+  const hideNav = pathname === '/quiz' || 
+                  pathname.startsWith('/quiz/') || 
+                  isResumeScreen ||
+                  (pathname === '/' && isCheckingProfile); // Скрываем навигацию на главной во время проверки профиля
+  
+  // Скрываем логотип на главной странице, на странице незавершенной анкеты, на странице анкеты (там логотип на фоне), и на страницах плана, избранного и профиля (там логотип встроен в страницу)
+  const showLogo = pathname !== '/' && 
+                   !isResumeScreen && 
+                   pathname !== '/quiz' &&
+                   !pathname.startsWith('/quiz/') &&
+                   pathname !== '/plan' && 
+                   pathname !== '/wishlist' && 
+                   pathname !== '/cart' &&
+                   pathname !== '/cart-new' &&
+                   pathname !== '/profile';
 
   return (
     <>
-      {/* Логотип наверху всех экранов (кроме главной) */}
+      <NetworkStatus />
+      {/* Логотип наверху всех экранов (кроме главной) - как на главной странице */}
       {showLogo && (
         <div style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          backgroundColor: 'rgba(245, 255, 252, 0.9)',
-          backdropFilter: 'blur(10px)',
-          padding: '12px 20px',
-          display: 'flex',
-          justifyContent: 'center',
-          borderBottom: '1px solid rgba(10, 95, 89, 0.1)',
+          padding: '20px',
+          textAlign: 'center',
         }}>
           <button
             onClick={() => router.push('/')}
@@ -71,18 +136,17 @@ export default function MiniappLayout({
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              padding: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              padding: 0,
+              display: 'inline-block',
             }}
           >
             <img
               src="/skiniq-logo.png"
               alt="SkinIQ"
               style={{
-                height: '48px',
-                width: 'auto',
+                height: '140px',
+                marginTop: '8px',
+                marginBottom: '8px',
                 transition: 'transform 0.2s',
               }}
               onMouseEnter={(e) => {
@@ -95,8 +159,86 @@ export default function MiniappLayout({
           </button>
         </div>
       )}
-      {children}
+      <PageTransition>
+        {children}
+      </PageTransition>
       {!hideNav && <BottomNavigation />}
+      {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты) */}
+      {pathname !== '/quiz' && !pathname.startsWith('/quiz/') && <ServiceFeedbackPopup />}
     </>
+  );
+}
+
+// Fallback компонент, который сохраняет всю структуру layout
+// ИСПРАВЛЕНО: usePathname() не вызывает suspend, но для консистентности используем его безопасно
+// В fallback показываем базовую структуру без зависимостей от конкретного пути
+function LayoutFallback() {
+  // usePathname() не вызывает suspend, только useSearchParams() вызывает
+  // Но для fallback лучше показать универсальную структуру
+  const pathname = usePathname();
+  
+  // Определяем, нужно ли показывать логотип (та же логика, что и в LayoutContent)
+  const showLogo = pathname !== '/' && 
+                   pathname !== '/quiz' &&
+                   !pathname.startsWith('/quiz/') &&
+                   pathname !== '/plan' && 
+                   pathname !== '/wishlist' && 
+                   pathname !== '/cart' &&
+                   pathname !== '/cart-new' &&
+                   pathname !== '/profile';
+  
+  // Определяем, нужно ли скрывать навигацию (та же логика, что и в LayoutContent)
+  const hideNav = pathname === '/quiz' || 
+                  pathname.startsWith('/quiz/');
+  
+  return (
+    <>
+      <NetworkStatus />
+      {/* Логотип наверху всех экранов (кроме главной) */}
+      {showLogo && (
+        <div style={{
+          padding: '20px',
+          textAlign: 'center',
+        }}>
+          <img
+            src="/skiniq-logo.png"
+            alt="SkinIQ"
+            style={{
+              height: '140px',
+              marginTop: '8px',
+              marginBottom: '8px',
+            }}
+          />
+        </div>
+      )}
+      <PageTransition>
+        <div style={{
+          minHeight: 'calc(100vh - 200px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}>
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
+        </div>
+      </PageTransition>
+      {!hideNav && <BottomNavigation />}
+      {/* Сервисный попап для отзывов */}
+      {pathname !== '/quiz' && !pathname.startsWith('/quiz/') && <ServiceFeedbackPopup />}
+    </>
+  );
+}
+
+export default function MiniappLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <QueryProvider>
+      <Suspense fallback={<LayoutFallback />}>
+        <LayoutContent>{children}</LayoutContent>
+      </Suspense>
+    </QueryProvider>
   );
 }

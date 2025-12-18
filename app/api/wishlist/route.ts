@@ -3,26 +3,51 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { ApiResponse } from '@/lib/api-response';
+import { requireTelegramAuth, tryGetTelegramIdentityFromRequest } from '@/lib/auth/telegram-auth';
 
 // GET - получение списка избранного
 export async function GET(request: NextRequest) {
-  try {
-    // Проверяем initData в заголовках (регистр не важен)
-    const initData = request.headers.get('x-telegram-init-data') || 
-                     request.headers.get('X-Telegram-Init-Data');
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/wishlist';
+  let userId: string | undefined;
 
-    // Если нет initData - возвращаем пустой список (без ошибки)
-    if (!initData) {
-      console.log('⚠️ No initData provided for wishlist - returning empty list');
+  try {
+    const identity = tryGetTelegramIdentityFromRequest(request);
+
+    // Если нет initData — возвращаем пустой список (без ошибки)
+    if (!identity.ok && identity.code === 'AUTH_MISSING_INITDATA') {
+      logger.debug('No initData provided for wishlist - returning empty list');
       return NextResponse.json({ items: [] });
     }
 
-    const userId = await getUserIdFromInitData(initData);
-    
-    // Если не удалось получить userId - возвращаем пустой список (без ошибки)
+    // Невалидный initData — считаем, что пользователь не авторизован (как и раньше)
+    if (!identity.ok) {
+      logger.debug('Invalid initData for wishlist - returning empty list', { code: identity.code });
+      return NextResponse.json({ items: [] });
+    }
+
+    // Маппим telegramId -> userId (без создания пользователя)
+    try {
+      const existing = await prisma.user.findUnique({
+        where: { telegramId: identity.telegramId },
+        select: { id: true },
+      });
+      userId = existing?.id || undefined;
+    } catch (err: any) {
+      // DB ошибка ≠ auth ошибка
+      return ApiResponse.failure({
+        status: 503,
+        code: 'DB_ERROR',
+        message: 'Database error while loading wishlist',
+      });
+    }
+
+    // Если пользователя нет в БД — возвращаем пустой список
     if (!userId) {
-      console.log('⚠️ Could not get userId from initData - returning empty list');
+      logger.debug('User not found for wishlist - returning empty list');
       return NextResponse.json({ items: [] });
     }
 
@@ -69,9 +94,14 @@ export async function GET(request: NextRequest) {
       createdAt: item.createdAt,
     }));
 
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({ items });
   } catch (error) {
-    console.error('Error fetching wishlist:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -81,35 +111,21 @@ export async function GET(request: NextRequest) {
 
 // POST - добавление в избранное
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/wishlist';
+  let userId: string | undefined;
+
   try {
-    // Проверяем initData в заголовках (регистр не важен)
-    const initData = request.headers.get('x-telegram-init-data') || 
-                     request.headers.get('X-Telegram-Init-Data');
-
-    // Для добавления в wishlist нужна авторизация
-    if (!initData) {
-      console.log('⚠️ No initData in wishlist POST request');
-      console.log('   Headers:', Object.fromEntries(request.headers.entries()));
-      return NextResponse.json(
-        { error: 'Missing Telegram initData. Please open the app through Telegram Mini App.' },
-        { status: 401 }
-      );
-    }
-
-    const userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
     const body = await request.json().catch(() => ({}));
     const productId = body.productId;
 
     if (!productId) {
-      console.error('❌ Missing productId in wishlist POST:', body);
+      logger.warn('Missing productId in wishlist POST', { userId, body });
       return NextResponse.json(
         { error: 'Missing productId in request body' },
         { status: 400 }
@@ -120,7 +136,7 @@ export async function POST(request: NextRequest) {
     const productIdNum = typeof productId === 'string' ? parseInt(productId, 10) : productId;
     
     if (isNaN(productIdNum) || productIdNum <= 0) {
-      console.error('❌ Invalid productId:', productId);
+      logger.warn('Invalid productId', { userId, productId });
       return NextResponse.json(
         { error: 'Invalid productId: must be a positive number' },
         { status: 400 }
@@ -161,6 +177,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logger.info('Product added to wishlist', {
+      userId,
+      productId: productIdNum,
+      productName: wishlistItem.product.name,
+    });
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({
       success: true,
       item: {
@@ -173,12 +198,11 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('❌ Error adding to wishlist:', error);
-    console.error('   Error stack:', error.stack);
-    console.error('   Error message:', error.message);
+    const duration = Date.now() - startTime;
     
     // Если это ошибка Prisma (например, нарушение уникальности) - это нормально
     if (error.code === 'P2002') {
+      logger.debug('Product already in wishlist', { userId, productId: error.meta?.target });
       // Уже есть в wishlist - возвращаем успех
       return NextResponse.json({
         success: true,
@@ -186,10 +210,13 @@ export async function POST(request: NextRequest) {
       });
     }
     
+    logApiError(method, path, error, userId);
+
+    const isDevelopment = process.env.NODE_ENV === 'development';
     return NextResponse.json(
       { 
         error: error.message || 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        details: isDevelopment ? error.stack : undefined,
       },
       { status: 500 }
     );
@@ -198,27 +225,15 @@ export async function POST(request: NextRequest) {
 
 // DELETE - удаление из избранного
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'DELETE';
+  const path = '/api/wishlist';
+  let userId: string | undefined;
+
   try {
-    // Проверяем initData в заголовках (регистр не важен)
-    const initData = request.headers.get('x-telegram-init-data') || 
-                     request.headers.get('X-Telegram-Init-Data');
-
-    // Для удаления из wishlist нужна авторизация
-    if (!initData) {
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
-    }
-
-    const userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get('productId');
@@ -245,9 +260,19 @@ export async function DELETE(request: NextRequest) {
       },
     });
 
+    logger.info('Product removed from wishlist', {
+      userId,
+      productId: productIdNum,
+    });
+
+    const duration = Date.now() - startTime;
+    logApiRequest(method, path, 200, duration, userId);
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error removing from wishlist:', error);
+    const duration = Date.now() - startTime;
+    logApiError(method, path, error, userId);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

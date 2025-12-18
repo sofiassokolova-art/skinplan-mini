@@ -38,6 +38,28 @@ export default function CartPage() {
     loadWishlist();
   }, []);
 
+  // ИСПРАВЛЕНО: Обновляем список избранного при возврате на страницу
+  useEffect(() => {
+    const handleFocus = () => {
+      // Обновляем список при возврате на страницу
+      loadWishlist();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadWishlist();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   const loadWishlist = async () => {
     try {
       setLoading(true);
@@ -45,10 +67,34 @@ export default function CartPage() {
       
       // Загружаем wishlist без обязательной проверки авторизации
       // API вернет пустой список, если нет авторизации
-      const data = await api.getWishlist() as { items?: WishlistItemData[] };
-      // Обрабатываем разные форматы ответа
-      const items = data.items || (data as any).wishlist || [];
-      setWishlist(Array.isArray(items) ? items : []);
+      const data = await api.getWishlist();
+      // Маппим данные из API в формат WishlistItemData
+      const items: WishlistItemData[] = (data.items || []).map(item => ({
+        id: item.id,
+        product: item.product ? {
+          id: item.product.id,
+          name: item.product.name,
+          brand: {
+            id: item.product.brand?.id || 0,
+            name: item.product.brand.name,
+          },
+          price: item.product.price,
+          imageUrl: item.product.imageUrl,
+          link: item.product.link || null,
+          marketLinks: item.product.marketLinks || null,
+        } : {
+          id: item.productId,
+          name: 'Неизвестный продукт',
+          brand: { id: 0, name: 'Unknown' },
+          price: null,
+          imageUrl: null,
+          link: null,
+          marketLinks: null,
+        },
+        feedback: item.feedback || '',
+        createdAt: item.createdAt,
+      }));
+      setWishlist(items);
     } catch (err: any) {
       console.error('Error loading wishlist:', err);
       // Любые ошибки обрабатываем как пустое состояние
@@ -70,36 +116,6 @@ export default function CartPage() {
     }
   };
 
-  const handleBuyAll = () => {
-    // Открываем все ссылки в новых вкладках
-    const links: string[] = [];
-    
-    wishlist.forEach((item) => {
-      const marketLinks = item.product.marketLinks as any || {};
-      if (marketLinks.ozon) links.push(marketLinks.ozon);
-      if (marketLinks.wildberries) links.push(marketLinks.wildberries);
-      if (marketLinks.apteka) links.push(marketLinks.apteka);
-      if (item.product.link && !marketLinks.ozon && !marketLinks.wildberries && !marketLinks.apteka) {
-        links.push(item.product.link);
-      }
-    });
-
-    // Открываем уникальные ссылки
-    const uniqueLinks = [...new Set(links)];
-    uniqueLinks.forEach((link) => {
-      window.open(link, '_blank');
-    });
-
-    if (uniqueLinks.length === 0) {
-      toast.error('Ссылки на покупку не найдены');
-    } else {
-      toast.success(`Открыто ${uniqueLinks.length} ссылок`);
-    }
-  };
-
-  const minPrice = wishlist.reduce((sum, item) => {
-    return sum + (item.product.price || 0);
-  }, 0);
 
   if (loading) {
     return (
@@ -123,10 +139,47 @@ export default function CartPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        backgroundAttachment: 'fixed',
         padding: '20px',
-        paddingBottom: wishlist.length > 0 ? '140px' : '120px',
+        paddingBottom: '120px',
       }}
     >
+      {/* Логотип */}
+      <div style={{
+        padding: '20px',
+        textAlign: 'center',
+        marginTop: '-20px',
+        marginLeft: '-20px',
+        marginRight: '-20px',
+      }}>
+        <button
+          onClick={() => router.push('/')}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'inline-block',
+          }}
+        >
+        <img
+          src="/skiniq-logo.png"
+          alt="SkinIQ"
+          style={{
+            height: '140px',
+            marginTop: '8px',
+            marginBottom: '8px',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+          }}
+        />
+        </button>
+      </div>
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <h1
@@ -169,14 +222,14 @@ export default function CartPage() {
             href="/plan"
             style={{
               display: 'inline-block',
-              backgroundColor: '#8B5CF6',
+              backgroundColor: '#0A5F59',
               color: 'white',
               padding: '16px 32px',
               borderRadius: '16px',
               textDecoration: 'none',
               fontSize: '16px',
               fontWeight: 'bold',
-              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
             }}
           >
             Открыть план ухода
@@ -195,52 +248,6 @@ export default function CartPage() {
             ))}
           </div>
 
-          {/* Кнопка "Купить всё" */}
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(28px)',
-              borderTop: '1px solid rgba(10, 95, 89, 0.1)',
-              padding: '20px',
-              boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.1)',
-              zIndex: 1000,
-            }}
-          >
-            <div style={{ maxWidth: '420px', margin: '0 auto' }}>
-              <button
-                onClick={handleBuyAll}
-                style={{
-                  width: '100%',
-                  padding: '20px',
-                  borderRadius: '24px',
-                  border: 'none',
-                  background: 'linear-gradient(to right, #8B5CF6, #EC4899)',
-                  color: 'white',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
-                  marginBottom: '12px',
-                }}
-              >
-                Купить всё в один клик ({wishlist.length} товара{wishlist.length > 1 ? '' : ''} • от {minPrice} ₽)
-              </button>
-              <p
-                style={{
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  color: '#475467',
-                  margin: 0,
-                }}
-              >
-                Откроем лучшие цены в аптеках и маркетплейсах
-              </p>
-            </div>
-          </div>
         </>
       )}
     </div>

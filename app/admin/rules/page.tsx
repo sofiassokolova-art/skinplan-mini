@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, Code, Eye } from 'lucide-react';
-import { cn, glassCard, glassCardHover } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface Rule {
   id: number;
@@ -299,7 +299,7 @@ export default function RulesAdmin() {
         {rules.map((rule) => (
           <div
             key={rule.id}
-            className={cn(glassCard, 'p-6')}
+            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6"
           >
             <div className="flex items-start justify-between mb-4">
               <div>

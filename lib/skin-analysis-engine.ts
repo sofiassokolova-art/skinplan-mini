@@ -69,13 +69,78 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers): SkinScore[] {
   // 4. Inflammation / Acne (воспаление / акне)
   const inflammation = (() => {
     let score = 0;
-    if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Акне') || c.includes('акне') || c.includes('высыпания'))) score += 50;
-    if (Array.isArray(a.diagnoses) && a.diagnoses.some((d: string) => d.includes('Акне') || d.includes('акне'))) score += 40;
-    if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Покраснения') || c.includes('покраснение'))) score += 25;
-    if (Array.isArray(a.habits) && a.habits.some((h: string) => h.includes('сладкое') || h.includes('сахар'))) score += 15;
-    if (Array.isArray(a.habits) && a.habits.some((h: string) => h.includes('Стресс') || h.includes('стресс'))) score += 20;
-    if (a.acneLevel && typeof a.acneLevel === 'number') score += a.acneLevel * 8; // уровень акне 0-5 -> 0-40 баллов
-    return Math.min(100, score);
+    const debugInfo: string[] = [];
+    
+    // Проверяем concerns на акне
+    const hasAcneInConcerns = Array.isArray(a.concerns) && a.concerns.some((c: string) => 
+      c.includes('Акне') || c.includes('акне') || c.includes('высыпания')
+    );
+    if (hasAcneInConcerns) {
+      score += 50;
+      debugInfo.push(`concerns (акне): +50`);
+    }
+    
+    // Проверяем diagnoses на акне
+    const hasAcneInDiagnoses = Array.isArray(a.diagnoses) && a.diagnoses.some((d: string) => 
+      d.includes('Акне') || d.includes('акне')
+    );
+    if (hasAcneInDiagnoses) {
+      score += 40;
+      debugInfo.push(`diagnoses (акне): +40`);
+    }
+    
+    // Проверяем concerns на покраснения
+    const hasRednessInConcerns = Array.isArray(a.concerns) && a.concerns.some((c: string) => 
+      c.includes('Покраснения') || c.includes('покраснение')
+    );
+    if (hasRednessInConcerns) {
+      score += 25;
+      debugInfo.push(`concerns (покраснения): +25`);
+    }
+    
+    // Проверяем habits на сладкое
+    const hasSugarInHabits = Array.isArray(a.habits) && a.habits.some((h: string) => 
+      h.includes('сладкое') || h.includes('сахар')
+    );
+    if (hasSugarInHabits) {
+      score += 15;
+      debugInfo.push(`habits (сладкое): +15`);
+    }
+    
+    // Проверяем habits на стресс
+    const hasStressInHabits = Array.isArray(a.habits) && a.habits.some((h: string) => 
+      h.includes('Стресс') || h.includes('стресс')
+    );
+    if (hasStressInHabits) {
+      score += 20;
+      debugInfo.push(`habits (стресс): +20`);
+    }
+    
+    // Добавляем баллы за уровень акне
+    if (a.acneLevel && typeof a.acneLevel === 'number') {
+      const acneLevelScore = a.acneLevel * 8;
+      score += acneLevelScore;
+      debugInfo.push(`acneLevel (${a.acneLevel}): +${acneLevelScore}`);
+    }
+    
+    const finalScore = Math.min(100, score);
+    
+    // ИСПРАВЛЕНО: Логируем детали вычисления inflammation в development режиме
+    if (process.env.NODE_ENV === 'development' && debugInfo.length > 0) {
+      console.debug('[skin-analysis-engine] Inflammation calculation:', {
+        input: {
+          concerns: a.concerns,
+          diagnoses: a.diagnoses,
+          habits: a.habits,
+          acneLevel: a.acneLevel,
+        },
+        steps: debugInfo,
+        rawScore: score,
+        finalScore,
+      });
+    }
+    
+    return finalScore;
   })();
 
   // 5. Pigmentation Risk (риск пигментации)

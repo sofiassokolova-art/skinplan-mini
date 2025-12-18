@@ -6,7 +6,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send, User, Clock, AlertCircle, X } from 'lucide-react';
-import { cn, glassCard } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 // Простая функция форматирования времени
 const formatTime = (date: string | Date) => {
   const d = typeof date === 'string' ? new Date(date) : date;
@@ -244,7 +244,7 @@ export default function SupportAdmin() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 h-[calc(100vh-4rem)] bg-gray-100">
       {/* Левая колонка — список чатов */}
-      <div className={cn(glassCard, 'border-r border-gray-200 overflow-y-auto bg-white', selectedChat && 'hidden lg:block')}>
+      <div className={cn('bg-white border-r border-gray-200 overflow-y-auto', selectedChat && 'hidden lg:block')}>
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">Чаты поддержки</h2>
           <p className="text-sm text-gray-600 mt-1">{chats.length} активных</p>
@@ -309,7 +309,7 @@ export default function SupportAdmin() {
         {selectedChat ? (
           <>
             {/* Хедер чата */}
-            <div className={cn(glassCard, 'p-4 border-b border-gray-200 flex items-center justify-between bg-white flex-shrink-0')}>
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white flex-shrink-0">
               <div className="flex items-center gap-4 flex-1">
                 {/* Кнопка "Назад" для мобильных */}
                 <button
@@ -412,7 +412,7 @@ export default function SupportAdmin() {
             </div>
 
             {/* Поле ввода */}
-            <div className={cn(glassCard, 'p-4 border-t border-gray-200 bg-white flex-shrink-0')}>
+            <div className="p-4 border-t border-gray-200 bg-white flex-shrink-0">
               <div className="flex gap-4">
                 <textarea
                   value={replyText}

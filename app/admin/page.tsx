@@ -15,6 +15,7 @@ interface Stats {
   badFeedback: number;
   replacements: number;
   revenue?: number;
+  retakingUsers?: number; // Пользователи, которые перепрошли анкету
   newUsersLast7Days?: number;
   newUsersLast30Days?: number;
 }
@@ -136,6 +137,12 @@ export default function AdminDashboard() {
       color: 'from-pink-600 to-rose-400'
     },
     { 
+      label: 'Перепрошли анкету', 
+      value: stats.retakingUsers || 0, 
+      change: null,
+      color: 'from-indigo-600 to-blue-400'
+    },
+    { 
       label: 'Продуктов в базе', 
       value: stats.products || 0, 
       change: stats.products === 120 ? 'new' : null,
@@ -162,13 +169,13 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="w-full pt-6">
+    <div className="w-full">
       {/* Заголовок */}
       <h1 className="text-4xl font-black text-gray-900 mb-10">
         SkinIQ Admin • {currentDate}
       </h1>
       
-      {/* Сетка из 6 метрик */}
+      {/* Сетка из 7 метрик */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-12 mb-12">
         {metricsData.map((m, i) => (
           <div 
@@ -241,6 +248,13 @@ export default function AdminDashboard() {
           {growthLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-gray-500">Загрузка данных...</div>
+            </div>
+          ) : userGrowth.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <TrendingUp className="mx-auto mb-4 text-gray-400" size={48} />
+                <p className="text-gray-500">Нет данных за выбранный период</p>
+              </div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">

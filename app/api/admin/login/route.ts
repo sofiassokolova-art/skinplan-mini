@@ -5,14 +5,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { logger } from '@/lib/logger';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// ИСПРАВЛЕНО: Убрали хардкод JWT секрета - теперь обязательная переменная
+const JWT_SECRET = process.env.JWT_SECRET;
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 export async function POST(request: NextRequest) {
   try {
+    // ИСПРАВЛЕНО: Проверяем JWT_SECRET перед использованием
+    if (!JWT_SECRET || JWT_SECRET === 'your-secret-key-change-in-production') {
+      logger.error('JWT_SECRET not configured or using default value', {
+        hasJwtSecret: !!JWT_SECRET,
+        isDefault: JWT_SECRET === 'your-secret-key-change-in-production',
+      });
+      return NextResponse.json(
+        { error: 'Server configuration error. JWT_SECRET must be set in environment variables.' },
+        { status: 500 }
+      );
+    }
+
     // Логируем входящий запрос (для отладки)
-    console.log('🔐 Admin login request received', {
+    logger.info('Admin login request received', {
       timestamp: new Date().toISOString(),
       hasBody: !!request.body,
       adminSecretSet: !!ADMIN_SECRET && ADMIN_SECRET !== '',
@@ -23,7 +37,7 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (parseError) {
-      console.error('❌ Failed to parse request body:', parseError);
+      logger.error('Failed to parse request body', parseError as Error);
       return NextResponse.json(
         { error: 'Неверный формат запроса' },
         { status: 400 }
@@ -33,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { secretWord } = body;
 
     if (!secretWord) {
-      console.warn('⚠️ Secret word not provided in request');
+      logger.warn('Secret word not provided in request');
       return NextResponse.json(
         { error: 'Требуется секретное слово' },
         { status: 400 }
@@ -41,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!ADMIN_SECRET || ADMIN_SECRET === '') {
-      console.error('❌ ADMIN_SECRET не настроен в переменных окружения');
+      logger.error('ADMIN_SECRET not configured in environment variables');
       return NextResponse.json(
         { error: 'Секретное слово не настроено на сервере. Проверьте переменные окружения на Vercel.' },
         { status: 500 }
@@ -60,7 +74,7 @@ export async function POST(request: NextRequest) {
       .digest('hex');
 
     // Логирование для отладки
-    console.log('🔍 Admin login attempt:', {
+    logger.info('Admin login attempt', {
       secretWordLength: secretWord.trim().length,
       adminSecretLength: ADMIN_SECRET.trim().length,
       hashesMatch: secretHash === expectedHash,
@@ -68,7 +82,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (secretHash !== expectedHash) {
-      console.warn('⚠️ Неверная попытка входа в админ-панель', {
+      logger.warn('Invalid admin login attempt', {
         timestamp: new Date().toISOString(),
         providedLength: secretWord.trim().length,
       });
@@ -92,7 +106,7 @@ export async function POST(request: NextRequest) {
           role: 'admin',
         },
       });
-      console.log('✅ Создан админ по умолчанию:', admin.id);
+      logger.info('Default admin created', { adminId: admin.id });
     }
 
     // Генерируем JWT токен
@@ -101,11 +115,11 @@ export async function POST(request: NextRequest) {
         adminId: admin.id,
         role: admin.role || 'admin',
       },
-      JWT_SECRET,
+      JWT_SECRET!, // Теперь мы уверены, что JWT_SECRET не null
       { expiresIn: '7d' }
     );
 
-    console.log('✅ Admin logged in via secret word:', { 
+    logger.info('Admin logged in via secret word', { 
       adminId: admin.id, 
       role: admin.role,
       timestamp: new Date().toISOString(),
@@ -131,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('Admin login error:', error);
+    logger.error('Admin login error', error as Error);
     return NextResponse.json(
       { error: 'Внутренняя ошибка сервера' },
       { status: 500 }

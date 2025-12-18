@@ -54,7 +54,7 @@ export default function BroadcastsPage() {
       }
 
       const data = await response.json();
-      setBroadcasts(data.broadcasts || []);
+        setBroadcasts(data.broadcasts || []);
     } catch (error) {
       console.error('Error loading broadcasts:', error);
     } finally {
@@ -99,7 +99,7 @@ export default function BroadcastsPage() {
   }
 
   return (
-    <div className="p-10">
+    <div className="p-10 pt-16">
       {/* Заголовок и кнопка */}
       <div className="flex items-center justify-between mb-16">
         <div>
@@ -118,7 +118,7 @@ export default function BroadcastsPage() {
       {/* Список рассылок */}
       {broadcasts.length === 0 ? (
         <div 
-          className="bg-white rounded-[20px] border border-[#e2e8f0] p-12 text-center"
+          className="bg-transparent rounded-[20px] border border-[#e2e8f0] p-12 text-center"
           style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)' }}
         >
           <Send size={48} className="mx-auto mb-4 text-[#64748b]" />
@@ -130,13 +130,13 @@ export default function BroadcastsPage() {
             <Send size={18} />
             Создать первую рассылку
           </Link>
-        </div>
-      ) : (
+          </div>
+        ) : (
         <div className="space-y-16">
           {broadcasts.map((broadcast) => (
             <div
               key={broadcast.id}
-              className="bg-white rounded-[20px] border border-[#e2e8f0] p-6 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] transition-all duration-300"
+              className="bg-transparent rounded-[20px] border border-[#e2e8f0] p-6 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] transition-all duration-300"
               style={{ boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)' }}
             >
               <div className="flex items-start justify-between gap-6">
@@ -182,7 +182,7 @@ export default function BroadcastsPage() {
             </div>
           ))}
         </div>
-      )}
+        )}
     </div>
   );
 }

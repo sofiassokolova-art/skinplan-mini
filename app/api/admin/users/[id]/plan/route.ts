@@ -55,14 +55,35 @@ export async function GET(
       );
     }
 
-    // Пытаемся получить план из кэша
-    const cachedPlan = await getCachedPlan(userId, profile.version);
+    // Пытаемся получить план из кэша для текущей версии
+    let cachedPlan = await getCachedPlan(userId, profile.version);
     
-    if (cachedPlan) {
+    if (cachedPlan && cachedPlan.plan28) {
       return NextResponse.json({ plan: cachedPlan });
     }
 
-    // Если плана нет в кэше, возвращаем сообщение
+    // Если план не найден для текущей версии, проверяем предыдущие версии профиля
+    // (как в /api/plan/route.ts)
+    const previousProfiles = await prisma.skinProfile.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 2,
+      select: { version: true },
+    });
+
+    const previousVersions = previousProfiles.filter(p => p.version !== profile.version);
+    const cacheChecks = previousVersions.map(prevProfile => getCachedPlan(userId, prevProfile.version));
+    const cachedPlans = await Promise.all(cacheChecks);
+    
+    for (let i = 0; i < cachedPlans.length; i++) {
+      const prevCachedPlan = cachedPlans[i];
+      if (prevCachedPlan && prevCachedPlan.plan28) {
+        // Возвращаем план из предыдущей версии - он все еще валиден
+        return NextResponse.json({ plan: prevCachedPlan });
+      }
+    }
+
+    // Если плана нет ни в текущей, ни в предыдущих версиях, возвращаем сообщение
     return NextResponse.json(
       { error: 'Plan not found. User may need to generate a new plan.' },
       { status: 404 }

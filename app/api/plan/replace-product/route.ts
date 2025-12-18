@@ -3,31 +3,33 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getUserIdFromInitData } from '@/lib/get-user-from-initdata';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
+import { ApiResponse } from '@/lib/api-response';
+import { invalidateAllUserCache } from '@/lib/cache';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'POST';
+  const path = '/api/plan/replace-product';
+  let userId: string | null | undefined;
+  
   try {
-    const initData = request.headers.get('x-telegram-init-data');
-
-    if (!initData) {
-      return NextResponse.json(
-        { error: 'Missing Telegram initData' },
-        { status: 401 }
-      );
-    }
-
-    const userId = await getUserIdFromInitData(initData);
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Invalid or expired initData' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireTelegramAuth(request, { ensureUser: true });
+    if (!auth.ok) return auth.response;
+    userId = auth.ctx.userId;
 
     const { oldProductId, newProductId } = await request.json();
+    
+    logger.info('Product replacement request', {
+      userId,
+      oldProductId,
+      newProductId,
+    });
 
     if (!oldProductId || !newProductId) {
+      const duration = Date.now() - startTime;
+      logApiRequest(method, path, 400, duration, userId);
       return NextResponse.json(
         { error: 'Missing oldProductId or newProductId' },
         { status: 400 }
@@ -44,6 +46,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (!oldProduct || !newProduct) {
+      const duration = Date.now() - startTime;
+      logger.warn('Product not found for replacement', {
+        userId,
+        oldProductId,
+        newProductId,
+        oldProductExists: !!oldProduct,
+        newProductExists: !!newProduct,
+      });
+      logApiRequest(method, path, 404, duration, userId);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
@@ -60,13 +71,129 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Здесь нужно обновить план пользователя
-    // Так как план генерируется динамически, нужно либо:
-    // 1. Сохранить замены в отдельной таблице и учитывать их при генерации плана
-    // 2. Или обновлять кэш рекомендаций
+    // ИСПРАВЛЕНО: Обновляем plan28 - заменяем продукт во всех днях плана
+    const plan28 = await prisma.plan28.findFirst({
+      where: {
+        userId,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    // Пока просто сохраняем замену - она будет учтена при следующей генерации плана
-    // Можно также обновить RecommendationSession, чтобы использовать новый продукт
+    if (plan28 && plan28.planData) {
+      // ИСПРАВЛЕНО: days находится внутри planData (Json поле)
+      const planData = plan28.planData as any;
+      const days = (planData.days || []) as any[];
+      const oldIdStr = String(oldProductId);
+      const newIdStr = String(newProductId);
+      
+      if (!Array.isArray(days) || days.length === 0) {
+        logger.warn('Plan28 has no days or invalid structure', { userId, planId: plan28.id });
+        return ApiResponse.success({ success: true, message: 'Plan has no days to update' });
+      }
+      
+      let updatedDays = false;
+      
+      // Проходим по всем дням и заменяем productId
+      const updatedDaysArray = days.map((day: any) => {
+        let dayUpdated = false;
+        
+        // Обновляем утренние шаги
+        const updatedMorning = day.morning?.map((step: any) => {
+          if (step.productId === oldIdStr) {
+            dayUpdated = true;
+            updatedDays = true;
+            return { ...step, productId: newIdStr };
+          }
+          // Также обновляем альтернативы
+          if (step.alternatives && Array.isArray(step.alternatives)) {
+            const updatedAlternatives = step.alternatives.map((altId: string) => 
+              altId === oldIdStr ? newIdStr : altId
+            );
+            if (JSON.stringify(updatedAlternatives) !== JSON.stringify(step.alternatives)) {
+              dayUpdated = true;
+              updatedDays = true;
+              return { ...step, alternatives: updatedAlternatives };
+            }
+          }
+          return step;
+        }) || day.morning;
+        
+        // Обновляем вечерние шаги
+        const updatedEvening = day.evening?.map((step: any) => {
+          if (step.productId === oldIdStr) {
+            dayUpdated = true;
+            updatedDays = true;
+            return { ...step, productId: newIdStr };
+          }
+          // Также обновляем альтернативы
+          if (step.alternatives && Array.isArray(step.alternatives)) {
+            const updatedAlternatives = step.alternatives.map((altId: string) => 
+              altId === oldIdStr ? newIdStr : altId
+            );
+            if (JSON.stringify(updatedAlternatives) !== JSON.stringify(step.alternatives)) {
+              dayUpdated = true;
+              updatedDays = true;
+              return { ...step, alternatives: updatedAlternatives };
+            }
+          }
+          return step;
+        }) || day.evening;
+        
+        // Обновляем еженедельные шаги
+        const updatedWeekly = day.weekly?.map((step: any) => {
+          if (step.productId === oldIdStr) {
+            dayUpdated = true;
+            updatedDays = true;
+            return { ...step, productId: newIdStr };
+          }
+          // Также обновляем альтернативы
+          if (step.alternatives && Array.isArray(step.alternatives)) {
+            const updatedAlternatives = step.alternatives.map((altId: string) => 
+              altId === oldIdStr ? newIdStr : altId
+            );
+            if (JSON.stringify(updatedAlternatives) !== JSON.stringify(step.alternatives)) {
+              dayUpdated = true;
+              updatedDays = true;
+              return { ...step, alternatives: updatedAlternatives };
+            }
+          }
+          return step;
+        }) || day.weekly;
+        
+        if (dayUpdated) {
+          return {
+            ...day,
+            morning: updatedMorning,
+            evening: updatedEvening,
+            weekly: updatedWeekly,
+          };
+        }
+        return day;
+      });
+      
+      if (updatedDays) {
+        // ИСПРАВЛЕНО: Обновляем planData, а не days напрямую
+        await prisma.plan28.update({
+          where: { id: plan28.id },
+          data: {
+            planData: {
+              ...planData,
+              days: updatedDaysArray,
+            } as any,
+          },
+        });
+        
+        logger.info('Plan28 updated with new product', {
+          userId,
+          plan28Id: plan28.id,
+          oldProductId,
+          newProductId,
+          daysUpdated: updatedDaysArray.filter((d: any, i: number) => 
+            JSON.stringify(d) !== JSON.stringify(days[i])
+          ).length,
+        });
+      }
+    }
 
     // Обновляем активную сессию рекомендаций, если она есть
     const activeSession = await prisma.recommendationSession.findFirst({
@@ -88,14 +215,44 @@ export async function POST(request: NextRequest) {
           products: updatedProducts,
         },
       });
+      
+      logger.info('RecommendationSession updated with new product', {
+        userId,
+        sessionId: activeSession.id,
+        oldProductId,
+        newProductId,
+      });
     }
 
+    // Очищаем кэш плана и рекомендаций для пользователя, чтобы новые данные сразу подтянулись
+    try {
+      await invalidateAllUserCache(userId);
+      logger.info('User cache invalidated after product replacement', { userId });
+    } catch (cacheError) {
+      logger.warn('Failed to invalidate user cache after product replacement (non-critical)', {
+        userId,
+        error: (cacheError as any)?.message || String(cacheError),
+      });
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info('Product replaced successfully', {
+      userId,
+      oldProductId,
+      newProductId,
+      sessionUpdated: !!activeSession,
+    });
+    logApiRequest(method, path, 200, duration, userId);
+    
     return NextResponse.json({ 
       success: true,
       message: 'Product replaced successfully. Plan will be updated on next refresh.',
     });
-  } catch (error) {
-    console.error('Error replacing product:', error);
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    logger.error('Error replacing product', error, { userId });
+    logApiError(method, path, error, userId);
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

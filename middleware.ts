@@ -9,9 +9,14 @@ import { rateLimit, getIdentifier } from './lib/rate-limit';
 // Настройки rate limiting для разных endpoints
 const RATE_LIMITS: Record<string, { maxRequests: number; interval: number }> = {
   '/api/plan/generate': { maxRequests: 10, interval: 60 * 1000 }, // 10 запросов в минуту
-  '/api/questionnaire/answers': { maxRequests: 5, interval: 60 * 1000 }, // 5 запросов в минуту
+  '/api/questionnaire/answers': { maxRequests: 10, interval: 60 * 1000 }, // 10 запросов в минуту (увеличено для избежания 429)
+  '/api/questionnaire/partial-update': { maxRequests: 5, interval: 60 * 1000 }, // 5 запросов в минуту
+  '/api/products/batch': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
   '/api/recommendations': { maxRequests: 20, interval: 60 * 1000 }, // 20 запросов в минуту
   '/api/admin/login': { maxRequests: 3, interval: 15 * 60 * 1000 }, // 3 попытки за 15 минут (защита от брутфорса)
+  '/api/wishlist': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
+  '/api/cart': { maxRequests: 30, interval: 60 * 1000 }, // 30 запросов в минуту
+  '/api/plan/progress': { maxRequests: 20, interval: 60 * 1000 }, // 20 запросов в минуту
 };
 
 // Публичные маршруты - теперь большинство пользовательских маршрутов публичные
@@ -23,6 +28,8 @@ const publicRoutes = [
   '/api/plan/generate', // Использует initData напрямую
   '/api/recommendations', // Использует initData напрямую
   '/api/profile/current', // Использует initData напрямую
+  '/api/cart', // Использует initData напрямую
+  '/api/wishlist', // Использует initData напрямую
   '/api/telegram/webhook', // Webhook от Telegram
   '/api/admin/login', // Публичный endpoint для входа в админку (не требует JWT)
   '/api/admin/auth', // Публичный endpoint для авторизации через Telegram initData (не требует JWT)
@@ -42,15 +49,9 @@ export async function middleware(request: NextRequest) {
   for (const [route, limits] of Object.entries(RATE_LIMITS)) {
     if (pathname.startsWith(route)) {
       const identifier = getIdentifier(request);
-      
-      // Определяем тип лимитера
-      let limiterType: 'plan' | 'answers' | 'recommendations' | 'admin' = 'plan';
-      if (route.includes('plan/generate')) limiterType = 'plan';
-      else if (route.includes('questionnaire/answers')) limiterType = 'answers';
-      else if (route.includes('recommendations')) limiterType = 'recommendations';
-      else if (route.includes('admin/login')) limiterType = 'admin';
-      
-      const result = await rateLimit(identifier, limits, limiterType);
+      // ИСПРАВЛЕНО: разделяем лимиты по endpoint'ам (route),
+      // чтобы /api/plan/generate и /api/plan/progress не "съедали" один общий лимит.
+      const result = await rateLimit(identifier, limits, route);
       
       if (!result.success) {
         const retryAfter = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
@@ -107,26 +108,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Для остальных API маршрутов проверяем auth_token
-    const token = request.headers.get('authorization')?.replace('Bearer ', '') ||
-                  request.cookies.get('auth_token')?.value;
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return NextResponse.next();
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
+    // Для остальных API маршрутов (не публичных, не админских)
+    // В Edge Runtime не поддерживается Node.js crypto, поэтому полная валидация JWT
+    // делается в API routes (Node.js runtime)
+    // Здесь просто пропускаем запрос в API route, где будет выполнена валидация
+    return NextResponse.next();
   }
 
   return NextResponse.next();

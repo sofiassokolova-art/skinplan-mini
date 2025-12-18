@@ -15,7 +15,9 @@ import {
   MessageSquare,
   Send,
   Menu,
-  X
+  X,
+  FileSearch,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +79,8 @@ export default function AdminLayout({
     { href: '/admin/feedback', label: 'Отзывы', icon: MessageSquare },
     { href: '/admin/support', label: 'Поддержка', icon: MessageSquare },
     { href: '/admin/broadcasts', label: 'Рассылки', icon: Send },
+    { href: '/admin/funnel', label: 'Воронка конверсии', icon: TrendingUp },
+    { href: '/admin/logs', label: 'Логи клиентов', icon: FileSearch },
   ];
 
   if (isLoginPage) {
@@ -155,7 +159,7 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main 
-        className="overflow-auto min-h-screen pr-8 md:pr-12 pt-8 md:pt-10 pb-6 md:pb-8 bg-transparent"
+        className="overflow-auto min-h-screen pr-8 md:pr-12 pt-16 md:pt-20 pb-6 md:pb-8 bg-transparent"
         style={{
           marginLeft: sidebarOpen ? '256px' : '80px',
           width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)'

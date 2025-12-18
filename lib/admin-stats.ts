@@ -1,7 +1,7 @@
 // lib/admin-stats.ts
 // Расширенная статистика для админ-дашборда
 
-import { prisma } from './db';
+import { prisma } from '@/lib/db';
 
 interface MetricsStats {
   // Базовые метрики
@@ -210,7 +210,10 @@ export async function getMetricsStats(): Promise<MetricsStats> {
   // Базовые метрики
   const users = await prisma.user.count();
   const products = await prisma.product.count({ where: { published: true } });
-  const plans = await prisma.skinProfile.count();
+  // Считаем количество уникальных пользователей с активными планами (у которых есть skinProfile)
+  const plans = await prisma.skinProfile.groupBy({
+    by: ['userId'],
+  }).then(groups => groups.length);
   const badFeedback = await prisma.wishlistFeedback.count({
     where: { feedback: 'bought_bad' },
   });

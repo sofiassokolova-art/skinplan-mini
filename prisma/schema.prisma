@@ -15,28 +15,40 @@ datasource db {
 // ============================================
 
 model User {
-  id         String   @id @default(cuid())
-  telegramId String   @unique @map("telegram_id")
-  username   String?
-  firstName  String?  @map("first_name")
-  lastName   String?  @map("last_name")
-  language   String   @default("ru")
-  tags       String[] @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-  lastActive DateTime? @map("last_active") // Обновляется при активности
+  id               String    @id @default(cuid())
+  telegramId       String    @unique @map("telegram_id")
+  username         String?
+  firstName        String?   @map("first_name")
+  lastName         String?   @map("last_name")
+  language         String    @default("ru")
+  phoneNumber      String?   @map("phone_number") // Номер телефона пользователя
+  tags             String[]  @default([]) // ["vip", "acne_june", "bought_spf", "inactive_30d"]
+  currentProfileId String?   @map("current_profile_id") // ИСПРАВЛЕНО: Указатель на текущий активный профиль
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  lastActive       DateTime? @map("last_active") // Обновляется при активности
 
-  skinProfiles           SkinProfile[]
-  userAnswers            UserAnswer[]
-  recommendationSessions RecommendationSession[]
-  planFeedbacks          PlanFeedback[]
-  wishlist               Wishlist[]
-  wishlistFeedbacks      WishlistFeedback[]
-  productReplacements    ProductReplacement[]
-  botMessages            BotMessage[]
-  broadcastLogs          BroadcastLog[]
-  supportChats           SupportChat[]
+  currentProfile           SkinProfile?              @relation("CurrentProfile", fields: [currentProfileId], references: [id], onDelete: SetNull)
+  skinProfiles             SkinProfile[]
+  userAnswers              UserAnswer[]
+  recommendationSessions   RecommendationSession[]
+  planFeedbacks            PlanFeedback[]
+  plan28s                  Plan28[]
+  planProgress             PlanProgress?
+  wishlist                 Wishlist[]
+  wishlistFeedbacks        WishlistFeedback[]
+  cart                     Cart[]
+  productReplacements      ProductReplacement[]
+  botMessages              BotMessage[]
+  broadcastLogs            BroadcastLog[]
+  supportChats             SupportChat[]
+  clientLogs               ClientLog[]
+  questionnaireSubmissions QuestionnaireSubmission[]
+  payments                 Payment[]
+  entitlements             Entitlement[]
 
+  @@index([lastActive])
+  @@index([currentProfileId])
   @@map("users")
 }
 
@@ -57,8 +69,11 @@ model SkinProfile {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recommendationSessions RecommendationSession[]
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentProfileUsers      User[]                    @relation("CurrentProfile") // ИСПРАВЛЕНО: Обратная связь для currentProfileId
+  recommendationSessions   RecommendationSession[]
+  plan28s                  Plan28[]
+  questionnaireSubmissions QuestionnaireSubmission[] // ИСПРАВЛЕНО: Обратная связь для QuestionnaireSubmission.profile
 
   @@unique([userId, version])
   @@index([userId])
@@ -79,6 +94,7 @@ model Questionnaire {
   questionGroups QuestionGroup[]
   questions      Question[]
   userAnswers    UserAnswer[]
+  submissions    QuestionnaireSubmission[]
 
   @@unique([version])
   @@map("questionnaires")
@@ -146,10 +162,39 @@ model UserAnswer {
   questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
   question      Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
+  // Гарантируем один ответ на вопрос для пользователя и анкеты (устраняем дубли при гонках)
+  @@unique([userId, questionnaireId, questionId])
   @@index([userId])
   @@index([questionnaireId])
   @@index([questionId])
   @@map("user_answers")
+}
+
+/// Фиксирует финальные отправки анкеты и обеспечивает идемпотентность по clientSubmissionId
+model QuestionnaireSubmission {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  questionnaireId    Int      @map("questionnaire_id")
+  clientSubmissionId String?  @map("client_submission_id")
+  profileId          String?  @map("profile_id")
+  profileVersion     Int?     @map("profile_version")
+  createdAt          DateTime @default(now()) @map("created_at")
+  status             String   @default("pending") @map("status") // pending | completed | failed
+  errorMessage       String?  @map("error_message")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  profile       SkinProfile?  @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  // Идемпотентность по clientSubmissionId: одна и та же пара (userId, questionnaireId, clientSubmissionId)
+  // обрабатывается один раз. Для clientSubmissionId = null БД допускает несколько записей между разными пользователями.
+  @@unique([userId, questionnaireId, clientSubmissionId])
+  // Дополнительно гарантируем одну финальную отправку на пару (userId, questionnaireId)
+  @@unique([userId, questionnaireId])
+  @@index([userId])
+  @@index([questionnaireId])
+  @@index([profileId])
+  @@map("questionnaire_submissions")
 }
 
 // ============================================
@@ -172,11 +217,11 @@ model Brand {
 }
 
 model Product {
-  id      Int    @id @default(autoincrement())
-  brandId Int    @map("brand_id")
+  id      Int     @id @default(autoincrement())
+  brandId Int     @map("brand_id")
   name    String
   slug    String? @unique
-  brand   Brand  @relation(fields: [brandId], references: [id])
+  brand   Brand   @relation(fields: [brandId], references: [id])
 
   // Основные данные
   price           Int? // в рублях (950 → 950 ₽) - новое поле, может быть null для обратной совместимости
@@ -216,17 +261,17 @@ model Product {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  wishlist               Wishlist[]
+  wishlistFeedbacks      WishlistFeedback[]
+  cart                   Cart[]
+  oldProductReplacements ProductReplacement[] @relation("OldProduct")
+  newProductReplacements ProductReplacement[] @relation("NewProduct")
+
   @@index([brandId])
   @@index([status])
   @@index([published])
   @@index([step])
   @@index([isHero, priority])
-  
-  wishlist            Wishlist[]
-  wishlistFeedbacks   WishlistFeedback[]
-  oldProductReplacements ProductReplacement[] @relation("OldProduct")
-  newProductReplacements ProductReplacement[] @relation("NewProduct")
-
   @@map("products")
 }
 
@@ -264,6 +309,7 @@ model RecommendationSession {
 
   @@index([userId])
   @@index([profileId])
+  @@index([createdAt])
   @@map("recommendation_sessions")
 }
 
@@ -288,7 +334,7 @@ model AdminWhitelist {
   id          Int      @id @default(autoincrement())
   phoneNumber String?  @unique @map("phone_number") // +79124483696 (опционально)
   telegramId  String?  @unique @map("telegram_id") // Опционально для связи
-  name        String?  // Имя админа для удобства
+  name        String? // Имя админа для удобства
   role        String   @default("admin") // admin / editor
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -304,15 +350,59 @@ model AdminWhitelist {
 model PlanFeedback {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  rating    Int      // 1-5 звезд
-  feedback  String?  // Опциональная обратная связь
+  rating    Int // 1-5 звезд
+  feedback  String? // Опциональная обратная связь
+  type      String   @default("plan_recommendations") // 'plan_recommendations' | 'plan_general' | 'service'
   createdAt DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
+  @@index([rating])
+  @@index([type])
   @@map("plan_feedback")
+}
+
+// ============================================
+// ПРОГРЕСС ПЛАНА
+// ============================================
+
+model Plan28 {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  skinProfileId  String   @map("skin_profile_id")
+  profileVersion Int      @map("profile_version") // Версия профиля, для которого создан план
+  planData       Json     @map("plan_data") // Полный план в формате Plan28 (days, mainGoals)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skinProfile SkinProfile @relation(fields: [skinProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, profileVersion]) // Один план на пользователя и версию профиля
+  @@index([userId])
+  @@index([skinProfileId])
+  @@index([profileVersion])
+  @@map("plan28")
+}
+
+model PlanProgress {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  currentDay         Int      @default(1)
+  completedDays      Int[]    @default([]) @map("completed_days")
+  currentStreak      Int      @default(0) @map("current_streak") // Текущая последовательность дней подряд
+  longestStreak      Int      @default(0) @map("longest_streak") // Максимальная последовательность дней подряд
+  totalCompletedDays Int      @default(0) @map("total_completed_days") // Общее количество выполненных дней
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@index([userId])
+  @@map("plan_progress")
 }
 
 // ============================================
@@ -334,11 +424,11 @@ model Wishlist {
   @@map("wishlist")
 }
 
-model WishlistFeedback {
+model Cart {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   productId Int      @map("product_id")
-  feedback  String   // 'not_bought' | 'bought_love' | 'bought_ok' | 'bought_bad'
+  quantity  Int      @default(1)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -348,6 +438,25 @@ model WishlistFeedback {
   @@unique([userId, productId])
   @@index([userId])
   @@index([productId])
+  @@map("cart")
+}
+
+model WishlistFeedback {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  productId Int      @map("product_id")
+  feedback  String // 'not_bought' | 'bought_love' | 'bought_ok' | 'bought_bad'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@index([feedback])
+  @@index([createdAt])
   @@map("wishlist_feedback")
 }
 
@@ -356,12 +465,12 @@ model ProductReplacement {
   userId       String   @map("user_id")
   oldProductId Int      @map("old_product_id")
   newProductId Int      @map("new_product_id")
-  reason       String   // 'feedback_bad' | 'out_of_stock' | 'manual'
+  reason       String // 'feedback_bad' | 'out_of_stock' | 'manual'
   createdAt    DateTime @default(now()) @map("created_at")
 
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  oldProduct  Product @relation("OldProduct", fields: [oldProductId], references: [id], onDelete: Cascade)
-  newProduct  Product @relation("NewProduct", fields: [newProductId], references: [id], onDelete: Cascade)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oldProduct Product @relation("OldProduct", fields: [oldProductId], references: [id], onDelete: Cascade)
+  newProduct Product @relation("NewProduct", fields: [newProductId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([oldProductId])
@@ -374,15 +483,15 @@ model ProductReplacement {
 // ============================================
 
 model BotMessage {
-  id           String   @id @default(cuid())
-  userId       String   @map("user_id")
-  telegramId   String   @map("telegram_id") // ID сообщения в Telegram
-  chatId       String   @map("chat_id") // ID чата
-  direction    String   // 'incoming' | 'outgoing'
-  messageType  String   @map("message_type") // 'text' | 'command' | 'callback' | 'photo' | 'document'
-  content      String?  // Текст сообщения
-  rawData      Json?    @map("raw_data") // Полные данные от Telegram API
-  createdAt    DateTime @default(now()) @map("created_at")
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  telegramId  String   @map("telegram_id") // ID сообщения в Telegram
+  chatId      String   @map("chat_id") // ID чата
+  direction   String // 'incoming' | 'outgoing'
+  messageType String   @map("message_type") // 'text' | 'command' | 'callback' | 'photo' | 'document'
+  content     String? // Текст сообщения
+  rawData     Json?    @map("raw_data") // Полные данные от Telegram API
+  createdAt   DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -394,17 +503,19 @@ model BotMessage {
 }
 
 model BroadcastMessage {
-  id          String   @id @default(cuid())
-  title       String   // Название рассылки
-  message     String   // Текст сообщения
-  filtersJson Json     @map("filters_json") // JSON с фильтрами: { skinType: 'oily', ageGroup: '18_25', ... }
-  status      String   @default("draft") // 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled'
+  id          String    @id @default(cuid())
+  title       String // Название рассылки
+  message     String // Текст сообщения
+  filtersJson Json      @map("filters_json") // JSON с фильтрами: { skinType: 'oily', ageGroup: '18_25', ... }
+  buttonsJson Json?     @map("buttons_json") // JSON с кнопками: [{ text: "...", url: "..." }]
+  imageUrl    String?   @map("image_url") // URL изображения (если использовался URL)
+  status      String    @default("draft") // 'draft' | 'scheduled' | 'sending' | 'completed' | 'cancelled'
   scheduledAt DateTime? @map("scheduled_at") // Когда отправить
-  sentCount   Int      @default(0) @map("sent_count") // Сколько отправлено
-  failedCount Int      @default(0) @map("failed_count") // Сколько не удалось отправить
-  totalCount  Int      @default(0) @map("total_count") // Всего получателей
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  sentCount   Int       @default(0) @map("sent_count") // Сколько отправлено
+  failedCount Int       @default(0) @map("failed_count") // Сколько не удалось отправить
+  totalCount  Int       @default(0) @map("total_count") // Всего получателей
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
   sentAt      DateTime? @map("sent_at") // Когда завершена отправка
 
   logs BroadcastLog[]
@@ -435,13 +546,13 @@ model SupportChat {
 }
 
 model SupportMessage {
-  id         String      @id @default(cuid())
-  chatId     String      @map("chat_id")
-  chat       SupportChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  text       String
-  isAdmin    Boolean     @default(false) @map("is_admin")
-  attachments Json?      // Для фото, файлов
-  createdAt  DateTime    @default(now()) @map("created_at")
+  id          String      @id @default(cuid())
+  chatId      String      @map("chat_id")
+  chat        SupportChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  text        String
+  isAdmin     Boolean     @default(false) @map("is_admin")
+  attachments Json? // Для фото, файлов
+  createdAt   DateTime    @default(now()) @map("created_at")
 
   @@index([chatId])
   @@index([createdAt])
@@ -449,19 +560,99 @@ model SupportMessage {
 }
 
 model BroadcastLog {
-  id              String   @id @default(cuid())
-  broadcastId     String   @map("broadcast_id")
-  userId          String   @map("user_id")
-  telegramId      String   @map("telegram_id")
-  status          String   // 'sent' | 'failed' | 'blocked'
-  errorMessage    String?  @map("error_message")
-  sentAt          DateTime @default(now()) @map("sent_at")
+  id           String   @id @default(cuid())
+  broadcastId  String   @map("broadcast_id")
+  userId       String   @map("user_id")
+  telegramId   String   @map("telegram_id")
+  status       String // 'sent' | 'failed' | 'blocked'
+  errorMessage String?  @map("error_message")
+  sentAt       DateTime @default(now()) @map("sent_at")
 
   broadcast BroadcastMessage @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
-  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([broadcastId])
   @@index([userId])
   @@index([status])
   @@map("broadcast_logs")
+}
+
+// ============================================
+// ЛОГИ КЛИЕНТОВ ДЛЯ ТЕХПОДДЕРЖКИ
+// ============================================
+
+model ClientLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  level     String // 'debug' | 'info' | 'warn' | 'error'
+  message   String
+  context   Json? // Дополнительный контекст (метод, путь, ошибки и т.д.)
+  userAgent String?  @map("user_agent")
+  url       String? // URL страницы, где произошло событие
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([level])
+  @@index([createdAt])
+  @@map("client_logs")
+}
+
+// ============================================
+// ОПЛАТА И ДОСТУП
+// ============================================
+
+model Payment {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Что покупаем
+  productCode String @map("product_code") // "plan_access" | "subscription_month" etc
+  amount      Int // в копейках/центах
+  currency    String @default("RUB")
+
+  // Провайдер оплаты
+  provider          String // "yookassa" | "cloudpayments" | "stripe" | "telegram"
+  providerPaymentId String? @unique @map("provider_payment_id")
+  providerPayload   Json?   @map("provider_payload") // Полные данные от провайдера
+
+  // Статус оплаты
+  status String // "pending" | "succeeded" | "failed" | "canceled" | "refunded"
+
+  // Идемпотентность
+  idempotencyKey String? @unique @map("idempotency_key") // Чтобы create не дублировался
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  entitlements Entitlement[] @relation("EntitlementPayment")
+
+  @@index([userId, createdAt])
+  @@index([providerPaymentId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@map("payments")
+}
+
+model Entitlement {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code       String // "paid_access" | "subscription_active" etc
+  active     Boolean   @default(false)
+  validUntil DateTime? @map("valid_until")
+
+  lastPaymentId String?  @map("last_payment_id") // Связь с последним успешным платежом
+  lastPayment   Payment? @relation("EntitlementPayment", fields: [lastPaymentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, code])
+  @@index([userId])
+  @@index([active, validUntil])
+  @@map("entitlements")
 }

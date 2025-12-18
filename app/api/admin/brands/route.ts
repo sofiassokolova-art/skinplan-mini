@@ -39,9 +39,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Получаем все бренды
+    // Получаем все бренды с количеством продуктов
     const allBrands = await prisma.brand.findMany({
       orderBy: { name: 'asc' },
+      include: {
+        _count: {
+          select: { products: true },
+        },
+      },
     });
 
     // Форматируем ответ
@@ -50,6 +55,7 @@ export async function GET(request: NextRequest) {
       name: brand.name,
       slug: brand.slug,
       isActive: brand.isActive,
+      productCount: brand._count.products,
     }));
 
     return NextResponse.json({ brands });

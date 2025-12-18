@@ -9,6 +9,8 @@ export interface TelegramWebApp {
   close: () => void;
   sendData: (data: string) => void;
   showPopup: (params: { title: string; message: string; buttons?: Array<{ type: string }> }) => void;
+  openLink: (url: string) => void;
+  openTelegramLink: (url: string) => void;
   initData: string;
   initDataUnsafe: {
     user?: {
@@ -17,6 +19,7 @@ export interface TelegramWebApp {
       last_name?: string;
       username?: string;
       language_code?: string;
+      photo_url?: string;
     };
   };
 }
@@ -30,7 +33,7 @@ declare global {
 }
 
 export const tg: TelegramWebApp | null =
-  typeof window !== 'undefined' && window.Telegram
+  typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp
     ? window.Telegram.WebApp
     : null;
 
@@ -55,13 +58,27 @@ export function sendToTG(payload: unknown): { ok: boolean; reason?: string } {
  * Хук для работы с Telegram WebApp
  */
 export function useTelegram() {
-  const initData = tg?.initData || '';
-  const user = tg?.initDataUnsafe?.user;
+  // Безопасное получение initData и user
+  let initData = '';
+  let user = undefined;
+  
+  try {
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      initData = window.Telegram.WebApp.initData || '';
+      user = window.Telegram.WebApp.initDataUnsafe?.user;
+    }
+  } catch (err) {
+    console.warn('⚠️ Error accessing Telegram WebApp:', err);
+  }
 
   const initialize = () => {
-    if (tg) {
-      tg.ready();
-      tg.expand();
+    try {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+      }
+    } catch (err) {
+      console.warn('⚠️ Error initializing Telegram WebApp:', err);
     }
   };
 

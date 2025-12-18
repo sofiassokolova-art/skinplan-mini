@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Установка статуса оплаты</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.secondary:hover {
+            background: #545b62;
+        }
+        .code-block {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔓 Установка статуса оплаты</h1>
+        
+        <div id="status" class="status info">
+            Нажмите кнопку ниже, чтобы установить статус оплаты
+        </div>
+
+        <div>
+            <button onclick="setPaymentStatus()">✅ Установить статус оплаты</button>
+            <button class="secondary" onclick="checkPaymentStatus()">🔍 Проверить статус</button>
+            <button class="secondary" onclick="clearPaymentStatus()">🗑️ Очистить статус</button>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h3>Текущий статус:</h3>
+            <div id="currentStatus" class="code-block">
+                Загрузка...
+            </div>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h3>Инструкция:</h3>
+            <ol>
+                <li>Откройте это окно в том же браузере, где открыт Mini App</li>
+                <li>Нажмите "Установить статус оплаты"</li>
+                <li>Вернитесь в Mini App и обновите страницу</li>
+                <li>План должен отобразиться без блюра</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        function updateCurrentStatus() {
+            const firstPayment = localStorage.getItem('payment_first_completed');
+            const retakingPayment = localStorage.getItem('payment_retaking_completed');
+            
+            const statusDiv = document.getElementById('currentStatus');
+            statusDiv.innerHTML = `
+                <strong>Первая оплата:</strong> ${firstPayment === 'true' ? '✅ Оплачено' : '❌ Не оплачено'}<br>
+                <strong>Перепрохождение:</strong> ${retakingPayment === 'true' ? '✅ Оплачено' : '❌ Не оплачено'}<br>
+                <br>
+                <strong>Все ключи localStorage:</strong><br>
+                ${Object.keys(localStorage).filter(k => k.includes('payment')).map(k => 
+                    `${k}: ${localStorage.getItem(k)}`
+                ).join('<br>') || 'Нет ключей оплаты'}
+            `;
+        }
+
+        function setPaymentStatus() {
+            try {
+                // Устанавливаем оба флага оплаты
+                localStorage.setItem('payment_first_completed', 'true');
+                localStorage.setItem('payment_retaking_completed', 'true');
+                
+                updateStatus('✅ Статус оплаты успешно установлен!', 'success');
+                updateCurrentStatus();
+                
+                console.log('✅ Payment status set:', {
+                    payment_first_completed: localStorage.getItem('payment_first_completed'),
+                    payment_retaking_completed: localStorage.getItem('payment_retaking_completed')
+                });
+            } catch (error) {
+                updateStatus('❌ Ошибка при установке статуса: ' + error.message, 'error');
+                console.error('Error setting payment status:', error);
+            }
+        }
+
+        function checkPaymentStatus() {
+            const firstPayment = localStorage.getItem('payment_first_completed');
+            const retakingPayment = localStorage.getItem('payment_retaking_completed');
+            
+            if (firstPayment === 'true' || retakingPayment === 'true') {
+                updateStatus('✅ Статус оплаты установлен', 'success');
+            } else {
+                updateStatus('❌ Статус оплаты не установлен', 'info');
+            }
+            
+            updateCurrentStatus();
+        }
+
+        function clearPaymentStatus() {
+            try {
+                localStorage.removeItem('payment_first_completed');
+                localStorage.removeItem('payment_retaking_completed');
+                
+                updateStatus('🗑️ Статус оплаты очищен', 'info');
+                updateCurrentStatus();
+                
+                console.log('🗑️ Payment status cleared');
+            } catch (error) {
+                updateStatus('❌ Ошибка при очистке: ' + error.message, 'error');
+                console.error('Error clearing payment status:', error);
+            }
+        }
+
+        // Проверяем статус при загрузке
+        window.addEventListener('load', () => {
+            checkPaymentStatus();
+        });
+    </script>
+</body>
+</html>

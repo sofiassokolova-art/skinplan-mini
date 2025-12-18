@@ -17,7 +17,7 @@ import {
   ColumnFiltersState,
 } from '@tanstack/react-table';
 import { Search, User, Check, X, Calendar, Eye } from 'lucide-react';
-import { cn, glassCard } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface User {
   id: string;
@@ -331,7 +331,7 @@ export default function UsersAdmin() {
       )}
 
       {/* Поиск */}
-      <div className={cn(glassCard, 'p-4 mb-12')}>
+      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-4 mb-12">
         <div className="flex items-center gap-4">
           <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-300">
             <div className="flex items-center justify-center px-4 py-2 bg-white">
@@ -350,7 +350,7 @@ export default function UsersAdmin() {
       </div>
 
       {/* Таблица */}
-      <div className={cn(glassCard, 'overflow-hidden')}>
+      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -407,7 +407,7 @@ export default function UsersAdmin() {
       </div>
 
         {/* Пагинация */}
-        <div className="px-4 py-4 border-t border-gray-200 flex items-center justify-between bg-white">
+        <div className="px-4 py-4 border-t border-gray-200 flex items-center justify-between bg-transparent">
           <div className="text-gray-600 text-sm">
             Страница {pagination.pageIndex + 1}
         </div>

@@ -83,9 +83,16 @@ export async function GET(request: NextRequest) {
       prisma.wishlistFeedback.count({ where }),
     ]);
 
-    // Также получаем обратную связь по планам
-    const [planFeedback, planFeedbackTotal] = await Promise.all([
+    // Получаем обратную связь по планам - разделяем по типу
+    const planFeedbackType = searchParams.get('planFeedbackType') || null; // 'plan_recommendations' | 'plan_general' | 'service'
+    const planFeedbackWhere: any = {};
+    if (planFeedbackType) {
+      planFeedbackWhere.type = planFeedbackType;
+    }
+    
+    const [planFeedback, planFeedbackTotal, planRecommendationsTotal, planGeneralTotal, serviceTotal] = await Promise.all([
       prisma.planFeedback.findMany({
+        where: planFeedbackWhere,
         skip,
         take: limit,
         include: {
@@ -101,7 +108,10 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.planFeedback.count(),
+      prisma.planFeedback.count({ where: planFeedbackWhere }),
+      prisma.planFeedback.count({ where: { type: 'plan_recommendations' } }),
+      prisma.planFeedback.count({ where: { type: 'plan_general' } }),
+      prisma.planFeedback.count({ where: { type: 'service' } }),
     ]);
 
     return NextResponse.json({
@@ -129,6 +139,7 @@ export async function GET(request: NextRequest) {
         userId: f.userId,
         rating: f.rating,
         feedback: f.feedback,
+        type: (f as any).type || 'plan_recommendations', // Добавляем тип
         createdAt: f.createdAt,
         user: {
           id: f.user.id,
@@ -138,6 +149,11 @@ export async function GET(request: NextRequest) {
           username: f.user.username,
         },
       })),
+      planFeedbackStats: {
+        planRecommendations: planRecommendationsTotal,
+        planGeneral: planGeneralTotal,
+        service: serviceTotal,
+      },
       pagination: {
         page,
         limit,

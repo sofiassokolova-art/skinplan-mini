@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -17,8 +17,8 @@ import {
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table';
-import { Search, Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
-import { cn, glassCard, glassCardHover } from '@/lib/utils';
+import { Search, Plus, Edit, Trash2, Eye, EyeOff, Download, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Product {
   id: number;
@@ -113,6 +113,62 @@ export default function ProductsAdmin() {
                       console.error('Ошибка удаления:', err);
                       alert('Ошибка удаления продукта');
                     }
+  };
+
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
+
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    try {
+      setShowExportMenu(false);
+      setExportLoading(true);
+      const token = localStorage.getItem('admin_token');
+      
+      // Отправляем запрос на экспорт в Telegram
+      const response = await fetch('/api/admin/products/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ format }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Ошибка экспорта');
+      }
+
+      const data = await response.json();
+      alert(`✅ ${data.message || 'Файл успешно отправлен в Telegram!'}`);
+    } catch (err) {
+      console.error('Ошибка экспорта:', err);
+      alert('❌ Ошибка экспорта: ' + (err instanceof Error ? err.message : 'Неизвестная ошибка'));
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const columns = useMemo<ColumnDef<Product>[]>(
@@ -307,27 +363,66 @@ export default function ProductsAdmin() {
             Всего: {products.length} {table.getFilteredRowModel().rows.length !== products.length && `(отфильтровано: ${table.getFilteredRowModel().rows.length})`}
           </p>
           </div>
-        <Link
-          href="/admin/products/new"
-          className={cn(
-            'px-6 py-3 bg-black text-white rounded-2xl font-bold hover:bg-gray-800',
-            'hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300',
-            'flex items-center gap-2'
-          )}
-        >
-          <Plus size={20} />
-          Добавить продукт
-        </Link>
+        <div className="flex items-center gap-3">
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className={cn(
+                'px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl font-semibold hover:bg-gray-200',
+                'transition-all duration-200 flex items-center gap-2'
+              )}
+            >
+              <Download size={18} />
+              Экспорт
+              <ChevronDown
+                size={16}
+                className={cn(
+                  'transition-transform',
+                  showExportMenu && 'transform rotate-180'
+                )}
+              />
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
+                <button
+                  onClick={() => handleExport('csv')}
+                  disabled={exportLoading}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-t-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {exportLoading ? '⏳ Отправка...' : '📊 Экспорт в CSV'}
+                </button>
+                <button
+                  onClick={() => handleExport('json')}
+                  disabled={exportLoading}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors rounded-b-lg border-t border-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {exportLoading ? '⏳ Отправка...' : '📄 Экспорт в JSON'}
+                </button>
+              </div>
+            )}
+          </div>
+          <Link
+            href="/admin/products/new"
+            className={cn(
+              'px-6 py-3 bg-black text-white rounded-2xl font-bold hover:bg-gray-800',
+              'hover:shadow-[0_8px_32px_rgba(139,92,246,0.5)] transition-all duration-300',
+              'flex items-center gap-2'
+            )}
+          >
+            <Plus size={20} />
+            Добавить продукт
+          </Link>
+        </div>
       </div>
 
       {error && (
-        <div className={cn(glassCard, 'p-4 bg-red-500/20 border-red-500/50')}>
-          <p className="text-red-200">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-700">{error}</p>
       </div>
       )}
 
       {/* Поиск и фильтры */}
-      <div className={cn(glassCard, 'p-4 mb-12')}>
+      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-4 mb-12">
         <div className="flex items-center gap-4">
           <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-300">
             <div className="flex items-center justify-center px-4 py-2 bg-white">
@@ -346,7 +441,7 @@ export default function ProductsAdmin() {
       </div>
 
       {/* Таблица */}
-      <div className={cn(glassCard, 'overflow-hidden')}>
+      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">

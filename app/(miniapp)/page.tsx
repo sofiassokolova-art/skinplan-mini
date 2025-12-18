@@ -7,7 +7,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
-import PlanFeedbackPopup from '@/components/PlanFeedbackPopup';
+import { clientLogger } from '@/lib/client-logger';
+import { PaymentGate } from '@/components/PaymentGate';
+import { getBaseStepFromStepCategory } from '@/lib/plan-helpers';
 
 interface RoutineItem {
   id: string;
@@ -51,309 +53,481 @@ export default function HomePage() {
   const { initialize, isAvailable } = useTelegram();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasPlan, setHasPlan] = useState(false); // Есть ли сохранённый 28-дневный план
   const [recommendations, setRecommendations] = useState<Recommendation | null>(null);
   const [morningItems, setMorningItems] = useState<RoutineItem[]>([]);
   const [eveningItems, setEveningItems] = useState<RoutineItem[]>([]);
   const [tab, setTab] = useState<'AM' | 'PM'>('AM');
   const [selectedItem, setSelectedItem] = useState<RoutineItem | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showResumeScreen, setShowResumeScreen] = useState(false);
-  const [savedProgress, setSavedProgress] = useState<{
-    answers: Record<number, string | string[]>;
-    questionIndex: number;
-    infoScreenIndex: number;
-  } | null>(null);
-  const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
-
-  // Проверка незавершённой анкеты (объявляем до использования)
-  const checkIncompleteQuiz = async (): Promise<boolean> => {
-    try {
-      // СНАЧАЛА проверяем, есть ли уже профиль кожи (анкета завершена)
-      // Это самая надежная проверка - если профиль есть, анкета точно завершена
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        try {
-          // Пробуем загрузить профиль напрямую - это более надежный способ проверки
-          const profile = await api.getCurrentProfile();
-          
-          // Если профиль загрузился, значит анкета завершена
-          // Очищаем весь прогресс (локально и состояние)
-          if (profile && (profile as any).id) {
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('quiz_progress');
-            }
-            setSavedProgress(null);
-            setShowResumeScreen(false);
-            console.log('✅ Quiz completed, profile exists:', (profile as any).id);
-            return false; // Анкета завершена, нет незавершенной анкеты
-          }
-        } catch (err: any) {
-          // Проверяем, какая именно ошибка
-          const errorMessage = err?.message || err?.toString() || '';
-          
-          // Если 404 или "No skin profile" - значит анкета не завершена, продолжаем проверку прогресса
-          if (errorMessage.includes('404') || 
-              errorMessage.includes('No skin profile') ||
-              errorMessage.includes('Skin profile not found') ||
-              errorMessage.includes('Profile not found')) {
-            console.log('ℹ️ No profile found, checking for incomplete quiz...');
-            // Продолжаем проверку прогресса ниже
-          } else {
-            // Другая ошибка (сеть, авторизация и т.д.) - логируем
-            console.warn('⚠️ Error checking profile:', errorMessage);
-            // Продолжаем проверку прогресса, так как ошибка может быть временной
-          }
-        }
-      }
-
-      // Если профиля нет, проверяем незавершённую анкету
-      // Сначала очищаем localStorage, если там остался старый прогресс
-      if (typeof window !== 'undefined') {
-        const savedProgressStr = localStorage.getItem('quiz_progress');
-        if (savedProgressStr) {
-          try {
-            const progress = JSON.parse(savedProgressStr);
-            // Проверяем, не старый ли это прогресс (больше 24 часов)
-            if (progress.timestamp && Date.now() - progress.timestamp > 24 * 60 * 60 * 1000) {
-              localStorage.removeItem('quiz_progress');
-              console.log('🗑️ Removed old quiz progress from localStorage (>24h)');
-            } else if (progress.answers && Object.keys(progress.answers).length > 0) {
-              // Проверяем на сервере, есть ли уже профиль
-              // Если профиль есть, очищаем локальный прогресс
-              if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-                try {
-                  const serverProgress = await api.getQuizProgress() as {
-                    progress?: {
-                      answers: Record<number, string | string[]>;
-                      questionIndex: number;
-                      infoScreenIndex: number;
-                    } | null;
-                  };
-                  
-                  // Если сервер не возвращает прогресс (null), значит профиль есть или прогресс очищен
-                  if (!serverProgress?.progress) {
-                    localStorage.removeItem('quiz_progress');
-                    setSavedProgress(null);
-                    setShowResumeScreen(false);
-                    console.log('✅ Server has no progress, clearing local progress');
-                    return false;
-                  }
-                  
-                  // Если сервер возвращает прогресс, используем его (более актуальный)
-                  if (serverProgress.progress && serverProgress.progress.answers && Object.keys(serverProgress.progress.answers).length > 0) {
-                    setSavedProgress(serverProgress.progress);
-                    setShowResumeScreen(true);
-                    setLoading(false);
-                    return true; // Есть незавершенная анкета
-                  }
-                } catch (err) {
-                  // Игнорируем ошибки загрузки прогресса с сервера
-                }
-              }
-              
-              // Если серверный прогресс недоступен, используем локальный
-              setSavedProgress(progress);
-              setShowResumeScreen(true);
-              setLoading(false);
-              return true; // Есть незавершенная анкета
-            }
-          } catch (e) {
-            // Игнорируем ошибки парсинга
-            localStorage.removeItem('quiz_progress');
-          }
-        }
-      }
-
-      // Проверяем на сервере (только если Telegram WebApp доступен)
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-        try {
-          // Сначала еще раз проверяем наличие профиля через API прогресса
-          // (API прогресса уже проверяет наличие профиля и возвращает null, если профиль есть)
-          const response = await api.getQuizProgress() as {
-            progress?: {
-              answers: Record<number, string | string[]>;
-              questionIndex: number;
-              infoScreenIndex: number;
-            } | null;
-          };
-          
-          // Если сервер не возвращает прогресс (null), значит профиль есть или прогресс очищен
-          // Это означает, что анкета завершена
-          if (!response || !response.progress) {
-            // Очищаем локальный прогресс тоже
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('quiz_progress');
-            }
-            setSavedProgress(null);
-            setShowResumeScreen(false);
-            console.log('✅ No progress from server - quiz completed or no progress');
-            return false; // Анкета завершена или нет прогресса
-          }
-          
-          // Если есть прогресс и есть ответы - показываем экран продолжения
-          if (response.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
-            // Сохраняем в localStorage для офлайн доступа
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('quiz_progress', JSON.stringify({
-                ...response.progress,
-                timestamp: Date.now(),
-              }));
-            }
-            setSavedProgress(response.progress);
-            setShowResumeScreen(true);
-            setLoading(false);
-            console.log('ℹ️ Incomplete quiz found:', Object.keys(response.progress.answers).length, 'answers');
-            return true; // Есть незавершенная анкета
-          }
-        } catch (err) {
-          // Игнорируем ошибки загрузки прогресса - продолжаем загрузку рекомендаций
-          console.warn('⚠️ Error loading quiz progress from server:', err);
-        }
-      }
-      
-      // Нет незавершенной анкеты, можно загружать рекомендации
-      // Очищаем локальный прогресс на всякий случай
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('quiz_progress');
-      }
-      setSavedProgress(null);
-      setShowResumeScreen(false);
-      return false;
-    } catch (err) {
-      // В случае ошибки продолжаем загрузку рекомендаций
-      console.error('❌ Error in checkIncompleteQuiz:', err);
-      return false;
-    }
-  };
+  const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
 
   useEffect(() => {
     setMounted(true);
     initialize();
+    setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true сразу при монтировании
+    setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при инициализации компонента
     
-    // Загружаем данные (пользователь идентифицируется автоматически через initData)
-    const initAndLoad = async () => {
+      // Загружаем данные (пользователь идентифицируется автоматически через initData)
+      const initAndLoad = async () => {
       // Проверяем, что приложение открыто через Telegram
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-        console.log('Telegram WebApp не доступен, перенаправляем на анкету');
+        clientLogger.log('Telegram WebApp не доступен, перенаправляем на анкету');
+        setLoading(false);
         router.push('/quiz');
         return;
       }
 
-      // Сначала проверяем, есть ли незавершенная анкета
-      const hasIncompleteQuiz = await checkIncompleteQuiz();
-      
-      // Если есть незавершенная анкета, не загружаем рекомендации
-      if (hasIncompleteQuiz) {
+      // ОПТИМИЗИРОВАНО: Загружаем имя пользователя асинхронно, не блокируя основную загрузку
+      // ИСПРАВЛЕНО: Приоритет загрузки имени: ответ USER_NAME > кэш ответов > кэш имени > профиль
+      const loadUserNameAsync = async () => {
+        try {
+          // ИСПРАВЛЕНО: Сначала проверяем кэш ответов (быстрее, чем запрос к API)
+          const cachedAnswers = typeof window !== 'undefined' ? localStorage.getItem('user_answers_cache') : null;
+          if (cachedAnswers) {
+            try {
+              const userAnswers = JSON.parse(cachedAnswers);
+              if (Array.isArray(userAnswers)) {
+                const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+                if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+                  const userNameFromAnswer = String(nameAnswer.answerValue).trim();
+                  setUserName(userNameFromAnswer);
+                  localStorage.setItem('user_name', userNameFromAnswer);
+                  clientLogger.log('✅ User name loaded from cached answers:', userNameFromAnswer);
+                  return;
+                }
+              }
+            } catch (parseError) {
+              // Если кэш поврежден, игнорируем и продолжаем
+            }
+          }
+          
+          // Если кэша ответов нет, запрашиваем ответы из API
+          const userAnswers = await api.getUserAnswers() as any;
+          if (userAnswers && Array.isArray(userAnswers)) {
+            // ИСПРАВЛЕНО: Сохраняем ответы в кэш для будущих запросов
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('user_answers_cache', JSON.stringify(userAnswers));
+            }
+            
+            const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+            if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
+              const userNameFromAnswer = String(nameAnswer.answerValue).trim();
+              setUserName(userNameFromAnswer);
+              // ИСПРАВЛЕНО: Сохраняем в кэш
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('user_name', userNameFromAnswer);
+              }
+              clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
+              return;
+            }
+          }
+          
+          // Если имени нет в ответах, проверяем кэш имени (fallback)
+          const cachedName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null;
+          if (cachedName) {
+            setUserName(cachedName);
+            clientLogger.log('✅ User name loaded from cache (fallback):', cachedName);
+            return;
+          }
+          
+          // Если кэша нет, пробуем из профиля
+          const userProfile = await api.getUserProfile();
+          if (userProfile?.firstName) {
+            setUserName(userProfile.firstName);
+            // ИСПРАВЛЕНО: Сохраняем в кэш
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('user_name', userProfile.firstName);
+            }
+            clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
+          }
+        } catch (err: any) {
+          // ИСПРАВЛЕНО: Не логируем 429 и 405 ошибки как warning
+          // 429 - это нормально при rate limiting
+          // 405 - может быть временной проблемой с endpoint
+          if (err?.status !== 429 && err?.status !== 405) {
+            clientLogger.warn('Could not load user name:', err);
+          } else if (err?.status === 405) {
+            // HTTP 405 - логируем только в development, это проблема с endpoint
+            if (process.env.NODE_ENV === 'development') {
+              clientLogger.warn('HTTP 405 when loading user name - check endpoint:', err);
+            }
+          }
+        }
+      };
+
+      const checkPlanExists = async (): Promise<boolean> => {
+        try {
+          const plan = await api.getPlan() as any;
+          const hasPlan28 =
+            plan &&
+            plan.plan28 &&
+            Array.isArray(plan.plan28.days) &&
+            plan.plan28.days.length > 0;
+          const hasWeeks = plan && Array.isArray(plan.weeks) && plan.weeks.length > 0;
+          const exists = !!hasPlan28 || !!hasWeeks;
+          setHasPlan(exists);
+          if (hasPlan28 || hasWeeks) {
+            clientLogger.log('✅ Plan exists for user, disabling CTA on home');
+          } else {
+            clientLogger.log('ℹ️ Plan not found when checking from home page');
+          }
+          return exists;
+        } catch (err: any) {
+          if (err?.status === 404 || err?.isNotFound) {
+            // Плана нет — это нормально для нового пользователя
+            setHasPlan(false);
+            clientLogger.log('ℹ️ Plan not found (404) when checking from home page');
+            return false;
+          } else {
+            clientLogger.warn('Could not check plan existence from home page', err);
+            // Не знаем наверняка — считаем, что плана нет, но не редиректим тут.
+            return false;
+          }
+        }
+      };
+
+      // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД проверкой профиля
+      // Это предотвращает редирект на /quiz сразу после отправки анкеты
+      const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+      if (justSubmitted) {
+        clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('quiz_just_submitted');
+          window.location.replace('/plan?state=generating');
+        }
         return;
       }
 
-      // Загружаем рекомендации (initData передается автоматически в запросе)
-      await loadRecommendations();
+      // Сначала проверяем, есть ли уже сохранённый план (чтобы НЕ редиректить на анкету ошибочно,
+      // если профиль временно не читается / есть лаг реплики / есть план без профиля).
+      const planExists = await checkPlanExists();
 
-      // Проверяем, нужно ли показывать поп-ап с отзывом (раз в неделю)
-      await checkFeedbackPopup();
+      // Сначала проверяем, существует ли профиль, чтобы не дергать тяжёлые эндпоинты без профиля
+      try {
+        const profile = await api.getCurrentProfile();
+        if (!profile) {
+          // Профиля нет. Если плана тоже нет — пользователь действительно новый → /quiz.
+          // Если план уже есть — остаёмся на главной и пробуем загрузить контент.
+          setLoading(false);
+          if (!planExists) {
+            router.replace('/quiz');
+            return;
+          }
+        }
+      } catch (err: any) {
+        // Если бэкенд вернул 404 / isNotFound - это нормальный случай "нет профиля"
+        // НО: не редиректим, если только что отправили анкету (уже обработано выше)
+        if (err?.status === 404 || err?.isNotFound) {
+          setLoading(false);
+          if (!planExists) {
+            router.replace('/quiz');
+            return;
+          }
+        }
+        // Другие ошибки не блокируют загрузку - просто логируем и продолжаем
+        clientLogger.warn('Could not check current profile before loading home data', err);
+      }
+
+      // Загружаем рекомендации (initData передается автоматически в запросе)
+      // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true
+      await loadRecommendations();
+      // Загружаем имя в фоне после загрузки рекомендаций и проверки плана
+      loadUserNameAsync();
     };
 
     initAndLoad();
   }, [router]);
 
-  // Проверка, нужно ли показывать поп-ап с отзывом (раз в неделю)
-  const checkFeedbackPopup = async () => {
-    if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-      return;
-    }
-
+  // Фолбэк: строим рутину напрямую из 28-дневного плана, если рекомендации по каким‑то причинам пустые
+  const buildRoutineFromPlan = async () => {
     try {
-      // Проверяем последний отзыв пользователя
-      const response = await api.getLastPlanFeedback() as {
-        lastFeedback?: {
-          id: string;
-          rating: number;
-          feedback: string | null;
-          createdAt: string;
-        } | null;
-      };
+      const plan = await api.getPlan() as any;
+      if (!plan) {
+        clientLogger.warn('Fallback plan: plan is empty');
+        return;
+      }
 
-      const lastFeedback = response?.lastFeedback;
-      const now = new Date();
+      // Определяем текущий день (сначала из локального кэша прогресса)
+      let currentDay = 1;
+      try {
+        const cachedProgress = typeof window !== 'undefined' ? localStorage.getItem('plan_progress') : null;
+        if (cachedProgress) {
+          const parsed = JSON.parse(cachedProgress);
+          if (typeof parsed?.currentDay === 'number' && parsed.currentDay >= 1 && parsed.currentDay <= 28) {
+            currentDay = parsed.currentDay;
+          }
+        }
+      } catch {
+        // ignore
+      }
 
-      if (!lastFeedback) {
-        // Если отзывов еще не было, показываем поп-ап через неделю после первого захода
-        const firstVisit = localStorage.getItem('first_visit_date');
-        if (!firstVisit) {
-          // Первый заход - сохраняем дату, но не показываем поп-ап
-          localStorage.setItem('first_visit_date', now.toISOString());
+      // 1) Новый формат: plan28
+      if (plan.plan28 && Array.isArray(plan.plan28.days) && plan.plan28.days.length > 0) {
+        const plan28 = plan.plan28;
+
+        const dayData =
+          plan28.days.find((d: any) => d.dayIndex === currentDay) ||
+          plan28.days[0];
+
+        if (!dayData) {
+          clientLogger.warn('Fallback plan: no day data found');
           return;
         }
-        
-        const firstVisitDate = new Date(firstVisit);
-        const daysSinceFirstVisit = Math.floor((now.getTime() - firstVisitDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Показываем поп-ап через 7 дней после первого захода
-        if (daysSinceFirstVisit >= 7) {
-          // Проверяем, не закрывал ли пользователь поп-ап сегодня
-          const closedToday = localStorage.getItem('feedback_popup_closed');
-          if (closedToday) {
-            const closedDate = new Date(closedToday);
-            const sameDay = closedDate.toDateString() === now.toDateString();
-            if (!sameDay) {
-              setShowFeedbackPopup(true);
+
+        const productsArray: any[] = Array.isArray(plan.products) ? plan.products : [];
+        const getProduct = (id: number) => productsArray.find(p => p.id === id);
+
+        const buildItems = (steps: any[], time: 'AM' | 'PM'): RoutineItem[] => {
+          const items: RoutineItem[] = [];
+          steps.forEach((step, idx) => {
+            const productId = Number(step.productId);
+            if (!productId) return;
+            const product = getProduct(productId);
+            if (!product) return;
+
+            const baseStep = getBaseStepFromStepCategory(step.stepCategory);
+
+            // Маппинг метаданных по базовому шагу
+            let title = '';
+            let icon = ICONS.cleanser;
+            let howto: RoutineItem['howto'] = {
+              steps: [],
+              volume: '',
+              tip: '',
+            };
+
+            if (baseStep === 'cleanser') {
+              title = 'Очищение';
+              icon = ICONS.cleanser;
+              howto = {
+                steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
+                volume: '1–2 нажатия',
+                tip: 'Если кожа сухая утром — можно умыться только водой.',
+              };
+            } else if (baseStep === 'toner') {
+              title = 'Тонер';
+              icon = ICONS.toner;
+              howto = {
+                steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
+                volume: '3–5 капель',
+                tip: 'Избегайте ватных дисков — тратите меньше продукта.',
+              };
+            } else if (baseStep === 'serum' || baseStep === 'treatment') {
+              title = time === 'AM' ? 'Актив' : 'Сыворотка';
+              icon = ICONS.serum;
+              howto = {
+                steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
+                volume: '3–6 капель',
+                tip: 'При раздражении сделайте паузу в использовании актива.',
+              };
+            } else if (baseStep === 'moisturizer') {
+              title = 'Крем';
+              icon = ICONS.cream;
+              howto = {
+                steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
+                volume: 'Горошина',
+                tip: 'Не забывайте шею и линию подбородка.',
+              };
+            } else if (baseStep === 'spf') {
+              title = 'SPF-защита';
+              icon = ICONS.spf;
+              howto = {
+                steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
+                volume: '~1.5–2 мл',
+                tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
+              };
+            } else if (baseStep === 'lip_care') {
+              title = 'Бальзам для губ';
+              icon = ICONS.cream;
+              howto = {
+                steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
+                volume: 'Тонкий слой',
+                tip: 'Регулярное использование предотвращает сухость и трещины.',
+              };
+            } else {
+              // Неизвестные шаги пока пропускаем, чтобы не ломать верстку
+              return;
             }
-          } else {
-            setShowFeedbackPopup(true);
-          }
+
+            items.push({
+              id: `${time}-${baseStep}-${idx}-${productId}`,
+              title,
+              subtitle: product.name || title,
+              icon,
+              howto,
+              done: false,
+            });
+          });
+          return items;
+        };
+
+        const fallbackMorning = buildItems(dayData.morning || [], 'AM');
+        const fallbackEvening = buildItems(dayData.evening || [], 'PM');
+
+        if (fallbackMorning.length === 0 && fallbackEvening.length === 0) {
+          clientLogger.warn('Fallback plan: no routine items built from plan28');
+          return;
         }
-      } else {
-        // Проверяем, прошла ли неделя с последнего отзыва
-        const lastFeedbackDate = new Date(lastFeedback.createdAt);
-        const daysSinceLastFeedback = Math.floor((now.getTime() - lastFeedbackDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Показываем поп-ап, если прошло 7 или более дней
-        if (daysSinceLastFeedback >= 7) {
-          // Проверяем, не закрывал ли пользователь поп-ап сегодня
-          const closedToday = localStorage.getItem('feedback_popup_closed');
-          if (closedToday) {
-            const closedDate = new Date(closedToday);
-            const sameDay = closedDate.toDateString() === now.toDateString();
-            if (!sameDay) {
-              setShowFeedbackPopup(true);
-            }
-          } else {
-            setShowFeedbackPopup(true);
-          }
-        }
+
+        clientLogger.log('✅ Fallback routine built from plan28', {
+          currentDay,
+          morningCount: fallbackMorning.length,
+          eveningCount: fallbackEvening.length,
+        });
+
+        setMorningItems(fallbackMorning);
+        setEveningItems(fallbackEvening);
+        return;
       }
-    } catch (err) {
-      console.warn('⚠️ Error checking feedback popup:', err);
-      // Не показываем поп-ап при ошибке
-    }
-  };
 
-  const resumeQuiz = () => {
-    router.push('/quiz');
-  };
+      // 2) Legacy формат: weeks (без plan28)
+      if (Array.isArray(plan.weeks) && plan.weeks.length > 0) {
+        const weekIndex = Math.max(0, Math.min(Math.floor((currentDay - 1) / 7), plan.weeks.length - 1));
+        const weekData = plan.weeks[weekIndex];
+        const days = Array.isArray(weekData?.days) ? weekData.days : [];
+        const dayIndex = Math.max(0, Math.min((currentDay - 1) % 7, days.length - 1));
+        const dayData = days[dayIndex] || days[0];
 
-  const startOver = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('quiz_progress');
-    }
-    setShowResumeScreen(false);
-    setSavedProgress(null);
-    router.push('/quiz');
-  };
+        if (!dayData) {
+          clientLogger.warn('Fallback plan: no day data found in legacy weeks');
+          return;
+        }
 
-  // Функция для формирования полного названия продукта с брендом
-  const getProductFullName = (product?: { name: string; brand?: string }): string => {
-    if (!product) return '';
-    if (product.brand) {
-      return `${product.name}, ${product.brand}`;
+        const productsArray: any[] = Array.isArray(plan.products) ? plan.products : [];
+        const getProduct = (id: number) => productsArray.find(p => p.id === id);
+
+        const buildItemsFromIds = (ids: any[], time: 'AM' | 'PM'): RoutineItem[] => {
+          const items: RoutineItem[] = [];
+          (Array.isArray(ids) ? ids : []).forEach((rawId, idx) => {
+            const productId = Number(rawId);
+            if (!productId) return;
+            const product = getProduct(productId);
+            if (!product) return;
+
+            // В legacy формате нет stepCategory → берём category продукта как “категорию шага”
+            const baseStep = getBaseStepFromStepCategory((product.category || product.step || 'serum') as any);
+
+            let title = '';
+            let icon = ICONS.cleanser;
+            let howto: RoutineItem['howto'] = { steps: [], volume: '', tip: '' };
+
+            if (baseStep === 'cleanser') {
+              title = 'Очищение';
+              icon = ICONS.cleanser;
+              howto = {
+                steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
+                volume: '1–2 нажатия',
+                tip: 'Если кожа сухая утром — можно умыться только водой.',
+              };
+            } else if (baseStep === 'toner') {
+              title = 'Тонер';
+              icon = ICONS.toner;
+              howto = {
+                steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
+                volume: '3–5 капель',
+                tip: 'Избегайте ватных дисков — тратите меньше продукта.',
+              };
+            } else if (baseStep === 'serum' || baseStep === 'treatment') {
+              title = time === 'AM' ? 'Актив' : 'Сыворотка';
+              icon = ICONS.serum;
+              howto = {
+                steps: ['3–6 капель на сухую кожу', 'Равномерно нанесите и дайте впитаться 1–2 минуты'],
+                volume: '3–6 капель',
+                tip: 'При раздражении сделайте паузу в использовании актива.',
+              };
+            } else if (baseStep === 'moisturizer') {
+              title = 'Крем';
+              icon = ICONS.cream;
+              howto = {
+                steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
+                volume: 'Горошина',
+                tip: 'Не забывайте шею и линию подбородка.',
+              };
+            } else if (baseStep === 'spf') {
+              title = 'SPF-защита';
+              icon = ICONS.spf;
+              howto = {
+                steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
+                volume: '~1.5–2 мл',
+                tip: 'При UV > 3 — обязательно SPF даже в облачную погоду.',
+              };
+            } else if (baseStep === 'lip_care') {
+              title = 'Бальзам для губ';
+              icon = ICONS.cream;
+              howto = {
+                steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
+                volume: 'Тонкий слой',
+                tip: 'Регулярное использование предотвращает сухость и трещины.',
+              };
+            } else {
+              return;
+            }
+
+            items.push({
+              id: `${time}-${baseStep}-${idx}-${productId}`,
+              title,
+              subtitle: product.name || title,
+              icon,
+              howto,
+              done: false,
+            });
+          });
+          return items;
+        };
+
+        const fallbackMorning = buildItemsFromIds(dayData.morning || [], 'AM');
+        const fallbackEvening = buildItemsFromIds(dayData.evening || [], 'PM');
+
+        if (fallbackMorning.length === 0 && fallbackEvening.length === 0) {
+          clientLogger.warn('Fallback plan: no routine items built from legacy weeks');
+          return;
+        }
+
+        clientLogger.log('✅ Fallback routine built from legacy weeks', {
+          currentDay,
+          morningCount: fallbackMorning.length,
+          eveningCount: fallbackEvening.length,
+        });
+
+        setMorningItems(fallbackMorning);
+        setEveningItems(fallbackEvening);
+        return;
+      }
+
+      clientLogger.warn('Fallback plan: no plan28 and no weeks data available');
+    } catch (err: any) {
+      clientLogger.warn('Fallback plan: failed to build routine from plan28', err);
     }
-    return product.name;
   };
 
   const loadRecommendations = async () => {
+    setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true перед началом загрузки
+    setError(null); // ИСПРАВЛЕНО: Очищаем ошибку перед началом новой загрузки
     try {
-      const data = await api.getRecommendations() as Recommendation;
-      setRecommendations(data);
+      const data = await api.getRecommendations() as any;
+      
+      // Если план истёк (28+ дней) — показываем понятный экран с предложением перепройти анкету
+      // (после перепрохождения в конце снова будет оплата/гейт).
+      if (data?.expired === true) {
+        // План истёк: оставляем UX на месте (не редиректим),
+        // строим рутину из plan28 и показываем блюр через PaymentGate.
+        setRecommendations(null as any);
+        setError(null);
+        try {
+          await buildRoutineFromPlan();
+        } catch (fallbackErr) {
+          clientLogger.warn('Failed to build routine from plan28 for expired plan', fallbackErr);
+          setMorningItems([]);
+          setEveningItems([]);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      setRecommendations(data as Recommendation);
+      setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке
       
       // Преобразуем рекомендации в RoutineItem[] раздельно для утра и вечера
       const morning: RoutineItem[] = [];
@@ -364,7 +538,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-cleanser',
           title: 'Очищение',
-          subtitle: getProductFullName(data.steps.cleanser[0]) || 'Очищающее средство',
+          subtitle: data.steps.cleanser[0]?.name || 'Очищающее средство',
           icon: ICONS.cleanser,
           howto: {
             steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
@@ -379,7 +553,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-toner',
           title: 'Тонер',
-          subtitle: getProductFullName(data.steps.toner[0]) || 'Тоник',
+          subtitle: data.steps.toner[0]?.name || 'Тоник',
           icon: ICONS.toner,
           howto: {
             steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
@@ -390,13 +564,11 @@ export default function HomePage() {
         });
       }
       
-      // Проверяем treatment, serum, или essence для утреннего актива
-      if (data?.steps?.treatment || data?.steps?.serum || data?.steps?.essence) {
-        const activeProduct = data.steps.treatment?.[0] || data.steps.serum?.[0] || data.steps.essence?.[0];
+      if (data?.steps?.treatment) {
         morning.push({
           id: 'morning-active',
           title: 'Актив',
-          subtitle: getProductFullName(activeProduct) || 'Активное средство',
+          subtitle: data.steps.treatment[0]?.name || 'Активное средство',
           icon: ICONS.serum,
           howto: {
             steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
@@ -411,7 +583,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-cream',
           title: 'Крем',
-          subtitle: getProductFullName(data.steps.moisturizer[0]) || 'Увлажняющий крем',
+          subtitle: data.steps.moisturizer[0]?.name || 'Увлажняющий крем',
           icon: ICONS.cream,
           howto: {
             steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
@@ -426,7 +598,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-spf',
           title: 'SPF-защита',
-          subtitle: getProductFullName(data.steps.spf[0]) || 'SPF 50',
+          subtitle: data.steps.spf[0]?.name || 'SPF 50',
           icon: ICONS.spf,
           howto: {
             steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
@@ -437,12 +609,28 @@ export default function HomePage() {
         });
       }
       
+      // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех
+      if (data?.steps?.lip_care) {
+        morning.push({
+          id: 'morning-lip-balm',
+          title: 'Бальзам для губ',
+          subtitle: data.steps.lip_care[0]?.name || 'Бальзам для губ',
+          icon: ICONS.cream, // Используем иконку крема как временную
+          howto: {
+            steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
+            volume: 'Тонкий слой',
+            tip: 'Регулярное использование предотвращает сухость и трещины.',
+          },
+          done: false,
+        });
+      }
+      
       // ВЕЧЕРНЯЯ РУТИНА
       if (data?.steps?.cleanser) {
         evening.push({
           id: 'evening-cleanser',
           title: 'Очищение',
-          subtitle: getProductFullName(data.steps.cleanser[0]) || 'Двойное очищение',
+          subtitle: data.steps.cleanser[0]?.name || 'Двойное очищение',
           icon: ICONS.cleanser,
           howto: {
             steps: ['1) Масло: сухими руками распределить, эмульгировать водой', '2) Гель: умыть 30–40 сек, смыть'],
@@ -454,11 +642,10 @@ export default function HomePage() {
       }
       
       if (data?.steps?.treatment || data?.steps?.acid) {
-        const acidProduct = data.steps?.treatment?.[0] || data.steps?.acid?.[0];
         evening.push({
           id: 'evening-acid',
           title: 'Кислоты (по расписанию)',
-          subtitle: getProductFullName(acidProduct) || 'AHA/BHA/PHА пилинг',
+          subtitle: data.steps?.treatment?.[0]?.name || data.steps?.acid?.[0]?.name || 'AHA/BHA/PHА пилинг',
           icon: ICONS.acid,
           howto: {
             steps: ['Нанести тонким слоем на Т‑зону', 'Выдержать 5–10 минут (по переносимости)', 'Смыть/нейтрализовать, далее крем'],
@@ -470,11 +657,10 @@ export default function HomePage() {
       }
       
       if (data?.steps?.treatment || data?.steps?.serum) {
-        const serumProduct = data.steps?.treatment?.[0] || data.steps?.serum?.[0];
         evening.push({
           id: 'evening-serum',
           title: 'Сыворотка',
-          subtitle: getProductFullName(serumProduct) || 'Пептидная / успокаивающая',
+          subtitle: data.steps?.treatment?.[0]?.name || data.steps?.serum?.[0]?.name || 'Пептидная / успокаивающая',
           icon: ICONS.serum,
           howto: {
             steps: ['3–6 капель', 'Равномерно нанести, дать впитаться 1 мин'],
@@ -489,7 +675,7 @@ export default function HomePage() {
         evening.push({
           id: 'evening-cream',
           title: 'Крем',
-          subtitle: getProductFullName(data.steps.moisturizer[0]) || 'Питательный крем',
+          subtitle: data.steps.moisturizer[0]?.name || 'Питательный крем',
           icon: ICONS.cream,
           howto: {
             steps: ['Горох крема', 'Распределить, не втирая сильно'],
@@ -502,20 +688,49 @@ export default function HomePage() {
       
       setMorningItems(morning);
       setEveningItems(evening);
+
+      // Фолбэк через план для нового пользователя больше не используем:
+      // если нет шагов рутины, дальше логика редиректит на /quiz (см. ниже).
     } catch (error: any) {
-      console.error('Error loading recommendations:', error);
+      clientLogger.error('Error loading recommendations', error);
       
       // Проверяем тип ошибки
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('401') || error?.message?.includes('initData')) {
         // Ошибка идентификации - перенаправляем на анкету
+        setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading в false перед редиректом
         router.push('/quiz');
         return;
       }
       
-      if (error?.message?.includes('404') || error?.message?.includes('No skin profile')) {
-        // Профиль не найден - перенаправляем на анкету
-        console.log('Профиль не найден, перенаправляем на анкету');
-        router.push('/quiz');
+      // ИСПРАВЛЕНО: При 404 / профиле, которого нет
+      // - если у пользователя УЖЕ есть план, не редиректим на /quiz, а остаёмся на главной
+      //   и пробуем собрать рутину напрямую из план28 (fallback),
+      // - если плана нет, считаем, что пользователь ещё не прошёл анкету и отправляем на /quiz.
+      if (
+        error?.status === 404 ||
+        error?.isNotFound ||
+        error?.message?.includes('404') ||
+        error?.message?.includes('No skin profile') ||
+        error?.message?.includes('Not found') ||
+        error?.message?.includes('profile not found')
+      ) {
+        setLoading(false);
+        // Если уже есть валидный план — остаёмся на главной и пробуем фолбэк-рутину из плана
+        if (hasPlan) {
+          clientLogger.log('Рекомендации не найдены, но план уже существует — остаёмся на главной и пробуем fallback из plan28');
+          try {
+            await buildRoutineFromPlan();
+          } catch (fallbackErr) {
+            clientLogger.warn('Не удалось построить фолбэк-рутину из plan28 при ошибке рекомендаций', fallbackErr);
+          }
+          return;
+        }
+
+        // Плана нет — это действительно новый пользователь → отправляем на анкету
+        clientLogger.log('Рекомендации не найдены (профиль ещё не создан, плана нет) — редирект на /quiz');
+        if (typeof window !== 'undefined') {
+          router.replace('/quiz');
+        }
         return;
       }
       
@@ -543,183 +758,6 @@ export default function HomePage() {
       );
     }
   };
-
-  // Экран незавершенной анкеты
-  if (showResumeScreen && savedProgress) {
-    const answeredCount = Object.keys(savedProgress.answers).length;
-    const progressPercent = 22 > 0 ? Math.round((answeredCount / 22) * 100) : 0;
-
-    return (
-      <div style={{ 
-        padding: '20px',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <div style={{
-          width: '88%',
-          maxWidth: '420px',
-          backgroundColor: 'rgba(255, 255, 255, 0.58)',
-          backdropFilter: 'blur(26px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '44px',
-          padding: '36px 28px 32px 28px',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
-        }}>
-          <h1 style={{
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '38px',
-            color: '#0A5F59',
-            margin: '0 0 16px 0',
-            textAlign: 'center',
-          }}>
-            Вы не завершили анкету
-          </h1>
-
-          <p style={{
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '18px',
-            lineHeight: '1.5',
-            color: '#475467',
-            margin: '0 0 24px 0',
-            textAlign: 'center',
-          }}>
-            Продолжите, чтобы получить персональный план ухода
-          </p>
-
-          <div style={{
-            marginBottom: '28px',
-            padding: '16px',
-            backgroundColor: 'rgba(10, 95, 89, 0.08)',
-            borderRadius: '16px',
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginBottom: '8px',
-              fontSize: '14px',
-              color: '#0A5F59',
-              fontWeight: 600,
-            }}>
-              <span>Прогресс</span>
-              <span>{answeredCount} из 22 вопросов</span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: 'rgba(10, 95, 89, 0.2)',
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                width: `${progressPercent}%`,
-                height: '100%',
-                backgroundColor: '#0A5F59',
-                transition: 'width 0.3s ease',
-              }} />
-            </div>
-          </div>
-
-          <div style={{
-            marginBottom: '28px',
-            padding: '0',
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: '#0A5F59',
-              marginBottom: '12px',
-            }}>
-              Что вы получите:
-            </h3>
-            {[
-              'Персональный план ухода на 12 недель',
-              'Рекомендации от косметолога-дерматолога',
-              'Точная диагностика типа и состояния кожи',
-            ].map((benefit, index) => (
-              <div key={index} style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                marginBottom: index < 2 ? '12px' : '0',
-              }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
-                  backgroundColor: '#0A5F59',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  marginTop: '2px',
-                }}>
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <span style={{
-                  fontSize: '15px',
-                  color: '#1F2A44',
-                  lineHeight: '1.5',
-                }}>
-                  {benefit}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}>
-            <button
-              onClick={resumeQuiz}
-              style={{
-                width: '100%',
-                height: '64px',
-                background: '#0A5F59',
-                color: 'white',
-                border: 'none',
-                borderRadius: '32px',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 500,
-                fontSize: '19px',
-                boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                cursor: 'pointer',
-              }}
-            >
-              Продолжить с вопроса {savedProgress.questionIndex + 1} →
-            </button>
-            
-            <button
-              onClick={startOver}
-              style={{
-                width: '100%',
-                height: '48px',
-                background: 'transparent',
-                color: '#0A5F59',
-                border: '1px solid rgba(10, 95, 89, 0.3)',
-                borderRadius: '24px',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 500,
-                fontSize: '16px',
-                cursor: 'pointer',
-              }}
-            >
-              Начать заново
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!mounted || loading) {
     return (
@@ -754,6 +792,8 @@ export default function HomePage() {
   // Получаем текущие элементы в зависимости от вкладки
   const routineItems = tab === 'AM' ? morningItems : eveningItems;
   
+  // План истёк: не показываем отдельный экран — paywall + блюр от PaymentGate.
+
   if (error && routineItems.length === 0) {
     return (
       <div style={{ 
@@ -787,33 +827,33 @@ export default function HomePage() {
     );
   }
 
-  if (routineItems.length === 0) {
-    return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h1>Нет рекомендаций</h1>
-        <p>Пройдите анкету, чтобы получить персональные рекомендации</p>
-        <button
-          onClick={() => router.push('/quiz')}
-          style={{
-            marginTop: '20px',
-            padding: '12px 24px',
-            borderRadius: '12px',
-            backgroundColor: '#0A5F59',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          Пройти анкету
-        </button>
-      </div>
-    );
+  // Совсем новый пользователь (нет рутины и нет сохранённого плана) → сразу отправляем на анкету
+  if (routineItems.length === 0 && !hasPlan) {
+    if (typeof window !== 'undefined') {
+      router.replace('/quiz');
+    }
+    return null;
   }
 
   const completedCount = routineItems.filter((item) => item.done).length;
   const totalCount = routineItems.length;
 
+  // ИСПРАВЛЕНО: План - это платный продукт, поэтому PaymentGate показывается ВСЕГДА
+  // PaymentGate сам проверит статус оплаты через localStorage и БД
+  // Если не оплачено - покажет блюр с экраном оплаты
+  // Если оплачено - покажет контент без блюра
   return (
+    <PaymentGate
+      price={199}
+      productCode="plan_access"
+      isRetaking={false}
+      onPaymentComplete={() => {
+        clientLogger.log('✅ Payment completed on homepage');
+        // После оплаты перезагружаем рекомендации
+        loadRecommendations();
+      }}
+      retakeCta={{ text: 'Изменились цели? Перепройти анкету', href: '/quiz' }}
+    >
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
@@ -832,7 +872,26 @@ export default function HomePage() {
             marginTop: '8px',
             marginBottom: '8px',
           }}
+          onError={(e) => {
+            clientLogger.warn('Logo not found');
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
         />
+        {/* Приветствие с именем */}
+        {userName && (
+          <div style={{
+            fontSize: '20px',
+            fontWeight: 500,
+            color: '#0A5F59',
+            marginBottom: '12px',
+          }}>
+            {(() => {
+              const hour = new Date().getHours();
+              const greeting = hour >= 6 && hour < 18 ? 'Добрый день' : 'Добрый вечер';
+              return `${greeting}, ${userName}`;
+            })()}
+          </div>
+        )}
         <div style={{
           fontSize: '26px',
           fontWeight: 600,
@@ -841,40 +900,22 @@ export default function HomePage() {
         }}>
           Время заботиться о своей коже
         </div>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => router.push('/plan')}
-            style={{
-              marginTop: '16px',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-            }}
-          >
-            📅 28-дневный план →
-          </button>
-          <button
-            onClick={() => router.push('/quiz')}
-            style={{
-              marginTop: '16px',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(10, 95, 89, 0.1)',
-              color: '#0A5F59',
-              border: '2px solid #0A5F59',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-            }}
-          >
-            🔄 Перепройти анкету
-          </button>
-        </div>
+        <button
+          onClick={() => router.push('/plan')}
+          style={{
+            marginTop: '16px',
+            padding: '12px 24px',
+            borderRadius: '12px',
+            backgroundColor: '#0A5F59',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold',
+          }}
+        >
+          📅 28-дневный план →
+        </button>
         {recommendations?.profile_summary && (
           <div style={{
             fontSize: '16px',
@@ -884,6 +925,34 @@ export default function HomePage() {
             {completedCount}/{totalCount} шагов
           </div>
         )}
+      </div>
+
+      {/* Ретейк ссылка на главной (всегда видна, даже если доступ уже оплачен) */}
+      <div style={{ padding: '0 20px', marginTop: '8px' }}>
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              localStorage.setItem('is_retaking_quiz', 'true');
+            } catch {
+              // ignore
+            }
+            router.push('/quiz');
+          }}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: '#0A5F59',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 600,
+            padding: '10px 0',
+          }}
+        >
+          Изменились цели? Перепройти анкету
+        </button>
       </div>
 
       {/* Toggle AM/PM */}
@@ -993,6 +1062,10 @@ export default function HomePage() {
                 height: '60px',
                 objectFit: 'contain',
                 flexShrink: 0,
+              }}
+              onError={(e) => {
+                clientLogger.warn('Icon not found:', item.icon);
+                (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
 
@@ -1120,19 +1193,7 @@ export default function HomePage() {
           </div>
         </div>
       )}
-
-      {/* Поп-ап для оценки плана */}
-      {showFeedbackPopup && (
-        <PlanFeedbackPopup
-          onClose={() => {
-            setShowFeedbackPopup(false);
-            // Сохраняем дату закрытия, чтобы не показывать снова сегодня
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('feedback_popup_closed', new Date().toISOString());
-            }
-          }}
-        />
-      )}
     </div>
+    </PaymentGate>
   );
 }

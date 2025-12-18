@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { clientLogger } from '@/lib/client-logger';
 
 interface Profile {
   id: string;
@@ -55,9 +56,21 @@ export default function InsightsPage() {
       // Загружаем профиль из API
       try {
         const profileData = await api.getCurrentProfile();
-        setProfile(profileData as Profile);
+        if (profileData) {
+          // Маппим ProfileResponse в Profile
+          setProfile({
+            id: profileData.id,
+            skinType: profileData.skinType,
+            sensitivityLevel: profileData.sensitivityLevel || 'medium',
+            acneLevel: profileData.acneLevel ?? 0,
+            dehydrationLevel: 0, // Не доступно в ProfileResponse
+            rosaceaRisk: 'none', // Не доступно в ProfileResponse
+            pigmentationRisk: 'none', // Не доступно в ProfileResponse
+            notes: profileData.notes || '',
+          });
+        }
       } catch (err) {
-        console.warn('Profile not found, using fallback');
+        clientLogger.warn('Profile not found, using fallback');
       }
 
       // Загружаем фото-сканы из localStorage

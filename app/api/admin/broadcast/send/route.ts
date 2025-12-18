@@ -79,6 +79,7 @@ function renderMessage(template: string, user: any, profile: any): string {
 async function sendTelegramMessage(
   telegramId: string, 
   text: string, 
+  imageBuffer?: Buffer,
   imageUrl?: string, 
   buttons?: Array<{ text: string; url: string }>
 ): Promise<{ success: boolean; error?: string }> {
@@ -95,8 +96,37 @@ async function sendTelegramMessage(
       }))]
     } : undefined;
 
-    // Если есть фото, отправляем фото с подписью
-    if (imageUrl) {
+    // Если есть фото как Buffer (файл), отправляем через multipart/form-data без сжатия
+    if (imageBuffer) {
+      // Используем встроенный FormData (Node.js 18+)
+      const form = new FormData();
+      form.append('chat_id', telegramId);
+      
+      // Создаем Blob из Buffer для FormData
+      // Приводим Buffer к Uint8Array для совместимости с BlobPart
+      const blob = new Blob([new Uint8Array(imageBuffer)], { type: 'image/jpeg' });
+      form.append('photo', blob, 'image.jpg');
+      
+      form.append('caption', text);
+      form.append('parse_mode', 'HTML');
+      if (replyMarkup) {
+        form.append('reply_markup', JSON.stringify(replyMarkup));
+      }
+
+      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        body: form,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        return { success: false, error: data.description || 'Unknown error' };
+      }
+
+      return { success: true };
+    } else if (imageUrl) {
+      // Если есть URL, отправляем через JSON (для обратной совместимости)
       const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
         method: 'POST',
         headers: {
@@ -229,8 +259,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Обрабатываем FormData или JSON
+    let filters: any;
+    let message: string;
+    let test: boolean;
+    let imageUrl: string | undefined;
+    let imageBuffer: Buffer | undefined;
+    let buttons: Array<{ text: string; url: string }> | undefined;
+
+    const contentType = request.headers.get('content-type') || '';
+    
+    if (contentType.includes('multipart/form-data')) {
+      // Обрабатываем FormData
+      const formData = await request.formData();
+      
+      const filtersStr = formData.get('filters') as string;
+      if (filtersStr) {
+        try {
+          filters = JSON.parse(filtersStr);
+          // Очищаем от undefined, null и пустых строк
+          filters = Object.fromEntries(
+            Object.entries(filters).filter(([_, value]) => {
+              if (value === undefined || value === null) return false;
+              if (typeof value === 'string' && value.trim() === '') return false;
+              if (Array.isArray(value) && value.length === 0) return false;
+              return true;
+            })
+          );
+        } catch (e) {
+          console.error('Error parsing filters:', e);
+          filters = {};
+        }
+      } else {
+        filters = {};
+      }
+      message = formData.get('message') as string;
+      test = formData.get('test') === 'true';
+      
+      const imageFile = formData.get('image') as File | null;
+      if (imageFile) {
+        // Конвертируем File в Buffer
+        const arrayBuffer = await imageFile.arrayBuffer();
+        imageBuffer = Buffer.from(arrayBuffer);
+      } else {
+        const imageUrlStr = formData.get('imageUrl') as string;
+        imageUrl = imageUrlStr || undefined;
+      }
+      
+      const buttonsStr = formData.get('buttons') as string;
+      buttons = buttonsStr ? JSON.parse(buttonsStr) : undefined;
+    } else {
+      // Обрабатываем JSON (для обратной совместимости)
     const body = await request.json();
-    const { filters, message, test, imageUrl, buttons } = body;
+      filters = body.filters;
+      message = body.message;
+      test = body.test;
+      imageUrl = body.imageUrl;
+      buttons = body.buttons;
+    }
 
     if (!message || !message.trim()) {
       return NextResponse.json(
@@ -325,7 +411,7 @@ export async function POST(request: NextRequest) {
       const profile = user.skinProfiles[0] || null;
       const renderedMessage = renderMessage(message, user, profile);
       
-      const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageUrl, buttons);
+      const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageBuffer, imageUrl, buttons);
 
       return NextResponse.json({
         success: result.success,
@@ -335,11 +421,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаем запись о рассылке только для реальных рассылок
+    // Очищаем filters от undefined значений для корректной сериализации в JSON
+    const cleanFilters = filters ? Object.fromEntries(
+      Object.entries(filters).filter(([_, value]) => {
+        if (value === undefined || value === null) return false;
+        if (typeof value === 'string' && value.trim() === '') return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        return true;
+      })
+    ) : {};
+    
+    // Валидируем, что cleanFilters может быть сериализован в JSON
+    try {
+      JSON.stringify(cleanFilters);
+    } catch (e) {
+      console.error('Error serializing filters:', e, cleanFilters);
+      return NextResponse.json(
+        { error: 'Invalid filters format. Cannot serialize to JSON.' },
+        { status: 400 }
+      );
+    }
+    
     const broadcast = await prisma.broadcastMessage.create({
       data: {
         title: `Рассылка ${new Date().toLocaleDateString('ru-RU')}`,
         message,
-        filtersJson: filters || {},
+        filtersJson: cleanFilters as any, // Prisma Json type accepts any serializable object
+        buttonsJson: buttons ? (buttons as any) : null,
+        imageUrl: imageUrl || null,
         status: 'sending',
         totalCount: users.length,
       },
@@ -351,10 +460,10 @@ export async function POST(request: NextRequest) {
     
     // Запускаем отправку в фоне (не ждем завершения)
     (async () => {
-      const MESSAGES_PER_SECOND = 30;
-      const DELAY_MS = 1000 / MESSAGES_PER_SECOND; // ~33ms между сообщениями
-      const RANDOM_DELAY_MIN = 800;
-      const RANDOM_DELAY_MAX = 1500;
+      // Telegram Bot API позволяет до 30 сообщений в секунду
+      // Используем небольшую задержку для безопасности (50-100ms)
+      const RANDOM_DELAY_MIN = 50;
+      const RANDOM_DELAY_MAX = 100;
 
       let sentCount = 0;
       let failedCount = 0;
@@ -364,7 +473,7 @@ export async function POST(request: NextRequest) {
           const profile = user.skinProfiles[0] || null;
           const renderedMessage = renderMessage(message, user, profile);
           
-          const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageUrl, buttons);
+          const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageBuffer, imageUrl, buttons);
           
           await prisma.broadcastLog.create({
             data: {
