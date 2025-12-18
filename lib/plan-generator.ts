@@ -16,6 +16,7 @@ import {
   findFallbackProduct, 
   type ProductWithBrand
 } from '@/lib/product-fallback';
+import { mapStepToStepCategory } from '@/lib/step-matching';
 import type { ProfileClassification } from '@/lib/plan-generation-helpers';
 import {
   determineProtocol,
@@ -587,64 +588,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       productsCount: existingSession?.products ? (Array.isArray(existingSession.products) ? existingSession.products.length : 0) : 0,
     });
     
-    // Дополнительно: если не нашли по profileId, ищем любую сессию с продуктами для пользователя
-    if (!existingSession || !existingSession.products || !Array.isArray(existingSession.products) || existingSession.products.length === 0) {
-      logger.info('No RecommendationSession found for current profileId, searching any session with products', { 
-        userId, 
-        profileId: profile.id,
-        searchedProfileId: profile.id,
-      });
-      const anySession = await prisma.recommendationSession.findFirst({
-        where: {
-          userId,
-          products: { not: { equals: [] } }, // Сессия с непустым массивом продуктов
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      
-      logger.info('Second search result (any session)', {
-        userId,
-        found: !!anySession,
-        sessionId: anySession?.id,
-        sessionProfileId: anySession?.profileId,
-        productsCount: anySession?.products ? (Array.isArray(anySession.products) ? anySession.products.length : 0) : 0,
-      });
-      
-      if (anySession && anySession.products && Array.isArray(anySession.products) && anySession.products.length > 0) {
-        logger.info('Found RecommendationSession from any profile (fallback)', {
-          userId,
-          sessionId: anySession.id,
-          profileId: anySession.profileId,
-          ruleId: anySession.ruleId,
-          productsCount: anySession.products.length,
-        });
-        // Используем эту сессию как fallback
-        const fallbackSession = anySession;
-        const productIds = fallbackSession.products as number[];
-        
-        if (productIds.length > 0) {
-          recommendationProducts = await prisma.product.findMany({
-            where: {
-              id: { in: productIds },
-              published: true as any,
-              brand: { isActive: true },
-            } as any,
-            include: { brand: true },
-          });
-          
-          recommendationProducts.sort((a: any, b: any) => {
-            if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
-            return b.priority - a.priority;
-          });
-          
-          logger.info('Using fallback RecommendationSession products', {
-            userId,
-            productsCount: recommendationProducts.length,
-            productIds: productIds.slice(0, 10),
-          });
-        }
-      }
-    }
+    // ИСПРАВЛЕНО: НЕ используем "любую" RecommendationSession пользователя как fallback.
+    // Это приводит к неверному плану после перепрохождения: берутся продукты, подобранные для старого profileId.
+    // Если сессии для текущего profileId нет — план будет собран "с нуля" по текущим answers/profile.
 
     if (existingSession && existingSession.products && Array.isArray(existingSession.products) && existingSession.products.length > 0) {
       logger.info('✅ RecommendationSession found', {
@@ -1035,7 +981,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   };
 
   // Функция для преобразования старого формата step/category в StepCategory
-  const mapStepToStepCategory = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
+  // NOTE: оставляем legacy-реализацию как reference, но в генерации используем
+  // единую функцию из '@/lib/step-matching' (покрытую тестами).
+  const mapStepToStepCategoryLegacy = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
     const stepStr = (step || category || '').toLowerCase();
     const categoryStr = (category || '').toLowerCase();
     const categories: StepCategory[] = [];
@@ -1246,6 +1194,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     
     return categories;
   };
+
+  const mapProductToStepCategories = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
+    return mapStepToStepCategory(step, category, profile.skinType);
+  };
   
   // Логируем начальное состояние selectedProducts для диагностики
   if (userId === '643160759' || process.env.NODE_ENV === 'development') {
@@ -1283,7 +1235,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     };
     
     // Преобразуем старый формат step/category в StepCategory
-    const stepCategories = mapStepToStepCategory(product.step, product.category);
+    const stepCategories = mapProductToStepCategories(product.step, product.category);
     
     // Детальное логирование для диагностики (особенно для пользователя 643160759)
     if (userId === '643160759' || process.env.NODE_ENV === 'development') {
@@ -1313,13 +1265,18 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         }
       });
       
-      // Также регистрируем по базовому шагу для обратной совместимости
+      // ИСПРАВЛЕНО: НЕ регистрируем продукты под "базовым шагом" для serum/treatment.
+      // Раньше сыворотка могла регистрироваться под ключом 'serum' и затем
+      // ошибочно удовлетворять шаг 'serum_hydrating' (даже если это serum_vitc),
+      // что давало "не тот" план.
+      // Для обратной совместимости оставляем только безопасные базовые шаги,
+      // где подтипы взаимозаменяемы без сильного риска: toner и moisturizer.
       stepCategories.forEach(stepCategory => {
         const baseStep = getBaseStepFromStepCategory(stepCategory);
-        if (baseStep !== stepCategory) {
+        if (baseStep !== stepCategory && (baseStep === 'toner' || baseStep === 'moisturizer')) {
           registerProductForStep(baseStep as StepCategory, productWithBrand);
           if (userId === '643160759' || process.env.NODE_ENV === 'development') {
-            logger.info('Product also registered for base step', {
+            logger.info('Product also registered for safe base step', {
               productId: product.id,
               productName: product.name,
               stepCategory,
@@ -1630,11 +1587,23 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         return base;
       }
       
-      // ИСПРАВЛЕНО: Если базовый шаг не найден, пробуем все варианты с этим базовым шагом
-      // Например, для 'serum_hydrating' пробуем все 'serum_*'
-      // ИСПРАВЛЕНО: Также для 'moisturizer_light' пробуем все 'moisturizer_*' (barrier, balancing и т.д.)
+      // ИСПРАВЛЕНО: Если базовый шаг не найден, пробуем варианты с этим базовым шагом.
+      // ВАЖНО: для serum_hydrating нельзя подмешивать любые serum_* (vitc/кислоты),
+      // иначе "увлажняющая" сыворотка заменяется на витамин C и план выглядит неправильным.
       const allVariants: ProductWithBrand[] = [];
       for (const [mapStep, products] of productsByStepMap.entries()) {
+        if (baseStep === 'serum' && step === 'serum_hydrating') {
+          const allowedSerumFallback = new Set<string>([
+            'serum_hydrating',
+            'serum_anti_redness',
+            'serum_niacinamide',
+          ]);
+          if (allowedSerumFallback.has(mapStep)) {
+            allVariants.push(...products);
+          }
+          continue;
+        }
+
         if (mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
           allVariants.push(...products);
         }
@@ -3412,7 +3381,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     userId,
     skinProfileId: profile.id,
     days: plan28Days,
-    mainGoals,
+    // ИСПРАВЛЕНО: в plan28 нужно сохранять финальные mainGoals,
+    // т.к. UI и шаблоны опираются на них. mainGoals (до авто-добавлений и fallback 'general')
+    // может быть пустым → в итоге на клиенте "не те" блоки и ощущения "не тот план".
+    mainGoals: carePlanProfileInput.mainGoals,
   };
 
   // ИСПРАВЛЕНО: Проверка инвариантов плана перед возвратом

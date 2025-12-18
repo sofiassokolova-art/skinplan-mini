@@ -88,6 +88,7 @@ export default function PlanPage() {
   const planGenerationCooldownRef = useRef<number>(0);
   const planGenerationInFlightRef = useRef<Promise<GeneratedPlan | null> | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const generateKickoffRef = useRef(false);
 
   // Безопасные обертки для setState (проверяют mounted перед обновлением)
   const safeSetLoading = (value: boolean) => {
@@ -244,6 +245,23 @@ export default function PlanPage() {
       clientLogger.log('✅ State=generating detected, starting polling');
       setGeneratingState('generating');
       safeSetLoading(true);
+
+      // ИСПРАВЛЕНО: при /plan?state=generating мы обязаны "пнуть" генерацию,
+      // иначе polling /api/plan/status может крутиться бесконечно (если генерация ещё не стартовала).
+      if (!generateKickoffRef.current) {
+        generateKickoffRef.current = true;
+        (async () => {
+          try {
+            // profileId помогает read-your-write после submitAnswers / создания профиля
+            const profileId = searchParams?.get('profileId') || undefined;
+            await api.generatePlan(profileId);
+            clientLogger.log('✅ Plan generation kickoff requested', { profileId: profileId || null });
+          } catch (err: any) {
+            // Не критично: polling/обычная загрузка ещё могут подобрать план
+            clientLogger.warn('⚠️ Plan generation kickoff failed (non-critical):', err);
+          }
+        })();
+      }
       
       // Начинаем polling статуса плана
       pollingIntervalRef.current = setInterval(pollPlanStatus, 1500);

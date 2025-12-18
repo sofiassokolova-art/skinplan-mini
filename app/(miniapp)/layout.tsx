@@ -103,11 +103,16 @@ function LayoutContent({
 
   // Проверяем, показывается ли экран "Вы не завершили анкету" (через query параметр)
   const isResumeScreen = searchParams?.get('resume') === 'true';
+  const planState = searchParams?.get('state');
+  const isPlanGenerating = pathname === '/plan' && planState === 'generating';
   
   // Скрываем навигацию на определенных страницах, на экране прогресса и во время проверки профиля на главной
   const hideNav = pathname === '/quiz' || 
                   pathname.startsWith('/quiz/') || 
+                  pathname === '/loading' ||
+                  pathname.startsWith('/loading/') ||
                   isResumeScreen ||
+                  isPlanGenerating ||
                   (pathname === '/' && isCheckingProfile); // Скрываем навигацию на главной во время проверки профиля
   
   // Скрываем логотип на главной странице, на странице незавершенной анкеты, на странице анкеты (там логотип на фоне), и на страницах плана, избранного и профиля (там логотип встроен в страницу)
@@ -189,7 +194,9 @@ function LayoutFallback() {
   
   // Определяем, нужно ли скрывать навигацию (та же логика, что и в LayoutContent)
   const hideNav = pathname === '/quiz' || 
-                  pathname.startsWith('/quiz/');
+                 pathname.startsWith('/quiz/') ||
+                 pathname === '/loading' ||
+                 pathname.startsWith('/loading/');
   
   return (
     <>

@@ -946,7 +946,14 @@ export async function POST(request: NextRequest) {
     
     // ИСПРАВЛЕНО: Всегда очищаем кэш после создания/обновления профиля
     // Критично: даже при первом создании профиля нужно очистить кэш,
-    // иначе старый кэш "нет профиля/нет плана" будет возвращаться
+    // иначе старый кэш "нет профиля/нет плана" будет возвращаться.
+    //
+    // ВАЖНО: нельзя делать "массовое" удаление 1..100 версий — это даёт огромный шлейф DEL в Redis,
+    // замедляет ответ /api/questionnaire/answers и может создавать гонки с генерацией плана.
+    // Достаточно удалить:
+    // - версию 1 (исторически там мог закэшироваться ответ "нет профиля/нет плана")
+    // - старую версию (если обновление профиля)
+    // - новую версию (текущая)
     const isFirstProfile = !existingProfile;
     const isProfileUpdated = existingProfile && existingProfile.version !== profile.version;
     
@@ -960,20 +967,15 @@ export async function POST(request: NextRequest) {
       });
       
       try {
-        const { invalidateCache, invalidateAllUserCache } = await import('@/lib/cache');
+        const { invalidateCache } = await import('@/lib/cache');
         
-        // ИСПРАВЛЕНО: Всегда очищаем весь кэш пользователя после создания/обновления профиля
-        // Это критично для первого профиля - иначе старый кэш "нет профиля" останется
-        await invalidateAllUserCache(userId);
-        logger.info('All user cache cleared', { 
-          userId, 
-          profileVersion: profile.version,
-        });
+        // Минимальная, но достаточная инвалидация.
+        await invalidateCache(userId, 1);
+        await invalidateCache(userId, profile.version);
         
         // Если это обновление (не первый профиль) - также очищаем кэш для старой версии
         if (isProfileUpdated && existingProfile) {
-        await invalidateCache(userId, existingProfile.version);
-        await invalidateCache(userId, profile.version);
+          await invalidateCache(userId, existingProfile.version);
           logger.info('Cache cleared for old and new profile versions', { 
           userId, 
           oldVersion: existingProfile.version,
