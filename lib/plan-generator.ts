@@ -1947,19 +1947,27 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   if (serumSteps.length > 0) {
     const existingSerum = serumSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingSerum) {
-      logger.warn('No serum products found, searching for fallback', { userId, serumSteps });
       const fallbackSerum = await findFallbackProduct('serum', profileClassification);
       if (fallbackSerum) {
+        // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
+        // Логируем как info, чтобы не засорять WARN-логи в проде.
+        logger.info('No serum products found for required steps, using fallback serum', {
+          userId,
+          serumSteps,
+          productId: fallbackSerum.id,
+          productName: fallbackSerum.name,
+        });
         for (const step of serumSteps) {
           registerProductForStep(step, fallbackSerum);
         }
         if (!selectedProducts.some((p: any) => p.id === fallbackSerum.id)) {
           selectedProducts.push(fallbackSerum as any);
         }
-        logger.info('Fallback serum added', { 
-          productId: fallbackSerum.id, 
-          productName: fallbackSerum.name,
-          userId 
+      } else {
+        // Это уже реально проблемная ситуация: ни одной сыворотки не нашли даже для fallback.
+        logger.warn('No serum products found and fallback serum could not be selected', {
+          userId,
+          serumSteps,
         });
       }
     }
