@@ -16,6 +16,7 @@ import {
   findFallbackProduct, 
   type ProductWithBrand
 } from '@/lib/product-fallback';
+import { mapStepToStepCategory } from '@/lib/step-matching';
 import type { ProfileClassification } from '@/lib/plan-generation-helpers';
 import {
   determineProtocol,
@@ -980,7 +981,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   };
 
   // Функция для преобразования старого формата step/category в StepCategory
-  const mapStepToStepCategory = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
+  // NOTE: оставляем legacy-реализацию как reference, но в генерации используем
+  // единую функцию из '@/lib/step-matching' (покрытую тестами).
+  const mapStepToStepCategoryLegacy = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
     const stepStr = (step || category || '').toLowerCase();
     const categoryStr = (category || '').toLowerCase();
     const categories: StepCategory[] = [];
@@ -1191,6 +1194,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     
     return categories;
   };
+
+  const mapProductToStepCategories = (step: string | null | undefined, category: string | null | undefined): StepCategory[] => {
+    return mapStepToStepCategory(step, category, profile.skinType);
+  };
   
   // Логируем начальное состояние selectedProducts для диагностики
   if (userId === '643160759' || process.env.NODE_ENV === 'development') {
@@ -1228,7 +1235,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     };
     
     // Преобразуем старый формат step/category в StepCategory
-    const stepCategories = mapStepToStepCategory(product.step, product.category);
+    const stepCategories = mapProductToStepCategories(product.step, product.category);
     
     // Детальное логирование для диагностики (особенно для пользователя 643160759)
     if (userId === '643160759' || process.env.NODE_ENV === 'development') {
