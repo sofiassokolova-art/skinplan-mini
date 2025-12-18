@@ -1949,8 +1949,26 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     if (!existingSerum) {
       // Диагностика: почему не нашли serum в productsByStepMap/каталоге.
       // Включаем только для явной отладки (env) или для конкретного юзера (чтобы не шуметь).
-      const debugDiagnostics =
-        process.env.DEBUG_PLAN_PRODUCTS === 'true' || userId === '643160759';
+      let debugDiagnostics = process.env.DEBUG_PLAN_PRODUCTS === 'true';
+      let telegramIdForLog: string | null = null;
+
+      // ИСПРАВЛЕНО: userId здесь — это внутренний id пользователя (cuid), а не telegramId.
+      // Поэтому для таргетированной отладки под одного пользователя подтягиваем telegramId из БД.
+      if (!debugDiagnostics) {
+        try {
+          const u = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { telegramId: true },
+          });
+          telegramIdForLog = u?.telegramId ?? null;
+          if (telegramIdForLog === '643160759') {
+            debugDiagnostics = true;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       if (debugDiagnostics) {
         try {
           const baseStep = 'serum';
@@ -2013,6 +2031,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
 
           logger.info('Serum availability diagnostics', {
             userId,
+            telegramId: telegramIdForLog,
             requiredSerumSteps: serumSteps,
             profileSkinType: profileClassification.skinType,
             counts: {
