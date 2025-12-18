@@ -587,64 +587,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
       productsCount: existingSession?.products ? (Array.isArray(existingSession.products) ? existingSession.products.length : 0) : 0,
     });
     
-    // Дополнительно: если не нашли по profileId, ищем любую сессию с продуктами для пользователя
-    if (!existingSession || !existingSession.products || !Array.isArray(existingSession.products) || existingSession.products.length === 0) {
-      logger.info('No RecommendationSession found for current profileId, searching any session with products', { 
-        userId, 
-        profileId: profile.id,
-        searchedProfileId: profile.id,
-      });
-      const anySession = await prisma.recommendationSession.findFirst({
-        where: {
-          userId,
-          products: { not: { equals: [] } }, // Сессия с непустым массивом продуктов
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      
-      logger.info('Second search result (any session)', {
-        userId,
-        found: !!anySession,
-        sessionId: anySession?.id,
-        sessionProfileId: anySession?.profileId,
-        productsCount: anySession?.products ? (Array.isArray(anySession.products) ? anySession.products.length : 0) : 0,
-      });
-      
-      if (anySession && anySession.products && Array.isArray(anySession.products) && anySession.products.length > 0) {
-        logger.info('Found RecommendationSession from any profile (fallback)', {
-          userId,
-          sessionId: anySession.id,
-          profileId: anySession.profileId,
-          ruleId: anySession.ruleId,
-          productsCount: anySession.products.length,
-        });
-        // Используем эту сессию как fallback
-        const fallbackSession = anySession;
-        const productIds = fallbackSession.products as number[];
-        
-        if (productIds.length > 0) {
-          recommendationProducts = await prisma.product.findMany({
-            where: {
-              id: { in: productIds },
-              published: true as any,
-              brand: { isActive: true },
-            } as any,
-            include: { brand: true },
-          });
-          
-          recommendationProducts.sort((a: any, b: any) => {
-            if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
-            return b.priority - a.priority;
-          });
-          
-          logger.info('Using fallback RecommendationSession products', {
-            userId,
-            productsCount: recommendationProducts.length,
-            productIds: productIds.slice(0, 10),
-          });
-        }
-      }
-    }
+    // ИСПРАВЛЕНО: НЕ используем "любую" RecommendationSession пользователя как fallback.
+    // Это приводит к неверному плану после перепрохождения: берутся продукты, подобранные для старого profileId.
+    // Если сессии для текущего profileId нет — план будет собран "с нуля" по текущим answers/profile.
 
     if (existingSession && existingSession.products && Array.isArray(existingSession.products) && existingSession.products.length > 0) {
       logger.info('✅ RecommendationSession found', {
@@ -3393,7 +3338,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     userId,
     skinProfileId: profile.id,
     days: plan28Days,
-    mainGoals,
+    // ИСПРАВЛЕНО: в plan28 нужно сохранять финальные mainGoals,
+    // т.к. UI и шаблоны опираются на них. mainGoals (до авто-добавлений и fallback 'general')
+    // может быть пустым → в итоге на клиенте "не те" блоки и ощущения "не тот план".
+    mainGoals: carePlanProfileInput.mainGoals,
   };
 
   // ИСПРАВЛЕНО: Проверка инвариантов плана перед возвратом

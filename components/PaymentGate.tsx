@@ -76,6 +76,46 @@ export function PaymentGate({
   const [hasPaid, setHasPaid] = useState(false);
   const [checkingDbPayment, setCheckingDbPayment] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [checkedOnce, setCheckedOnce] = useState(false);
+  const [initDataReady, setInitDataReady] = useState(false);
+
+  // Ждем появления Telegram initData (иначе paywall может "мигать" при повторном входе в приложение)
+  useEffect(() => {
+    let cancelled = false;
+
+    // Если уже есть initData — готовы
+    const current =
+      typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+    if (current) {
+      setInitDataReady(true);
+      return;
+    }
+
+    // Подождём до 2.5 секунд (Telegram иногда отдаёт initData не мгновенно)
+    const start = Date.now();
+    const intervalId = setInterval(() => {
+      if (cancelled) return;
+      const initData =
+        typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      if (initData) {
+        clearInterval(intervalId);
+        setInitDataReady(true);
+        return;
+      }
+      if (Date.now() - start > 2500) {
+        clearInterval(intervalId);
+        setInitDataReady(false);
+        // Если initData так и не появилось — считаем, что "проверка" невозможна
+        // и не держим пользователя на бесконечном "Проверяем доступ..."
+        setCheckedOnce(true);
+      }
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, []);
 
   // ВАЖНО: paywall один на главной и плане.
   // Если пользователь оплатил на одном экране и сразу перешел на другой,
@@ -110,7 +150,7 @@ export function PaymentGate({
         const initData =
           typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
         if (!initData) {
-          // В деве может не быть initData — тогда не можем проверить БД.
+          // initData ещё не готов — не показываем paywall раньше времени.
           return;
         }
 
@@ -120,6 +160,7 @@ export function PaymentGate({
             const required = requiredEntitlementCode(productCode);
             setHasPaid(entitlementsCache.codes.includes(required));
           }
+          if (isMounted) setCheckedOnce(true);
           return;
         }
 
@@ -136,11 +177,15 @@ export function PaymentGate({
 
         const codes = await entitlementsPromise;
         const required = requiredEntitlementCode(productCode);
-        if (isMounted) setHasPaid(codes.includes(required));
+        if (isMounted) {
+          setHasPaid(codes.includes(required));
+          setCheckedOnce(true);
+        }
       } catch (error) {
         // В проде это просто значит: временно опираемся на локальный флаг
         if (isMounted) {
           console.warn('Could not check entitlements from DB:', error);
+          setCheckedOnce(true);
         }
       } finally {
         if (isMounted) {
@@ -209,6 +254,9 @@ export function PaymentGate({
     try {
       const initData =
         typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
+      // После старта оплаты сбрасываем кеш entitlement, чтобы второй экран (план/главная)
+      // быстрее увидел "paid_access".
+      entitlementsCache = null;
 
       // Создаем платеж через правильный endpoint
       const response = await fetch('/api/payments/create', {
@@ -245,6 +293,7 @@ export function PaymentGate({
       // Если платеж уже успешен (идемпотентность)
       if (paymentData.status === 'succeeded' && paymentData.hasAccess) {
         setHasPaid(true);
+        entitlementsCache = null;
         toast.success('Оплата успешно обработана!');
         setTimeout(() => {
           onPaymentComplete();
@@ -314,6 +363,62 @@ export function PaymentGate({
   // Если уже оплачено, показываем контент
   if (hasPaid) {
     return <>{children}</>;
+  }
+
+  // ИСПРАВЛЕНО: не показываем paywall до первой проверки entitlements,
+  // иначе при повторном входе в приложение будет "снова оплата" на долю секунды.
+  if (!checkedOnce) {
+    return (
+      <div style={{ position: 'relative' }}>
+        <div style={{
+          filter: 'blur(8px)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          opacity: 0.5,
+        }}>
+          {children}
+        </div>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          zIndex: 1000,
+          borderRadius: '24px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            border: '4px solid rgba(10, 95, 89, 0.2)',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '14px',
+          }} />
+          <div style={{ fontSize: '16px', fontWeight: 700, color: '#0A5F59' }}>
+            Проверяем доступ…
+          </div>
+          <div style={{ fontSize: '13px', color: '#475467', marginTop: '6px' }}>
+            {initDataReady ? 'Почти готово' : 'Открываем Telegram Mini App'}
+          </div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </div>
+    );
   }
 
   const displayPrice =
