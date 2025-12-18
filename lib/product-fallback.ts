@@ -119,14 +119,14 @@ export async function findFallbackProduct(
         baseStep,
         skinType: profileClassification.skinType,
       });
-      
+
+      // ИСПРАВЛЕНО: ранее пробовали только { step: baseStep }, что пропускало продукты,
+      // размеченные через category или step-подтипы (например "serum_hydrating").
+      // Теперь сохраняем ту же OR-логику, просто убираем skinType фильтр.
       const whereClauseWithoutSkinType: Prisma.ProductWhereInput = {
-        published: true,
-        brand: {
-          isActive: true,
-        },
-        step: baseStep,
+        ...whereClauseWithSkinType,
       };
+      delete (whereClauseWithoutSkinType as any).AND;
       
       product = await prisma.product.findFirst({
         where: whereClauseWithoutSkinType,

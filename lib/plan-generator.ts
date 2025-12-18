@@ -1947,6 +1947,97 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   if (serumSteps.length > 0) {
     const existingSerum = serumSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingSerum) {
+      // Диагностика: почему не нашли serum в productsByStepMap/каталоге.
+      // Включаем только для явной отладки (env) или для конкретного юзера (чтобы не шуметь).
+      const debugDiagnostics =
+        process.env.DEBUG_PLAN_PRODUCTS === 'true' || userId === '643160759';
+      if (debugDiagnostics) {
+        try {
+          const baseStep = 'serum';
+          const whereOr = [
+            { category: baseStep },
+            { step: baseStep },
+            { step: { startsWith: baseStep } },
+          ] as any;
+
+          const baseWhere: any = {
+            published: true,
+            OR: whereOr,
+          };
+
+          const totalPublished = await prisma.product.count({
+            where: baseWhere,
+          });
+          const totalPublishedActiveBrand = await prisma.product.count({
+            where: {
+              ...baseWhere,
+              brand: { isActive: true },
+            },
+          });
+          const totalPublishedActiveBrandSkin = profileClassification.skinType
+            ? await prisma.product.count({
+                where: {
+                  ...baseWhere,
+                  brand: { isActive: true },
+                  OR: undefined,
+                  AND: [
+                    { OR: whereOr },
+                    {
+                      OR: [
+                        { skinTypes: { has: profileClassification.skinType } },
+                        { skinTypes: { isEmpty: true } },
+                      ],
+                    },
+                  ],
+                },
+              })
+            : null;
+
+          const sample = await prisma.product.findMany({
+            where: {
+              ...baseWhere,
+              brand: { isActive: true },
+            },
+            select: {
+              id: true,
+              name: true,
+              step: true,
+              category: true,
+              skinTypes: true,
+              published: true,
+              brand: { select: { id: true, name: true, isActive: true } },
+            },
+            orderBy: [{ isHero: 'desc' }, { priority: 'desc' }, { createdAt: 'desc' }],
+            take: 5,
+          });
+
+          logger.info('Serum availability diagnostics', {
+            userId,
+            requiredSerumSteps: serumSteps,
+            profileSkinType: profileClassification.skinType,
+            counts: {
+              totalPublished,
+              totalPublishedActiveBrand,
+              totalPublishedActiveBrandSkin,
+            },
+            sample: sample.map((p) => ({
+              id: p.id,
+              name: p.name,
+              step: p.step,
+              category: p.category,
+              skinTypes: p.skinTypes,
+              brand: p.brand?.name,
+              brandActive: p.brand?.isActive,
+            })),
+            productsByStepMapSerumKeys: Array.from(productsByStepMap.keys()).filter((k) =>
+              String(k).startsWith('serum')
+            ),
+          });
+        } catch (e) {
+          logger.warn('Serum availability diagnostics failed (non-critical)', { userId, error: e });
+        }
+      }
+
       const fallbackSerum = await findFallbackProduct('serum', profileClassification);
       if (fallbackSerum) {
         // ИСПРАВЛЕНО: это не ошибка, если мы успешно нашли fallback.
