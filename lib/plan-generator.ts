@@ -1258,13 +1258,18 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         }
       });
       
-      // Также регистрируем по базовому шагу для обратной совместимости
+      // ИСПРАВЛЕНО: НЕ регистрируем продукты под "базовым шагом" для serum/treatment.
+      // Раньше сыворотка могла регистрироваться под ключом 'serum' и затем
+      // ошибочно удовлетворять шаг 'serum_hydrating' (даже если это serum_vitc),
+      // что давало "не тот" план.
+      // Для обратной совместимости оставляем только безопасные базовые шаги,
+      // где подтипы взаимозаменяемы без сильного риска: toner и moisturizer.
       stepCategories.forEach(stepCategory => {
         const baseStep = getBaseStepFromStepCategory(stepCategory);
-        if (baseStep !== stepCategory) {
+        if (baseStep !== stepCategory && (baseStep === 'toner' || baseStep === 'moisturizer')) {
           registerProductForStep(baseStep as StepCategory, productWithBrand);
           if (userId === '643160759' || process.env.NODE_ENV === 'development') {
-            logger.info('Product also registered for base step', {
+            logger.info('Product also registered for safe base step', {
               productId: product.id,
               productName: product.name,
               stepCategory,
@@ -1575,11 +1580,23 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         return base;
       }
       
-      // ИСПРАВЛЕНО: Если базовый шаг не найден, пробуем все варианты с этим базовым шагом
-      // Например, для 'serum_hydrating' пробуем все 'serum_*'
-      // ИСПРАВЛЕНО: Также для 'moisturizer_light' пробуем все 'moisturizer_*' (barrier, balancing и т.д.)
+      // ИСПРАВЛЕНО: Если базовый шаг не найден, пробуем варианты с этим базовым шагом.
+      // ВАЖНО: для serum_hydrating нельзя подмешивать любые serum_* (vitc/кислоты),
+      // иначе "увлажняющая" сыворотка заменяется на витамин C и план выглядит неправильным.
       const allVariants: ProductWithBrand[] = [];
       for (const [mapStep, products] of productsByStepMap.entries()) {
+        if (baseStep === 'serum' && step === 'serum_hydrating') {
+          const allowedSerumFallback = new Set<string>([
+            'serum_hydrating',
+            'serum_anti_redness',
+            'serum_niacinamide',
+          ]);
+          if (allowedSerumFallback.has(mapStep)) {
+            allVariants.push(...products);
+          }
+          continue;
+        }
+
         if (mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
           allVariants.push(...products);
         }

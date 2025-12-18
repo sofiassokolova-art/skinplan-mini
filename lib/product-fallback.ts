@@ -471,6 +471,26 @@ export async function ensureRequiredProducts(
   for (const [baseStep, stepCategories] of baseStepsMap.entries()) {
     let fallbackProduct = fallbackProducts.get(baseStep);
     
+    // ИСПРАВЛЕНО: serum_hydrating — не "любой serum".
+    // Если не хватает продукта для конкретной сыворотки, сначала пытаемся подобрать продукт
+    // именно под StepCategory (serum_hydrating / serum_niacinamide / serum_vitc и т.п.),
+    // а не брать первый попавшийся serum и назначать его на hydrating.
+    if (!fallbackProduct && baseStep === 'serum') {
+      const orderedSerumSteps = Array.from(stepCategories);
+      for (const stepCategory of orderedSerumSteps) {
+        const byExactCategory = await findFallbackProduct(stepCategory, profileClassification);
+        if (byExactCategory) {
+          fallbackProduct = byExactCategory;
+          logger.info('Found serum fallback by exact StepCategory', {
+            stepCategory,
+            productId: fallbackProduct.id,
+            productName: fallbackProduct.name,
+          });
+          break;
+        }
+      }
+    }
+
     // ИСПРАВЛЕНО: Для moisturizer_light пробуем иерархию fallback категорий
     if (!fallbackProduct && baseStep === 'moisturizer') {
       const moisturizerFallbackCategories = [
