@@ -87,10 +87,12 @@ export default function AdminLayout({
   }, [pathname, isLoginPage]);
 
   // Хук 2: Редирект при отсутствии авторизации
+  // ИСПРАВЛЕНО: Используем router.replace для немедленного редиректа без истории
   useEffect(() => {
     if (!loading && !isAuthenticated && !isLoginPage) {
       console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
-      router.push('/admin/login');
+      // Используем replace вместо push для более быстрого редиректа
+      router.replace('/admin/login');
     }
   }, [loading, isAuthenticated, isLoginPage, router, pathname]);
   
@@ -132,8 +134,10 @@ export default function AdminLayout({
     );
   }
   
-  // Если не авторизован и не на странице логина, показываем сообщение
+  // Если не авторизован и не на странице логина, не показываем контент
+  // Редирект уже выполнен в useEffect, здесь просто не рендерим админку
   if (!loading && !isAuthenticated && !isLoginPage) {
+    // Показываем минимальный экран, пока происходит редирект
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-gray-600">Перенаправление на страницу входа...</div>

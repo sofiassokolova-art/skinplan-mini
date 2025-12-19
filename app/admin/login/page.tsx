@@ -26,7 +26,8 @@ export default function AdminLogin() {
           if (response.ok) {
             const data = await response.json();
             if (data.valid) {
-              router.push('/admin');
+              // ИСПРАВЛЕНО: Используем replace для более быстрого редиректа
+              router.replace('/admin');
               return;
             }
           }
@@ -91,7 +92,8 @@ export default function AdminLogin() {
       }
       
       // Перенаправляем в админ-панель
-      router.push('/admin');
+      // ИСПРАВЛЕНО: Используем replace для более быстрого редиректа
+      router.replace('/admin');
       router.refresh();
     } catch (err) {
       console.error('Error during login:', err);
