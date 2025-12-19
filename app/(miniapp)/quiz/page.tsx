@@ -3797,11 +3797,18 @@ export default function QuizPage() {
 
   // ИСПРАВЛЕНО: убираем "мигание" лоадера анкеты при редиректе на /plan.
   // Когда ответы уже отправлены, мы ставим quiz_just_submitted и делаем window.location.replace('/plan?...').
+  // ИСПРАВЛЕНО: Проверяем флаг quiz_just_submitted ПЕРЕД проверкой loading
+  // Это предотвращает показ лоадера "Загрузка анкеты..." перед редиректом на план
   // До реального ухода со страницы React может успеть отрендерить ветку loading -> "Загрузка анкеты...".
   // Вместо этого показываем нейтральный лоадер "создаём план".
   const justSubmittedUiGuard =
     typeof window !== 'undefined' && sessionStorage.getItem('quiz_just_submitted') === 'true';
-  if (justSubmittedUiGuard) {
+  
+  // ИСПРАВЛЕНО: Также проверяем, идет ли редирект на /plan (isSubmitting = true)
+  // Это предотвращает показ лоадера "Загрузка анкеты..." во время редиректа
+  const isRedirectingToPlan = isSubmitting || justSubmittedUiGuard;
+  
+  if (isRedirectingToPlan) {
     return (
       <div style={{
         display: 'flex',
@@ -3835,7 +3842,8 @@ export default function QuizPage() {
     );
   }
 
-  if (loading) {
+  // ИСПРАВЛЕНО: Показываем лоадер "Загрузка анкеты..." только если НЕ идет редирект на план
+  if (loading && !isRedirectingToPlan) {
     return (
       <div style={{ 
         display: 'flex', 
