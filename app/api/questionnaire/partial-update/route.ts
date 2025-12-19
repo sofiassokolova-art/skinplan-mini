@@ -156,14 +156,14 @@ export async function POST(request: NextRequest) {
             },
           },
           update: {
-            answerValues: values,
+            answerValues: values as any,
             answerValue: null,
           },
           create: {
             userId,
             questionnaireId: questionnaire.id,
             questionId: question.id,
-            answerValues: values,
+            answerValues: values as any,
           },
         });
       } else {
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
           },
           update: {
             answerValue: value || (Array.isArray(values) ? values[0] : null),
-            answerValues: null,
+            answerValues: null as any,
           },
           create: {
             userId,

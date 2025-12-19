@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           answerValue: answerData.answerValue || null,
           answerValues: answerData.answerValues
             ? (answerData.answerValues as any)
-            : null,
+            : (null as any),
         },
         create: {
           userId,

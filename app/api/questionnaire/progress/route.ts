@@ -217,13 +217,21 @@ export async function POST(request: NextRequest) {
   const method = 'POST';
   const path = '/api/questionnaire/progress';
   let userId: string | null = null;
+  // ИСПРАВЛЕНО: Объявляем переменные в начале функции для доступа в catch блоке
+  let questionnaireId: number | undefined;
+  let questionId: any;
+  let answerValue: any;
+  let answerValues: any;
+  let questionIndex: any;
+  let infoScreenIndex: any;
+  let savedAnswer: any = null;
 
   try {
     const auth = await requireTelegramAuth(request, { ensureUser: true });
     if (!auth.ok) return auth.response;
     userId = auth.ctx.userId;
 
-    let { questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json();
+    ({ questionnaireId, questionId, answerValue, answerValues, questionIndex, infoScreenIndex } = await request.json());
 
     // Логируем только в development режиме
     if (process.env.NODE_ENV === 'development') {
@@ -245,8 +253,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    let savedAnswer = null;
 
     // Если questionId = -1, это только метаданные позиции
     // НЕ сохраняем их в БД, так как это нарушает внешний ключ
@@ -424,9 +430,19 @@ export async function POST(request: NextRequest) {
     if (error?.code === 'P2002' && error?.meta?.target?.includes('user_id') && 
         error?.meta?.target?.includes('questionnaire_id') && error?.meta?.target?.includes('question_id')) {
       // Это race condition - пытаемся получить существующий ответ
+      // ВАЖНО: questionIdNum уже определен выше в try блоке, используем его
       try {
-        const questionIdNum = typeof questionId === 'string' ? parseInt(questionId, 10) : questionId;
-        if (isNaN(questionIdNum) || questionIdNum <= 0) {
+        // questionIdNum уже определен выше, но для безопасности проверяем еще раз
+        let retryQuestionIdNum: number;
+        if (typeof questionId === 'string') {
+          retryQuestionIdNum = parseInt(questionId, 10);
+        } else if (typeof questionId === 'number') {
+          retryQuestionIdNum = questionId;
+        } else {
+          throw new Error('Invalid questionId type');
+        }
+        
+        if (isNaN(retryQuestionIdNum) || retryQuestionIdNum <= 0) {
           throw new Error('Invalid questionId');
         }
         
@@ -435,7 +451,7 @@ export async function POST(request: NextRequest) {
             userId_questionnaireId_questionId: {
               userId: userId!,
               questionnaireId: questionnaireId || 0,
-              questionId: questionIdNum,
+              questionId: retryQuestionIdNum,
             },
           },
         });
