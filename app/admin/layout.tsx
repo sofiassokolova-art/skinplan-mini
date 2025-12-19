@@ -82,6 +82,29 @@ export default function AdminLayout({
     };
   }, [pathname, isLoginPage]);
 
+  // ИСПРАВЛЕНО: Все хуки должны быть вызваны ДО любых условных return'ов
+  // Это критично для соблюдения правил React Hooks (React error #310)
+  
+  // Хук 2: Редирект при отсутствии авторизации
+  useEffect(() => {
+    if (!loading && !isAuthenticated && !isLoginPage) {
+      console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
+      router.push('/admin/login');
+    }
+  }, [loading, isAuthenticated, isLoginPage, router, pathname]);
+  
+  // Хук 3: Отладочное логирование
+  // ИСПРАВЛЕНО: Убрали children из зависимостей для стабильности
+  useEffect(() => {
+    console.log('[AdminLayout] State update', { 
+      pathname, 
+      loading, 
+      isAuthenticated, 
+      isLoginPage,
+      hasChildren: !!children 
+    });
+  }, [pathname, loading, isAuthenticated, isLoginPage]);
+
   const menuItems = [
     { href: '/admin', label: 'Дашборд', icon: LayoutDashboard },
     { href: '/admin/users', label: 'Пользователи', icon: Users },
@@ -95,6 +118,7 @@ export default function AdminLayout({
     { href: '/admin/logs', label: 'Логи клиентов', icon: FileSearch },
   ];
 
+  // Условные return'ы ПОСЛЕ всех хуков
   if (isLoginPage) {
     return <>{children}</>;
   }
@@ -106,25 +130,6 @@ export default function AdminLayout({
       </div>
     );
   }
-
-  // Блокируем доступ, если не авторизован
-  useEffect(() => {
-    if (!loading && !isAuthenticated && !isLoginPage) {
-      console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
-      router.push('/admin/login');
-    }
-  }, [loading, isAuthenticated, isLoginPage, router, pathname]);
-  
-  // ИСПРАВЛЕНО: Добавляем отладочное логирование
-  useEffect(() => {
-    console.log('[AdminLayout] State update', { 
-      pathname, 
-      loading, 
-      isAuthenticated, 
-      isLoginPage,
-      hasChildren: !!children 
-    });
-  }, [pathname, loading, isAuthenticated, isLoginPage, children]);
   
   // Если не авторизован и не на странице логина, показываем сообщение
   if (!loading && !isAuthenticated && !isLoginPage) {
