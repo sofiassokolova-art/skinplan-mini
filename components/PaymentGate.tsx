@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 interface PaymentGateProps {
   price?: number;
-  productCode?: 'plan_access' | 'subscription_month' | 'retake_topic';
+  productCode?: 'plan_access' | 'subscription_month' | 'retake_topic' | 'retake_full';
   isRetaking: boolean;
   onPaymentComplete: () => void;
   retakeCta?: { text: string; href: string };
@@ -17,7 +17,8 @@ interface PaymentGateProps {
 
 const PRODUCT_PRICES: Record<string, number> = {
   plan_access: 199,
-  retake_topic: 99,
+  retake_topic: 49, // ИСПРАВЛЕНО: цена за перепрохождение одной темы
+  retake_full: 99, // Цена за полное перепрохождение анкеты
   subscription_month: 499,
 };
 
@@ -29,6 +30,7 @@ const ENTITLEMENTS_TTL_MS = 5000;
 function requiredEntitlementCode(productCode: string): string {
   if (productCode === 'plan_access') return 'paid_access';
   if (productCode === 'retake_topic') return 'retake_topic_access';
+  if (productCode === 'retake_full') return 'retake_full_access';
   // Для подписки пока не вводим отдельный код — считаем, что она тоже даёт paid_access
   return 'paid_access';
 }
@@ -529,10 +531,12 @@ export function PaymentGate({
             lineHeight: '1.6',
           }}>
             {productCode === 'retake_topic'
-              ? 'Выберите тему, оплатите 99 ₽ и обновите только затронутые части рекомендаций.'
-              : isRetaking 
-                ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
-                : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
+              ? 'Выберите тему, оплатите 49 ₽ и обновите только затронутые части рекомендаций.'
+              : productCode === 'retake_full'
+                ? 'Оплатите 99 ₽ и пройдите всю анкету заново. Счет 28 дней начнется заново.'
+                : isRetaking 
+                  ? 'Обновите свой план ухода и получите персональные рекомендации на основе новых данных'
+                  : 'Оплатите доступ, чтобы увидеть полный план ухода на 28 дней с персональными рекомендациями'}
           </p>
 
           {/* Цена */}

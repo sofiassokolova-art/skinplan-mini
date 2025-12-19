@@ -677,6 +677,19 @@ export const api = {
     return request<AnalysisResponse>('/analysis');
   },
 
+  // Получение entitlements пользователя
+  async getEntitlements(): Promise<{
+    paid: boolean;
+    validUntil: string | null;
+    entitlements: Array<{
+      code: string;
+      active: boolean;
+      validUntil: string | null;
+    }>;
+  }> {
+    return request('/me/entitlements');
+  },
+
   // Админские функции
   async clearCache() {
     return request('/admin/clear-cache', {

@@ -87,6 +87,8 @@ export default function QuizPage() {
   const answersCount = useMemo(() => Object.keys(effectiveAnswers).length, [effectiveAnswers]);
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [showRetakeScreen, setShowRetakeScreen] = useState(false); // Флаг: показывать экран выбора тем для повторного прохождения
+  const [hasRetakingPayment, setHasRetakingPayment] = useState(false); // Флаг оплаты перепрохождения темы
+  const [hasFullRetakePayment, setHasFullRetakePayment] = useState(false); // Флаг оплаты полного перепрохождения
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
   const hasResumedRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
   const [isStartingOver, setIsStartingOver] = useState(false);
@@ -105,8 +107,6 @@ export default function QuizPage() {
   
   // ИСПРАВЛЕНО: Храним значения из localStorage в state после mount, чтобы избежать hydration mismatch
   const [paidTopics, setPaidTopics] = useState<Set<string>>(new Set());
-  const [hasRetakingPayment, setHasRetakingPayment] = useState(false);
-  const [hasFullRetakePayment, setHasFullRetakePayment] = useState(false);
   
   // ИСПРАВЛЕНО: Загружаем значения из localStorage после mount
   useEffect(() => {
@@ -122,9 +122,15 @@ export default function QuizPage() {
     });
     setPaidTopics(paidSet);
     
-    // Загружаем флаги оплаты
-    setHasRetakingPayment(localStorage.getItem('payment_retaking_completed') === 'true');
-    setHasFullRetakePayment(localStorage.getItem('payment_full_retake_completed') === 'true');
+    // Загружаем флаги оплаты (fallback для обратной совместимости, основной источник - API entitlements)
+    const hasRetakingFromStorage = localStorage.getItem('payment_retaking_completed') === 'true';
+    const hasFullRetakeFromStorage = localStorage.getItem('payment_full_retake_completed') === 'true';
+    if (hasRetakingFromStorage && !hasRetakingPayment) {
+      setHasRetakingPayment(true);
+    }
+    if (hasFullRetakeFromStorage && !hasFullRetakePayment) {
+      setHasFullRetakePayment(true);
+    }
   }, []);
   
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
@@ -453,6 +459,7 @@ export default function QuizPage() {
         // Но только если она еще не загружена
         // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер
         // Анкета загрузится мгновенно, и пользователь увидит вопросы без задержки
+        // КРИТИЧНО: При перепрохождении анкета должна загрузиться ДО показа экрана выбора тем
         if (!questionnaire) {
           try {
             clientLogger.log('📥 Loading questionnaire in init', { 
@@ -1276,7 +1283,7 @@ export default function QuizPage() {
         hasData: !!data,
         dataType: typeof data,
         dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-        dataString: JSON.stringify(data).substring(0, 200),
+        dataString: typeof data === 'object' ? JSON.stringify(data).substring(0, 200) : String(data).substring(0, 200),
         isRetakingQuiz,
         showRetakeScreen,
       });
@@ -1292,9 +1299,19 @@ export default function QuizPage() {
         } else if ('data' in data && !('success' in data)) {
           // Только data без success
           questionnaireData = (data as any).data as Questionnaire;
-        } else {
-          // Данные напрямую (без обертки)
+        } else if ('id' in data || 'groups' in data || 'questions' in data) {
+          // Данные напрямую (без обертки) - проверяем наличие ключевых полей
           questionnaireData = data as Questionnaire;
+        } else {
+          // Неизвестный формат - логируем для диагностики
+          clientLogger.warn('⚠️ Unknown questionnaire data format', {
+            dataKeys: Object.keys(data),
+            hasId: 'id' in data,
+            hasGroups: 'groups' in data,
+            hasQuestions: 'questions' in data,
+            hasSuccess: 'success' in data,
+            hasData: 'data' in data,
+          });
         }
       }
       
@@ -4002,18 +4019,43 @@ export default function QuizPage() {
     );
   }
 
+  // ИСПРАВЛЕНО: Проверяем entitlements через API вместо localStorage
+  // Это более надежно и работает после перезагрузки страницы
+  // Проверяем entitlements при монтировании экрана перепрохождения
+  useEffect(() => {
+    if (showRetakeScreen && isRetakingQuiz) {
+      const checkEntitlements = async () => {
+        try {
+          const entitlements = await api.getEntitlements();
+          const hasRetakeTopic = entitlements?.entitlements?.some(
+            (e: any) => e.code === 'retake_topic_access' && e.active === true
+          ) || false;
+          const hasRetakeFull = entitlements?.entitlements?.some(
+            (e: any) => e.code === 'retake_full_access' && e.active === true
+          ) || false;
+          setHasRetakingPayment(hasRetakeTopic);
+          setHasFullRetakePayment(hasRetakeFull);
+          clientLogger.log('✅ Entitlements checked for retake screen', {
+            hasRetakeTopic,
+            hasRetakeFull,
+          });
+        } catch (err) {
+          clientLogger.warn('⚠️ Failed to check entitlements for retake screen', err);
+          // Fallback на localStorage для обратной совместимости
+          if (typeof window !== 'undefined') {
+            setHasRetakingPayment(localStorage.getItem('payment_retaking_completed') === 'true');
+            setHasFullRetakePayment(localStorage.getItem('payment_full_retake_completed') === 'true');
+          }
+        }
+      };
+      checkEntitlements();
+    }
+  }, [showRetakeScreen, isRetakingQuiz]);
+
   // Экран продолжения анкеты
   // Экран выбора тем при повторном прохождении анкеты
   if (showRetakeScreen && isRetakingQuiz) {
     const retakeTopics = getAllTopics();
-    
-    // Проверяем, оплатил ли пользователь перепрохождение (устаревшие флаги localStorage)
-    const hasRetakingPayment = typeof window !== 'undefined' 
-      ? localStorage.getItem('payment_retaking_completed') === 'true'
-      : false;
-    const hasFullRetakePayment = typeof window !== 'undefined'
-      ? localStorage.getItem('payment_full_retake_completed') === 'true'
-      : false;
     
     clientLogger.log('🔄 Retake screen check:', {
       showRetakeScreen,
@@ -4212,12 +4254,12 @@ export default function QuizPage() {
               </button>
             );
             
-            // ИСПРАВЛЕНО: ретейк темы = 99₽ (через productCode=retake_topic).
+            // ИСПРАВЛЕНО: ретейк темы = 49₽ (через productCode=retake_topic).
             // После оплаты сразу переходим в /quiz/update/{topicId}.
             return (
               <PaymentGate
                 key={topic.id}
-                price={99}
+                price={49}
                 productCode="retake_topic"
                 isRetaking={true}
                 onPaymentComplete={() => {
@@ -4235,22 +4277,37 @@ export default function QuizPage() {
         {!hasFullRetakePayment ? (
           <PaymentGate
             price={99}
+            productCode="retake_full"
             isRetaking={true}
-            onPaymentComplete={() => {
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('payment_full_retake_completed', 'true');
-                // После оплаты разрешаем полное перепрохождение
-                setShowRetakeScreen(false);
-                // Устанавливаем флаг перепрохождения, чтобы пропустить все info screens
-                setIsRetakingQuiz(true);
-                // Пропускаем все начальные info screens - переходим сразу к вопросам
-                if (questionnaire) {
-                  const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
-                  setCurrentInfoScreenIndex(initialInfoScreens.length);
-                  setCurrentQuestionIndex(0);
-                  setPendingInfoScreen(null);
-                  clientLogger.log('✅ Full retake payment: Skipping all info screens, starting from first question');
+            onPaymentComplete={async () => {
+              // Обновляем состояние оплаты из API (источник правды)
+              try {
+                const entitlements = await api.getEntitlements();
+                const hasRetakeFull = entitlements?.entitlements?.some(
+                  (e: any) => e.code === 'retake_full_access' && e.active === true
+                ) || false;
+                setHasFullRetakePayment(hasRetakeFull);
+                clientLogger.log('✅ Full retake payment completed, entitlements updated', { hasRetakeFull });
+              } catch (err) {
+                clientLogger.warn('⚠️ Failed to refresh entitlements after payment, using fallback', err);
+                // Fallback на localStorage для обратной совместимости
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('payment_full_retake_completed', 'true');
+                  setHasFullRetakePayment(true);
                 }
+              }
+              
+              // После оплаты разрешаем полное перепрохождение
+              setShowRetakeScreen(false);
+              // Устанавливаем флаг перепрохождения, чтобы пропустить все info screens
+              setIsRetakingQuiz(true);
+              // Пропускаем все начальные info screens - переходим сразу к вопросам
+              if (questionnaire) {
+                const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+                setCurrentInfoScreenIndex(initialInfoScreens.length);
+                setCurrentQuestionIndex(0);
+                setPendingInfoScreen(null);
+                clientLogger.log('✅ Full retake payment: Skipping all info screens, starting from first question');
               }
             }}
           >
@@ -5389,12 +5446,18 @@ export default function QuizPage() {
       );
     }
     
-    // ИСПРАВЛЕНО: При перепрохождении, если анкета еще не загружена, но нет критической ошибки
-    // Показываем экран выбора тем или продолжаем загрузку, не блокируя пользователя
-    if (isRetakingQuiz && !questionnaire) {
-      // Анкета еще загружается, но мы на перепрохождении - продолжаем загрузку в фоне
-      // Экран выбора тем покажется, когда анкета загрузится или если есть ошибка - попробуем еще раз
-      if (error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire'))) {
+    // ИСПРАВЛЕНО: При перепрохождении, если анкета еще не загружена, загружаем её
+    // Анкета нужна для экрана выбора тем (чтобы показать доступные темы)
+    if ((isRetakingQuiz || showRetakeScreen) && !questionnaire && !loading) {
+      // Анкета еще не загружена при перепрохождении - загружаем в фоне
+      // Экран выбора тем покажется, когда анкета загрузится
+      if (!error) {
+        // Нет ошибки - просто загружаем анкету в фоне
+        clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen');
+        loadQuestionnaire().catch((err) => {
+          clientLogger.error('❌ Failed to load questionnaire during retake', err);
+        });
+      } else if (error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire'))) {
         // Есть ошибка загрузки при перепрохождении - пробуем загрузить еще раз
         clientLogger.warn('⚠️ Error loading questionnaire during retake, will retry', { error });
         // Очищаем ошибку и пробуем загрузить еще раз
@@ -5402,8 +5465,6 @@ export default function QuizPage() {
         loadQuestionnaire().catch((err) => {
           clientLogger.error('❌ Failed to reload questionnaire during retake', err);
         });
-      } else {
-        clientLogger.log('ℹ️ Retaking quiz, questionnaire still loading, showing retake screen or waiting');
       }
     }
 

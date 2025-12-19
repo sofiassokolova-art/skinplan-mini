@@ -933,6 +933,8 @@ export default function HomePage() {
           type="button"
           onClick={() => {
             try {
+              // ИСПРАВЛЕНО: Устанавливаем флаг полного перепрохождения с главной страницы
+              localStorage.setItem('full_retake_from_home', 'true');
               localStorage.setItem('is_retaking_quiz', 'true');
             } catch {
               // ignore

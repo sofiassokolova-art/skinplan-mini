@@ -378,24 +378,65 @@ export async function GET(request: NextRequest) {
           plan28Structure,
         });
         
-        await prisma.plan28.upsert({
-          where: {
-            userId_profileVersion: {
-              userId: userId,
+        // ИСПРАВЛЕНО: При полном перепрохождении (retake_full) обнуляем createdAt для сброса 28-дневного счетчика
+        // Проверяем наличие entitlement retake_full_access для определения полного перепрохождения
+        const retakeFullEntitlement = await prisma.entitlement.findUnique({
+          where: { userId_code: { userId, code: 'retake_full_access' } },
+          select: { active: true, validUntil: true },
+        });
+        const isFullRetake = retakeFullEntitlement?.active === true && 
+                            (!retakeFullEntitlement.validUntil || retakeFullEntitlement.validUntil > new Date());
+        
+        // При полном перепрохождении удаляем старый план и создаем новый с текущей датой
+        if (isFullRetake) {
+          logger.info('Full retake detected - deleting old plan and creating new one to reset 28-day counter', {
+            userId,
+            profileVersion: profile.version,
+          });
+          // Удаляем старый план для этой версии профиля
+          await prisma.plan28.deleteMany({
+            where: {
+              userId,
               profileVersion: profile.version,
             },
-          },
-          update: {
-            planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
-            updatedAt: new Date(),
-          },
-          create: {
-            userId,
-            skinProfileId: profile.id,
-            profileVersion: profile.version,
-            planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
-          },
-        });
+          });
+          // Создаем новый план с текущей датой (createdAt будет установлен автоматически)
+          await prisma.plan28.create({
+            data: {
+              userId,
+              skinProfileId: profile.id,
+              profileVersion: profile.version,
+              planData: plan.plan28 as any,
+            },
+          });
+          // "Съедаем" entitlement после использования
+          await prisma.entitlement.update({
+            where: { userId_code: { userId, code: 'retake_full_access' } },
+            data: { active: false, updatedAt: new Date() },
+          }).catch(() => {
+            // Игнорируем ошибки - entitlement может быть уже удален
+          });
+        } else {
+          // Обычное создание/обновление плана
+          await prisma.plan28.upsert({
+            where: {
+              userId_profileVersion: {
+                userId: userId,
+                profileVersion: profile.version,
+              },
+            },
+            update: {
+              planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
+              updatedAt: new Date(),
+            },
+            create: {
+              userId,
+              skinProfileId: profile.id,
+              profileVersion: profile.version,
+              planData: plan.plan28 as any, // Сохраняем полный план28 в JSON
+            },
+          });
+        }
         
         // ИСПРАВЛЕНО: Проверяем, что план действительно сохранился
         const savedPlan = await prisma.plan28.findUnique({

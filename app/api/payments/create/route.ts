@@ -17,7 +17,11 @@ const PRODUCTS: Record<string, { amount: number; currency: string }> = {
     currency: 'RUB',
   },
   retake_topic: {
-    amount: 9900, // 99 рублей в копейках
+    amount: 4900, // 49 рублей в копейках (ИСПРАВЛЕНО: цена за перепрохождение одной темы)
+    currency: 'RUB',
+  },
+  retake_full: {
+    amount: 9900, // 99 рублей в копейках (цена за полное перепрохождение анкеты)
     currency: 'RUB',
   },
   subscription_month: {
