@@ -82,9 +82,7 @@ export function checkCompatibilityWithSelected(
   product: ProductWithBrand,
   context: ProductSelectionContext
 ): ProductSelectionResult {
-  // ИСПРАВЛЕНО: Импортируем функции проверки совместимости синхронно
-  const { canUseTogether, getOptimalTimeOfDay } = require('./ingredient-compatibility');
-  
+  // ИСПРАВЛЕНО: Используем уже импортированные функции из ingredient-compatibility
   // ИСПРАВЛЕНО: Используем реальные activeIngredients из продукта
   const productForCompatibility = {
     activeIngredients: product.activeIngredients || [],
