@@ -85,28 +85,51 @@ export async function GET(request: NextRequest) {
     }
 
     if (!profile) {
-      // ИСПРАВЛЕНО: При read-after-write проблеме пробуем подождать и повторить
+      // ИСПРАВЛЕНО: При read-after-write проблеме пробуем подождать и повторить несколько раз
       // Это решает проблему, когда профиль только что создан, но еще не виден в реплике
       logger.warn('No skin profile found for user, retrying after delay (read-after-write)', { userId, profileIdParam });
       
-      // Ждем 500ms и пробуем еще раз
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Пробуем несколько раз с увеличивающейся задержкой
+      const maxRetries = 3;
+      let retryProfile = null;
       
-      const retryProfile = await getCurrentProfile(userId);
-      if (retryProfile) {
-        profile = {
-          id: retryProfile.id,
-          version: retryProfile.version || 1,
-        };
-        logger.info('Profile found after retry (read-after-write resolved)', {
-          userId,
-          profileId: profile.id,
-          profileVersion: profile.version,
-        });
-      } else {
-        // Если после retry профиль все еще не найден - возвращаем no_profile
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        // Увеличиваем задержку с каждой попыткой: 500ms, 1000ms, 2000ms
+        const delay = 500 * Math.pow(2, attempt - 1);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        retryProfile = await getCurrentProfile(userId);
+        if (retryProfile) {
+          profile = {
+            id: retryProfile.id,
+            version: retryProfile.version || 1,
+          };
+          logger.info('Profile found after retry (read-after-write resolved)', {
+            userId,
+            profileId: profile.id,
+            profileVersion: profile.version,
+            attempt,
+            delay,
+          });
+          break;
+        } else {
+          logger.warn(`Profile not found after retry attempt ${attempt}/${maxRetries}`, {
+            userId,
+            profileIdParam,
+            attempt,
+            delay,
+          });
+        }
+      }
+      
+      if (!profile) {
+        // Если после всех retry профиль все еще не найден - возвращаем no_profile
         const duration = Date.now() - startTime;
-        logger.warn('No skin profile found for user after retry', { userId, profileIdParam });
+        logger.warn('No skin profile found for user after all retries', { 
+          userId, 
+          profileIdParam,
+          retries: maxRetries,
+        });
         logApiRequest(method, path, 200, duration, userId);
         return ApiResponse.success({
           plan28: null,
