@@ -1277,9 +1277,35 @@ export default function QuizPage() {
         dataType: typeof data,
         dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
         dataString: JSON.stringify(data).substring(0, 200),
+        isRetakingQuiz,
+        showRetakeScreen,
       });
       
-      const questionnaireData = data as Questionnaire;
+      // ИСПРАВЛЕНО: API может возвращать данные в обертке (success/data)
+      // Проверяем, есть ли обертка, и извлекаем данные
+      let questionnaireData: Questionnaire | null = null;
+      
+      if (data && typeof data === 'object') {
+        // Проверяем, есть ли обертка ApiResponse (success/data)
+        if ('success' in data && 'data' in data && (data as any).success === true) {
+          questionnaireData = (data as any).data as Questionnaire;
+        } else if ('data' in data && !('success' in data)) {
+          // Только data без success
+          questionnaireData = (data as any).data as Questionnaire;
+        } else {
+          // Данные напрямую (без обертки)
+          questionnaireData = data as Questionnaire;
+        }
+      }
+      
+      if (!questionnaireData) {
+        clientLogger.error('❌ Could not extract questionnaire data from API response', { 
+          data,
+          dataType: typeof data,
+          dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+        });
+        throw new Error('Invalid questionnaire data: could not extract data from response');
+      }
       
       // ИСПРАВЛЕНО: Проверяем, что данные валидны
       if (!questionnaireData) {
@@ -1363,9 +1389,21 @@ export default function QuizPage() {
         clientLogger.error('❌ Таймаут загрузки анкеты');
       }
       
-      // ИСПРАВЛЕНО: Не устанавливаем ошибку сразу, если это временная проблема
-      // Позволяем пользователю попробовать еще раз
+      // ИСПРАВЛЕНО: Не устанавливаем ошибку сразу, если это перепрохождение анкеты
+      // При перепрохождении ошибка загрузки не должна блокировать пользователя
       const errorMessage = String(err?.message || 'Ошибка загрузки анкеты');
+      
+      // ИСПРАВЛЕНО: При перепрохождении не показываем ошибку сразу
+      // Анкета может загрузиться позже, и пользователь сможет продолжить
+      if (isRetakingQuiz || showRetakeScreen) {
+        clientLogger.warn('⚠️ Error loading questionnaire during retake, will not show error to user', { 
+          error: errorMessage,
+          isRetakingQuiz,
+          showRetakeScreen,
+        });
+        // Не устанавливаем ошибку при перепрохождении - пользователь может продолжить
+        return null;
+      }
       
       // Только для критических ошибок устанавливаем error state
       // Для временных ошибок (таймаут, сеть) можно попробовать еще раз
@@ -3827,9 +3865,11 @@ export default function QuizPage() {
     );
   }
 
-  if (error && !questionnaire) {
+  // ИСПРАВЛЕНО: Не показываем ошибку при перепрохождении анкеты
+  // При перепрохождении анкета может загружаться в фоне, и ошибка не должна блокировать пользователя
+  if (error && !questionnaire && !isRetakingQuiz && !showRetakeScreen) {
     return (
-      <div style={{ 
+      <div style={{
         padding: '20px',
         minHeight: '100vh',
         display: 'flex',
