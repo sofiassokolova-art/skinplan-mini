@@ -144,6 +144,20 @@ async function resetUserToNew(telegramId: string) {
     });
     console.log(`   ✅ Удалено ответов: ${deletedAnswers.count}`);
 
+    // 16. Удаляем Entitlement
+    console.log('🗑️  Удаляю entitlements...');
+    const deletedEntitlements = await prisma.entitlement.deleteMany({
+      where: { userId: user.id },
+    });
+    console.log(`   ✅ Удалено entitlements: ${deletedEntitlements.count}`);
+
+    // 17. Удаляем Payment
+    console.log('🗑️  Удаляю платежи...');
+    const deletedPayments = await prisma.payment.deleteMany({
+      where: { userId: user.id },
+    });
+    console.log(`   ✅ Удалено платежей: ${deletedPayments.count}`);
+
     // ВАЖНО: Пользователя НЕ удаляем - только его данные
 
     console.log('\n✅ Все данные пользователя успешно удалены!');
