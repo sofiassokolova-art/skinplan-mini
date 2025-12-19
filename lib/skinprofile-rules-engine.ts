@@ -183,7 +183,11 @@ export function buildSkinProfileFromAnswers(
     // ИСПРАВЛЕНО: Если есть answerOptionLabels, используем их вместо answerValues
     // Это позволяет маппить values опций на labels для правил
     if (answer.answerOptionLabels && Array.isArray(answer.answerOptionLabels) && answer.answerOptionLabels.length > 0) {
-      answerValue = answer.answerOptionLabels;
+      // Если массив содержит один элемент, используем строку (для single_choice)
+      // Если несколько элементов, используем массив (для multi_choice)
+      answerValue = answer.answerOptionLabels.length === 1 
+        ? answer.answerOptionLabels[0] 
+        : answer.answerOptionLabels;
     } else if (answer.answerValues && Array.isArray(answer.answerValues)) {
       answerValue = answer.answerValues;
     } else if (answer.answerValue) {

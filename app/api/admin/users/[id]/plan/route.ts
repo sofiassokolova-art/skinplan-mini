@@ -45,7 +45,7 @@ export async function GET(
     const profile = await prisma.skinProfile.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      select: { version: true },
+      select: { version: true, id: true },
     });
 
     if (!profile) {
@@ -55,7 +55,71 @@ export async function GET(
       );
     }
 
-    // Пытаемся получить план из кэша для текущей версии
+    // ИСПРАВЛЕНО: Сначала проверяем Plan28 в БД (основной источник)
+    const plan28Record = await prisma.plan28.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        planData: true,
+        profileVersion: true,
+        createdAt: true,
+      },
+    });
+
+    if (plan28Record && plan28Record.planData) {
+      // Преобразуем Plan28 из БД в формат для админки
+      const planData = plan28Record.planData as any;
+      
+      // Извлекаем все уникальные продукты из дней плана
+      const allProducts: any[] = [];
+      const productMap = new Map<number, any>();
+      
+      if (planData?.days && Array.isArray(planData.days)) {
+        planData.days.forEach((day: any) => {
+          if (day.steps && Array.isArray(day.steps)) {
+            day.steps.forEach((step: any) => {
+              if (step.product && !productMap.has(step.product.id)) {
+                productMap.set(step.product.id, step.product);
+                allProducts.push(step.product);
+              }
+            });
+          }
+        });
+      }
+      
+      // Извлекаем недели из плана
+      const weeks = planData?.weeks || [];
+      
+      // Получаем информацию о профиле для отображения
+      const fullProfile = await prisma.skinProfile.findUnique({
+        where: { id: profile.id },
+        select: {
+          skinType: true,
+          mainGoals: true,
+          ageGroup: true,
+          notes: true,
+        },
+      });
+      
+      return NextResponse.json({
+        plan: {
+          plan28: planData,
+          profile: {
+            version: plan28Record.profileVersion,
+            skinType: fullProfile?.skinType || null,
+            primaryFocus: fullProfile?.mainGoals?.[0] || null,
+            ageGroup: fullProfile?.ageGroup || null,
+            concerns: fullProfile?.mainGoals || [],
+          },
+          products: allProducts,
+          weeks: weeks,
+          warnings: [],
+        },
+      });
+    }
+
+    // Если план не найден в БД, проверяем кэш для текущей версии
     let cachedPlan = await getCachedPlan(userId, profile.version);
     
     if (cachedPlan && cachedPlan.plan28) {
@@ -63,11 +127,10 @@ export async function GET(
     }
 
     // Если план не найден для текущей версии, проверяем предыдущие версии профиля
-    // (как в /api/plan/route.ts)
     const previousProfiles = await prisma.skinProfile.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: 2,
+      take: 5, // Увеличиваем количество проверяемых версий
       select: { version: true },
     });
 
@@ -83,7 +146,7 @@ export async function GET(
       }
     }
 
-    // Если плана нет ни в текущей, ни в предыдущих версиях, возвращаем сообщение
+    // Если плана нет ни в БД, ни в кэше, возвращаем сообщение
     return NextResponse.json(
       { error: 'Plan not found. User may need to generate a new plan.' },
       { status: 404 }

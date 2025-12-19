@@ -197,13 +197,15 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main 
-        className="overflow-auto min-h-screen pr-8 md:pr-12 pt-16 md:pt-20 pb-6 md:pb-8"
+        className="min-h-screen pr-8 md:pr-12 pt-16 md:pt-20 pb-6 md:pb-8"
         style={{
           marginLeft: sidebarOpen ? '256px' : '80px',
           width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)',
           position: 'relative',
           backgroundColor: 'transparent',
-          zIndex: 1
+          zIndex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden'
         }}
       >
         <div className="max-w-7xl mx-auto w-full" style={{ position: 'relative', zIndex: 1 }}>

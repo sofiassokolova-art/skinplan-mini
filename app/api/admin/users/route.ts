@@ -73,10 +73,15 @@ export async function GET(request: NextRequest) {
             take: 1,
             orderBy: { createdAt: 'desc' },
           },
+          plan28s: {
+            take: 1,
+            orderBy: { createdAt: 'desc' },
+          },
           _count: {
             select: {
               skinProfiles: true,
               recommendationSessions: true,
+              plan28s: true,
               planFeedbacks: true,
             },
           },
@@ -99,9 +104,10 @@ export async function GET(request: NextRequest) {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
         hasProfile: user.skinProfiles.length > 0,
-        hasPlan: user.recommendationSessions.length > 0,
+        // ИСПРАВЛЕНО: План может быть в Plan28 или recommendationSessions
+        hasPlan: user.plan28s.length > 0 || user.recommendationSessions.length > 0,
         profileCount: user._count.skinProfiles,
-        planCount: user._count.recommendationSessions,
+        planCount: user._count.plan28s + user._count.recommendationSessions,
         feedbackCount: user._count.planFeedbacks,
         latestProfile: user.skinProfiles[0] || null,
       })),

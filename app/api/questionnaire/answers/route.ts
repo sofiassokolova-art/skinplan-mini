@@ -578,6 +578,13 @@ export async function POST(request: NextRequest) {
               return option?.label || val;
             })
             .filter(Boolean);
+        } else if (answer.answerValue && answer.question?.answerOptions) {
+          // ИСПРАВЛЕНО: Для single_choice тоже маппим value на label
+          // Это важно для правил, которые ищут опции по label (например, бюджет)
+          const option = answer.question.answerOptions.find(opt => opt.value === answer.answerValue);
+          if (option?.label) {
+            answerOptionLabels = [option.label];
+          }
         }
         
         return {

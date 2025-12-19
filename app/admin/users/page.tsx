@@ -225,13 +225,15 @@ export default function UsersAdmin() {
         header: 'Действия',
         cell: ({ row }) => {
           const user = row.original;
-    return (
+          // ИСПРАВЛЕНО: Кнопка активна, если есть план (hasPlan), а не только профиль
+          const canViewPlan = user.hasPlan;
+          return (
             <button
               onClick={() => handleViewPlan(user.id)}
-              disabled={!user.hasProfile}
+              disabled={!canViewPlan}
               className={cn(
                 'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-                user.hasProfile
+                canViewPlan
                   ? 'bg-black text-white hover:bg-gray-800'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               )}

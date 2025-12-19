@@ -120,42 +120,78 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%) !important;
-  background-attachment: fixed !important;
-  color: #111827 !important; /* Черный текст */
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+  /* ИСПРАВЛЕНО: Убрали background-attachment: fixed, чтобы не вызывать проблемы с позиционированием в админке */
+  color: #111827; /* Базовый цвет текста (без !important, чтобы не перекрывать Tailwind классы) */
 }
 
 /* Стили для админ-панели - светлая тема */
 /* ИСПРАВЛЕНО: Убрали агрессивные !important правила, которые переопределяли все стили */
 .admin-layout {
   background-color: #f3f4f6;
+  /* Базовый цвет текста (без !important, чтобы не переопределять Tailwind классы) */
   color: #111827;
 }
 
-/* Базовый цвет текста для админки (без !important, чтобы не переопределять Tailwind классы) */
-.admin-layout {
-  color: #111827;
+/* Убрали правила, которые перекрывали Tailwind классы цветов */
+/* Теперь Tailwind классы (text-emerald-600, text-red-600, bg-white, и т.д.) работают корректно */
+
+/* ИСПРАВЛЕНО: Явные стили для админ-панели, чтобы гарантировать правильное отображение карточек */
+.admin-layout .bg-white {
+  background-color: #ffffff !important;
 }
 
-/* Исключения для специальных цветов - только для градиентов и цветных текстов */
-.admin-layout .bg-clip-text,
-.admin-layout .text-transparent {
-  color: inherit;
+.admin-layout .rounded-2xl {
+  border-radius: 1rem !important;
 }
 
-/* Сохраняем цвета для специальных классов */
-.admin-layout .text-emerald-600,
-.admin-layout .text-red-600,
-.admin-layout .text-purple-600,
-.admin-layout .text-pink-600,
-.admin-layout .text-blue-600,
-.admin-layout .text-yellow-600,
-.admin-layout .text-indigo-600,
-.admin-layout .text-gray-500,
-.admin-layout .text-gray-600,
-.admin-layout .text-gray-700,
-.admin-layout .text-gray-900 {
-  color: inherit;
+.admin-layout .border {
+  border-width: 1px !important;
+}
+
+.admin-layout .border-gray-200 {
+  border-color: #e5e7eb !important;
+}
+
+.admin-layout .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.admin-layout .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ИСПРАВЛЕНО: Гарантируем правильное отображение grid и flex контейнеров */
+.admin-layout .grid {
+  display: grid !important;
+}
+
+.admin-layout .flex {
+  display: flex !important;
+}
+
+.admin-layout .flex-col {
+  flex-direction: column !important;
+}
+
+.admin-layout .justify-between {
+  justify-content: space-between !important;
+}
+
+.admin-layout .items-center {
+  align-items: center !important;
+}
+
+.admin-layout .gap-12 {
+  gap: 3rem !important;
+}
+
+.admin-layout .mb-12 {
+  margin-bottom: 3rem !important;
+}
+
+.admin-layout .p-8 {
+  padding: 2rem !important;
 }
 
 .admin-sidebar {
@@ -164,12 +200,11 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border-right: none !important;
   box-shadow: none !important;
-  color: #111827 !important;
+  /* Убрали !important из color, чтобы не перекрывать Tailwind классы для текста внутри сайдбара */
+  color: #111827;
 }
 
-.admin-sidebar * {
-  color: #111827 !important;
-}
+/* Убрали универсальное правило для всех элементов сайдбара, чтобы не перекрывать Tailwind классы */
 
 /* Улучшенные кнопки */
 .btn-primary {
