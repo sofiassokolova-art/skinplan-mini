@@ -1270,6 +1270,9 @@ export default function QuizPage() {
 
   const loadQuestionnaire = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
       // ВАЖНО: Добавляем таймаут для загрузки анкеты, чтобы не ждать бесконечно
       const loadPromise = api.getActiveQuestionnaire();
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -1283,10 +1286,19 @@ export default function QuizPage() {
         hasData: !!data,
         dataType: typeof data,
         dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-        dataString: typeof data === 'object' ? JSON.stringify(data).substring(0, 200) : String(data).substring(0, 200),
+        dataString: typeof data === 'object' ? JSON.stringify(data).substring(0, 500) : String(data).substring(0, 200),
         isRetakingQuiz,
         showRetakeScreen,
       });
+      
+      // ИСПРАВЛЕНО: Проверяем, что данные не пустые
+      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+        clientLogger.error('❌ Empty questionnaire data received from API', { 
+          data,
+          dataType: typeof data,
+        });
+        throw new Error('Invalid questionnaire data: received empty response');
+      }
       
       // ИСПРАВЛЕНО: API может возвращать данные в обертке (success/data)
       // Проверяем, есть ли обертка, и извлекаем данные
@@ -1311,6 +1323,7 @@ export default function QuizPage() {
             hasQuestions: 'questions' in data,
             hasSuccess: 'success' in data,
             hasData: 'data' in data,
+            dataPreview: JSON.stringify(data).substring(0, 300),
           });
         }
       }
@@ -1320,6 +1333,7 @@ export default function QuizPage() {
           data,
           dataType: typeof data,
           dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+          dataPreview: typeof data === 'object' ? JSON.stringify(data).substring(0, 500) : String(data),
         });
         throw new Error('Invalid questionnaire data: could not extract data from response');
       }
