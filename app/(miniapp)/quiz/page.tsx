@@ -165,17 +165,36 @@ export default function QuizPage() {
               localStorage.removeItem('full_retake_from_home');
             }
           } catch (err: any) {
-            // Профиля нет - очищаем флаги
+            // ИСПРАВЛЕНО: Улучшена обработка ошибок при проверке профиля
             const isNotFound = err?.status === 404 || 
                               err?.message?.includes('404') || 
                               err?.message?.includes('No profile') ||
-                              err?.message?.includes('Profile not found');
+                              err?.message?.includes('Profile not found') ||
+                              err?.message?.includes('not found');
+            
+            // Проверяем, не является ли это сетевой ошибкой или таймаутом
+            const isNetworkError = err?.message?.includes('network') || 
+                                  err?.message?.includes('Network') ||
+                                  err?.message?.includes('fetch') ||
+                                  err?.message?.includes('timeout') ||
+                                  err?.message?.includes('Таймаут');
+            
             if (isNotFound) {
               clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
               localStorage.removeItem('is_retaking_quiz');
               localStorage.removeItem('full_retake_from_home');
+            } else if (isNetworkError) {
+              // Сетевая ошибка - не очищаем флаги, попробуем еще раз позже
+              clientLogger.warn('⚠️ Сетевая ошибка при проверке профиля для перепрохождения, попробуем позже:', err?.message);
+              // Не очищаем флаги, чтобы пользователь мог попробовать еще раз
             } else {
-              clientLogger.warn('⚠️ Ошибка при проверке профиля для перепрохождения:', err);
+              // Другая ошибка - логируем, но не блокируем пользователя
+              clientLogger.warn('⚠️ Ошибка при проверке профиля для перепрохождения:', {
+                message: err?.message,
+                status: err?.status,
+                name: err?.name,
+              });
+              // Не очищаем флаги при неизвестной ошибке - возможно, это временная проблема
             }
           }
         };
@@ -1292,7 +1311,17 @@ export default function QuizPage() {
       });
       
       // ИСПРАВЛЕНО: Проверяем, что данные не пустые
+      // При перепрохождении API может вернуть пустой объект - это не критично, анкета загрузится позже
       if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+        if (isRetakingQuiz || showRetakeScreen) {
+          // При перепрохождении не бросаем ошибку - анкета может загрузиться позже
+          clientLogger.warn('⚠️ Empty questionnaire data received during retake, will retry later', { 
+            data,
+            dataType: typeof data,
+          });
+          setLoading(false);
+          return null;
+        }
         clientLogger.error('❌ Empty questionnaire data received from API', { 
           data,
           dataType: typeof data,
@@ -1427,13 +1456,15 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: При перепрохождении не показываем ошибку сразу
       // Анкета может загрузиться позже, и пользователь сможет продолжить
-      if (isRetakingQuiz || showRetakeScreen) {
-        clientLogger.warn('⚠️ Error loading questionnaire during retake, will not show error to user', { 
+      // Также не показываем ошибку, если анкета уже загружена (может быть временная ошибка)
+      if (isRetakingQuiz || showRetakeScreen || questionnaire) {
+        clientLogger.warn('⚠️ Error loading questionnaire during retake or questionnaire already loaded, will not show error to user', { 
           error: errorMessage,
           isRetakingQuiz,
           showRetakeScreen,
+          hasQuestionnaire: !!questionnaire,
         });
-        // Не устанавливаем ошибку при перепрохождении - пользователь может продолжить
+        // Не устанавливаем ошибку при перепрохождении или если анкета уже есть - пользователь может продолжить
         setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false даже при ошибке при перепрохождении
         return null;
       }
@@ -1625,19 +1656,25 @@ export default function QuizPage() {
     // Локальное вычисление может привести к несоответствию индексов после изменения фильтрации
     // (например, после ответа на вопрос про бюджет)
     
-    // Проверяем, что currentQuestionIndex валиден для текущего allQuestions
+    // ИСПРАВЛЕНО: Проверяем, что currentQuestionIndex валиден для текущего allQuestions
+    // При перепрохождении анкета может загружаться асинхронно, поэтому нужно корректно обрабатывать
     if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
       clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы allQuestions, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         questionIds: allQuestions.map((q: Question) => q.id),
+        isRetakingQuiz,
+        showRetakeScreen,
       });
       // Корректируем индекс на последний валидный вопрос
       const correctedIndex = Math.max(0, allQuestions.length - 1);
       setCurrentQuestionIndex(correctedIndex);
-      await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
+      // ИСПРАВЛЕНО: Не сохраняем прогресс при перепрохождении, если анкета еще не полностью загружена
+      if (!isRetakingQuiz && !showRetakeScreen) {
+        await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
+      }
       return;
-        }
+    }
         
     // Проверяем, что текущий вопрос существует в allQuestions
     const currentQuestionInAllQuestions = allQuestions[currentQuestionIndex];
@@ -3551,6 +3588,9 @@ export default function QuizPage() {
         isSubmitting,
         hasResumed,
         showResumeScreen,
+        isRetakingQuiz,
+        showRetakeScreen,
+        hasQuestionnaire: !!questionnaire,
       });
       
       setCurrentQuestionIndex(correctedIndex);
@@ -3578,13 +3618,15 @@ export default function QuizPage() {
         ? allQuestions.length
         : (allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0);
       
-      clientLogger.log('⚠️ currentQuestionIndex выходит за пределы после фильтрации, корректируем', {
+      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы после фильтрации, корректируем', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         correctedIndex,
         answersCount,
         isQuizCompleted,
         hasResumed,
+        isRetakingQuiz,
+        showRetakeScreen,
         questionIds: allQuestions.map((q: Question) => q.id),
       });
       setCurrentQuestionIndex(correctedIndex);
