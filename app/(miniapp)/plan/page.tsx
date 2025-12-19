@@ -173,8 +173,27 @@ export default function PlanPage() {
   };
 
   // Polling статуса генерации плана
+  const pollPlanStatusStartTimeRef = useRef<number>(Date.now());
+  const MAX_POLLING_DURATION = 120000; // 2 минуты максимум
+  
   const pollPlanStatus = async () => {
     try {
+      // ИСПРАВЛЕНО: Останавливаем polling если прошло слишком много времени
+      const pollingDuration = Date.now() - pollPlanStatusStartTimeRef.current;
+      if (pollingDuration > MAX_POLLING_DURATION) {
+        clientLogger.warn('⚠️ Polling timeout - stopping and trying to load plan directly', {
+          duration: pollingDuration,
+          maxDuration: MAX_POLLING_DURATION,
+        });
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        // Пробуем загрузить план напрямую
+        loadPlan(0, true);
+        return;
+      }
+      
       const response = await fetch('/api/plan/status', {
         cache: 'no-store',
         headers: {
@@ -187,6 +206,22 @@ export default function PlanPage() {
         // ApiResponse.success() возвращает payload напрямую (без { data: ... }),
         // но поддерживаем оба формата.
         const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
+        
+        // ИСПРАВЛЕНО: Если статус no_profile, пробуем запустить генерацию плана
+        if (payload?.status === 'no_profile') {
+          clientLogger.warn('⚠️ Plan status: no_profile - trying to generate plan', { payload });
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          // Пробуем запустить генерацию плана
+          const generatedPlan = await tryGeneratePlan({ checkProfile: true, logPrefix: '🔄 No profile in status, ' });
+          if (generatedPlan) {
+            await processPlanData(generatedPlan);
+          }
+          return;
+        }
+        
         if (payload?.ready) {
           // План готов - переходим к загрузке
           if (isMountedRef.current) {
@@ -243,6 +278,7 @@ export default function PlanPage() {
     
     if (state === 'generating') {
       clientLogger.log('✅ State=generating detected, starting polling');
+      pollPlanStatusStartTimeRef.current = Date.now(); // Сбрасываем таймер при старте polling
       setGeneratingState('generating');
       safeSetLoading(true);
 

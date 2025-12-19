@@ -2822,11 +2822,19 @@ export default function QuizPage() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Редирект на страницу плана с состоянием generating
+      // ИСПРАВЛЕНО: Передаем profileId для read-your-write consistency
+      const profileId = result?.profile?.id;
+      const planUrl = profileId 
+        ? `/plan?state=generating&profileId=${profileId}`
+        : '/plan?state=generating';
+      
       clientLogger.log('🔄 Редирект на /plan?state=generating', {
         hasResult: !!result,
         resultSuccess: result?.success,
         hasError: !!result?.error,
         answersCount: Object.keys(answers).length,
+        profileId: profileId || null,
+        planUrl,
       });
       
       // ИСПРАВЛЕНО: Логируем на сервер перед редиректом для диагностики
@@ -2875,9 +2883,16 @@ export default function QuizPage() {
           isMountedRef.current = false;
           
           // Редирект на страницу плана с состоянием generating
-          // ВАЖНО: Используем window.location.replace вместо href, чтобы избежать проблем с историей
-          clientLogger.log('🔄 Редирект на /plan?state=generating после показа лоадера');
-          window.location.replace('/plan?state=generating');
+          // ИСПРАВЛЕНО: Передаем profileId для read-your-write consistency
+          const profileId = result?.profile?.id;
+          const planUrl = profileId 
+            ? `/plan?state=generating&profileId=${profileId}`
+            : '/plan?state=generating';
+          clientLogger.log('🔄 Редирект на /plan?state=generating после показа лоадера', {
+            profileId: profileId || null,
+            planUrl,
+          });
+          window.location.replace(planUrl);
           // После редиректа код не должен выполняться, но на всякий случай выходим
           return;
         } catch (redirectError) {

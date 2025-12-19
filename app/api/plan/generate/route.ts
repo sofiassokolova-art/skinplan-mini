@@ -85,15 +85,34 @@ export async function GET(request: NextRequest) {
     }
 
     if (!profile) {
-      // ИСПРАВЛЕНО: Правильная семантика - 200 + null для отсутствия профиля
-      // Отсутствие профиля - это не ошибка сервера, а нормальное состояние
-      const duration = Date.now() - startTime;
-      logger.warn('No skin profile found for user', { userId, profileIdParam });
-      logApiRequest(method, path, 200, duration, userId);
-      return ApiResponse.success({
-        plan28: null,
-        state: 'no_profile',
-      });
+      // ИСПРАВЛЕНО: При read-after-write проблеме пробуем подождать и повторить
+      // Это решает проблему, когда профиль только что создан, но еще не виден в реплике
+      logger.warn('No skin profile found for user, retrying after delay (read-after-write)', { userId, profileIdParam });
+      
+      // Ждем 500ms и пробуем еще раз
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const retryProfile = await getCurrentProfile(userId);
+      if (retryProfile) {
+        profile = {
+          id: retryProfile.id,
+          version: retryProfile.version || 1,
+        };
+        logger.info('Profile found after retry (read-after-write resolved)', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+        });
+      } else {
+        // Если после retry профиль все еще не найден - возвращаем no_profile
+        const duration = Date.now() - startTime;
+        logger.warn('No skin profile found for user after retry', { userId, profileIdParam });
+        logApiRequest(method, path, 200, duration, userId);
+        return ApiResponse.success({
+          plan28: null,
+          state: 'no_profile',
+        });
+      }
     }
 
     logger.info('Plan generation request', {
