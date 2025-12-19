@@ -16,6 +16,7 @@ import { ReplaceProductModal } from '@/components/ReplaceProductModal';
 import { AllProductsList } from '@/components/AllProductsList';
 import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { api } from '@/lib/api';
+import { useAddToWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
@@ -271,6 +272,10 @@ export function PlanPageClientNew({
     }
   };
 
+  // ИСПРАВЛЕНО: Используем React Query хуки для автоматической инвалидации кэша
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
+
   const toggleWishlist = async (productId: number) => {
     try {
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
@@ -281,7 +286,7 @@ export function PlanPageClientNew({
       const isInWishlist = wishlistProductIds.has(productId);
       
       if (isInWishlist) {
-        await api.removeFromWishlist(productId);
+        await removeFromWishlistMutation.mutateAsync(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(productId);
@@ -289,7 +294,7 @@ export function PlanPageClientNew({
         });
         toast.success('Удалено из избранного');
       } else {
-        await api.addToWishlist(productId);
+        await addToWishlistMutation.mutateAsync(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
           newSet.add(productId);

@@ -60,30 +60,52 @@ async function checkPlanGenerationLogs() {
       console.log('   ❌ RecommendationSessions не найдены');
     }
     
-    // Проверяем план через Plan28
-    const planProgress = await prisma.planProgress.findFirst({
+    // Проверяем план через Plan28 напрямую
+    const plan28 = await prisma.plan28.findFirst({
       where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
       include: {
-        plan28: {
-          include: {
-            days: {
-              take: 1,
-              orderBy: { day: 'asc' },
-            },
-          },
+        skinProfile: {
+          select: { version: true, skinType: true },
         },
       },
-    }).catch(() => null);
+    });
     
-    console.log(`\n📅 План:`);
-    if (planProgress && planProgress.plan28) {
-      const plan28 = planProgress.plan28;
+    console.log(`\n📅 План (Plan28):`);
+    if (plan28) {
+      const planData = plan28.planData as any;
+      const daysCount = planData?.days?.length || 0;
       console.log(`   ✅ План найден! ID: ${plan28.id}`);
-      console.log(`   Дней: ${plan28.days?.length || 0}`);
+      console.log(`   Версия профиля: ${plan28.profileVersion}`);
+      console.log(`   Тип кожи: ${plan28.skinProfile?.skinType || 'N/A'}`);
+      console.log(`   Дней в плане: ${daysCount}`);
       console.log(`   Создан: ${plan28.createdAt.toLocaleString('ru-RU')}`);
       console.log(`   Обновлен: ${plan28.updatedAt.toLocaleString('ru-RU')}`);
+      
+      if (daysCount > 0 && planData.days[0]) {
+        const day1 = planData.days[0];
+        const morningSteps = day1.morning?.length || 0;
+        const eveningSteps = day1.evening?.length || 0;
+        console.log(`   День 1 - Утро: ${morningSteps} шагов, Вечер: ${eveningSteps} шагов`);
+      }
     } else {
       console.log('   ❌ План не найден');
+    }
+    
+    // Проверяем PlanProgress отдельно
+    const planProgress = await prisma.planProgress.findFirst({
+      where: { userId: user.id },
+    });
+    
+    console.log(`\n📊 Прогресс плана (PlanProgress):`);
+    if (planProgress) {
+      console.log(`   ✅ Прогресс найден!`);
+      console.log(`   Текущий день: ${planProgress.currentDay}`);
+      console.log(`   Завершено дней: ${planProgress.completedDays.length}`);
+      console.log(`   Текущая серия: ${planProgress.currentStreak}`);
+      console.log(`   Максимальная серия: ${planProgress.longestStreak}`);
+    } else {
+      console.log('   ❌ Прогресс не найден');
     }
     
     // Проверяем логи из БД

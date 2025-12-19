@@ -3,10 +3,9 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { useWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
 import WishlistItem from '@/components/WishlistItem';
 import toast from 'react-hot-toast';
 
@@ -30,85 +29,42 @@ interface WishlistItemData {
 
 export default function CartPage() {
   const router = useRouter();
-  const [wishlist, setWishlist] = useState<WishlistItemData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // ИСПРАВЛЕНО: Используем React Query хуки для автоматического обновления
+  // Хуки автоматически инвалидируют кэш после добавления/удаления товара
+  const { data: wishlistData, isLoading: loading, error } = useWishlist();
+  const removeMutation = useRemoveFromWishlist();
 
-  useEffect(() => {
-    loadWishlist();
-  }, []);
-
-  // ИСПРАВЛЕНО: Обновляем список избранного при возврате на страницу
-  useEffect(() => {
-    const handleFocus = () => {
-      // Обновляем список при возврате на страницу
-      loadWishlist();
-    };
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        loadWishlist();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  const loadWishlist = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Загружаем wishlist без обязательной проверки авторизации
-      // API вернет пустой список, если нет авторизации
-      const data = await api.getWishlist();
-      // Маппим данные из API в формат WishlistItemData
-      const items: WishlistItemData[] = (data.items || []).map(item => ({
-        id: item.id,
-        product: item.product ? {
-          id: item.product.id,
-          name: item.product.name,
-          brand: {
-            id: item.product.brand?.id || 0,
-            name: item.product.brand.name,
-          },
-          price: item.product.price,
-          imageUrl: item.product.imageUrl,
-          link: item.product.link || null,
-          marketLinks: item.product.marketLinks || null,
-        } : {
-          id: item.productId,
-          name: 'Неизвестный продукт',
-          brand: { id: 0, name: 'Unknown' },
-          price: null,
-          imageUrl: null,
-          link: null,
-          marketLinks: null,
-        },
-        feedback: item.feedback || '',
-        createdAt: item.createdAt,
-      }));
-      setWishlist(items);
-    } catch (err: any) {
-      console.error('Error loading wishlist:', err);
-      // Любые ошибки обрабатываем как пустое состояние
-      setWishlist([]);
-      setError(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Маппим данные из API в формат WishlistItemData
+  const wishlist: WishlistItemData[] = (wishlistData?.items || []).map(item => ({
+    id: item.id,
+    product: item.product ? {
+      id: item.product.id,
+      name: item.product.name,
+      brand: {
+        id: item.product.brand?.id || 0,
+        name: item.product.brand.name,
+      },
+      price: item.product.price,
+      imageUrl: item.product.imageUrl,
+      link: item.product.link || null,
+      marketLinks: item.product.marketLinks || null,
+    } : {
+      id: item.productId,
+      name: 'Неизвестный продукт',
+      brand: { id: 0, name: 'Unknown' },
+      price: null,
+      imageUrl: null,
+      link: null,
+      marketLinks: null,
+    },
+    feedback: item.feedback || '',
+    createdAt: item.createdAt,
+  }));
 
   const handleRemove = async (productId: number) => {
     try {
-      await api.removeFromWishlist(productId);
-      setWishlist((prev) => prev.filter((item) => item.product.id !== productId));
+      await removeMutation.mutateAsync(productId);
       toast.success('Продукт удалён из избранного');
     } catch (err: any) {
       console.error('Error removing from wishlist:', err);

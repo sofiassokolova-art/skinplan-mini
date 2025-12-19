@@ -11,6 +11,7 @@ import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { CareRoutine } from '@/components/CareRoutine';
 import { FeedbackBlock } from '@/components/FeedbackBlock';
 import { api } from '@/lib/api';
+import { useAddToWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
 import toast from 'react-hot-toast';
 import { clientLogger } from '@/lib/client-logger';
 import type { AnalysisResponse, CareStep } from '@/lib/api-types';
@@ -121,13 +122,17 @@ function AnalysisPageContent() {
     toast.success(wasInRoutine ? 'Удалено из ухода' : 'Добавлено в уход');
   };
 
+  // ИСПРАВЛЕНО: Используем React Query хуки для автоматической инвалидации кэша
+  const addToWishlistMutation = useAddToWishlist();
+  const removeFromWishlistMutation = useRemoveFromWishlist();
+
   const handleToggleWishlist = async (productId: number) => {
     try {
       const isInWishlist = wishlistProductIds.has(productId);
       
       if (isInWishlist) {
         clientLogger.info('Removing product from wishlist', { productId });
-        await api.removeFromWishlist(productId);
+        await removeFromWishlistMutation.mutateAsync(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(productId);
@@ -136,7 +141,7 @@ function AnalysisPageContent() {
         toast.success('Удалено из избранного');
       } else {
         clientLogger.info('Adding product to wishlist', { productId });
-        await api.addToWishlist(productId);
+        await addToWishlistMutation.mutateAsync(productId);
         setWishlistProductIds(prev => {
           const newSet = new Set(prev);
           newSet.add(productId);
