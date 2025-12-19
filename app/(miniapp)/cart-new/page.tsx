@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { useCart, useRemoveFromCart } from '@/hooks/useCart';
+import type { CartResponse } from '@/lib/api-types';
 import toast from 'react-hot-toast';
 
 // Отключаем статическую генерацию для этой страницы
@@ -35,7 +36,8 @@ function CartPageContent() {
   const { data: cartData, isLoading: loading } = useCart();
   const removeFromCartMutation = useRemoveFromCart();
   
-  const cartItems: CartItem[] = (cartData?.items || []).map(item => ({
+  // ИСПРАВЛЕНО: Добавлена явная типизация для параметра item
+  const cartItems: CartItem[] = (cartData?.items || []).map((item: CartResponse['items'][0]) => ({
     id: item.id,
     product: item.product,
     quantity: item.quantity,

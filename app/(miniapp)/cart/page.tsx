@@ -6,6 +6,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
+import type { WishlistResponse } from '@/lib/api-types';
 import WishlistItem from '@/components/WishlistItem';
 import toast from 'react-hot-toast';
 
@@ -36,7 +37,8 @@ export default function CartPage() {
   const removeMutation = useRemoveFromWishlist();
 
   // Маппим данные из API в формат WishlistItemData
-  const wishlist: WishlistItemData[] = (wishlistData?.items || []).map(item => ({
+  // ИСПРАВЛЕНО: Добавлена явная типизация для параметра item
+  const wishlist: WishlistItemData[] = (wishlistData?.items || []).map((item: WishlistResponse['items'][0]) => ({
     id: item.id,
     product: item.product ? {
       id: item.product.id,
