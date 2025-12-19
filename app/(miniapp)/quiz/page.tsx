@@ -1394,6 +1394,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Очищаем ошибки при успешной загрузке
       // Это предотвращает показ временных ошибок, которые уже исправлены
       setError(null);
+      setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при успешной загрузке
       return questionnaireData; // Возвращаем загруженную анкету
     } catch (err: any) {
       // ИСПРАВЛЕНО: Улучшено логирование ошибок для диагностики
@@ -1433,6 +1434,7 @@ export default function QuizPage() {
           showRetakeScreen,
         });
         // Не устанавливаем ошибку при перепрохождении - пользователь может продолжить
+        setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false даже при ошибке при перепрохождении
         return null;
       }
       
@@ -1447,9 +1449,9 @@ export default function QuizPage() {
         setError(errorMessage);
       }
       
+      setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при ошибке
       return null;
     }
-    // НЕ вызываем setLoading(false) здесь - это сделает init() после всех загрузок
   };
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
@@ -5460,24 +5462,20 @@ export default function QuizPage() {
       );
     }
     
-    // ИСПРАВЛЕНО: При перепрохождении, если анкета еще не загружена, загружаем её
+    // ИСПРАВЛЕНО: При перепрохождении, если анкета еще не загружена, загружаем её в фоне
     // Анкета нужна для экрана выбора тем (чтобы показать доступные темы)
-    if ((isRetakingQuiz || showRetakeScreen) && !questionnaire && !loading) {
+    // ВАЖНО: При showRetakeScreen = true не показываем лоадер "Подготавливаем анкету"
+    // Экран выбора тем показывается сразу, анкета загружается в фоне
+    if ((isRetakingQuiz || showRetakeScreen) && !questionnaire) {
       // Анкета еще не загружена при перепрохождении - загружаем в фоне
-      // Экран выбора тем покажется, когда анкета загрузится
-      if (!error) {
-        // Нет ошибки - просто загружаем анкету в фоне
+      // Экран выбора тем покажется сразу, даже если анкета еще не загружена
+      if (!loading) {
+        // Не показываем лоадер при перепрохождении - загружаем в фоне
         clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen');
         loadQuestionnaire().catch((err) => {
           clientLogger.error('❌ Failed to load questionnaire during retake', err);
-        });
-      } else if (error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire'))) {
-        // Есть ошибка загрузки при перепрохождении - пробуем загрузить еще раз
-        clientLogger.warn('⚠️ Error loading questionnaire during retake, will retry', { error });
-        // Очищаем ошибку и пробуем загрузить еще раз
-        setError(null);
-        loadQuestionnaire().catch((err) => {
-          clientLogger.error('❌ Failed to reload questionnaire during retake', err);
+          // При ошибке загрузки при перепрохождении не показываем ошибку пользователю
+          // Экран выбора тем покажется без анкеты (темы загружаются из quiz-topics.ts)
         });
       }
     }
