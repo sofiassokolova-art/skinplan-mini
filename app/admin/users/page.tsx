@@ -232,10 +232,10 @@ export default function UsersAdmin() {
               onClick={() => handleViewPlan(user.id)}
               disabled={!canViewPlan}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+                'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 backdrop-blur-sm',
                 canViewPlan
-                  ? 'bg-black text-white hover:bg-gray-800'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  ? 'bg-gray-900 text-white hover:bg-gray-800 shadow-md hover:shadow-lg'
+                  : 'bg-white/40 text-gray-400 cursor-not-allowed'
               )}
             >
               <Eye size={16} />
@@ -316,26 +316,24 @@ export default function UsersAdmin() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Пользователи</h1>
-          <p className="text-gray-600">
+      <div className="space-y-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Пользователи</h1>
+          <p className="text-sm text-gray-600">
             Всего: {table.getFilteredRowModel().rows.length}
           </p>
         </div>
-      </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+        <div className="bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-xl p-4">
           <p className="text-red-700">{error}</p>
         </div>
       )}
 
       {/* Поиск */}
-      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-4 mb-12">
+      <div className="admin-card p-4 mb-6">
         <div className="flex items-center gap-4">
-          <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-300">
+            <div className="flex-1 flex items-center bg-white/60 backdrop-blur-sm border border-gray-200/50 rounded-xl overflow-hidden focus-within:border-gray-400 focus-within:ring-2 focus-within:ring-gray-300/50 focus-within:bg-white/80 transition-all">
             <div className="flex items-center justify-center px-4 py-2 bg-white">
               <Search className="text-gray-500" size={18} />
             </div>
@@ -345,17 +343,17 @@ export default function UsersAdmin() {
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
               onFocus={(e) => e.target.select()}
-              className="flex-1 pl-8 pr-4 py-2 bg-white text-gray-900 placeholder-gray-400 focus:outline-none border-0"
+              className="flex-1 pl-8 pr-4 py-2 bg-transparent text-gray-900 placeholder-gray-400 focus:outline-none border-0"
             />
           </div>
         </div>
       </div>
 
       {/* Таблица */}
-      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="admin-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-white/60 backdrop-blur-sm border-b border-gray-200/30">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
@@ -394,7 +392,7 @@ export default function UsersAdmin() {
                 table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                    className="border-b border-gray-200/30 hover:bg-white/40 transition-colors"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="px-4 py-3">
@@ -409,7 +407,7 @@ export default function UsersAdmin() {
       </div>
 
         {/* Пагинация */}
-        <div className="px-4 py-4 border-t border-gray-200 flex items-center justify-between bg-transparent">
+        <div className="px-4 py-4 border-t border-gray-200/30 flex items-center justify-between bg-white/40 backdrop-blur-sm">
           <div className="text-gray-600 text-sm">
             Страница {pagination.pageIndex + 1}
         </div>
@@ -417,14 +415,14 @@ export default function UsersAdmin() {
           <button
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-white/60 hover:bg-white/80 backdrop-blur-sm rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
             >
               Назад
           </button>
           <button
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-white/60 hover:bg-white/80 backdrop-blur-sm rounded-lg text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
           >
               Вперед
           </button>
@@ -435,7 +433,7 @@ export default function UsersAdmin() {
       {/* Модальное окно просмотра плана */}
       {selectedUserId && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-6xl w-full max-h-[90vh] overflow-auto shadow-xl border border-gray-200">
+          <div className="admin-card p-6 max-w-6xl w-full max-h-[90vh] overflow-auto shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">План пользователя</h2>
               <button
@@ -457,7 +455,7 @@ export default function UsersAdmin() {
               <div className="space-y-6">
                 {/* Информация о профиле */}
                 {userPlan.profile && (
-                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <div className="bg-white/40 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50">
                     <h3 className="text-lg font-bold text-gray-900 mb-3">Профиль кожи</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
@@ -490,7 +488,7 @@ export default function UsersAdmin() {
                     <h3 className="text-lg font-bold text-gray-900 mb-3">Средства в плане ({userPlan.products.length})</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {userPlan.products.map((product: any, idx: number) => (
-                        <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div key={idx} className="bg-white/40 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50">
                           <div className="flex items-start gap-4">
                             {product.imageUrl && (
                               <img 
@@ -537,7 +535,7 @@ export default function UsersAdmin() {
                     <h3 className="text-lg font-bold text-gray-900 mb-3">Расписание по неделям</h3>
                     <div className="space-y-4">
                       {userPlan.weeks.map((week: any, weekIdx: number) => (
-                        <div key={weekIdx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div key={weekIdx} className="bg-white/40 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50">
                           <div className="font-bold text-gray-900 mb-2">Неделя {week.week}</div>
                           {week.summary && (
                             <div className="text-sm text-gray-600 mb-3">

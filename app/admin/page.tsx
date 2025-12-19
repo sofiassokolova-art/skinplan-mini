@@ -171,19 +171,22 @@ export default function AdminDashboard() {
   return (
     <div className="w-full">
       {/* Заголовок */}
-      <h1 className="text-4xl font-black text-gray-900 mb-10">
-        SkinIQ Admin • {currentDate}
-      </h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Дашборд
+        </h1>
+        <p className="text-sm text-gray-600">{currentDate}</p>
+      </div>
       
       {/* Сетка из 7 метрик */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-12 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
         {metricsData.map((m, i) => (
           <div 
             key={i} 
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition-all p-8 min-h-44 flex flex-col justify-between"
+            className="admin-card p-6 min-h-[180px] flex flex-col justify-between"
           >
-            <div className="text-gray-500 text-sm font-medium mb-4">{m.label}</div>
-            <div className={`text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${m.color} mb-4`}>
+            <div className="text-gray-600 text-sm font-medium mb-3">{m.label}</div>
+            <div className={`text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${m.color} mb-3`}>
               {m.value}
             </div>
             {m.change && (
@@ -201,7 +204,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Блок графика */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-12">
+      <div className="admin-card p-6 mb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Рост пользователей</h2>
@@ -214,30 +217,30 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setGrowthPeriod('day')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 backdrop-blur-sm ${
                 growthPeriod === 'day'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white/60 text-gray-700 hover:bg-white/80 hover:shadow-sm'
               }`}
             >
               День
             </button>
             <button
               onClick={() => setGrowthPeriod('week')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 backdrop-blur-sm ${
                 growthPeriod === 'week'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white/60 text-gray-700 hover:bg-white/80 hover:shadow-sm'
               }`}
             >
               Неделя
             </button>
             <button
               onClick={() => setGrowthPeriod('month')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 backdrop-blur-sm ${
                 growthPeriod === 'month'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white/60 text-gray-700 hover:bg-white/80 hover:shadow-sm'
               }`}
             >
               Месяц
@@ -294,7 +297,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Блок "Последние действия" */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+      <div className="admin-card p-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Последние действия</h2>
         <div className="space-y-4">
           {recentFeedback.length === 0 ? (
@@ -303,7 +306,7 @@ export default function AdminDashboard() {
             recentFeedback.slice(0, 10).map((f) => (
               <div
                 key={f.id}
-                className="p-4 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors"
+                className="p-4 rounded-xl bg-white/40 backdrop-blur-sm border border-gray-200/50 hover:bg-white/60 hover:shadow-sm transition-all duration-200"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">

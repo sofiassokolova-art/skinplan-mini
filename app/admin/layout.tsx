@@ -141,21 +141,39 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen admin-layout relative" style={{ background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)' }}>
-      {/* Sidebar */}
+    <div className="min-h-screen admin-layout relative" style={{ 
+      background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
+      backgroundSize: '400% 400%'
+    }}>
+      <style jsx global>{`
+        @keyframes gradientShift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .admin-layout {
+          animation: gradientShift 15s ease infinite;
+        }
+      `}</style>
+      
+      {/* Sidebar - Glassmorphism */}
       <aside
         className={cn(
-          'admin-sidebar transition-all duration-300 fixed left-0 top-0 bottom-0 z-10 flex flex-col',
-          sidebarOpen ? 'w-64' : 'w-20'
+          'admin-sidebar-glass transition-all duration-300 fixed left-0 top-0 bottom-0 z-50 flex flex-col',
+          sidebarOpen ? 'w-72' : 'w-20'
         )}
         style={{ 
-          backgroundColor: 'rgba(243, 244, 246, 0.95)',
           height: '100vh',
           overflowY: 'auto',
-          overflowX: 'hidden'
+          overflowX: 'hidden',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          backgroundColor: 'rgba(255, 255, 255, 0.75)',
+          borderRight: '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.06)'
         }}
       >
-        <div className="p-6 border-b border-gray-200/50 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: 'transparent' }}>
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200/30 flex items-center justify-between flex-shrink-0">
           {sidebarOpen && (
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">
               SkinIQ Admin
@@ -163,13 +181,14 @@ export default function AdminLayout({
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-lg p-2 transition-all duration-200"
+            className="text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-lg p-2 transition-all duration-200 backdrop-blur-sm"
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-              </div>
+        </div>
 
-        <nav className="p-4 space-y-2 flex-1 overflow-y-auto overflow-x-hidden" style={{ backgroundColor: 'transparent' }}>
+        {/* Navigation */}
+        <nav className="p-4 space-y-1.5 flex-1 overflow-y-auto overflow-x-hidden">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || 
@@ -180,35 +199,41 @@ export default function AdminLayout({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
+                  'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative group',
                   isActive
-                    ? 'bg-black text-white shadow-lg shadow-black/10'
-                    : 'text-gray-700 hover:bg-gray-100/50 hover:text-gray-900'
+                    ? 'bg-white/80 text-gray-900 shadow-md shadow-black/5 backdrop-blur-sm'
+                    : 'text-gray-700 hover:bg-white/50 hover:text-gray-900 hover:backdrop-blur-sm'
                 )}
                 style={{ minHeight: '44px' }}
               >
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gray-900 rounded-r-full" />
+                )}
                 <Icon size={20} className="flex-shrink-0" style={{ width: '20px', height: '20px', minWidth: '20px', flexShrink: 0 }} />
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                {sidebarOpen && (
+                  <span className={cn(
+                    'font-medium transition-opacity',
+                    sidebarOpen ? 'opacity-100' : 'opacity-0'
+                  )}>
+                    {item.label}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <main 
-        className="min-h-screen pr-8 md:pr-12 pt-16 md:pt-20 pb-6 md:pb-8"
+        className="min-h-screen"
         style={{
-          marginLeft: sidebarOpen ? '256px' : '80px',
-          width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)',
-          position: 'relative',
-          backgroundColor: 'transparent',
-          zIndex: 1,
-          overflowY: 'auto',
-          overflowX: 'hidden'
+          marginLeft: sidebarOpen ? '288px' : '80px',
+          padding: '32px',
+          transition: 'margin-left 0.3s ease'
         }}
       >
-        <div className="max-w-7xl mx-auto w-full" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="max-w-[1600px] mx-auto w-full">
           {children}
         </div>
       </main>

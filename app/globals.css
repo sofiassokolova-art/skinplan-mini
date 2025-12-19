@@ -125,20 +125,46 @@ body {
   color: #111827; /* Базовый цвет текста (без !important, чтобы не перекрывать Tailwind классы) */
 }
 
-/* Стили для админ-панели - светлая тема */
-/* ИСПРАВЛЕНО: Убрали агрессивные !important правила, которые переопределяли все стили */
+/* Стили для админ-панели - Glassmorphism серый стиль */
 .admin-layout {
   background-color: #f3f4f6;
-  /* Базовый цвет текста (без !important, чтобы не переопределять Tailwind классы) */
   color: #111827;
 }
 
-/* Убрали правила, которые перекрывали Tailwind классы цветов */
-/* Теперь Tailwind классы (text-emerald-600, text-red-600, bg-white, и т.д.) работают корректно */
+/* Glassmorphism сайдбар */
+.admin-sidebar-glass {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
 
-/* ИСПРАВЛЕНО: Явные стили для админ-панели, чтобы гарантировать правильное отображение карточек */
+/* Glassmorphism карточки для админки */
+.admin-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 1rem !important;
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.admin-card:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Улучшенные стили для карточек в админке */
 .admin-layout .bg-white {
-  background-color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
 }
 
 .admin-layout .rounded-2xl {
@@ -150,18 +176,23 @@ body {
 }
 
 .admin-layout .border-gray-200 {
-  border-color: #e5e7eb !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
 .admin-layout .shadow-sm {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 1px 4px rgba(0, 0, 0, 0.02) !important;
 }
 
 .admin-layout .shadow-lg {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
-/* ИСПРАВЛЕНО: Гарантируем правильное отображение grid и flex контейнеров */
+/* Гарантируем правильное отображение grid и flex */
 .admin-layout .grid {
   display: grid !important;
 }
@@ -194,75 +225,96 @@ body {
   padding: 2rem !important;
 }
 
-.admin-sidebar {
-  background: rgba(243, 244, 246, 0.95) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border-right: none !important;
-  box-shadow: none !important;
-  /* Убрали !important из color, чтобы не перекрывать Tailwind классы для текста внутри сайдбара */
-  color: #111827;
+/* Стили для таблиц в админке */
+.admin-layout table {
+  background: transparent !important;
 }
 
-/* Убрали универсальное правило для всех элементов сайдбара, чтобы не перекрывать Tailwind классы */
+.admin-layout thead {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
 
-/* Улучшенные кнопки */
-.btn-primary {
-  background: #000000 !important;
+.admin-layout tbody tr {
+  background: transparent !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.admin-layout tbody tr:hover {
+  background: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Стили для модальных окон */
+.admin-layout .fixed.inset-0 {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* Улучшенные тени для glassmorphism */
+.admin-layout * {
+  /* Убираем глобальные переопределения, чтобы Tailwind работал */
+}
+
+/* Улучшенные кнопки для админки */
+.admin-layout .btn-primary {
+  background: #111827 !important;
   color: #ffffff !important;
-  border: 1px solid #000000 !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
   box-shadow: 
-    0 4px 12px 0 rgba(0, 0, 0, 0.15),
-    0 2px 4px 0 rgba(0, 0, 0, 0.1) !important;
+    0 4px 12px 0 rgba(0, 0, 0, 0.1),
+    0 2px 4px 0 rgba(0, 0, 0, 0.06) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.btn-primary:hover {
-  background: #1a1a1a !important;
+.admin-layout .btn-primary:hover {
+  background: #1f2937 !important;
   box-shadow: 
-    0 6px 16px 0 rgba(0, 0, 0, 0.2),
-    0 3px 6px 0 rgba(0, 0, 0, 0.12) !important;
+    0 6px 16px 0 rgba(0, 0, 0, 0.15),
+    0 3px 6px 0 rgba(0, 0, 0, 0.08) !important;
   transform: translateY(-1px) !important;
 }
 
-.btn-primary:active {
+.admin-layout .btn-primary:active {
   transform: translateY(0) !important;
   box-shadow: 
-    0 2px 8px 0 rgba(0, 0, 0, 0.12),
-    0 1px 2px 0 rgba(0, 0, 0, 0.08) !important;
+    0 2px 8px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
-/* Улучшенные инпуты */
-input[type="text"],
-input[type="number"],
-input[type="email"],
-input[type="password"],
-input[type="datetime-local"],
-textarea,
-select {
-  background: rgba(255, 255, 255, 0.9) !important;
+/* Улучшенные инпуты для админки */
+.admin-layout input[type="text"],
+.admin-layout input[type="number"],
+.admin-layout input[type="email"],
+.admin-layout input[type="password"],
+.admin-layout input[type="datetime-local"],
+.admin-layout textarea,
+.admin-layout select {
+  background: rgba(255, 255, 255, 0.7) !important;
   backdrop-filter: blur(10px) !important;
   -webkit-backdrop-filter: blur(10px) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   box-shadow: 
     0 2px 8px 0 rgba(0, 0, 0, 0.04),
-    inset 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.5) !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-input[type="text"]:focus,
-input[type="number"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="datetime-local"]:focus,
-textarea:focus,
-select:focus {
-  background: rgba(255, 255, 255, 1) !important;
-  border-color: rgba(0, 0, 0, 0.2) !important;
+.admin-layout input[type="text"]:focus,
+.admin-layout input[type="number"]:focus,
+.admin-layout input[type="email"]:focus,
+.admin-layout input[type="password"]:focus,
+.admin-layout input[type="datetime-local"]:focus,
+.admin-layout textarea:focus,
+.admin-layout select:focus {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
   box-shadow: 
-    0 4px 12px 0 rgba(0, 0, 0, 0.08),
-    0 2px 4px 0 rgba(0, 0, 0, 0.04),
-    inset 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+    0 4px 12px 0 rgba(0, 0, 0, 0.06),
+    0 2px 4px 0 rgba(0, 0, 0, 0.03),
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.6) !important;
   outline: none !important;
 }
 
