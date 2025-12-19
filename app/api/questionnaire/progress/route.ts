@@ -377,18 +377,21 @@ export async function POST(request: NextRequest) {
       questionnaireId = activeQuestionnaire.id;
     }
 
-    // Удаляем старый ответ на этот вопрос (если есть)
-    await prisma.userAnswer.deleteMany({
+    // ИСПРАВЛЕНО: Используем upsert вместо delete + create для предотвращения race condition
+    // Это устраняет ошибку "Unique constraint failed" при одновременных запросах
+    savedAnswer = await prisma.userAnswer.upsert({
       where: {
-        userId,
-        questionnaireId,
-        questionId: questionIdNum,
+        userId_questionnaireId_questionId: {
+          userId,
+          questionnaireId,
+          questionId: questionIdNum,
+        },
       },
-    });
-
-    // Сохраняем новый ответ
-    savedAnswer = await prisma.userAnswer.create({
-      data: {
+      update: {
+        answerValue: answerValue || null,
+        answerValues: answerValues ? (answerValues as any) : null,
+      },
+      create: {
         userId,
         questionnaireId,
         questionId: questionIdNum,
@@ -413,8 +416,58 @@ export async function POST(request: NextRequest) {
         answerValues: savedAnswer.answerValues,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     const duration = Date.now() - startTime;
+    
+    // ИСПРАВЛЕНО: Обрабатываем ошибку уникального ограничения отдельно
+    // Это может произойти при race condition, даже с upsert
+    if (error?.code === 'P2002' && error?.meta?.target?.includes('user_id') && 
+        error?.meta?.target?.includes('questionnaire_id') && error?.meta?.target?.includes('question_id')) {
+      // Это race condition - пытаемся получить существующий ответ
+      try {
+        const questionIdNum = typeof questionId === 'string' ? parseInt(questionId, 10) : questionId;
+        if (isNaN(questionIdNum) || questionIdNum <= 0) {
+          throw new Error('Invalid questionId');
+        }
+        
+        const existingAnswer = await prisma.userAnswer.findUnique({
+          where: {
+            userId_questionnaireId_questionId: {
+              userId: userId!,
+              questionnaireId: questionnaireId || 0,
+              questionId: questionIdNum,
+            },
+          },
+        });
+        
+        if (existingAnswer) {
+          // Обновляем существующий ответ
+          savedAnswer = await prisma.userAnswer.update({
+            where: { id: existingAnswer.id },
+            data: {
+              answerValue: answerValue || null,
+              answerValues: answerValues ? (answerValues as any) : null,
+            },
+          });
+          
+          const duration = Date.now() - startTime;
+          logApiRequest(method, path, 200, duration, userId);
+          return NextResponse.json({
+            success: true,
+            answer: {
+              id: savedAnswer.id,
+              questionId: savedAnswer.questionId,
+              answerValue: savedAnswer.answerValue,
+              answerValues: savedAnswer.answerValues,
+            },
+          });
+        }
+      } catch (retryError) {
+        // Если не удалось обработать, логируем и продолжаем
+        logApiError(method, path, retryError, userId);
+      }
+    }
+    
     logApiError(method, path, error, userId);
     return NextResponse.json(
       { error: 'Internal server error' },

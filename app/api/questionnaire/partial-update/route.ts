@@ -145,19 +145,21 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Удаляем старый ответ, если есть
-      await prisma.userAnswer.deleteMany({
-        where: {
-          userId,
-          questionnaireId: questionnaire.id,
-          questionId: question.id,
-        },
-      });
-
-      // Создаем новый ответ
+      // ИСПРАВЛЕНО: Используем upsert вместо delete + create для предотвращения race condition
       if (question.type === 'multi_choice' && Array.isArray(values)) {
-        await prisma.userAnswer.create({
-          data: {
+        await prisma.userAnswer.upsert({
+          where: {
+            userId_questionnaireId_questionId: {
+              userId,
+              questionnaireId: questionnaire.id,
+              questionId: question.id,
+            },
+          },
+          update: {
+            answerValues: values,
+            answerValue: null,
+          },
+          create: {
             userId,
             questionnaireId: questionnaire.id,
             questionId: question.id,
@@ -165,8 +167,19 @@ export async function POST(request: NextRequest) {
           },
         });
       } else {
-        await prisma.userAnswer.create({
-          data: {
+        await prisma.userAnswer.upsert({
+          where: {
+            userId_questionnaireId_questionId: {
+              userId,
+              questionnaireId: questionnaire.id,
+              questionId: question.id,
+            },
+          },
+          update: {
+            answerValue: value || (Array.isArray(values) ? values[0] : null),
+            answerValues: null,
+          },
+          create: {
             userId,
             questionnaireId: questionnaire.id,
             questionId: question.id,

@@ -41,21 +41,34 @@ async function fetchEntitlementCodes(initData: string): Promise<string[]> {
     },
   });
 
-  if (!response.ok) return [];
+  if (!response.ok) {
+    console.warn('[PaymentGate] Entitlements API returned error:', response.status, response.statusText);
+    return [];
+  }
+  
   const data = await response.json();
+  console.log('[PaymentGate] Entitlements API response:', data);
+  
   // ApiResponse.success() в проекте возвращает payload напрямую (без { data: ... }),
   // но поддерживаем оба формата на всякий случай.
   const payload = (data && typeof data === 'object' && 'data' in data) ? (data as any).data : data;
 
   const entitlements = payload?.entitlements;
   if (Array.isArray(entitlements)) {
-    return entitlements
+    const codes = entitlements
       .map((e: any) => (typeof e?.code === 'string' ? e.code : null))
       .filter((c: any): c is string => typeof c === 'string');
+    console.log('[PaymentGate] Extracted entitlement codes:', codes);
+    return codes;
   }
 
   // Fallback: если API вернул только paid=true без списка
-  if (payload?.paid === true) return ['paid_access'];
+  if (payload?.paid === true) {
+    console.log('[PaymentGate] Using fallback: paid=true, returning paid_access');
+    return ['paid_access'];
+  }
+  
+  console.log('[PaymentGate] No entitlements found, returning empty array');
   return [];
 }
 
@@ -107,6 +120,7 @@ export function PaymentGate({
         setInitDataReady(false);
         // Если initData так и не появилось — считаем, что "проверка" невозможна
         // и не держим пользователя на бесконечном "Проверяем доступ..."
+        // Устанавливаем checkedOnce, чтобы показать paywall
         setCheckedOnce(true);
       }
     }, 100);
@@ -116,6 +130,13 @@ export function PaymentGate({
       clearInterval(intervalId);
     };
   }, []);
+
+  // Когда initDataReady становится true, сбрасываем checkingDbPayment чтобы перепроверить entitlements
+  useEffect(() => {
+    if (initDataReady && !checkedOnce) {
+      setCheckingDbPayment(false);
+    }
+  }, [initDataReady, checkedOnce]);
 
   // ВАЖНО: paywall один на главной и плане.
   // Если пользователь оплатил на одном экране и сразу перешел на другой,
@@ -140,6 +161,7 @@ export function PaymentGate({
   // Проверяем Entitlement, а не теги пользователя
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     const checkEntitlements = async () => {
       if (checkingDbPayment) return;
@@ -150,7 +172,7 @@ export function PaymentGate({
         const initData =
           typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData || '' : '';
         if (!initData) {
-          // initData ещё не готов — не показываем paywall раньше времени.
+          // initData ещё не готов — выходим, таймаут установлен отдельно
           return;
         }
 
@@ -159,8 +181,8 @@ export function PaymentGate({
           if (isMounted) {
             const required = requiredEntitlementCode(productCode);
             setHasPaid(entitlementsCache.codes.includes(required));
+            setCheckedOnce(true);
           }
-          if (isMounted) setCheckedOnce(true);
           return;
         }
 
@@ -178,7 +200,9 @@ export function PaymentGate({
         const codes = await entitlementsPromise;
         const required = requiredEntitlementCode(productCode);
         if (isMounted) {
-          setHasPaid(codes.includes(required));
+          const hasAccess = codes.includes(required);
+          console.log('[PaymentGate] Entitlements checked:', { codes, required, hasAccess });
+          setHasPaid(hasAccess);
           setCheckedOnce(true);
         }
       } catch (error) {
@@ -194,12 +218,28 @@ export function PaymentGate({
       }
     };
 
-    checkEntitlements();
+    // Если initDataReady, проверяем entitlements
+    if (initDataReady) {
+      console.log('[PaymentGate] initDataReady is true, checking entitlements');
+      checkEntitlements();
+    } else {
+      // Если initData еще не готов, устанавливаем таймаут для показа paywall через 3 секунды
+      console.log('[PaymentGate] initDataReady is false, setting 3s timeout to show paywall');
+      timeoutId = setTimeout(() => {
+        if (isMounted) {
+          console.warn('[PaymentGate] initData not available after timeout, showing paywall');
+          setCheckedOnce(true);
+        }
+      }, 3000);
+    }
 
     return () => {
       isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
-  }, [isRetaking, checkingDbPayment, productCode, refreshTick]);
+  }, [isRetaking, productCode, refreshTick, initDataReady]);
 
   // Polling для проверки статуса оплаты после создания платежа
   useEffect(() => {

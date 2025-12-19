@@ -86,31 +86,31 @@ export async function POST(request: NextRequest) {
         (a) => a.questionId === question.id
       );
 
-      if (existingAnswer) {
-        // Обновляем существующий ответ
-        await prisma.userAnswer.update({
-          where: { id: existingAnswer.id },
-          data: {
-            answerValue: answerData.answerValue || null,
-            answerValues: answerData.answerValues
-              ? (answerData.answerValues as any)
-              : null,
-          },
-        });
-      } else {
-        // Создаем новый ответ
-        await prisma.userAnswer.create({
-          data: {
+      // ИСПРАВЛЕНО: Используем upsert вместо проверки существования для предотвращения race condition
+      await prisma.userAnswer.upsert({
+        where: {
+          userId_questionnaireId_questionId: {
             userId,
             questionnaireId: questionnaire.id,
             questionId: question.id,
-            answerValue: answerData.answerValue || null,
-            answerValues: answerData.answerValues
-              ? (answerData.answerValues as any)
-              : null,
           },
-        });
-      }
+        },
+        update: {
+          answerValue: answerData.answerValue || null,
+          answerValues: answerData.answerValues
+            ? (answerData.answerValues as any)
+            : null,
+        },
+        create: {
+          userId,
+          questionnaireId: questionnaire.id,
+          questionId: question.id,
+          answerValue: answerData.answerValue || null,
+          answerValues: answerData.answerValues
+            ? (answerData.answerValues as any)
+            : null,
+        },
+      });
     }
 
     // Получаем все ответы (включая обновленные) для пересчета профиля

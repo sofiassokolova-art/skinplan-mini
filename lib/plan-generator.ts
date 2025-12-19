@@ -2084,7 +2084,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   if (maskSteps.length > 0) {
     const existingMask = maskSteps.some(step => getProductsForStep(step).length > 0);
     if (!existingMask) {
-      logger.warn('No mask products found, searching for fallback', { userId, maskSteps });
+      // ИСПРАВЛЕНО: Изменено с WARN на INFO, так как это нормальное поведение - поиск fallback
+      logger.info('No mask products found for specific steps, searching for fallback', { userId, maskSteps });
       const fallbackMask = await findFallbackProduct('mask', profileClassification);
       if (fallbackMask) {
         for (const step of maskSteps) {
@@ -2098,6 +2099,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           productName: fallbackMask.name,
           userId 
         });
+      } else {
+        logger.warn('No fallback mask found', { userId, maskSteps });
       }
     }
   }
@@ -2202,11 +2205,97 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     });
     
     if (stillMissingSteps.length > 0) {
-      logger.error('CRITICAL: Still missing products after fallback hierarchy attempts', {
+      logger.warn('Still missing products after fallback hierarchy attempts, trying last resort fallback', {
         userId,
         stillMissingSteps,
-        note: 'Plan will be generated with placeholder steps (productId = null)',
       });
+      
+      // ИСПРАВЛЕНО: Последняя попытка - находим ЛЮБОЙ продукт для каждого missing step
+      for (const missingStep of stillMissingSteps) {
+        const baseStep = getBaseStepFromStepCategory(missingStep);
+        
+        // Пробуем найти любой продукт из БД для этого базового шага
+        try {
+          const anyProduct = await prisma.product.findFirst({
+            where: {
+              published: true,
+              brand: { isActive: true },
+              OR: [
+                { step: { contains: baseStep } },
+                { category: { contains: baseStep } },
+              ],
+            },
+            include: { brand: true },
+            orderBy: [
+              { isHero: 'desc' },
+              { priority: 'desc' },
+              { createdAt: 'desc' },
+            ],
+          });
+          
+          if (anyProduct) {
+            const anyProductWithBrand: ProductWithBrand = {
+              id: anyProduct.id,
+              name: anyProduct.name,
+              brand: {
+                id: anyProduct.brand.id,
+                name: anyProduct.brand.name,
+                isActive: anyProduct.brand.isActive,
+              },
+              step: anyProduct.step || '',
+              category: anyProduct.category,
+              price: anyProduct.price,
+              imageUrl: anyProduct.imageUrl,
+              isHero: (anyProduct as any).isHero || false,
+              priority: (anyProduct as any).priority || 0,
+              skinTypes: (anyProduct.skinTypes as string[]) || [],
+              published: anyProduct.published || false,
+            };
+            
+            registerProductForStep(missingStep, anyProductWithBrand);
+            logger.info('Last resort fallback product found for missing step', {
+              missingStep,
+              baseStep,
+              productId: anyProduct.id,
+              productName: anyProduct.name,
+              userId,
+            });
+          } else {
+            logger.error('CRITICAL: Could not find ANY product in DB for missing step', {
+              missingStep,
+              baseStep,
+              userId,
+              note: 'Plan will be generated with placeholder step (productId = null)',
+            });
+          }
+        } catch (dbError: any) {
+          logger.error('Error searching for last resort fallback product', {
+            missingStep,
+            baseStep,
+            userId,
+            error: dbError?.message,
+          });
+        }
+      }
+      
+      // Финальная проверка после последней попытки
+      const finalMissingSteps = Array.from(requiredStepCategories).filter((step: StepCategory) => {
+        const stepProducts = getProductsForStep(step);
+        return stepProducts.length === 0;
+      });
+      
+      if (finalMissingSteps.length > 0) {
+        logger.error('CRITICAL: Still missing products after ALL fallback attempts', {
+          userId,
+          finalMissingSteps,
+          note: 'Plan will be generated with placeholder steps (productId = null)',
+        });
+      } else {
+        logger.info('All missing steps resolved with last resort fallback', {
+          userId,
+          resolvedSteps: stillMissingSteps,
+        });
+      }
     }
   }
   
@@ -3359,6 +3448,24 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     throw new Error('Plan generation failed: no days generated');
   }
   
+  // ИСПРАВЛЕНО: Финальная проверка - все ли обязательные шаги имеют продукты
+  const stepsWithoutProducts: string[] = [];
+  for (const requiredStep of requiredStepCategories) {
+    const stepProducts = getProductsForStep(requiredStep);
+    if (stepProducts.length === 0) {
+      stepsWithoutProducts.push(requiredStep);
+    }
+  }
+  
+  if (stepsWithoutProducts.length > 0) {
+    logger.error('CRITICAL: Some required steps still have no products after all fallbacks', {
+      userId,
+      stepsWithoutProducts,
+      requiredSteps: Array.from(requiredStepCategories),
+      note: 'This should not happen - check ensureRequiredProducts and fallback logic',
+    });
+  }
+  
   logger.info('Plan28 days generated successfully', {
     userId,
     daysCount: plan28Days.length,
@@ -3375,6 +3482,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     eveningStepsWithProducts: plan28Days.reduce((sum, d) => 
       sum + d.evening.filter(s => s.productId).length, 0
     ),
+    requiredStepsCount: requiredStepCategories.size,
+    stepsWithoutProducts: stepsWithoutProducts.length > 0 ? stepsWithoutProducts : undefined,
   });
   
   let plan28: Plan28 = {
