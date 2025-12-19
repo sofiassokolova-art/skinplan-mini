@@ -3,41 +3,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import jwt from 'jsonwebtoken';
+import { verifyAdminBoolean } from '@/lib/admin-auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
-// Проверка авторизации админа
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) {
-      console.log('❌ No token found in broadcasts API');
-      return false;
-    }
-    
-    try {
-      jwt.verify(token, JWT_SECRET);
-      console.log('✅ Token verified in broadcasts API');
-      return true;
-    } catch (verifyError) {
-      console.error('❌ Token verification failed in broadcasts API:', verifyError);
-      return false;
-    }
-  } catch (err) {
-    console.error('❌ Error in verifyAdmin broadcasts:', err);
-    return false;
-  }
-}
 
 // Получить все рассылки
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -59,7 +32,7 @@ export async function GET(request: NextRequest) {
 // Создать новую рассылку
 export async function POST(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

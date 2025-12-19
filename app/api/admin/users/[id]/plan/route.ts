@@ -4,25 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCachedPlan } from '@/lib/cache';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const token = request.cookies.get('admin_token')?.value || 
-                  request.headers.get('authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      return false;
-    }
-
-    jwt.verify(token, JWT_SECRET);
-    return true;
-  } catch (err) {
-    return false;
-  }
-}
+import { verifyAdminBoolean } from '@/lib/admin-auth';
 
 // GET - получение плана пользователя
 export async function GET(
@@ -31,7 +13,7 @@ export async function GET(
 ) {
   const params = await context.params;
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },

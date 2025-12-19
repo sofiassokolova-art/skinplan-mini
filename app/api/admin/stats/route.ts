@@ -4,59 +4,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getMetricsStats } from '@/lib/admin-stats';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-// Проверка авторизации админа
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
-    
-    if (!token) {
-      return false;
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-      return true;
-    } catch (verifyError) {
-      return false;
-    }
-  } catch (err) {
-    console.error('Error in verifyAdmin:', err);
-    return false;
-  }
-}
+import { verifyAdminBoolean } from '@/lib/admin-auth';
+import { adminCache } from '@/lib/admin-cache';
 
 export async function GET(request: NextRequest) {
   try {
-    const isAdmin = await verifyAdmin(request);
+    const isAdmin = await verifyAdminBoolean(request);
     if (!isAdmin) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
-    // Проверяем подключение к БД перед запросами
-    try {
-      await prisma.$connect();
-    } catch (connectError) {
-      console.error('Database connection error:', connectError);
-      throw connectError;
+
+    // Проверяем кеш (TTL 2 минуты для статистики)
+    const cacheKey = 'admin_stats';
+    const cached = adminCache.get<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
     
-    // Выполняем запросы последовательно
-    let usersCount = 0;
-    try {
-      usersCount = await prisma.user.count();
-    } catch (userError) {
-      console.error('Error counting users:', userError);
-      throw userError;
-    }
+    // Получаем количество пользователей
+    const usersCount = await prisma.user.count().catch(() => 0);
     
     const [
       productsCount,
@@ -294,7 +263,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const responseData = {
       stats: {
         users: usersCount,
         products: productsCount,
@@ -333,7 +302,12 @@ export async function GET(request: NextRequest) {
           feedback: f.feedback,
           createdAt: f.createdAt.toISOString(),
         })),
-    });
+    };
+
+    // Сохраняем в кеш на 2 минуты
+    adminCache.set(cacheKey, responseData, 120);
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('❌ Error fetching admin stats:', error);
     
