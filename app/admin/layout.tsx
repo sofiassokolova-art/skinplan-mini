@@ -95,6 +95,7 @@ export default function AdminLayout({
   }, [loading, isAuthenticated, isLoginPage, router, pathname]);
   
   // Хук 3: Отладочное логирование
+  // ИСПРАВЛЕНО: Убрали children из зависимостей, так как это может вызывать проблемы
   useEffect(() => {
     console.log('[AdminLayout] State update', { 
       pathname, 
@@ -103,7 +104,7 @@ export default function AdminLayout({
       isLoginPage,
       hasChildren: !!children 
     });
-  }, [pathname, loading, isAuthenticated, isLoginPage, children]);
+  }, [pathname, loading, isAuthenticated, isLoginPage]);
 
   const menuItems = [
     { href: '/admin', label: 'Дашборд', icon: LayoutDashboard },

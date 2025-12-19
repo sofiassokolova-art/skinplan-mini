@@ -180,7 +180,11 @@ export default function HomePage() {
             clientLogger.log('ℹ️ Plan not found (404) when checking from home page');
             return false;
           } else {
-            clientLogger.warn('Could not check plan existence from home page', err);
+            // ИСПРАВЛЕНО: Не логируем как warning, если это не критичная ошибка
+            // Многие ошибки могут быть временными (сеть, таймауты)
+            if (err?.status !== 429 && err?.status !== 408) {
+              clientLogger.warn('Could not check plan existence from home page', err);
+            }
             // Не знаем наверняка — считаем, что плана нет, но не редиректим тут.
             return false;
           }
