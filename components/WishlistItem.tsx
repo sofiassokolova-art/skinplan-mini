@@ -3,8 +3,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { api } from '@/lib/api';
+import { useCart, useAddToCart, useRemoveFromCart } from '@/hooks/useCart';
 import FeedbackModal from './FeedbackModal';
 import toast from 'react-hot-toast';
 
@@ -37,9 +38,18 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
   const [feedback, setFeedback] = useState(item.feedback);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isInCart, setIsInCart] = useState(false);
-  const [cartQuantity, setCartQuantity] = useState(0);
-  const [cartLoading, setCartLoading] = useState(false);
+  
+  // ИСПРАВЛЕНО: Используем React Query хуки для автоматического обновления состояния корзины
+  const { data: cartData } = useCart();
+  const addToCartMutation = useAddToCart();
+  const removeFromCartMutation = useRemoveFromCart();
+  
+  // Определяем состояние корзины из данных React Query
+  const cartItems = cartData?.items || [];
+  const cartItem = cartItems.find((cartItem: any) => cartItem.product.id === item.product.id);
+  const isInCart = !!cartItem;
+  const cartQuantity = cartItem?.quantity || 0;
+  const cartLoading = addToCartMutation.isPending || removeFromCartMutation.isPending;
 
   const handleFeedback = async (value: string) => {
     if (value === 'bought_bad') {
@@ -77,57 +87,22 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
     }
   };
 
-  // Проверяем статус корзины при монтировании
-  useEffect(() => {
-    const checkCartStatus = async () => {
-      try {
-        const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
-        const items = cart.items || [];
-        const cartItem = items.find((cartItem) => cartItem.product.id === item.product.id);
-        if (cartItem) {
-          setIsInCart(true);
-          setCartQuantity(cartItem.quantity);
-        } else {
-          setIsInCart(false);
-          setCartQuantity(0);
-        }
-      } catch (err) {
-        console.warn('Could not check cart status:', err);
-      }
-    };
-    
-    checkCartStatus();
-  }, [item.product.id]);
-
+  // ИСПРАВЛЕНО: Используем React Query мутации для автоматической инвалидации кэша
   const handleAddToCart = async () => {
     if (cartLoading) return;
     
-    setCartLoading(true);
     try {
       if (isInCart) {
-        await api.removeFromCart(item.product.id);
-        setIsInCart(false);
-        setCartQuantity(0);
+        await removeFromCartMutation.mutateAsync(item.product.id);
         toast.success('Удалено из корзины');
       } else {
-        await api.addToCart(item.product.id, 1);
-        setIsInCart(true);
-        setCartQuantity(1);
+        await addToCartMutation.mutateAsync({ productId: item.product.id, quantity: 1 });
         toast.success('Добавлено в корзину');
       }
-      
-      // Перезагружаем корзину для актуальных данных
-      const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
-      const items = cart.items || [];
-      const cartItem = items.find((cartItem) => cartItem.product.id === item.product.id);
-      if (cartItem) {
-        setCartQuantity(cartItem.quantity);
-      }
+      // Состояние корзины обновится автоматически через React Query
     } catch (err: any) {
       console.error('Error toggling cart:', err);
       toast.error(err?.message || 'Ошибка при изменении корзины');
-    } finally {
-      setCartLoading(false);
     }
   };
 
@@ -259,7 +234,7 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
             </div>
 
             {/* Ссылки на покупку */}
-            {hasLinks && (
+            {hasLinks ? (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
                 {marketLinks.ozon && (
                   <a
@@ -344,6 +319,22 @@ export default function WishlistItem({ item, onRemove }: WishlistItemProps) {
                     Купить
                   </a>
                 )}
+              </div>
+            ) : (
+              // ИСПРАВЛЕНО: Показываем информативное сообщение, если ссылок нет
+              <div
+                style={{
+                  padding: '12px',
+                  marginBottom: '16px',
+                  backgroundColor: '#FEF3C7',
+                  border: '1px solid #FCD34D',
+                  borderRadius: '12px',
+                  fontSize: '13px',
+                  color: '#92400E',
+                  textAlign: 'center',
+                }}
+              >
+                Ссылка на покупку не найдена. Попробуйте найти товар вручную на Ozon, Wildberries или в аптеках.
               </div>
             )}
 

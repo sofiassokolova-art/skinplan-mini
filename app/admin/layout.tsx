@@ -37,23 +37,27 @@ export default function AdminLayout({
   useEffect(() => {
     if (isLoginPage) {
       setLoading(false);
+      setIsAuthenticated(false);
       return;
     }
 
+    let mounted = true;
+
     const checkAuth = async () => {
       try {
-      const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('admin_token');
         const response = await fetch('/api/admin/auth', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           credentials: 'include',
         });
 
+        if (!mounted) return;
+
         if (response.ok) {
-        const data = await response.json();
-        if (data.valid) {
-          setIsAuthenticated(true);
+          const data = await response.json();
+          if (data.valid) {
+            setIsAuthenticated(true);
           } else {
-            // Не перенаправляем сразу, даем странице возможность проверить сама
             setIsAuthenticated(false);
           }
         } else {
@@ -61,14 +65,22 @@ export default function AdminLayout({
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        setIsAuthenticated(false);
+        if (mounted) {
+          setIsAuthenticated(false);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAuth();
-  }, [router, isLoginPage]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [pathname, isLoginPage]);
 
   const menuItems = [
     { href: '/admin', label: 'Дашборд', icon: LayoutDashboard },
@@ -96,8 +108,26 @@ export default function AdminLayout({
   }
 
   // Блокируем доступ, если не авторизован
-  if (!isAuthenticated) {
-    router.push('/admin/login');
+  useEffect(() => {
+    if (!loading && !isAuthenticated && !isLoginPage) {
+      console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
+      router.push('/admin/login');
+    }
+  }, [loading, isAuthenticated, isLoginPage, router, pathname]);
+  
+  // ИСПРАВЛЕНО: Добавляем отладочное логирование
+  useEffect(() => {
+    console.log('[AdminLayout] State update', { 
+      pathname, 
+      loading, 
+      isAuthenticated, 
+      isLoginPage,
+      hasChildren: !!children 
+    });
+  }, [pathname, loading, isAuthenticated, isLoginPage, children]);
+  
+  // Если не авторизован и не на странице логина, показываем сообщение
+  if (!loading && !isAuthenticated && !isLoginPage) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-gray-600">Перенаправление на страницу входа...</div>
@@ -115,7 +145,9 @@ export default function AdminLayout({
         )}
         style={{ 
           backgroundColor: 'rgba(243, 244, 246, 0.95)',
-          height: '100vh'
+          height: '100vh',
+          overflowY: 'auto',
+          overflowX: 'hidden'
         }}
       >
         <div className="p-6 border-b border-gray-200/50 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: 'transparent' }}>
@@ -132,7 +164,7 @@ export default function AdminLayout({
           </button>
               </div>
 
-        <nav className="p-4 space-y-2 flex-1 overflow-y-auto" style={{ backgroundColor: 'transparent' }}>
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto overflow-x-hidden" style={{ backgroundColor: 'transparent' }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || 
@@ -148,8 +180,9 @@ export default function AdminLayout({
                     ? 'bg-black text-white shadow-lg shadow-black/10'
                     : 'text-gray-700 hover:bg-gray-100/50 hover:text-gray-900'
                 )}
+                style={{ minHeight: '44px' }}
               >
-                <Icon size={20} />
+                <Icon size={20} className="flex-shrink-0" style={{ width: '20px', height: '20px', minWidth: '20px', flexShrink: 0 }} />
                 {sidebarOpen && <span className="font-medium">{item.label}</span>}
               </Link>
             );
@@ -159,13 +192,16 @@ export default function AdminLayout({
 
       {/* Main Content */}
       <main 
-        className="overflow-auto min-h-screen pr-8 md:pr-12 pt-16 md:pt-20 pb-6 md:pb-8 bg-transparent"
+        className="overflow-auto min-h-screen pr-8 md:pr-12 pt-16 md:pt-20 pb-6 md:pb-8"
         style={{
           marginLeft: sidebarOpen ? '256px' : '80px',
-          width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)'
+          width: sidebarOpen ? 'calc(100% - 256px)' : 'calc(100% - 80px)',
+          position: 'relative',
+          backgroundColor: 'transparent',
+          zIndex: 1
         }}
       >
-        <div className="max-w-7xl mx-auto w-full bg-transparent">
+        <div className="max-w-7xl mx-auto w-full" style={{ position: 'relative', zIndex: 1 }}>
           {children}
         </div>
       </main>

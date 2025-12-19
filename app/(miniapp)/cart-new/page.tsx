@@ -62,7 +62,11 @@ function CartPageContent() {
     if (link) {
       window.open(link, '_blank');
     } else {
-      toast.error('Ссылка на покупку не найдена');
+      // ИСПРАВЛЕНО: Показываем более информативное сообщение с подсказкой
+      toast.error(
+        `Ссылка на покупку для "${product.name}" не найдена. Попробуйте найти товар вручную на Ozon, Wildberries или в аптеках.`,
+        { duration: 5000 }
+      );
     }
   };
 
@@ -204,21 +208,43 @@ function CartPageContent() {
 
                     {/* Кнопки */}
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => handleBuy(item.product)}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '12px',
-                          border: 'none',
-                          backgroundColor: '#0A5F59',
-                          color: 'white',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Купить
-                      </button>
+                      {(() => {
+                        const marketLinks = item.product.marketLinks as any || {};
+                        const hasLink = item.product.link || marketLinks.ozon || marketLinks.wildberries || marketLinks.apteka;
+                        
+                        return hasLink ? (
+                          <button
+                            onClick={() => handleBuy(item.product)}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '12px',
+                              border: 'none',
+                              backgroundColor: '#0A5F59',
+                              color: 'white',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Купить
+                          </button>
+                        ) : (
+                          <div
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '12px',
+                              border: '1px solid #E5E7EB',
+                              backgroundColor: '#F9FAFB',
+                              color: '#6B7280',
+                              fontSize: '12px',
+                              textAlign: 'center',
+                            }}
+                            title="Ссылка на покупку не найдена. Попробуйте найти товар вручную на маркетплейсах."
+                          >
+                            Ссылка не найдена
+                          </div>
+                        );
+                      })()}
                       <button
                         onClick={() => handleRemove(item.product.id)}
                         style={{
@@ -265,25 +291,50 @@ function CartPageContent() {
                   {totalPrice} ₽
                 </span>
               </div>
-              <button
-                onClick={() => {
-                  cartItems.forEach(item => handleBuy(item.product));
-                }}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  borderRadius: '24px',
-                  border: 'none',
-                  background: 'linear-gradient(to right, #0A5F59, #059669)',
-                  color: 'white',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.4)',
-                }}
-              >
-                Купить всё ({cartItems.length} товар{cartItems.length > 1 ? 'а' : ''})
-              </button>
+              {(() => {
+                // Проверяем, есть ли хотя бы у одного товара ссылка
+                const hasAnyLink = cartItems.some(item => {
+                  const marketLinks = item.product.marketLinks as any || {};
+                  return item.product.link || marketLinks.ozon || marketLinks.wildberries || marketLinks.apteka;
+                });
+                
+                return hasAnyLink ? (
+                  <button
+                    onClick={() => {
+                      cartItems.forEach(item => handleBuy(item.product));
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      borderRadius: '24px',
+                      border: 'none',
+                      background: 'linear-gradient(to right, #0A5F59, #059669)',
+                      color: 'white',
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      boxShadow: '0 8px 24px rgba(10, 95, 89, 0.4)',
+                    }}
+                  >
+                    Купить всё ({cartItems.length} товар{cartItems.length > 1 ? 'а' : ''})
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      borderRadius: '24px',
+                      border: '1px solid #E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#6B7280',
+                      fontSize: '14px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Ссылки на покупку не найдены. Попробуйте найти товары вручную на маркетплейсах.
+                  </div>
+                );
+              })()}
               <p style={{
                 fontSize: '11px',
                 color: '#6B7280',
