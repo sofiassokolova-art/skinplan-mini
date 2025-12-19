@@ -125,51 +125,37 @@ body {
   color: #111827 !important; /* Черный текст */
 }
 
-/* Все тексты в админке черные по умолчанию */
-.admin-layout,
-.admin-layout * {
-  color: #111827 !important; /* Черный текст */
-  background-color: #f3f4f6 !important; /* Светло-серый фон */
-}
-
-/* Исключения для градиентов и специальных цветов */
-.admin-layout .bg-clip-text,
-.admin-layout .text-transparent,
-.admin-layout .text-emerald-400,
-.admin-layout .text-red-400,
-.admin-layout .text-purple-400,
-.admin-layout .text-pink-400 {
-  color: inherit !important;
-}
-
 /* Стили для админ-панели - светлая тема */
+/* ИСПРАВЛЕНО: Убрали агрессивные !important правила, которые переопределяли все стили */
 .admin-layout {
-  background-color: #f3f4f6 !important;
-  color: #111827 !important;
+  background-color: #f3f4f6;
+  color: #111827;
 }
 
-.admin-layout * {
-  color: #111827 !important;
+/* Базовый цвет текста для админки (без !important, чтобы не переопределять Tailwind классы) */
+.admin-layout {
+  color: #111827;
 }
 
-/* Исключения для специальных цветов */
+/* Исключения для специальных цветов - только для градиентов и цветных текстов */
 .admin-layout .bg-clip-text,
-.admin-layout .text-transparent,
+.admin-layout .text-transparent {
+  color: inherit;
+}
+
+/* Сохраняем цвета для специальных классов */
 .admin-layout .text-emerald-600,
 .admin-layout .text-red-600,
 .admin-layout .text-purple-600,
 .admin-layout .text-pink-600,
 .admin-layout .text-blue-600,
 .admin-layout .text-yellow-600,
-.admin-layout [class*="text-emerald"],
-.admin-layout [class*="text-red"],
-.admin-layout [class*="text-purple"],
-.admin-layout [class*="text-pink"],
-.admin-layout [class*="text-blue"],
-.admin-layout [class*="text-yellow"],
-.admin-layout [class*="text-green"],
-.admin-layout [class*="text-gray"] {
-  color: inherit !important;
+.admin-layout .text-indigo-600,
+.admin-layout .text-gray-500,
+.admin-layout .text-gray-600,
+.admin-layout .text-gray-700,
+.admin-layout .text-gray-900 {
+  color: inherit;
 }
 
 .admin-sidebar {
