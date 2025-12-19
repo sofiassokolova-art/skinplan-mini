@@ -190,14 +190,26 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // ИСПРАВЛЕНО: Сначала проверяем БД, а не кэш
-    // Это гарантирует, что после генерации плана мы получим свежий план из БД, а не старый из кэша
-    // Кэш может содержать старую версию плана с 2 продуктами вместо 5
-    logger.debug('Checking database first (before cache) to get fresh plan', { userId, profileVersion: profile.version });
+    // ИСПРАВЛЕНО: Сначала проверяем кэш для быстрой загрузки
+    // Если план в кэше - возвращаем его сразу (быстро)
+    // Если нет - проверяем БД и кэшируем для следующих запросов
+    logger.debug('Checking cache first for fast plan retrieval', { userId, profileVersion: profile.version });
+    const cachedPlan = await getCachedPlan(userId, profile.version);
     
-    // Проверяем БД сначала
+    if (cachedPlan && cachedPlan.plan28) {
+      const duration = Date.now() - startTime;
+      logger.info('Plan retrieved from cache (fast path)', { 
+        userId, 
+        profileVersion: profile.version,
+        duration,
+      });
+      logApiRequest(method, path, 200, duration, userId);
+      return ApiResponse.success(cachedPlan);
+    }
+    
+    // План не найден в кэше - проверяем БД
     // ИСПРАВЛЕНО: Добавляем логирование для диагностики медленной загрузки
-    logger.info('Looking for plan in DB', {
+    logger.info('Plan not in cache, checking database', {
       userId,
       profileVersion: profile.version,
       timestamp: new Date().toISOString(),
@@ -304,16 +316,7 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Если план не найден в БД, проверяем кэш (fallback)
-    logger.debug('Plan not found in DB, checking cache', { userId, profileVersion: profile.version });
-    const cachedPlan = await getCachedPlan(userId, profile.version);
-    
-    if (cachedPlan && cachedPlan.plan28) {
-      const duration = Date.now() - startTime;
-      logger.info('Plan retrieved from cache (fallback)', { userId, profileVersion: profile.version });
-      logApiRequest(method, path, 200, duration, userId);
-      return ApiResponse.success(cachedPlan);
-    }
+    // План не найден в БД - кэш уже проверен выше, так что план действительно не существует
 
 
     // ИСПРАВЛЕНО: Правильная семантика - 404 для отсутствия плана (но есть профиль)

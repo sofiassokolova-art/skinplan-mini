@@ -437,18 +437,41 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // ИСПРАВЛЕНО: НЕ кэшируем из /api/plan/generate
-    // Кэширование - это ответственность /api/plan, который:
-    // 1. Читает из БД
-    // 2. Формирует PlanResponse с правильными expired и daysSinceCreation
-    // 3. Кладёт в кэш в едином формате
-    // Это гарантирует единый контракт кэша и предотвращает несоответствия форматов
-    logger.info('Plan generated and saved to DB, caching will be done by /api/plan', {
-        userId, 
+    // ИСПРАВЛЕНО: Кэшируем план сразу после генерации для быстрой загрузки
+    // Формируем PlanResponse в том же формате, что и /api/plan для консистентности
+    if (plan.plan28) {
+      try {
+        const planCreatedAt = new Date();
+        const planResponse = {
+          plan28: plan.plan28,
+          expired: false, // Только что созданный план не может быть истекшим
+          daysSinceCreation: 0,
+        };
+        
+        const { setCachedPlan } = await import('@/lib/cache');
+        await setCachedPlan(userId, profile.version, planResponse);
+        logger.info('Plan cached immediately after generation', {
+          userId,
+          profileVersion: profile.version,
+          hasPlan28: !!plan.plan28,
+          plan28DaysCount: plan.plan28.days?.length || 0,
+        });
+      } catch (cacheError: any) {
+        // Ошибка кэширования не критична, но логируем
+        logger.warn('Failed to cache plan after generation (non-critical)', {
+          userId,
+          profileVersion: profile.version,
+          errorMessage: cacheError?.message,
+        });
+      }
+    } else {
+      logger.warn('Plan generated but no plan28 to cache', {
+        userId,
         profileVersion: profile.version,
         hasPlan28: !!plan.plan28,
-        plan28DaysCount: plan?.plan28?.days?.length || 0,
-    });
+        hasWeeks: !!plan.weeks,
+      });
+    }
     
     logger.info('Plan generated successfully', {
       userId,
