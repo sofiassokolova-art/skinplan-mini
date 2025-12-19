@@ -448,20 +448,56 @@ export default function QuizPage() {
         await waitForTelegram();
         clientLogger.log('✅ Telegram WebApp ready');
 
-        // Сначала загружаем анкету (публичный маршрут)
+        // ИСПРАВЛЕНО: Загружаем анкету ВСЕГДА, даже при перепрохождении
+        // Анкета нужна для перепрохождения (для экрана выбора тем и для полного перепрохождения)
         // Но только если она еще не загружена
         // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер
         // Анкета загрузится мгновенно, и пользователь увидит вопросы без задержки
         if (!questionnaire) {
-          const loadedQuestionnaire = await loadQuestionnaire();
-          // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке анкеты
-          // Это предотвращает показ временных ошибок, которые уже исправлены
-          if (loadedQuestionnaire) {
-            setError(null);
-          } else {
-            // Если анкета не загрузилась, показываем ошибку только если её еще нет
-            // (чтобы не перезаписывать более важные ошибки)
-            if (!error) {
+          try {
+            clientLogger.log('📥 Loading questionnaire in init', { 
+              isRetakingQuiz, 
+              showRetakeScreen,
+              hasError: !!error,
+            });
+            const loadedQuestionnaire = await loadQuestionnaire();
+            // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке анкеты
+            // Это предотвращает показ временных ошибок, которые уже исправлены
+            if (loadedQuestionnaire) {
+              setError(null);
+              clientLogger.log('✅ Questionnaire loaded successfully in init', {
+                questionnaireId: loadedQuestionnaire.id,
+                isRetakingQuiz,
+                showRetakeScreen,
+              });
+            } else {
+              // ИСПРАВЛЕНО: Если анкета не загрузилась, но ошибка уже установлена в loadQuestionnaire
+              // При перепрохождении не показываем ошибку сразу - пробуем еще раз
+              if (isRetakingQuiz) {
+                clientLogger.warn('⚠️ Questionnaire not loaded during retake, will retry', { currentError: error });
+                // При перепрохождении пробуем загрузить еще раз через небольшую задержку
+                setTimeout(() => {
+                  loadQuestionnaire().catch((retryErr) => {
+                    clientLogger.error('❌ Failed to reload questionnaire during retake retry', retryErr);
+                  });
+                }, 1000);
+              } else {
+                clientLogger.warn('⚠️ Questionnaire not loaded, but error already set', { currentError: error });
+                // Если ошибка еще не установлена, устанавливаем общую ошибку
+                if (!error) {
+                  setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+                }
+              }
+            }
+          } catch (loadErr: any) {
+            // ИСПРАВЛЕНО: Обрабатываем ошибки загрузки анкеты
+            clientLogger.error('❌ Error in init when loading questionnaire', {
+              error: loadErr?.message,
+              stack: loadErr?.stack?.substring(0, 300),
+              isRetakingQuiz,
+            });
+            // При перепрохождении не показываем ошибку сразу - пробуем еще раз
+            if (!isRetakingQuiz && !error) {
               setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
             }
           }
@@ -470,6 +506,7 @@ export default function QuizPage() {
           // Это предотвращает показ старых ошибок, которые уже не актуальны
           if (error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire') || error.includes('Questionnaire has no questions'))) {
             setError(null);
+            clientLogger.log('✅ Questionnaire already loaded, clearing old error');
           }
         }
       
@@ -1233,20 +1270,51 @@ export default function QuizPage() {
       });
       
       const data = await Promise.race([loadPromise, timeoutPromise]);
+      
+      // ИСПРАВЛЕНО: Добавляем детальное логирование для диагностики
+      clientLogger.log('📥 Questionnaire data received from API', {
+        hasData: !!data,
+        dataType: typeof data,
+        dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+        dataString: JSON.stringify(data).substring(0, 200),
+      });
+      
       const questionnaireData = data as Questionnaire;
       
       // ИСПРАВЛЕНО: Проверяем, что данные валидны
-      if (!questionnaireData || !questionnaireData.id) {
-        throw new Error('Invalid questionnaire data received from server');
+      if (!questionnaireData) {
+        clientLogger.error('❌ Questionnaire data is null or undefined', { data });
+        throw new Error('Invalid questionnaire data: received null or undefined');
+      }
+      
+      if (!questionnaireData.id) {
+        clientLogger.error('❌ Questionnaire data missing id', { 
+          data,
+          hasId: !!questionnaireData.id,
+          dataKeys: Object.keys(questionnaireData),
+        });
+        throw new Error('Invalid questionnaire data: missing id field');
       }
       
       // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
       const groups = questionnaireData.groups || [];
       const questions = questionnaireData.questions || [];
       
+      clientLogger.log('📊 Questionnaire structure', {
+        id: questionnaireData.id,
+        groupsCount: groups.length,
+        questionsCount: questions.length,
+        groupsWithQuestions: groups.map(g => ({ id: g.id, questionsCount: g.questions?.length || 0 })),
+      });
+      
       // ИСПРАВЛЕНО: Проверяем, что есть хотя бы один вопрос
       const totalQuestions = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
       if (totalQuestions === 0) {
+        clientLogger.error('❌ Questionnaire has no questions', {
+          groupsCount: groups.length,
+          questionsCount: questions.length,
+          groups: groups.map(g => ({ id: g.id, title: g.title, questions: g.questions?.length || 0 })),
+        });
         throw new Error('Questionnaire has no questions');
       }
       addDebugLog('📥 Questionnaire loaded', {
@@ -1271,8 +1339,19 @@ export default function QuizPage() {
       setError(null);
       return questionnaireData; // Возвращаем загруженную анкету
     } catch (err: any) {
-      addDebugLog('❌ Error loading questionnaire', { error: err.message });
+      // ИСПРАВЛЕНО: Улучшено логирование ошибок для диагностики
+      const errorDetails = {
+        message: err?.message,
+        stack: err?.stack?.substring(0, 500),
+        name: err?.name,
+        status: err?.status,
+        response: err?.response,
+      };
+      
+      addDebugLog('❌ Error loading questionnaire', errorDetails);
+      clientLogger.error('❌ Error loading questionnaire', errorDetails);
       console.error('Ошибка загрузки анкеты:', err);
+      
       // Если ошибка авторизации, не показываем её как критическую
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
         // Анкета публичная, эта ошибка не должна возникать
@@ -1281,10 +1360,24 @@ export default function QuizPage() {
       // Если таймаут - это критическая ошибка, но не блокируем загрузку
       if (err?.message?.includes('Таймаут')) {
         console.error('❌ Таймаут загрузки анкеты - возможно, проблема с сетью или сервером');
+        clientLogger.error('❌ Таймаут загрузки анкеты');
       }
-      // Убеждаемся, что error всегда строка
+      
+      // ИСПРАВЛЕНО: Не устанавливаем ошибку сразу, если это временная проблема
+      // Позволяем пользователю попробовать еще раз
       const errorMessage = String(err?.message || 'Ошибка загрузки анкеты');
-      setError(errorMessage);
+      
+      // Только для критических ошибок устанавливаем error state
+      // Для временных ошибок (таймаут, сеть) можно попробовать еще раз
+      if (err?.message?.includes('Таймаут') || err?.message?.includes('network') || err?.message?.includes('Network')) {
+        // Для таймаутов и сетевых ошибок не показываем ошибку сразу
+        // Пользователь может попробовать обновить страницу
+        clientLogger.warn('⚠️ Temporary error loading questionnaire, user can retry', { error: errorMessage });
+        setError('Не удалось загрузить анкету. Проверьте подключение к интернету и обновите страницу.');
+      } else {
+        setError(errorMessage);
+      }
+      
       return null;
     }
     // НЕ вызываем setLoading(false) здесь - это сделает init() после всех загрузок
@@ -5174,11 +5267,15 @@ export default function QuizPage() {
       );
     }
 
-    // ИСПРАВЛЕНО: Убрали лоадер "Загружаем вопросы..."
-    // Показываем ошибку только если анкета не загружена И ошибка связана с загрузкой анкеты
-    // Это предотвращает показ временных ошибок, которые уже исправлены
-    if (!questionnaire && error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire') || error.includes('Questionnaire has no questions'))) {
-      // Показываем ошибку только если она есть
+    // ИСПРАВЛЕНО: Показываем ошибку загрузки анкеты только если:
+    // 1. Анкета не загружена
+    // 2. Есть ошибка загрузки анкеты
+    // 3. НЕ показываем экран выбора тем (showRetakeScreen) - там анкета не нужна сразу
+    // 4. НЕ идет перепрохождение (isRetakingQuiz) - при перепрохождении анкета загружается в фоне
+    if (!questionnaire && error && 
+        (error.includes('загрузить анкету') || error.includes('Invalid questionnaire') || error.includes('Questionnaire has no questions')) &&
+        !showRetakeScreen && !isRetakingQuiz) {
+      // Показываем ошибку только если она есть и мы не на экране перепрохождения
       return (
         <div style={{ 
           padding: '20px',
@@ -5221,6 +5318,24 @@ export default function QuizPage() {
           </div>
         </div>
       );
+    }
+    
+    // ИСПРАВЛЕНО: При перепрохождении, если анкета еще не загружена, но нет критической ошибки
+    // Показываем экран выбора тем или продолжаем загрузку, не блокируя пользователя
+    if (isRetakingQuiz && !questionnaire) {
+      // Анкета еще загружается, но мы на перепрохождении - продолжаем загрузку в фоне
+      // Экран выбора тем покажется, когда анкета загрузится или если есть ошибка - попробуем еще раз
+      if (error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire'))) {
+        // Есть ошибка загрузки при перепрохождении - пробуем загрузить еще раз
+        clientLogger.warn('⚠️ Error loading questionnaire during retake, will retry', { error });
+        // Очищаем ошибку и пробуем загрузить еще раз
+        setError(null);
+        loadQuestionnaire().catch((err) => {
+          clientLogger.error('❌ Failed to reload questionnaire during retake', err);
+        });
+      } else {
+        clientLogger.log('ℹ️ Retaking quiz, questionnaire still loading, showing retake screen or waiting');
+      }
     }
 
     // ИСПРАВЛЕНО: Убрали лоадер "Загружаем вопросы..."
