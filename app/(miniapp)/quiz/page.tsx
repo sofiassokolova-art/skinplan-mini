@@ -2714,14 +2714,8 @@ export default function QuizPage() {
       // чтобы избежать перерендера и показа первого экрана анкеты
       // Очистка будет выполнена после редиректа или на странице /plan
       
-      // ВАЖНО: Устанавливаем loading = false ПЕРЕД генерацией плана, чтобы скрыть лоадер "Загрузка анкеты..."
-      // Лоадер "Создаем ваш план ухода..." уже показывается через isSubmitting = true
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
-      
-      // ИСПРАВЛЕНО: Устанавливаем флаг quiz_just_submitted ДО генерации плана
-      // Это защита на случай, если генерация плана займет время или произойдет ошибка
+      // ИСПРАВЛЕНО: Устанавливаем флаг quiz_just_submitted ПЕРВЫМ, ДО установки isSubmitting
+      // Это гарантирует, что лоадер "Загрузка анкеты..." не покажется даже на мгновение
       // Флаг предотвратит редирект на первый экран анкеты при возврате на /quiz
       if (typeof window !== 'undefined') {
         try {
@@ -2729,10 +2723,17 @@ export default function QuizPage() {
           // ОПТИМИЗАЦИЯ: Очищаем кэш профиля, чтобы новый профиль был доступен сразу после создания
           sessionStorage.removeItem('profile_check_cache');
           sessionStorage.removeItem('profile_check_cache_timestamp');
-          clientLogger.log('✅ Флаг quiz_just_submitted установлен ДО генерации плана');
+          clientLogger.log('✅ Флаг quiz_just_submitted установлен ПЕРВЫМ, ДО isSubmitting');
         } catch (storageError) {
           clientLogger.warn('⚠️ Не удалось установить флаг quiz_just_submitted:', storageError);
         }
+      }
+      
+      // ВАЖНО: Устанавливаем loading = false ПЕРЕД установкой isSubmitting = true
+      // Это гарантирует, что лоадер "Загрузка анкеты..." не покажется
+      // Лоадер "Создаем ваш план ухода..." показывается через isSubmitting = true
+      if (isMountedRef.current) {
+        setLoading(false); // Скрываем лоадер "Загрузка анкеты..." ПЕРЕД показом лоадера плана
       }
       
       // ИСПРАВЛЕНО: Генерируем план ПЕРЕД редиректом, чтобы план был готов
@@ -3821,8 +3822,11 @@ export default function QuizPage() {
   
   // ИСПРАВЛЕНО: Также проверяем, идет ли редирект на /plan (isSubmitting = true)
   // Это предотвращает показ лоадера "Загрузка анкеты..." во время редиректа
+  // ВАЖНО: Проверяем ПЕРЕД проверкой loading, чтобы гарантировать приоритет
   const isRedirectingToPlan = isSubmitting || justSubmittedUiGuard;
   
+  // ИСПРАВЛЕНО: Если идет редирект на план, НЕ показываем лоадер "Загрузка анкеты..."
+  // даже если loading = true (может быть установлен в другом месте)
   if (isRedirectingToPlan) {
     return (
       <div style={{
