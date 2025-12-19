@@ -6,6 +6,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useCart, useRemoveFromCart } from '@/hooks/useCart';
 import toast from 'react-hot-toast';
 
 // Отключаем статическую генерацию для этой страницы
@@ -30,31 +31,20 @@ interface CartItem {
 }
 
 function CartPageContent() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadCart();
-  }, []);
-
-  const loadCart = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getCart() as { items?: CartItem[] };
-      setCartItems(data.items || []);
-    } catch (err: any) {
-      console.error('Error loading cart:', err);
-      toast.error('Ошибка загрузки корзины');
-      setCartItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ИСПРАВЛЕНО: Используем React Query для автоматического обновления корзины
+  const { data: cartData, isLoading: loading } = useCart();
+  const removeFromCartMutation = useRemoveFromCart();
+  
+  const cartItems: CartItem[] = (cartData?.items || []).map(item => ({
+    id: item.id,
+    product: item.product,
+    quantity: item.quantity,
+    createdAt: item.createdAt,
+  }));
 
   const handleRemove = async (productId: number) => {
     try {
-      await api.removeFromCart(productId);
-      setCartItems(prev => prev.filter(item => item.product.id !== productId));
+      await removeFromCartMutation.mutateAsync(productId);
       toast.success('Товар удалён из корзины');
     } catch (err: any) {
       console.error('Error removing from cart:', err);

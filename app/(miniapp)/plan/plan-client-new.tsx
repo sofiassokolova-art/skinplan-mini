@@ -17,6 +17,7 @@ import { AllProductsList } from '@/components/AllProductsList';
 import { SkinIssuesCarousel } from '@/components/SkinIssuesCarousel';
 import { api } from '@/lib/api';
 import { useAddToWishlist, useRemoveFromWishlist } from '@/hooks/useWishlist';
+import { useAddToCart } from '@/hooks/useCart';
 import toast from 'react-hot-toast';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
@@ -275,6 +276,7 @@ export function PlanPageClientNew({
   // ИСПРАВЛЕНО: Используем React Query хуки для автоматической инвалидации кэша
   const addToWishlistMutation = useAddToWishlist();
   const removeFromWishlistMutation = useRemoveFromWishlist();
+  const addToCartMutation = useAddToCart();
 
   const toggleWishlist = async (productId: number) => {
     try {
@@ -315,7 +317,8 @@ export function PlanPageClientNew({
         return;
       }
 
-      await api.addToCart(productId, 1);
+      // ИСПРАВЛЕНО: Используем React Query хук для автоматической инвалидации кэша
+      await addToCartMutation.mutateAsync({ productId, quantity: 1 });
       toast.success('Добавлено в корзину');
       
       // Обновляем количество в корзине

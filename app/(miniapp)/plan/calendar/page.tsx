@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { PlanCalendar } from '@/components/PlanCalendar';
 import { DayView } from '@/components/DayView';
 import { api } from '@/lib/api';
+import { useAddToCart } from '@/hooks/useCart';
 import { clientLogger } from '@/lib/client-logger';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import { getPhaseForDay, getPhaseLabel } from '@/lib/plan-types';
@@ -322,9 +323,12 @@ export default function PlanCalendarPage() {
     }
   };
 
+  // ИСПРАВЛЕНО: Используем React Query хук для автоматической инвалидации кэша
+  const addToCartMutation = useAddToCart();
+
   const handleAddToCart = async (productId: number) => {
     try {
-      await api.addToCart(productId, 1);
+      await addToCartMutation.mutateAsync({ productId, quantity: 1 });
       toast.success('Добавлено в корзину');
       
       setCartQuantities((prev) => {

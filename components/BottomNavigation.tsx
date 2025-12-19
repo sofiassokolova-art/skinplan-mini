@@ -14,6 +14,7 @@ export default function BottomNavigation() {
   
   // ИСПРАВЛЕНО: Используем React Query для кэширования корзины
   // Это значительно снижает количество запросов к API
+  // Кэш автоматически обновляется при добавлении/удалении товаров через React Query хуки
   const { data: cartData } = useCart();
   const cartCount = cartData?.items?.length || 0;
 

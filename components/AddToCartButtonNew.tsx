@@ -4,6 +4,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAddToCart, useRemoveFromCart } from '@/hooks/useCart';
 import toast from 'react-hot-toast';
 
 interface AddToCartButtonNewProps {
@@ -13,22 +14,22 @@ interface AddToCartButtonNewProps {
 }
 
 export function AddToCartButtonNew({ productId, isInCart = false, onToggle }: AddToCartButtonNewProps) {
-  const [isLoading, setIsLoading] = useState(false);
   const [active, setActive] = useState(isInCart);
+  // ИСПРАВЛЕНО: Используем React Query хуки для автоматической инвалидации кэша
+  const addToCartMutation = useAddToCart();
+  const removeFromCartMutation = useRemoveFromCart();
+  const isLoading = addToCartMutation.isPending || removeFromCartMutation.isPending;
 
   const handleClick = async () => {
     if (isLoading) return;
     
-    setIsLoading(true);
     try {
-      const { api } = await import('@/lib/api');
-      
       if (active) {
-        await api.removeFromCart(productId);
+        await removeFromCartMutation.mutateAsync(productId);
         toast.success('Удалено из корзины');
         setActive(false);
       } else {
-        await api.addToCart(productId, 1);
+        await addToCartMutation.mutateAsync({ productId, quantity: 1 });
         toast.success('Добавлено в корзину');
         setActive(true);
       }
@@ -37,8 +38,6 @@ export function AddToCartButtonNew({ productId, isInCart = false, onToggle }: Ad
     } catch (err: any) {
       console.error('Error toggling cart:', err);
       toast.error(err?.message || 'Ошибка при изменении корзины');
-    } finally {
-      setIsLoading(false);
     }
   };
 
