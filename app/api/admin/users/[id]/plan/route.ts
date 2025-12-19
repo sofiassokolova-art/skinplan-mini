@@ -96,11 +96,15 @@ export async function GET(
         where: { id: profile.id },
         select: {
           skinType: true,
-          mainGoals: true,
           ageGroup: true,
           notes: true,
+          medicalMarkers: true, // mainGoals хранится в medicalMarkers как JSON
         },
       });
+      
+      // Извлекаем mainGoals из medicalMarkers
+      const medicalMarkers = fullProfile?.medicalMarkers as any;
+      const mainGoals = medicalMarkers?.mainGoals || (Array.isArray(medicalMarkers?.mainGoals) ? medicalMarkers.mainGoals : []);
       
       return NextResponse.json({
         plan: {
@@ -108,9 +112,9 @@ export async function GET(
           profile: {
             version: plan28Record.profileVersion,
             skinType: fullProfile?.skinType || null,
-            primaryFocus: fullProfile?.mainGoals?.[0] || null,
+            primaryFocus: Array.isArray(mainGoals) && mainGoals.length > 0 ? mainGoals[0] : null,
             ageGroup: fullProfile?.ageGroup || null,
-            concerns: fullProfile?.mainGoals || [],
+            concerns: Array.isArray(mainGoals) ? mainGoals : [],
           },
           products: allProducts,
           weeks: weeks,
