@@ -108,6 +108,58 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
     
+    // ИСПРАВЛЕНО: Создаем RecommendationSession перед генерацией плана, если её нет
+    // Это гарантирует, что план будет использовать продукты из сессии рекомендаций
+    try {
+      const existingSession = await prisma.recommendationSession.findFirst({
+        where: {
+          userId,
+          profileId: profile.id,
+        },
+      });
+      
+      if (!existingSession) {
+        logger.info('No RecommendationSession found, creating one before plan generation', {
+          userId,
+          profileId: profile.id,
+          profileVersion: profile.version,
+        });
+        
+        const { generateRecommendationsForProfile } = await import('@/lib/recommendations-generator');
+        const recommendationResult = await generateRecommendationsForProfile(userId, profile.id);
+        
+        if (recommendationResult) {
+          logger.info('RecommendationSession created successfully before plan generation', {
+            userId,
+            profileId: profile.id,
+            sessionId: recommendationResult.sessionId,
+            ruleId: recommendationResult.ruleId,
+            productsCount: recommendationResult.products?.length || 0,
+          });
+        } else {
+          logger.warn('Failed to create RecommendationSession, plan will be generated without session products', {
+            userId,
+            profileId: profile.id,
+          });
+        }
+      } else {
+        logger.info('RecommendationSession already exists, using it for plan generation', {
+          userId,
+          profileId: profile.id,
+          sessionId: existingSession.id,
+          ruleId: existingSession.ruleId,
+          productsCount: existingSession.products ? (Array.isArray(existingSession.products) ? existingSession.products.length : 0) : 0,
+        });
+      }
+    } catch (recommendationError: any) {
+      // Ошибка создания RecommendationSession не критична - план может быть сгенерирован без неё
+      logger.warn('Failed to create RecommendationSession (non-critical, plan will continue)', {
+        userId,
+        profileId: profile.id,
+        errorMessage: recommendationError?.message,
+      });
+    }
+    
     // Выполняем генерацию с таймаутом и детальной обработкой ошибок
     let plan: Awaited<ReturnType<typeof generate28DayPlan>>;
     try {
