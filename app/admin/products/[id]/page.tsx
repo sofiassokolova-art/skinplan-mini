@@ -607,7 +607,7 @@ export default function EditProductPage() {
       </div>
 
       {/* Нижняя прилипающая панель */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-6 shadow-lg z-50" style={{ marginLeft: '256px' }}>
+      <div className="fixed bottom-0 left-0 lg:left-72 right-0 bg-white border-t border-gray-200 py-6 shadow-lg z-50 transition-all duration-300">
         <div className="max-w-5xl mx-auto px-4 flex items-center justify-between gap-4">
           <Link
             href="/admin/products"

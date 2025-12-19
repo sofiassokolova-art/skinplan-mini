@@ -88,6 +88,12 @@ export async function GET(request: NextRequest) {
       prisma.wishlistFeedback.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
+        where: {
+          // Показываем только отзывы о купленных продуктах
+          feedback: {
+            in: ['bought_love', 'bought_ok', 'bought_bad'],
+          },
+        },
         include: {
           user: {
             select: {
@@ -131,9 +137,15 @@ export async function GET(request: NextRequest) {
       return null;
     });
 
-    // Вычисляем примерный доход (сумма цен всех продуктов в вишлистах)
-    const revenue = await prisma.wishlist
+    // Вычисляем доход партнёрки (сумма цен только купленных продуктов)
+    // Считаем только продукты с отзывами bought_love, bought_ok, bought_bad
+    const revenue = await prisma.wishlistFeedback
       .findMany({
+        where: {
+          feedback: {
+            in: ['bought_love', 'bought_ok', 'bought_bad'],
+          },
+        },
         include: {
           product: {
             select: {
@@ -142,10 +154,13 @@ export async function GET(request: NextRequest) {
           },
         },
       })
-      .then((wishlists) => {
-        return wishlists.reduce((sum, w) => sum + (w.product.price || 0), 0);
+      .then((feedbacks) => {
+        return feedbacks.reduce((sum, f) => sum + (f.product.price || 0), 0);
       })
-      .catch(() => 0);
+      .catch((err) => {
+        console.error('❌ Error calculating revenue:', err);
+        return 0;
+      });
 
     // Получаем параметр периода из query string
     const { searchParams } = new URL(request.url);
@@ -303,24 +318,42 @@ export async function GET(request: NextRequest) {
       },
       userGrowth: userGrowthData,
       topProducts: metrics?.topProducts || [],
-      recentFeedback: recentFeedback.map((f) => ({
-        id: f.id,
-        user: {
-          firstName: f.user.firstName,
-          lastName: f.user.lastName,
-        },
-        product: {
-          name: f.product.name,
-          brand: f.product.brand.name,
-        },
-        feedback: f.feedback,
-        createdAt: f.createdAt,
-      })),
+      recentFeedback: recentFeedback
+        .filter((f) => f.user && f.product && f.product.brand) // Фильтруем некорректные данные
+        .map((f) => ({
+          id: f.id,
+          user: {
+            firstName: f.user?.firstName || null,
+            lastName: f.user?.lastName || null,
+          },
+          product: {
+            name: f.product?.name || 'Неизвестный продукт',
+            brand: f.product?.brand?.name || 'Неизвестный бренд',
+          },
+          feedback: f.feedback,
+          createdAt: f.createdAt.toISOString(),
+        })),
     });
   } catch (error) {
-    console.error('Error fetching admin stats:', error);
+    console.error('❌ Error fetching admin stats:', error);
+    
+    // Возвращаем базовую структуру с нулевыми значениями, чтобы фронтенд не сломался
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        stats: {
+          users: 0,
+          products: 0,
+          plans: 0,
+          badFeedback: 0,
+          replacements: 0,
+          revenue: 0,
+          retakingUsers: 0,
+        },
+        userGrowth: [],
+        topProducts: [],
+        recentFeedback: [],
+        error: error instanceof Error ? error.message : 'Internal server error',
+      },
       { status: 500 }
     );
   }

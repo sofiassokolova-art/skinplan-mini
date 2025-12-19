@@ -31,6 +31,21 @@ export default function AdminLayout({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Проверяем размер экрана и адаптируем сайдбар
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false); // На мобильных по умолчанию закрыт
+      }
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const isLoginPage = pathname === '/admin/login';
 
@@ -155,11 +170,20 @@ export default function AdminLayout({
         }
       `}</style>
       
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar - Glassmorphism */}
       <aside
         className={cn(
           'admin-sidebar-glass transition-all duration-300 fixed left-0 top-0 bottom-0 z-50 flex flex-col',
-          sidebarOpen ? 'w-72' : 'w-20'
+          sidebarOpen ? 'w-72' : 'w-20',
+          isMobile && !sidebarOpen && '-translate-x-full lg:translate-x-0'
         )}
         style={{ 
           height: '100vh',
@@ -181,7 +205,8 @@ export default function AdminLayout({
           )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-lg p-2 transition-all duration-200 backdrop-blur-sm"
+            className="text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-lg p-2 transition-all duration-200 backdrop-blur-sm flex-shrink-0"
+            aria-label={sidebarOpen ? 'Закрыть меню' : 'Открыть меню'}
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -224,14 +249,27 @@ export default function AdminLayout({
         </nav>
       </aside>
 
+      {/* Mobile menu button */}
+      {isMobile && !sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="fixed top-4 left-4 z-40 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-gray-200/50 hover:bg-white transition-colors lg:hidden"
+          aria-label="Открыть меню"
+        >
+          <Menu size={20} className="text-gray-700" />
+        </button>
+      )}
+
       {/* Main Content Area */}
       <main 
-        className="min-h-screen"
-        style={{
-          marginLeft: sidebarOpen ? '288px' : '80px',
-          padding: '32px',
-          transition: 'margin-left 0.3s ease'
-        }}
+        className={cn(
+          'min-h-screen transition-all duration-300',
+          isMobile 
+            ? 'ml-0 px-4 py-6' 
+            : sidebarOpen 
+              ? 'ml-72 px-8 py-8' 
+              : 'ml-20 px-8 py-8'
+        )}
       >
         <div className="max-w-[1600px] mx-auto w-full">
           {children}

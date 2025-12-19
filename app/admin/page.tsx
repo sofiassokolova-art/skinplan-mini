@@ -45,6 +45,7 @@ export default function AdminDashboard() {
   });
   const [recentFeedback, setRecentFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [userGrowth, setUserGrowth] = useState<{ date: string; users: number }[]>([]);
   const [growthPeriod, setGrowthPeriod] = useState<'day' | 'week' | 'month'>('month');
   const [growthLoading, setGrowthLoading] = useState(false);
@@ -59,6 +60,7 @@ export default function AdminDashboard() {
 
   const loadStats = async () => {
     try {
+      setError(null);
       const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/admin/stats', {
         headers: {
@@ -72,9 +74,13 @@ export default function AdminDashboard() {
         const data = await response.json();
         setStats(data.stats || {});
         setRecentFeedback(data.recentFeedback || []);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || 'Ошибка загрузки статистики');
       }
     } catch (error) {
       console.error('Error loading stats:', error);
+      setError('Ошибка подключения к серверу');
     } finally {
       setLoading(false);
     }
@@ -115,6 +121,25 @@ export default function AdminDashboard() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">Ошибка: {error}</div>
+          <button
+            onClick={() => {
+              setLoading(true);
+              loadStats();
+            }}
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Форматируем дату
   const currentDate = new Date().toLocaleDateString('ru-RU', { 
     day: 'numeric', 
@@ -127,7 +152,13 @@ export default function AdminDashboard() {
     { 
       label: 'Всего пользователей', 
       value: stats.users || 0, 
-      change: stats.newUsersLast30Days ? `+${Math.round((stats.newUsersLast30Days / Math.max(stats.users - stats.newUsersLast30Days, 1)) * 100)}%` : null,
+      change: stats.newUsersLast30Days && stats.users > 0 
+        ? (() => {
+            const previousUsers = Math.max(stats.users - stats.newUsersLast30Days, 1);
+            const growthPercent = Math.round((stats.newUsersLast30Days / previousUsers) * 100);
+            return `+${growthPercent}%`;
+          })()
+        : null,
       color: 'from-purple-600 to-purple-400'
     },
     { 
