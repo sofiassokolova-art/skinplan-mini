@@ -34,10 +34,6 @@ export default function AdminLayout({
 
   const isLoginPage = pathname === '/admin/login';
 
-  // ИСПРАВЛЕНО: Все хуки должны быть вызваны ДО любых условных return'ов
-  // Это критично для соблюдения правил React Hooks
-  
-  // Хук 1: Проверка авторизации
   useEffect(() => {
     if (isLoginPage) {
       setLoading(false);
@@ -86,28 +82,6 @@ export default function AdminLayout({
     };
   }, [pathname, isLoginPage]);
 
-  // Хук 2: Редирект при отсутствии авторизации
-  // ИСПРАВЛЕНО: Используем router.replace для немедленного редиректа без истории
-  useEffect(() => {
-    if (!loading && !isAuthenticated && !isLoginPage) {
-      console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
-      // Используем replace вместо push для более быстрого редиректа
-      router.replace('/admin/login');
-    }
-  }, [loading, isAuthenticated, isLoginPage, router, pathname]);
-  
-  // Хук 3: Отладочное логирование
-  // ИСПРАВЛЕНО: Убрали children из зависимостей, так как это может вызывать проблемы
-  useEffect(() => {
-    console.log('[AdminLayout] State update', { 
-      pathname, 
-      loading, 
-      isAuthenticated, 
-      isLoginPage,
-      hasChildren: !!children 
-    });
-  }, [pathname, loading, isAuthenticated, isLoginPage]);
-
   const menuItems = [
     { href: '/admin', label: 'Дашборд', icon: LayoutDashboard },
     { href: '/admin/users', label: 'Пользователи', icon: Users },
@@ -121,7 +95,6 @@ export default function AdminLayout({
     { href: '/admin/logs', label: 'Логи клиентов', icon: FileSearch },
   ];
 
-  // Условные return'ы ПОСЛЕ всех хуков
   if (isLoginPage) {
     return <>{children}</>;
   }
@@ -133,11 +106,28 @@ export default function AdminLayout({
       </div>
     );
   }
+
+  // Блокируем доступ, если не авторизован
+  useEffect(() => {
+    if (!loading && !isAuthenticated && !isLoginPage) {
+      console.log('[AdminLayout] Not authenticated, redirecting to login', { pathname, loading, isAuthenticated });
+      router.push('/admin/login');
+    }
+  }, [loading, isAuthenticated, isLoginPage, router, pathname]);
   
-  // Если не авторизован и не на странице логина, не показываем контент
-  // Редирект уже выполнен в useEffect, здесь просто не рендерим админку
+  // ИСПРАВЛЕНО: Добавляем отладочное логирование
+  useEffect(() => {
+    console.log('[AdminLayout] State update', { 
+      pathname, 
+      loading, 
+      isAuthenticated, 
+      isLoginPage,
+      hasChildren: !!children 
+    });
+  }, [pathname, loading, isAuthenticated, isLoginPage, children]);
+  
+  // Если не авторизован и не на странице логина, показываем сообщение
   if (!loading && !isAuthenticated && !isLoginPage) {
-    // Показываем минимальный экран, пока происходит редирект
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-gray-600">Перенаправление на страницу входа...</div>
