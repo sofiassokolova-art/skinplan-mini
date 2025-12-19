@@ -3772,6 +3772,39 @@ export default function QuizPage() {
     submitAnswersRef.current = submitAnswers;
   }, [submitAnswers]);
   
+  // ИСПРАВЛЕНО: Проверяем entitlements через API вместо localStorage
+  // Это более надежно и работает после перезагрузки страницы
+  // ВАЖНО: Этот useEffect должен быть ВСЕГДА вызван ДО ранних return'ов, чтобы соблюдать порядок хуков
+  useEffect(() => {
+    if (showRetakeScreen && isRetakingQuiz) {
+      const checkEntitlements = async () => {
+        try {
+          const entitlements = await api.getEntitlements();
+          const hasRetakeTopic = entitlements?.entitlements?.some(
+            (e: any) => e.code === 'retake_topic_access' && e.active === true
+          ) || false;
+          const hasRetakeFull = entitlements?.entitlements?.some(
+            (e: any) => e.code === 'retake_full_access' && e.active === true
+          ) || false;
+          setHasRetakingPayment(hasRetakeTopic);
+          setHasFullRetakePayment(hasRetakeFull);
+          clientLogger.log('✅ Entitlements checked for retake screen', {
+            hasRetakeTopic,
+            hasRetakeFull,
+          });
+        } catch (err) {
+          clientLogger.warn('⚠️ Failed to check entitlements for retake screen', err);
+          // Fallback на localStorage для обратной совместимости
+          if (typeof window !== 'undefined') {
+            setHasRetakingPayment(localStorage.getItem('payment_retaking_completed') === 'true');
+            setHasFullRetakePayment(localStorage.getItem('payment_full_retake_completed') === 'true');
+          }
+        }
+      };
+      checkEntitlements();
+    }
+  }, [showRetakeScreen, isRetakingQuiz]);
+  
   // ВАЖНО: Автоматически отправляем ответы когда все вопросы отвечены
   // Этот useEffect должен быть ВСЕГДА вызван, даже если есть ранние return'ы, чтобы соблюдать порядок хуков
   // ВАЖНО: Используем submitAnswersRef вместо submitAnswers в зависимостях, чтобы избежать проблем с порядком хуков
@@ -4034,39 +4067,6 @@ export default function QuizPage() {
       </div>
     );
   }
-
-  // ИСПРАВЛЕНО: Проверяем entitlements через API вместо localStorage
-  // Это более надежно и работает после перезагрузки страницы
-  // Проверяем entitlements при монтировании экрана перепрохождения
-  useEffect(() => {
-    if (showRetakeScreen && isRetakingQuiz) {
-      const checkEntitlements = async () => {
-        try {
-          const entitlements = await api.getEntitlements();
-          const hasRetakeTopic = entitlements?.entitlements?.some(
-            (e: any) => e.code === 'retake_topic_access' && e.active === true
-          ) || false;
-          const hasRetakeFull = entitlements?.entitlements?.some(
-            (e: any) => e.code === 'retake_full_access' && e.active === true
-          ) || false;
-          setHasRetakingPayment(hasRetakeTopic);
-          setHasFullRetakePayment(hasRetakeFull);
-          clientLogger.log('✅ Entitlements checked for retake screen', {
-            hasRetakeTopic,
-            hasRetakeFull,
-          });
-        } catch (err) {
-          clientLogger.warn('⚠️ Failed to check entitlements for retake screen', err);
-          // Fallback на localStorage для обратной совместимости
-          if (typeof window !== 'undefined') {
-            setHasRetakingPayment(localStorage.getItem('payment_retaking_completed') === 'true');
-            setHasFullRetakePayment(localStorage.getItem('payment_full_retake_completed') === 'true');
-          }
-        }
-      };
-      checkEntitlements();
-    }
-  }, [showRetakeScreen, isRetakingQuiz]);
 
   // Экран продолжения анкеты
   // Экран выбора тем при повторном прохождении анкеты
