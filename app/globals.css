@@ -136,16 +136,22 @@ body {
 
 /* Гарантируем, что main контент растягивается правильно */
 .admin-layout > main {
-  width: 100% !important;
+  width: 100%;
   min-height: 100vh;
   position: relative;
   z-index: 1;
+  overflow-x: visible; /* Разрешаем графикам отображаться */
 }
 
 /* Glassmorphism сайдбар */
 .admin-sidebar-glass {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
+  position: fixed !important; /* Гарантируем fixed позиционирование */
+  left: 0 !important; /* Гарантируем позицию слева */
+  top: 0 !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
 }
 
 /* Glassmorphism карточки для админки */
@@ -203,37 +209,14 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
-/* Гарантируем правильное отображение grid и flex */
-.admin-layout .grid {
-  display: grid !important;
-}
+/* УБРАНО: Агрессивные селекторы grid и flex ломали верстку
+   Tailwind сам управляет display через классы */
 
-.admin-layout .flex {
-  display: flex !important;
-}
-
-.admin-layout .flex-col {
-  flex-direction: column !important;
-}
-
-.admin-layout .justify-between {
-  justify-content: space-between !important;
-}
-
-.admin-layout .items-center {
-  align-items: center !important;
-}
-
-.admin-layout .gap-12 {
-  gap: 3rem !important;
-}
-
-.admin-layout .mb-12 {
-  margin-bottom: 3rem !important;
-}
-
-.admin-layout .p-8 {
-  padding: 2rem !important;
+/* Стили для графиков - разрешаем отображение */
+.admin-layout svg,
+.admin-layout .recharts-wrapper,
+.admin-layout .recharts-surface {
+  overflow: visible !important;
 }
 
 /* Стили для таблиц в админке */
@@ -262,10 +245,7 @@ body {
   -webkit-backdrop-filter: blur(8px) !important;
 }
 
-/* Улучшенные тени для glassmorphism */
-.admin-layout * {
-  /* Убираем глобальные переопределения, чтобы Tailwind работал */
-}
+/* УБРАНО: Пустой селектор .admin-layout * может вызывать проблемы */
 
 /* Улучшенные кнопки для админки */
 .admin-layout .btn-primary {

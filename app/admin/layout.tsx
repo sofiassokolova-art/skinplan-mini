@@ -269,7 +269,7 @@ export default function AdminLayout({
       <main 
         className={cn(
           'min-h-screen transition-all duration-300',
-          'w-full overflow-x-hidden',
+          'overflow-x-visible', // Разрешаем графикам отображаться
           isMobile 
             ? 'ml-0 px-4 py-6' 
             : sidebarOpen 
