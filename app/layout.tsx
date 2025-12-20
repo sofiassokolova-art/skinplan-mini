@@ -78,15 +78,17 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
           rel="stylesheet"
         />
-        {/* Шрифт Unbounded для анкеты - загружаем все нужные веса */}
+        {/* Шрифт Unbounded для анкеты - загружаем все нужные веса с font-display: swap */}
         <link
           href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&display=swap"
           rel="stylesheet"
+          crossOrigin="anonymous"
         />
-        {/* Шрифт Inter для кнопок - загружаем все нужные веса */}
+        {/* Шрифт Inter для кнопок - загружаем все нужные веса с font-display: swap */}
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
           rel="stylesheet"
+          crossOrigin="anonymous"
         />
       </head>
       <body>
