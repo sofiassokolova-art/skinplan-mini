@@ -6,7 +6,11 @@ import { getAdminFromInitData } from '@/lib/get-admin-from-initdata';
 import jwt from 'jsonwebtoken';
 import { getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// ИСПРАВЛЕНО (P0): Убран fallback - критическая уязвимость безопасности
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is not set. Please set JWT_SECRET environment variable.');
+}
 
 // POST - авторизация через Telegram initData
 export async function POST(request: NextRequest) {
@@ -33,21 +37,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Генерируем JWT токен
+    // ИСПРАВЛЕНО (P2): Генерируем JWT токен с issuer/audience для безопасности
+    // JWT_SECRET уже проверен на undefined выше
     const token = jwt.sign(
       {
         adminId: result.admin.id,
         telegramId: result.admin.telegramId,
         role: result.admin.role,
       },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      JWT_SECRET as string,
+      {
+        expiresIn: '7d',
+        issuer: 'skiniq-admin',
+        audience: 'skiniq-admin-ui',
+      }
     );
 
-
-    // Создаем ответ с токеном
+    // ИСПРАВЛЕНО (P1): Убрали token из JSON ответа - cookie-only подход
+    // ИСПРАВЛЕНО (P0): httpOnly: true для защиты от XSS
     const response = NextResponse.json({
-      token,
+      valid: true,
       admin: {
         id: result.admin.id,
         telegramId: result.admin.telegramId,
@@ -55,9 +64,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Устанавливаем токен в cookies
+    // Устанавливаем токен в cookies (httpOnly для защиты от XSS)
     response.cookies.set('admin_token', token, {
-      httpOnly: false, // Нужен доступ из JS
+      httpOnly: true, // ИСПРАВЛЕНО (P0): Защита от XSS
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 дней
@@ -75,18 +84,23 @@ export async function POST(request: NextRequest) {
 }
 
 // GET - проверка текущего токена
+// ИСПРАВЛЕНО (P1): Только cookie, убрали поддержку Authorization header
 export async function GET(request: NextRequest) {
   try {
-    const token =
-      request.cookies.get('admin_token')?.value ||
-      request.headers.get('authorization')?.replace('Bearer ', '');
+    // ИСПРАВЛЕНО (P1): Только cookie, убрали чтение Authorization header
+    const token = request.cookies.get('admin_token')?.value;
 
     if (!token) {
       return NextResponse.json({ valid: false }, { status: 401 });
     }
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as {
+      // ИСПРАВЛЕНО (P2): Проверяем issuer/audience при верификации
+      // JWT_SECRET уже проверен на undefined выше
+      const decoded = jwt.verify(token, JWT_SECRET as string, {
+        issuer: 'skiniq-admin',
+        audience: 'skiniq-admin-ui',
+      }) as {
         adminId: string;
         telegramId: string;
         role: string;

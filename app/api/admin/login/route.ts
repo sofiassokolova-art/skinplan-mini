@@ -109,14 +109,18 @@ export async function POST(request: NextRequest) {
       logger.info('Default admin created', { adminId: admin.id });
     }
 
-    // Генерируем JWT токен
+    // ИСПРАВЛЕНО (P2): Генерируем JWT токен с issuer/audience для безопасности
     const token = jwt.sign(
       {
         adminId: admin.id,
         role: admin.role || 'admin',
       },
       JWT_SECRET!, // Теперь мы уверены, что JWT_SECRET не null
-      { expiresIn: '7d' }
+      {
+        expiresIn: '7d',
+        issuer: 'skiniq-admin',
+        audience: 'skiniq-admin-ui',
+      }
     );
 
     logger.info('Admin logged in via secret word', { 
@@ -125,18 +129,18 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    // Создаем ответ с токеном
+    // ИСПРАВЛЕНО (P1): Убрали token из JSON ответа - cookie-only подход
     const response = NextResponse.json({
-      token,
+      valid: true,
       admin: {
         id: admin.id,
         role: admin.role,
       },
     });
 
-    // Устанавливаем токен в cookies для автоматической передачи
+    // ИСПРАВЛЕНО (P0): httpOnly: true для защиты от XSS
     response.cookies.set('admin_token', token, {
-      httpOnly: false, // Нужен доступ из JS для отправки в заголовках
+      httpOnly: true, // ИСПРАВЛЕНО (P0): Защита от XSS
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 дней

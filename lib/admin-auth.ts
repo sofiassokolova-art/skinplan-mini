@@ -4,7 +4,11 @@
 import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// ИСПРАВЛЕНО (P0): Убран fallback - критическая уязвимость безопасности
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is not set. Please set JWT_SECRET environment variable.');
+}
 
 export interface AdminAuthResult {
   valid: boolean;
@@ -18,11 +22,11 @@ export interface AdminAuthResult {
  * @param request - NextRequest объект
  * @returns Результат проверки с информацией об админе
  */
+// ИСПРАВЛЕНО (P1): Только cookie, убрали поддержку Authorization header
 export async function verifyAdmin(request: NextRequest): Promise<AdminAuthResult> {
   try {
-    const cookieToken = request.cookies.get('admin_token')?.value;
-    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '');
-    const token = cookieToken || headerToken;
+    // ИСПРАВЛЕНО (P1): Только cookie, убрали чтение Authorization header
+    const token = request.cookies.get('admin_token')?.value;
     
     if (!token) {
       return {
@@ -32,7 +36,12 @@ export async function verifyAdmin(request: NextRequest): Promise<AdminAuthResult
     }
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as {
+      // ИСПРАВЛЕНО (P2): Проверяем issuer/audience при верификации
+      // JWT_SECRET уже проверен на undefined при загрузке модуля
+      const decoded = jwt.verify(token, JWT_SECRET as string, {
+        issuer: 'skiniq-admin',
+        audience: 'skiniq-admin-ui',
+      }) as {
         adminId: string | number;
         role?: string;
         telegramId?: string;
