@@ -4912,7 +4912,7 @@ export default function QuizPage() {
                       height: '44px',
                       borderRadius: '50%',
                       background: '#D5FE61',
-                      border: '1px solid #000000',
+                      border: 'none',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
