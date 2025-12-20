@@ -7,9 +7,13 @@ import jwt from 'jsonwebtoken';
 import { getTelegramInitDataFromHeaders } from '@/lib/auth/telegram-auth';
 
 // ИСПРАВЛЕНО (P0): Убран fallback - критическая уязвимость безопасности
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET is not set. Please set JWT_SECRET environment variable.');
+// Проверка перенесена внутрь функций, чтобы не ломать сборку
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not set. Please set JWT_SECRET environment variable.');
+  }
+  return secret;
 }
 
 // POST - авторизация через Telegram initData
@@ -38,14 +42,13 @@ export async function POST(request: NextRequest) {
     }
 
     // ИСПРАВЛЕНО (P2): Генерируем JWT токен с issuer/audience для безопасности
-    // JWT_SECRET уже проверен на undefined выше
     const token = jwt.sign(
       {
         adminId: result.admin.id,
         telegramId: result.admin.telegramId,
         role: result.admin.role,
       },
-      JWT_SECRET as string,
+      getJwtSecret(),
       {
         expiresIn: '7d',
         issuer: 'skiniq-admin',
@@ -96,8 +99,7 @@ export async function GET(request: NextRequest) {
 
     try {
       // ИСПРАВЛЕНО (P2): Проверяем issuer/audience при верификации
-      // JWT_SECRET уже проверен на undefined выше
-      const decoded = jwt.verify(token, JWT_SECRET as string, {
+      const decoded = jwt.verify(token, getJwtSecret(), {
         issuer: 'skiniq-admin',
         audience: 'skiniq-admin-ui',
       }) as {

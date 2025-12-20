@@ -4,7 +4,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, Package, FileText, MessageSquare, RefreshCw, TrendingUp } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -35,6 +36,7 @@ interface Feedback {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [stats, setStats] = useState<Stats>({
     users: 0,
     products: 0,
@@ -61,18 +63,34 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     try {
       setError(null);
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/stats', {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
 
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
-        setStats(data.stats || {});
+        // ИСПРАВЛЕНО (P1): Нормализация stats с дефолтами вместо {}
+        setStats({
+          users: data.stats?.users ?? 0,
+          products: data.stats?.products ?? 0,
+          plans: data.stats?.plans ?? 0,
+          badFeedback: data.stats?.badFeedback ?? 0,
+          replacements: data.stats?.replacements ?? 0,
+          revenue: data.stats?.revenue ?? 0,
+          retakingUsers: data.stats?.retakingUsers ?? 0,
+          newUsersLast7Days: data.stats?.newUsersLast7Days ?? 0,
+          newUsersLast30Days: data.stats?.newUsersLast30Days ?? 0,
+        });
         setRecentFeedback(data.recentFeedback || []);
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -89,14 +107,19 @@ export default function AdminDashboard() {
   const loadUserGrowth = async () => {
     setGrowthLoading(true);
     try {
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch(`/api/admin/stats?period=${growthPeriod}`, {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -176,7 +199,7 @@ export default function AdminDashboard() {
     { 
       label: 'Продуктов в базе', 
       value: stats.products || 0, 
-      change: stats.products === 120 ? 'new' : null,
+      change: null, // ИСПРАВЛЕНО (P1): Убрали хак с products === 120
       color: 'from-emerald-600 to-teal-400'
     },
     { 
@@ -223,11 +246,11 @@ export default function AdminDashboard() {
             {m.change && (
               <div className={cn(
                 'text-sm font-medium',
-                m.change.startsWith('+') || m.change === 'new' 
+                m.change.startsWith('+')
                   ? 'text-emerald-600' 
                   : 'text-red-600'
               )}>
-                {m.change === 'new' ? '✓ Новый сид' : m.change + ' за 28 дней'}
+                {m.change + ' за 30 дней'}
               </div>
             )}
           </div>
@@ -240,9 +263,9 @@ export default function AdminDashboard() {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Рост пользователей</h2>
             <p className="text-sm text-gray-500 mt-1">
-              {growthPeriod === 'day' && 'За последние 24 часа'}
-              {growthPeriod === 'week' && 'За последние 7 дней'}
-              {growthPeriod === 'month' && 'За последние 30 дней'}
+              {growthPeriod === 'day' && 'Всего пользователей за последние 24 часа (накопительно)'}
+              {growthPeriod === 'week' && 'Всего пользователей за последние 7 дней (накопительно)'}
+              {growthPeriod === 'month' && 'Всего пользователей за последние 30 дней (накопительно)'}
             </p>
           </div>
           <div className="flex items-center gap-2">
