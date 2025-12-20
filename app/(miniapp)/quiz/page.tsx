@@ -4445,7 +4445,12 @@ export default function QuizPage() {
 
   // ВАЖНО: Не показываем экран "Вы не завершили анкету", если пользователь нажал "Начать заново"
   // или уже продолжил анкету
-  if (showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current) {
+  // ИСПРАВЛЕНО: Добавлена проверка на минимальное количество ответов (>= 5) для показа экрана прогресса
+  const answersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
+  const questionIndex = savedProgress?.questionIndex ?? -1;
+  const shouldShowProgressScreen = answersCount >= 5 || questionIndex >= 5;
+  
+  if (showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current && shouldShowProgressScreen) {
     // Получаем все вопросы с фильтрацией
     // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
     const allQuestionsRaw = questionnaire ? [
