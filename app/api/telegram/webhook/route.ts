@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { prisma } from '@/lib/db';
 import { getUserIdFromTelegramId } from '@/lib/get-user-from-telegram-id';
+import { verifyAdmin } from '@/lib/admin-auth';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 // Секретный токен опционален - используется только если установлен в переменных окружения
@@ -766,6 +767,17 @@ export async function GET(request: NextRequest) {
   const action = searchParams.get('action');
 
   console.log('🔍 GET webhook request:', { action, url: request.url });
+
+  // ИСПРАВЛЕНО (P0): Проверка админ-авторизации для админских действий
+  if (action === 'check' || action === 'set-webhook') {
+    const adminAuth = await verifyAdmin(request);
+    if (!adminAuth.valid) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      );
+    }
+  }
 
   if (!TELEGRAM_BOT_TOKEN) {
     console.error('❌ TELEGRAM_BOT_TOKEN not configured');

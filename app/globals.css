@@ -332,3 +332,13 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* ИСПРАВЛЕНО (P2): Глобальные стили для админ-лейаута (вынесены из layout.tsx) */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.admin-layout {
+  animation: gradientShift 15s ease infinite;
+}

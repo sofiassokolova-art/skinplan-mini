@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Heart, ThumbsUp, ThumbsDown, Star, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -61,14 +61,10 @@ export default function FeedbackAdmin() {
     service: 0,
   });
 
-  useEffect(() => {
-    loadFeedback();
-  }, []);
-
-  const loadFeedback = async () => {
+  // ИСПРАВЛЕНО (P1): Обёрнут в useCallback для предотвращения лишних перезагрузок
+  const loadFeedback = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('admin_token');
       
       // Формируем URL с параметром типа для plan feedback
       let url = '/api/admin/feedback';
@@ -76,10 +72,10 @@ export default function FeedbackAdmin() {
         url += `?planFeedbackType=${activeSection}`;
       }
       
+      // ИСПРАВЛЕНО (P0): Используем только cookie для авторизации
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
@@ -130,14 +126,18 @@ export default function FeedbackAdmin() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeSection]);
+
+  useEffect(() => {
+    loadFeedback();
+  }, [loadFeedback]);
 
   // Перезагружаем данные при смене секции для plan feedback
   useEffect(() => {
     if (!loading && (activeSection === 'plan_recommendations' || activeSection === 'plan_general' || activeSection === 'service')) {
       loadFeedback();
     }
-  }, [activeSection]);
+  }, [activeSection, loading, loadFeedback]);
 
   const filteredProductFeedback = productFeedback.filter((f) => {
     if (activeProductTab === 'all') return true;
@@ -165,7 +165,7 @@ export default function FeedbackAdmin() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-white/60">Загрузка...</div>
+        <div className="text-gray-500">Загрузка...</div>
       </div>
     );
   }
@@ -252,25 +252,25 @@ export default function FeedbackAdmin() {
       )}
 
       {/* Список отзывов */}
-      <div className="bg-transparent rounded-2xl border border-gray-200 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="space-y-4">
           {activeSection === 'products' ? (
             filteredProductFeedback.length === 0 ? (
-              <div className="text-center py-12 text-white/60">
+              <div className="text-center py-12 text-gray-500">
                 Нет отзывов в этой категории
               </div>
             ) : (
               filteredProductFeedback.map((f) => (
                 <div
                   key={f.id}
-                  className="p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
+                  className="p-4 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <div className="font-medium text-white mb-1">
+                      <div className="font-medium text-gray-900 mb-1">
                         {f.user.firstName || ''} {f.user.lastName || ''}
                       </div>
-                      <div className="text-white/80 text-sm">
+                      <div className="text-gray-600 text-sm">
                         {f.product.brand} {f.product.name}
                       </div>
                     </div>
@@ -302,25 +302,25 @@ export default function FeedbackAdmin() {
             )
           ) : (
             planFeedback.length === 0 ? (
-              <div className="text-center py-12 text-white/60">
+              <div className="text-center py-12 text-gray-500">
                 Нет отзывов по плану в этой категории
               </div>
             ) : (
               planFeedback.map((f) => (
                 <div
                   key={f.id}
-                  className="p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
+                  className="p-4 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <div className="font-medium text-white mb-1">
+                      <div className="font-medium text-gray-900 mb-1">
                         {f.user.firstName || ''} {f.user.lastName || ''}
                       </div>
-                      <div className="text-white/60 text-xs mb-2">
+                      <div className="text-gray-600 text-xs mb-2">
                         Тип: {f.type === 'plan_recommendations' ? 'По рекомендациям' : f.type === 'plan_general' ? 'Общий по плану' : 'Сервисный'}
                       </div>
                       {f.feedback && (
-                        <div className="text-white/80 text-sm mt-2">
+                        <div className="text-gray-700 text-sm mt-2">
                           {f.feedback}
                         </div>
                       )}
@@ -335,12 +335,12 @@ export default function FeedbackAdmin() {
                           />
                         ))}
                       </div>
-                      <span className="text-white/60 text-xs">
+                      <span className="text-gray-600 text-xs">
                         {f.rating}/5
                       </span>
                     </div>
                   </div>
-                  <div className="text-white/40 text-xs">
+                  <div className="text-gray-400 text-xs">
                     {new Date(f.createdAt).toLocaleDateString('ru-RU', {
                       day: '2-digit',
                       month: '2-digit',

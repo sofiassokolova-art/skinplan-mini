@@ -32,20 +32,26 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [userOpenedSidebar, setUserOpenedSidebar] = useState(false); // ИСПРАВЛЕНО (P1): Храним пользовательское намерение
 
   // Проверяем размер экрана и адаптируем сайдбар
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024); // lg breakpoint
-      if (window.innerWidth < 1024) {
-        setSidebarOpen(false); // На мобильных по умолчанию закрыт
+      const wasMobile = isMobile;
+      const nowMobile = window.innerWidth < 1024;
+      setIsMobile(nowMobile);
+      
+      // ИСПРАВЛЕНО (P1): Закрываем сайдбар только при первом переключении на mobile
+      // Если пользователь сам открыл сайдбар, не закрываем при resize
+      if (nowMobile && !wasMobile && !userOpenedSidebar) {
+        setSidebarOpen(false); // На мобильных по умолчанию закрыт при первом входе
       }
     };
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  }, [isMobile, userOpenedSidebar]);
 
   const isLoginPage = pathname === '/admin/login';
 
@@ -60,10 +66,10 @@ export default function AdminLayout({
 
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('admin_token');
+        // ИСПРАВЛЕНО (P0): Используем только cookie, убрали localStorage токен
+        // ИСПРАВЛЕНО (P1): Убрали credentials: 'include' + Authorization одновременно
         const response = await fetch('/api/admin/auth', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          credentials: 'include',
+          credentials: 'include', // Используем только cookie для авторизации
         });
 
         if (!mounted) return;
@@ -160,15 +166,7 @@ export default function AdminLayout({
       background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
       backgroundSize: '400% 400%'
     }}>
-      <style jsx global>{`
-        @keyframes gradientShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        .admin-layout {
-          animation: gradientShift 15s ease infinite;
-        }
-      `}</style>
+      {/* ИСПРАВЛЕНО (P2): Глобальные стили вынесены в globals.css */}
       
       {/* Mobile overlay - только на мобильных, не перекрывает контент на десктопе */}
       {isMobile && sidebarOpen && (
@@ -205,7 +203,10 @@ export default function AdminLayout({
             </h1>
           )}
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() => {
+              setSidebarOpen(!sidebarOpen);
+              setUserOpenedSidebar(!sidebarOpen); // ИСПРАВЛЕНО (P1): Сохраняем пользовательское намерение
+            }}
             className="text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-lg p-2 transition-all duration-200 backdrop-blur-sm flex-shrink-0"
             aria-label={sidebarOpen ? 'Закрыть меню' : 'Открыть меню'}
           >
@@ -253,7 +254,10 @@ export default function AdminLayout({
       {/* Mobile menu button */}
       {isMobile && !sidebarOpen && (
         <button
-          onClick={() => setSidebarOpen(true)}
+          onClick={() => {
+            setSidebarOpen(true);
+            setUserOpenedSidebar(true); // ИСПРАВЛЕНО (P1): Сохраняем пользовательское намерение
+          }}
           className="fixed top-4 left-4 z-40 bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-gray-200/50 hover:bg-white transition-colors lg:hidden"
           aria-label="Открыть меню"
         >
