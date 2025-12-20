@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-
+    
     // Проверяем кеш (TTL 2 минуты для статистики)
     const cacheKey = 'admin_stats';
     const cached = adminCache.get<any>(cacheKey);
@@ -290,18 +290,18 @@ export async function GET(request: NextRequest) {
       recentFeedback: recentFeedback
         .filter((f) => f.user && f.product && f.product.brand) // Фильтруем некорректные данные
         .map((f) => ({
-          id: f.id,
-          user: {
+        id: f.id,
+        user: {
             firstName: f.user?.firstName || null,
             lastName: f.user?.lastName || null,
-          },
-          product: {
+        },
+        product: {
             name: f.product?.name || 'Неизвестный продукт',
             brand: f.product?.brand?.name || 'Неизвестный бренд',
-          },
-          feedback: f.feedback,
+        },
+        feedback: f.feedback,
           createdAt: f.createdAt.toISOString(),
-        })),
+      })),
     };
 
     // Сохраняем в кеш на 2 минуты

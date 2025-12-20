@@ -4,8 +4,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
+import jwt from 'jsonwebtoken';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Рендеринг сообщения с переменными
 function renderMessage(template: string, user: any, profile: any): string {

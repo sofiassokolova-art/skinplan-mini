@@ -177,7 +177,7 @@ export default function AdminLayout({
           onClick={() => setSidebarOpen(false)}
         />
       )}
-
+      
       {/* Sidebar - Glassmorphism */}
       <aside
         className={cn(

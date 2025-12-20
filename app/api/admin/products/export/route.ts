@@ -5,6 +5,9 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ApiResponse } from '@/lib/api-response';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // POST - отправка экспорта в Telegram чат админа
 export async function POST(request: NextRequest) {
