@@ -13,6 +13,7 @@ import { QueryProvider } from '@/providers/QueryProvider';
 
 // Загружаем шрифты локально из public/fonts для надежности
 // Файлы шрифтов должны быть загружены в public/fonts/
+// Если файлы не найдены, используется fallback на системные шрифты
 const unbounded = localFont({
   src: [
     {
@@ -29,6 +30,8 @@ const unbounded = localFont({
   variable: '--font-unbounded',
   display: 'swap',
   fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+  // Если файлы не найдены, не выбрасываем ошибку
+  adjustFontFallback: false,
 });
 
 const inter = localFont({
@@ -82,6 +85,8 @@ const inter = localFont({
   variable: '--font-inter',
   display: 'swap',
   fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+  // Если файлы не найдены, не выбрасываем ошибку
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
