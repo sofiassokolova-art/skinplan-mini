@@ -136,22 +136,18 @@ body {
 
 /* Гарантируем, что main контент растягивается правильно */
 .admin-layout > main {
-  width: 100%;
   min-height: 100vh;
   position: relative;
   z-index: 1;
   overflow-x: visible; /* Разрешаем графикам отображаться */
+  /* width управляется через inline стили в layout.tsx */
 }
 
 /* Glassmorphism сайдбар */
 .admin-sidebar-glass {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  position: fixed !important; /* Гарантируем fixed позиционирование */
-  left: 0 !important; /* Гарантируем позицию слева */
-  top: 0 !important;
-  bottom: 0 !important;
-  z-index: 50 !important;
+  /* position, left, top, bottom, z-index управляются через классы Tailwind в layout.tsx */
 }
 
 /* Glassmorphism карточки для админки */
@@ -216,6 +212,22 @@ body {
 .admin-layout svg,
 .admin-layout .recharts-wrapper,
 .admin-layout .recharts-surface {
+  overflow: visible !important;
+}
+
+/* Стили для графиков - разрешаем отображение */
+.admin-layout svg,
+.admin-layout .recharts-wrapper,
+.admin-layout .recharts-surface,
+.admin-layout .recharts-legend-wrapper,
+.admin-layout .recharts-tooltip-wrapper {
+  overflow: visible !important;
+}
+
+/* Контейнер для графиков */
+.admin-layout .recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
   overflow: visible !important;
 }
 

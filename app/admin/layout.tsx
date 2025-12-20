@@ -268,8 +268,7 @@ export default function AdminLayout({
       {/* Main Content Area */}
       <main 
         className={cn(
-          'min-h-screen transition-all duration-300',
-          'overflow-x-visible', // Разрешаем графикам отображаться
+          'min-h-screen transition-all duration-300 relative',
           isMobile 
             ? 'ml-0 px-4 py-6' 
             : sidebarOpen 
@@ -282,6 +281,12 @@ export default function AdminLayout({
             : sidebarOpen 
               ? 'calc(100% - 18rem)' 
               : 'calc(100% - 5rem)',
+          marginLeft: isMobile 
+            ? '0' 
+            : sidebarOpen 
+              ? '18rem' 
+              : '5rem',
+          overflowX: 'visible', // Разрешаем графикам отображаться
         }}
       >
         <div className="max-w-[1600px] mx-auto w-full">

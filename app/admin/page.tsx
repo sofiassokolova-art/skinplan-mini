@@ -301,7 +301,7 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
-        <div className="h-96">
+        <div className="h-96 w-full" style={{ position: 'relative', overflow: 'visible' }}>
           {growthLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-gray-500">Загрузка данных...</div>
@@ -314,38 +314,40 @@ export default function AdminDashboard() {
               </div>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={userGrowth}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#6b7280"
-                  tick={{ fill: '#6b7280', fontSize: '12px' }}
-                />
-                <YAxis 
-                  stroke="#6b7280"
-                  tick={{ fill: '#6b7280', fontSize: '12px' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    color: '#111827',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  }}
-                  labelStyle={{ color: '#111827', fontWeight: 'bold' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="users"
-                  stroke="#8B5CF6"
-                  strokeWidth={2}
-                  dot={{ fill: '#8B5CF6', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={userGrowth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#6b7280"
+                    tick={{ fill: '#6b7280', fontSize: '12px' }}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    tick={{ fill: '#6b7280', fontSize: '12px' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      color: '#111827',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }}
+                    labelStyle={{ color: '#111827', fontWeight: 'bold' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="users"
+                    stroke="#8B5CF6"
+                    strokeWidth={2}
+                    dot={{ fill: '#8B5CF6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       </div>
