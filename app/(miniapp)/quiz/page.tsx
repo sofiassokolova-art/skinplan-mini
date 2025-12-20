@@ -5012,6 +5012,292 @@ export default function QuizPage() {
       );
     }
 
+    // Специальный рендеринг для экрана "SkinIQ — ваш персональный анализ кожи"
+    if (isPersonalAnalysisScreen) {
+      const features = [
+        {
+          icon: (
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="48" height="48" rx="12" fill="#D5FE61"/>
+              <path d="M24 14C18.48 14 14 18.48 14 24C14 29.52 18.48 34 24 34C29.52 34 34 29.52 34 24C34 18.48 29.52 14 24 14ZM24 30C20.69 30 18 27.31 18 24C18 20.69 20.69 18 24 18C27.31 18 30 20.69 30 24C30 27.31 27.31 30 24 30Z" fill="#000000"/>
+              <circle cx="24" cy="24" r="2" fill="#000000"/>
+              <path d="M20 20L16 16M32 16L28 20M20 28L16 32M32 32L28 28" stroke="#000000" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          ),
+          text: 'Детальный разбор — морщины, линии и текстура в 3D',
+        },
+        {
+          icon: (
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="48" height="48" rx="12" fill="#D5FE61"/>
+              <path d="M24 12C20.69 12 18 14.69 18 18V24C18 27.31 20.69 30 24 30C27.31 30 30 27.31 30 24V18C30 14.69 27.31 12 24 12Z" fill="#000000"/>
+              <path d="M24 30V36M20 36H28" stroke="#000000" strokeWidth="2" strokeLinecap="round"/>
+              <text x="24" y="22" textAnchor="middle" fill="#000000" fontSize="10" fontWeight="700">%</text>
+            </svg>
+          ),
+          text: 'Уровень увлажнённости — персональная оценка баланса влаги',
+        },
+        {
+          icon: (
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="48" height="48" rx="12" fill="#D5FE61"/>
+              <circle cx="20" cy="20" r="2" fill="#000000"/>
+              <circle cx="28" cy="20" r="2" fill="#000000"/>
+              <circle cx="24" cy="24" r="1.5" fill="#000000"/>
+              <circle cx="18" cy="28" r="1.5" fill="#000000"/>
+              <circle cx="30" cy="28" r="1.5" fill="#000000"/>
+              <path d="M24 18C24 18 22 22 20 24C18 26 20 28 24 28C28 28 30 26 28 24C26 22 24 18 24 18Z" stroke="#000000" strokeWidth="1.5" fill="none"/>
+            </svg>
+          ),
+          text: 'Поры — точное выявление и измерение',
+        },
+      ];
+
+      return (
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+        }}>
+          {/* Кнопка "Назад" */}
+          <div style={{
+            position: 'absolute',
+            top: 'clamp(20px, 4vh, 40px)',
+            left: 'clamp(19px, 5vw, 24px)',
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <button
+              onClick={() => {
+                if (currentInfoScreenIndex > 0) {
+                  setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
+                }
+              }}
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '10px',
+                background: '#D5FE61',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              <svg
+                width="7"
+                height="14"
+                viewBox="0 0 7 14"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{
+                  transform: 'rotate(180deg)',
+                }}
+              >
+                <path
+                  d="M1 1L6 7L1 13"
+                  stroke="#000000"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <span style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontStyle: 'normal',
+              fontSize: '14px',
+              lineHeight: '34px',
+              letterSpacing: '0px',
+              textAlign: 'center',
+              color: '#000000',
+            }}>
+              Назад
+            </span>
+          </div>
+
+          {/* Контент */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: '120px',
+            paddingBottom: '100px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}>
+            {/* Заголовок */}
+            <h1 
+              className="quiz-title"
+              style={{
+                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                fontStyle: 'normal',
+                fontSize: '24px',
+                lineHeight: '100%',
+                letterSpacing: '0px',
+                textAlign: 'center',
+                color: '#000000',
+                margin: '0 0 40px 0',
+              }}>
+              {screen.title}
+            </h1>
+
+            {/* Подзаголовок */}
+            <div style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '16px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              textAlign: 'center',
+              color: '#9D9D9D',
+              marginBottom: '40px',
+              maxWidth: '320px',
+            }}>
+              Ваш полный анализ включает:
+            </div>
+
+            {/* Список функций с иконками */}
+            <div style={{
+              width: '100%',
+              maxWidth: '320px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+              marginBottom: '40px',
+            }}>
+              {features.map((feature, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    gap: '12px',
+                  }}
+                >
+                  {/* Иконка */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    {feature.icon}
+                  </div>
+                  {/* Текст */}
+                  <div style={{
+                    fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 400,
+                    fontSize: '16px',
+                    lineHeight: '140%',
+                    letterSpacing: '0px',
+                    textAlign: 'center',
+                    color: '#000000',
+                  }}>
+                    {feature.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Факты */}
+            <div style={{
+              width: '100%',
+              maxWidth: '320px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              marginTop: '20px',
+            }}>
+              <div style={{
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '14px',
+                lineHeight: '140%',
+                letterSpacing: '0px',
+                textAlign: 'center',
+                color: '#000000',
+              }}>
+                92% пользователей отмечают улучшение состояния кожи за 1 месяц ✅
+              </div>
+              <div style={{
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '14px',
+                lineHeight: '140%',
+                letterSpacing: '0px',
+                textAlign: 'center',
+                color: '#000000',
+              }}>
+                SkinIQ в 3 раза эффективнее обычных рутин
+              </div>
+            </div>
+          </div>
+          
+          {/* Фиксированная кнопка "Продолжить" внизу экрана */}
+          {screen.ctaText && (
+            <div style={{
+              position: 'fixed',
+              bottom: 'clamp(40px, 6vh, 60px)',
+              left: 0,
+              right: 0,
+              padding: '0 clamp(20px, 5vw, 40px)',
+              background: 'transparent',
+              zIndex: 100,
+              display: 'flex',
+              justifyContent: 'center',
+            }}>
+              <button
+                onClick={handleNext}
+                style={{
+                  width: '100%',
+                  maxWidth: 'clamp(224px, 60vw, 320px)',
+                  height: 'clamp(56px, 8vh, 64px)',
+                  borderRadius: '20px',
+                  background: '#D5FE61',
+                  color: '#000000',
+                  border: 'none',
+                  fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 'clamp(14px, 4vw, 16px)',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)';
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                {String(screen.ctaText || 'Продолжить')}
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div style={{ 
         padding: '20px',
