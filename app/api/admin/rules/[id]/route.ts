@@ -75,8 +75,8 @@ export async function PUT(
       data: {
         ruleId: parseInt(params.id),
         name: currentRule.name,
-        conditionsJson: currentRule.conditionsJson,
-        stepsJson: currentRule.stepsJson,
+        conditionsJson: currentRule.conditionsJson as any, // Prisma Json type
+        stepsJson: currentRule.stepsJson as any, // Prisma Json type
         priority: currentRule.priority,
         isActive: currentRule.isActive,
         version: nextVersion,
@@ -289,8 +289,8 @@ export async function POST(
         data: {
           ruleId: parseInt(params.id),
           name: currentRule.name,
-          conditionsJson: currentRule.conditionsJson,
-          stepsJson: currentRule.stepsJson,
+          conditionsJson: currentRule.conditionsJson as any, // Prisma Json type
+          stepsJson: currentRule.stepsJson as any, // Prisma Json type
           priority: currentRule.priority,
           isActive: currentRule.isActive,
           version: nextVersion,
@@ -304,8 +304,8 @@ export async function POST(
       where: { id: parseInt(params.id) },
       data: {
         name: historyEntry.name,
-        conditionsJson: historyEntry.conditionsJson,
-        stepsJson: historyEntry.stepsJson,
+        conditionsJson: historyEntry.conditionsJson as any, // Prisma Json type
+        stepsJson: historyEntry.stepsJson as any, // Prisma Json type
         priority: historyEntry.priority,
         isActive: historyEntry.isActive,
       },
