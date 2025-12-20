@@ -180,8 +180,18 @@ function getFallbackStep(step: string): StepCategory | undefined {
  * В будущем должна быть мигрирована на generate28DayPlanFromContext
  * TODO: Полная миграция на DomainContext - все данные должны приходить через context
  */
-export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> {
-  logger.info('🚀 Starting plan generation', { userId, timestamp: new Date().toISOString() });
+/**
+ * ИСПРАВЛЕНО (P0): Режимы генерации плана
+ * strict: день не создаётся если невалиден (нет минимальных шагов)
+ * soft: fallback'и допустимы, создаются дни даже с минимальным набором
+ */
+export type PlanGenerationMode = 'strict' | 'soft';
+
+export async function generate28DayPlan(
+  userId: string,
+  mode: PlanGenerationMode = 'soft'
+): Promise<GeneratedPlan> {
+  logger.info('🚀 Starting plan generation', { userId, mode, timestamp: new Date().toISOString() });
   
   try {
     // ИСПРАВЛЕНО: В будущем эта функция должна принимать DomainContext
@@ -3057,10 +3067,10 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     const weekData = weeks.find(w => w.week === weekNum);
     const dayData = weekData?.days.find(d => d.day === dayIndex);
     
-    // ИСПРАВЛЕНО: Логируем, если dayData не найден, но не пропускаем день
-    // Вместо этого создаем день с пустыми шагами, чтобы план не был пустым
+    // ИСПРАВЛЕНО (P0): Если dayData не найден - это критическая ошибка
+    // Не создаём пустой день, а логируем ошибку и пропускаем день
     if (!dayData) {
-      logger.warn('dayData not found for day, creating empty day structure', {
+      logger.error('CRITICAL: dayData not found for day, skipping day', {
         dayIndex,
         weekNum,
         weeksCount: weeks.length,
@@ -3068,16 +3078,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         weekDataDaysCount: weekData?.days?.length || 0,
         userId,
       });
-      // Создаем минимальную структуру дня, чтобы план не был пустым
-      plan28Days.push({
-        dayIndex,
-        phase: getPhaseForDay(dayIndex),
-        isWeeklyFocusDay: false,
-        morning: [],
-        evening: [],
-        weekly: [],
-      });
-      continue;
+      continue; // Пропускаем день без данных
     }
     
     // ИСПРАВЛЕНО: Используем протокол для определения фазы дня
@@ -3089,15 +3090,12 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     const phase = (protocolPhase === 'adaptation' && basePhase === 'active') ? 'adaptation' : basePhase;
     const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps, routineComplexity as any);
     
-    // Преобразуем morning steps
-    // ИСПРАВЛЕНО: всегда используем getProductsForStep для plan28, не полагаемся на dayData.products
-    // dayData.products может содержать только cleanser и SPF из-за фильтрации в старом формате
-    // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
-    // ИСПРАВЛЕНО: Используем async цикл вместо map для поддержки await в fallback через БД
+    // ИСПРАВЛЕНО (P0): Преобразуем morning steps - шаг создаётся ТОЛЬКО если есть продукты
+    // КРИТИЧНО: Шаг не должен попадать в план без продуктов
     const morningSteps: DayStep[] = [];
     for (const step of dayData.morning) {
       const stepCategory = step as StepCategory;
-      const baseStep = getBaseStepFromStepCategory(stepCategory); // ИСПРАВЛЕНО: Определяем baseStep до использования
+      const baseStep = getBaseStepFromStepCategory(stepCategory);
       let stepProducts = getProductsForStep(stepCategory, phase);
       
       // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback
@@ -3111,10 +3109,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         // Если все еще нет, пробуем найти любой продукт для базового шага
         if (stepProducts.length === 0) {
           // ИСПРАВЛЕНО: Ищем в productsByStepMap все ключи, которые начинаются с базового шага
-          // Например, для 'toner_hydrating' базовый шаг 'toner', ищем все 'toner_*'
           for (const [mapStep, products] of productsByStepMap.entries()) {
             const mapBaseStep = getBaseStepFromStepCategory(mapStep as StepCategory);
-            // Сравниваем базовые шаги, а не полные названия
             if (mapBaseStep === baseStep || mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
               stepProducts.push(...products);
             }
@@ -3141,7 +3137,6 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             try {
               const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
               if (fallbackProduct) {
-                // Регистрируем fallback продукт для этого шага
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
                 logger.info('Fallback product found from DB (morning)', {
@@ -3171,31 +3166,40 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         }
       }
       
+      // ИСПРАВЛЕНО (P0): Шаг создаётся ТОЛЬКО если есть продукты
+      if (stepProducts.length === 0) {
+        logger.warn('Skipping step: no products found (morning)', {
+          stepCategory,
+          baseStep,
+          dayIndex,
+          phase,
+          userId,
+        });
+        continue; // Пропускаем шаг без продуктов
+      }
+      
       // ИСПРАВЛЕНО: Выбираем разные продукты для разных фаз для разнообразия
-      // Для базовых продуктов (toner, moisturizer) используем разные продукты по фазам
       let selectedProductIndex = 0;
       if (stepProducts.length > 1 && (baseStep === 'toner' || baseStep === 'moisturizer')) {
-        // Выбираем продукт на основе фазы для разнообразия
         if (phase === 'adaptation') {
-          selectedProductIndex = 0; // Первый продукт для адаптации
+          selectedProductIndex = 0;
         } else if (phase === 'active') {
-          selectedProductIndex = Math.min(1, stepProducts.length - 1); // Второй продукт для активной фазы
+          selectedProductIndex = Math.min(1, stepProducts.length - 1);
         } else {
-          selectedProductIndex = Math.min(2, stepProducts.length - 1); // Третий продукт для поддержки
+          selectedProductIndex = Math.min(2, stepProducts.length - 1);
         }
-        // Если продуктов меньше, чем нужно, используем циклический выбор
         selectedProductIndex = selectedProductIndex % stepProducts.length;
       }
       
-      const selectedProduct = stepProducts.length > 0 ? stepProducts[selectedProductIndex] : null;
+      const selectedProduct = stepProducts[selectedProductIndex];
       const alternatives = stepProducts
-        .filter((_, idx) => idx !== selectedProductIndex) // Исключаем выбранный продукт
-        .slice(0, 3) // Берем до 3 продуктов как альтернативы
+        .filter((_, idx) => idx !== selectedProductIndex)
+        .slice(0, 3)
         .map(p => String(p.id));
       
-      // Логируем для отладки (особенно для пользователя 643160759)
-      if (stepProducts.length === 0 || userId === '643160759' || process.env.NODE_ENV === 'development') {
-        logger.warn('Products for step in plan28 morning', {
+      // Логируем для отладки
+      if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+        logger.info('Products for step in plan28 morning', {
           step: stepCategory,
           dayIndex,
           phase,
@@ -3208,13 +3212,15 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         });
       }
       
-      // ВАЖНО: Всегда добавляем шаг в план, даже если productId = null
-      // Это гарантирует, что все шаги из шаблона попадают в план
-      morningSteps.push({
-        stepCategory: stepCategory,
-        productId: selectedProduct ? String(selectedProduct.id) : null,
-        alternatives,
-      });
+      // ИСПРАВЛЕНО (P0): Шаг добавляется ТОЛЬКО если есть продукт
+      // Гарантируем, что в плане нет пустых шагов
+      if (selectedProduct) {
+        morningSteps.push({
+          stepCategory: stepCategory,
+          productId: String(selectedProduct.id),
+          alternatives,
+        });
+      }
     }
     
     // ИСПРАВЛЕНО: Добавляем бальзам для губ утром для всех пользователей
@@ -3310,10 +3316,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         if (stepProducts.length === 0) {
           const baseStep = getBaseStepFromStepCategory(stepCategory);
           // ИСПРАВЛЕНО: Ищем в productsByStepMap все ключи, которые начинаются с базового шага
-          // Например, для 'toner_hydrating' базовый шаг 'toner', ищем все 'toner_*'
           for (const [mapStep, products] of productsByStepMap.entries()) {
             const mapBaseStep = getBaseStepFromStepCategory(mapStep as StepCategory);
-            // Сравниваем базовые шаги, а не полные названия
             if (mapBaseStep === baseStep || mapStep.startsWith(baseStep + '_') || mapStep === baseStep) {
               stepProducts.push(...products);
             }
@@ -3340,7 +3344,6 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
             try {
               const fallbackProduct = await findFallbackProduct(baseStep, profileClassification);
               if (fallbackProduct) {
-                // Регистрируем fallback продукт для этого шага
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
                 logger.info('Fallback product found from DB (evening)', {
@@ -3370,67 +3373,121 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
         }
       }
       
+      // ИСПРАВЛЕНО (P0): Шаг создаётся ТОЛЬКО если есть продукты
+      if (stepProducts.length === 0) {
+        logger.warn('Skipping step: no products found (evening)', {
+          stepCategory,
+          dayIndex,
+          phase,
+          userId,
+        });
+        continue; // Пропускаем шаг без продуктов
+      }
+      
       // ИСПРАВЛЕНО: Выбираем разные продукты для разных фаз для разнообразия
-      // Для базовых продуктов (toner, moisturizer) используем разные продукты по фазам
       const baseStepEvening = getBaseStepFromStepCategory(stepCategory);
       let selectedProductIndexEvening = 0;
       if (stepProducts.length > 1 && (baseStepEvening === 'toner' || baseStepEvening === 'moisturizer')) {
-        // Выбираем продукт на основе фазы для разнообразия
         if (phase === 'adaptation') {
-          selectedProductIndexEvening = 0; // Первый продукт для адаптации
+          selectedProductIndexEvening = 0;
         } else if (phase === 'active') {
-          selectedProductIndexEvening = Math.min(1, stepProducts.length - 1); // Второй продукт для активной фазы
+          selectedProductIndexEvening = Math.min(1, stepProducts.length - 1);
         } else {
-          selectedProductIndexEvening = Math.min(2, stepProducts.length - 1); // Третий продукт для поддержки
+          selectedProductIndexEvening = Math.min(2, stepProducts.length - 1);
         }
-        // Если продуктов меньше, чем нужно, используем циклический выбор
         selectedProductIndexEvening = selectedProductIndexEvening % stepProducts.length;
       }
       
-      const selectedProductEvening = stepProducts.length > 0 ? stepProducts[selectedProductIndexEvening] : null;
+      const selectedProductEvening = stepProducts[selectedProductIndexEvening];
       const alternativesEvening = stepProducts
-        .filter((_, idx) => idx !== selectedProductIndexEvening) // Исключаем выбранный продукт
-        .slice(0, 3) // Берем до 3 продуктов как альтернативы
+        .filter((_, idx) => idx !== selectedProductIndexEvening)
+        .slice(0, 3)
         .map(p => String(p.id));
       
-      // Логируем для отладки (особенно для пользователя 643160759)
-      if (stepProducts.length === 0 || userId === '643160759' || process.env.NODE_ENV === 'development') {
-        logger.warn('Products for step in plan28 evening', {
+      // Логируем для отладки
+      if (userId === '643160759' || process.env.NODE_ENV === 'development') {
+        logger.info('Products for step in plan28 evening', {
           step: stepCategory,
           dayIndex,
           phase,
           productsCount: stepProducts.length,
           selectedProductIndexEvening,
           selectedProductId: selectedProductEvening?.id,
-          productIds: stepProducts.map(p => p.id).slice(0, 5),
-          productsByStepMapKeys: Array.from(productsByStepMap.keys()),
           userId,
         });
       }
       
-      // ВАЖНО: Всегда добавляем шаг в план, даже если productId = null
-      // Это гарантирует, что все шаги из шаблона попадают в план
+      // ИСПРАВЛЕНО (P0): Шаг добавляется ТОЛЬКО если есть продукт
       eveningSteps.push({
         stepCategory: stepCategory,
-        productId: selectedProductEvening ? String(selectedProductEvening.id) : null,
+        productId: String(selectedProductEvening.id),
         alternatives: alternativesEvening,
       });
     }
     
-    // Преобразуем weekly steps (если это день для недельного ухода)
-    // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
-    const weeklyDaySteps: DayStep[] = isWeekly ? weeklySteps.map((step: StepCategory) => {
-      const stepProducts = getProductsForStep(step, phase);
-      const alternatives = stepProducts
-        .slice(1, 4)
-        .map(p => String(p.id));
+    // ИСПРАВЛЕНО (P0): Преобразуем weekly steps - шаг создаётся ТОЛЬКО если есть продукты
+    const weeklyDaySteps: DayStep[] = [];
+    if (isWeekly) {
+      for (const step of weeklySteps) {
+        const stepCategory = step as StepCategory;
+        const stepProducts = getProductsForStep(stepCategory, phase);
+        
+        // ИСПРАВЛЕНО (P0): Шаг создаётся ТОЛЬКО если есть продукты
+        if (stepProducts.length === 0) {
+          logger.warn('Skipping weekly step: no products found', {
+            stepCategory,
+            dayIndex,
+            phase,
+            userId,
+          });
+          continue;
+        }
+        
+        const alternatives = stepProducts
+          .slice(1, 4)
+          .map(p => String(p.id));
+        
+        weeklyDaySteps.push({
+          stepCategory: stepCategory,
+          productId: String(stepProducts[0].id),
+          alternatives,
+        });
+      }
+    }
+    
+    // ИСПРАВЛЕНО (P0): День добавляется ТОЛЬКО если есть хотя бы один шаг с продуктом
+    // В strict режиме требуется минимум cleanser + moisturizer
+    const hasMorningSteps = morningSteps.length > 0;
+    const hasEveningSteps = eveningSteps.length > 0;
+    const hasWeeklySteps = weeklyDaySteps.length > 0;
+    
+    // ИСПРАВЛЕНО (P0): В strict режиме проверяем минимальные требования
+    if (mode === 'strict') {
+      const hasCleanser = morningSteps.some(s => s.stepCategory.startsWith('cleanser')) ||
+                         eveningSteps.some(s => s.stepCategory.startsWith('cleanser'));
+      const hasMoisturizer = morningSteps.some(s => s.stepCategory.startsWith('moisturizer')) ||
+                            eveningSteps.some(s => s.stepCategory.startsWith('moisturizer'));
       
-      return {
-        stepCategory: step,
-        productId: stepProducts.length > 0 ? String(stepProducts[0].id) : null,
-        alternatives,
-      };
-    }) : [];
+      if (!hasCleanser || !hasMoisturizer) {
+        logger.warn('Skipping day in strict mode: missing required steps (cleanser or moisturizer)', {
+          dayIndex,
+          phase,
+          hasCleanser,
+          hasMoisturizer,
+          userId,
+        });
+        continue; // Пропускаем день без обязательных шагов
+      }
+    }
+    
+    if (!hasMorningSteps && !hasEveningSteps && !hasWeeklySteps) {
+      logger.warn('Skipping day: no steps with products', {
+        dayIndex,
+        phase,
+        userId,
+      });
+      continue; // Пропускаем день без шагов
+    }
     
     plan28Days.push({
       dayIndex,

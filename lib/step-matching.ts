@@ -1,5 +1,6 @@
 // lib/step-matching.ts
-// Единая логика маппинга product.step/category -> StepCategory[]
+// ИСПРАВЛЕНО (P0): Единая логика маппинга product.step/category -> StepCategory[]
+// Все категории нормализуются к каноническим StepCategory перед использованием
 //
 // ВАЖНО: В БД встречаются как "базовые" step (serum, moisturizer, spf),
 // так и "детальные" stepCategory (serum_hydrating, spf_50_face, moisturizer_rich и т.п.).
@@ -8,13 +9,27 @@
 
 import type { StepCategory } from './step-category-rules';
 
+/**
+ * ИСПРАВЛЕНО (P0): Нормализует входные строки к каноническому формату
+ * Убирает пробелы, приводит к нижнему регистру, заменяет дефисы на подчеркивания
+ */
+function normalizeStepString(input: string | null | undefined): string {
+  if (!input) return '';
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '_') // Заменяем пробелы на подчеркивания
+    .replace(/-/g, '_'); // Заменяем дефисы на подчеркивания
+}
+
 export function mapStepToStepCategory(
   step: string | null | undefined,
   category: string | null | undefined,
   skinType?: string | null
 ): StepCategory[] {
-  const stepStr = (step || category || '').toLowerCase();
-  const categoryStr = (category || '').toLowerCase();
+  // ИСПРАВЛЕНО (P0): Нормализуем входные строки перед сравнением
+  const stepStr = normalizeStepString(step || category);
+  const categoryStr = normalizeStepString(category);
   const categories: StepCategory[] = [];
 
   const isCleanserContext = stepStr.includes('cleanser') || categoryStr === 'cleanser';

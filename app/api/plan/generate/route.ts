@@ -287,7 +287,7 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // ИСПРАВЛЕНО: Дополнительная проверка - план может быть сгенерирован, но с пустыми днями
+    // ИСПРАВЛЕНО (P0): Дополнительная проверка - план может быть сгенерирован, но с пустыми днями
     if (hasPlan28 && plan.plan28 && plan.plan28.days.length === 0) {
       logger.error('❌ Plan28 generated but has no days', undefined, {
         userId,
@@ -304,6 +304,41 @@ export async function GET(request: NextRequest) {
           timestamp: new Date().toISOString(),
         }
       );
+    }
+    
+    // ИСПРАВЛЕНО (P0): Проверяем, что хотя бы в одном дне есть шаги с продуктами
+    if (hasPlan28 && plan.plan28) {
+      const daysWithSteps = plan.plan28.days.filter((day: any) => {
+        const morningHasSteps = day.morning?.some((step: any) => step.productId);
+        const eveningHasSteps = day.evening?.some((step: any) => step.productId);
+        const weeklyHasSteps = day.weekly?.some((step: any) => step.productId);
+        return morningHasSteps || eveningHasSteps || weeklyHasSteps;
+      });
+      
+      if (daysWithSteps.length === 0) {
+        logger.error('❌ Plan28 has no days with steps containing products', undefined, {
+          userId,
+          profileVersion: profile.version,
+          totalDays: plan.plan28.days.length,
+        });
+        
+        return ApiResponse.error(
+          'Plan generation returned plan with no valid days',
+          500,
+          {
+            userId,
+            profileVersion: profile.version,
+            timestamp: new Date().toISOString(),
+          }
+        );
+      }
+      
+      logger.info('Plan28 validation passed', {
+        userId,
+        profileVersion: profile.version,
+        totalDays: plan.plan28.days.length,
+        daysWithSteps: daysWithSteps.length,
+      });
     }
     
     logger.info('Plan generated - RecommendationSession should be created from recommendation rules, not from plan', {
