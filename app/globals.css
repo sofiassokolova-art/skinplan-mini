@@ -213,8 +213,20 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
-/* УБРАНО: Агрессивные селекторы grid и flex ломали верстку
-   Tailwind сам управляет display через классы */
+/* Гарантируем, что grid и flex работают в админке (без !important, чтобы не конфликтовать) */
+.admin-layout .grid {
+  display: grid !important;
+}
+
+.admin-layout .flex {
+  display: flex !important;
+}
+
+/* Гарантируем, что карточки видны */
+.admin-layout .admin-card {
+  display: block !important;
+  visibility: visible !important;
+}
 
 /* Стили для графиков - разрешаем отображение */
 .admin-layout svg,
