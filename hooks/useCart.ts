@@ -2,6 +2,7 @@
 // React Query хуки для работы с корзиной
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 
 const CART_QUERY_KEY = 'cart';
@@ -10,12 +11,14 @@ const CART_QUERY_KEY = 'cart';
  * Хук для получения корзины (с кэшированием)
  */
 export function useCart() {
+  const pathname = usePathname();
+  
   return useQuery({
     queryKey: [CART_QUERY_KEY],
     queryFn: () => api.getCart() as Promise<any>,
     staleTime: 1 * 60 * 1000, // 1 минута (корзина может часто меняться)
     gcTime: 5 * 60 * 1000, // 5 минут в кэше
-    enabled: typeof window !== 'undefined' && !window.location.pathname.startsWith('/quiz'), // Не загружаем корзину на странице анкеты
+    enabled: pathname !== '/quiz' && !pathname.startsWith('/quiz/'), // Не загружаем корзину на странице анкеты
   });
 }
 
