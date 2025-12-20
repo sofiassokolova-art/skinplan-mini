@@ -4646,15 +4646,19 @@ export default function QuizPage() {
           flexDirection: 'column',
           position: 'relative',
           overflow: 'hidden',
+          width: '100%',
+          maxWidth: '100vw',
         }}>
           {/* Картинка */}
           {screen.image && (
             <div style={{
-              width: '378px',
-              height: '479px',
-              position: 'absolute',
-              top: '-10px',
-              left: '-3px',
+              width: 'calc(100% + 6px)',
+              height: '60vh',
+              minHeight: '400px',
+              maxHeight: '500px',
+              position: 'relative',
+              marginLeft: '-3px',
+              marginTop: '-10px',
               borderBottomRightRadius: '40px',
               borderBottomLeftRadius: '40px',
               overflow: 'hidden',
@@ -4671,54 +4675,75 @@ export default function QuizPage() {
             </div>
           )}
 
-          {/* Текст */}
+          {/* Контент (текст и кнопка) */}
           <div style={{
-            position: 'absolute',
-            top: '507px',
-            left: '50px',
-            width: '284px',
-            height: '117px',
-            textAlign: 'center',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: 'clamp(30px, 8vh, 60px)',
+            paddingBottom: 'clamp(30px, 8vh, 60px)',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            gap: 'clamp(30px, 6vh, 50px)',
+            width: '100%',
+            boxSizing: 'border-box',
           }}>
-            <h1 style={{
-              fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '28px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              color: '#000000',
-              margin: 0,
+            {/* Текст */}
+            <div style={{
+              width: '100%',
+              maxWidth: '320px',
+              textAlign: 'center',
             }}>
-              Подбери уход<br />
-              для своей кожи<br />
-              со <span style={{ fontWeight: 700 }}>SkinIQ</span>
-            </h1>
-          </div>
-
-          {/* Кнопка */}
-          {screen.ctaText && (
-            <button
-              onClick={handleNext}
-              style={{
-                position: 'absolute',
-                top: '656px',
-                left: '76px',
-                width: '224px',
-                height: '64px',
-                borderRadius: '20px',
-                background: '#D5FE61',
-                color: '#000000',
-                border: 'none',
+              <h1 style={{
                 fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 400,
-                fontSize: '18px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              {String(screen.ctaText || 'Продолжить')}
-            </button>
-          )}
+                fontSize: 'clamp(24px, 7vw, 28px)',
+                lineHeight: '140%',
+                letterSpacing: '0px',
+                color: '#000000',
+                margin: 0,
+              }}>
+                Подбери уход<br />
+                для своей кожи<br />
+                со <span style={{ fontWeight: 700 }}>SkinIQ</span>
+              </h1>
+            </div>
+
+            {/* Кнопка */}
+            {screen.ctaText && (
+              <button
+                onClick={handleNext}
+                style={{
+                  width: '100%',
+                  maxWidth: '280px',
+                  height: '64px',
+                  borderRadius: '20px',
+                  background: '#D5FE61',
+                  color: '#000000',
+                  border: 'none',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)';
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                {String(screen.ctaText || 'Продолжить')}
+              </button>
+            )}
+          </div>
         </div>
       );
     }

@@ -187,35 +187,35 @@ export default function HomePage() {
         return;
       }
 
-      // Сначала проверяем, есть ли уже сохранённый план (чтобы НЕ редиректить на анкету ошибочно,
-      // если профиль временно не читается / есть лаг реплики / есть план без профиля).
-      const planExists = await checkPlanExists();
-
-      // Сначала проверяем, существует ли профиль, чтобы не дергать тяжёлые эндпоинты без профиля
+      // ИСПРАВЛЕНО: Сначала проверяем профиль, чтобы не делать лишние запросы к /api/plan для новых пользователей
+      // Если профиля нет - сразу редиректим на /quiz, не проверяя план
+      let profile = null;
       try {
-        const profile = await api.getCurrentProfile();
+        profile = await api.getCurrentProfile();
         if (!profile) {
-          // Профиля нет. Если плана тоже нет — пользователь действительно новый → /quiz.
-          // Если план уже есть — остаёмся на главной и пробуем загрузить контент.
+          // Профиля нет - это новый пользователь, сразу редиректим на /quiz
+          clientLogger.log('ℹ️ Profile not found - redirecting new user to /quiz');
           setLoading(false);
-          if (!planExists) {
-            router.replace('/quiz');
-            return;
-          }
+          router.replace('/quiz');
+          return;
         }
       } catch (err: any) {
         // Если бэкенд вернул 404 / isNotFound - это нормальный случай "нет профиля"
-        // НО: не редиректим, если только что отправили анкету (уже обработано выше)
+        // Для нового пользователя сразу редиректим на /quiz
         if (err?.status === 404 || err?.isNotFound) {
+          clientLogger.log('ℹ️ Profile not found (404) - redirecting new user to /quiz');
           setLoading(false);
-          if (!planExists) {
-            router.replace('/quiz');
-            return;
-          }
+          router.replace('/quiz');
+          return;
         }
         // Другие ошибки не блокируют загрузку - просто логируем и продолжаем
+        // (возможно, временная проблема с сетью, но профиль может существовать)
         clientLogger.warn('Could not check current profile before loading home data', err);
       }
+
+      // Профиль найден - проверяем план (чтобы НЕ редиректить на анкету ошибочно,
+      // если профиль временно не читается / есть лаг реплики / есть план без профиля).
+      const planExists = await checkPlanExists();
 
       // Загружаем рекомендации (initData передается автоматически в запросе)
       // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true

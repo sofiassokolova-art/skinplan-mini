@@ -80,6 +80,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&display=swap"
           rel="stylesheet"
         />
+        {/* Шрифт Inter для кнопок */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body>
         <ErrorBoundary>
