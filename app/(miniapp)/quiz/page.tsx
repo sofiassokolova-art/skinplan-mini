@@ -4871,7 +4871,7 @@ export default function QuizPage() {
               className="quiz-how-it-works-title"
               style={{
                 fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 400,
+                fontWeight: 700,
                 fontStyle: 'normal',
                 fontSize: '24px',
                 lineHeight: '100%',
@@ -4881,7 +4881,6 @@ export default function QuizPage() {
                 margin: '0 0 60px 0',
               }}>
               {screen.title}
-              <span style={{ fontWeight: 700, fontStyle: 'normal' }}>?</span>
             </h1>
 
             {/* Шаги */}
@@ -5019,29 +5018,46 @@ export default function QuizPage() {
         {
           icon: (
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="48" height="48" rx="12" fill="#D5FE61"/>
-              <path d="M24 14C18.48 14 14 18.48 14 24C14 29.52 18.48 34 24 34C29.52 34 34 29.52 34 24C34 18.48 29.52 14 24 14ZM24 30C20.69 30 18 27.31 18 24C18 20.69 20.69 18 24 18C27.31 18 30 20.69 30 24C30 27.31 27.31 30 24 30Z" fill="#000000"/>
-              <circle cx="24" cy="24" r="2" fill="#000000"/>
-              <path d="M20 20L16 16M32 16L28 20M20 28L16 32M32 32L28 28" stroke="#000000" strokeWidth="2" strokeLinecap="round"/>
+              <defs>
+                <filter id="shadow1" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="2" dy="2" stdDeviation="1" floodColor="#000000" floodOpacity="0.2"/>
+                </filter>
+              </defs>
+              <rect width="48" height="48" rx="12" fill="#D5FE61" filter="url(#shadow1)"/>
+              <ellipse cx="24" cy="20" rx="12" ry="10" fill="#D5FE61" stroke="#000000" strokeWidth="1.5"/>
+              <path d="M16 20C16 16 18 14 20 14C22 14 24 16 24 20" stroke="#000000" strokeWidth="1.5" fill="none"/>
+              <circle cx="20" cy="18" r="1" fill="#000000"/>
+              <circle cx="24" cy="18" r="1" fill="#000000"/>
+              <circle cx="22" cy="20" r="1" fill="#000000"/>
+              <path d="M20 24C20 24 18 26 16 28" stroke="#000000" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
             </svg>
           ),
-          text: 'Детальный разбор — морщины, линии и текстура в 3D',
+          text: 'Детальный разбор – морщины, линии, текстура',
         },
         {
           icon: (
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="48" height="48" rx="12" fill="#D5FE61"/>
-              <path d="M24 12C20.69 12 18 14.69 18 18V24C18 27.31 20.69 30 24 30C27.31 30 30 27.31 30 24V18C30 14.69 27.31 12 24 12Z" fill="#000000"/>
-              <path d="M24 30V36M20 36H28" stroke="#000000" strokeWidth="2" strokeLinecap="round"/>
-              <text x="24" y="22" textAnchor="middle" fill="#000000" fontSize="10" fontWeight="700">%</text>
+              <defs>
+                <filter id="shadow2" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="2" dy="2" stdDeviation="1" floodColor="#000000" floodOpacity="0.2"/>
+                </filter>
+              </defs>
+              <ellipse cx="20" cy="24" rx="8" ry="10" fill="#D5FE61" stroke="#000000" strokeWidth="1.5" filter="url(#shadow2)"/>
+              <ellipse cx="28" cy="24" rx="8" ry="10" fill="none" stroke="#000000" strokeWidth="1.5" filter="url(#shadow2)"/>
+              <text x="20" y="28" textAnchor="middle" fill="#000000" fontSize="12" fontWeight="700">%</text>
             </svg>
           ),
-          text: 'Уровень увлажнённости — персональная оценка баланса влаги',
+          text: 'Уровень увлажнённости – персональная оценка баланса влаги',
         },
         {
           icon: (
             <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="48" height="48" rx="12" fill="#D5FE61"/>
+              <defs>
+                <filter id="shadow3" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="2" dy="2" stdDeviation="1" floodColor="#000000" floodOpacity="0.2"/>
+                </filter>
+              </defs>
+              <rect width="48" height="48" rx="12" fill="#D5FE61" filter="url(#shadow3)"/>
               <circle cx="20" cy="20" r="2" fill="#000000"/>
               <circle cx="28" cy="20" r="2" fill="#000000"/>
               <circle cx="24" cy="24" r="1.5" fill="#000000"/>
@@ -5050,7 +5066,7 @@ export default function QuizPage() {
               <path d="M24 18C24 18 22 22 20 24C18 26 20 28 24 28C28 28 30 26 28 24C26 22 24 18 24 18Z" stroke="#000000" strokeWidth="1.5" fill="none"/>
             </svg>
           ),
-          text: 'Поры — точное выявление и измерение',
+          text: 'Поры – точное выявление и измерение',
         },
       ];
 
@@ -5146,24 +5162,25 @@ export default function QuizPage() {
               className="quiz-title"
               style={{
                 fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 700,
                 fontStyle: 'normal',
                 fontSize: '24px',
-                lineHeight: '100%',
+                lineHeight: '120%',
                 letterSpacing: '0px',
                 textAlign: 'center',
                 color: '#000000',
-                margin: '0 0 40px 0',
+                margin: '0 0 20px 0',
+                maxWidth: '311px',
               }}>
-              {screen.title}
+              <span style={{ fontWeight: 700 }}>SkinIQ</span>
+              <span style={{ fontWeight: 400 }}> — ваш персональный анализ</span>
             </h1>
 
             {/* Подзаголовок */}
             <div style={{
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
-              fontSize: '16px',
-              lineHeight: '140%',
+              fontSize: '14px',
+              lineHeight: '34px',
               letterSpacing: '0px',
               textAlign: 'center',
               color: '#9D9D9D',
@@ -5206,10 +5223,11 @@ export default function QuizPage() {
                     fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontWeight: 400,
                     fontSize: '16px',
-                    lineHeight: '140%',
+                    lineHeight: '120%',
                     letterSpacing: '0px',
                     textAlign: 'center',
                     color: '#000000',
+                    maxWidth: '289px',
                   }}>
                     {feature.text}
                   </div>
@@ -5235,7 +5253,7 @@ export default function QuizPage() {
                 textAlign: 'center',
                 color: '#000000',
               }}>
-                92% пользователей отмечают улучшение состояния кожи за 1 месяц ✅
+                92% пользователей отмечают улучшение состояния кожи за 1 месяц
               </div>
               <div style={{
                 fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
