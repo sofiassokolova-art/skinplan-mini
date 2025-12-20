@@ -129,6 +129,17 @@ body {
 .admin-layout {
   background-color: #f3f4f6;
   color: #111827;
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Гарантируем, что main контент растягивается правильно */
+.admin-layout > main {
+  width: 100% !important;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
 /* Glassmorphism сайдбар */

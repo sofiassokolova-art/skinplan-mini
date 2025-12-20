@@ -170,11 +170,12 @@ export default function AdminLayout({
         }
       `}</style>
       
-      {/* Mobile overlay */}
+      {/* Mobile overlay - только на мобильных, не перекрывает контент на десктопе */}
       {isMobile && sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
       
@@ -264,12 +265,20 @@ export default function AdminLayout({
       <main 
         className={cn(
           'min-h-screen transition-all duration-300',
+          'w-full overflow-x-hidden',
           isMobile 
             ? 'ml-0 px-4 py-6' 
             : sidebarOpen 
               ? 'ml-72 px-8 py-8' 
               : 'ml-20 px-8 py-8'
         )}
+        style={{
+          width: isMobile 
+            ? '100%' 
+            : sidebarOpen 
+              ? 'calc(100% - 18rem)' 
+              : 'calc(100% - 5rem)',
+        }}
       >
         <div className="max-w-[1600px] mx-auto w-full">
           {children}
