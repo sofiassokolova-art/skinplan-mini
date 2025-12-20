@@ -63,9 +63,18 @@ export default function AdminLogin() {
             router.replace('/admin');
             return;
           }
+        } else if (response.status === 500) {
+          // ИСПРАВЛЕНО: Проверяем ошибки конфигурации при проверке сессии
+          const data = await response.json().catch(() => ({}));
+          if (data.code === 'CONFIG_ERROR' || data.code === 'JWT_CONFIG_ERROR') {
+            setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET.');
+            setCheckingSession(false);
+            return;
+          }
         }
       } catch (error) {
         console.error('Error checking token:', error);
+        // ИСПРАВЛЕНО: Не показываем ошибку при проверке сессии, только при логине
       } finally {
         setCheckingSession(false);
       }
@@ -110,10 +119,15 @@ export default function AdminLogin() {
 
       if (!response.ok) {
         const errorMessage = data.error || 'Ошибка авторизации';
+        const errorCode = data.code;
         
-        // Красивое сообщение если не в whitelist
-        if (errorMessage.includes('whitelist') || errorMessage.includes('Unauthorized')) {
+        // ИСПРАВЛЕНО: Различаем ошибки конфигурации сервера и ошибки авторизации
+        if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR') {
+          setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET или TELEGRAM_BOT_TOKEN.');
+        } else if (errorMessage.includes('whitelist') || errorMessage.includes('Unauthorized') || errorCode === 'AUTH_UNAUTHORIZED') {
           setError('Вы не в списке администраторов. Обратитесь к владельцу для добавления в whitelist.');
+        } else if (errorCode === 'DB_ERROR') {
+          setError('Ошибка подключения к базе данных. Попробуйте позже.');
         } else {
           setError(errorMessage);
         }
