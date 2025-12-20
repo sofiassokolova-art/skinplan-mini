@@ -29,7 +29,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   {
     id: 'welcome',
     title: 'Подбери уход для своей кожи со SkinIQ',
-    image: '/quiz_welocme_image.png',
+    image: '/quiz_welcome_image.png.png',
     ctaText: 'Продолжить',
   },
   

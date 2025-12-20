@@ -4198,33 +4198,6 @@ export default function QuizPage() {
           padding: '20px',
           textAlign: 'center',
         }}>
-          <button
-            onClick={() => router.push('/')}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              display: 'inline-block',
-            }}
-          >
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '140px',
-              marginTop: '8px',
-              marginBottom: '8px',
-                transition: 'transform 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-            }}
-          />
-          </button>
         </div>
 
         {/* Заголовок */}
@@ -4656,9 +4629,99 @@ export default function QuizPage() {
     const isTestimonialsScreen = screen.type === 'testimonials';
     const isComparisonScreen = screen.type === 'comparison';
     const isProductsScreen = screen.type === 'products';
+    const isWelcomeScreen = screen.id === 'welcome';
 
     // Разбиваем subtitle на строки для многострочного отображения
     const subtitleLines = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
+
+    // Специальный рендеринг для welcome экрана
+    if (isWelcomeScreen) {
+      return (
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Картинка */}
+          {screen.image && (
+            <div style={{
+              width: '378px',
+              height: '479px',
+              position: 'absolute',
+              top: '-10px',
+              left: '-3px',
+              borderBottomRightRadius: '40px',
+              borderBottomLeftRadius: '40px',
+              overflow: 'hidden',
+            }}>
+              <img
+                src={screen.image}
+                alt={screen.title}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Текст */}
+          <div style={{
+            position: 'absolute',
+            top: '507px',
+            left: '50px',
+            width: '284px',
+            height: '117px',
+            textAlign: 'center',
+          }}>
+            <h1 style={{
+              fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '28px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              color: '#000000',
+              margin: 0,
+            }}>
+              Подбери уход<br />
+              для своей кожи<br />
+              со <span style={{ fontWeight: 700 }}>SkinIQ</span>
+            </h1>
+          </div>
+
+          {/* Кнопка */}
+          {screen.ctaText && (
+            <button
+              onClick={handleNext}
+              style={{
+                position: 'absolute',
+                top: '656px',
+                left: '76px',
+                width: '224px',
+                height: '64px',
+                borderRadius: '20px',
+                background: '#D5FE61',
+                color: '#000000',
+                border: 'none',
+                fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 400,
+                fontSize: '18px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              {String(screen.ctaText || 'Продолжить')}
+            </button>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div style={{ 
@@ -4670,23 +4733,6 @@ export default function QuizPage() {
         justifyContent: 'center',
         position: 'relative',
       }}>
-        {/* Логотип на фоне по центру вверху */}
-        <div style={{
-          position: 'absolute',
-          top: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 0,
-          opacity: 0.15,
-        }}>
-          <img
-            src="/skiniq-logo.png"
-            alt="SkinIQ"
-            style={{
-              height: '120px',
-            }}
-          />
-        </div>
         <div style={{
           width: '88%',
           maxWidth: isTestimonialsScreen ? '90%' : '420px',
@@ -4701,7 +4747,7 @@ export default function QuizPage() {
           marginTop: '80px',
         }}>
           {/* Изображение */}
-          {screen.image && !isTinderScreen && (
+          {screen.image && !isTinderScreen && !isWelcomeScreen && (
             <div style={{
               width: '100%',
               height: '320px',
