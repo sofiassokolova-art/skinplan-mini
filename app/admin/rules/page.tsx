@@ -8,15 +8,43 @@ import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, Code, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// ИСПРАВЛЕНО (P0): Заменили any на unknown для безопасности типов
 interface Rule {
   id: number;
   name: string;
   priority: number;
   isActive: boolean;
-  conditionsJson: any;
-  stepsJson: any;
+  conditionsJson: unknown; // ИСПРАВЛЕНО (P0): unknown вместо any
+  stepsJson: unknown; // ИСПРАВЛЕНО (P0): unknown вместо any
   createdAt: string;
   updatedAt: string;
+}
+
+// ИСПРАВЛЕНО (P0): Валидация JSON перед сохранением
+function isPlainObject(x: unknown): x is Record<string, unknown> {
+  return x !== null && typeof x === 'object' && !Array.isArray(x);
+}
+
+function validateRulePayload(parsed: unknown): { valid: boolean; error?: string; data?: { conditions: Record<string, unknown>; steps: Record<string, unknown> } } {
+  if (!isPlainObject(parsed)) {
+    return { valid: false, error: 'JSON должен быть объектом' };
+  }
+
+  if (!isPlainObject(parsed.conditions)) {
+    return { valid: false, error: 'Поле "conditions" должно быть объектом' };
+  }
+
+  if (!isPlainObject(parsed.steps)) {
+    return { valid: false, error: 'Поле "steps" должно быть объектом' };
+  }
+
+  return {
+    valid: true,
+    data: {
+      conditions: parsed.conditions,
+      steps: parsed.steps,
+    },
+  };
 }
 
 export default function RulesAdmin() {
@@ -30,6 +58,8 @@ export default function RulesAdmin() {
   const [jsonText, setJsonText] = useState('');
   const [newRuleName, setNewRuleName] = useState('');
   const [newRulePriority, setNewRulePriority] = useState(0);
+  const [saving, setSaving] = useState(false); // ИСПРАВЛЕНО (P1): Состояние сохранения
+  const [saveError, setSaveError] = useState<string | null>(null); // ИСПРАВЛЕНО (P1): Ошибка сохранения
 
   useEffect(() => {
     loadRules();
@@ -38,17 +68,17 @@ export default function RulesAdmin() {
   const loadRules = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/rules', {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
 
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
       if (response.status === 401) {
-        router.push('/admin/login');
+        router.replace('/admin/login');
         return;
       }
 
@@ -57,10 +87,17 @@ export default function RulesAdmin() {
       }
 
       const data = await response.json();
-      setRules(data || []);
-    } catch (err: any) {
+      // ИСПРАВЛЕНО (P2): Сортировка правил по приоритету (уже на бэке, но дублируем на фронте для надёжности)
+      const sortedRules = (data || []).sort((a: Rule, b: Rule) => {
+        if (b.priority !== a.priority) {
+          return b.priority - a.priority;
+        }
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+      setRules(sortedRules);
+    } catch (err: unknown) {
       console.error('Ошибка загрузки правил:', err);
-      setError(err.message || 'Ошибка загрузки правил');
+      setError(err instanceof Error ? err.message : 'Ошибка загрузки правил');
     } finally {
       setLoading(false);
     }
@@ -75,62 +112,129 @@ export default function RulesAdmin() {
   const handleSave = async () => {
     if (!editingRule && !creatingRule) return;
 
+    // ИСПРАВЛЕНО (P1): Блокируем повторное сохранение
+    if (saving) return;
+
+    setSaving(true);
+    setSaveError(null);
+
     try {
-      const parsed = JSON.parse(jsonText);
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Валидация JSON перед сохранением
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(jsonText);
+      } catch (err) {
+        const error = 'Неверный JSON формат: ' + (err instanceof Error ? err.message : 'Unknown error');
+        setSaveError(error);
+        setSaving(false);
+        return;
+      }
+
+      // ИСПРАВЛЕНО (P0): Валидация структуры через validateRulePayload
+      const validation = validateRulePayload(parsed);
+      if (!validation.valid || !validation.data) {
+        setSaveError(validation.error || 'Неверная структура JSON');
+        setSaving(false);
+        return;
+      }
+
+      const { conditions, steps } = validation.data;
       
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       if (creatingRule) {
+        // ИСПРАВЛЕНО (P1): Оптимистичное обновление
+        const tempRule: Rule = {
+          id: Date.now(), // Временный ID
+          name: newRuleName,
+          priority: newRulePriority,
+          isActive: true,
+          conditionsJson: conditions,
+          stepsJson: steps,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setRules([tempRule, ...rules]);
+
         // Создание нового правила
         const response = await fetch('/api/admin/rules', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
           },
           credentials: 'include',
           body: JSON.stringify({
             name: newRuleName,
-            conditionsJson: parsed.conditions || {},
-            stepsJson: parsed.steps || {},
+            conditionsJson: conditions,
+            stepsJson: steps,
             priority: newRulePriority,
             isActive: true,
           }),
         });
+
+        // ИСПРАВЛЕНО (P0): Редирект на login при 401
+        if (response.status === 401) {
+          router.replace('/admin/login');
+          return;
+        }
 
         if (response.ok) {
           setCreatingRule(false);
           setNewRuleName('');
           setNewRulePriority(0);
           setJsonText('');
-          await loadRules();
+          await loadRules(); // Перезагружаем для получения реального ID
         } else {
-          const errorData = await response.json();
-          alert('Ошибка создания правила: ' + (errorData.error || 'Unknown error'));
+          // ИСПРАВЛЕНО (P1): Читаем JSON ошибки
+          const errorData = await response.json().catch(() => ({}));
+          const error = 'Ошибка создания правила: ' + (errorData.error || 'Unknown error');
+          setSaveError(error);
+          await loadRules(); // Откатываем оптимистичное обновление
         }
       } else if (editingRule) {
+        // ИСПРАВЛЕНО (P1): Оптимистичное обновление
+        const updatedRules = rules.map(r =>
+          r.id === editingRule.id
+            ? { ...r, conditionsJson: conditions, stepsJson: steps, updatedAt: new Date().toISOString() }
+            : r
+        );
+        setRules(updatedRules);
+
         // Редактирование существующего правила
         const response = await fetch(`/api/admin/rules/${editingRule.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
           },
           credentials: 'include',
           body: JSON.stringify({
-            conditionsJson: parsed.conditions,
-            stepsJson: parsed.steps,
+            conditionsJson: conditions,
+            stepsJson: steps,
           }),
         });
 
+        // ИСПРАВЛЕНО (P0): Редирект на login при 401
+        if (response.status === 401) {
+          router.replace('/admin/login');
+          return;
+        }
+
         if (response.ok) {
           setEditingRule(null);
-          await loadRules();
+          await loadRules(); // Перезагружаем для синхронизации
         } else {
-          alert('Ошибка сохранения правила');
+          // ИСПРАВЛЕНО (P1): Читаем JSON ошибки
+          const errorData = await response.json().catch(() => ({}));
+          const error = 'Ошибка сохранения правила: ' + (errorData.error || 'Unknown error');
+          setSaveError(error);
+          await loadRules(); // Откатываем оптимистичное обновление
         }
       }
     } catch (err) {
-      alert('Неверный JSON формат: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      const error = 'Ошибка: ' + (err instanceof Error ? err.message : 'Unknown error');
+      setSaveError(error);
+      await loadRules(); // Откатываем оптимистичное обновление
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -144,6 +248,74 @@ export default function RulesAdmin() {
       steps: {},
     }, null, 2));
     setJsonMode(true);
+    setSaveError(null); // ИСПРАВЛЕНО (P1): Сбрасываем ошибку
+  };
+
+  // ИСПРАВЛЕНО (P1): Удаление правила
+  const handleDelete = async (rule: Rule) => {
+    if (!confirm(`Вы уверены, что хотите удалить правило "${rule.name}"?`)) {
+      return;
+    }
+
+    try {
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
+      const response = await fetch(`/api/admin/rules/${rule.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
+      if (response.ok) {
+        await loadRules();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert('Ошибка удаления правила: ' + (errorData.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Ошибка удаления правила:', err);
+      alert('Ошибка удаления правила');
+    }
+  };
+
+  // ИСПРАВЛЕНО (P2): Переключение isActive
+  const handleToggleActive = async (rule: Rule) => {
+    try {
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
+      const response = await fetch(`/api/admin/rules/${rule.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          isActive: !rule.isActive,
+        }),
+      });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
+      if (response.ok) {
+        await loadRules();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert('Ошибка обновления правила: ' + (errorData.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Ошибка обновления правила:', err);
+      alert('Ошибка обновления правила');
+    }
   };
 
   if (loading) {
@@ -263,19 +435,41 @@ export default function RulesAdmin() {
               />
             ) : (
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                {/* ИСПРАВЛЕНО (P0): Визуальный режим показывает jsonText, а не старые значения */}
                 <pre className="text-gray-700 text-sm whitespace-pre-wrap">
-                  {creatingRule ? jsonText : JSON.stringify({ conditions: editingRule?.conditionsJson, steps: editingRule?.stepsJson }, null, 2)}
+                  {(() => {
+                    try {
+                      const parsed = JSON.parse(jsonText);
+                      return JSON.stringify(parsed, null, 2);
+                    } catch (err) {
+                      return `Ошибка парсинга JSON: ${err instanceof Error ? err.message : 'Unknown error'}`;
+                    }
+                  })()}
                 </pre>
+              </div>
+            )}
+
+            {/* ИСПРАВЛЕНО (P1): Показываем ошибку сохранения */}
+            {saveError && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
+                <p className="text-red-700 text-sm">{saveError}</p>
               </div>
             )}
 
             <div className="flex gap-4 mt-6">
               <button
                 onClick={handleSave}
-                disabled={creatingRule && !newRuleName.trim()}
-                className="flex-1 px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={(creatingRule && !newRuleName.trim()) || saving}
+                className="flex-1 px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {creatingRule ? 'Создать правило' : 'Сохранить'}
+                {saving ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Сохраняю...
+                  </>
+                ) : (
+                  creatingRule ? 'Создать правило' : 'Сохранить'
+                )}
               </button>
               <button
                 onClick={() => {
@@ -322,15 +516,35 @@ export default function RulesAdmin() {
                 >
                   <Edit className="text-gray-700" size={16} />
                 </button>
-                <button className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors">
+                {/* ИСПРАВЛЕНО (P1): Удаление правила */}
+                <button
+                  onClick={() => handleDelete(rule)}
+                  className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                >
                   <Trash2 className="text-red-600" size={16} />
-              </button>
+                </button>
+                {/* ИСПРАВЛЕНО (P2): Переключатель isActive */}
+                <button
+                  onClick={() => handleToggleActive(rule)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                    rule.isActive
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  )}
+                >
+                  {rule.isActive ? 'Активно' : 'Неактивно'}
+                </button>
               </div>
             </div>
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
               <div className="text-xs text-gray-500 mb-2">Условия:</div>
               <pre className="text-gray-700 text-xs font-mono overflow-x-auto">
-                {JSON.stringify(rule.conditionsJson, null, 2).substring(0, 200)}...
+                {/* ИСПРАВЛЕНО (P1): Условное обрезание превью */}
+                {(() => {
+                  const s = JSON.stringify(rule.conditionsJson, null, 2);
+                  return s.length > 200 ? s.substring(0, 200) + '...' : s;
+                })()}
               </pre>
             </div>
           </div>
