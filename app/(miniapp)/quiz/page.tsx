@@ -4838,14 +4838,14 @@ export default function QuizPage() {
               </svg>
             </button>
             <span style={{
-              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
               fontStyle: 'normal',
               fontSize: '14px',
               lineHeight: '34px',
               letterSpacing: '0px',
               textAlign: 'center',
-              color: '#9D9D9D',
+              color: '#000000',
             }}>
               Назад
             </span>
@@ -5990,37 +5990,62 @@ export default function QuizPage() {
           <>
         {/* Кнопка "Назад" - скрыта на первом вопросе, фиксирована вверху */}
         {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
-          <button
-            onClick={handleBack}
-            style={{
-              position: 'fixed',
-              top: 'clamp(20px, 4vh, 40px)',
-              left: 'clamp(20px, 5vw, 24px)',
-              padding: '8px 16px',
-              borderRadius: '12px',
-              border: '1px solid rgba(10, 95, 89, 0.2)',
-              backgroundColor: 'rgba(255, 255, 255, 0.5)',
-              color: '#0A5F59',
-              cursor: 'pointer',
+          <div style={{
+            position: 'fixed',
+            top: 'clamp(20px, 4vh, 40px)',
+            left: 'clamp(19px, 5vw, 24px)',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <button
+              onClick={handleBack}
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '10px',
+                background: '#D5FE61',
+                border: '1px solid #000000',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              <svg
+                width="7"
+                height="14"
+                viewBox="0 0 7 14"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{
+                  transform: 'rotate(180deg)',
+                }}
+              >
+                <path
+                  d="M1 1L6 7L1 13"
+                  stroke="#000000"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <span style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontStyle: 'normal',
               fontSize: '14px',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s',
-              zIndex: 100,
-              backdropFilter: 'blur(10px)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
-            }}
-          >
-            <span>←</span>
-            <span>Назад</span>
-          </button>
+              lineHeight: '34px',
+              letterSpacing: '0px',
+              textAlign: 'center',
+              color: '#000000',
+            }}>
+              Назад
+            </span>
+          </div>
         )}
 
         {/* Прогресс-бар */}
