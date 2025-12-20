@@ -99,7 +99,7 @@ h1, h2, h3 {
 }
 
 /* Все заголовки в анкете (h1, h2) - используют Unbounded с максимальным приоритетом */
-/* ИСПРАВЛЕНО: Усилен приоритет для перекрытия глобальных стилей h1, h2, h3 */
+/* ИСПРАВЛЕНО: Используем CSS переменную из next/font/local для надежной загрузки */
 .quiz-title,
 h1.quiz-title,
 h2.quiz-title,
@@ -108,26 +108,26 @@ h3.quiz-title,
 .quiz-how-it-works-title,
 h1.quiz-welcome-title,
 h1.quiz-how-it-works-title {
-  font-family: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif !important;
   font-weight: inherit !important;
   letter-spacing: inherit !important;
 }
 
 /* Дополнительное правило для всех h1, h2 внутри анкеты - используем более специфичный селектор */
-/* ИСПРАВЛЕНО: Используем прямое имя шрифта из Google Fonts */
+/* ИСПРАВЛЕНО: Используем CSS переменную из next/font/local */
 [class*="quiz"] h1,
 [class*="quiz"] h2,
 [class*="quiz"] h3,
 div[style*="quiz"] h1,
 div[style*="quiz"] h2,
 div[style*="quiz"] h3 {
-  font-family: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 /* Класс для текста Inter в анкете */
-/* ИСПРАВЛЕНО: Используем прямое имя шрифта из Google Fonts */
+/* ИСПРАВЛЕНО: Используем CSS переменную из next/font/local для надежной загрузки */
 .quiz-text {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 /* Неон-текст */
