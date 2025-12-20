@@ -4720,7 +4720,7 @@ export default function QuizPage() {
           {screen.ctaText && (
             <div style={{
               position: 'fixed',
-              bottom: 'clamp(20px, 4vh, 40px)',
+              bottom: 'clamp(40px, 6vh, 60px)',
               left: 0,
               right: 0,
               padding: '0 clamp(20px, 5vw, 40px)',
@@ -4956,7 +4956,7 @@ export default function QuizPage() {
           {screen.ctaText && (
             <div style={{
               position: 'fixed',
-              bottom: 'clamp(20px, 4vh, 40px)',
+              bottom: 'clamp(40px, 6vh, 60px)',
               left: 0,
               right: 0,
               padding: '0 clamp(20px, 5vw, 40px)',
@@ -5413,33 +5413,32 @@ export default function QuizPage() {
         {screen.ctaText && (
           <div style={{
             position: 'fixed',
-            bottom: 0,
+            bottom: 'clamp(40px, 6vh, 60px)',
             left: 0,
             right: 0,
-            padding: '20px',
-            background: '#FFFFFF',
-            borderTop: '1px solid rgba(0, 0, 0, 0.05)',
+            padding: '0 clamp(20px, 5vw, 40px)',
+            background: 'transparent',
             zIndex: 100,
             display: 'flex',
             justifyContent: 'center',
           }}>
-            <button
-              onClick={handleNext}
-              style={{
-                width: '100%',
-                maxWidth: '280px',
-                height: '64px',
-                borderRadius: '20px',
-                background: '#D5FE61',
-                color: '#000000',
-                border: 'none',
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 600,
-                fontSize: '16px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
+              <button
+                onClick={handleNext}
+                style={{
+                  width: '100%',
+                  maxWidth: 'clamp(224px, 60vw, 320px)',
+                  height: 'clamp(56px, 8vh, 64px)',
+                  borderRadius: '20px',
+                  background: '#D5FE61',
+                  color: '#000000',
+                  border: 'none',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 'clamp(14px, 4vw, 16px)',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
               onMouseDown={(e) => {
                 e.currentTarget.style.transform = 'scale(0.98)';
               }}
