@@ -4,26 +4,84 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
-import { Unbounded, Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import { QueryProvider } from '@/providers/QueryProvider';
 
-// Загружаем шрифты через next/font для оптимизации и надежности
-const unbounded = Unbounded({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '700'],
-  display: 'swap',
+// Загружаем шрифты локально из public/fonts для надежности
+// Файлы шрифтов должны быть загружены в public/fonts/
+const unbounded = localFont({
+  src: [
+    {
+      path: '/fonts/unbounded-regular.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/unbounded-bold.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-unbounded',
+  display: 'swap',
+  fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
 });
 
-const inter = Inter({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
-  display: 'swap',
+const inter = localFont({
+  src: [
+    {
+      path: '/fonts/inter-thin.woff2',
+      weight: '100',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/inter-extralight.woff2',
+      weight: '200',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/inter-light.woff2',
+      weight: '300',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/inter-regular.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/inter-medium.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/inter-semibold.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/inter-bold.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/inter-extrabold.woff2',
+      weight: '800',
+      style: 'normal',
+    },
+    {
+      path: '/fonts/inter-black.woff2',
+      weight: '900',
+      style: 'normal',
+    },
+  ],
   variable: '--font-inter',
+  display: 'swap',
+  fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
 });
 
 export const metadata: Metadata = {
