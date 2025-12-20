@@ -109,6 +109,11 @@ h2.quiz-title,
   letter-spacing: inherit !important;
 }
 
+/* Класс для текста Inter в анкете */
+.quiz-text {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
 /* Неон-текст */
 .neon-purple {
   text-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
