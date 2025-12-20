@@ -11,6 +11,8 @@ export type QuizState =
   | 'QUESTIONS'         // Прохождение вопросов
   | 'RETAKE_SELECT'     // Экран выбора тем для перепрохождения
   | 'SUBMITTING'        // Отправка ответов
+  | 'RECALCULATING'     // ИСПРАВЛЕНО: Пересчёт профиля и рекомендаций
+  | 'REBUILDING_PLAN'   // ИСПРАВЛЕНО: Пересборка плана
   | 'DONE';             // Анкета завершена
 
 export type QuizEvent =
@@ -26,6 +28,8 @@ export type QuizEvent =
   | 'SUBMIT_STARTED'
   | 'SUBMIT_SUCCESS'
   | 'SUBMIT_ERROR'
+  | 'PLAN_INVALIDATED'  // ИСПРАВЛЕНО: План инвалидирован, нужно пересобрать
+  | 'PLAN_REBUILT'      // ИСПРАВЛЕНО: План успешно пересобран
   | 'RESET';
 
 interface StateTransition {
@@ -59,12 +63,23 @@ const transitions: StateTransition[] = [
   { from: 'RETAKE_SELECT', event: 'FULL_RETAKE', to: 'QUESTIONS' },
   
   // Submitting
-  { from: 'SUBMITTING', event: 'SUBMIT_SUCCESS', to: 'DONE' },
+  { from: 'SUBMITTING', event: 'SUBMIT_SUCCESS', to: 'RECALCULATING' }, // ИСПРАВЛЕНО: После успешной отправки переходим в RECALCULATING
   { from: 'SUBMITTING', event: 'SUBMIT_ERROR', to: 'QUESTIONS' },
+  
+  // Recalculating (профиль и рекомендации)
+  { from: 'RECALCULATING', event: 'PLAN_INVALIDATED', to: 'REBUILDING_PLAN' }, // ИСПРАВЛЕНО: Если план нужно пересобрать
+  { from: 'RECALCULATING', event: 'PLAN_REBUILT', to: 'DONE' }, // ИСПРАВЛЕНО: Если план не нужно пересобирать или уже пересобран
+  { from: 'RECALCULATING', event: 'SUBMIT_ERROR', to: 'QUESTIONS' },
+  
+  // Rebuilding Plan
+  { from: 'REBUILDING_PLAN', event: 'PLAN_REBUILT', to: 'DONE' }, // ИСПРАВЛЕНО: План пересобран, завершаем
+  { from: 'REBUILDING_PLAN', event: 'SUBMIT_ERROR', to: 'QUESTIONS' },
   
   // Reset
   { from: 'DONE', event: 'RESET', to: 'LOADING' },
   { from: 'QUESTIONS', event: 'RESET', to: 'LOADING' },
+  { from: 'RECALCULATING', event: 'RESET', to: 'LOADING' },
+  { from: 'REBUILDING_PLAN', event: 'RESET', to: 'LOADING' },
 ];
 
 export class QuizStateMachine {

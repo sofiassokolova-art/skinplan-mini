@@ -2,14 +2,31 @@
 // ИСПРАВЛЕНО: Хук для управления логикой перепрохождения анкеты
 // Вынесен из quiz/page.tsx для разделения логики
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
+
+export type RetakeStatus =
+  | 'idle'
+  | 'saving_answers'
+  | 'updating_profile'
+  | 'invalidating_plan'
+  | 'rebuilding_plan'
+  | 'completed'
+  | 'error';
+
+export interface RetakeResult {
+  success: boolean;
+  planInvalidated?: boolean;
+  error?: string;
+}
 
 export function useQuizRetake() {
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false);
   const [showRetakeScreen, setShowRetakeScreen] = useState(false);
   const [isStartingOver, setIsStartingOver] = useState(false);
+  const [retakeStatus, setRetakeStatus] = useState<RetakeStatus>('idle');
+  const [planNeedsRebuild, setPlanNeedsRebuild] = useState(false);
   const isStartingOverRef = useRef(false);
   const profileCheckInProgressRef = useRef(false);
 
@@ -70,6 +87,82 @@ export function useQuizRetake() {
     }
   }, []);
 
+  // ИСПРАВЛЕНО: Функция для обработки ответа от update-partial и пересборки плана
+  const handleRetakeResponse = useCallback(async (
+    response: { success: boolean; planInvalidated?: boolean; error?: string }
+  ): Promise<RetakeResult> => {
+    try {
+      setRetakeStatus('updating_profile');
+      
+      if (!response.success) {
+        setRetakeStatus('error');
+        return {
+          success: false,
+          error: response.error || 'Failed to update profile',
+        };
+      }
+
+      // ИСПРАВЛЕНО: Если план инвалидирован, нужно пересобрать
+      if (response.planInvalidated) {
+        setPlanNeedsRebuild(true);
+        setRetakeStatus('rebuilding_plan');
+        
+        clientLogger.log('🔄 Plan invalidated, rebuilding...');
+        
+        try {
+          // Вызываем генерацию плана
+          const planResponse = await fetch('/api/plan/generate', {
+            method: 'GET',
+            headers: {
+              'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '',
+            },
+          });
+
+          if (!planResponse.ok) {
+            const errorData = await planResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || `Plan generation failed: ${planResponse.status}`);
+          }
+
+          const planData = await planResponse.json();
+          
+          if (planData.success) {
+            clientLogger.log('✅ Plan successfully rebuilt');
+            setRetakeStatus('completed');
+            setPlanNeedsRebuild(false);
+            return {
+              success: true,
+              planInvalidated: true,
+            };
+          } else {
+            throw new Error(planData.error || 'Plan generation returned unsuccessful');
+          }
+        } catch (planError: any) {
+          clientLogger.warn('⚠️ Failed to rebuild plan', planError);
+          setRetakeStatus('error');
+          return {
+            success: false,
+            error: `Plan rebuild failed: ${planError.message || 'Unknown error'}`,
+            planInvalidated: true,
+          };
+        }
+      } else {
+        // План не нужно пересобирать
+        setRetakeStatus('completed');
+        return {
+          success: true,
+          planInvalidated: false,
+        };
+      }
+    } catch (error: any) {
+      clientLogger.error('❌ Error handling retake response', error);
+      setRetakeStatus('error');
+      return {
+        success: false,
+        error: error.message || 'Unknown error',
+      };
+    }
+  }, []);
+
   return {
     isRetakingQuiz,
     setIsRetakingQuiz,
@@ -78,6 +171,9 @@ export function useQuizRetake() {
     isStartingOver,
     setIsStartingOver,
     isStartingOverRef,
+    retakeStatus, // ИСПРАВЛЕНО: Добавлено состояние retake
+    planNeedsRebuild, // ИСПРАВЛЕНО: Добавлен флаг необходимости пересборки плана
+    handleRetakeResponse, // ИСПРАВЛЕНО: Добавлена функция для обработки ответа
   };
 }
 

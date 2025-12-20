@@ -224,8 +224,36 @@ export default function QuizTopicPage() {
 
       const result = await response.json();
 
+      // ИСПРАВЛЕНО: Если план нужно пересобрать, вызываем генерацию плана
+      if (result.needsPlanRebuild || result.planInvalidated) {
+        try {
+          clientLogger.log('🔄 Plan invalidated, rebuilding...');
+          
+          const planResponse = await fetch('/api/plan/generate', {
+            method: 'GET',
+            headers: {
+              'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '',
+            },
+          });
+
+          if (!planResponse.ok) {
+            const planError = await planResponse.json().catch(() => ({}));
+            clientLogger.warn('⚠️ Failed to rebuild plan', planError);
+            // Не блокируем переход, но логируем ошибку
+          } else {
+            const planData = await planResponse.json();
+            if (planData.success) {
+              clientLogger.log('✅ Plan successfully rebuilt');
+            }
+          }
+        } catch (planError: any) {
+          clientLogger.warn('⚠️ Error rebuilding plan', planError);
+          // Не блокируем переход, но логируем ошибку
+        }
+      }
+
       // Переходим на страницу результата
-      router.push(`/quiz/update/result?topicId=${topicId}&needsRebuild=${result.needsPlanRebuild}`);
+      router.push(`/quiz/update/result?topicId=${topicId}&needsRebuild=${result.needsPlanRebuild || result.planInvalidated || false}`);
     } catch (err: any) {
       logger.error('Error submitting answers', err, { topicId });
       console.error('Error submitting answers:', err);

@@ -7,6 +7,8 @@ import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
 import { getQuestionCodesForTopic, topicRequiresPlanRebuild, type QuestionTopicId } from '@/lib/questionnaire-topics';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { requiresPlanRebuild, requiresSafetyLock } from '@/lib/profile-change-detector';
+import { validateSkinProfile } from '@/lib/profile-validator';
 
 export const runtime = 'nodejs';
 
@@ -65,178 +67,245 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Обновляем или создаем ответы для выбранной темы
-    const questionCodes = getQuestionCodesForTopic(topicId);
-    const updatedQuestionIds = new Set<number>();
+    // ИСПРАВЛЕНО (P0): Обернуть весь flow в транзакцию для атомарности
+    const result = await prisma.$transaction(async (tx) => {
+      // Обновляем или создаем ответы для выбранной темы
+      const questionCodes = getQuestionCodesForTopic(topicId);
+      const updatedQuestionIds = new Set<number>();
 
-    for (const answerData of answers) {
-      const question = questionnaire.questions.find(
-        (q) => q.code === answerData.questionCode
-      );
+      for (const answerData of answers) {
+        const question = questionnaire.questions.find(
+          (q) => q.code === answerData.questionCode
+        );
 
-      if (!question) {
-        console.warn(`Question with code ${answerData.questionCode} not found`);
-        continue;
-      }
+        if (!question) {
+          console.warn(`Question with code ${answerData.questionCode} not found`);
+          continue;
+        }
 
-      updatedQuestionIds.add(question.id);
+        updatedQuestionIds.add(question.id);
 
-      // Ищем существующий ответ
-      const existingAnswer = existingAnswers.find(
-        (a) => a.questionId === question.id
-      );
-
-      // ИСПРАВЛЕНО: Используем upsert вместо проверки существования для предотвращения race condition
-      await prisma.userAnswer.upsert({
-        where: {
-          userId_questionnaireId_questionId: {
+        // ИСПРАВЛЕНО: Используем tx вместо prisma для транзакции
+        await tx.userAnswer.upsert({
+          where: {
+            userId_questionnaireId_questionId: {
+              userId,
+              questionnaireId: questionnaire.id,
+              questionId: question.id,
+            },
+          },
+          update: {
+            answerValue: answerData.answerValue || null,
+            answerValues: answerData.answerValues
+              ? (answerData.answerValues as any)
+              : (null as any),
+          },
+          create: {
             userId,
             questionnaireId: questionnaire.id,
             questionId: question.id,
+            answerValue: answerData.answerValue || null,
+            answerValues: answerData.answerValues
+              ? (answerData.answerValues as any)
+              : null,
           },
-        },
-        update: {
-          answerValue: answerData.answerValue || null,
-          answerValues: answerData.answerValues
-            ? (answerData.answerValues as any)
-            : (null as any),
-        },
-        create: {
+        });
+      }
+
+      // Получаем все ответы (включая обновленные) для пересчета профиля
+      const allAnswers = await tx.userAnswer.findMany({
+        where: {
           userId,
           questionnaireId: questionnaire.id,
-          questionId: question.id,
-          answerValue: answerData.answerValue || null,
-          answerValues: answerData.answerValues
-            ? (answerData.answerValues as any)
-            : null,
+        },
+        include: {
+          question: true,
         },
       });
-    }
 
-    // Получаем все ответы (включая обновленные) для пересчета профиля
-    const allAnswers = await prisma.userAnswer.findMany({
-      where: {
-        userId,
-        questionnaireId: questionnaire.id,
-      },
-      include: {
-        question: true,
-      },
-    });
+      // Преобразуем ответы в формат для skinprofile-rules-engine
+      const rawAnswers = allAnswers.map((answer) => {
+        return {
+          questionId: answer.question.id,
+          questionCode: answer.question.code,
+          answerValue: answer.answerValue || null,
+          answerValues: answer.answerValues || null,
+        };
+      });
 
-    // Преобразуем ответы в формат для skinprofile-rules-engine
-    const rawAnswers = allAnswers.map((answer) => {
-      const value =
-        answer.answerValue ||
-        (answer.answerValues
-          ? JSON.parse(JSON.stringify(answer.answerValues))
-          : null);
+      // Генерируем новый SkinProfile из всех ответов
+      const newProfile = buildSkinProfileFromAnswers(rawAnswers);
+
+      // ИСПРАВЛЕНО (P0): Валидация профиля после rules-engine
+      const validationResult = validateSkinProfile(newProfile);
+      if (!validationResult.isValid) {
+        throw new Error(`Profile validation failed: ${validationResult.errors.join(', ')}`);
+      }
+
+      // Получаем текущий профиль для версионирования
+      const currentProfile = await tx.skinProfile.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const newVersion = currentProfile ? (currentProfile.version || 1) + 1 : 1;
+
+      // Сохраняем новый профиль
+      const profileLegacyData = currentProfile ? {
+        dehydrationLevel: currentProfile.dehydrationLevel,
+        acneLevel: currentProfile.acneLevel,
+        rosaceaRisk: currentProfile.rosaceaRisk,
+        pigmentationRisk: currentProfile.pigmentationRisk,
+        hasPregnancy: currentProfile.hasPregnancy,
+        notes: currentProfile.notes,
+      } : {};
+
+      const updatedProfile = await tx.skinProfile.create({
+        data: {
+          userId,
+          version: newVersion,
+          skinType: newProfile.skinType || null,
+          sensitivityLevel: newProfile.sensitivity || null,
+          ...profileLegacyData,
+          medicalMarkers: {
+            mainGoals: newProfile.mainGoals,
+            secondaryGoals: newProfile.secondaryGoals,
+            diagnoses: newProfile.diagnoses,
+            contraindications: newProfile.contraindications,
+            ageGroup: newProfile.ageGroup,
+            gender: newProfile.gender,
+            seasonality: newProfile.seasonality,
+            pregnancyStatus: newProfile.pregnancyStatus,
+            spfHabit: newProfile.spfHabit,
+            makeupFrequency: newProfile.makeupFrequency,
+            lifestyleFactors: newProfile.lifestyleFactors,
+            carePreference: newProfile.carePreference,
+            routineComplexity: newProfile.routineComplexity,
+            budgetSegment: newProfile.budgetSegment,
+            currentTopicals: newProfile.currentTopicals,
+            currentOralMeds: newProfile.currentOralMeds,
+          } as any,
+        },
+      });
+
+      // ИСПРАВЛЕНО (P0): Усиленные условия rebuild плана (не только topicId)
+      const topicRequiresRebuild = topicRequiresPlanRebuild(topicId);
+      
+      const currentProfileData = currentProfile ? {
+        skinType: currentProfile.skinType as any, // ИСПРАВЛЕНО: Приводим к типу SkinTypeKey
+        sensitivity: currentProfile.sensitivityLevel as any, // ИСПРАВЛЕНО: Приводим к типу sensitivity
+        mainGoals: (currentProfile.medicalMarkers as any)?.mainGoals || [],
+        diagnoses: (currentProfile.medicalMarkers as any)?.diagnoses || [],
+        pregnancyStatus: (currentProfile.medicalMarkers as any)?.pregnancyStatus || null,
+        contraindications: (currentProfile.medicalMarkers as any)?.contraindications || [],
+        currentTopicals: (currentProfile.medicalMarkers as any)?.currentTopicals || [],
+        currentOralMeds: (currentProfile.medicalMarkers as any)?.currentOralMeds || [],
+      } : null;
+
+      const rebuildCheck = requiresPlanRebuild(
+        topicRequiresRebuild,
+        currentProfileData,
+        newProfile
+      );
+
+      // ИСПРАВЛЕНО (UX): Определяем safetyLock - нужно ли блокировать старый план
+      const safetyLock = requiresSafetyLock(currentProfileData, newProfile);
+
+      let planInvalidated = false;
+      let recommendationsInvalidated = false;
+
+      if (rebuildCheck.requires) {
+        // Удаляем старую сессию рекомендаций для пользователя
+        await tx.recommendationSession.deleteMany({
+          where: { userId },
+        });
+        
+        recommendationsInvalidated = true;
+        planInvalidated = true;
+      }
 
       return {
-        questionId: answer.question.id,
-        questionCode: answer.question.code,
-        answerValue: answer.answerValue || null,
-        answerValues: answer.answerValues || null,
+        updatedProfile,
+        updatedQuestionIds: Array.from(updatedQuestionIds),
+        planInvalidated,
+        recommendationsInvalidated,
+        rebuildReason: rebuildCheck.reason,
+        validationWarnings: validationResult.warnings,
+        safetyLock, // ИСПРАВЛЕНО (UX): Добавлен safetyLock
       };
     });
 
-    // Генерируем новый SkinProfile из всех ответов
-    const newProfile = buildSkinProfileFromAnswers(rawAnswers);
-
-    // Получаем текущий профиль для версионирования
-    const currentProfile = await prisma.skinProfile.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const newVersion = currentProfile ? (currentProfile.version || 1) + 1 : 1;
-
-    // Сохраняем новый профиль
-    // Сначала получаем текущий профиль для сохранения других полей
-    const currentProfileData = currentProfile ? {
-      dehydrationLevel: currentProfile.dehydrationLevel,
-      acneLevel: currentProfile.acneLevel,
-      rosaceaRisk: currentProfile.rosaceaRisk,
-      pigmentationRisk: currentProfile.pigmentationRisk,
-      hasPregnancy: currentProfile.hasPregnancy,
-      notes: currentProfile.notes,
-    } : {};
-
-    const updatedProfile = await prisma.skinProfile.create({
-      data: {
-        userId,
-        version: newVersion,
-        skinType: newProfile.skinType || null,
-        sensitivityLevel: newProfile.sensitivity || null,
-        ...currentProfileData,
-        medicalMarkers: {
-          mainGoals: newProfile.mainGoals,
-          secondaryGoals: newProfile.secondaryGoals,
-          diagnoses: newProfile.diagnoses,
-          contraindications: newProfile.contraindications,
-          ageGroup: newProfile.ageGroup,
-          gender: newProfile.gender,
-          seasonality: newProfile.seasonality,
-          pregnancyStatus: newProfile.pregnancyStatus,
-          spfHabit: newProfile.spfHabit,
-          makeupFrequency: newProfile.makeupFrequency,
-          lifestyleFactors: newProfile.lifestyleFactors,
-          carePreference: newProfile.carePreference,
-          routineComplexity: newProfile.routineComplexity,
-          budgetSegment: newProfile.budgetSegment,
-          currentTopicals: newProfile.currentTopicals,
-          currentOralMeds: newProfile.currentOralMeds,
-        } as any,
-      },
-    });
-
-    // Проверяем, нужно ли пересобирать план
-    const requiresPlanRebuild = topicRequiresPlanRebuild(topicId);
-    let planRebuilt = false;
-
-    if (requiresPlanRebuild) {
-      // Определяем параметры для CarePlanTemplate
-      const carePlanProfileInput: CarePlanProfileInput = {
-        skinType: newProfile.skinType || 'normal',
-        mainGoals: newProfile.mainGoals.length > 0 ? newProfile.mainGoals : ['general'],
-        sensitivityLevel: newProfile.sensitivity || 'low',
-        routineComplexity: (newProfile.routineComplexity === 'any' ? 'medium' : newProfile.routineComplexity) || 'medium',
-      };
-
-      const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
-
-      // Удаляем старую сессию рекомендаций для пользователя, чтобы план пересобрался
-      // Удаляем по userId, так как при обновлении профиля создается новая версия с новым profileId
-      // И старый RecommendationSession может быть привязан к старой версии профиля
-      await prisma.recommendationSession.deleteMany({
-        where: { userId },
-      });
-      
-      // Также инвалидируем кэш для всех версий профиля пользователя
+    // Инвалидируем кэш вне транзакции (best effort)
+    if (result.planInvalidated) {
       try {
         const { invalidateCache } = await import('@/lib/cache');
-        // Инвалидируем для текущей и предыдущей версий профиля
+        const currentProfile = await prisma.skinProfile.findFirst({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+        });
         if (currentProfile) {
           await invalidateCache(userId, currentProfile.version || 1);
         }
-        await invalidateCache(userId, newVersion);
+        await invalidateCache(userId, result.updatedProfile.version);
       } catch (cacheError) {
         console.warn('Failed to invalidate cache', cacheError);
       }
-
-      planRebuilt = true;
     }
+
+    // ИСПРАВЛЕНО (P0 + UX): Улучшенный контракт ответа API с поддержкой UX retake
+    const nextActions: string[] = [];
+    if (result.recommendationsInvalidated) {
+      nextActions.push('REBUILD_RECOMMENDATIONS');
+    }
+    if (result.planInvalidated) {
+      nextActions.push('REBUILD_PLAN');
+    }
+
+    // ИСПРАВЛЕНО (UX): Определяем estimatedSteps для прогресс-бара
+    // 1. Сохраняем ответы (уже сделано)
+    // 2. Обновляем профиль (уже сделано)
+    // 3. Подбираем средства (если нужно)
+    // 4. Собираем план (если нужно)
+    const estimatedSteps = [
+      { id: 'saving_answers', label: 'Сохраняем ответы', completed: true },
+      { id: 'updating_profile', label: 'Обновляем профиль кожи', completed: true },
+      ...(result.recommendationsInvalidated ? [{
+        id: 'rebuilding_recommendations',
+        label: 'Подбираем средства',
+        completed: false,
+      }] : []),
+      ...(result.planInvalidated ? [{
+        id: 'rebuilding_plan',
+        label: 'Собираем обновлённый план на 28 дней',
+        completed: false,
+      }] : []),
+    ];
 
     return NextResponse.json({
       success: true,
-      profile: {
-        id: updatedProfile.id,
-        version: updatedProfile.version,
-        skinType: updatedProfile.skinType,
-        mainGoals: (updatedProfile.medicalMarkers as any)?.mainGoals || [],
+      mode: 'full' as const, // Всегда full rebuild профиля
+      updated: {
+        answers: true,
+        profile: true,
+        recommendations: result.recommendationsInvalidated,
+        plan: false, // План не пересобран, только инвалидирован
       },
-      planRebuilt,
-      updatedQuestions: Array.from(updatedQuestionIds),
+      nextActions, // ИСПРАВЛЕНО (UX): Включает REBUILD_RECOMMENDATIONS и REBUILD_PLAN
+      safetyLock: result.safetyLock, // ИСПРАВЛЕНО (UX): Блокировать ли старый план
+      estimatedSteps, // ИСПРАВЛЕНО (UX): Шаги для прогресс-бара
+      data: {
+        profile: {
+          id: result.updatedProfile.id,
+          version: result.updatedProfile.version,
+          skinType: result.updatedProfile.skinType,
+          mainGoals: (result.updatedProfile.medicalMarkers as any)?.mainGoals || [],
+        },
+        planInvalidated: result.planInvalidated,
+        planStatus: result.planInvalidated ? 'invalidated' : 'valid',
+        rebuildReason: result.rebuildReason,
+        updatedQuestions: result.updatedQuestionIds,
+        validationWarnings: result.validationWarnings,
+      },
     });
   } catch (error: any) {
     console.error('Error updating partial questionnaire:', error);
