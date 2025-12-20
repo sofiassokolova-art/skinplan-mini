@@ -5168,7 +5168,7 @@ export default function QuizPage() {
                 letterSpacing: '0px',
                 textAlign: 'center',
                 color: '#000000',
-                margin: '0 0 20px 0',
+                margin: '0 0 8px 0',
                 maxWidth: '311px',
               }}>
               <span style={{ fontWeight: 700 }}>SkinIQ</span>
