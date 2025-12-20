@@ -29,6 +29,16 @@ type Rule = {
       equals: string;
     };
   }>;
+  // ИСПРАВЛЕНО: Поддержка subQuestions для compound-правил (как в JSON)
+  subQuestions?: Array<{
+    subKey: string;
+    type: string;
+    options?: RuleOption[];
+    condition?: {
+      dependsOn: string;
+      equals: string;
+    };
+  }>;
 };
 
 /**
@@ -71,12 +81,15 @@ function applyAction(profile: SkinProfile, action: RuleAction): void {
 }
 
 /**
- * Применяет правило к профилю на основе ответа пользователя
+ * ИСПРАВЛЕНО: Применяет правило к профилю на основе ответа пользователя
+ * Поддерживает subQuestions для compound-правил и single_choice_conditional
  */
 function applyRule(
   rule: Rule,
   answerValue: string | string[] | { subKey: string; value: string },
-  profile: SkinProfile
+  profile: SkinProfile,
+  // ИСПРАВЛЕНО: Добавлен answersByCode для проверки условий в single_choice_conditional
+  answersByCode?: Map<string, string | string[]>
 ): void {
   if (rule.type === 'group' && rule.fields) {
     // Для group-правил обрабатываем каждое поле отдельно
@@ -89,20 +102,28 @@ function applyRule(
         }
       }
     }
-  } else if (rule.type === 'compound' && rule.fields) {
-    // Для compound-правил обрабатываем subQuestions
+  } else if (rule.type === 'compound') {
+    // ИСПРАВЛЕНО: Для compound-правил используем subQuestions (как в JSON), а не fields
+    const subQuestions = rule.subQuestions || rule.fields || [];
+    
     if (typeof answerValue === 'object' && !Array.isArray(answerValue) && 'subKey' in answerValue) {
-      const field = rule.fields.find(f => f.subKey === answerValue.subKey);
-      if (field) {
-        // Проверяем условие, если есть
-        if (field.condition) {
-          // Для упрощения: если есть условие, проверяем зависимость
-          // В реальности нужно проверять предыдущий ответ
-          // Пока пропускаем условные правила или применяем всегда
+      const subQuestion = subQuestions.find(sq => sq.subKey === answerValue.subKey);
+      if (subQuestion) {
+        // ИСПРАВЛЕНО: Проверяем условие для single_choice_conditional
+        if (subQuestion.type === 'single_choice_conditional' && subQuestion.condition && answersByCode) {
+          const dependsOnValue = answersByCode.get(subQuestion.condition.dependsOn);
+          const conditionMet = Array.isArray(dependsOnValue)
+            ? dependsOnValue.includes(subQuestion.condition.equals)
+            : dependsOnValue === subQuestion.condition.equals;
+          
+          // Если условие не выполнено, не применяем правило
+          if (!conditionMet) {
+            return;
+          }
         }
 
-        if (field.options) {
-          const option = field.options.find(opt => opt.label === answerValue.value);
+        if (subQuestion.options) {
+          const option = subQuestion.options.find(opt => opt.label === answerValue.value);
           if (option) {
             option.actions.forEach(action => applyAction(profile, action));
           }
@@ -164,6 +185,24 @@ export function buildSkinProfileFromAnswers(
     'concerns_primary': 'concerns_primary',
   };
 
+  // ИСПРАВЛЕНО: Создаем мапу ответов по кодам для проверки условий в single_choice_conditional
+  const answersByCode = new Map<string, string | string[]>();
+  userAnswers.forEach(answer => {
+    if (answer.questionCode) {
+      let value: string | string[] | null = null;
+      if (answer.answerOptionLabels && Array.isArray(answer.answerOptionLabels) && answer.answerOptionLabels.length > 0) {
+        value = answer.answerOptionLabels.length === 1 ? answer.answerOptionLabels[0] : answer.answerOptionLabels;
+      } else if (answer.answerValues && Array.isArray(answer.answerValues)) {
+        value = answer.answerValues.length === 1 ? answer.answerValues[0] : answer.answerValues;
+      } else if (answer.answerValue) {
+        value = answer.answerValue;
+      }
+      if (value !== null) {
+        answersByCode.set(answer.questionCode, value);
+      }
+    }
+  });
+
   // Применяем правила для каждого ответа
   userAnswers.forEach(answer => {
     // Сначала пробуем найти правило по questionId
@@ -195,7 +234,8 @@ export function buildSkinProfileFromAnswers(
     }
 
     if (answerValue !== null) {
-      applyRule(rule, answerValue, profile);
+      // ИСПРАВЛЕНО: Передаем answersByCode для проверки условий
+      applyRule(rule, answerValue, profile, answersByCode);
     }
   });
 

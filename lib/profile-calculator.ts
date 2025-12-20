@@ -118,19 +118,28 @@ export function createSkinProfile(
   medicalMarkers: Prisma.JsonObject | null;
   notes: string;
 } {
-  // Собираем все score_json из ответов
+  // ИСПРАВЛЕНО: Собираем все score_json из ответов
+  // Для multi-choice суммируем scoreJson по всем выбранным опциям, а не только по первой
   const answerScores: AnswerScore[] = [];
 
   for (const answer of userAnswers) {
     const question = answer.question;
-    const optionValue = answer.answerValue || 
-      (Array.isArray(answer.answerValues) ? answer.answerValues[0] : null);
-
-    if (!optionValue) continue;
-
-    const option = question.answerOptions.find(opt => opt.value === optionValue);
-    if (option?.scoreJson) {
-      answerScores.push(option.scoreJson as AnswerScore);
+    
+    // ИСПРАВЛЕНО: Обрабатываем как single, так и multi-choice
+    if (answer.answerValue) {
+      // Single choice
+      const option = question.answerOptions.find(opt => opt.value === answer.answerValue);
+      if (option?.scoreJson) {
+        answerScores.push(option.scoreJson as AnswerScore);
+      }
+    } else if (Array.isArray(answer.answerValues) && answer.answerValues.length > 0) {
+      // Multi-choice: обрабатываем ВСЕ выбранные опции
+      for (const optionValue of answer.answerValues) {
+        const option = question.answerOptions.find(opt => opt.value === optionValue);
+        if (option?.scoreJson) {
+          answerScores.push(option.scoreJson as AnswerScore);
+        }
+      }
     }
   }
 
@@ -224,6 +233,8 @@ function getSkinTypeLabel(type: string): string {
     dry: 'Сухая',
     oily: 'Жирная',
     combo: 'Комбинированная',
+    combination_dry: 'Комбинированная (сухая)',
+    combination_oily: 'Комбинированная (жирная)',
     normal: 'Нормальная',
     sensitive: 'Чувствительная',
   };
