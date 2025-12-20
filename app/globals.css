@@ -114,20 +114,20 @@ h1.quiz-how-it-works-title {
 }
 
 /* Дополнительное правило для всех h1, h2 внутри анкеты - используем более специфичный селектор */
-/* ИСПРАВЛЕНО: Используем CSS переменную из next/font */
+/* ИСПРАВЛЕНО: Используем прямое имя шрифта из Google Fonts */
 [class*="quiz"] h1,
 [class*="quiz"] h2,
 [class*="quiz"] h3,
 div[style*="quiz"] h1,
 div[style*="quiz"] h2,
 div[style*="quiz"] h3 {
-  font-family: var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 /* Класс для текста Inter в анкете */
-/* ИСПРАВЛЕНО: Используем CSS переменную из next/font для надежной загрузки */
+/* ИСПРАВЛЕНО: Используем прямое имя шрифта из Google Fonts */
 .quiz-text {
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 /* Неон-текст */
