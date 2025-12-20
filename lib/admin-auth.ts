@@ -5,13 +5,13 @@ import { NextRequest } from 'next/server';
 import jwt from 'jsonwebtoken';
 
 // ИСПРАВЛЕНО (P0): Убран fallback - критическая уязвимость безопасности
-// Проверка перенесена внутрь функций, чтобы не ломать сборку
-function getJwtSecret(): string {
+// ИСПРАВЛЕНО: Возвращаем ошибку вместо throw, чтобы не ломать обработку
+function getJwtSecret(): { valid: boolean; secret?: string; error?: string } {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error('JWT_SECRET is not set. Please set JWT_SECRET environment variable.');
+    return { valid: false, error: 'JWT_SECRET is not set. Please set JWT_SECRET environment variable.' };
   }
-  return secret;
+  return { valid: true, secret };
 }
 
 export interface AdminAuthResult {
@@ -41,7 +41,15 @@ export async function verifyAdmin(request: NextRequest): Promise<AdminAuthResult
 
     try {
       // ИСПРАВЛЕНО (P2): Проверяем issuer/audience при верификации
-      const decoded = jwt.verify(token, getJwtSecret(), {
+      const jwtSecretResult = getJwtSecret();
+      if (!jwtSecretResult.valid || !jwtSecretResult.secret) {
+        return {
+          valid: false,
+          error: jwtSecretResult.error || 'JWT configuration error',
+        };
+      }
+
+      const decoded = jwt.verify(token, jwtSecretResult.secret, {
         issuer: 'skiniq-admin',
         audience: 'skiniq-admin-ui',
       }) as {
