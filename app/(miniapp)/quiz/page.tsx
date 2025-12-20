@@ -4782,8 +4782,8 @@ export default function QuizPage() {
           {/* Кнопка "Назад" */}
           <div style={{
             position: 'absolute',
-            top: '69px',
-            left: '19px',
+            top: 'clamp(20px, 4vh, 40px)',
+            left: 'clamp(19px, 5vw, 24px)',
             zIndex: 10,
             display: 'flex',
             alignItems: 'center',
@@ -4896,7 +4896,7 @@ export default function QuizPage() {
                       width: '100%',
                     }}
                   >
-                    {/* Круг с номером */}
+                    {/* Круг с номером и текстом "Шаг" */}
                     <div style={{
                       width: '44px',
                       height: '44px',
@@ -4904,30 +4904,33 @@ export default function QuizPage() {
                       background: '#D5FE61',
                       border: '1px solid #000000',
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 800,
-                      fontSize: '20px',
-                      lineHeight: '19.45px',
-                      letterSpacing: '0px',
-                      color: '#000000',
-                      marginBottom: '4px',
-                    }}>
-                      {stepNumber}
-                    </div>
-                    
-                    {/* Текст "Шаг" */}
-                    <div style={{
-                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 100,
-                      fontSize: '10px',
-                      lineHeight: '12px',
-                      letterSpacing: '0px',
                       color: '#000000',
                       marginBottom: '8px',
+                      padding: '2px 0',
                     }}>
-                      Шаг
+                      {/* Номер шага */}
+                      <div style={{
+                        fontWeight: 800,
+                        fontSize: '20px',
+                        lineHeight: '19.45px',
+                        letterSpacing: '0px',
+                      }}>
+                        {stepNumber}
+                      </div>
+                      {/* Текст "Шаг" */}
+                      <div style={{
+                        fontWeight: 100,
+                        fontSize: '10px',
+                        lineHeight: '12px',
+                        letterSpacing: '0px',
+                        marginTop: '-2px',
+                      }}>
+                        Шаг
+                      </div>
                     </div>
                     
                     {/* Текст шага */}
@@ -5976,12 +5979,14 @@ export default function QuizPage() {
           </div>
         ) : (
           <>
-        {/* Кнопка "Назад" - скрыта на первом вопросе */}
+        {/* Кнопка "Назад" - скрыта на первом вопросе, фиксирована вверху */}
         {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
           <button
             onClick={handleBack}
             style={{
-              marginBottom: '16px',
+              position: 'fixed',
+              top: 'clamp(20px, 4vh, 40px)',
+              left: 'clamp(20px, 5vw, 24px)',
               padding: '8px 16px',
               borderRadius: '12px',
               border: '1px solid rgba(10, 95, 89, 0.2)',
@@ -5994,6 +5999,8 @@ export default function QuizPage() {
               alignItems: 'center',
               gap: '8px',
               transition: 'all 0.2s',
+              zIndex: 100,
+              backdropFilter: 'blur(10px)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(10, 95, 89, 0.1)';
