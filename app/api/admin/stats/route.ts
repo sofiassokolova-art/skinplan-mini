@@ -17,8 +17,12 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Проверяем кеш (TTL 2 минуты для статистики)
-    const cacheKey = 'admin_stats';
+    // Получаем параметр периода из query string
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'month'; // day, week, month
+    
+    // ИСПРАВЛЕНО (P0): Кэш учитывает period
+    const cacheKey = `admin_stats:${period}`;
     const cached = adminCache.get<any>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
@@ -39,12 +43,16 @@ export async function GET(request: NextRequest) {
         console.error('❌ Error counting products:', err);
         return 0;
       }),
-      // Считаем количество уникальных пользователей с активными планами
-      prisma.skinProfile.groupBy({
+      // ИСПРАВЛЕНО (P0): Считаем количество активных планов по таблице Plan28
+      // План считается активным, если у пользователя есть хотя бы один план
+      prisma.plan28.groupBy({
         by: ['userId'],
       }).then(groups => groups.length).catch(err => {
         console.error('❌ Error counting active plans:', err);
-        return 0;
+        // Fallback: считаем по профилям, если Plan28 недоступен
+        return prisma.skinProfile.groupBy({
+          by: ['userId'],
+        }).then(groups => groups.length).catch(() => 0);
       }),
       prisma.wishlistFeedback.count({ where: { feedback: 'bought_bad' } }).catch(err => {
         console.error('❌ Error counting bad feedback:', err);
@@ -106,8 +114,8 @@ export async function GET(request: NextRequest) {
       return null;
     });
 
-    // Вычисляем доход партнёрки (сумма цен только купленных продуктов)
-    // Считаем только продукты с отзывами bought_love, bought_ok, bought_bad
+    // ИСПРАВЛЕНО (P1): Вычисляем доход партнёрки через оптимизированный запрос
+    // Берём только необходимые поля (productId и price) для минимизации памяти
     const revenue = await prisma.wishlistFeedback
       .findMany({
         where: {
@@ -115,7 +123,7 @@ export async function GET(request: NextRequest) {
             in: ['bought_love', 'bought_ok', 'bought_bad'],
           },
         },
-        include: {
+        select: {
           product: {
             select: {
               price: true,
@@ -124,17 +132,13 @@ export async function GET(request: NextRequest) {
         },
       })
       .then((feedbacks) => {
-        return feedbacks.reduce((sum, f) => sum + (f.product.price || 0), 0);
+        return feedbacks.reduce((sum, f) => sum + (f.product?.price || 0), 0);
       })
       .catch((err) => {
         console.error('❌ Error calculating revenue:', err);
         return 0;
       });
 
-    // Получаем параметр периода из query string
-    const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || 'month'; // day, week, month
-    
     // Получаем данные роста пользователей за выбранный период
     const now = new Date();
     let startDate: Date;
@@ -187,22 +191,25 @@ export async function GET(request: NextRequest) {
     const userGrowthData = [];
     const usersByKey = new Map<string, number>();
     
+    // ИСПРАВЛЕНО (P2): Единый подход к timezone - используем UTC для всех периодов
     // Считаем новых пользователей по периодам
     usersInPeriod.forEach(user => {
       let key: string;
+      const date = new Date(user.createdAt);
+      
       if (dateFormat === 'day') {
-        // Группируем по часам: "YYYY-MM-DD HH:00"
-        const date = new Date(user.createdAt);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hour = String(date.getHours()).padStart(2, '0');
+        // Группируем по часам: "YYYY-MM-DD HH:00" (UTC)
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const hour = String(date.getUTCHours()).padStart(2, '0');
         key = `${year}-${month}-${day} ${hour}:00`;
       } else {
-        // Группируем по дням: "YYYY-MM-DD"
-        const date = new Date(user.createdAt);
-        date.setHours(0, 0, 0, 0);
-        key = date.toISOString().split('T')[0];
+        // Группируем по дням: "YYYY-MM-DD" (UTC)
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        key = `${year}-${month}-${day}`;
       }
       usersByKey.set(key, (usersByKey.get(key) || 0) + 1);
     });
@@ -210,15 +217,16 @@ export async function GET(request: NextRequest) {
     // Формируем данные для графика
     let cumulativeUsers = usersBeforePeriod;
     
+    // ИСПРАВЛЕНО (P2): Единый подход к timezone - используем UTC для всех периодов
     if (dateFormat === 'day') {
-      // Для дня показываем последние 24 часа по часам
+      // Для дня показываем последние 24 часа по часам (UTC)
       for (let i = 23; i >= 0; i--) {
         const date = new Date(now);
-        date.setHours(date.getHours() - i, 0, 0, 0);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hour = String(date.getHours()).padStart(2, '0');
+        date.setUTCHours(date.getUTCHours() - i, 0, 0, 0);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const hour = String(date.getUTCHours()).padStart(2, '0');
         const key = `${year}-${month}-${day} ${hour}:00`;
         
         const newUsersInHour = usersByKey.get(key) || 0;
@@ -230,12 +238,15 @@ export async function GET(request: NextRequest) {
         });
       }
     } else if (dateFormat === 'week') {
-      // Для недели показываем по дням (7 дней)
+      // Для недели показываем по дням (7 дней) (UTC)
       for (let i = 6; i >= 0; i--) {
         const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        const key = date.toISOString().split('T')[0];
+        date.setUTCDate(date.getUTCDate() - i);
+        date.setUTCHours(0, 0, 0, 0);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const key = `${year}-${month}-${day}`;
         
         const newUsersToday = usersByKey.get(key) || 0;
         cumulativeUsers += newUsersToday;
@@ -246,12 +257,15 @@ export async function GET(request: NextRequest) {
         });
       }
     } else {
-      // Для месяца показываем по дням (30 дней)
+      // Для месяца показываем по дням (30 дней) (UTC)
       for (let i = 29; i >= 0; i--) {
         const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
-        const key = date.toISOString().split('T')[0];
+        date.setUTCDate(date.getUTCDate() - i);
+        date.setUTCHours(0, 0, 0, 0);
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const key = `${year}-${month}-${day}`;
         
         const newUsersToday = usersByKey.get(key) || 0;
         cumulativeUsers += newUsersToday;
@@ -287,9 +301,17 @@ export async function GET(request: NextRequest) {
       },
       userGrowth: userGrowthData,
       topProducts: metrics?.topProducts || [],
-      recentFeedback: recentFeedback
-        .filter((f) => f.user && f.product && f.product.brand) // Фильтруем некорректные данные
-        .map((f) => ({
+      recentFeedback: (() => {
+        // ИСПРАВЛЕНО (P1): Логируем количество отфильтрованных записей
+        const totalCount = recentFeedback.length;
+        const filtered = recentFeedback.filter((f) => f.user && f.product && f.product.brand);
+        const filteredCount = filtered.length;
+        
+        if (totalCount !== filteredCount) {
+          console.warn(`⚠️ Filtered ${totalCount - filteredCount} feedback entries without user/product/brand`);
+        }
+        
+        return filtered.map((f) => ({
         id: f.id,
         user: {
             firstName: f.user?.firstName || null,
@@ -301,7 +323,8 @@ export async function GET(request: NextRequest) {
         },
         feedback: f.feedback,
           createdAt: f.createdAt.toISOString(),
-      })),
+      }));
+      })(),
     };
 
     // Сохраняем в кеш на 2 минуты
