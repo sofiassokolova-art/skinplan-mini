@@ -614,110 +614,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // ⚠️ КРИТИЧЕСКАЯ ПРОБЛЕМА АРХИТЕКТУРЫ (P0):
-    // Рассылка живёт в HTTP-запросе → гарантированные таймауты на Vercel/Next.js
-    // Функция может быть убита по таймауту, пользователь получит 500, но часть сообщений уже уйдёт
-    // 
-    // ✅ ПРАВИЛЬНОЕ РЕШЕНИЕ (требует рефакторинга):
-    // POST /send только переводит статус в scheduled | sending
-    // Реальная отправка — через cron (/api/admin/broadcasts/worker)
-    // Это единственный способ избежать дублей и "зависших" рассылок
-    //
-    // ТЕКУЩАЯ РЕАЛИЗАЦИЯ (временная):
-    // Запускаем отправку в фоне (не ждем завершения)
-    // Это работает для небольших рассылок, но не масштабируется
+    // ИСПРАВЛЕНО (P0): Рассылка вынесена в worker для избежания таймаутов
+    // POST /send только создаёт рассылку со статусом scheduled/sending
+    // Реальная отправка происходит через /api/admin/broadcasts/worker (вызывается cron)
+    // Это единственный способ избежать дублей и "зависших" рассылок на Vercel/Next.js
     
-    // ИСПРАВЛЕНО (P0): Если scheduled - не запускаем сразу, ждём worker
+    // Если scheduled - ждём worker
     if (normalizedScheduledAt) {
       return NextResponse.json({
         success: true,
         broadcastId: broadcast.id,
         totalCount: users.length,
         scheduledAt: normalizedScheduledAt.toISOString(),
-        message: 'Broadcast scheduled. Will be sent by worker.',
+        message: 'Broadcast scheduled. Will be sent by worker when time comes.',
       });
     }
     
-    // ИСПРАВЛЕНО (P0): Для немедленной рассылки запускаем асинхронно с защитой от таймаутов
-    // В реальном приложении лучше использовать очередь (Bull, BullMQ)
-    // Здесь делаем простую реализацию с задержками и атомарными обновлениями
-    
-    // Запускаем отправку в фоне (не ждем завершения)
-    (async () => {
-      try {
-        // ИСПРАВЛЕНО (P0): Rate-limit для Telegram - 40ms задержка = ~25 msg/sec (безопасно)
-        const DELAY_MS = 40; // ИСПРАВЛЕНО (P0): Фиксированная задержка 40ms для 20-25 msg/sec
-
-        // ИСПРАВЛЕНО (P0): Используем атомарные increment вместо JS-переменных
-        // Обновляем счётчики через БД каждые 10 сообщений для защиты от потери данных
-        let processedCount = 0;
-
-        for (const user of users) {
-          try {
-            const profile = user.skinProfiles[0] || null;
-            const renderedMessage = renderMessage(message, user, profile);
-            
-            const result = await sendTelegramMessage(user.telegramId, renderedMessage, imageBuffer, imageUrl, buttons);
-            
-            // ИСПРАВЛЕНО (P0): Создаём лог для каждого пользователя
-            await prisma.broadcastLog.create({
-              data: {
-                broadcastId: broadcast.id,
-                userId: user.id,
-                telegramId: user.telegramId,
-                status: result.success ? 'sent' : 'failed',
-                errorMessage: result.error || null,
-              },
-            });
-
-            // ИСПРАВЛЕНО (P0): Атомарное обновление счётчиков через increment
-            if (result.success) {
-              await prisma.broadcastMessage.update({
-                where: { id: broadcast.id },
-                data: { sentCount: { increment: 1 } },
-              });
-            } else {
-              await prisma.broadcastMessage.update({
-                where: { id: broadcast.id },
-                data: { failedCount: { increment: 1 } },
-              });
-            }
-
-            processedCount++;
-
-            // ИСПРАВЛЕНО (P0): Rate-limit - задержка 40ms между сообщениями
-            await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-          } catch (error: any) {
-            console.error(`Error sending to user ${user.id}:`, error);
-            // ИСПРАВЛЕНО (P0): Атомарное обновление failedCount при ошибке
-            await prisma.broadcastMessage.update({
-              where: { id: broadcast.id },
-              data: { failedCount: { increment: 1 } },
-            });
-          }
-        }
-
-        // ИСПРАВЛЕНО (P0): Финальное обновление статуса на completed
-        await prisma.broadcastMessage.update({
-          where: { id: broadcast.id },
-          data: {
-            status: 'completed',
-            sentAt: new Date(),
-          },
-        });
-      } catch (error: any) {
-        // ИСПРАВЛЕНО (P0): При ошибке обновляем статус на failed
-        console.error('Error in broadcast sending process:', error);
-        await prisma.broadcastMessage.update({
-          where: { id: broadcast.id },
-          data: {
-            status: 'failed',
-          },
-        }).catch(updateError => {
-          console.error('Error updating broadcast status to failed:', updateError);
-        });
-      }
-    })();
+    // ИСПРАВЛЕНО (P0): Для немедленной рассылки статус sending, worker обработает
+    // Worker вызывается cron каждую минуту или может быть вызван вручную
+    // Это гарантирует, что рассылка не зависнет в HTTP-запросе
 
     return NextResponse.json({
       success: true,
