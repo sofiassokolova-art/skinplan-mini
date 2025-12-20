@@ -192,10 +192,11 @@ export default function AdminLogin() {
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm space-y-2">
             <p className="font-medium">{error}</p>
             {/* ИСПРАВЛЕНО: Показываем Telegram ID только если ошибка не связана с конфигурацией */}
-            {!error.includes('конфигурации сервера') && 
-             !error.includes('JWT_SECRET') && 
-             !error.includes('TELEGRAM_BOT_TOKEN') &&
-             !error.includes('JWT configuration') &&
+            {!error.toLowerCase().includes('конфигурации') && 
+             !error.toLowerCase().includes('jwt_secret') && 
+             !error.toLowerCase().includes('telegram_bot_token') &&
+             !error.toLowerCase().includes('jwt configuration') &&
+             !error.toLowerCase().includes('configuration error') &&
              window.Telegram?.WebApp?.initDataUnsafe?.user?.id && (
               <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-gray-700 text-xs mb-2">Ваш Telegram ID (для добавления в whitelist):</p>
