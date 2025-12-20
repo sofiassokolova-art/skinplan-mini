@@ -1,5 +1,5 @@
 // lib/api-types.ts
-// Типы для API ответов
+// ИСПРАВЛЕНО: Типы для API ответов с доменными ошибками и версионированием
 
 import type { Plan28 } from './plan-types';
 import type { SkinScore } from './skin-analysis-engine';
@@ -7,6 +7,37 @@ import type { GoalKey } from './concern-taxonomy';
 import type { SkinProfile } from './skinprofile-types';
 import type { StepCategory } from './step-category-rules';
 import type { ConcernKey } from './concern-taxonomy';
+
+/**
+ * ИСПРАВЛЕНО (P0): Доменные коды ошибок API
+ * Позволяет фронту точно знать, что произошло
+ */
+export type ApiErrorCode =
+  | 'PLAN_EMPTY'
+  | 'PLAN_INVALID'
+  | 'PLAN_HAS_NO_DAYS'
+  | 'PLAN_HAS_NO_STEPS'
+  | 'PLAN_HAS_NO_PRODUCTS'
+  | 'PROFILE_NOT_FOUND'
+  | 'PROFILE_INVALID'
+  | 'RECOMMENDATIONS_EMPTY'
+  | 'RECOMMENDATIONS_NOT_FOUND'
+  | 'VALIDATION_FAILED'
+  | 'QUESTIONNAIRE_NOT_FOUND'
+  | 'QUESTIONNAIRE_INCOMPLETE'
+  | 'AUTH_REQUIRED'
+  | 'AUTH_INVALID'
+  | 'DB_ERROR'
+  | 'UNKNOWN_ERROR';
+
+/**
+ * ИСПРАВЛЕНО (P0): Типизированный ответ API с discriminated union
+ * success: true + data: T - успешный ответ
+ * success: false + error: ApiErrorCode - ошибка с доменным кодом
+ */
+export type ApiResponse<T> =
+  | { success: true; data: T }
+  | { success: false; error: ApiErrorCode; details?: string; message?: string };
 
 // ИСПРАВЛЕНО: Тип для legacy формата дней плана
 export interface PlanDayLegacy {
@@ -26,9 +57,28 @@ export interface PlanWeek {
 // ИСПРАВЛЕНО: Используем SkinScore из skin-analysis-engine вместо дублирования
 export type { SkinScore } from './skin-analysis-engine';
 
+/**
+ * ИСПРАВЛЕНО (P1): Типизированное ограничение mustHave
+ * Поддерживает два формата:
+ * 1. MustHaveConstraint - для правил валидации
+ * 2. MustHaveProduct - для рекомендаций с конкретными продуктами
+ */
+export interface MustHaveConstraint {
+  category: StepCategory;
+  reason?: string;
+  minCount?: number; // Минимальное количество продуктов этой категории
+}
+
+export interface MustHaveProduct {
+  name: string;
+  brand: string;
+  price: number;
+  category?: string; // Для обратной совместимости с getDermatologistRecommendations
+}
+
 export interface DermatologistRecommendations {
   heroActives: string[];
-  mustHave: any[];
+  mustHave: MustHaveProduct[]; // ИСПРАВЛЕНО (P1): Типизировано вместо any[], но сохраняет совместимость с getDermatologistRecommendations
   avoid: string[];
 }
 
@@ -85,7 +135,9 @@ export interface GeneratedPlan {
   products: PlanProduct[];
   warnings?: string[];
   plan28?: Plan28;
-  formatVersion?: "legacy" | "v2"; // ИСПРАВЛЕНО: Добавлен формат версии для совместимости
+  formatVersion: "legacy" | "v2"; // ИСПРАВЛЕНО (P0): Обязательное поле версии формата
+  // ИСПРАВЛЕНО (P2): Статус рендеринга плана
+  planStatus?: PlanProgressStatus;
 }
 
 export interface ProfileResponse {
@@ -118,6 +170,9 @@ export interface UserProfileResponse {
   lastActive: string | null;
 }
 
+/**
+ * ИСПРАВЛЕНО (P0): PlanResponse с версионированием формата
+ */
 export interface PlanResponse {
   plan28?: Plan28;
   weeks?: PlanWeek[];
@@ -126,6 +181,10 @@ export interface PlanResponse {
   warnings?: string[];
   expired?: boolean; // Флаг истечения плана (28+ дней)
   daysSinceCreation?: number; // Количество дней с момента создания плана
+  formatVersion: 'legacy' | 'v2'; // ИСПРАВЛЕНО (P0): Обязательное поле версии формата
+  // ИСПРАВЛЕНО (P2): Статус рендеринга плана
+  isPlanRenderable?: boolean; // Можно ли рендерить план
+  missingReasons?: string[]; // Причины, почему план нельзя рендерить
 }
 
 export interface WishlistResponse {
@@ -217,6 +276,22 @@ export interface QuizProgressResponse {
   hasAnswers?: boolean;
 }
 
+/**
+ * ИСПРАВЛЕНО (P2): Статус прогресса плана с детальной информацией
+ */
+export interface PlanProgressStatus {
+  isPlanRenderable: boolean; // Можно ли рендерить план
+  missingReasons: string[]; // Причины, почему план нельзя рендерить
+  hasDays: boolean;
+  hasSteps: boolean;
+  hasProducts: boolean;
+  hasRequiredSteps: boolean; // Есть ли обязательные шаги (cleanser, moisturizer)
+  daysCount: number;
+  stepsCount: number;
+  productsCount: number;
+  coverage: number; // 0-100, процент покрытия обязательных категорий
+}
+
 export interface SubmitAnswersResponse {
   success: boolean;
   profile?: {
@@ -248,6 +323,18 @@ export interface RecommendationsResponse {
     marketLinks?: any;
     imageUrl: string | null;
   }>>;
+}
+
+/**
+ * ИСПРАВЛЕНО (P1): RecommendationBuildResponse с информацией о статусе
+ */
+export interface RecommendationBuildResponse {
+  recommendationSessionId: string; // ИСПРАВЛЕНО: Переименовано для ясности
+  ruleId: number | null;
+  products: number[];
+  isExisting: boolean;
+  productCount: number; // ИСПРАВЛЕНО (P1): Количество продуктов
+  status: 'ok' | 'empty'; // ИСПРАВЛЕНО (P1): Статус (ok если есть продукты, empty если нет)
 }
 
 export interface ProductFromBatch {

@@ -10,6 +10,7 @@ import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
 import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
 import { logger } from '@/lib/logger';
 import type { SkinProfile } from '@/lib/skinprofile-types';
+import type { GeneratedPlan } from '@/lib/api-types';
 import type { GoalKey } from '@/lib/concern-taxonomy';
 import { PLAN_WEEKS_TOTAL, PLAN_DAYS_PER_WEEK } from '@/lib/constants';
 import { getBaseStepFromStepCategory, isCleanserStep, isSPFStep } from '@/lib/plan-helpers';
@@ -31,83 +32,11 @@ import {
   type ProductSelectionContext,
 } from '@/lib/dermatology-product-filter';
 
-export interface PlanDay {
-  day: number;
-  week: number;
-  morning: string[];
-  evening: string[];
-  products: Record<string, {
-    id: number;
-    name: string;
-    brand: string;
-    step: string;
-  }>;
-  completed: boolean;
-}
+// ИСПРАВЛЕНО: PlanDay и PlanWeek теперь используются из plan-types.ts и api-types.ts
+// Удалено локальное определение для избежания конфликтов типов
 
-export interface PlanWeek {
-  week: number;
-  days: PlanDay[];
-  summary: {
-    focus: string[];
-    productsCount: number;
-  };
-}
-
-export interface GeneratedPlan {
-  profile: {
-    skinType: string;
-    sensitivityLevel?: string | null;
-    acneLevel?: number | null;
-    primaryFocus: string;
-    concerns: string[];
-    ageGroup: string;
-  };
-  skinScores?: Array<{
-    axis: string;
-    value: number;
-    level: string;
-    title: string;
-    description: string;
-    color: string;
-  }>;
-  dermatologistRecommendations?: {
-    heroActives: string[];
-    mustHave: any[];
-    avoid: string[];
-  };
-  weeks: PlanWeek[];
-  infographic: {
-    progress: Array<{
-      week: number;
-      acne: number;
-      pores: number;
-      hydration: number;
-      pigmentation: number;
-      wrinkles: number;
-      inflammation?: number;
-      photoaging?: number;
-      oiliness?: number;
-    }>;
-    chartConfig: {
-      type: string;
-      data: any;
-      options: any;
-    };
-  };
-  products: Array<{
-    id: number;
-    name: string;
-    brand: string;
-    category: string;
-    price: number;
-    available: string;
-    imageUrl?: string;
-    ingredients?: string[];
-  }>;
-  warnings?: string[];
-  plan28?: Plan28;
-}
+// ИСПРАВЛЕНО: GeneratedPlan теперь импортируется из api-types.ts
+// Удалено локальное определение для избежания конфликтов
 
 // Вспомогательная функция: определение бюджетного сегмента
 // ИСПРАВЛЕНО: Если цена неизвестна (null/undefined), возвращаем 'любой' вместо 'бюджетный'
@@ -2341,7 +2270,21 @@ export async function generate28DayPlan(
   });
 
   // Шаг 3: Генерация плана (28 дней, 4 недели)
-  const weeks: PlanWeek[] = [];
+  // ИСПРАВЛЕНО: Генерируем plan28Days напрямую, weeks используется только для legacy формата
+  const plan28Days: DayPlan[] = [];
+  
+  // ИСПРАВЛЕНО: weeks используется только для обратной совместимости (legacy формат)
+  const weeks: Array<{
+    week: number;
+    days?: Array<{
+      morning: number[];
+      evening: number[];
+    }>;
+    summary: {
+      focus: GoalKey[];
+      productsCount: number;
+    };
+  }> = [];
   
   // ИСПРАВЛЕНО (P1): Кэшируем результаты canApplyStep для всех возможных шагов
   // Шаги одинаковые для всех дней (шаблон не меняется), поэтому проверяем один раз
@@ -2384,7 +2327,11 @@ export async function generate28DayPlan(
   });
   
   for (let weekNum = 1; weekNum <= PLAN_WEEKS_TOTAL; weekNum++) {
-    const days: PlanDay[] = [];
+    // ИСПРАВЛЕНО: Используем PlanDayLegacy из api-types.ts
+    const days: Array<{
+      morning: number[];
+      evening: number[];
+    }> = [];
     
     for (let dayNum = 1; dayNum <= PLAN_DAYS_PER_WEEK; dayNum++) {
       const day = (weekNum - 1) * 7 + dayNum;
@@ -2890,23 +2837,37 @@ export async function generate28DayPlan(
       // ИСПРАВЛЕНО: Не фильтруем шаги по наличию продуктов - оставляем все шаги
       // Продукты будут найдены позже при создании plan28 через fallback логику
       // Фильтрация приводит к тому, что дни остаются без шагов, и plan28Days становится пустым
+      // ИСПРАВЛЕНО: Преобразуем шаги в productIds для PlanDayLegacy формата
+      const morningProductIds = morningSteps
+        .map(step => {
+          const product = dayProducts[step];
+          return product?.id;
+        })
+        .filter((id): id is number => id !== undefined);
+      
+      const eveningProductIds = eveningSteps
+        .map(step => {
+          const product = dayProducts[step];
+          return product?.id;
+        })
+        .filter((id): id is number => id !== undefined);
+      
       days.push({
-        day,
-        week: weekNum,
-        morning: morningSteps, // Убрана фильтрация - оставляем все шаги
-        evening: eveningSteps, // Убрана фильтрация - оставляем все шаги
-        products: dayProducts,
-        completed: false,
+        morning: morningProductIds,
+        evening: eveningProductIds,
       });
     }
     
-    const weekProducts = days.length > 0 ? Object.keys(days[0].products).length : 0;
+    // ИСПРАВЛЕНО: Подсчитываем продукты из всех дней недели
+    const weekProducts = days.reduce((sum, day) => {
+      return sum + day.morning.length + day.evening.length;
+    }, 0);
     
     weeks.push({
       week: weekNum,
       days,
       summary: {
-        focus: [primaryFocus],
+        focus: [primaryFocus as GoalKey], // ИСПРАВЛЕНО: Приводим к GoalKey
         productsCount: weekProducts,
       },
     });
@@ -3048,7 +3009,7 @@ export async function generate28DayPlan(
   }
 
   // Преобразуем план в новый формат Plan28
-  const plan28Days: DayPlan[] = [];
+  // ИСПРАВЛЕНО: plan28Days уже объявлен выше, используем существующий
   const weeklySteps = carePlanTemplate.weekly || [];
   
   // Используем уже определенную routineComplexity из carePlanProfileInput
@@ -3069,23 +3030,6 @@ export async function generate28DayPlan(
   
   for (let dayIndex = 1; dayIndex <= 28; dayIndex++) {
     const weekNum = Math.ceil(dayIndex / 7);
-    const dayInWeek = ((dayIndex - 1) % 7) + 1;
-    const weekData = weeks.find(w => w.week === weekNum);
-    const dayData = weekData?.days.find(d => d.day === dayIndex);
-    
-    // ИСПРАВЛЕНО (P0): Если dayData не найден - это критическая ошибка
-    // Не создаём пустой день, а логируем ошибку и пропускаем день
-    if (!dayData) {
-      logger.error('CRITICAL: dayData not found for day, skipping day', {
-        dayIndex,
-        weekNum,
-        weeksCount: weeks.length,
-        weekDataExists: !!weekData,
-        weekDataDaysCount: weekData?.days?.length || 0,
-        userId,
-      });
-      continue; // Пропускаем день без данных
-    }
     
     // ИСПРАВЛЕНО: Используем протокол для определения фазы дня
     const { getPhaseForDayFromProtocol, isBarrierDay } = await import('./protocol-plan-integration');
@@ -3096,11 +3040,54 @@ export async function generate28DayPlan(
     const phase = (protocolPhase === 'adaptation' && basePhase === 'active') ? 'adaptation' : basePhase;
     const isWeekly = isWeeklyFocusDay(dayIndex, weeklySteps, routineComplexity as any);
     
+    // ИСПРАВЛЕНО: Используем шаги из шаблона напрямую, а не из weeks
+    const rawMorningSteps = adjustedMorning;
+    const rawEveningSteps = adjustedEvening;
+    
+    // Фильтруем шаги по правилам профиля
+    const allowedMorningSteps = rawMorningSteps.filter((step) => {
+      const result = stepAllowanceCache.get(step);
+      const isAllowed = result?.allowed ?? true;
+      if (!isAllowed) {
+        logger.debug('Step filtered out by canApplyStep (morning, from cache)', {
+          step,
+          reason: result?.reason,
+          userId,
+          day: dayIndex,
+        });
+      }
+      return isAllowed;
+    });
+    
+    const allowedEveningSteps = rawEveningSteps.filter((step) => {
+      const result = stepAllowanceCache.get(step);
+      const isAllowed = result?.allowed ?? true;
+      if (!isAllowed) {
+        logger.debug('Step filtered out by canApplyStep (evening, from cache)', {
+          step,
+          reason: result?.reason,
+          userId,
+          day: dayIndex,
+        });
+      }
+      return isAllowed;
+    });
+    
+    const morningStepsTemplate = ensureStepPresence(
+      ensureStepPresence(allowedMorningSteps, isCleanserStep, CLEANER_FALLBACK_STEP),
+      isSPFStep,
+      SPF_FALLBACK_STEP
+    );
+    const eveningStepsTemplate = ensureStepPresence(
+      allowedEveningSteps.filter((step) => !isSPFStep(step)),
+      isCleanserStep,
+      CLEANER_FALLBACK_STEP
+    );
+    
     // ИСПРАВЛЕНО (P0): Преобразуем morning steps - шаг создаётся ТОЛЬКО если есть продукты
     // КРИТИЧНО: Шаг не должен попадать в план без продуктов
     const morningSteps: DayStep[] = [];
-    for (const step of dayData.morning) {
-      const stepCategory = step as StepCategory;
+    for (const stepCategory of morningStepsTemplate) {
       const baseStep = getBaseStepFromStepCategory(stepCategory);
       let stepProducts = getProductsForStep(stepCategory, phase);
       
@@ -3339,8 +3326,7 @@ export async function generate28DayPlan(
     // ИСПРАВЛЕНО: передаем фазу для фильтрации продуктов по этапу плана
     // ИСПРАВЛЕНО: Используем async цикл вместо map для поддержки await в fallback через БД
     const eveningSteps: DayStep[] = [];
-    for (const step of dayData.evening) {
-      const stepCategory = step as StepCategory;
+    for (const stepCategory of eveningStepsTemplate) {
       let stepProducts = getProductsForStep(stepCategory, phase);
       
       // ИСПРАВЛЕНО (P1): Если продуктов не найдено, пробуем найти через fallback с логированием причины
@@ -3966,13 +3952,13 @@ export async function generate28DayPlan(
 
   return {
     profile: {
-      skinType: profile.skinType || 'normal',
-      sensitivityLevel: profile.sensitivityLevel || 'low',
+      skinType: (profile.skinType || 'normal') as SkinProfile["skinType"], // ИСПРАВЛЕНО: Приводим к типу
+      sensitivityLevel: (profile.sensitivityLevel || 'low') as SkinProfile["sensitivity"] | null,
       acneLevel: profile.acneLevel || null,
-      primaryFocus,
+      primaryFocus: primaryFocus as GoalKey, // ИСПРАВЛЕНО: Приводим к типу GoalKey
       // Синхронизируем с /analysis: используем те же ключевые проблемы (критичные и плохие)
-      concerns: keyProblems.length > 0 ? keyProblems : concerns.slice(0, 3), // Если нет критичных/плохих, берем первые 3 concerns
-      ageGroup: profile.ageGroup || '25-34',
+      concerns: (keyProblems.length > 0 ? keyProblems : concerns.slice(0, 3)) as GoalKey[], // ИСПРАВЛЕНО: Приводим к типу GoalKey[]
+      ageGroup: (profile.ageGroup || '25-34') as SkinProfile["ageGroup"] | null,
     },
     skinScores: skinScores.map(s => ({
       axis: s.axis,
@@ -3994,12 +3980,14 @@ export async function generate28DayPlan(
     },
     products: formattedProducts.map(p => ({
       ...p,
-      category: p.category || '', // ИСПРАВЛЕНО: category не может быть null
+      category: (p.category || 'unknown') as StepCategory, // ИСПРАВЛЕНО: Приводим к StepCategory
       price: typeof p.price === 'number' ? p.price : 0, // ИСПРАВЛЕНО: price должен быть number
     })),
     warnings: warnings.length > 0 ? warnings : undefined,
     // Новый формат плана Plan28
     plan28,
+    // ИСПРАВЛЕНО (P0): Обязательное поле версии формата
+    formatVersion: 'v2' as const,
   };
   } catch (error: unknown) {
     logger.error('❌ Error in generate28DayPlan', error, {

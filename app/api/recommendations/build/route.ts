@@ -115,12 +115,19 @@ export async function POST(request: NextRequest) {
         productsCount: result.products?.length || 0,
       });
 
+      // ИСПРАВЛЕНО (P1): Возвращаем RecommendationBuildResponse с полной информацией
+      const products = result.products || [];
+      const productCount = products.length;
+      const status: 'ok' | 'empty' = productCount > 0 ? 'ok' : 'empty';
+      
       logApiRequest(method, path, 200, Date.now() - startTime, userId);
       return ApiResponse.success({
-        sessionId: result.sessionId,
+        recommendationSessionId: result.sessionId,
         ruleId: result.ruleId,
-        products: result.products || [],
+        products,
         isExisting: false,
+        productCount,
+        status,
       });
     }
 

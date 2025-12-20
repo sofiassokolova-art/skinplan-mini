@@ -156,6 +156,7 @@ export async function GET(request: NextRequest) {
             plan28: planData as Plan28,
             expired: daysSinceCreation >= 28,
             daysSinceCreation,
+            formatVersion: 'v2', // ИСПРАВЛЕНО (P0): Обязательное поле версии формата
           };
           
           logger.warn('Returning latest plan without resolved profile (fallback)', {
@@ -272,6 +273,7 @@ export async function GET(request: NextRequest) {
           plan28: planData as Plan28,
           expired: daysSinceCreation >= 28, // Флаг истечения плана
           daysSinceCreation, // Количество дней с момента создания
+          formatVersion: 'v2', // ИСПРАВЛЕНО (P0): Обязательное поле версии формата
         };
         
         logger.info('Plan retrieved from DB successfully', {
