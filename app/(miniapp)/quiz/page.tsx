@@ -4871,7 +4871,7 @@ export default function QuizPage() {
               className="quiz-how-it-works-title"
               style={{
                 fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 700,
+                fontWeight: 400,
                 fontStyle: 'normal',
                 fontSize: '24px',
                 lineHeight: '100%',
@@ -4881,6 +4881,7 @@ export default function QuizPage() {
                 margin: '0 0 60px 0',
               }}>
               {screen.title}
+              <span style={{ fontWeight: 700, fontStyle: 'normal' }}>?</span>
             </h1>
 
             {/* Шаги */}
