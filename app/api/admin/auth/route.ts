@@ -117,16 +117,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false }, { status: 401 });
     }
 
+    // ИСПРАВЛЕНО (P2): Проверяем JWT_SECRET ДО попытки верификации токена
+    const jwtSecretResult = getJwtSecret();
+    if (!jwtSecretResult.valid || !jwtSecretResult.secret) {
+      console.error('JWT_SECRET not configured in GET /api/admin/auth');
+      return NextResponse.json(
+        { error: jwtSecretResult.error || 'JWT configuration error', code: 'JWT_CONFIG_ERROR' },
+        { status: 500 }
+      );
+    }
+
     try {
       // ИСПРАВЛЕНО (P2): Проверяем issuer/audience при верификации
-      const jwtSecretResult = getJwtSecret();
-      if (!jwtSecretResult.valid || !jwtSecretResult.secret) {
-        return NextResponse.json(
-          { error: jwtSecretResult.error || 'JWT configuration error', code: 'JWT_CONFIG_ERROR' },
-          { status: 500 }
-        );
-      }
-
       const decoded = jwt.verify(token, jwtSecretResult.secret, {
         issuer: 'skiniq-admin',
         audience: 'skiniq-admin-ui',
@@ -144,11 +146,14 @@ export async function GET(request: NextRequest) {
           role: decoded.role,
         },
       });
-    } catch (error) {
+    } catch (verifyError: any) {
+      // ИСПРАВЛЕНО: Логируем ошибку верификации для отладки
+      console.warn('Token verification failed:', verifyError.message);
       return NextResponse.json({ valid: false }, { status: 401 });
     }
   } catch (error) {
     // ИСПРАВЛЕНО: Показываем реальную причину ошибки для дебага
+    console.error('Unexpected error in GET /api/admin/auth:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const isConfigError = errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN');
     
