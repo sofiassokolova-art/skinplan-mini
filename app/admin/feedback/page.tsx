@@ -12,7 +12,7 @@ interface ProductFeedback {
   id: string;
   userId: string;
   productId: number;
-  feedback: 'bought_love' | 'bought_ok' | 'bought_bad';
+  feedback: 'not_bought' | 'bought_love' | 'bought_ok' | 'bought_bad';
   createdAt: string;
   user: {
     id: string;
@@ -90,7 +90,11 @@ export default function FeedbackAdmin() {
       }
 
       const data = await response.json();
-      setProductFeedback(data.productFeedback || []);
+      
+      // Фильтруем отзывы по продуктам - исключаем 'not_bought' (они не являются отзывами о покупке)
+      const allProductFeedback = (data.productFeedback || []) as ProductFeedback[];
+      const boughtFeedback = allProductFeedback.filter((f) => f.feedback !== 'not_bought');
+      setProductFeedback(boughtFeedback);
       
       // Фильтруем отзывы по плану по типу в зависимости от активной секции
       const allPlanFeedback = data.planFeedback || [];
@@ -106,12 +110,12 @@ export default function FeedbackAdmin() {
       
       setPlanFeedback(filteredPlanFeedback);
       
-      // Обновляем статистику
+      // Обновляем статистику - считаем только отзывы о покупке (исключаем 'not_bought')
       const productStats = {
-        all: data.productFeedback?.length || 0,
-        love: data.productFeedback?.filter((f: ProductFeedback) => f.feedback === 'bought_love').length || 0,
-        ok: data.productFeedback?.filter((f: ProductFeedback) => f.feedback === 'bought_ok').length || 0,
-        bad: data.productFeedback?.filter((f: ProductFeedback) => f.feedback === 'bought_bad').length || 0,
+        all: boughtFeedback.length,
+        love: boughtFeedback.filter((f) => f.feedback === 'bought_love').length,
+        ok: boughtFeedback.filter((f) => f.feedback === 'bought_ok').length,
+        bad: boughtFeedback.filter((f) => f.feedback === 'bought_bad').length,
       };
       
       setStats({
@@ -288,7 +292,7 @@ export default function FeedbackAdmin() {
                       {f.feedback === 'bought_love' ? 'Love' : f.feedback === 'bought_ok' ? 'OK' : 'Bad'}
                     </div>
                   </div>
-                  <div className="text-white/40 text-xs">
+                  <div className="text-gray-400 text-xs">
                     {new Date(f.createdAt).toLocaleDateString('ru-RU', {
                       day: '2-digit',
                       month: '2-digit',
@@ -320,8 +324,29 @@ export default function FeedbackAdmin() {
                         Тип: {f.type === 'plan_recommendations' ? 'По рекомендациям' : f.type === 'plan_general' ? 'Общий по плану' : 'Сервисный'}
                       </div>
                       {f.feedback && (
-                        <div className="text-gray-700 text-sm mt-2">
-                          {f.feedback}
+                        <div className="text-gray-700 text-sm mt-2 whitespace-pre-line">
+                          {f.feedback.includes('Причины:') || f.feedback.includes('Комментарий:') ? (
+                            <div className="space-y-1">
+                              {f.feedback.split('\n').map((line, idx) => {
+                                if (line.startsWith('Причины:')) {
+                                  return (
+                                    <div key={idx} className="font-medium text-gray-800">
+                                      {line}
+                                    </div>
+                                  );
+                                } else if (line.startsWith('Комментарий:')) {
+                                  return (
+                                    <div key={idx} className="text-gray-600 italic">
+                                      {line}
+                                    </div>
+                                  );
+                                }
+                                return <div key={idx}>{line}</div>;
+                              })}
+                            </div>
+                          ) : (
+                            f.feedback
+                          )}
                         </div>
                       )}
                     </div>

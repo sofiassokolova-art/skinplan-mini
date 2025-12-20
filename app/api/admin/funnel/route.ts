@@ -152,6 +152,7 @@ export async function GET(request: NextRequest) {
         type: 'info' | 'question';
         questionCode?: string;
         questionId?: number;
+        showAfterQuestionCode?: string; // Для инфо-экранов: код вопроса, после которого показывается экран
       }> = [];
 
       // Добавляем начальные инфо-экраны (без showAfterQuestionCode)
@@ -161,6 +162,7 @@ export async function GET(request: NextRequest) {
           id: screen.id,
           title: screen.title,
           type: 'info',
+          showAfterQuestionCode: undefined,
         });
       });
 
@@ -191,6 +193,7 @@ export async function GET(request: NextRequest) {
             id: infoScreen.id,
             title: infoScreen.title,
             type: 'info',
+            showAfterQuestionCode: infoScreen.showAfterQuestionCode,
           });
         }
       });
@@ -241,27 +244,21 @@ export async function GET(request: NextRequest) {
             answeredQuestionIds => answeredQuestionIds.has(screen.questionId!)
           ).length;
         } else if (screen.type === 'info') {
-          // ИСПРАВЛЕНО (P0): Для инфо-экрана считаем пользователей, которые ответили на предыдущий вопрос
-          // Если это начальный экран - считаем всех, кто начал анкету
-          if (i === 0) {
+          // ИСПРАВЛЕНО: Для инфо-экрана правильная логика подсчета
+          // Если это начальный экран (без showAfterQuestionCode) - считаем всех, кто начал анкету
+          if (!screen.showAfterQuestionCode) {
             reachedCount = userIdsWhoStarted.size;
           } else {
-            // Находим предыдущий вопрос перед этим инфо-экраном
-            let prevQuestionIndex = i - 1;
-            while (prevQuestionIndex >= 0 && allScreens[prevQuestionIndex].type !== 'question') {
-              prevQuestionIndex--;
-            }
-
-            if (prevQuestionIndex >= 0) {
-              const prevQuestion = allScreens[prevQuestionIndex];
-              if (prevQuestion.questionId) {
-                // ИСПРАВЛЕНО (P0): Пользователь дошел до инфо-экрана, если он ответил на предыдущий вопрос
-                reachedCount = Array.from(userAnswersMap.values()).filter(
-                  answeredQuestionIds => answeredQuestionIds.has(prevQuestion.questionId!)
-                ).length;
-              }
+            // Если инфо-экран показывается после вопроса (showAfterQuestionCode),
+            // нужно найти вопрос с этим кодом и посчитать пользователей, которые на него ответили
+            const targetQuestion = questions.find(q => q.code === screen.showAfterQuestionCode);
+            if (targetQuestion) {
+              // Считаем пользователей, которые ответили на вопрос, после которого показывается этот инфо-экран
+              reachedCount = Array.from(userAnswersMap.values()).filter(
+                answeredQuestionIds => answeredQuestionIds.has(targetQuestion.id)
+              ).length;
             } else {
-              // Если предыдущего вопроса нет (это начальный инфо-экран), считаем всех, кто начал анкету
+              // Если вопрос не найден, считаем всех, кто начал анкету (fallback)
               reachedCount = userIdsWhoStarted.size;
             }
           }
