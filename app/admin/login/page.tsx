@@ -168,10 +168,13 @@ export default function AdminLogin() {
   // ИСПРАВЛЕНО (P1): Показываем "Проверяем доступ..." при проверке сессии
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 max-w-md w-full">
+      <div className="min-h-screen admin-layout flex items-center justify-center p-4" style={{ 
+        background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
+        backgroundSize: '400% 400%'
+      }}>
+        <div className="admin-card p-8 max-w-md w-full">
           <div className="text-center">
-            <div className="w-8 h-8 border-2 border-gray-300 border-t-[#8B5CF6] rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-gray-600">Проверяем доступ...</p>
           </div>
         </div>
@@ -179,17 +182,20 @@ export default function AdminLogin() {
     );
   }
 
-  // ИСПРАВЛЕНО (P0): Приведено к светлой теме админки
+  // ИСПРАВЛЕНО: Приведено к стилю админки с glassmorphism
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 max-w-md w-full">
+    <div className="min-h-screen admin-layout flex items-center justify-center p-4" style={{ 
+      background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 30%, #f9fafb 60%, #f3f4f6 100%)',
+      backgroundSize: '400% 400%'
+    }}>
+      <div className="admin-card p-8 max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">SkinIQ Admin</h1>
           <p className="text-gray-600">Вход через Telegram</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm space-y-2">
+          <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-xl text-red-700 text-sm space-y-2">
             <p className="font-medium">{error}</p>
             {/* ИСПРАВЛЕНО: Показываем Telegram ID только если ошибка не связана с конфигурацией */}
             {!error.toLowerCase().includes('конфигурации') && 
@@ -198,14 +204,14 @@ export default function AdminLogin() {
              !error.toLowerCase().includes('jwt configuration') &&
              !error.toLowerCase().includes('configuration error') &&
              window.Telegram?.WebApp?.initDataUnsafe?.user?.id && (
-              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-gray-700 text-xs mb-2">Ваш Telegram ID (для добавления в whitelist):</p>
-                <code className="text-gray-900 font-mono text-sm bg-gray-100 px-2 py-1 rounded block">
+              <div className="mt-3 p-3 bg-white/60 backdrop-blur-sm rounded-lg border border-gray-200/50">
+                <p className="text-gray-700 text-xs mb-2 font-medium">Ваш Telegram ID (для добавления в whitelist):</p>
+                <code className="text-gray-900 font-mono text-sm bg-gray-100/80 px-2 py-1 rounded block">
                   {window.Telegram.WebApp.initDataUnsafe.user.id}
                 </code>
                 <p className="text-gray-600 text-xs mt-2">
                   Скопируйте этот ID и запустите:<br/>
-                  <code className="bg-gray-100 px-1 rounded text-xs">
+                  <code className="bg-gray-100/80 px-1 rounded text-xs">
                     npx tsx scripts/add-admin.ts {window.Telegram.WebApp.initDataUnsafe.user.id} "София"
                   </code>
                 </p>
@@ -215,12 +221,12 @@ export default function AdminLogin() {
         )}
 
         <div className="space-y-4">
-          <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-            <p className="text-gray-700 text-sm mb-2">
+          <div className="p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200/50">
+            <p className="text-gray-700 text-sm mb-3 font-medium">
               Для входа в админ-панель:
             </p>
             <ol className="text-gray-600 text-sm space-y-2 list-decimal list-inside">
-              <li>Напишите боту @skiniq_bot команду <code className="bg-gray-100 px-1 rounded">/admin</code></li>
+              <li>Напишите боту @skiniq_bot команду <code className="bg-gray-100/80 px-1.5 py-0.5 rounded text-xs font-mono">/admin</code></li>
               <li>Нажмите кнопку "Открыть админку" в ответе бота</li>
               <li>Или убедитесь, что вы в whitelist администраторов</li>
             </ol>
@@ -228,8 +234,8 @@ export default function AdminLogin() {
 
           <button
             onClick={handleTelegramLogin}
-            disabled={loading || !isTelegramReady} // ИСПРАВЛЕНО (P1): Используем isTelegramReady вместо прямого проверки
-            className="w-full bg-[#8B5CF6] text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#7C3AED] transition-all duration-300"
+            disabled={loading || !isTelegramReady}
+            className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 active:bg-gray-950 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
