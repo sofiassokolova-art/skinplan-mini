@@ -1085,7 +1085,12 @@ export default function QuizPage() {
       // Профиль создается только после завершения анкеты (отправки ответов)
       // Поэтому для незавершенной анкеты профиля быть не должно
       // ВАЖНО: Проверяем только наличие ответов, а не наличие профиля
-      if (response?.progress && response.progress.answers && Object.keys(response.progress.answers).length > 0) {
+      // ИСПРАВЛЕНО: Показываем экран прогресса только если есть минимум 5 ответов или questionIndex >= 5
+      const answersCount = response?.progress?.answers ? Object.keys(response.progress.answers).length : 0;
+      const questionIndex = response?.progress?.questionIndex ?? -1;
+      const shouldShowProgressScreen = answersCount >= 5 || questionIndex >= 5;
+      
+      if (response?.progress && response.progress.answers && answersCount > 0 && shouldShowProgressScreen) {
         clientLogger.log('✅ Найдены сохраненные ответы, показываем экран продолжения', {
           answersCount: Object.keys(response.progress.answers).length,
           questionIndex: response.progress.questionIndex,
