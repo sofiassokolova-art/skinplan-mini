@@ -191,12 +191,21 @@ export default function HomePage() {
       // Для новых пользователей сразу редиректим на /quiz, где показывается лоадер анкеты
       // Бэкенд сам определит, новый ли пользователь, и вернет соответствующий ответ
       // НЕ вызываем /api/plan и /api/recommendations для новых пользователей - это вызывает ненужные запросы
-      // Если пользователь уже прошел анкету, он может вернуться на главную через навигацию
-      // Если пользователь новый, он будет редиректнут на /quiz, где бэкенд определит его статус
       
-      // ИСПРАВЛЕНО: Загружаем рекомендации - если пользователь новый, бэкенд вернет 404
-      // и мы редиректим на /quiz из loadRecommendations
-      // Это единственный способ определить, прошел ли пользователь анкету, без вызова /api/plan
+      // ИСПРАВЛЕНО: Проверяем наличие plan_progress в localStorage для быстрой проверки
+      // Если plan_progress есть - значит пользователь уже проходил анкету, загружаем рекомендации
+      // Если plan_progress нет - сразу редиректим на /quiz без лишних запросов
+      const hasPlanProgress = typeof window !== 'undefined' && localStorage.getItem('plan_progress') !== null;
+      
+      if (!hasPlanProgress) {
+        // Нет plan_progress - значит пользователь новый, сразу редиректим на /quiz
+        clientLogger.log('ℹ️ No plan_progress in localStorage - redirecting to /quiz (new user)');
+        setLoading(false);
+        router.replace('/quiz');
+        return;
+      }
+
+      // plan_progress есть - значит пользователь уже проходил анкету, загружаем рекомендации
       // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true
       await loadRecommendations();
       // Загружаем имя в фоне после загрузки рекомендаций
