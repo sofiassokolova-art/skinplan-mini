@@ -13,12 +13,19 @@ const CART_QUERY_KEY = 'cart';
 export function useCart() {
   const pathname = usePathname();
   
+  // ИСПРАВЛЕНО: Не загружаем корзину на странице анкеты и на главной странице для новых пользователей
+  // Проверяем наличие plan_progress в localStorage - если его нет, значит пользователь новый
+  const isNewUser = typeof window !== 'undefined' && pathname === '/' && localStorage.getItem('plan_progress') === null;
+  const shouldLoad = pathname !== '/quiz' && 
+                     !pathname.startsWith('/quiz/') && 
+                     !isNewUser; // Не загружаем для новых пользователей на главной
+  
   return useQuery({
     queryKey: [CART_QUERY_KEY],
     queryFn: () => api.getCart() as Promise<any>,
-    staleTime: 1 * 60 * 1000, // 1 минута (корзина может часто меняться)
+    staleTime: 1 * 60 * 1000, // 1 минута (корзина может часто меняется)
     gcTime: 5 * 60 * 1000, // 5 минут в кэше
-    enabled: pathname !== '/quiz' && !pathname.startsWith('/quiz/'), // Не загружаем корзину на странице анкеты
+    enabled: shouldLoad,
   });
 }
 
