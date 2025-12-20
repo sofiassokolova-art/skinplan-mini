@@ -4630,6 +4630,7 @@ export default function QuizPage() {
     const isComparisonScreen = screen.type === 'comparison';
     const isProductsScreen = screen.type === 'products';
     const isWelcomeScreen = screen.id === 'welcome';
+    const isHowItWorksScreen = screen.id === 'how_it_works';
 
     // Разбиваем subtitle на строки для многострочного отображения
     const subtitleLines = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
@@ -4696,22 +4697,225 @@ export default function QuizPage() {
               maxWidth: '320px',
               textAlign: 'center',
             }}>
-              <h1 style={{
-                fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 400,
-                fontSize: 'clamp(24px, 7vw, 28px)',
-                lineHeight: '140%',
-                letterSpacing: '0px',
-                color: '#000000',
-                margin: 0,
-              }}>
+              <h1 
+                className="quiz-welcome-title"
+                style={{
+                  fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 400,
+                  fontStyle: 'normal',
+                  fontSize: '28px',
+                  lineHeight: '140%',
+                  letterSpacing: '0px',
+                  textAlign: 'center',
+                  color: '#000000',
+                  margin: 0,
+                }}>
                 Подбери уход<br />
                 для своей кожи<br />
-                со <span style={{ fontWeight: 700 }}>SkinIQ</span>
+                со <span style={{ fontWeight: 700, fontStyle: 'normal' }}>SkinIQ</span>
               </h1>
             </div>
 
             {/* Кнопка */}
+            {screen.ctaText && (
+              <button
+                onClick={handleNext}
+                style={{
+                  width: '100%',
+                  maxWidth: '280px',
+                  height: '64px',
+                  borderRadius: '20px',
+                  background: '#D5FE61',
+                  color: '#000000',
+                  border: 'none',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.98)';
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                {String(screen.ctaText || 'Продолжить')}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Специальный рендеринг для экрана "Как это работает?"
+    if (isHowItWorksScreen) {
+      const steps = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
+      
+      return (
+        <div style={{ 
+          padding: 0,
+          margin: 0,
+          minHeight: '100vh',
+          background: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          width: '100%',
+        }}>
+          {/* Кнопка "Назад" */}
+          <div style={{
+            position: 'absolute',
+            top: '69px',
+            left: '19px',
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <button
+              onClick={() => {
+                if (currentInfoScreenIndex > 0) {
+                  setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
+                }
+              }}
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                background: '#D5FE61',
+                border: '1px solid #000000',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M7.5 9L4.5 6L7.5 3"
+                  stroke="#000000"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <span style={{
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontStyle: 'normal',
+              fontSize: '14px',
+              lineHeight: '34px',
+              letterSpacing: '0px',
+              textAlign: 'center',
+              color: '#9D9D9D',
+            }}>
+              Назад
+            </span>
+          </div>
+
+          {/* Контент */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            paddingTop: '120px',
+            paddingBottom: '40px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}>
+            {/* Заголовок */}
+            <h1 style={{
+              fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '28px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              textAlign: 'center',
+              color: '#000000',
+              margin: '0 0 60px 0',
+            }}>
+              {screen.title}
+            </h1>
+
+            {/* Шаги */}
+            <div style={{
+              width: '100%',
+              maxWidth: '320px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '40px',
+              marginBottom: '60px',
+            }}>
+              {steps.map((step, index) => {
+                const stepNumber = index + 1;
+                const stepText = step.replace(/^\d+\.\s*/, ''); // Убираем номер из начала строки
+                
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      gap: '16px',
+                    }}
+                  >
+                    {/* Круг с номером */}
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      minWidth: '40px',
+                      borderRadius: '50%',
+                      background: '#D5FE61',
+                      border: '1px solid #000000',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 400,
+                      fontSize: '16px',
+                      color: '#000000',
+                    }}>
+                      {stepNumber}
+                    </div>
+                    
+                    {/* Текст шага */}
+                    <div style={{
+                      flex: 1,
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 400,
+                      fontSize: '16px',
+                      lineHeight: '140%',
+                      letterSpacing: '0px',
+                      color: '#000000',
+                      paddingTop: '8px',
+                    }}>
+                      {stepText}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Кнопка "Продолжить" */}
             {screen.ctaText && (
               <button
                 onClick={handleNext}

@@ -98,6 +98,11 @@ h1, h2, h3 {
   letter-spacing: -0.5px;
 }
 
+/* Заголовок welcome экрана анкеты - использует Unbounded */
+.quiz-welcome-title {
+  font-family: 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
 /* Неон-текст */
 .neon-purple {
   text-shadow: 0 0 20px rgba(139, 92, 246, 0.6);

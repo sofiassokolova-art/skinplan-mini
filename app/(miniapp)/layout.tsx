@@ -59,7 +59,7 @@ function LayoutContent({
     if (pathname === '/') {
       // Небольшая задержка для плавности, но не проверяем профиль
       setIsCheckingProfile(true);
-      setTimeout(() => setIsCheckingProfile(false), 500);
+      setTimeout(() => setIsCheckingProfile(false), 1000);
     } else {
       setIsCheckingProfile(false);
     }

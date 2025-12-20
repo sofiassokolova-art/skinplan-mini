@@ -15,6 +15,7 @@ export function useCart() {
     queryFn: () => api.getCart() as Promise<any>,
     staleTime: 1 * 60 * 1000, // 1 минута (корзина может часто меняться)
     gcTime: 5 * 60 * 1000, // 5 минут в кэше
+    enabled: typeof window !== 'undefined' && !window.location.pathname.startsWith('/quiz'), // Не загружаем корзину на странице анкеты
   });
 }
 
