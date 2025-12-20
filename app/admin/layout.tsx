@@ -180,11 +180,18 @@ export default function AdminLayout({
       {/* Sidebar - Glassmorphism */}
       <aside
         className={cn(
-          'admin-sidebar-glass transition-all duration-300 fixed left-0 top-0 bottom-0 z-50 flex flex-col',
+          'admin-sidebar-glass transition-all duration-300',
           sidebarOpen ? 'w-72' : 'w-20',
           isMobile && !sidebarOpen && '-translate-x-full lg:translate-x-0'
         )}
         style={{ 
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 50,
+          display: 'flex',
+          flexDirection: 'column',
           height: '100vh',
           overflowY: 'auto',
           overflowX: 'hidden',

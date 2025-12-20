@@ -147,7 +147,15 @@ body {
 .admin-sidebar-glass {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  /* position, left, top, bottom, z-index управляются через классы Tailwind в layout.tsx */
+  /* КРИТИЧНО: Явно задаем позиционирование для сайдбара */
+  position: fixed !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+  /* Гарантируем вертикальное расположение */
+  flex-direction: column !important;
+  height: 100vh !important;
 }
 
 /* Glassmorphism карточки для админки */
