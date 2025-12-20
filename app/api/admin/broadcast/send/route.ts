@@ -160,6 +160,93 @@ async function sendTelegramMessage(
   }
 }
 
+// ИСПРАВЛЕНО (P0): Whitelist разрешённых фильтров для безопасности
+const ALLOWED_FILTER_KEYS = [
+  'skinTypes',
+  'concerns',
+  'lastActive',
+  'hasPurchases',
+  'excludePregnant',
+  'sendToAll',
+  'planDay', // Пока не реализован, но разрешён
+] as const;
+
+// ИСПРАВЛЕНО (P0): Валидация фильтров - только разрешённые ключи
+function validateFilters(filters: any): { valid: boolean; error?: string; cleanFilters?: any } {
+  if (!filters || typeof filters !== 'object' || Array.isArray(filters)) {
+    return { valid: false, error: 'Filters must be an object' };
+  }
+
+  // Проверяем, что все ключи в whitelist
+  const unknownKeys = Object.keys(filters).filter(key => !ALLOWED_FILTER_KEYS.includes(key as any));
+  if (unknownKeys.length > 0) {
+    return { valid: false, error: `Unknown filter keys: ${unknownKeys.join(', ')}` };
+  }
+
+  // Валидация значений
+  const cleanFilters: any = {};
+
+  if (filters.skinTypes !== undefined) {
+    if (!Array.isArray(filters.skinTypes)) {
+      return { valid: false, error: 'skinTypes must be an array' };
+    }
+    const validSkinTypes = ['oily', 'dry', 'combo', 'sensitive', 'normal'];
+    const invalidTypes = filters.skinTypes.filter((t: string) => !validSkinTypes.includes(t));
+    if (invalidTypes.length > 0) {
+      return { valid: false, error: `Invalid skinTypes: ${invalidTypes.join(', ')}` };
+    }
+    if (filters.skinTypes.length > 0) {
+      cleanFilters.skinTypes = filters.skinTypes;
+    }
+  }
+
+  if (filters.concerns !== undefined) {
+    if (!Array.isArray(filters.concerns)) {
+      return { valid: false, error: 'concerns must be an array' };
+    }
+    if (filters.concerns.length > 0) {
+      cleanFilters.concerns = filters.concerns;
+    }
+  }
+
+  if (filters.lastActive !== undefined) {
+    const validValues = ['<7', '7-30', '30+'];
+    if (!validValues.includes(filters.lastActive)) {
+      return { valid: false, error: `lastActive must be one of: ${validValues.join(', ')}` };
+    }
+    cleanFilters.lastActive = filters.lastActive;
+  }
+
+  if (filters.hasPurchases !== undefined) {
+    if (typeof filters.hasPurchases !== 'boolean') {
+      return { valid: false, error: 'hasPurchases must be a boolean' };
+    }
+    if (filters.hasPurchases) {
+      cleanFilters.hasPurchases = true;
+    }
+  }
+
+  if (filters.excludePregnant !== undefined) {
+    if (typeof filters.excludePregnant !== 'boolean') {
+      return { valid: false, error: 'excludePregnant must be a boolean' };
+    }
+    if (filters.excludePregnant) {
+      cleanFilters.excludePregnant = true;
+    }
+  }
+
+  if (filters.sendToAll !== undefined) {
+    if (typeof filters.sendToAll !== 'boolean') {
+      return { valid: false, error: 'sendToAll must be a boolean' };
+    }
+    if (filters.sendToAll) {
+      cleanFilters.sendToAll = true;
+    }
+  }
+
+  return { valid: true, cleanFilters };
+}
+
 // Получение пользователей по фильтрам (та же логика, что в count)
 async function getUsersByFilters(filters: any) {
   const where: any = {};
@@ -247,9 +334,14 @@ export async function POST(request: NextRequest) {
     let filters: any;
     let message: string;
     let test: boolean;
+    let dryRun: boolean; // ИСПРАВЛЕНО (P1): Dry-run режим
+    let scheduledAt: string | undefined; // ИСПРАВЛЕНО (P0): Поддержка scheduledAt
     let imageUrl: string | undefined;
     let imageBuffer: Buffer | undefined;
     let buttons: Array<{ text: string; url: string }> | undefined;
+
+    const { searchParams } = new URL(request.url);
+    dryRun = searchParams.get('dryRun') === 'true'; // ИСПРАВЛЕНО (P1): Dry-run через query param
 
     const contentType = request.headers.get('content-type') || '';
     
@@ -279,6 +371,7 @@ export async function POST(request: NextRequest) {
       }
       message = formData.get('message') as string;
       test = formData.get('test') === 'true';
+      scheduledAt = formData.get('scheduledAt') as string | undefined; // ИСПРАВЛЕНО (P0): Поддержка scheduledAt
       
       const imageFile = formData.get('image') as File | null;
       if (imageFile) {
@@ -294,10 +387,11 @@ export async function POST(request: NextRequest) {
       buttons = buttonsStr ? JSON.parse(buttonsStr) : undefined;
     } else {
       // Обрабатываем JSON (для обратной совместимости)
-    const body = await request.json();
+      const body = await request.json();
       filters = body.filters;
       message = body.message;
       test = body.test;
+      scheduledAt = body.scheduledAt; // ИСПРАВЛЕНО (P0): Поддержка scheduledAt
       imageUrl = body.imageUrl;
       buttons = body.buttons;
     }
@@ -307,6 +401,73 @@ export async function POST(request: NextRequest) {
         { error: 'Message is required' },
         { status: 400 }
       );
+    }
+
+    // ИСПРАВЛЕНО (P0): Валидация фильтров через whitelist
+    const filtersValidation = validateFilters(filters);
+    if (!filtersValidation.valid) {
+      return NextResponse.json(
+        { error: filtersValidation.error || 'Invalid filters' },
+        { status: 400 }
+      );
+    }
+    const cleanFilters = filtersValidation.cleanFilters || {};
+
+    // ИСПРАВЛЕНО (P0): Защита от рассылки в прошлое
+    let normalizedScheduledAt: Date | null = null;
+    if (scheduledAt) {
+      const dt = new Date(scheduledAt);
+      if (Number.isNaN(dt.getTime())) {
+        return NextResponse.json(
+          { error: 'scheduledAt must be a valid date' },
+          { status: 400 }
+        );
+      }
+      // ИСПРАВЛЕНО (P0): Проверяем, что дата в будущем (минимум +1 минута для буфера)
+      const oneMinuteFromNow = new Date(Date.now() + 60 * 1000);
+      if (dt <= oneMinuteFromNow) {
+        return NextResponse.json(
+          { error: 'scheduledAt must be at least 1 minute in the future' },
+          { status: 400 }
+        );
+      }
+      normalizedScheduledAt = dt;
+    }
+
+    // ИСПРАВЛЕНО (P1): Dry-run режим - только считаем пользователей и рендерим пример
+    if (dryRun) {
+      // Получаем пользователей для подсчёта и примера
+      let allUsers;
+      if (cleanFilters.sendToAll) {
+        allUsers = await prisma.user.findMany({
+          include: {
+            skinProfiles: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        });
+      } else {
+        allUsers = await getUsersByFilters(cleanFilters);
+      }
+
+      const totalCount = allUsers.length;
+
+      // Рендерим пример сообщения на первом пользователе
+      let exampleMessage = message;
+      if (allUsers.length > 0) {
+        const exampleUser = allUsers[0];
+        const exampleProfile = exampleUser.skinProfiles[0] || null;
+        exampleMessage = renderMessage(message, exampleUser, exampleProfile);
+      }
+
+      return NextResponse.json({
+        dryRun: true,
+        totalCount,
+        exampleMessage,
+        filters: cleanFilters,
+        message: `Would send to ${totalCount} users. Example message rendered above.`,
+      });
     }
 
     // Получаем пользователей
@@ -365,17 +526,17 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Если sendToAll, получаем всех пользователей
-      if (filters?.sendToAll) {
+      if (cleanFilters.sendToAll) {
         users = await prisma.user.findMany({
-        include: {
-          skinProfiles: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
+          include: {
+            skinProfiles: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
           },
-        },
-      });
-    } else {
-      users = await getUsersByFilters(filters);
+        });
+      } else {
+        users = await getUsersByFilters(cleanFilters);
       }
     }
 
@@ -401,17 +562,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ИСПРАВЛЕНО (P0): Защита от повторного запуска - проверяем дубликаты
-    // Если есть рассылка с теми же параметрами в статусе sending за последние 5 минут - блокируем
+    // ИСПРАВЛЕНО (P0): Жёсткая блокировка повторного запуска - проверяем дубликаты
+    // Если есть рассылка с теми же параметрами в статусе sending/scheduled за последние 5 минут - блокируем
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const cleanFilters = filters ? Object.fromEntries(
-      Object.entries(filters).filter(([_, value]) => {
-        if (value === undefined || value === null) return false;
-        if (typeof value === 'string' && value.trim() === '') return false;
-        if (Array.isArray(value) && value.length === 0) return false;
-        return true;
-      })
-    ) : {};
     
     // Валидируем, что cleanFilters может быть сериализован в JSON
     try {
@@ -424,7 +577,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // ИСПРАВЛЕНО (P0): Проверяем, нет ли уже рассылки в статусе sending с теми же параметрами
+    // ИСПРАВЛЕНО (P0): Проверяем, нет ли уже рассылки в статусе sending/scheduled с теми же параметрами
     const existingBroadcast = await prisma.broadcastMessage.findFirst({
       where: {
         status: { in: ['sending', 'scheduled'] },
@@ -442,7 +595,12 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // ИСПРАВЛЕНО (P0): Создаём рассылку и сразу обновляем статус на sending атомарно
+    // ИСПРАВЛЕНО (P0): Строгий lifecycle статуса
+    // draft → scheduled (если scheduledAt) → sending → completed/failed
+    // Нет других переходов
+    const initialStatus = normalizedScheduledAt ? 'scheduled' : 'sending';
+    
+    // ИСПРАВЛЕНО (P0): Создаём рассылку с правильным статусом
     const broadcast = await prisma.broadcastMessage.create({
       data: {
         title: `Рассылка ${new Date().toLocaleDateString('ru-RU')}`,
@@ -450,12 +608,37 @@ export async function POST(request: NextRequest) {
         filtersJson: cleanFilters as any,
         buttonsJson: buttons ? (buttons as any) : null,
         imageUrl: imageUrl || null,
-        status: 'sending', // ИСПРАВЛЕНО (P0): Статус сразу sending для защиты от дублей
+        status: initialStatus, // ИСПРАВЛЕНО (P0): scheduled или sending в зависимости от scheduledAt
+        scheduledAt: normalizedScheduledAt,
         totalCount: users.length,
       },
     });
 
-    // ИСПРАВЛЕНО (P0): Для реальной рассылки запускаем асинхронно с защитой от таймаутов
+    // ⚠️ КРИТИЧЕСКАЯ ПРОБЛЕМА АРХИТЕКТУРЫ (P0):
+    // Рассылка живёт в HTTP-запросе → гарантированные таймауты на Vercel/Next.js
+    // Функция может быть убита по таймауту, пользователь получит 500, но часть сообщений уже уйдёт
+    // 
+    // ✅ ПРАВИЛЬНОЕ РЕШЕНИЕ (требует рефакторинга):
+    // POST /send только переводит статус в scheduled | sending
+    // Реальная отправка — через cron (/api/admin/broadcasts/worker)
+    // Это единственный способ избежать дублей и "зависших" рассылок
+    //
+    // ТЕКУЩАЯ РЕАЛИЗАЦИЯ (временная):
+    // Запускаем отправку в фоне (не ждем завершения)
+    // Это работает для небольших рассылок, но не масштабируется
+    
+    // ИСПРАВЛЕНО (P0): Если scheduled - не запускаем сразу, ждём worker
+    if (normalizedScheduledAt) {
+      return NextResponse.json({
+        success: true,
+        broadcastId: broadcast.id,
+        totalCount: users.length,
+        scheduledAt: normalizedScheduledAt.toISOString(),
+        message: 'Broadcast scheduled. Will be sent by worker.',
+      });
+    }
+    
+    // ИСПРАВЛЕНО (P0): Для немедленной рассылки запускаем асинхронно с защитой от таймаутов
     // В реальном приложении лучше использовать очередь (Bull, BullMQ)
     // Здесь делаем простую реализацию с задержками и атомарными обновлениями
     
