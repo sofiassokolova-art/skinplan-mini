@@ -4869,10 +4869,11 @@ export default function QuizPage() {
             <h1 
               className="quiz-how-it-works-title"
               style={{
-                fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 700,
-                fontSize: '28px',
-                lineHeight: '140%',
+                fontStyle: 'normal',
+                fontSize: '24px',
+                lineHeight: '100%',
                 letterSpacing: '0px',
                 textAlign: 'center',
                 color: '#000000',
