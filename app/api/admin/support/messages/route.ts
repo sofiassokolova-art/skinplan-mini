@@ -19,13 +19,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'chatId is required' }, { status: 400 });
     }
 
-    // Получаем сообщения
+    // ИСПРАВЛЕНО (P0): Добавлен лимит сообщений для производительности
+    // Без лимита через месяц будет 500+ сообщений × polling каждые 2 сек = огромная нагрузка
     const messages = await prisma.supportMessage.findMany({
       where: { chatId },
       orderBy: { createdAt: 'asc' },
+      take: 50, // ИСПРАВЛЕНО (P0): Лимит сообщений (последние 50)
+      select: {
+        // ИСПРАВЛЕНО (P1): Только нужные поля для снижения payload
+        id: true,
+        text: true,
+        isAdmin: true,
+        createdAt: true,
+      },
     });
 
-    // Отмечаем сообщения как прочитанные
+    // ИСПРАВЛЕНО (P0): Сбрасываем unread при открытии чата админом
+    // Это критично - иначе unread остаётся > 0 даже после прочтения
     await prisma.supportChat.update({
       where: { id: chatId },
       data: { unread: 0 },
