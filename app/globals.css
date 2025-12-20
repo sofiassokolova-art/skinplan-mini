@@ -231,13 +231,6 @@ body {
 /* Стили для графиков - разрешаем отображение */
 .admin-layout svg,
 .admin-layout .recharts-wrapper,
-.admin-layout .recharts-surface {
-  overflow: visible !important;
-}
-
-/* Стили для графиков - разрешаем отображение */
-.admin-layout svg,
-.admin-layout .recharts-wrapper,
 .admin-layout .recharts-surface,
 .admin-layout .recharts-legend-wrapper,
 .admin-layout .recharts-tooltip-wrapper {
