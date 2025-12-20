@@ -95,26 +95,37 @@ export async function POST(request: NextRequest) {
     
     const result = await generateRecommendationsForProfile(userId, profile.id);
 
-    if (!result) {
-      logger.warn('Failed to generate recommendations', { userId, profileId: profile.id });
-      return ApiResponse.error('Failed to generate recommendations', 500);
+    // ИСПРАВЛЕНО: Проверяем результат с reason для дебага
+    if ('ok' in result && result.ok === false) {
+      logger.warn('Failed to generate recommendations', { 
+        userId, 
+        profileId: profile.id,
+        reason: result.reason,
+      });
+      return ApiResponse.error(`Failed to generate recommendations: ${result.reason}`, 500);
     }
 
-    logger.info('RecommendationSession created successfully', {
-      userId,
-      profileId: profile.id,
-      sessionId: result.sessionId,
-      ruleId: result.ruleId,
-      productsCount: result.products?.length || 0,
-    });
+    // Type guard: если нет ok: false, это RecommendationGenerationResult
+    if ('sessionId' in result) {
+      logger.info('RecommendationSession created successfully', {
+        userId,
+        profileId: profile.id,
+        sessionId: result.sessionId,
+        ruleId: result.ruleId,
+        productsCount: result.products?.length || 0,
+      });
 
-    logApiRequest(method, path, 200, Date.now() - startTime, userId);
-    return ApiResponse.success({
-      sessionId: result.sessionId,
-      ruleId: result.ruleId,
-      products: result.products || [],
-      isExisting: false,
-    });
+      logApiRequest(method, path, 200, Date.now() - startTime, userId);
+      return ApiResponse.success({
+        sessionId: result.sessionId,
+        ruleId: result.ruleId,
+        products: result.products || [],
+        isExisting: false,
+      });
+    }
+
+    // Fallback (не должно произойти, но для TypeScript)
+    return ApiResponse.error('Failed to generate recommendations: unknown error', 500);
 
   } catch (error: unknown) {
     const duration = Date.now() - startTime;

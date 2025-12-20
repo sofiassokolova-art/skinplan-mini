@@ -170,18 +170,21 @@ export async function GET(request: NextRequest) {
         const { generateRecommendationsForProfile } = await import('@/lib/recommendations-generator');
         const recommendationResult = await generateRecommendationsForProfile(userId, profile.id);
         
-        if (recommendationResult) {
+        // ИСПРАВЛЕНО: Проверяем результат с ok: false
+        if ('ok' in recommendationResult && recommendationResult.ok === false) {
+          logger.warn('Failed to create RecommendationSession, plan will be generated without session products', {
+            userId,
+            profileId: profile.id,
+            reason: recommendationResult.reason,
+          });
+        } else if ('sessionId' in recommendationResult) {
+          // Type guard: если есть sessionId, это RecommendationGenerationResult
           logger.info('RecommendationSession created successfully before plan generation', {
             userId,
             profileId: profile.id,
             sessionId: recommendationResult.sessionId,
             ruleId: recommendationResult.ruleId,
             productsCount: recommendationResult.products?.length || 0,
-          });
-        } else {
-          logger.warn('Failed to create RecommendationSession, plan will be generated without session products', {
-            userId,
-            profileId: profile.id,
           });
         }
       } else {

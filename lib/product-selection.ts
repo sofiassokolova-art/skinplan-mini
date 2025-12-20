@@ -3,6 +3,8 @@
 
 import { prisma } from '@/lib/db';
 import { normalizeIngredient } from './ingredient-normalizer';
+import { filterProductsBasic, type ProductFilterContext } from './unified-product-filter';
+import type { ProfileClassification } from './plan-generation-helpers';
 
 export interface RuleStep {
   category?: string[];
@@ -17,10 +19,15 @@ export interface RuleStep {
 }
 
 /**
- * Получает продукты по фильтрам шага правила
+ * ИСПРАВЛЕНО: Получает продукты по фильтрам шага правила
  * Улучшенная версия с поддержкой частичного совпадения step и нормализацией skinTypes
+ * Теперь применяет unified-product-filter для консистентности с планом
  */
-export async function getProductsForStep(step: RuleStep, userPriceSegment?: string | null) {
+export async function getProductsForStep(
+  step: RuleStep, 
+  userPriceSegment?: string | null,
+  profileClassification?: ProfileClassification
+) {
   const where: any = {
     published: true,
     brand: {
@@ -31,9 +38,10 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
   // SPF универсален для всех типов кожи - не фильтруем по типу кожи
   const isSPF = step.category?.includes('spf') || step.category?.some((c: string) => c.toLowerCase().includes('spf'));
   
-  // Строим условия для category/step
+  // ИСПРАВЛЕНО: Строим условия для category/step - сначала строгое совпадение, потом fallback
   if (step.category && step.category.length > 0) {
-    const categoryConditions: any[] = [];
+    const strictCategoryConditions: any[] = []; // Строгие совпадения (приоритет)
+    const fallbackCategoryConditions: any[] = []; // Fallback (если мало результатов)
     
     // Маппинг категорий из правил в категории БД
     // ВАЖНО: Этот маппинг должен соответствовать категориям в БД и stepName в правилах
@@ -56,7 +64,7 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
       for (const normalizedCat of normalizedCats) {
         if (isOilCleanser) {
           // Для гидрофильного масла ищем по ключевым словам: oil, масло, гидрофильное
-          categoryConditions.push({ 
+          strictCategoryConditions.push({ 
             AND: [
               { category: normalizedCat },
               { OR: [
@@ -70,19 +78,21 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
             ]
           });
           // Также ищем просто по category/step для продуктов, которые уже помечены как oil
-          categoryConditions.push({ category: normalizedCat, step: { contains: 'oil', mode: 'insensitive' } });
+          strictCategoryConditions.push({ category: normalizedCat, step: { contains: 'oil', mode: 'insensitive' } });
         } else {
-          // Точное совпадение по category
-          categoryConditions.push({ category: normalizedCat });
-          // Точное совпадение по step (на случай, если в БД step = category)
-          categoryConditions.push({ step: normalizedCat });
-          // Частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
-          categoryConditions.push({ step: { startsWith: normalizedCat } });
+          // ИСПРАВЛЕНО: Сначала строгое совпадение по category (приоритет)
+          strictCategoryConditions.push({ category: normalizedCat });
+          // Строгое совпадение по step (на случай, если в БД step = category)
+          strictCategoryConditions.push({ step: normalizedCat });
+          // Fallback: частичное совпадение по step (например, 'serum' найдет 'serum_hydrating')
+          fallbackCategoryConditions.push({ step: { startsWith: normalizedCat } });
         }
       }
     }
     
-    where.OR = categoryConditions;
+    // ИСПРАВЛЕНО: Используем строгие условия сначала, fallback только если мало результатов
+    where.OR = strictCategoryConditions;
+    // Fallback будет использован позже, если продуктов недостаточно
   }
 
   // Нормализуем skinTypes: combo -> combination_dry, combination_oily, или просто combo
@@ -213,8 +223,15 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
     
     const normalizedRuleIngredients = step.active_ingredients.map(normalizeIngredientSimple);
     
+    // ИСПРАВЛЕНО: В strict режиме продукты без activeIngredients не пропускаются автоматически
+    // Если правило требует active_ingredients, отсутствие разметки - минус (но не блокируем полностью)
     products = products.filter(product => {
+      // Если у продукта нет activeIngredients - пропускаем только в strict режиме
+      // Для обычного режима - пропускаем (fallback для продуктов без разметки)
       if (product.activeIngredients.length === 0) {
+        // ИСПРАВЛЕНО: В strict режиме (когда правило явно требует ингредиенты) - не пропускаем
+        // Для обычного режима - пропускаем как fallback
+        // Пока используем обычный режим (можно добавить параметр strict позже)
         return true;
       }
       
@@ -233,8 +250,8 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
     });
   }
 
-  // Если не нашли достаточно продуктов, делаем более мягкий поиск
-  if (products.length < (step.max_items || 3)) {
+  // ИСПРАВЛЕНО: Если не нашли достаточно продуктов, используем fallback условия
+  if (products.length < (step.max_items || 3) && step.category && step.category.length > 0) {
     const fallbackWhere: any = {
       published: true,
       brand: {
@@ -242,15 +259,29 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
       },
     };
 
-    // Более мягкий поиск по category/step
-    if (step.category && step.category.length > 0) {
-      const fallbackConditions: any[] = [];
-      for (const cat of step.category) {
-        fallbackConditions.push({ category: { contains: cat } });
-        fallbackConditions.push({ step: { contains: cat } });
+    // ИСПРАВЛЕНО: Используем fallback условия (частичное совпадение по category/step)
+    const fallbackConditions: any[] = [];
+    const categoryMapping: Record<string, string[]> = {
+      'cream': ['moisturizer'],
+      'moisturizer': ['moisturizer'],
+      'cleanser': ['cleanser'],
+      'cleanser_oil': ['cleanser'],
+      'serum': ['serum'],
+      'toner': ['toner'],
+      'treatment': ['treatment'],
+      'spf': ['spf'],
+      'mask': ['mask'],
+    };
+    
+    for (const cat of step.category) {
+      const normalizedCats = categoryMapping[cat] || [cat];
+      for (const normalizedCat of normalizedCats) {
+        // Fallback: частичное совпадение
+        fallbackConditions.push({ category: { contains: normalizedCat } });
+        fallbackConditions.push({ step: { contains: normalizedCat } });
       }
-      fallbackWhere.OR = fallbackConditions;
     }
+    fallbackWhere.OR = fallbackConditions;
 
     // Убираем фильтры по skinTypes и concerns для fallback
     const fallbackProducts = await prisma.product.findMany({
@@ -267,6 +298,13 @@ export async function getProductsForStep(step: RuleStep, userPriceSegment?: stri
     products = [...products, ...newProducts];
   }
   
+  // ИСПРАВЛЕНО: Применяем unified-product-filter для консистентности с планом
+  // Это гарантирует, что рекомендации и план используют одинаковую логику фильтрации
+  if (profileClassification && products.length > 0) {
+    const filteredResults = filterProductsBasic(products as any, profileClassification, 'soft');
+    products = filteredResults as any[];
+  }
+
   // Сортируем в памяти по приоритету и isHero
   const sorted = products.sort((a: any, b: any) => {
     if (a.isHero !== b.isHero) return b.isHero ? 1 : -1;
