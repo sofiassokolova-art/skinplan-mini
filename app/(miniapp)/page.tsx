@@ -187,35 +187,19 @@ export default function HomePage() {
         return;
       }
 
-      // ИСПРАВЛЕНО: Сначала проверяем профиль, чтобы не делать лишние запросы к /api/plan для новых пользователей
-      // Если профиля нет - сразу редиректим на /quiz, не проверяя план
-      let profile = null;
-      try {
-        profile = await api.getCurrentProfile();
-        if (!profile) {
-          // Профиля нет - это новый пользователь, сразу редиректим на /quiz
-          clientLogger.log('ℹ️ Profile not found - redirecting new user to /quiz');
-          setLoading(false);
-          router.replace('/quiz');
-          return;
-        }
-      } catch (err: any) {
-        // Если бэкенд вернул 404 / isNotFound - это нормальный случай "нет профиля"
-        // Для нового пользователя сразу редиректим на /quiz
-        if (err?.status === 404 || err?.isNotFound) {
-          clientLogger.log('ℹ️ Profile not found (404) - redirecting new user to /quiz');
-          setLoading(false);
-          router.replace('/quiz');
-          return;
-        }
-        // Другие ошибки не блокируют загрузку - просто логируем и продолжаем
-        // (возможно, временная проблема с сетью, но профиль может существовать)
-        clientLogger.warn('Could not check current profile before loading home data', err);
-      }
-
-      // Профиль найден - проверяем план (чтобы НЕ редиректить на анкету ошибочно,
-      // если профиль временно не читается / есть лаг реплики / есть план без профиля).
+      // ИСПРАВЛЕНО: Проверка профиля теперь делается на бэкенде
+      // Для новых пользователей сразу редиректим на /quiz, где показывается лоадер анкеты
+      // Бэкенд сам определит, новый ли пользователь, и вернет соответствующий ответ
+      // Проверяем план - если плана нет, редиректим на /quiz
       const planExists = await checkPlanExists();
+      
+      if (!planExists) {
+        // Плана нет - редиректим на /quiz (бэкенд определит, новый ли пользователь)
+        clientLogger.log('ℹ️ Plan not found - redirecting to /quiz');
+        setLoading(false);
+        router.replace('/quiz');
+        return;
+      }
 
       // Загружаем рекомендации (initData передается автоматически в запросе)
       // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true

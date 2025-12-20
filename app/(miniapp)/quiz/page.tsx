@@ -48,9 +48,9 @@ export default function QuizPage() {
   // ВАЖНО: хуки должны вызываться всегда в одном порядке, нельзя оборачивать в try-catch
   const { initialize, initData } = useTelegram();
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
-  // ИСПРАВЛЕНО: Начинаем с loading = false, чтобы не показывать лоадер
-  // Анкета загрузится сразу при монтировании, и пользователь увидит вопросы без задержки
-  const [loading, setLoading] = useState(false);
+  // ИСПРАВЛЕНО: Начинаем с loading = true, чтобы сразу показывать лоадер анкеты
+  // Проверка того, новый ли пользователь, делается на бэкенде
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
