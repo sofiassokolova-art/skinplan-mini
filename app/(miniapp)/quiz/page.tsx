@@ -4842,16 +4842,17 @@ export default function QuizPage() {
             boxSizing: 'border-box',
           }}>
             {/* Заголовок */}
-            <h1 style={{
-              fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: 400,
-              fontSize: '28px',
-              lineHeight: '140%',
-              letterSpacing: '0px',
-              textAlign: 'center',
-              color: '#000000',
-              margin: '0 0 60px 0',
-            }}>
+            <h1 
+              className="quiz-how-it-works-title"
+              style={{
+                fontWeight: 400,
+                fontSize: '28px',
+                lineHeight: '140%',
+                letterSpacing: '0px',
+                textAlign: 'center',
+                color: '#000000',
+                margin: '0 0 60px 0',
+              }}>
               {screen.title}
             </h1>
 
