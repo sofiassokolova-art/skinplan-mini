@@ -278,6 +278,7 @@ export async function GET(request: NextRequest) {
     }
 
     const responseData = {
+      period, // ИСПРАВЛЕНО (P0): Добавляем period в ответ для дебага
       stats: {
         users: usersCount,
         products: productsCount,

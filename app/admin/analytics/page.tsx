@@ -21,20 +21,23 @@ interface AdminStats {
   activeUsersLast30Days?: number;
 }
 
+type Period = 'day' | 'week' | 'month';
+
 export default function AnalyticsAdmin() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [period, setPeriod] = useState<Period>('month'); // ИСПРАВЛЕНО (P0): Добавлен state для периода
 
   useEffect(() => {
     loadAnalytics();
-  }, []);
+  }, [period]); // ИСПРАВЛЕНО (P0): Перезагружаем при смене периода
 
   const loadAnalytics = async () => {
     try {
       setLoading(true);
-      // ИСПРАВЛЕНО (P0): Используем только cookie для авторизации
-      const response = await fetch('/api/admin/stats', {
+      // ИСПРАВЛЕНО (P0): Используем только cookie для авторизации и передаём period
+      const response = await fetch(`/api/admin/stats?period=${period}`, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -85,14 +88,32 @@ export default function AnalyticsAdmin() {
     { name: 'Пользователи', value: stats?.users || 0 },
     { name: 'Продукты', value: stats?.products || 0 },
     { name: 'Планы', value: stats?.plans || 0 },
-    { name: 'Отзывы', value: stats?.badFeedback || 0 },
+    { name: 'Негативные отзывы', value: stats?.badFeedback || 0 }, // ИСПРАВЛЕНО (P1): Переименовано для ясности
   ];
 
   return (
     <div className="space-y-6 pt-8">
-      <div>
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Аналитика</h1>
-        <p className="text-gray-600">Детальная статистика системы</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Аналитика</h1>
+          <p className="text-gray-600">Детальная статистика системы</p>
+        </div>
+        {/* ИСПРАВЛЕНО (P0): Переключатель периодов */}
+        <div className="flex gap-2">
+          {(['day', 'week', 'month'] as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                period === p
+                  ? 'bg-[#8B5CF6] text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {p === 'day' ? 'День' : p === 'week' ? 'Неделя' : 'Месяц'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -135,7 +156,11 @@ export default function AnalyticsAdmin() {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Legend />
+              <Legend 
+                verticalAlign="bottom" 
+                height={36}
+                wrapperStyle={{ fontSize: '12px' }}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'rgba(255,255,255,0.95)',
