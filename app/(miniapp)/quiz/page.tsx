@@ -3376,6 +3376,7 @@ export default function QuizPage() {
         
         {/* Заголовок */}
         <div className="quiz-title" style={{
+          fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
           fontSize: '24px',
           fontWeight: 700,
           color: '#000000',
@@ -4486,6 +4487,7 @@ export default function QuizPage() {
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
         }}>
           <h1 className="quiz-title" style={{
+            fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             fontSize: '32px',
             lineHeight: '38px',
@@ -4697,6 +4699,7 @@ export default function QuizPage() {
               <h1 
                 className="quiz-welcome-title"
                 style={{
+                  fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 400,
                   fontStyle: 'normal',
                   fontSize: '28px',
@@ -4717,12 +4720,11 @@ export default function QuizPage() {
           {screen.ctaText && (
             <div style={{
               position: 'fixed',
-              bottom: 0,
+              bottom: 'clamp(20px, 4vh, 40px)',
               left: 0,
               right: 0,
-              padding: '20px',
-              background: '#FFFFFF',
-              borderTop: '1px solid rgba(0, 0, 0, 0.05)',
+              padding: '0 clamp(20px, 5vw, 40px)',
+              background: 'transparent',
               zIndex: 100,
               display: 'flex',
               justifyContent: 'center',
@@ -4731,15 +4733,15 @@ export default function QuizPage() {
                 onClick={handleNext}
                 style={{
                   width: '100%',
-                  maxWidth: '280px',
-                  height: '64px',
+                  maxWidth: 'clamp(224px, 60vw, 320px)',
+                  height: 'clamp(56px, 8vh, 64px)',
                   borderRadius: '20px',
                   background: '#D5FE61',
                   color: '#000000',
                   border: 'none',
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
-                  fontSize: '16px',
+                  fontSize: 'clamp(14px, 4vw, 16px)',
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                   transition: 'transform 0.2s, box-shadow 0.2s',
@@ -4857,6 +4859,7 @@ export default function QuizPage() {
             <h1 
               className="quiz-how-it-works-title"
               style={{
+                fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 400,
                 fontSize: '28px',
                 lineHeight: '140%',
@@ -4950,12 +4953,11 @@ export default function QuizPage() {
           {screen.ctaText && (
             <div style={{
               position: 'fixed',
-              bottom: 0,
+              bottom: 'clamp(20px, 4vh, 40px)',
               left: 0,
               right: 0,
-              padding: '20px',
-              background: '#FFFFFF',
-              borderTop: '1px solid rgba(0, 0, 0, 0.05)',
+              padding: '0 clamp(20px, 5vw, 40px)',
+              background: 'transparent',
               zIndex: 100,
               display: 'flex',
               justifyContent: 'center',
@@ -4964,15 +4966,15 @@ export default function QuizPage() {
                 onClick={handleNext}
                 style={{
                   width: '100%',
-                  maxWidth: '280px',
-                  height: '64px',
+                  maxWidth: 'clamp(224px, 60vw, 320px)',
+                  height: 'clamp(56px, 8vh, 64px)',
                   borderRadius: '20px',
                   background: '#D5FE61',
                   color: '#000000',
                   border: 'none',
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
-                  fontSize: '16px',
+                  fontSize: 'clamp(14px, 4vw, 16px)',
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                   transition: 'transform 0.2s, box-shadow 0.2s',
@@ -5065,6 +5067,7 @@ export default function QuizPage() {
           
           {/* Заголовок */}
           <h1 className="quiz-title" style={{
+            fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
             fontSize: '36px',
             lineHeight: '42px',
@@ -6026,6 +6029,7 @@ export default function QuizPage() {
         </div>
 
         <h2 className="quiz-title" style={{ 
+          fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
           fontSize: '24px', 
           fontWeight: 'bold', 
           color: '#0A5F59',
