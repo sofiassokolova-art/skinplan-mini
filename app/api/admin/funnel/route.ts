@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getCachedPlan } from '@/lib/cache';
+// ИСПРАВЛЕНО (P0): Убран неиспользуемый импорт getCachedPlan (кэш-проверка удалена)
 import { INFO_SCREENS } from '@/app/(miniapp)/quiz/info-screens';
 import { verifyAdminBoolean } from '@/lib/admin-auth';
 
@@ -17,21 +17,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Получаем всех пользователей
-    const allUsers = await prisma.user.findMany({
-      select: {
-        id: true,
-        createdAt: true,
-      },
+    // ИСПРАВЛЕНО (P0): Получаем активную анкету в начале для фильтрации метрик
+    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true },
     });
 
-    // Этап 1: Все пользователи (открыли мини-апп)
-    const totalUsers = allUsers.length;
+    // ИСПРАВЛЕНО (P0): user.count() вместо findMany для производительности
+    const totalUsers = await prisma.user.count();
 
-    // Этап 2: Пользователи, которые начали анкету (есть хотя бы один ответ)
-    const usersWithAnswers = await prisma.userAnswer.groupBy({
-      by: ['userId'],
-    });
+    // ИСПРАВЛЕНО (P0): startedQuiz фильтруется по activeQuestionnaire.id
+    // Раньше считались ответы на любую анкету/версию/тест
+    const usersWithAnswers = activeQuestionnaire
+      ? await prisma.userAnswer.groupBy({
+          by: ['userId'],
+          where: { questionnaireId: activeQuestionnaire.id },
+        })
+      : [];
     const startedQuiz = usersWithAnswers.length;
 
     // Этап 3: Пользователи, которые завершили анкету (есть профиль кожи)
@@ -40,36 +42,14 @@ export async function GET(request: NextRequest) {
     });
     const completedQuizCount = completedQuiz.length;
 
-    // Этап 4: Пользователи с планом (есть план в кэше или RecommendationSession)
-    // Проверяем через RecommendationSession и профили для проверки кэша
+    // ИСПРАВЛЕНО (P0): hasPlan считается только по БД-факту (RecommendationSession)
+    // Убрана кэш-проверка, т.к. она проверяла только 100 пользователей и делала метрику невалидной
+    // Если нужна точная метрика - план должен быть материализован в БД (Plan28 table)
     const usersWithSessions = await prisma.recommendationSession.groupBy({
       by: ['userId'],
     });
     
-    // Также проверяем пользователей с профилями, у которых может быть план в кэше
-    const usersWithProfiles = await prisma.skinProfile.findMany({
-      select: {
-        userId: true,
-        version: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Для каждого пользователя проверяем наличие плана в кэше
-    // Но это может быть медленно, поэтому делаем проверку только для пользователей без сессии
-    const usersWithoutSession = usersWithProfiles
-      .filter(p => !usersWithSessions.some(s => s.userId === p.userId))
-      .slice(0, 100); // Ограничиваем проверку до 100 пользователей для производительности
-
-    let additionalPlansCount = 0;
-    for (const profile of usersWithoutSession) {
-      const cachedPlan = await getCachedPlan(profile.userId, profile.version);
-      if (cachedPlan && cachedPlan.plan28) {
-        additionalPlansCount++;
-      }
-    }
-
-    const hasPlan = usersWithSessions.length + additionalPlansCount;
+    const hasPlan = usersWithSessions.length;
 
     // Вычисляем конверсии
     const conversionToStarted = totalUsers > 0 ? (startedQuiz / totalUsers) * 100 : 0;
@@ -86,49 +66,43 @@ export async function GET(request: NextRequest) {
       { name: 'Все время', days: null },
     ];
 
-    // Получаем дополнительные данные для подсчета по периодам
-    const answersWithDates = await prisma.userAnswer.groupBy({
-      by: ['userId'],
-      _min: {
-        createdAt: true,
-      },
-    });
-
-    const profilesWithDates = await prisma.skinProfile.findMany({
-      select: {
-        userId: true,
-        createdAt: true,
-      },
-    });
-
-    const sessionsWithDates = await prisma.recommendationSession.findMany({
-      select: {
-        userId: true,
-        createdAt: true,
-      },
-    });
-
-    const periodData = periods.map(period => {
+    // ИСПРАВЛЕНО (P0): Периодные метрики считают уникальных пользователей через groupBy с where
+    // Раньше считались записи (профили/сессии), а не уникальные пользователи
+    const periodData = await Promise.all(periods.map(async (period) => {
       const startDate = period.days ? new Date(now.getTime() - period.days * 24 * 60 * 60 * 1000) : null;
       
-      const periodUsers = startDate 
-        ? allUsers.filter(u => new Date(u.createdAt) >= startDate).length
+      // ИСПРАВЛЕНО (P0): user.count() с where вместо findMany + filter
+      const periodUsers = startDate
+        ? await prisma.user.count({
+            where: { createdAt: { gte: startDate } },
+          })
         : totalUsers;
 
-      // Подсчитываем для периода
-      const periodStarted = startDate
-        ? answersWithDates.filter(a => {
-            const firstAnswerDate = a._min.createdAt;
-            return firstAnswerDate && new Date(firstAnswerDate) >= startDate;
-          }).length
+      // ИСПРАВЛЕНО (P0): Считаем уникальных пользователей через groupBy с where
+      const periodStarted = startDate && activeQuestionnaire
+        ? (await prisma.userAnswer.groupBy({
+            by: ['userId'],
+            where: {
+              questionnaireId: activeQuestionnaire.id,
+              createdAt: { gte: startDate },
+            },
+          })).length
         : startedQuiz;
 
+      // ИСПРАВЛЕНО (P0): Считаем уникальных пользователей, а не записи профилей
       const periodCompleted = startDate
-        ? profilesWithDates.filter(p => new Date(p.createdAt) >= startDate).length
+        ? (await prisma.skinProfile.groupBy({
+            by: ['userId'],
+            where: { createdAt: { gte: startDate } },
+          })).length
         : completedQuizCount;
 
+      // ИСПРАВЛЕНО (P0): Считаем уникальных пользователей, а не записи сессий
       const periodPlan = startDate
-        ? sessionsWithDates.filter(s => new Date(s.createdAt) >= startDate).length
+        ? (await prisma.recommendationSession.groupBy({
+            by: ['userId'],
+            where: { createdAt: { gte: startDate } },
+          })).length
         : hasPlan;
 
       return {
@@ -142,10 +116,11 @@ export async function GET(request: NextRequest) {
         conversionToPlan: periodCompleted > 0 ? (periodPlan / periodCompleted) * 100 : 0,
         overallConversion: periodUsers > 0 ? (periodPlan / periodUsers) * 100 : 0,
       };
-    });
+    }));
 
-    // Вычисляем конверсию по экранам анкеты (41 экран)
-    const activeQuestionnaire = await prisma.questionnaire.findFirst({
+    // ИСПРАВЛЕНО (P0): Получаем полную активную анкету для screenConversions
+    // activeQuestionnaire.id уже получен выше, но здесь нужны questions
+    const activeQuestionnaireWithQuestions = await prisma.questionnaire.findFirst({
       where: { isActive: true },
       include: {
         questions: {
@@ -169,7 +144,7 @@ export async function GET(request: NextRequest) {
       conversion: number;
     }> = [];
 
-    if (activeQuestionnaire) {
+    if (activeQuestionnaireWithQuestions) {
       // Строим полный список экранов (INFO_SCREENS + вопросы)
       const allScreens: Array<{
         id: string;
@@ -190,7 +165,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Добавляем вопросы и инфо-экраны между ними в правильном порядке
-      const questions = activeQuestionnaire.questions;
+      const questions = activeQuestionnaireWithQuestions.questions;
       const infoScreensMap = new Map<string, typeof INFO_SCREENS[0]>();
       INFO_SCREENS.forEach(screen => {
         if (screen.showAfterQuestionCode) {
@@ -221,20 +196,20 @@ export async function GET(request: NextRequest) {
       });
 
       // Вычисляем конверсию для каждого экрана
-      // Получаем всех пользователей, которые начали анкету
+      // ИСПРАВЛЕНО (P0): Получаем всех пользователей, которые начали активную анкету
       const usersWhoStarted = await prisma.userAnswer.groupBy({
         by: ['userId'],
-        _max: {
-          createdAt: true,
+        where: {
+          questionnaireId: activeQuestionnaireWithQuestions.id,
         },
       });
 
       const userIdsWhoStarted = new Set(usersWhoStarted.map(u => u.userId));
 
-      // Получаем все ответы пользователей для оптимизации
+      // ИСПРАВЛЕНО (P0): Получаем все ответы пользователей для активной анкеты
       const allAnswers = await prisma.userAnswer.findMany({
         where: {
-          questionnaireId: activeQuestionnaire.id,
+          questionnaireId: activeQuestionnaireWithQuestions.id,
         },
         select: {
           userId: true,
@@ -256,60 +231,38 @@ export async function GET(request: NextRequest) {
         const screen = allScreens[i];
         let reachedCount = 0;
 
+        // ИСПРАВЛЕНО (P0): screenConversions - правильная логика reached
+        // Для question: reached = answered this questionId (не "хотя бы один до текущего")
+        // Для info: reached = answered previous questionId (если есть предыдущий вопрос)
         if (screen.type === 'question' && screen.questionId) {
-          // Для вопроса: считаем пользователей, которые ответили на этот вопрос
-          const questionIndex = questions.findIndex(q => q.id === screen.questionId);
-          if (questionIndex >= 0) {
-            // Получаем все вопросы до текущего включительно
-            const questionsUpToThis = questions.slice(0, questionIndex + 1);
-            const questionIdsUpToThis = new Set(questionsUpToThis.map(q => q.id));
-
-            // Считаем пользователей, которые ответили хотя бы на один вопрос до текущего включительно
-            for (const [userId, answeredQuestionIds] of userAnswersMap.entries()) {
-              // Проверяем, есть ли пересечение между отвеченными вопросами и вопросами до текущего
-              const hasAnsweredUpToThis = Array.from(questionIdsUpToThis).some(qId => 
-                answeredQuestionIds.has(qId)
-              );
-              if (hasAnsweredUpToThis) {
-                reachedCount++;
-              }
-            }
-          }
+          // ИСПРАВЛЕНО (P0): Для вопроса считаем пользователей, которые ответили именно на этот вопрос
+          // Раньше считалось "хотя бы один до текущего" → завышало метрику
+          reachedCount = Array.from(userAnswersMap.values()).filter(
+            answeredQuestionIds => answeredQuestionIds.has(screen.questionId!)
+          ).length;
         } else if (screen.type === 'info') {
-          // Для инфо-экрана: считаем пользователей, которые дошли до следующего вопроса
+          // ИСПРАВЛЕНО (P0): Для инфо-экрана считаем пользователей, которые ответили на предыдущий вопрос
           // Если это начальный экран - считаем всех, кто начал анкету
           if (i === 0) {
             reachedCount = userIdsWhoStarted.size;
           } else {
-            // Находим следующий вопрос после этого инфо-экрана
-            let nextQuestionIndex = i + 1;
-            while (nextQuestionIndex < allScreens.length && allScreens[nextQuestionIndex].type !== 'question') {
-              nextQuestionIndex++;
+            // Находим предыдущий вопрос перед этим инфо-экраном
+            let prevQuestionIndex = i - 1;
+            while (prevQuestionIndex >= 0 && allScreens[prevQuestionIndex].type !== 'question') {
+              prevQuestionIndex--;
             }
 
-            if (nextQuestionIndex < allScreens.length) {
-              const nextQuestion = allScreens[nextQuestionIndex];
-              if (nextQuestion.questionId) {
-                const questionIndex = questions.findIndex(q => q.id === nextQuestion.questionId);
-                if (questionIndex >= 0) {
-                  // Пользователь дошел до инфо-экрана, если он ответил на следующий вопрос
-                  // или на любой вопрос до следующего включительно
-                  const questionsUpToNext = questions.slice(0, questionIndex + 1);
-                  const questionIdsUpToNext = new Set(questionsUpToNext.map(q => q.id));
-
-                  for (const [userId, answeredQuestionIds] of userAnswersMap.entries()) {
-                    const hasAnsweredUpToNext = Array.from(questionIdsUpToNext).some(qId => 
-                      answeredQuestionIds.has(qId)
-                    );
-                    if (hasAnsweredUpToNext) {
-                      reachedCount++;
-                    }
-                  }
-                }
+            if (prevQuestionIndex >= 0) {
+              const prevQuestion = allScreens[prevQuestionIndex];
+              if (prevQuestion.questionId) {
+                // ИСПРАВЛЕНО (P0): Пользователь дошел до инфо-экрана, если он ответил на предыдущий вопрос
+                reachedCount = Array.from(userAnswersMap.values()).filter(
+                  answeredQuestionIds => answeredQuestionIds.has(prevQuestion.questionId!)
+                ).length;
               }
             } else {
-              // Если следующего вопроса нет (это последний экран), считаем всех, кто завершил анкету
-              reachedCount = completedQuizCount;
+              // Если предыдущего вопроса нет (это начальный инфо-экран), считаем всех, кто начал анкету
+              reachedCount = userIdsWhoStarted.size;
             }
           }
         }
