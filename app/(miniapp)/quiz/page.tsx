@@ -4709,7 +4709,7 @@ export default function QuizPage() {
               <h1 
                 className="quiz-welcome-title"
                 style={{
-                  fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 400,
                   fontStyle: 'normal',
                   fontSize: '28px',
@@ -4749,7 +4749,7 @@ export default function QuizPage() {
                   background: '#D5FE61',
                   color: '#000000',
                   border: 'none',
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
                   fontSize: 'clamp(14px, 4vw, 16px)',
                   cursor: 'pointer',
@@ -4917,7 +4917,7 @@ export default function QuizPage() {
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                       color: '#000000',
                       marginBottom: '8px',
                       padding: '2px 0',
@@ -4945,7 +4945,7 @@ export default function QuizPage() {
                     
                     {/* Текст шага */}
                     <div style={{
-                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 400,
                       fontSize: '16px',
                       lineHeight: '140%',
@@ -4985,7 +4985,7 @@ export default function QuizPage() {
                   background: '#D5FE61',
                   color: '#000000',
                   border: 'none',
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
                   fontSize: 'clamp(14px, 4vw, 16px)',
                   cursor: 'pointer',
@@ -5094,7 +5094,7 @@ export default function QuizPage() {
           {/* Подзаголовок - многострочный */}
               {screen.subtitle && (
                 <div style={{
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 400,
                   fontSize: '18px',
                   lineHeight: '1.6',
@@ -5236,7 +5236,7 @@ export default function QuizPage() {
                     color: 'white',
                     border: 'none',
                     borderRadius: '32px',
-                    fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                     fontWeight: 600,
                     fontSize: '18px',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -5336,7 +5336,7 @@ export default function QuizPage() {
                       color: 'white',
                       border: 'none',
                       borderRadius: '32px',
-                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 600,
                       fontSize: '18px',
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -5376,7 +5376,7 @@ export default function QuizPage() {
                       color: '#0A5F59',
                       border: '2px solid rgba(10, 95, 89, 0.3)',
                       borderRadius: '32px',
-                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 600,
                       fontSize: '18px',
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -5400,7 +5400,7 @@ export default function QuizPage() {
                       color: 'white',
                       border: 'none',
                       borderRadius: '32px',
-                      fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 600,
                       fontSize: '18px',
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -5442,7 +5442,7 @@ export default function QuizPage() {
                   background: '#D5FE61',
                   color: '#000000',
                   border: 'none',
-                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
                   fontSize: 'clamp(14px, 4vw, 16px)',
                   cursor: 'pointer',

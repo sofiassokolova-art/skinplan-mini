@@ -4,14 +4,88 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
+import localFont from 'next/font/local';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import { QueryProvider } from '@/providers/QueryProvider';
 
-// ВРЕМЕННО: Используем Google Fonts пока файлы шрифтов не загружены в public/fonts/
-// После загрузки файлов можно будет переключиться на localFont
+// Загружаем шрифты локально из public/fonts
+// Файлы шрифтов загружены в public/fonts/
+// ИСПРАВЛЕНО: Используем относительный путь от корня проекта
+const unbounded = localFont({
+  src: [
+    {
+      path: '../public/fonts/unbounded-regular.ttf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/unbounded-bold.ttf',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-unbounded',
+  display: 'swap',
+  fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+  adjustFontFallback: false,
+});
+
+const inter = localFont({
+  src: [
+    {
+      path: '../public/fonts/inter-thin.ttf',
+      weight: '100',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/inter-extralight.ttf',
+      weight: '200',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/inter-light.ttf',
+      weight: '300',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/inter-regular.ttf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/inter-medium.ttf',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/inter-semibold.ttf',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/inter-bold.ttf',
+      weight: '700',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/inter-bold.ttf',
+      weight: '800',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/inter-black.ttf',
+      weight: '900',
+      style: 'normal',
+    },
+  ],
+  variable: '--font-inter',
+  display: 'swap',
+  fallback: ['-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+  adjustFontFallback: false,
+});
 
 export const metadata: Metadata = {
   title: 'SkinIQ - Умный уход за кожей',
@@ -26,16 +100,8 @@ export default function RootLayout({
   const isDev = process.env.NODE_ENV === 'development';
 
   return (
-    <html lang="ru">
+    <html lang="ru" className={`${unbounded.variable} ${inter.variable}`}>
       <head>
-        {/* Preconnect для быстрой загрузки Google Fonts */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* ВРЕМЕННО: Шрифты Inter и Unbounded через Google Fonts пока файлы не загружены */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Unbounded:wght@200..900&display=swap"
-          rel="stylesheet"
-        />
         {/* Telegram WebApp Script - должен быть загружен до инициализации приложения */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
