@@ -93,7 +93,8 @@ export async function POST(
         data: { isActive: true },
       });
 
-      if (!result.ok) {
+      // ИСПРАВЛЕНО: Проверяем тип результата правильно
+      if ('ok' in result && !result.ok) {
         return NextResponse.json({
           success: false,
           error: result.reason || 'Failed to generate recommendations',
@@ -123,6 +124,7 @@ export async function POST(
       });
 
       const matched = session?.ruleId === rule.id;
+      const productIds = 'products' in result ? result.products : [];
 
       return NextResponse.json({
         success: true,
@@ -139,8 +141,8 @@ export async function POST(
         },
         recommendations: {
           sessionId: session?.id || null,
-          productCount: result.ok && 'productIds' in result ? result.productIds.length : 0,
-          productIds: result.ok && 'productIds' in result ? result.productIds : [],
+          productCount: productIds.length,
+          productIds: productIds,
         },
         message: matched
           ? 'Правило успешно применено к пользователю'
