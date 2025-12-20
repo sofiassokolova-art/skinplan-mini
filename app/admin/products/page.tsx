@@ -61,15 +61,15 @@ export default function ProductsAdmin() {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch('/api/admin/products', {
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
       });
 
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
       if (response.status === 401) {
         router.push('/admin/login');
         return;
@@ -92,27 +92,35 @@ export default function ProductsAdmin() {
   };
 
   const handleDelete = async (id: number) => {
-                    if (!confirm('Вы уверены, что хотите удалить этот продукт?')) return;
-                    
-                    try {
-                      const token = localStorage.getItem('admin_token');
+    // ИСПРАВЛЕНО (P1): Улучшен текст подтверждения удаления
+    if (!confirm('Продукт будет удалён из базы и перестанет участвовать в рекомендациях. Продолжить?')) return;
+    
+    try {
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       const response = await fetch(`/api/admin/products/${id}`, {
-                        method: 'DELETE',
-                        headers: {
-                          ...(token && { Authorization: `Bearer ${token}` }),
-                        },
-                        credentials: 'include',
-                      });
-                      
-                      if (response.ok) {
-                        await loadProducts();
-                      } else {
-                        alert('Ошибка удаления продукта');
-                      }
-                    } catch (err) {
-                      console.error('Ошибка удаления:', err);
-                      alert('Ошибка удаления продукта');
-                    }
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      
+      if (response.ok) {
+        await loadProducts();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || 'Ошибка удаления продукта');
+      }
+    } catch (err) {
+      console.error('Ошибка удаления:', err);
+      alert('Ошибка удаления продукта');
+    }
   };
 
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -143,18 +151,23 @@ export default function ProductsAdmin() {
     try {
       setShowExportMenu(false);
       setExportLoading(true);
-      const token = localStorage.getItem('admin_token');
+      // ИСПРАВЛЕНО (P0): Убрали localStorage и Authorization - cookie-only подход
       
       // Отправляем запрос на экспорт в Telegram
       const response = await fetch('/api/admin/products/export', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
         },
         credentials: 'include',
         body: JSON.stringify({ format }),
       });
+
+      // ИСПРАВЛЕНО (P0): Редирект на login при 401
+      if (response.status === 401) {
+        router.push('/admin/login');
+        return;
+      }
 
       if (!response.ok) {
         const error = await response.json();
@@ -181,7 +194,8 @@ export default function ProductsAdmin() {
           return (
             <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
               {imageUrl ? (
-                <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+                // ИСПРАВЛЕНО (P2): Lazy loading для производительности
+                <img src={imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
                   Нет фото
@@ -324,6 +338,26 @@ export default function ProductsAdmin() {
     []
   );
 
+  // ИСПРАВЛЕНО (P1): Кастомный globalFilterFn для поиска по названию, бренду, категории и шагу
+  const globalFilterFn = (row: any, columnId: string, filterValue: string) => {
+    const product = row.original as Product;
+    const searchValue = filterValue.toLowerCase();
+    
+    // Поиск по названию
+    if (product.name?.toLowerCase().includes(searchValue)) return true;
+    
+    // Поиск по бренду
+    if (product.brand?.name?.toLowerCase().includes(searchValue)) return true;
+    
+    // Поиск по категории
+    if (product.category?.toLowerCase().includes(searchValue)) return true;
+    
+    // Поиск по шагу
+    if (product.step?.toLowerCase().includes(searchValue)) return true;
+    
+    return false;
+  };
+
   const table = useReactTable({
     data: products,
     columns,
@@ -331,6 +365,7 @@ export default function ProductsAdmin() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    globalFilterFn, // ИСПРАВЛЕНО (P1): Используем кастомный фильтр
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
@@ -367,13 +402,15 @@ export default function ProductsAdmin() {
           <div className="relative" ref={exportMenuRef}>
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={exportLoading} // ИСПРАВЛЕНО (P1): Защита от двойного клика
               className={cn(
                 'px-6 py-3 bg-gray-100 text-gray-700 rounded-2xl font-semibold hover:bg-gray-200',
-                'transition-all duration-200 flex items-center gap-2'
+                'transition-all duration-200 flex items-center gap-2',
+                exportLoading && 'opacity-50 cursor-not-allowed' // ИСПРАВЛЕНО (P1): Визуальная индикация
               )}
             >
               <Download size={18} />
-              Экспорт
+              {exportLoading ? 'Отправка...' : 'Экспорт'} {/* ИСПРАВЛЕНО (P1): Индикация процесса */}
               <ChevronDown
                 size={16}
                 className={cn(
