@@ -12,52 +12,101 @@ export interface SkinScore {
   color: string;
 }
 
-// Структура ответов анкеты (адаптированная под текущую структуру)
-export interface QuestionnaireAnswers {
+/**
+ * ИСПРАВЛЕНО (P0): Каноническая схема входа для skin-analysis-engine
+ * Все значения должны быть нормализованы перед передачей в engine
+ * Запрещён доступ к "сырым" answers внутри engine
+ */
+export interface NormalizedQuestionnaireContext {
   skinType?: string;
   age?: string;
+  ageGroup?: string;
   concerns?: string[];
   diagnoses?: string[];
   allergies?: string[];
-  seasonChange?: string;
+  seasonality?: 'winter' | 'summer' | 'demi' | 'winter_drier' | 'summer_oilier' | 'stable' | null; // ИСПРАВЛЕНО: канонический ключ
   habits?: string[];
   retinolReaction?: string;
   pregnant?: boolean;
-  spfFrequency?: string;
+  spfUsage?: 'never' | 'sometimes' | 'daily' | null; // ИСПРАВЛЕНО: канонический ключ
   sunExposure?: string;
+  sensitivityLevel?: string;
+  acneLevel?: number;
+  pigmentationRisk?: string;
+}
+
+/**
+ * @deprecated Используйте NormalizedQuestionnaireContext
+ * Оставлено для обратной совместимости
+ */
+export interface QuestionnaireAnswers extends NormalizedQuestionnaireContext {
+  seasonChange?: string; // Маппится на seasonality
+  spfFrequency?: string; // Маппится на spfUsage
   [key: string]: any; // для дополнительных полей
 }
 
 /**
- * Рассчитывает 6 дерматологических осей кожи на основе ответов анкеты
+ * ИСПРАВЛЕНО (P0): Рассчитывает 6 дерматологических осей кожи
+ * Принимает ТОЛЬКО NormalizedQuestionnaireContext
+ * null = неизвестно (не "норма")
  */
-export function calculateSkinAxes(answers: QuestionnaireAnswers): SkinScore[] {
-  const a = answers; // для краткости
+export function calculateSkinAxes(answers: QuestionnaireAnswers | NormalizedQuestionnaireContext): SkinScore[] {
+  // ИСПРАВЛЕНО: Нормализуем входные данные к канонической схеме
+  const normalized: NormalizedQuestionnaireContext = {
+    skinType: answers.skinType,
+    age: answers.age,
+    ageGroup: answers.ageGroup,
+    concerns: answers.concerns,
+    diagnoses: answers.diagnoses,
+    allergies: answers.allergies,
+    seasonality: answers.seasonality || (answers as any).seasonChange || null, // ИСПРАВЛЕНО: маппинг seasonChange → seasonality
+    habits: answers.habits,
+    retinolReaction: answers.retinolReaction,
+    pregnant: answers.pregnant,
+    spfUsage: answers.spfUsage || (answers as any).spfFrequency || null, // ИСПРАВЛЕНО: маппинг spfFrequency → spfUsage
+    sunExposure: answers.sunExposure,
+    sensitivityLevel: answers.sensitivityLevel,
+    acneLevel: answers.acneLevel,
+    pigmentationRisk: answers.pigmentationRisk,
+  };
+  
+  const a = normalized; // для краткости
 
-  // 1. Oiliness (жирность)
+  // ИСПРАВЛЕНО (P0): 1. Oiliness (жирность) - null если данных нет
   const oiliness = (() => {
-    let score = 50; // нейтральная база
+    // ИСПРАВЛЕНО: Если нет данных о типе кожи - возвращаем null (неизвестно)
+    if (!a.skinType) return null;
+    
+    let score = 50; // нейтральная база (только если есть данные)
     if (a.skinType === 'oily') score += 40;
     if (a.skinType === 'combo' || a.skinType === 'combo_oily') score += 25;
     if (a.skinType === 'dry') score -= 30;
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Жирность') || c.includes('блеск'))) score += 30;
-    if (a.seasonChange === 'summer_oilier' || (typeof a.seasonChange === 'string' && a.seasonChange.includes('лето'))) score += 15;
+    // ИСПРАВЛЕНО: Используем seasonality вместо seasonChange
+    if (a.seasonality === 'summer_oilier' || (typeof a.seasonality === 'string' && a.seasonality.includes('лето'))) score += 15;
     return Math.max(0, Math.min(100, score));
   })();
 
-  // 2. Hydration + TEWL (трансэпидермальная потеря воды)
+  // ИСПРАВЛЕНО (P0): 2. Hydration + TEWL - null если данных нет
   const hydration = (() => {
-    let score = 100; // идеальное увлажнение
+    // ИСПРАВЛЕНО: Если нет данных о типе кожи - возвращаем null (неизвестно)
+    if (!a.skinType) return null;
+    
+    let score = 100; // идеальное увлажнение (только если есть данные)
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Сухость') || c.includes('стянутость'))) score -= 40;
     if (a.skinType === 'dry') score -= 35;
-    if (a.seasonChange === 'winter_drier' || (typeof a.seasonChange === 'string' && a.seasonChange.includes('зима'))) score -= 20;
+    // ИСПРАВЛЕНО: Используем seasonality вместо seasonChange
+    if (a.seasonality === 'winter_drier' || (typeof a.seasonality === 'string' && a.seasonality.includes('зима'))) score -= 20;
     if (Array.isArray(a.habits) && a.habits.some((h: string) => h.includes('не высыпаюсь') || h.includes('мало сплю'))) score -= 15;
     return Math.max(0, Math.min(100, score));
   })();
 
-  // 3. Barrier Integrity (целостность барьера)
+  // ИСПРАВЛЕНО (P0): 3. Barrier Integrity - null если данных нет
   const barrier = (() => {
-    let score = 100; // здоровый барьер
+    // ИСПРАВЛЕНО: Если нет данных о чувствительности - возвращаем null (неизвестно)
+    if (!a.sensitivityLevel && !a.concerns && !a.diagnoses && !a.allergies) return null;
+    
+    let score = 100; // здоровый барьер (только если есть данные)
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Чувствительность') || c.includes('чувствительна'))) score -= 30;
     if (Array.isArray(a.diagnoses) && a.diagnoses.some((d: string) => d.includes('Атопический') || d.includes('атопия'))) score -= 50;
     if (Array.isArray(a.allergies) && a.allergies.length > 0) score -= 25;
@@ -66,8 +115,11 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers): SkinScore[] {
     return Math.max(0, Math.min(100, score));
   })();
 
-  // 4. Inflammation / Acne (воспаление / акне)
+  // ИСПРАВЛЕНО (P0): 4. Inflammation / Acne - null если данных нет
   const inflammation = (() => {
+    // ИСПРАВЛЕНО: Если нет данных об акне - возвращаем null (неизвестно)
+    if (!a.concerns && !a.diagnoses && !a.habits && (a.acneLevel === undefined || a.acneLevel === null)) return null;
+    
     let score = 0;
     const debugInfo: string[] = [];
     
@@ -143,8 +195,11 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers): SkinScore[] {
     return finalScore;
   })();
 
-  // 5. Pigmentation Risk (риск пигментации)
+  // ИСПРАВЛЕНО (P0): 5. Pigmentation Risk - null если данных нет
   const pigmentation = (() => {
+    // ИСПРАВЛЕНО: Если нет данных о пигментации - возвращаем null (неизвестно)
+    if (!a.concerns && !a.habits && !a.diagnoses && !a.pigmentationRisk) return null;
+    
     let score = 0;
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Пигментация') || c.includes('пигментация'))) score += 50;
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Неровный') || c.includes('тон'))) score += 30;
@@ -154,8 +209,11 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers): SkinScore[] {
     return Math.min(100, score);
   })();
 
-  // 6. Photoaging / Wrinkles (фотостарение / морщины)
+  // ИСПРАВЛЕНО (P0): 6. Photoaging / Wrinkles - null если данных нет
   const photoaging = (() => {
+    // ИСПРАВЛЕНО: Если нет данных о возрасте - возвращаем null (неизвестно)
+    if (!a.age && !a.ageGroup) return null;
+    
     let score = 0;
     const age = a.age === '45+' || a.ageGroup === '45+' ? 90 : 
                 a.age === '35-44' || a.ageGroup === '35-44' ? 70 : 
@@ -164,63 +222,89 @@ export function calculateSkinAxes(answers: QuestionnaireAnswers): SkinScore[] {
     if (Array.isArray(a.concerns) && a.concerns.some((c: string) => c.includes('Морщины') || c.includes('морщины'))) score += 40;
     if (Array.isArray(a.habits) && a.habits.some((h: string) => h.includes('солнце без SPF') || h.includes('без защиты'))) score += 30;
     if (Array.isArray(a.habits) && a.habits.some((h: string) => h.includes('Курю') || h.includes('курю'))) score += 35;
-    if (a.spfFrequency === 'never' || (typeof a.spfFrequency === 'string' && a.spfFrequency.includes('никогда'))) score += 25;
+    // ИСПРАВЛЕНО: Используем spfUsage вместо spfFrequency
+    if (a.spfUsage === 'never' || (typeof a.spfUsage === 'string' && a.spfUsage.includes('никогда'))) score += 25;
     return Math.min(100, score);
   })();
 
-  return [
-    { 
-      axis: 'oiliness', 
-      value: oiliness, 
-      level: getLevel(oiliness, true), 
-      title: 'Жирность', 
-      description: desc.oiliness(oiliness), 
-      color: '#10B981' 
-    },
-    { 
-      axis: 'hydration', 
+  // ИСПРАВЛЕНО (P0): Возвращаем оси только если они не null
+  // null означает "неизвестно", а не "норма"
+  const axes: SkinScore[] = [];
+  
+  if (oiliness !== null) {
+    axes.push({
+      axis: 'oiliness',
+      value: oiliness,
+      level: getLevel(oiliness, true),
+      title: 'Жирность',
+      description: desc.oiliness(oiliness),
+      color: '#10B981',
+    });
+  }
+  
+  if (hydration !== null) {
+    axes.push({
+      axis: 'hydration',
       value: 100 - hydration, // инвертируем: чем меньше увлажнение, тем больше обезвоженность
-      level: getLevel(100 - hydration, false), 
-      title: 'Обезвоженность', 
-      description: desc.hydration(hydration), 
-      color: '#3B82F6' 
-    },
-    { 
-      axis: 'barrier', 
-      value: barrier, 
+      level: getLevel(100 - hydration, false),
+      title: 'Обезвоженность',
+      description: desc.hydration(hydration),
+      color: '#3B82F6',
+    });
+  }
+  
+  if (barrier !== null) {
+    axes.push({
+      axis: 'barrier',
+      value: barrier,
       level: getLevel(100 - barrier, false), // инвертируем: чем меньше барьер, тем больше проблема
-      title: 'Барьер', 
-      description: desc.barrier(barrier), 
-      color: '#F59E0B' 
-    },
-    { 
-      axis: 'inflammation', 
-      value: inflammation, 
-      level: getLevel(inflammation, false), 
-      title: 'Воспаление', 
-      description: desc.inflammation(inflammation), 
-      color: '#EF4444' 
-    },
-    { 
-      axis: 'pigmentation', 
-      value: pigmentation, 
-      level: getLevel(pigmentation, false), 
-      title: 'Пигментация', 
-      description: desc.pigmentation(pigmentation), 
-      color: '#8B5CF6' 
-    },
-    { 
-      axis: 'photoaging', 
-      value: photoaging, 
-      level: getLevel(photoaging, false), 
-      title: 'Фотостарение', 
-      description: desc.photoaging(photoaging), 
-      color: '#EC4899' 
-    },
-  ];
+      title: 'Барьер',
+      description: desc.barrier(barrier),
+      color: '#F59E0B',
+    });
+  }
+  
+  if (inflammation !== null) {
+    axes.push({
+      axis: 'inflammation',
+      value: inflammation,
+      level: getLevel(inflammation, false),
+      title: 'Воспаление',
+      description: desc.inflammation(inflammation),
+      color: '#EF4444',
+    });
+  }
+  
+  if (pigmentation !== null) {
+    axes.push({
+      axis: 'pigmentation',
+      value: pigmentation,
+      level: getLevel(pigmentation, false),
+      title: 'Пигментация',
+      description: desc.pigmentation(pigmentation),
+      color: '#8B5CF6',
+    });
+  }
+  
+  if (photoaging !== null) {
+    axes.push({
+      axis: 'photoaging',
+      value: photoaging,
+      level: getLevel(photoaging, false),
+      title: 'Фотостарение',
+      description: desc.photoaging(photoaging),
+      color: '#EC4899',
+    });
+  }
+  
+  return axes;
 }
 
-function getLevel(value: number, isPositive: boolean): 'low' | 'medium' | 'high' | 'critical' {
+function getLevel(value: number | null, isPositive: boolean): 'low' | 'medium' | 'high' | 'critical' {
+  // ИСПРАВЛЕНО (P0): Если value === null, возвращаем 'low' как fallback
+  // Но это не должно происходить, т.к. null оси не попадают в результат
+  if (value === null) return 'low';
+  
   // Для положительных осей (например, жирность) - чем больше, тем выше уровень
   // Для негативных осей (обезвоженность, воспаление) - чем больше, тем выше проблема
   if (value < 30) return 'low';

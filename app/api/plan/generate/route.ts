@@ -287,57 +287,61 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // ИСПРАВЛЕНО (P0): Дополнительная проверка - план может быть сгенерирован, но с пустыми днями
-    if (hasPlan28 && plan.plan28 && plan.plan28.days.length === 0) {
-      logger.error('❌ Plan28 generated but has no days', undefined, {
-        userId,
-        profileVersion: profile.version,
-        plan28Keys: Object.keys(plan.plan28),
-      });
-      
-      return ApiResponse.error(
-        'Plan generation returned empty days',
-        500,
-        {
-          userId,
-          profileVersion: profile.version,
-          timestamp: new Date().toISOString(),
-        }
-      );
-    }
-    
-    // ИСПРАВЛЕНО (P0): Проверяем, что хотя бы в одном дне есть шаги с продуктами
+    // ИСПРАВЛЕНО (P0): Строгая валидация плана через validatePlan как жёсткий гейт
     if (hasPlan28 && plan.plan28) {
-      const daysWithSteps = plan.plan28.days.filter((day: any) => {
-        const morningHasSteps = day.morning?.some((step: any) => step.productId);
-        const eveningHasSteps = day.evening?.some((step: any) => step.productId);
-        const weeklyHasSteps = day.weekly?.some((step: any) => step.productId);
-        return morningHasSteps || eveningHasSteps || weeklyHasSteps;
+      const { validatePlan } = await import('@/lib/plan-validation');
+      
+      // Получаем продукты из плана для валидации
+      // ИСПРАВЛЕНО: Приводим к ProductWithBrand[] для валидации
+      // plan.products уже содержит нужные поля для валидации
+      const planProducts = (plan.products || []) as any[]; // ИСПРАВЛЕНО: Временное решение для совместимости типов
+      
+      const validationResult = await validatePlan(plan.plan28, planProducts, {
+        ingredientCompatibility: true,
+        dermatologyProtocols: true,
+        strictMode: true, // ИСПРАВЛЕНО: В API используем strict режим
       });
       
-      if (daysWithSteps.length === 0) {
-        logger.error('❌ Plan28 has no days with steps containing products', undefined, {
+      // ИСПРАВЛЕНО (P0): Если severity === 'error' - возвращаем 422 с деталями
+      if (validationResult.severity === 'error') {
+        logger.error('❌ Plan validation failed', undefined, {
           userId,
           profileVersion: profile.version,
+          errors: validationResult.errors,
+          warnings: validationResult.warnings,
           totalDays: plan.plan28.days.length,
         });
         
         return ApiResponse.error(
-          'Plan generation returned plan with no valid days',
-          500,
+          'Plan validation failed',
+          422, // ИСПРАВЛЕНО: 422 Unprocessable Entity для валидационных ошибок
           {
             userId,
             profileVersion: profile.version,
+            validationErrors: validationResult.errors,
+            validationWarnings: validationResult.warnings,
+            severity: validationResult.severity,
             timestamp: new Date().toISOString(),
           }
         );
+      }
+      
+      // Логируем предупреждения, но не блокируем план
+      if (validationResult.warnings.length > 0) {
+        logger.warn('Plan validation warnings', {
+          userId,
+          profileVersion: profile.version,
+          warnings: validationResult.warnings,
+          severity: validationResult.severity,
+        });
       }
       
       logger.info('Plan28 validation passed', {
         userId,
         profileVersion: profile.version,
         totalDays: plan.plan28.days.length,
-        daysWithSteps: daysWithSteps.length,
+        severity: validationResult.severity,
+        warningsCount: validationResult.warnings.length,
       });
     }
     

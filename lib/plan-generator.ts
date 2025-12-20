@@ -4,7 +4,7 @@
 import { prisma } from '@/lib/db';
 import { calculateSkinAxes, getDermatologistRecommendations, type QuestionnaireAnswers } from '@/lib/skin-analysis-engine';
 import { calculateSkinIssues } from '@/app/api/analysis/route';
-import { isStepAllowedForProfile, type StepCategory } from '@/lib/step-category-rules';
+import { canApplyStep, isStepAllowedForProfile, type StepCategory } from '@/lib/step-category-rules';
 import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
 import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
 import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
@@ -2343,9 +2343,9 @@ export async function generate28DayPlan(
   // Шаг 3: Генерация плана (28 дней, 4 недели)
   const weeks: PlanWeek[] = [];
   
-  // ИСПРАВЛЕНО: Кэшируем результаты isStepAllowedForProfile для всех возможных шагов
+  // ИСПРАВЛЕНО (P1): Кэшируем результаты canApplyStep для всех возможных шагов
   // Шаги одинаковые для всех дней (шаблон не меняется), поэтому проверяем один раз
-  const stepAllowanceCache = new Map<StepCategory, boolean>();
+  const stepAllowanceCache = new Map<StepCategory, { allowed: boolean; reason?: string }>();
   const allPossibleSteps = new Set<StepCategory>([
     ...adjustedMorning,
     ...adjustedEvening,
@@ -2359,20 +2359,21 @@ export async function generate28DayPlan(
     steps: Array.from(allPossibleSteps),
   });
   
-  // Проверяем все возможные шаги один раз
+  // ИСПРАВЛЕНО (P1): Проверяем все возможные шаги один раз с получением причины
   const stepAllowancePromises = Array.from(allPossibleSteps).map(async (step) => {
-    const isAllowed = await isStepAllowedForProfile(step, stepProfile);
-    stepAllowanceCache.set(step, isAllowed);
-    if (!isAllowed) {
+    const result = await canApplyStep(step, stepProfile);
+    stepAllowanceCache.set(step, result);
+    if (!result.allowed) {
       logger.debug('Step not allowed for profile (cached)', {
         step,
+        reason: result.reason,
         skinType: stepProfile.skinType,
         sensitivity: stepProfile.sensitivity,
         diagnoses: stepProfile.diagnoses,
         userId,
       });
     }
-    return { step, isAllowed };
+    return { step, isAllowed: result.allowed };
   });
   await Promise.all(stepAllowancePromises);
   
@@ -2428,12 +2429,14 @@ export async function generate28DayPlan(
         ...templateEveningAdditional, // Всегда все средства с первого дня
       ]);
 
-      // ИСПРАВЛЕНО: Используем кэш вместо повторных вызовов isStepAllowedForProfile
+      // ИСПРАВЛЕНО (P1): Используем кэш вместо повторных вызовов canApplyStep
       const allowedMorningSteps = rawMorningSteps.filter((step) => {
-        const isAllowed = stepAllowanceCache.get(step) ?? true; // По умолчанию разрешено, если не в кэше
+        const result = stepAllowanceCache.get(step);
+        const isAllowed = result?.allowed ?? true; // По умолчанию разрешено, если не в кэше
         if (!isAllowed) {
-          logger.debug('Step filtered out by isStepAllowedForProfile (morning, from cache)', {
+          logger.debug('Step filtered out by canApplyStep (morning, from cache)', {
             step,
+            reason: result?.reason,
             userId,
             day,
           });
@@ -2441,11 +2444,14 @@ export async function generate28DayPlan(
         return isAllowed;
       });
       
+      // ИСПРАВЛЕНО (P1): Используем кэш вместо повторных вызовов canApplyStep
       const allowedEveningSteps = rawEveningSteps.filter((step) => {
-        const isAllowed = stepAllowanceCache.get(step) ?? true; // По умолчанию разрешено, если не в кэше
+        const result = stepAllowanceCache.get(step);
+        const isAllowed = result?.allowed ?? true; // По умолчанию разрешено, если не в кэше
         if (!isAllowed) {
-          logger.debug('Step filtered out by isStepAllowedForProfile (evening, from cache)', {
+          logger.debug('Step filtered out by canApplyStep (evening, from cache)', {
             step,
+            reason: result?.reason,
             userId,
             day,
           });
@@ -3098,12 +3104,22 @@ export async function generate28DayPlan(
       const baseStep = getBaseStepFromStepCategory(stepCategory);
       let stepProducts = getProductsForStep(stepCategory, phase);
       
-      // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback
+      // ИСПРАВЛЕНО (P1): Если продуктов не найдено, пробуем найти через fallback с логированием причины
+      let fallbackReason: string | undefined;
       if (stepProducts.length === 0) {
         // Пробуем fallback
         const fallback = getFallbackStep(stepCategory);
         if (fallback && fallback !== stepCategory) {
           stepProducts = getProductsForStep(fallback, phase);
+          if (stepProducts.length > 0) {
+            fallbackReason = `Used fallback step: ${fallback} instead of ${stepCategory}`;
+            logger.info('Fallback step used (morning)', {
+              stepCategory,
+              fallback,
+              dayIndex,
+              userId,
+            });
+          }
         }
         
         // Если все еще нет, пробуем найти любой продукт для базового шага
@@ -3118,19 +3134,35 @@ export async function generate28DayPlan(
           // Удаляем дубликаты
           stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
           
+          if (stepProducts.length > 0) {
+            fallbackReason = `Used base step match: ${baseStep} for ${stepCategory}`;
+            logger.info('Base step match used (morning)', {
+              stepCategory,
+              baseStep,
+              dayIndex,
+              userId,
+            });
+          }
+          
           // ИСПРАВЛЕНО: Фильтруем по фазе после сбора всех вариантов
           if (phase && stepProducts.length > 0) {
+            const beforeFilter = stepProducts.length;
             stepProducts = filterProductsByPhase(stepProducts, phase, stepCategory);
+            if (stepProducts.length < beforeFilter) {
+              fallbackReason = `${fallbackReason || ''} (filtered by phase: ${phase})`.trim();
+            }
           }
           
           // ИСПРАВЛЕНО: Если продуктов все еще нет, ищем через БД (асинхронный fallback)
           if (stepProducts.length === 0) {
+            fallbackReason = `No products found, searching DB for base step: ${baseStep}`;
             logger.warn('No products found for step after all fallbacks, searching DB (morning)', {
               stepCategory,
               baseStep,
               dayIndex,
               phase,
               userId,
+              fallbackReason,
             });
             
             // Последняя попытка: ищем через findFallbackProduct в БД
@@ -3139,27 +3171,33 @@ export async function generate28DayPlan(
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
+                fallbackReason = `DB fallback product found: ${fallbackProduct.name} (${fallbackProduct.id})`;
                 logger.info('Fallback product found from DB (morning)', {
                   stepCategory,
                   baseStep,
                   productId: fallbackProduct.id,
                   productName: fallbackProduct.name,
                   userId,
+                  fallbackReason,
                 });
               } else {
+                fallbackReason = `No fallback product found in DB for base step: ${baseStep}`;
                 logger.warn('No fallback product found in DB (morning)', {
                   stepCategory,
                   baseStep,
                   dayIndex,
                   userId,
+                  fallbackReason,
                 });
               }
             } catch (fallbackError) {
+              fallbackReason = `Error searching fallback product: ${fallbackError}`;
               logger.error('Error searching fallback product in DB (morning)', {
                 stepCategory,
                 baseStep,
                 error: fallbackError,
                 userId,
+                fallbackReason,
               });
             }
           }
@@ -3174,6 +3212,7 @@ export async function generate28DayPlan(
           dayIndex,
           phase,
           userId,
+          fallbackReason: fallbackReason || 'No products found after all fallback attempts',
         });
         continue; // Пропускаем шаг без продуктов
       }
@@ -3304,12 +3343,22 @@ export async function generate28DayPlan(
       const stepCategory = step as StepCategory;
       let stepProducts = getProductsForStep(stepCategory, phase);
       
-      // ИСПРАВЛЕНО: Если продуктов не найдено, пробуем найти через fallback
+      // ИСПРАВЛЕНО (P1): Если продуктов не найдено, пробуем найти через fallback с логированием причины
+      let fallbackReasonEvening: string | undefined;
       if (stepProducts.length === 0) {
         // Пробуем fallback
         const fallback = getFallbackStep(stepCategory);
         if (fallback && fallback !== stepCategory) {
           stepProducts = getProductsForStep(fallback, phase);
+          if (stepProducts.length > 0) {
+            fallbackReasonEvening = `Used fallback step: ${fallback} instead of ${stepCategory}`;
+            logger.info('Fallback step used (evening)', {
+              stepCategory,
+              fallback,
+              dayIndex,
+              userId,
+            });
+          }
         }
         
         // Если все еще нет, пробуем найти любой продукт для базового шага
@@ -3325,19 +3374,35 @@ export async function generate28DayPlan(
           // Удаляем дубликаты
           stepProducts = Array.from(new Map(stepProducts.map(p => [p.id, p])).values());
           
+          if (stepProducts.length > 0) {
+            fallbackReasonEvening = `Used base step match: ${baseStep} for ${stepCategory}`;
+            logger.info('Base step match used (evening)', {
+              stepCategory,
+              baseStep,
+              dayIndex,
+              userId,
+            });
+          }
+          
           // ИСПРАВЛЕНО: Фильтруем по фазе после сбора всех вариантов
           if (phase && stepProducts.length > 0) {
+            const beforeFilter = stepProducts.length;
             stepProducts = filterProductsByPhase(stepProducts, phase, stepCategory);
+            if (stepProducts.length < beforeFilter) {
+              fallbackReasonEvening = `${fallbackReasonEvening || ''} (filtered by phase: ${phase})`.trim();
+            }
           }
           
           // ИСПРАВЛЕНО: Если продуктов все еще нет, ищем через БД (асинхронный fallback)
           if (stepProducts.length === 0) {
+            fallbackReasonEvening = `No products found, searching DB for base step: ${baseStep}`;
             logger.warn('No products found for step after all fallbacks, searching DB (evening)', {
               stepCategory,
               baseStep,
               dayIndex,
               phase,
               userId,
+              fallbackReason: fallbackReasonEvening,
             });
             
             // Последняя попытка: ищем через findFallbackProduct в БД
@@ -3346,27 +3411,33 @@ export async function generate28DayPlan(
               if (fallbackProduct) {
                 registerProductForStep(stepCategory, fallbackProduct);
                 stepProducts = [fallbackProduct];
+                fallbackReasonEvening = `DB fallback product found: ${fallbackProduct.name} (${fallbackProduct.id})`;
                 logger.info('Fallback product found from DB (evening)', {
                   stepCategory,
                   baseStep,
                   productId: fallbackProduct.id,
                   productName: fallbackProduct.name,
                   userId,
+                  fallbackReason: fallbackReasonEvening,
                 });
               } else {
+                fallbackReasonEvening = `No fallback product found in DB for base step: ${baseStep}`;
                 logger.warn('No fallback product found in DB (evening)', {
                   stepCategory,
                   baseStep,
                   dayIndex,
                   userId,
+                  fallbackReason: fallbackReasonEvening,
                 });
               }
             } catch (fallbackError) {
+              fallbackReasonEvening = `Error searching fallback product: ${fallbackError}`;
               logger.error('Error searching fallback product in DB (evening)', {
                 stepCategory,
                 baseStep,
                 error: fallbackError,
                 userId,
+                fallbackReason: fallbackReasonEvening,
               });
             }
           }
@@ -3380,6 +3451,7 @@ export async function generate28DayPlan(
           dayIndex,
           phase,
           userId,
+          fallbackReason: fallbackReasonEvening || 'No products found after all fallback attempts',
         });
         continue; // Пропускаем шаг без продуктов
       }
@@ -3496,6 +3568,53 @@ export async function generate28DayPlan(
       morning: morningSteps,
       evening: eveningSteps,
       weekly: weeklyDaySteps,
+    });
+  }
+  
+  // ИСПРАВЛЕНО (P1): Валидация шаблона vs реальности
+  // Проверяем, что реальный план соответствует шаблону
+  const templateMorningSteps = new Set(adjustedMorning);
+  const templateEveningSteps = new Set(adjustedEvening);
+  const templateWeeklySteps = new Set(adjustedWeekly || []);
+  
+  // Собираем реальные шаги из всех дней
+  const actualMorningSteps = new Set<StepCategory>();
+  const actualEveningSteps = new Set<StepCategory>();
+  const actualWeeklySteps = new Set<StepCategory>();
+  
+  for (const day of plan28Days) {
+    day.morning.forEach(step => actualMorningSteps.add(step.stepCategory));
+    day.evening.forEach(step => actualEveningSteps.add(step.stepCategory));
+    day.weekly.forEach(step => actualWeeklySteps.add(step.stepCategory));
+  }
+  
+  // Находим расхождения
+  const missingMorningSteps = Array.from(templateMorningSteps).filter(s => !actualMorningSteps.has(s));
+  const missingEveningSteps = Array.from(templateEveningSteps).filter(s => !actualEveningSteps.has(s));
+  const missingWeeklySteps = Array.from(templateWeeklySteps).filter(s => !actualWeeklySteps.has(s));
+  
+  // Логируем расхождения
+  if (missingMorningSteps.length > 0 || missingEveningSteps.length > 0 || missingWeeklySteps.length > 0) {
+    logger.warn('Template vs reality mismatch: some template steps missing in actual plan', {
+      userId,
+      missingMorningSteps,
+      missingEveningSteps,
+      missingWeeklySteps,
+      templateMorningCount: templateMorningSteps.size,
+      templateEveningCount: templateEveningSteps.size,
+      templateWeeklyCount: templateWeeklySteps.size,
+      actualMorningCount: actualMorningSteps.size,
+      actualEveningCount: actualEveningSteps.size,
+      actualWeeklyCount: actualWeeklySteps.size,
+      totalDays: plan28Days.length,
+    });
+  } else {
+    logger.info('Template vs reality validation passed: all template steps present in actual plan', {
+      userId,
+      templateMorningCount: templateMorningSteps.size,
+      templateEveningCount: templateEveningSteps.size,
+      templateWeeklyCount: templateWeeklySteps.size,
+      totalDays: plan28Days.length,
     });
   }
   
@@ -3803,12 +3922,33 @@ export async function generate28DayPlan(
   }
 
   // ИСПРАВЛЕНО: Валидация плана на совместимость ингредиентов и протоколы
+  // ИСПРАВЛЕНО (P0): Валидация плана как жёсткий гейт
   const { validatePlan, markIncompatibleDaysAsRecovery } = await import('./plan-validation');
   const validationResult = await validatePlan(plan28, selectedProducts, {
     ingredientCompatibility: true,
     dermatologyProtocols: true,
-    strictMode: false, // Не блокируем план, только предупреждаем
+    strictMode: mode === 'strict', // ИСПРАВЛЕНО: В strict режиме ошибки блокируют план
   });
+  
+  // ИСПРАВЛЕНО (P0): Если severity === 'error' - план невалиден, выбрасываем ошибку
+  if (validationResult.severity === 'error') {
+    logger.error('CRITICAL: Plan validation failed with errors', {
+      userId,
+      errors: validationResult.errors,
+      warnings: validationResult.warnings,
+      daysCount: plan28.days.length,
+    });
+    throw new Error(`Plan validation failed: ${validationResult.errors.join(', ')}`);
+  }
+  
+  // ИСПРАВЛЕНО: Логируем предупреждения, но не блокируем план
+  if (validationResult.warnings.length > 0) {
+    logger.warn('Plan validation warnings', {
+      userId,
+      warnings: validationResult.warnings,
+      severity: validationResult.severity,
+    });
+  }
 
   if (validationResult.warnings.length > 0 || validationResult.errors.length > 0) {
     logger.warn('Plan validation found issues', {

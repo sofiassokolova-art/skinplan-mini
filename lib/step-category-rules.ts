@@ -367,27 +367,47 @@ export const STEP_CATEGORY_RULES: Record<StepCategory, StepCategoryRule> = {
  * Проверяет, допустим ли шаг для профиля
  * ИСПРАВЛЕНО: Добавлена нормализация значений и проверка чувствительности
  */
-export async function isStepAllowedForProfile(step: StepCategory, profile: SkinProfile): Promise<boolean> {
+/**
+ * ИСПРАВЛЕНО (P1): Результат проверки шага с причиной
+ * Позволяет логировать почему шаг не разрешён
+ */
+export interface StepAllowanceResult {
+  allowed: boolean;
+  reason?: string; // Причина отказа (если allowed = false)
+}
+
+/**
+ * ИСПРАВЛЕНО (P1): Проверяет, можно ли применить шаг для профиля
+ * Жёсткий гейт - если возвращает false, шаг НЕ должен использоваться
+ */
+export async function canApplyStep(step: StepCategory, profile: SkinProfile): Promise<StepAllowanceResult> {
   const rule = STEP_CATEGORY_RULES[step];
-  if (!rule) return true; // Если правила нет, разрешаем по умолчанию
+  if (!rule) {
+    return { allowed: true }; // Если правила нет, разрешаем по умолчанию
+  }
 
   // ИСПРАВЛЕНО: Нормализуем тип кожи перед проверкой
-  // В БД может быть "combo", но в правилах используется "combination_dry" или "combination_oily"
-  // Используем функцию нормализации для единообразия
   const { normalizeSkinTypeForRules, normalizeSensitivityForRules } = await import('./skin-type-normalizer');
   const normalizedSkinType = normalizeSkinTypeForRules(profile.skinType);
 
   // Проверка типа кожи
   if (rule.skinTypesAllowed && normalizedSkinType) {
     if (!rule.skinTypesAllowed.includes(normalizedSkinType)) {
-      return false;
+      return {
+        allowed: false,
+        reason: `Skin type ${normalizedSkinType} not allowed for step ${step}. Allowed: ${rule.skinTypesAllowed.join(', ')}`,
+      };
     }
   }
 
   // Проверка диагнозов
   if (rule.avoidDiagnoses && profile.diagnoses && profile.diagnoses.length > 0) {
-    if (profile.diagnoses.some(d => rule.avoidDiagnoses!.includes(d))) {
-      return false;
+    const conflictingDiagnoses = profile.diagnoses.filter(d => rule.avoidDiagnoses!.includes(d));
+    if (conflictingDiagnoses.length > 0) {
+      return {
+        allowed: false,
+        reason: `Step ${step} avoided due to diagnoses: ${conflictingDiagnoses.join(', ')}`,
+      };
     }
   }
 
@@ -395,8 +415,12 @@ export async function isStepAllowedForProfile(step: StepCategory, profile: SkinP
   if (rule.avoidIfContra && rule.avoidIfContra.length > 0) {
     // Проверяем противопоказания из профиля
     if (profile.contraindications && profile.contraindications.length > 0) {
-      if (profile.contraindications.some(c => rule.avoidIfContra!.includes(c))) {
-        return false;
+      const conflictingContra = profile.contraindications.filter(c => rule.avoidIfContra!.includes(c));
+      if (conflictingContra.length > 0) {
+        return {
+          allowed: false,
+          reason: `Step ${step} avoided due to contraindications: ${conflictingContra.join(', ')}`,
+        };
       }
     }
     
@@ -404,10 +428,23 @@ export async function isStepAllowedForProfile(step: StepCategory, profile: SkinP
     if (rule.avoidIfContra.includes('very_high_sensitivity')) {
       const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivity);
       if (normalizedSensitivity === 'very_high') {
-        return false;
+        return {
+          allowed: false,
+          reason: `Step ${step} avoided due to very high sensitivity`,
+        };
       }
     }
   }
 
-  return true;
+  return { allowed: true };
 }
+
+/**
+ * Обратная совместимость: старый интерфейс
+ * @deprecated Используйте canApplyStep для получения причины отказа
+ */
+export async function isStepAllowedForProfile(step: StepCategory, profile: SkinProfile): Promise<boolean> {
+  const result = await canApplyStep(step, profile);
+  return result.allowed;
+}
+

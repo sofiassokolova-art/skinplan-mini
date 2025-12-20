@@ -68,20 +68,26 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
       questionnaireAnswers.allergies = Array.isArray(value) 
         ? value.filter((v): v is string => typeof v === 'string')
         : (typeof value === 'string' ? [value] : [String(value)]);
-    // ИСПРАВЛЕНО: Маппинг кодов анкеты - используем правильные коды из JSON правил
-    // seasonality (не season_change), spf_usage (не spf_frequency), pregnancy (не pregnancy_breastfeeding)
+    // ИСПРАВЛЕНО (P0): Маппинг кодов анкеты - используем канонические ключи
+    // seasonality (не season_change), spf_usage (не spf_frequency)
     } else if (code === 'seasonality' || code === 'season_change' || code === 'seasonChange') {
-      questionnaireAnswers.seasonChange = Array.isArray(value) 
-        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
-        : (typeof value === 'string' ? value : String(value));
+      // ИСПРАВЛЕНО: Маппим на seasonality для канонической схемы
+      questionnaireAnswers.seasonality = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0])) as any
+        : (typeof value === 'string' ? value : String(value)) as any;
+      // Обратная совместимость
+      questionnaireAnswers.seasonChange = questionnaireAnswers.seasonality as any;
     } else if (code === 'retinol_reaction' || code === 'retinolReaction') {
       questionnaireAnswers.retinolReaction = Array.isArray(value) 
         ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
         : (typeof value === 'string' ? value : String(value));
     } else if (code === 'spf_usage' || code === 'spf_frequency' || code === 'spfFrequency') {
-      questionnaireAnswers.spfFrequency = Array.isArray(value) 
-        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
-        : (typeof value === 'string' ? value : String(value));
+      // ИСПРАВЛЕНО: Маппим на spfUsage для канонической схемы
+      questionnaireAnswers.spfUsage = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0])) as any
+        : (typeof value === 'string' ? value : String(value)) as any;
+      // Обратная совместимость
+      questionnaireAnswers.spfFrequency = questionnaireAnswers.spfUsage as any;
     } else if (code === 'sun_exposure' || code === 'sunExposure') {
       questionnaireAnswers.sunExposure = Array.isArray(value) 
         ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
