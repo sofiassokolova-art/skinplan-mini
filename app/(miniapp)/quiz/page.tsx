@@ -3375,8 +3375,7 @@ export default function QuizPage() {
         }}></div>
         
         {/* Заголовок */}
-        <div style={{
-          fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+        <div className="quiz-title" style={{
           fontSize: '24px',
           fontWeight: 700,
           color: '#000000',
@@ -3388,7 +3387,7 @@ export default function QuizPage() {
         
         {/* Подзаголовок */}
         <div style={{
-          fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
           fontSize: '16px',
           color: '#6B7280',
           textAlign: 'center',
@@ -4486,8 +4485,7 @@ export default function QuizPage() {
           padding: '36px 28px 32px 28px',
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
         }}>
-          <h1 style={{
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+          <h1 className="quiz-title" style={{
             fontWeight: 700,
             fontSize: '32px',
             lineHeight: '38px',
@@ -4499,7 +4497,7 @@ export default function QuizPage() {
           </h1>
 
           <p style={{
-            fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 400,
             fontSize: '18px',
             lineHeight: '1.5',
@@ -4608,7 +4606,7 @@ export default function QuizPage() {
                 color: 'white',
                 border: 'none',
                 borderRadius: '32px',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 500,
                 fontSize: '19px',
                 boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
@@ -4676,7 +4674,7 @@ export default function QuizPage() {
             </div>
           )}
 
-          {/* Контент (текст и кнопка) */}
+          {/* Контент (текст) */}
           <div style={{
             flex: 1,
             display: 'flex',
@@ -4684,10 +4682,9 @@ export default function QuizPage() {
             alignItems: 'center',
             justifyContent: 'flex-start',
             paddingTop: 'clamp(30px, 8vh, 60px)',
-            paddingBottom: 'clamp(30px, 8vh, 60px)',
+            paddingBottom: '100px', // Отступ снизу для фиксированной кнопки
             paddingLeft: '20px',
             paddingRight: '20px',
-            gap: 'clamp(30px, 6vh, 50px)',
             width: '100%',
             boxSizing: 'border-box',
           }}>
@@ -4700,7 +4697,6 @@ export default function QuizPage() {
               <h1 
                 className="quiz-welcome-title"
                 style={{
-                  fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 400,
                   fontStyle: 'normal',
                   fontSize: '28px',
@@ -4715,9 +4711,22 @@ export default function QuizPage() {
                 со <span style={{ fontWeight: 700, fontStyle: 'normal' }}>SkinIQ</span>
               </h1>
             </div>
-
-            {/* Кнопка */}
-            {screen.ctaText && (
+          </div>
+          
+          {/* Фиксированная кнопка "Продолжить" внизу экрана */}
+          {screen.ctaText && (
+            <div style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: '20px',
+              background: '#FFFFFF',
+              borderTop: '1px solid rgba(0, 0, 0, 0.05)',
+              zIndex: 100,
+              display: 'flex',
+              justifyContent: 'center',
+            }}>
               <button
                 onClick={handleNext}
                 style={{
@@ -4747,8 +4756,8 @@ export default function QuizPage() {
               >
                 {String(screen.ctaText || 'Продолжить')}
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -4787,7 +4796,7 @@ export default function QuizPage() {
               style={{
                 width: '34px',
                 height: '34px',
-                borderRadius: '50%',
+                borderRadius: '10px',
                 background: '#D5FE61',
                 border: '1px solid #000000',
                 display: 'flex',
@@ -4798,16 +4807,19 @@ export default function QuizPage() {
               }}
             >
               <svg
-                width="12"
-                height="12"
-                viewBox="0 0 12 12"
+                width="7"
+                height="14"
+                viewBox="0 0 7 14"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
+                style={{
+                  transform: 'rotate(180deg)',
+                }}
               >
                 <path
-                  d="M7.5 9L4.5 6L7.5 3"
+                  d="M1 1L6 7L1 13"
                   stroke="#000000"
-                  strokeWidth="1.5"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -4835,7 +4847,7 @@ export default function QuizPage() {
             alignItems: 'center',
             justifyContent: 'flex-start',
             paddingTop: '120px',
-            paddingBottom: '40px',
+            paddingBottom: '100px', // Отступ снизу для фиксированной кнопки
             paddingLeft: '20px',
             paddingRight: '20px',
             width: '100%',
@@ -4863,7 +4875,8 @@ export default function QuizPage() {
               display: 'flex',
               flexDirection: 'column',
               gap: '40px',
-              marginBottom: '60px',
+              marginBottom: '0',
+              alignItems: 'center',
             }}>
               {steps.map((step, index) => {
                 const stepNumber = index + 1;
@@ -4874,16 +4887,16 @@ export default function QuizPage() {
                     key={index}
                     style={{
                       display: 'flex',
-                      flexDirection: 'row',
-                      alignItems: 'flex-start',
-                      gap: '16px',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      width: '100%',
                     }}
                   >
                     {/* Круг с номером */}
                     <div style={{
-                      width: '40px',
-                      height: '40px',
-                      minWidth: '40px',
+                      width: '44px',
+                      height: '44px',
                       borderRadius: '50%',
                       background: '#D5FE61',
                       border: '1px solid #000000',
@@ -4891,23 +4904,38 @@ export default function QuizPage() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 400,
-                      fontSize: '16px',
+                      fontWeight: 800,
+                      fontSize: '20px',
+                      lineHeight: '19.45px',
+                      letterSpacing: '0px',
                       color: '#000000',
+                      marginBottom: '4px',
                     }}>
                       {stepNumber}
                     </div>
                     
+                    {/* Текст "Шаг" */}
+                    <div style={{
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontWeight: 100,
+                      fontSize: '10px',
+                      lineHeight: '12px',
+                      letterSpacing: '0px',
+                      color: '#000000',
+                      marginBottom: '8px',
+                    }}>
+                      Шаг
+                    </div>
+                    
                     {/* Текст шага */}
                     <div style={{
-                      flex: 1,
                       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 400,
                       fontSize: '16px',
                       lineHeight: '140%',
                       letterSpacing: '0px',
                       color: '#000000',
-                      paddingTop: '8px',
+                      textAlign: 'center',
                     }}>
                       {stepText}
                     </div>
@@ -4916,8 +4944,22 @@ export default function QuizPage() {
               })}
             </div>
 
-            {/* Кнопка "Продолжить" */}
-            {screen.ctaText && (
+          </div>
+          
+          {/* Фиксированная кнопка "Продолжить" внизу экрана */}
+          {screen.ctaText && (
+            <div style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: '20px',
+              background: '#FFFFFF',
+              borderTop: '1px solid rgba(0, 0, 0, 0.05)',
+              zIndex: 100,
+              display: 'flex',
+              justifyContent: 'center',
+            }}>
               <button
                 onClick={handleNext}
                 style={{
@@ -4947,8 +4989,8 @@ export default function QuizPage() {
               >
                 {String(screen.ctaText || 'Продолжить')}
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -4956,6 +4998,7 @@ export default function QuizPage() {
     return (
       <div style={{ 
         padding: '20px',
+        paddingBottom: '100px', // Отступ снизу для фиксированной кнопки
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
         display: 'flex',
@@ -4971,6 +5014,7 @@ export default function QuizPage() {
           border: '1px solid rgba(255, 255, 255, 0.2)',
           borderRadius: '44px',
           padding: '36px 28px 32px 28px',
+          paddingBottom: screen.ctaText ? '32px' : '32px', // Отступ снизу, если есть кнопка
           boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
           position: 'relative',
           zIndex: 1,
@@ -5020,8 +5064,7 @@ export default function QuizPage() {
           )}
           
           {/* Заголовок */}
-          <h1 style={{
-            fontFamily: "'Satoshi', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+          <h1 className="quiz-title" style={{
             fontWeight: 700,
             fontSize: '36px',
             lineHeight: '42px',
@@ -5035,7 +5078,7 @@ export default function QuizPage() {
           {/* Подзаголовок - многострочный */}
               {screen.subtitle && (
                 <div style={{
-                  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 400,
                   fontSize: '18px',
                   lineHeight: '1.6',
@@ -5177,7 +5220,7 @@ export default function QuizPage() {
                     color: 'white',
                     border: 'none',
                     borderRadius: '32px',
-                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                     fontWeight: 600,
                     fontSize: '18px',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -5277,7 +5320,7 @@ export default function QuizPage() {
                       color: 'white',
                       border: 'none',
                       borderRadius: '32px',
-                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 600,
                       fontSize: '18px',
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -5317,7 +5360,7 @@ export default function QuizPage() {
                       color: '#0A5F59',
                       border: '2px solid rgba(10, 95, 89, 0.3)',
                       borderRadius: '32px',
-                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 600,
                       fontSize: '18px',
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -5341,7 +5384,7 @@ export default function QuizPage() {
                       color: 'white',
                       border: 'none',
                       borderRadius: '32px',
-                      fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                       fontWeight: 600,
                       fontSize: '18px',
                       cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -5355,32 +5398,56 @@ export default function QuizPage() {
               );
             }
 
-            // Обычная кнопка "Продолжить"
-            return (
-              screen.ctaText ? (
-                <button
-                  onClick={handleNext}
-                  style={{
-                    width: '100%',
-                    height: '64px',
-                    background: '#0A5F59',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '32px',
-                    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontWeight: 500,
-                    fontSize: '19px',
-                    boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                    cursor: 'pointer',
-                    marginTop: '20px',
-                  }}
-                >
-                  {String(screen.ctaText || 'Продолжить')} →
-                </button>
-              ) : null
-            );
+            // Кнопка теперь рендерится внизу экрана
+            return null;
           })()}
         </div>
+        
+        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
+        {screen.ctaText && (
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '20px',
+            background: '#FFFFFF',
+            borderTop: '1px solid rgba(0, 0, 0, 0.05)',
+            zIndex: 100,
+            display: 'flex',
+            justifyContent: 'center',
+          }}>
+            <button
+              onClick={handleNext}
+              style={{
+                width: '100%',
+                maxWidth: '280px',
+                height: '64px',
+                borderRadius: '20px',
+                background: '#D5FE61',
+                color: '#000000',
+                border: 'none',
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = 'scale(0.98)';
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              {String(screen.ctaText || 'Продолжить')}
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -5958,7 +6025,7 @@ export default function QuizPage() {
           </div>
         </div>
 
-        <h2 style={{ 
+        <h2 className="quiz-title" style={{ 
           fontSize: '24px', 
           fontWeight: 'bold', 
           color: '#0A5F59',
@@ -6096,7 +6163,7 @@ export default function QuizPage() {
                 backgroundColor: 'rgba(255, 255, 255, 0.8)',
                 fontSize: '16px',
                 color: '#0A5F59',
-                fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 outline: 'none',
                 transition: 'all 0.2s',
               }}
