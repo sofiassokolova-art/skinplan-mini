@@ -2,24 +2,29 @@
 // Типы для API ответов
 
 import type { Plan28 } from './plan-types';
+import type { SkinScore } from './skin-analysis-engine';
+import type { GoalKey } from './concern-taxonomy';
+import type { SkinProfile } from './skinprofile-types';
+import type { StepCategory } from './step-category-rules';
+import type { ConcernKey } from './concern-taxonomy';
+
+// ИСПРАВЛЕНО: Тип для legacy формата дней плана
+export interface PlanDayLegacy {
+  morning: number[];
+  evening: number[];
+}
 
 export interface PlanWeek {
   week: number;
-  days?: any[]; // Для совместимости со старым форматом
+  days?: PlanDayLegacy[]; // ИСПРАВЛЕНО: Заменили any[] на PlanDayLegacy[]
   summary: {
-    focus: string[];
+    focus: GoalKey[]; // ИСПРАВЛЕНО: Используем GoalKey вместо string[]
     productsCount: number;
   };
 }
 
-export interface SkinScore {
-  axis: string;
-  value: number;
-  level: string;
-  title: string;
-  description: string;
-  color: string;
-}
+// ИСПРАВЛЕНО: Используем SkinScore из skin-analysis-engine вместо дублирования
+export type { SkinScore } from './skin-analysis-engine';
 
 export interface DermatologistRecommendations {
   heroActives: string[];
@@ -49,20 +54,23 @@ export interface PlanProduct {
   id: number;
   name: string;
   brand: string;
-  category: string;
+  category: StepCategory; // ИСПРАВЛЕНО: Используем StepCategory вместо string
   price: number;
   available: string;
   imageUrl?: string;
   ingredients?: string[];
+  skinTypes?: SkinProfile["skinType"][]; // ИСПРАВЛЕНО: Используем union тип из SkinProfile
+  concerns?: ConcernKey[]; // ИСПРАВЛЕНО: Используем ConcernKey вместо string[]
+  step?: StepCategory; // ИСПРАВЛЕНО: Используем StepCategory вместо string
 }
 
 export interface PlanProfile {
-  skinType: string;
-  sensitivityLevel?: string | null;
+  skinType: SkinProfile["skinType"]; // ИСПРАВЛЕНО: Используем union тип из SkinProfile
+  sensitivityLevel?: SkinProfile["sensitivity"] | null; // ИСПРАВЛЕНО: Используем union тип
   acneLevel?: number | null;
-  primaryFocus: string;
-  concerns: string[];
-  ageGroup: string;
+  primaryFocus: GoalKey; // ИСПРАВЛЕНО: Используем GoalKey вместо string
+  concerns: ConcernKey[]; // ИСПРАВЛЕНО: Используем ConcernKey вместо string[]
+  ageGroup: SkinProfile["ageGroup"] | null; // ИСПРАВЛЕНО: Используем union тип
 }
 
 export interface GeneratedPlan {
@@ -77,6 +85,7 @@ export interface GeneratedPlan {
   products: PlanProduct[];
   warnings?: string[];
   plan28?: Plan28;
+  formatVersion?: "legacy" | "v2"; // ИСПРАВЛЕНО: Добавлен формат версии для совместимости
 }
 
 export interface ProfileResponse {

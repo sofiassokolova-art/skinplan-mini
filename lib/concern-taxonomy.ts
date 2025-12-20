@@ -34,6 +34,21 @@ export type PrimaryFocus =
   | 'general';
 
 /**
+ * GoalKey - канонические ключи для mainGoals
+ * ИСПРАВЛЕНО: Union тип вместо string для типобезопасности
+ */
+export type GoalKey = 
+  | 'acne'
+  | 'pores'
+  | 'pigmentation'
+  | 'barrier'
+  | 'dehydration'
+  | 'wrinkles'
+  | 'antiage'
+  | 'general'
+  | 'dark_circles';
+
+/**
  * Маппинг primaryFocus к concern ключам
  * ИСПРАВЛЕНО: Обеспечивает согласованность между primaryFocus и product.concerns
  */

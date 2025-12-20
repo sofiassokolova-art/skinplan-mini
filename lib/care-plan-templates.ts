@@ -8,15 +8,17 @@
 // - routineComplexity (минимум / средний / максимум)
 
 import type { StepCategory } from './step-category-rules';
+import type { GoalKey } from './concern-taxonomy';
+import type { SkinProfile } from './skinprofile-types';
 
 export type RoutineComplexity = 'minimal' | 'medium' | 'maximal';
 
 export type CarePlanTemplate = {
   id: string;
   conditions: {
-    skinTypes?: string[];
-    mainGoals?: string[];
-    sensitivityLevels?: string[];
+    skinTypes?: Array<NonNullable<SkinProfile["skinType"]>>;
+    mainGoals?: GoalKey[]; // ИСПРАВЛЕНО: Используем GoalKey вместо string[]
+    sensitivityLevels?: Array<NonNullable<SkinProfile["sensitivity"]>>;
     routineComplexity?: RoutineComplexity[];
   };
   morning: StepCategory[];
@@ -25,9 +27,9 @@ export type CarePlanTemplate = {
 };
 
 export type CarePlanProfileInput = {
-  skinType: string;
-  mainGoals: string[]; // ['acne', 'pigmentation', ...]
-  sensitivityLevel: string; // low / medium / high / very_high
+  skinType: SkinProfile["skinType"]; // ИСПРАВЛЕНО: Используем union тип
+  mainGoals: GoalKey[]; // ИСПРАВЛЕНО: Используем GoalKey вместо string[]
+  sensitivityLevel: SkinProfile["sensitivity"]; // ИСПРАВЛЕНО: Используем union тип
   routineComplexity: RoutineComplexity;
 };
 
@@ -35,7 +37,7 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
   {
     id: 'acne_oily_basic',
     conditions: {
-      skinTypes: ['oily', 'combo', 'combination_oily'],
+      skinTypes: ['oily', 'combination_oily'],
       mainGoals: ['acne'],
       routineComplexity: ['medium', 'maximal'],
     },
@@ -89,9 +91,9 @@ export function selectCarePlanTemplate(
   // ИСПРАВЛЕНО: Нормализуем тип кожи для сравнения с шаблонами
   // Шаблоны могут использовать "combo", "combination_dry", "combination_oily"
   // Нужно проверить все варианты
-  const normalizeForTemplateMatch = (dbSkinType: string): string[] => {
-    if (dbSkinType === 'combo') {
-      return ['combo', 'combination_dry', 'combination_oily'];
+  const normalizeForTemplateMatch = (dbSkinType: NonNullable<SkinProfile["skinType"]>): string[] => {
+    if (dbSkinType === 'combination_dry' || dbSkinType === 'combination_oily') {
+      return [dbSkinType];
     }
     return [dbSkinType];
   };
@@ -101,8 +103,9 @@ export function selectCarePlanTemplate(
 
     if (cond.skinTypes && cond.skinTypes.length > 0) {
       // ИСПРАВЛЕНО: Проверяем все нормализованные варианты типа кожи
+      if (!skinType) return false; // Если тип кожи не указан, не подходит
       const normalizedVariants = normalizeForTemplateMatch(skinType);
-      const hasMatch = normalizedVariants.some(variant => cond.skinTypes!.includes(variant));
+      const hasMatch = normalizedVariants.some(variant => cond.skinTypes!.includes(variant as NonNullable<SkinProfile["skinType"]>));
       if (!hasMatch) return false;
     }
 
@@ -116,7 +119,7 @@ export function selectCarePlanTemplate(
       // В БД может быть "high", но в шаблонах может быть "very_high"
       // Если в шаблоне есть "very_high", а в БД "high", это не совпадает
       // Но если в шаблоне есть "high", а в БД "high", это совпадает
-      if (!cond.sensitivityLevels.includes(sensitivityLevel)) return false;
+      if (!sensitivityLevel || !cond.sensitivityLevels.includes(sensitivityLevel)) return false;
     }
 
     if (cond.routineComplexity && cond.routineComplexity.length > 0) {

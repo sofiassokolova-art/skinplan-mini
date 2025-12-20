@@ -9,6 +9,8 @@ import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-pl
 import type { Plan28, DayPlan, DayStep } from '@/lib/plan-types';
 import { getPhaseForDay, isWeeklyFocusDay } from '@/lib/plan-types';
 import { logger } from '@/lib/logger';
+import type { SkinProfile } from '@/lib/skinprofile-types';
+import type { GoalKey } from '@/lib/concern-taxonomy';
 import { PLAN_WEEKS_TOTAL, PLAN_DAYS_PER_WEEK } from '@/lib/constants';
 import { getBaseStepFromStepCategory, isCleanserStep, isSPFStep } from '@/lib/plan-helpers';
 import { 
@@ -323,7 +325,11 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
     contraindications: Array.isArray(medicalMarkers.contraindications)
       ? medicalMarkers.contraindications
       : [],
-    mainGoals: Array.isArray(medicalMarkers.mainGoals) ? medicalMarkers.mainGoals : [],
+    mainGoals: Array.isArray(medicalMarkers.mainGoals) 
+      ? (medicalMarkers.mainGoals.filter((g): g is GoalKey => 
+          ['acne', 'pores', 'pigmentation', 'barrier', 'dehydration', 'wrinkles', 'antiage', 'general', 'dark_circles'].includes(g as GoalKey)
+        ) as GoalKey[])
+      : [],
   };
 
   // ИСПРАВЛЕНО: Нормализуем diagnoses - берем из medicalMarkers (источник истины), 
@@ -377,7 +383,8 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
 
   // Маппим цели в mainGoals для CarePlanTemplate
   // ВАЖНО: Используем keyProblems (вычисленные из ответов) вместо fallback значений
-  const mainGoals: string[] = [];
+  // ИСПРАВЛЕНО: Используем GoalKey[] вместо string[]
+  const mainGoals: GoalKey[] = [];
   
   // Маппим keyProblems в mainGoals
   for (const problem of keyProblems) {
@@ -449,7 +456,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   
   // ИСПРАВЛЕНО: Для dry кожи с medium/high sensitivity автоматически добавляем barrier/dehydration в mainGoals
   // Это гарантирует выбор правильного шаблона dry_sensitive_barrier вместо default_balanced
-  const finalMainGoals = [...mainGoals];
+  const finalMainGoals: GoalKey[] = [...mainGoals];
   if ((profile.skinType === 'dry' || profile.skinType === 'combination_dry') && 
       (profile.sensitivityLevel === 'medium' || profile.sensitivityLevel === 'high' || profile.sensitivityLevel === 'very_high')) {
     if (!finalMainGoals.includes('barrier') && !finalMainGoals.includes('dehydration')) {
@@ -464,9 +471,9 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
   }
   
   const carePlanProfileInput: CarePlanProfileInput = {
-    skinType: profile.skinType || 'normal',
+    skinType: (profile.skinType || 'normal') as NonNullable<SkinProfile["skinType"]>,
     mainGoals: finalMainGoals.length > 0 ? finalMainGoals : ['general'],
-    sensitivityLevel: profile.sensitivityLevel || 'low',
+    sensitivityLevel: (profile.sensitivityLevel || 'low') as NonNullable<SkinProfile["sensitivity"]>,
     routineComplexity,
   };
 
@@ -496,7 +503,7 @@ export async function generate28DayPlan(userId: string): Promise<GeneratedPlan> 
           return ['treatment_acne_azelaic'];
         } else if (finalMainGoals.includes('pigmentation')) {
           return ['treatment_pigmentation'];
-        } else if (finalMainGoals.includes('pores') || finalMainGoals.includes('oiliness')) {
+        } else if (finalMainGoals.includes('pores')) {
           return ['treatment_exfoliant_mild'];
         } else {
           // Если нет специфических проблем - просто убираем treatment

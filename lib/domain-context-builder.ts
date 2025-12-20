@@ -45,27 +45,49 @@ export function buildDomainContext(input: BuildDomainContextInput): DomainContex
     const code = question.code || key;
     
     if (code === 'skin_type' || code === 'skinType') {
-      questionnaireAnswers.skinType = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.skinType = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'age' || code === 'age_group') {
-      questionnaireAnswers.age = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.age = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'concerns' || code === 'skin_concerns') {
-      questionnaireAnswers.concerns = Array.isArray(value) ? value : [value as string];
+      questionnaireAnswers.concerns = Array.isArray(value) 
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : [String(value)]);
     } else if (code === 'habits') {
-      questionnaireAnswers.habits = Array.isArray(value) ? value : [value as string];
+      questionnaireAnswers.habits = Array.isArray(value) 
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : [String(value)]);
     } else if (code === 'diagnoses') {
-      questionnaireAnswers.diagnoses = Array.isArray(value) ? value : [value as string];
+      questionnaireAnswers.diagnoses = Array.isArray(value) 
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : [String(value)]);
     } else if (code === 'allergies') {
-      questionnaireAnswers.allergies = Array.isArray(value) ? value : [value as string];
+      questionnaireAnswers.allergies = Array.isArray(value) 
+        ? value.filter((v): v is string => typeof v === 'string')
+        : (typeof value === 'string' ? [value] : [String(value)]);
     } else if (code === 'season_change' || code === 'seasonChange') {
-      questionnaireAnswers.seasonChange = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.seasonChange = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'retinol_reaction' || code === 'retinolReaction') {
-      questionnaireAnswers.retinolReaction = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.retinolReaction = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'spf_frequency' || code === 'spfFrequency') {
-      questionnaireAnswers.spfFrequency = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.spfFrequency = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'sun_exposure' || code === 'sunExposure') {
-      questionnaireAnswers.sunExposure = Array.isArray(value) ? value[0] : value as string;
+      questionnaireAnswers.sunExposure = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value));
     } else if (code === 'sensitivity_level' || code === 'sensitivityLevel') {
-      questionnaireAnswers.sensitivityLevel = Array.isArray(value) ? value[0] : (value as string) || 'low';
+      questionnaireAnswers.sensitivityLevel = Array.isArray(value) 
+        ? (typeof value[0] === 'string' ? value[0] : String(value[0]))
+        : (typeof value === 'string' ? value : String(value)) || 'low';
     } else if (code === 'acne_level' || code === 'acneLevel') {
       const numValue = Array.isArray(value) ? parseInt(value[0] as string) : parseInt(value as string);
       questionnaireAnswers.acneLevel = isNaN(numValue) ? 0 : numValue;
