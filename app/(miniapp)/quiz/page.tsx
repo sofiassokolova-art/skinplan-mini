@@ -4641,6 +4641,7 @@ export default function QuizPage() {
     const isProductsScreen = screen.type === 'products';
     const isWelcomeScreen = screen.id === 'welcome';
     const isHowItWorksScreen = screen.id === 'how_it_works';
+    const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
 
     // Разбиваем subtitle на строки для многострочного отображения
     const subtitleLines = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
