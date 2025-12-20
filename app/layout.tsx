@@ -4,11 +4,27 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
+import { Unbounded, Inter } from 'next/font/google';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/Toaster';
 import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import { QueryProvider } from '@/providers/QueryProvider';
+
+// Загружаем шрифты через next/font для оптимизации и надежности
+const unbounded = Unbounded({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '700'],
+  display: 'swap',
+  variable: '--font-unbounded',
+});
+
+const inter = Inter({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
   title: 'SkinIQ - Умный уход за кожей',
@@ -23,11 +39,8 @@ export default function RootLayout({
   const isDev = process.env.NODE_ENV === 'development';
 
   return (
-    <html lang="ru">
+    <html lang="ru" className={`${unbounded.variable} ${inter.variable}`}>
       <head>
-        {/* Preconnect для быстрой загрузки Google Fonts */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Telegram WebApp Script - должен быть загружен до инициализации приложения */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
@@ -78,18 +91,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
           rel="stylesheet"
         />
-        {/* Шрифт Unbounded для анкеты - загружаем все нужные веса с font-display: swap */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&display=swap"
-          rel="stylesheet"
-          crossOrigin="anonymous"
-        />
-        {/* Шрифт Inter для кнопок - загружаем все нужные веса с font-display: swap */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-          crossOrigin="anonymous"
-        />
+        {/* Шрифты Unbounded и Inter загружаются через next/font (см. импорты выше) */}
       </head>
       <body>
         <ErrorBoundary>
