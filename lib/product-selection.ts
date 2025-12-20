@@ -300,9 +300,45 @@ export async function getProductsForStep(
   
   // ИСПРАВЛЕНО: Применяем unified-product-filter для консистентности с планом
   // Это гарантирует, что рекомендации и план используют одинаковую логику фильтрации
+  // Включая ingredient-compatibility как центральный гейт
   if (profileClassification && products.length > 0) {
     const filteredResults = filterProductsBasic(products as any, profileClassification, 'soft');
     products = filteredResults as any[];
+    
+    // ИСПРАВЛЕНО: Дополнительная проверка совместимости ингредиентов для рекомендаций
+    // Даже без протокола проверяем базовую совместимость между продуктами
+    // Используем ingredient-compatibility как центральный гейт
+    if (products.length > 1) {
+      const { checkProductCompatibility } = await import('./ingredient-compatibility');
+      const compatibleProducts: typeof products = [];
+      
+      for (const product of products) {
+        // Проверяем совместимость с уже выбранными продуктами
+        let isCompatible = true;
+        for (const selectedProduct of compatibleProducts) {
+          const conflict = checkProductCompatibility(
+            { activeIngredients: product.activeIngredients || [], composition: undefined },
+            { activeIngredients: selectedProduct.activeIngredients || [], composition: undefined }
+          );
+          
+          // ИСПРАВЛЕНО: Если конфликт high severity - пропускаем продукт
+          // Для medium/low severity - оставляем (может быть решено через separate_time)
+          if (conflict && conflict.severity === 'high') {
+            isCompatible = false;
+            break;
+          }
+        }
+        
+        if (isCompatible) {
+          compatibleProducts.push(product);
+        }
+      }
+      
+      // Используем совместимые продукты, если их достаточно
+      if (compatibleProducts.length >= (step.max_items || 3) || compatibleProducts.length > 0) {
+        products = compatibleProducts;
+      }
+    }
   }
 
   // Сортируем в памяти по приоритету и isHero

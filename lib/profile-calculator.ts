@@ -2,6 +2,7 @@
 // Логика расчета профиля кожи на основе ответов анкеты
 
 import { Prisma } from '@prisma/client';
+import { normalizeSkinTypeForRules, type SkinTypeKey } from './skin-type-normalizer';
 
 interface AnswerScore {
   [key: string]: number | string | boolean;
@@ -39,29 +40,39 @@ export function aggregateAnswerScores(
 }
 
 /**
- * Определяет тип кожи на основе агрегированных баллов
- * ИСПРАВЛЕНО: Возвращает канонический тип кожи (никогда 'combo')
- * ВАЖНО: Всегда возвращает валидное значение ('normal', 'dry', 'oily', 'combination_dry', или 'combination_oily')
+ * ИСПРАВЛЕНО: Определяет тип кожи на основе агрегированных баллов
+ * Использует единую точку нормализации через normalizeSkinTypeForRules
+ * Возвращает канонический SkinTypeKey
  */
-export function determineSkinType(scores: AggregatedScores): string {
+export function determineSkinType(scores: AggregatedScores, context?: { userId?: string }): SkinTypeKey {
   const oiliness = typeof scores.oiliness === 'number' ? scores.oiliness : 0;
   const dehydration = typeof scores.dehydration === 'number' ? scores.dehydration : 0;
 
-  // ИСПРАВЛЕНО: Нормализуем 'combo' в канонический тип на основе oiliness и dehydration
-  // Если больше жирности - combination_oily, если больше сухости - combination_dry
+  // ИСПРАВЛЕНО: Определяем предварительный тип на основе баллов
+  let preliminaryType: string;
   if (oiliness >= 4 && dehydration >= 3) {
     // Комбинированная: определяем направление на основе преобладающего признака
-    return oiliness > dehydration ? 'combination_oily' : 'combination_dry';
+    preliminaryType = oiliness > dehydration ? 'combination_oily' : 'combination_dry';
   } else if (oiliness >= 4) {
-    return 'oily';
+    preliminaryType = 'oily';
   } else if (dehydration >= 4) {
-    return 'dry';
+    preliminaryType = 'dry';
   } else if (oiliness >= 2 || dehydration >= 2) {
     // Легкая комбинированная: определяем направление
-    return oiliness > dehydration ? 'combination_oily' : 'combination_dry';
+    preliminaryType = oiliness > dehydration ? 'combination_oily' : 'combination_dry';
+  } else {
+    preliminaryType = 'normal';
   }
-  // Всегда возвращаем 'normal' по умолчанию
-  return 'normal';
+
+  // ИСПРАВЛЕНО: Используем единую точку нормализации
+  const normalized = normalizeSkinTypeForRules(preliminaryType, {
+    oiliness,
+    dehydration,
+    userId: context?.userId,
+  });
+
+  // Гарантируем, что возвращаем валидный SkinTypeKey (не null)
+  return normalized || 'normal';
 }
 
 /**
@@ -146,8 +157,8 @@ export function createSkinProfile(
   // Агрегируем баллы
   const scores = aggregateAnswerScores(answerScores);
 
-  // Определяем профиль
-  const skinType = determineSkinType(scores);
+  // ИСПРАВЛЕНО: Определяем профиль с использованием единой нормализации
+  const skinType = determineSkinType(scores, { userId });
   const sensitivityLevel = determineSensitivityLevel(scores);
   const acneLevel = determineAcneLevel(scores);
   const dehydrationLevel = Math.min(Math.max(Math.round(scores.dehydration || 0), 0), 5);

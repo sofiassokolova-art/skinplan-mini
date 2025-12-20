@@ -2,10 +2,11 @@
 // Расширенный тип SkinProfile и связанные доменные типы для правил/аналитики
 
 import type { SkinScore } from './skin-analysis-engine';
-import type { GoalKey } from './concern-taxonomy';
+import type { GoalKey, ConcernKey } from './concern-taxonomy';
+import type { SkinTypeKey } from './skin-type-normalizer';
 
 export type SkinProfile = {
-  skinType: "dry" | "combination_dry" | "normal" | "combination_oily" | "oily" | null;
+  skinType: SkinTypeKey | null; // ИСПРАВЛЕНО: Используем канонический SkinTypeKey
   sensitivity: "low" | "medium" | "high" | "very_high" | null;
   mainGoals: GoalKey[]; // ИСПРАВЛЕНО: Используем GoalKey вместо string[]
   secondaryGoals: GoalKey[]; // ИСПРАВЛЕНО: Используем GoalKey вместо string[]

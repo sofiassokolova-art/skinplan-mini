@@ -10,6 +10,7 @@ import { MAX_DUPLICATE_SUBMISSION_WINDOW_MS } from '@/lib/constants';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { logDbFingerprint } from '@/lib/db-fingerprint';
+import { normalizeProfileData, normalizeMedicalMarkers } from '@/lib/profile-normalizer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -690,30 +691,52 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+      // ИСПРАВЛЕНО: ОБЯЗАТЕЛЬНЫЙ normalization layer после анкеты
+      // Все значения должны быть нормализованы к каноническим типам перед сохранением
+      const normalizedProfile = normalizeProfileData({
+        ...profileData,
+        mainGoals: extractedData.mainGoals,
+        diagnoses: extractedData.diagnoses,
+      }, {
+        userId,
+      });
+
+      // ИСПРАВЛЕНО: Нормализуем medicalMarkers
+      const normalizedMarkers = normalizeMedicalMarkers(mergedMarkers);
+
       // ВАЖНО: Валидируем данные перед созданием профиля
       // Проверяем, что все обязательные поля присутствуют
-      if (!profileData.skinType) {
-        logger.error('CRITICAL: skinType is missing in profileData', {
+      if (!normalizedProfile.skinType) {
+        logger.error('CRITICAL: skinType is missing after normalization', {
           userId,
           questionnaireId,
           profileData,
+          normalizedProfile,
         });
         throw new Error('skinType is required for profile creation');
       }
       
-      if (!profileData.sensitivityLevel) {
-        logger.error('CRITICAL: sensitivityLevel is missing in profileData', {
+      if (!normalizedProfile.sensitivity) {
+        logger.error('CRITICAL: sensitivityLevel is missing after normalization', {
           userId,
           questionnaireId,
           profileData,
+          normalizedProfile,
         });
         throw new Error('sensitivityLevel is required for profile creation');
       }
       
+      // ИСПРАВЛЕНО: Преобразуем нормализованные значения для Prisma
+      // Prisma ожидает JsonValue, поэтому преобразуем канонические типы в строки
       const profileDataForPrisma = {
-        ...profileData,
-        ageGroup: existingProfile?.ageGroup ?? profileData.ageGroup,
-        medicalMarkers: Object.keys(mergedMarkers).length > 0 ? mergedMarkers : null,
+        ...profileData, // Сохраняем оригинальные поля для Prisma (совместимость)
+        skinType: normalizedProfile.skinType || profileData.skinType, // ИСПРАВЛЕНО: Используем нормализованный тип
+        sensitivityLevel: normalizedProfile.sensitivity || profileData.sensitivityLevel, // ИСПРАВЛЕНО: Используем нормализованную чувствительность
+        ageGroup: existingProfile?.ageGroup ?? normalizedProfile.ageGroup ?? profileData.ageGroup,
+        // ИСПРАВЛЕНО: Преобразуем нормализованные маркеры в формат для Prisma (JsonValue)
+        medicalMarkers: Object.keys(normalizedMarkers).length > 0 
+          ? normalizedMarkers as any // Prisma ожидает JsonValue, канонические типы совместимы
+          : null,
       };
       
       // ВАЖНО: Логируем данные перед созданием профиля для диагностики
