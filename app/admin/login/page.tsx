@@ -72,7 +72,8 @@ export default function AdminLogin() {
             
             // Проверяем ошибки конфигурации по коду или тексту ошибки
             if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR' || 
-                errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN')) {
+                errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN') ||
+                errorMessage.includes('JWT configuration error')) {
               setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET или TELEGRAM_BOT_TOKEN.');
               setCheckingSession(false);
               return;
