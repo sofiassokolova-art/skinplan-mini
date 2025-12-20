@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // ИСПРАВЛЕНО (P0): Для списка чатов нужны только базовые данные
+    // Загружаем только последнее сообщение для lastMessage, не всю историю
     const chats = await prisma.supportChat.findMany({
       include: {
         user: {
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest) {
         },
         messages: {
           orderBy: { createdAt: 'desc' },
+          take: 1, // ИСПРАВЛЕНО (P0): Только последнее сообщение для lastMessage
         },
       },
       orderBy: {
@@ -46,27 +49,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Автоматически определяем статус для каждого чата на основе сообщений
-    const chatsWithAutoStatus = chats.map((chat) => {
-      // Если статус закрыт, оставляем как есть
-      if (chat.status === 'closed') {
-        return { ...chat, autoStatus: 'closed' };
-      }
-
-      // Проверяем, есть ли ответы оператора (не автоответ)
-      // Автоответ содержит "Привет! Это поддержка SkinIQ" или "за пределами рабочего времени"
-      const hasAdminReply = chat.messages.some((msg) => 
-        msg.isAdmin && 
-        !msg.text.includes('Привет! Это поддержка SkinIQ') && 
-        !msg.text.includes('за пределами рабочего времени') &&
-        !msg.text.includes('Поддержка работает с 9:00 до 18:00')
-      );
-
-      const autoStatus = hasAdminReply ? 'in_progress' : 'active';
-      return { ...chat, autoStatus };
-    });
-
-    const formattedChats = chatsWithAutoStatus.map((chat) => {
+    // ИСПРАВЛЕНО (P0): Убрали авто-статус по тексту - возвращаем status как хранится в БД
+    // Статус обновляется событийно: пользователь написал → active, админ ответил → in_progress, закрыт → closed
+    const formattedChats = chats.map((chat) => {
       const latestProfile = chat.user.skinProfiles[0];
       // Формируем объект profile для совместимости с фронтендом
       const profile = latestProfile ? {
@@ -81,19 +66,18 @@ export async function GET(request: NextRequest) {
         hasPregnancy: latestProfile.hasPregnancy,
       } : null;
 
-      // Используем автоматически определенный статус
-      const displayStatus = chat.status === 'closed' ? 'closed' : chat.autoStatus;
-
+      // ИСПРАВЛЕНО (P0): Возвращаем status как хранится в БД, без авто-вычисления по тексту
+      // Статус управляется событиями: sendReply → in_progress, close → closed
       return {
         id: chat.id,
         user: {
           ...chat.user,
           profile, // Добавляем сформированный profile
         },
-        lastMessage: chat.messages[0]?.text || chat.lastMessage,
+        lastMessage: chat.messages[0]?.text || chat.lastMessage || null, // ИСПРАВЛЕНО (P1): Используем последнее сообщение или chat.lastMessage
         unread: chat.unread,
         updatedAt: chat.updatedAt.toISOString(),
-        status: displayStatus, // Используем автоматически определенный статус
+        status: chat.status, // ИСПРАВЛЕНО (P0): Возвращаем status из БД, без авто-вычисления
       };
     });
 
