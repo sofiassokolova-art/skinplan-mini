@@ -2,6 +2,7 @@
 // Типы для структуры 28-дневного плана ухода
 
 import type { StepCategory } from './step-category-rules';
+import { formatMainGoal } from './format-helpers';
 
 export type PlanPhases = "adaptation" | "active" | "support";
 
@@ -65,13 +66,27 @@ export function getPhaseLabel(phase: PlanPhases): string {
 }
 
 export function getPhaseDescription(phase: PlanPhases, goals: string[]): string {
-  const goalsText = goals.length > 0 ? goals.join(", ") : "улучшение состояния кожи";
+  // ИСПРАВЛЕНО: Используем formatMainGoal для перевода целей на русский
+  const goalLabels: Record<string, string> = {
+    acne: 'Акне',
+    pores: 'Поры',
+    pigmentation: 'Пигментация',
+    barrier: 'Барьер',
+    dehydration: 'Обезвоженность',
+    wrinkles: 'Морщины',
+    antiage: 'Антиэйдж',
+    general: 'Общий уход',
+  };
+  
+  const translatedGoals = goals.length > 0 
+    ? goals.map(goal => formatMainGoal(goal) || goalLabels[goal] || goal).filter(Boolean).join(", ")
+    : "улучшение состояния кожи";
   
   switch (phase) {
     case "adaptation":
-      return `Мягкое внедрение ухода. Мы постепенно знакомим кожу с новыми средствами, минимизируя раздражение. Фокус на ${goalsText}.`;
+      return `Мягкое внедрение ухода. Мы постепенно знакомим кожу с новыми средствами, минимизируя раздражение. Фокус на ${translatedGoals}.`;
     case "active":
-      return `Активная фаза работы. Подключаем активные ингредиенты для решения задач: ${goalsText}.`;
+      return `Активная фаза работы. Подключаем активные ингредиенты для решения задач: ${translatedGoals}.`;
     case "support":
       return `Фаза закрепления результатов. Поддерживаем достигнутый прогресс и укрепляем барьер кожи.`;
   }

@@ -21,6 +21,7 @@ export function PlanHeader({ mainGoals, userInfo, userName }: PlanHeaderProps) {
     dehydration: 'Обезвоженность',
     wrinkles: 'Морщины',
     antiage: 'Антиэйдж',
+    general: 'Общий уход',
   };
 
   // Получаем первую цель для отображения

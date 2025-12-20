@@ -75,6 +75,7 @@ function generateProgressCurves(goals: string[]): GoalProgressCurve[] {
       dehydration: 'Увлажнение',
       wrinkles: 'Морщины',
       antiage: 'Антиэйдж',
+      general: 'Общий уход',
     };
 
     curves.push({
@@ -97,6 +98,7 @@ export function GoalProgressInfographic({ goals, currentDay }: GoalProgressInfog
     dehydration: 'Увлажнение',
     wrinkles: 'Морщины',
     antiage: 'Антиэйдж',
+    general: 'Общий уход',
   };
 
   const goalIcons: Record<string, string> = {

@@ -100,7 +100,8 @@ export function PlanPageClientNew({
     
     const loadUserName = async () => {
       try {
-        // ИСПРАВЛЕНО: Приоритет загрузки имени: ответ USER_NAME > кэш ответов > кэш имени > профиль
+        // ИСПРАВЛЕНО: Имя всегда берется с сервера, не из localStorage
+        // Приоритет: ответ USER_NAME > профиль
         // Сначала проверяем кэш ответов пользователя (быстрее, чем запрос к API)
         const cachedAnswers = typeof window !== 'undefined' ? localStorage.getItem('user_answers_cache') : null;
         if (cachedAnswers) {
@@ -111,7 +112,6 @@ export function PlanPageClientNew({
               if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
                 const userNameFromAnswer = String(nameAnswer.answerValue).trim();
                 setUserName(userNameFromAnswer);
-                localStorage.setItem('user_name', userNameFromAnswer);
                 clientLogger.log('✅ User name loaded from cached answers:', userNameFromAnswer);
                 return;
               }
@@ -125,7 +125,7 @@ export function PlanPageClientNew({
         // Если кэша ответов нет, запрашиваем ответы из API
         const userAnswers = await api.getUserAnswers() as any;
         if (userAnswers && Array.isArray(userAnswers)) {
-          // ИСПРАВЛЕНО: Сохраняем ответы в кэш для будущих запросов
+          // Сохраняем ответы в кэш для будущих запросов
           if (typeof window !== 'undefined') {
             localStorage.setItem('user_answers_cache', JSON.stringify(userAnswers));
           }
@@ -134,10 +134,6 @@ export function PlanPageClientNew({
           if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
             const userNameFromAnswer = String(nameAnswer.answerValue).trim();
             setUserName(userNameFromAnswer);
-            // ИСПРАВЛЕНО: Сохраняем в кэш
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('user_name', userNameFromAnswer);
-            }
             clientLogger.log('✅ User name loaded from USER_NAME answer:', userNameFromAnswer);
             return;
           }
@@ -146,10 +142,6 @@ export function PlanPageClientNew({
         const userProfile = await api.getUserProfile();
         if (userProfile?.firstName) {
           setUserName(userProfile.firstName);
-          // ИСПРАВЛЕНО: Сохраняем в кэш
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('user_name', userProfile.firstName);
-          }
           clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
         }
       } catch (err: any) {

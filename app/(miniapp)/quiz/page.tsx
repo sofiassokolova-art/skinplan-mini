@@ -1311,15 +1311,21 @@ export default function QuizPage() {
       });
       
       // ИСПРАВЛЕНО: Проверяем, что данные не пустые
-      // При перепрохождении API может вернуть пустой объект - это не критично, анкета загрузится позже
+      // При перепрохождении API может вернуть пустой объект - пробуем загрузить еще раз
       if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
         if (isRetakingQuiz || showRetakeScreen) {
-          // При перепрохождении не бросаем ошибку - анкета может загрузиться позже
-          clientLogger.warn('⚠️ Empty questionnaire data received during retake, will retry later', { 
+          // При перепрохождении пробуем загрузить еще раз через небольшую задержку
+          clientLogger.warn('⚠️ Empty questionnaire data received during retake, will retry', { 
             data,
             dataType: typeof data,
           });
-          setLoading(false);
+          // Повторная попытка через 1 секунду (без рекурсии)
+          setTimeout(() => {
+            loadQuestionnaire().catch((retryErr) => {
+              clientLogger.warn('⚠️ Failed to retry questionnaire load during retake', retryErr);
+              setLoading(false);
+            });
+          }, 1000);
           return null;
         }
         clientLogger.error('❌ Empty questionnaire data received from API', { 
