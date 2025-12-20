@@ -47,9 +47,20 @@ export default function SupportAdmin() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // ИСПРАВЛЕНО: Автоматическое обновление списка чатов всегда (даже когда чат не выбран)
   useEffect(() => {
     loadChats();
-  }, []);
+    
+    // Обновляем список чатов каждые 5 секунд для обнаружения новых обращений
+    const chatsInterval = setInterval(() => {
+      loadChats();
+    }, 5000);
+    
+    return () => {
+      clearInterval(chatsInterval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ИСПРАВЛЕНО: Пустой массив зависимостей - polling работает всегда
 
   useEffect(() => {
     if (selectedChat) {
@@ -57,14 +68,14 @@ export default function SupportAdmin() {
       
       // ИСПРАВЛЕНО (P1): Оптимизированный polling
       // Messages обновляем каждые 2 секунды
-      // Chats обновляем реже (каждые 10 секунд) для снижения нагрузки
+      // Chats обновляем каждые 5 секунд (даже когда чат выбран, чтобы видеть новые обращения)
       const messagesInterval = setInterval(() => {
         loadMessages(selectedChat.id);
       }, 2000);
       
       const chatsInterval = setInterval(() => {
         loadChats();
-      }, 10000); // ИСПРАВЛЕНО (P1): Chats обновляем реже
+      }, 5000); // ИСПРАВЛЕНО: Обновляем чаты каждые 5 секунд для обнаружения новых обращений
       
       return () => {
         clearInterval(messagesInterval);
@@ -93,8 +104,18 @@ export default function SupportAdmin() {
 
       if (response.ok) {
         const data = await response.json();
-        setChats(data.chats || []);
-        // Не выбираем автоматически первый чат - показываем общий список
+        const newChats = data.chats || [];
+        
+        // ИСПРАВЛЕНО: Обновляем список чатов, сохраняя выбранный чат если он есть
+        setChats(newChats);
+        
+        // Если выбранный чат был обновлен (например, изменился статус или unread), обновляем его
+        if (selectedChat) {
+          const updatedChat = newChats.find((c: Chat) => c.id === selectedChat.id);
+          if (updatedChat) {
+            setSelectedChat(updatedChat);
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading chats:', error);
