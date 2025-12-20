@@ -63,13 +63,23 @@ export default function AdminLogin() {
             router.replace('/admin');
             return;
           }
-        } else if (response.status === 500) {
+        } else {
           // ИСПРАВЛЕНО: Проверяем ошибки конфигурации при проверке сессии
-          const data = await response.json().catch(() => ({}));
-          if (data.code === 'CONFIG_ERROR' || data.code === 'JWT_CONFIG_ERROR') {
-            setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET.');
-            setCheckingSession(false);
-            return;
+          try {
+            const data = await response.json();
+            const errorMessage = data.error || '';
+            const errorCode = data.code;
+            
+            // Проверяем ошибки конфигурации по коду или тексту ошибки
+            if (errorCode === 'CONFIG_ERROR' || errorCode === 'JWT_CONFIG_ERROR' || 
+                errorMessage.includes('JWT_SECRET') || errorMessage.includes('TELEGRAM_BOT_TOKEN')) {
+              setError('Ошибка конфигурации сервера. Обратитесь к администратору для настройки JWT_SECRET или TELEGRAM_BOT_TOKEN.');
+              setCheckingSession(false);
+              return;
+            }
+          } catch (parseError) {
+            // Если не удалось распарсить JSON, игнорируем
+            console.error('Error parsing error response:', parseError);
           }
         }
       } catch (error) {
