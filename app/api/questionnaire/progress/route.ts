@@ -179,10 +179,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Вычисляем позицию на основе последнего отвеченного вопроса
-    // Метаданные позиции больше не хранятся в БД, они только локально
-    const finalQuestionIndex = lastAnsweredIndex + 1; // Следующий вопрос после последнего отвеченного
-    const finalInfoScreenIndex = 0; // По умолчанию 0
+    // ИСПРАВЛЕНО: Загружаем метаданные позиции из БД для синхронизации между устройствами
+    const savedProgress = await prisma.questionnaireProgress.findUnique({
+      where: {
+        userId_questionnaireId: {
+          userId,
+          questionnaireId: activeQuestionnaire.id,
+        },
+      },
+    });
+
+    // Используем сохраненные метаданные, если они есть, иначе вычисляем на основе последнего отвеченного вопроса
+    const finalQuestionIndex = savedProgress?.questionIndex ?? (lastAnsweredIndex + 1);
+    const finalInfoScreenIndex = savedProgress?.infoScreenIndex ?? 0;
 
     // Проверяем, все ли вопросы анкеты отвечены
     const totalQuestions = allQuestions.filter(q => q.id !== -1).length;
@@ -255,21 +264,59 @@ export async function POST(request: NextRequest) {
     }
 
     // Если questionId = -1, это только метаданные позиции
-    // НЕ сохраняем их в БД, так как это нарушает внешний ключ
-    // Метаданные позиции хранятся только локально на клиенте
+    // ИСПРАВЛЕНО: Сохраняем метаданные позиции в БД для синхронизации между устройствами
     if (questionId === -1 || questionId === '-1') {
+      // Проверяем, что активная анкета существует
+      const activeQuestionnaire = await prisma.questionnaire.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      });
+
+      if (!activeQuestionnaire) {
+        return NextResponse.json(
+          { error: 'No active questionnaire found' },
+          { status: 404 }
+        );
+      }
+
+      // Используем ID активной анкеты
+      const finalQuestionnaireId = questionnaireId || activeQuestionnaire.id;
+
+      // Сохраняем или обновляем метаданные позиции
+      await prisma.questionnaireProgress.upsert({
+        where: {
+          userId_questionnaireId: {
+            userId,
+            questionnaireId: finalQuestionnaireId,
+          },
+        },
+        update: {
+          questionIndex: questionIndex ?? 0,
+          infoScreenIndex: infoScreenIndex ?? 0,
+        },
+        create: {
+          userId,
+          questionnaireId: finalQuestionnaireId,
+          questionIndex: questionIndex ?? 0,
+          infoScreenIndex: infoScreenIndex ?? 0,
+        },
+      });
+
       // Логируем только в development режиме
       if (process.env.NODE_ENV === 'development') {
-        console.log('ℹ️ Metadata position update (not saved to DB, stored locally only):', {
+        console.log('✅ Metadata position saved to DB:', {
+          userId,
+          questionnaireId: finalQuestionnaireId,
           questionIndex,
           infoScreenIndex,
         });
       }
+
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
         success: true,
-        answer: null, // Метаданные не сохраняются в БД
+        answer: null, // Метаданные сохранены в отдельной таблице
       });
     }
 

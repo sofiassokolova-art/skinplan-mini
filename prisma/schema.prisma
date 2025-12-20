@@ -44,6 +44,7 @@ model User {
   supportChats             SupportChat[]
   clientLogs               ClientLog[]
   questionnaireSubmissions QuestionnaireSubmission[]
+  questionnaireProgress    QuestionnaireProgress[]
   payments                 Payment[]
   entitlements             Entitlement[]
 
@@ -95,6 +96,7 @@ model Questionnaire {
   questions      Question[]
   userAnswers    UserAnswer[]
   submissions    QuestionnaireSubmission[]
+  progress       QuestionnaireProgress[]
 
   @@unique([version])
   @@map("questionnaires")
@@ -168,6 +170,26 @@ model UserAnswer {
   @@index([questionnaireId])
   @@index([questionId])
   @@map("user_answers")
+}
+
+/// Метаданные позиции в анкете для синхронизации между устройствами
+model QuestionnaireProgress {
+  id              Int      @id @default(autoincrement())
+  userId          String   @map("user_id")
+  questionnaireId Int      @map("questionnaire_id")
+  questionIndex   Int      @default(0) @map("question_index")
+  infoScreenIndex Int      @default(0) @map("info_screen_index")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionnaire Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+
+  // Один прогресс на пользователя и анкету
+  @@unique([userId, questionnaireId])
+  @@index([userId])
+  @@index([questionnaireId])
+  @@map("questionnaire_progress")
 }
 
 /// Фиксирует финальные отправки анкеты и обеспечивает идемпотентность по clientSubmissionId
