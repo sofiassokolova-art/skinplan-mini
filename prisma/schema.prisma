@@ -290,9 +290,29 @@ model RecommendationRule {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   recommendationSessions RecommendationSession[]
+  history                RecommendationRuleHistory[]
 
   @@index([isActive, priority])
   @@map("recommendation_rules")
+}
+
+model RecommendationRuleHistory {
+  id             Int      @id @default(autoincrement())
+  ruleId         Int      @map("rule_id")
+  name           String
+  conditionsJson Json     @map("conditions_json")
+  stepsJson      Json     @map("steps_json")
+  priority       Int      @default(0)
+  isActive       Boolean  @default(true) @map("is_active")
+  version        Int      @default(1) // Номер версии
+  createdBy      String?  @map("created_by") // ID админа, который создал версию
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  rule RecommendationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([ruleId, version])
+  @@map("recommendation_rule_history")
 }
 
 model RecommendationSession {

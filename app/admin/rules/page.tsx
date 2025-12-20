@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Edit, Trash2, Code, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Code, Eye, TestTube, RotateCcw, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ИСПРАВЛЕНО (P0): Заменили any на unknown для безопасности типов
@@ -60,6 +60,13 @@ export default function RulesAdmin() {
   const [newRulePriority, setNewRulePriority] = useState(0);
   const [saving, setSaving] = useState(false); // ИСПРАВЛЕНО (P1): Состояние сохранения
   const [saveError, setSaveError] = useState<string | null>(null); // ИСПРАВЛЕНО (P1): Ошибка сохранения
+  const [testingRule, setTestingRule] = useState<number | null>(null); // ИСПРАВЛЕНО (P2): ID правила для тестирования
+  const [testUserId, setTestUserId] = useState(''); // ИСПРАВЛЕНО (P2): ID пользователя для теста
+  const [testResult, setTestResult] = useState<any>(null); // ИСПРАВЛЕНО (P2): Результат теста
+  const [testLoading, setTestLoading] = useState(false); // ИСПРАВЛЕНО (P2): Загрузка теста
+  const [showHistory, setShowHistory] = useState<number | null>(null); // ИСПРАВЛЕНО (P2): ID правила для показа истории
+  const [ruleHistory, setRuleHistory] = useState<any[]>([]); // ИСПРАВЛЕНО (P2): История версий правила
+  const [loadingHistory, setLoadingHistory] = useState(false); // ИСПРАВЛЕНО (P2): Загрузка истории
 
   useEffect(() => {
     loadRules();
@@ -282,6 +289,103 @@ export default function RulesAdmin() {
     } catch (err) {
       console.error('Ошибка удаления правила:', err);
       alert('Ошибка удаления правила');
+    }
+  };
+
+  // ИСПРАВЛЕНО (P2): Тестирование правила на пользователе
+  const handleTestRule = async (ruleId: number) => {
+    if (!testUserId.trim()) {
+      alert('Введите ID пользователя');
+      return;
+    }
+
+    try {
+      setTestLoading(true);
+      setTestResult(null);
+
+      const response = await fetch(`/api/admin/rules/${ruleId}/test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ userId: testUserId.trim() }),
+      });
+
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
+      const data = await response.json();
+      setTestResult(data);
+    } catch (err) {
+      console.error('Ошибка тестирования правила:', err);
+      alert('Ошибка тестирования правила');
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  // ИСПРАВЛЕНО (P2): Загрузка истории версий правила
+  const loadRuleHistory = async (ruleId: number) => {
+    try {
+      setLoadingHistory(true);
+      const response = await fetch(`/api/admin/rules/${ruleId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setRuleHistory(data.history || []);
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки истории:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // ИСПРАВЛЕНО (P2): Откат к предыдущей версии
+  const handleRollback = async (ruleId: number, version: number) => {
+    if (!confirm(`Откатить правило к версии ${version}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/rules/${ruleId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ version }),
+      });
+
+      if (response.status === 401) {
+        router.replace('/admin/login');
+        return;
+      }
+
+      if (response.ok) {
+        await loadRules();
+        setShowHistory(null);
+        alert('Правило успешно откачено');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert('Ошибка отката: ' + (errorData.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Ошибка отката:', err);
+      alert('Ошибка отката правила');
     }
   };
 
@@ -510,6 +614,33 @@ export default function RulesAdmin() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* ИСПРАВЛЕНО (P2): Кнопка тестирования */}
+                <button
+                  onClick={() => {
+                    setTestingRule(rule.id);
+                    setTestUserId('');
+                    setTestResult(null);
+                  }}
+                  className="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                  title="Тестировать на пользователе"
+                >
+                  <TestTube className="text-blue-600" size={16} />
+                </button>
+                {/* ИСПРАВЛЕНО (P2): Кнопка истории версий */}
+                <button
+                  onClick={() => {
+                    if (showHistory === rule.id) {
+                      setShowHistory(null);
+                    } else {
+                      setShowHistory(rule.id);
+                      loadRuleHistory(rule.id);
+                    }
+                  }}
+                  className="p-2 bg-purple-100 hover:bg-purple-200 rounded-lg transition-colors"
+                  title="История версий"
+                >
+                  <History className="text-purple-600" size={16} />
+                </button>
                 <button
                   onClick={() => handleEdit(rule)}
                   className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
@@ -547,9 +678,126 @@ export default function RulesAdmin() {
                 })()}
               </pre>
             </div>
+            {/* ИСПРАВЛЕНО (P2): История версий */}
+            {showHistory === rule.id && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <h4 className="font-bold text-gray-900 mb-3">История версий</h4>
+                {loadingHistory ? (
+                  <div className="text-gray-600 text-sm">Загрузка...</div>
+                ) : ruleHistory.length === 0 ? (
+                  <div className="text-gray-600 text-sm">История версий пуста</div>
+                ) : (
+                  <div className="space-y-2">
+                    {ruleHistory.map((version) => (
+                      <div
+                        key={version.id}
+                        className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                      >
+                        <div>
+                          <div className="font-medium text-gray-900">Версия {version.version}</div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(version.createdAt).toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleRollback(rule.id, version.version)}
+                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                        >
+                          <RotateCcw size={12} />
+                          Откатить
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
+
+      {/* ИСПРАВЛЕНО (P2): Модалка тестирования правила */}
+      {testingRule !== null && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-xl border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Тестирование правила</h2>
+              <button
+                onClick={() => {
+                  setTestingRule(null);
+                  setTestUserId('');
+                  setTestResult(null);
+                }}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                ID пользователя *
+              </label>
+              <input
+                type="text"
+                value={testUserId}
+                onChange={(e) => setTestUserId(e.target.value)}
+                placeholder="Введите ID пользователя"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400"
+              />
+            </div>
+
+            <button
+              onClick={() => handleTestRule(testingRule)}
+              disabled={!testUserId.trim() || testLoading}
+              className="w-full px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {testLoading ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Тестирую...
+                </>
+              ) : (
+                <>
+                  <TestTube size={20} />
+                  Протестировать
+                </>
+              )}
+            </button>
+
+            {testResult && (
+              <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <h3 className="font-bold text-gray-900 mb-3">Результат теста</h3>
+                {testResult.success ? (
+                  <div className="space-y-2">
+                    <div className={cn(
+                      'p-3 rounded-lg',
+                      testResult.rule.matched
+                        ? 'bg-green-50 border border-green-200'
+                        : 'bg-yellow-50 border border-yellow-200'
+                    )}>
+                      <div className="font-medium text-gray-900">
+                        {testResult.rule.matched ? '✅ Правило применено' : '⚠️ Правило не подошло'}
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        {testResult.message}
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      <div><strong>Профиль:</strong> {testResult.profile.skinType || 'не указан'}</div>
+                      <div><strong>Рекомендаций:</strong> {testResult.recommendations.productCount}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-red-700">Ошибка: {testResult.error || 'Unknown error'}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
