@@ -99,18 +99,8 @@ async function deleteAllUsers() {
     const submissionsDeleted = await prisma.questionnaireSubmission.deleteMany({});
     console.log(`   ✅ Удалено отправок: ${submissionsDeleted.count}`);
     
-    console.log('\n📋 Шаг 16: Удаляю QuestionnaireProgress (прогресс анкет)...');
-    try {
-      const questionnaireProgressDeleted = await prisma.questionnaireProgress.deleteMany({});
-      console.log(`   ✅ Удалено записей прогресса анкет: ${questionnaireProgressDeleted.count}`);
-    } catch (progressError: any) {
-      if (progressError?.code === 'P2021' || progressError?.message?.includes('does not exist')) {
-        console.log('   ⚠️ Таблица QuestionnaireProgress не существует, пропускаем');
-      } else {
-        console.warn(`   ⚠️ Ошибка при удалении QuestionnaireProgress: ${progressError?.message}`);
-      }
-    }
-    
+    // NOTE: Пропускаем шаг, поскольку questionnaireProgress не существует в prisma-схеме
+    console.log('\n📋 Шаг 16: Пропускаю удаление QuestionnaireProgress (таблица отсутствует в Prisma модели)');
     console.log('\n📋 Шаг 17: Удаляю UserAnswer (ответы на вопросы)...');
     const answersDeleted = await prisma.userAnswer.deleteMany({});
     console.log(`   ✅ Удалено ответов: ${answersDeleted.count}`);

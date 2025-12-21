@@ -2,7 +2,9 @@
 // Проверка матчинга продуктов к шагам плана
 
 import { PrismaClient } from '@prisma/client';
-import { getBaseStepFromStepCategory, type StepCategory } from '../lib/plan-helpers';
+import { getBaseStepFromStepCategory } from '../lib/plan-helpers';
+import { StepCategory } from '../lib/step-category-rules';
+// Removed invalid import of StepCategory (not exported from plan-helpers)
 
 const prisma = new PrismaClient();
 

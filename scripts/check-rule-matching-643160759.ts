@@ -34,11 +34,11 @@ function matchesRule(profile: any, rule: any): boolean {
         return false;
       }
     } else if (typeof condition === 'object' && condition !== null) {
-      if ('gte' in condition && typeof profileValue === 'number') {
-        if (profileValue < condition.gte!) return false;
+      if ('gte' in condition && typeof profileValue === 'number' && typeof condition.gte === 'number') {
+        if (profileValue < condition.gte) return false;
       }
-      if ('lte' in condition && typeof profileValue === 'number') {
-        if (profileValue > condition.lte!) return false;
+      if ('lte' in condition && typeof profileValue === 'number' && typeof condition.lte === 'number') {
+        if (profileValue > condition.lte) return false;
       }
       if ('hasSome' in condition && Array.isArray(condition.hasSome)) {
         const profileArray = Array.isArray(profileValue) ? profileValue : [];
@@ -173,10 +173,19 @@ async function checkRuleMatching() {
         if (key === 'concerns') {
           if (profileValue === undefined || profileValue === null) {
             console.log(`     ❌ ПРОБЛЕМА: concerns отсутствует в профиле!`);
-          } else if (typeof condition === 'object' && condition !== null && 'hasSome' in condition) {
+          } else if (
+            typeof condition === 'object' &&
+            condition !== null &&
+            'hasSome' in condition &&
+            Array.isArray((condition as any).hasSome)
+          ) {
             const profileArray = Array.isArray(profileValue) ? profileValue : [];
-            const hasMatch = condition.hasSome.some((item: any) => profileArray.includes(item));
-            console.log(`     Матчинг: ${hasMatch ? '✅' : '❌'} (ищем ${JSON.stringify(condition.hasSome)} в ${JSON.stringify(profileArray)})`);
+            // Explicitly cast hasSome to any[] for TypeScript safety
+            const hasSomeArray = (condition as { hasSome: any[] }).hasSome;
+            const hasMatch = hasSomeArray.some((item: any) => profileArray.includes(item));
+            console.log(
+              `     Матчинг: ${hasMatch ? '✅' : '❌'} (ищем ${JSON.stringify(hasSomeArray)} в ${JSON.stringify(profileArray)})`
+            );
           }
         }
       }
