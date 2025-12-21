@@ -4989,54 +4989,31 @@ export default function QuizPage() {
       const features = [
         {
           icon: (
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <filter id="shadow1" x="-50%" y="-50%" width="200%" height="200%">
-                  <feDropShadow dx="2" dy="2" stdDeviation="1" floodColor="#000000" floodOpacity="0.2"/>
-                </filter>
-              </defs>
-              <rect width="48" height="48" rx="12" fill="#D5FE61" filter="url(#shadow1)"/>
-              <ellipse cx="24" cy="20" rx="12" ry="10" fill="#D5FE61" stroke="#000000" strokeWidth="1.5"/>
-              <path d="M16 20C16 16 18 14 20 14C22 14 24 16 24 20" stroke="#000000" strokeWidth="1.5" fill="none"/>
-              <circle cx="20" cy="18" r="1" fill="#000000"/>
-              <circle cx="24" cy="18" r="1" fill="#000000"/>
-              <circle cx="22" cy="20" r="1" fill="#000000"/>
-              <path d="M20 24C20 24 18 26 16 28" stroke="#000000" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-            </svg>
+            <img 
+              src="/icons/detailed_3.PNG" 
+              alt="Детальный разбор" 
+              style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+            />
           ),
           text: 'Детальный разбор – морщины, линии, текстура',
         },
         {
           icon: (
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <filter id="shadow2" x="-50%" y="-50%" width="200%" height="200%">
-                  <feDropShadow dx="2" dy="2" stdDeviation="1" floodColor="#000000" floodOpacity="0.2"/>
-                </filter>
-              </defs>
-              <ellipse cx="20" cy="24" rx="8" ry="10" fill="#D5FE61" stroke="#000000" strokeWidth="1.5" filter="url(#shadow2)"/>
-              <ellipse cx="28" cy="24" rx="8" ry="10" fill="none" stroke="#000000" strokeWidth="1.5" filter="url(#shadow2)"/>
-              <text x="20" y="28" textAnchor="middle" fill="#000000" fontSize="12" fontWeight="700">%</text>
-            </svg>
+            <img 
+              src="/icons/hydration_3.PNG" 
+              alt="Уровень увлажнённости" 
+              style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+            />
           ),
           text: 'Уровень увлажнённости – персональная оценка баланса влаги',
         },
         {
           icon: (
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <filter id="shadow3" x="-50%" y="-50%" width="200%" height="200%">
-                  <feDropShadow dx="2" dy="2" stdDeviation="1" floodColor="#000000" floodOpacity="0.2"/>
-                </filter>
-              </defs>
-              <rect width="48" height="48" rx="12" fill="#D5FE61" filter="url(#shadow3)"/>
-              <circle cx="20" cy="20" r="2" fill="#000000"/>
-              <circle cx="28" cy="20" r="2" fill="#000000"/>
-              <circle cx="24" cy="24" r="1.5" fill="#000000"/>
-              <circle cx="18" cy="28" r="1.5" fill="#000000"/>
-              <circle cx="30" cy="28" r="1.5" fill="#000000"/>
-              <path d="M24 18C24 18 22 22 20 24C18 26 20 28 24 28C28 28 30 26 28 24C26 22 24 18 24 18Z" stroke="#000000" strokeWidth="1.5" fill="none"/>
-            </svg>
+            <img 
+              src="/icons/face_3.PNG" 
+              alt="Поры" 
+              style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+            />
           ),
           text: 'Поры – точное выявление и измерение',
         },
