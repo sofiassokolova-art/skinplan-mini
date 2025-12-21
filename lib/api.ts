@@ -633,6 +633,48 @@ export const api = {
     });
   },
 
+  // Пользовательские настройки и флаги (замена localStorage)
+  async getUserPreferences() {
+    return request<{
+      isRetakingQuiz: boolean;
+      fullRetakeFromHome: boolean;
+      paymentRetakingCompleted: boolean;
+      paymentFullRetakeCompleted: boolean;
+      hasPlanProgress: boolean;
+      routineProducts: any;
+      planFeedbackSent: boolean;
+      serviceFeedbackSent: boolean;
+      lastPlanFeedbackDate: string | null;
+      lastServiceFeedbackDate: string | null;
+      extra: any;
+    }>('/user/preferences');
+  },
+
+  async updateUserPreferences(preferences: {
+    isRetakingQuiz?: boolean;
+    fullRetakeFromHome?: boolean;
+    paymentRetakingCompleted?: boolean;
+    paymentFullRetakeCompleted?: boolean;
+    hasPlanProgress?: boolean;
+    routineProducts?: any;
+    planFeedbackSent?: boolean;
+    serviceFeedbackSent?: boolean;
+    lastPlanFeedbackDate?: string | null;
+    lastServiceFeedbackDate?: string | null;
+    extra?: any;
+  }) {
+    return request('/user/preferences', {
+      method: 'POST',
+      body: JSON.stringify(preferences),
+    });
+  },
+
+  async removeUserPreference(key: string) {
+    return request(`/user/preferences?key=${key}`, {
+      method: 'DELETE',
+    });
+  },
+
   async getProductAlternatives(productId: number) {
     return request(`/products/alternatives/${productId}`);
   },

@@ -80,7 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
         : undefined,
       // Дополнительная информация
       localStorage: typeof window !== 'undefined' ? {
-        quizProgress: localStorage.getItem('quiz_progress') ? 'exists' : 'not found',
+        quizProgress: 'stored in DB', // ИСПРАВЛЕНО: Прогресс хранится в БД, не в localStorage
         initData: typeof window !== 'undefined' && window.Telegram?.WebApp?.initData ? 'exists' : 'not found',
       } : undefined,
       telegramWebApp: typeof window !== 'undefined' ? {

@@ -664,7 +664,8 @@ export function PaymentGate({
                   // ИСПРАВЛЕНО: ретейк-ссылка должна открывать экран выбора тем
                   // (/quiz показывает экран выбора тем, когда is_retaking_quiz=true)
                   try {
-                    localStorage.setItem('is_retaking_quiz', 'true');
+                    const { setIsRetakingQuiz } = await import('@/lib/user-preferences');
+                    await setIsRetakingQuiz(true);
                   } catch {
                     // ignore
                   }

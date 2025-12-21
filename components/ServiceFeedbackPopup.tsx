@@ -20,10 +20,15 @@ export function ServiceFeedbackPopup() {
       if (typeof window === 'undefined') return;
 
       // Если пользователь уже отправил обратную связь через попап - больше не показываем
-      const feedbackSent = localStorage.getItem(SERVICE_FEEDBACK_SENT_KEY);
-      if (feedbackSent === 'true') {
-        setIsVisible(false);
-        return;
+      try {
+        const { getServiceFeedbackSent } = await import('@/lib/user-preferences');
+        const feedbackSent = await getServiceFeedbackSent();
+        if (feedbackSent) {
+          setIsVisible(false);
+          return;
+        }
+      } catch (error) {
+        // При ошибке продолжаем проверку
       }
 
       // ВАЖНО: Проверяем, прошло ли 3 дня с момента генерации плана
@@ -52,16 +57,21 @@ export function ServiceFeedbackPopup() {
         return;
       }
 
-      const lastFeedbackDate = localStorage.getItem(LAST_SERVICE_FEEDBACK_KEY);
-      if (lastFeedbackDate) {
-        const lastDate = new Date(lastFeedbackDate);
-        const now = new Date();
-        const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
-        
-        if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
-          setIsVisible(false);
-          return;
+      try {
+        const { getLastServiceFeedbackDate } = await import('@/lib/user-preferences');
+        const lastFeedbackDate = await getLastServiceFeedbackDate();
+        if (lastFeedbackDate) {
+          const lastDate = new Date(lastFeedbackDate);
+          const now = new Date();
+          const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+          
+          if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
+            setIsVisible(false);
+            return;
+          }
         }
+      } catch (error) {
+        // При ошибке продолжаем проверку
       }
       
       // Показываем попап (прошло 3+ дня и выполнены все условия)
@@ -87,10 +97,13 @@ export function ServiceFeedbackPopup() {
         type: 'service',
       });
       
-      // Сохраняем дату отправки и флаг отправки через попап
-      if (typeof window !== 'undefined') {
-      localStorage.setItem(LAST_SERVICE_FEEDBACK_KEY, new Date().toISOString());
-        localStorage.setItem(SERVICE_FEEDBACK_SENT_KEY, 'true');
+      // Сохраняем дату отправки и флаг отправки через попап в БД
+      try {
+        const { setLastServiceFeedbackDate, setServiceFeedbackSent } = await import('@/lib/user-preferences');
+        await setLastServiceFeedbackDate(new Date().toISOString());
+        await setServiceFeedbackSent(true);
+      } catch (error) {
+        console.warn('Failed to save service feedback flag:', error);
       }
       
       // Скрываем попап

@@ -1,6 +1,7 @@
 // hooks/useCart.ts
 // React Query хуки для работы с корзиной
 
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -14,8 +15,25 @@ export function useCart() {
   const pathname = usePathname();
   
   // ИСПРАВЛЕНО: Не загружаем корзину на странице анкеты и на главной странице для новых пользователей
-  // Проверяем наличие plan_progress в localStorage - если его нет, значит пользователь новый
-  const isNewUser = typeof window !== 'undefined' && pathname === '/' && localStorage.getItem('plan_progress') === null;
+  // Проверяем наличие plan_progress в БД - если его нет, значит пользователь новый
+  const [isNewUser, setIsNewUser] = React.useState(false);
+  
+  React.useEffect(() => {
+    if (pathname === '/') {
+      const checkNewUser = async () => {
+        try {
+          const { getHasPlanProgress } = await import('@/lib/user-preferences');
+          const hasPlanProgress = await getHasPlanProgress();
+          setIsNewUser(!hasPlanProgress);
+        } catch {
+          setIsNewUser(false);
+        }
+      };
+      checkNewUser();
+    } else {
+      setIsNewUser(false);
+    }
+  }, [pathname]);
   const shouldLoad = pathname !== '/quiz' && 
                      !pathname.startsWith('/quiz/') && 
                      !isNewUser; // Не загружаем для новых пользователей на главной

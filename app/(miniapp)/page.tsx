@@ -83,33 +83,9 @@ export default function HomePage() {
       // Приоритет: ответ USER_NAME > профиль
       const loadUserNameAsync = async () => {
         try {
-          // Сначала проверяем кэш ответов (быстрее, чем запрос к API)
-          const cachedAnswers = typeof window !== 'undefined' ? localStorage.getItem('user_answers_cache') : null;
-          if (cachedAnswers) {
-            try {
-              const userAnswers = JSON.parse(cachedAnswers);
-              if (Array.isArray(userAnswers)) {
-                const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
-                if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
-                  const userNameFromAnswer = String(nameAnswer.answerValue).trim();
-                  setUserName(userNameFromAnswer);
-                  clientLogger.log('✅ User name loaded from cached answers:', userNameFromAnswer);
-                  return;
-                }
-              }
-            } catch (parseError) {
-              // Если кэш поврежден, игнорируем и продолжаем
-            }
-          }
-          
-          // Если кэша ответов нет, запрашиваем ответы из API
+          // Запрашиваем ответы из API (кэш больше не используется, данные в БД)
           const userAnswers = await api.getUserAnswers() as any;
           if (userAnswers && Array.isArray(userAnswers)) {
-            // Сохраняем ответы в кэш для будущих запросов
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('user_answers_cache', JSON.stringify(userAnswers));
-            }
-            
             const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
             if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
               const userNameFromAnswer = String(nameAnswer.answerValue).trim();
@@ -180,6 +156,13 @@ export default function HomePage() {
       const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
       if (justSubmitted) {
         clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
+        // ИСПРАВЛЕНО: Устанавливаем hasPlanProgress = true, чтобы пользователь не редиректился на /quiz
+        try {
+          const { setHasPlanProgress } = await import('@/lib/user-preferences');
+          await setHasPlanProgress(true);
+        } catch (error) {
+          clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
+        }
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('quiz_just_submitted');
           window.location.replace('/plan?state=generating');
@@ -187,29 +170,39 @@ export default function HomePage() {
         return;
       }
 
-      // ИСПРАВЛЕНО: Проверка профиля и плана теперь делается на бэкенде
-      // Для новых пользователей сразу редиректим на /quiz, где показывается лоадер анкеты
-      // Бэкенд сам определит, новый ли пользователь, и вернет соответствующий ответ
-      // НЕ вызываем /api/plan и /api/recommendations для новых пользователей - это вызывает ненужные запросы
+      // ИСПРАВЛЕНО: Сначала проверяем наличие плана через API
+      // Это предотвращает редирект на анкету, если пользователь зашел с нового устройства
+      // или очистил localStorage, но план уже создан
+      const planExists = await checkPlanExists();
       
-      // ИСПРАВЛЕНО: Проверяем наличие plan_progress в localStorage для быстрой проверки
-      // Если plan_progress есть - значит пользователь уже проходил анкету, загружаем рекомендации
-      // Если plan_progress нет - сразу редиректим на /quiz без лишних запросов
-      const hasPlanProgress = typeof window !== 'undefined' && localStorage.getItem('plan_progress') !== null;
-      
-      if (!hasPlanProgress) {
-        // Нет plan_progress - значит пользователь новый, сразу редиректим на /quiz
-        clientLogger.log('ℹ️ No plan_progress in localStorage - redirecting to /quiz (new user)');
-        setLoading(false);
-        router.replace('/quiz');
+      if (planExists) {
+        // План существует - загружаем рекомендации
+        clientLogger.log('✅ Plan exists - loading recommendations');
+        await loadRecommendations();
+        // Загружаем имя в фоне после загрузки рекомендаций
+        loadUserNameAsync();
         return;
       }
 
-      // plan_progress есть - значит пользователь уже проходил анкету, загружаем рекомендации
-      // ИСПРАВЛЕНО: loadRecommendations уже устанавливает loading в true
-      await loadRecommendations();
-      // Загружаем имя в фоне после загрузки рекомендаций
-      loadUserNameAsync();
+      // Плана нет - проверяем наличие plan_progress в БД
+      // Если plan_progress есть - значит пользователь уже проходил анкету, загружаем рекомендации
+      // Если plan_progress нет - редиректим на /quiz
+      const { getHasPlanProgress } = await import('@/lib/user-preferences');
+      const hasPlanProgress = await getHasPlanProgress();
+      
+      if (hasPlanProgress) {
+        // plan_progress есть - значит пользователь уже проходил анкету, загружаем рекомендации
+        // ИСПРАВЛЕНО: Показываем PaymentGate даже если план еще не создан (он может генерироваться)
+        clientLogger.log('ℹ️ No plan but plan_progress exists - loading recommendations (plan may be generating)');
+        await loadRecommendations();
+        // Загружаем имя в фоне после загрузки рекомендаций
+        loadUserNameAsync();
+      } else {
+        // Нет plan_progress - значит пользователь новый, редиректим на /quiz
+        clientLogger.log('ℹ️ No plan and no plan_progress - redirecting to /quiz (new user)');
+        setLoading(false);
+        router.replace('/quiz');
+      }
     };
 
     initAndLoad();
@@ -224,18 +217,15 @@ export default function HomePage() {
         return;
       }
 
-      // Определяем текущий день (сначала из локального кэша прогресса)
+      // Определяем текущий день из БД
       let currentDay = 1;
       try {
-        const cachedProgress = typeof window !== 'undefined' ? localStorage.getItem('plan_progress') : null;
-        if (cachedProgress) {
-          const parsed = JSON.parse(cachedProgress);
-          if (typeof parsed?.currentDay === 'number' && parsed.currentDay >= 1 && parsed.currentDay <= 28) {
-            currentDay = parsed.currentDay;
-          }
+        const planProgress = await api.getPlanProgress() as any;
+        if (planProgress && typeof planProgress.currentDay === 'number' && planProgress.currentDay >= 1 && planProgress.currentDay <= 28) {
+          currentDay = planProgress.currentDay;
         }
       } catch {
-        // ignore
+        // ignore, используем значение по умолчанию
       }
 
       // 1) Новый формат: plan28
@@ -907,13 +897,14 @@ export default function HomePage() {
       <div style={{ padding: '0 20px', marginTop: '8px' }}>
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
             try {
-              // ИСПРАВЛЕНО: Устанавливаем флаг полного перепрохождения с главной страницы
-              localStorage.setItem('full_retake_from_home', 'true');
-              localStorage.setItem('is_retaking_quiz', 'true');
-            } catch {
-              // ignore
+              // ИСПРАВЛЕНО: Устанавливаем флаг полного перепрохождения с главной страницы в БД
+              const { setFullRetakeFromHome, setIsRetakingQuiz } = await import('@/lib/user-preferences');
+              await setFullRetakeFromHome(true);
+              await setIsRetakingQuiz(true);
+            } catch (error) {
+              clientLogger.warn('Failed to set retake flags:', error);
             }
             router.push('/quiz');
           }}

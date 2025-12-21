@@ -180,14 +180,30 @@ export async function GET(request: NextRequest) {
     }
 
     // ИСПРАВЛЕНО: Загружаем метаданные позиции из БД для синхронизации между устройствами
-    const savedProgress = await prisma.questionnaireProgress.findUnique({
-      where: {
-        userId_questionnaireId: {
-          userId,
-          questionnaireId: activeQuestionnaire.id,
+    // ИСПРАВЛЕНО: Обрабатываем случай, когда таблица questionnaire_progress не существует
+    let savedProgress = null;
+    try {
+      savedProgress = await prisma.questionnaireProgress.findUnique({
+        where: {
+          userId_questionnaireId: {
+            userId,
+            questionnaireId: activeQuestionnaire.id,
+          },
         },
-      },
-    });
+      });
+    } catch (error: any) {
+      // Если таблица не существует (P2021) или другая ошибка БД - используем fallback
+      if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+        // Таблица не существует - это нормально, используем вычисленный индекс
+        // Логируем только в development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ questionnaire_progress table does not exist, using computed index');
+        }
+      } else {
+        // Другая ошибка - логируем, но продолжаем с fallback
+        console.error('Error loading questionnaire progress:', error);
+      }
+    }
 
     // Используем сохраненные метаданные, если они есть, иначе вычисляем на основе последнего отвеченного вопроса
     const finalQuestionIndex = savedProgress?.questionIndex ?? (lastAnsweredIndex + 1);
@@ -283,24 +299,39 @@ export async function POST(request: NextRequest) {
       const finalQuestionnaireId = questionnaireId || activeQuestionnaire.id;
 
       // Сохраняем или обновляем метаданные позиции
-      await prisma.questionnaireProgress.upsert({
-        where: {
-          userId_questionnaireId: {
+      // ИСПРАВЛЕНО: Обрабатываем случай, когда таблица questionnaire_progress не существует
+      try {
+        await prisma.questionnaireProgress.upsert({
+          where: {
+            userId_questionnaireId: {
+              userId,
+              questionnaireId: finalQuestionnaireId,
+            },
+          },
+          update: {
+            questionIndex: questionIndex ?? 0,
+            infoScreenIndex: infoScreenIndex ?? 0,
+          },
+          create: {
             userId,
             questionnaireId: finalQuestionnaireId,
+            questionIndex: questionIndex ?? 0,
+            infoScreenIndex: infoScreenIndex ?? 0,
           },
-        },
-        update: {
-          questionIndex: questionIndex ?? 0,
-          infoScreenIndex: infoScreenIndex ?? 0,
-        },
-        create: {
-          userId,
-          questionnaireId: finalQuestionnaireId,
-          questionIndex: questionIndex ?? 0,
-          infoScreenIndex: infoScreenIndex ?? 0,
-        },
-      });
+        });
+      } catch (error: any) {
+        // Если таблица не существует (P2021) - просто игнорируем сохранение метаданных
+        if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+          // Таблица не существует - это нормально, метаданные не сохраняются
+          // Логируем только в development
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ questionnaire_progress table does not exist, skipping metadata save');
+          }
+        } else {
+          // Другая ошибка - пробрасываем дальше
+          throw error;
+        }
+      }
 
       // Логируем только в development режиме
       if (process.env.NODE_ENV === 'development') {

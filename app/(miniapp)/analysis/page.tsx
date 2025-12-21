@@ -65,17 +65,15 @@ function AnalysisPageContent() {
         clientLogger.warn('Could not load wishlist:', err);
       }
 
-      // Загружаем выбранные продукты из localStorage
-      if (typeof window !== 'undefined') {
-        try {
-          const savedRoutine = localStorage.getItem('routine_products');
-          if (savedRoutine) {
-            const routineProducts = JSON.parse(savedRoutine) as number[];
-            setInRoutineProducts(new Set(routineProducts));
-          }
-        } catch (err) {
-          clientLogger.warn('Could not load routine products from localStorage:', err);
+      // Загружаем выбранные продукты из БД
+      try {
+        const { getRoutineProducts } = await import('@/lib/user-preferences');
+        const routineProducts = await getRoutineProducts();
+        if (routineProducts && Array.isArray(routineProducts)) {
+          setInRoutineProducts(new Set(routineProducts));
         }
+      } catch (err) {
+        clientLogger.warn('Could not load routine products from DB:', err);
       }
 
       setAnalysisData(analysisData);
@@ -112,11 +110,14 @@ function AnalysisPageContent() {
     }
     setInRoutineProducts(newSet);
     
-    // Сохраняем в localStorage для сохранения состояния между сессиями
+    // Сохраняем в БД для сохранения состояния между сессиями
     // План будет использовать выбранные продукты при генерации
-    if (typeof window !== 'undefined') {
+    try {
+      const { setRoutineProducts } = await import('@/lib/user-preferences');
       const routineProducts = Array.from(newSet);
-      localStorage.setItem('routine_products', JSON.stringify(routineProducts));
+      await setRoutineProducts(routineProducts);
+    } catch (err) {
+      clientLogger.warn('Could not save routine products to DB:', err);
     }
     
     toast.success(wasInRoutine ? 'Удалено из ухода' : 'Добавлено в уход');

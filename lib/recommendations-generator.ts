@@ -205,7 +205,8 @@ export async function generateRecommendationsForProfile(
     const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivityLevel);
 
     // Строим RuleContext
-    const ruleContext = buildRuleContext(profile as any, skinScores, normalizedSkinType, normalizedSensitivity);
+    // ИСПРАВЛЕНО: Передаем concerns из ответов для правил, которые проверяют concerns: { hasSome: [...] }
+    const ruleContext = buildRuleContext(profile as any, skinScores, normalizedSkinType, normalizedSensitivity, questionnaireAnswers.concerns);
 
     // Ищем подходящее правило
     const rules = await prisma.recommendationRule.findMany({

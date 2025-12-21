@@ -102,34 +102,9 @@ export function PlanPageClientNew({
       try {
         // ИСПРАВЛЕНО: Имя всегда берется с сервера, не из localStorage
         // Приоритет: ответ USER_NAME > профиль
-        // Сначала проверяем кэш ответов пользователя (быстрее, чем запрос к API)
-        const cachedAnswers = typeof window !== 'undefined' ? localStorage.getItem('user_answers_cache') : null;
-        if (cachedAnswers) {
-          try {
-            const userAnswers = JSON.parse(cachedAnswers);
-            if (Array.isArray(userAnswers)) {
-              const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
-              if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
-                const userNameFromAnswer = String(nameAnswer.answerValue).trim();
-                setUserName(userNameFromAnswer);
-                clientLogger.log('✅ User name loaded from cached answers:', userNameFromAnswer);
-                return;
-              }
-            }
-          } catch (parseError) {
-            // Если кэш поврежден, игнорируем и продолжаем
-            clientLogger.log('⚠️ Failed to parse cached answers, will fetch from API');
-          }
-        }
-        
-        // Если кэша ответов нет, запрашиваем ответы из API
+        // Запрашиваем ответы из API (кэш больше не используется, данные в БД)
         const userAnswers = await api.getUserAnswers() as any;
         if (userAnswers && Array.isArray(userAnswers)) {
-          // Сохраняем ответы в кэш для будущих запросов
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('user_answers_cache', JSON.stringify(userAnswers));
-          }
-          
           const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
           if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
             const userNameFromAnswer = String(nameAnswer.answerValue).trim();
@@ -494,8 +469,14 @@ export function PlanPageClientNew({
         price={199}
         productCode="plan_access"
         isRetaking={typeof window !== 'undefined' ? 
-          (localStorage.getItem('is_retaking_quiz') === 'true' || 
-           localStorage.getItem('full_retake_from_home') === 'true') : false}
+          (async () => {
+            try {
+              const { getIsRetakingQuiz, getFullRetakeFromHome } = await import('@/lib/user-preferences');
+              return await getIsRetakingQuiz() || await getFullRetakeFromHome();
+            } catch {
+              return false;
+            }
+          })() : false}
         onPaymentComplete={() => {
           setNeedsFirstPayment(false);
           clientLogger.log('✅ Payment completed on plan page');

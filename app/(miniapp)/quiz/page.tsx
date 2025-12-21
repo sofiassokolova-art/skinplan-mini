@@ -112,25 +112,32 @@ export default function QuizPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // Загружаем оплаченные темы
-    const topicKeys = ['payment_retaking_completed', 'payment_full_retake_completed'];
-    const paidSet = new Set<string>();
-    topicKeys.forEach(key => {
-      if (localStorage.getItem(key) === 'true') {
-        paidSet.add(key);
+    // Загружаем флаги оплаты из БД
+    const loadPaymentFlags = async () => {
+      try {
+        const { getPaymentRetakingCompleted, getPaymentFullRetakeCompleted } = await import('@/lib/user-preferences');
+        const hasRetaking = await getPaymentRetakingCompleted();
+        const hasFullRetake = await getPaymentFullRetakeCompleted();
+        
+        const paidSet = new Set<string>();
+        if (hasRetaking) {
+          paidSet.add('payment_retaking_completed');
+          if (!hasRetakingPayment) {
+            setHasRetakingPayment(true);
+          }
+        }
+        if (hasFullRetake) {
+          paidSet.add('payment_full_retake_completed');
+          if (!hasFullRetakePayment) {
+            setHasFullRetakePayment(true);
+          }
+        }
+        setPaidTopics(paidSet);
+      } catch (error) {
+        clientLogger.warn('Failed to load payment flags:', error);
       }
-    });
-    setPaidTopics(paidSet);
-    
-    // Загружаем флаги оплаты (fallback для обратной совместимости, основной источник - API entitlements)
-    const hasRetakingFromStorage = localStorage.getItem('payment_retaking_completed') === 'true';
-    const hasFullRetakeFromStorage = localStorage.getItem('payment_full_retake_completed') === 'true';
-    if (hasRetakingFromStorage && !hasRetakingPayment) {
-      setHasRetakingPayment(true);
-    }
-    if (hasFullRetakeFromStorage && !hasFullRetakePayment) {
-      setHasFullRetakePayment(true);
-    }
+    };
+    loadPaymentFlags();
   }, []);
   
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
@@ -138,21 +145,22 @@ export default function QuizPage() {
   // ВАЖНО: Проверяем наличие профиля перед показом экрана перепрохождения
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-      const isRetakingFromStorage = localStorage.getItem('is_retaking_quiz') === 'true';
-      const fullRetakeFromHome = localStorage.getItem('full_retake_from_home') === 'true';
-      
-      if (isRetakingFromStorage || fullRetakeFromHome) {
-        // ИСПРАВЛЕНО: Проверяем наличие профиля перед показом экрана перепрохождения
-        // Если профиля нет, но флаги установлены - это ошибка, очищаем флаги
-        const checkProfileAndShowRetake = async () => {
-          try {
+      const checkRetakeFlags = async () => {
+        try {
+          const { getIsRetakingQuiz, getFullRetakeFromHome, setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+          const isRetakingFromStorage = await getIsRetakingQuiz();
+          const fullRetakeFromHome = await getFullRetakeFromHome();
+          
+          if (isRetakingFromStorage || fullRetakeFromHome) {
+            // ИСПРАВЛЕНО: Проверяем наличие профиля перед показом экрана перепрохождения
+            // Если профиля нет, но флаги установлены - это ошибка, очищаем флаги
             const profile = await api.getCurrentProfile();
             if (profile && profile.id) {
               // Профиль есть - это нормальное перепрохождение
               setIsRetakingQuiz(true);
               
               if (fullRetakeFromHome) {
-                localStorage.removeItem('full_retake_from_home');
+                await setFullRetakeFromHome(false);
                 clientLogger.log('✅ Полное перепрохождение с главной страницы - показываем экран выбора тем с оплатой');
               }
               
@@ -161,28 +169,34 @@ export default function QuizPage() {
             } else {
               // Профиля нет, но флаги установлены - это ошибка, очищаем флаги
               clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
-              localStorage.removeItem('is_retaking_quiz');
-              localStorage.removeItem('full_retake_from_home');
+              await setIsRetakingQuiz(false);
+              await setFullRetakeFromHome(false);
             }
-          } catch (err: any) {
-            // ИСПРАВЛЕНО: Улучшена обработка ошибок при проверке профиля
-            const isNotFound = err?.status === 404 || 
-                              err?.message?.includes('404') || 
-                              err?.message?.includes('No profile') ||
-                              err?.message?.includes('Profile not found') ||
-                              err?.message?.includes('not found');
-            
-            // Проверяем, не является ли это сетевой ошибкой или таймаутом
-            const isNetworkError = err?.message?.includes('network') || 
-                                  err?.message?.includes('Network') ||
-                                  err?.message?.includes('fetch') ||
-                                  err?.message?.includes('timeout') ||
-                                  err?.message?.includes('Таймаут');
-            
-            if (isNotFound) {
-              clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
-              localStorage.removeItem('is_retaking_quiz');
-              localStorage.removeItem('full_retake_from_home');
+          }
+        } catch (err: any) {
+          // ИСПРАВЛЕНО: Улучшена обработка ошибок при проверке профиля
+          const isNotFound = err?.status === 404 || 
+                            err?.message?.includes('404') || 
+                            err?.message?.includes('No profile') ||
+                            err?.message?.includes('Profile not found') ||
+                            err?.message?.includes('not found');
+          
+          // Проверяем, не является ли это сетевой ошибкой или таймаутом
+          const isNetworkError = err?.message?.includes('network') || 
+                                err?.message?.includes('Network') ||
+                                err?.message?.includes('fetch') ||
+                                err?.message?.includes('timeout') ||
+                                err?.message?.includes('Таймаут');
+          
+          if (isNotFound) {
+            clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
+            try {
+              const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+              await setIsRetakingQuiz(false);
+              await setFullRetakeFromHome(false);
+            } catch (clearError) {
+              // ignore
+            }
             } else if (isNetworkError) {
               // Сетевая ошибка - не очищаем флаги, попробуем еще раз позже
               clientLogger.warn('⚠️ Сетевая ошибка при проверке профиля для перепрохождения, попробуем позже:', err?.message);
@@ -282,20 +296,22 @@ export default function QuizPage() {
     // ВАЖНО: НЕ проверяем профиль, если флаг quiz_just_submitted установлен (уже обработано выше)
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current && !justSubmitted) {
       // ИСПРАВЛЕНО: Проверяем флаги перепрохождения ПЕРЕД проверкой профиля
-      const isRetakingFromStorage = localStorage.getItem('is_retaking_quiz') === 'true';
-      const fullRetakeFromHome = localStorage.getItem('full_retake_from_home') === 'true';
-      
-      // Если флаги перепрохождения установлены, но профиля нет - очищаем флаги
-      // Это может быть остаточный флаг от предыдущей сессии
-      if (isRetakingFromStorage || fullRetakeFromHome) {
-        const checkProfile = async () => {
-          try {
+      const checkRetakeFlags = async () => {
+        try {
+          const { getIsRetakingQuiz, getFullRetakeFromHome } = await import('@/lib/user-preferences');
+          const isRetakingFromStorage = await getIsRetakingQuiz();
+          const fullRetakeFromHome = await getFullRetakeFromHome();
+          
+          // Если флаги перепрохождения установлены, но профиля нет - очищаем флаги
+          // Это может быть остаточный флаг от предыдущей сессии
+          if (isRetakingFromStorage || fullRetakeFromHome) {
             const profile = await api.getCurrentProfile();
             if (!profile || !profile.id) {
               // Профиля нет, но флаги перепрохождения установлены - это ошибка
               clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
-              localStorage.removeItem('is_retaking_quiz');
-              localStorage.removeItem('full_retake_from_home');
+              const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+              await setIsRetakingQuiz(false);
+              await setFullRetakeFromHome(false);
               // Продолжаем как новый пользователь
               return;
             }
@@ -308,8 +324,13 @@ export default function QuizPage() {
                               err?.message?.includes('Profile not found');
             if (isNotFound) {
               clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
-              localStorage.removeItem('is_retaking_quiz');
-              localStorage.removeItem('full_retake_from_home');
+              try {
+                const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+                await setIsRetakingQuiz(false);
+                await setFullRetakeFromHome(false);
+              } catch (clearError) {
+                // ignore
+              }
             }
           }
         };
@@ -562,9 +583,10 @@ export default function QuizPage() {
                 
                 if (hasAnswers && isCompleted) {
                   // Анкета полностью завершена - проверяем, хочет ли пользователь перепроходить
-                  // ВАЖНО: Проверяем флаг из localStorage, установленный при нажатии "Перепройти анкету"
+                  // ВАЖНО: Проверяем флаг из БД, установленный при нажатии "Перепройти анкету"
                   // ВАЖНО: Также проверяем наличие плана - если плана нет, не показываем экран "что хотите изменить?"
-                  const isRetakingFromStorage = typeof window !== 'undefined' && localStorage.getItem('is_retaking_quiz') === 'true';
+                  const { getIsRetakingQuiz } = await import('@/lib/user-preferences');
+                  const isRetakingFromStorage = await getIsRetakingQuiz();
                   
                   // Проверяем наличие плана - если плана нет, не показываем экран перепрохождения
                   let hasPlan = false;
@@ -749,13 +771,10 @@ export default function QuizPage() {
           if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
             clientLogger.warn('⚠️ Не удалось загрузить прогресс с сервера:', err);
           }
-          // НЕ используем fallback на localStorage - прогресс должен быть синхронизирован с сервером
-          // Если на сервере нет прогресса, значит его не должно быть и локально
+          // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
+          // Если на сервере нет прогресса, значит его не должно быть
           // Но только если пользователь еще не продолжил анкету
           if (!hasResumedRef.current && !hasResumed) {
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('quiz_progress');
-            }
             setSavedProgress(null);
             setShowResumeScreen(false);
           }
@@ -769,12 +788,9 @@ export default function QuizPage() {
           }
         }
       } else {
-        // Если Telegram WebApp не доступен или пользователь уже продолжил, очищаем localStorage (прогресс должен быть на сервере)
+        // Если Telegram WebApp не доступен или пользователь уже продолжил, прогресс должен быть на сервере
         // Но только если пользователь еще не продолжил анкету
         if (!hasResumedRef.current && !hasResumed) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('quiz_progress');
-          }
           setSavedProgress(null);
           setShowResumeScreen(false);
         }
@@ -918,42 +934,9 @@ export default function QuizPage() {
       return;
     }
     
-    const saved = localStorage.getItem('quiz_progress');
-    if (saved) {
-      try {
-        // ВАЖНО: Еще раз проверяем hasResumedRef перед установкой состояний
-        if (hasResumedRef.current || hasResumed) {
-          clientLogger.log('⏸️ loadSavedProgress: пропущено перед установкой состояний, так как hasResumed = true');
-          return;
-        }
-        
-        // ИСПРАВЛЕНО: Безопасный парсинг с обработкой больших данных
-        let progress;
-        try {
-          progress = JSON.parse(saved);
-        } catch (parseError) {
-          console.error('Error parsing saved progress:', parseError);
-          // Очищаем поврежденные данные
-          localStorage.removeItem('quiz_progress');
-          return;
-        }
-        
-        setSavedProgress(progress);
-        // Показываем экран продолжения только если есть сохранённые ответы
-        if (progress.answers && Object.keys(progress.answers).length > 0) {
-          setShowResumeScreen(true);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('Error loading saved progress:', err);
-        // Очищаем поврежденные данные при любой ошибке
-        try {
-          localStorage.removeItem('quiz_progress');
-        } catch (removeError) {
-          console.error('Error removing corrupted progress:', removeError);
-        }
-      }
-    }
+    // ИСПРАВЛЕНО: Прогресс загружается из БД через API, не из localStorage
+    // Прогресс уже загружен через loadProgressFromServer выше
+    // Эта функция больше не нужна, так как данные в БД
   };
 
   // Загружаем предыдущие ответы для повторного прохождения анкеты
@@ -1141,53 +1124,10 @@ export default function QuizPage() {
         // чтобы экран resume показался сразу и не было мигания начальных экранов
         // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до первого экрана анкеты
         setLoading(false);
-        // Также сохраняем в localStorage для офлайн доступа
-        // ИСПРАВЛЕНО: Безопасное сохранение с обработкой ошибок
-        if (typeof window !== 'undefined') {
-          try {
-            const progressStr = JSON.stringify(response.progress);
-            if (progressStr.length > 5 * 1024 * 1024) {
-              console.warn('Progress data from server is too large');
-            }
-            localStorage.setItem('quiz_progress', progressStr);
-          } catch (storageError) {
-            console.error('Error saving progress from server to localStorage:', storageError);
-            // Не прерываем выполнение, так как это не критично
-          }
-        }
+        // ИСПРАВЛЕНО: Прогресс сохраняется в БД через API, localStorage больше не используется
       } else {
         clientLogger.log('ℹ️ Прогресс на сервере не найден или пуст');
-        // ВАЖНО: НЕ очищаем localStorage автоматически, если прогресс не найден на сервере
-        // Это может быть временная проблема с сервером, и локальный прогресс может быть валидным
-        // Очищаем только если это не перепрохождение анкеты
-        if (!isRetakingQuiz && typeof window !== 'undefined') {
-          // Проверяем, есть ли локальный прогресс, который может быть валидным
-          const localProgress = localStorage.getItem('quiz_progress');
-          if (localProgress) {
-            try {
-              // ИСПРАВЛЕНО: Безопасный парсинг с обработкой ошибок
-              let parsed;
-              try {
-                parsed = JSON.parse(localProgress);
-              } catch (parseError) {
-                console.error('Error parsing local progress:', parseError);
-                // Очищаем поврежденные данные
-                localStorage.removeItem('quiz_progress');
-                return;
-              }
-              // Если локальный прогресс старше 7 дней, очищаем его
-              if (parsed.timestamp && Date.now() - parsed.timestamp > 7 * 24 * 60 * 60 * 1000) {
-                clientLogger.log('⚠️ Локальный прогресс слишком старый, очищаем');
-                localStorage.removeItem('quiz_progress');
-              } else {
-                clientLogger.log('ℹ️ Оставляем локальный прогресс, так как он может быть валидным');
-              }
-            } catch (e) {
-              // Если не удалось распарсить, очищаем
-              localStorage.removeItem('quiz_progress');
-            }
-          }
-        }
+        // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
         setSavedProgress(null);
         setShowResumeScreen(false);
         // Не вызываем loadSavedProgress(), так как прогресс должен быть синхронизирован с сервером
@@ -1196,19 +1136,13 @@ export default function QuizPage() {
       // Если ошибка 401 - это нормально, просто не используем серверный прогресс
       if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
         // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
-        // Очищаем localStorage, так как прогресс должен быть синхронизирован с сервером
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('quiz_progress');
-        }
+        // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
         setSavedProgress(null);
         setShowResumeScreen(false);
         return;
       }
       clientLogger.warn('Ошибка загрузки прогресса с сервера:', err);
-      // Очищаем localStorage при любой ошибке - прогресс должен быть на сервере
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('quiz_progress');
-      }
+      // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
       setSavedProgress(null);
       setShowResumeScreen(false);
     } finally {
@@ -1247,31 +1181,15 @@ export default function QuizPage() {
     };
     
     // ИСПРАВЛЕНО: Безопасное сохранение с обработкой ошибок
-    try {
-      const progressStr = JSON.stringify(progress);
-      // Проверяем размер данных перед сохранением (localStorage обычно ограничен ~5-10MB)
-      if (progressStr.length > 5 * 1024 * 1024) {
-        console.warn('Progress data is too large, truncating...');
-        // В критическом случае можно сохранить только последние ответы
-      }
-      localStorage.setItem('quiz_progress', progressStr);
-    } catch (storageError) {
-      console.error('Error saving progress to localStorage:', storageError);
-      // Не прерываем выполнение, так как это не критично для работы анкеты
-    }
-    
-    // ОПТИМИЗАЦИЯ: Метаданные позиции (questionIndex, infoScreenIndex) больше НЕ отправляются на сервер
-    // Они хранятся только локально в localStorage, так как сервер их не сохраняет в БД
-    // Позицию можно вычислить на основе последнего отвеченного вопроса при загрузке прогресса
-    // Это значительно уменьшает количество ненужных API вызовов
+    // ИСПРАВЛЕНО: Прогресс сохраняется в БД через API, localStorage больше не используется
+    // Метаданные позиции (questionIndex, infoScreenIndex) сохраняются в БД через /api/questionnaire/progress
   };
 
   // Очищаем сохранённый прогресс
   const clearProgress = async () => {
     if (typeof window === 'undefined') return;
     
-    // Очищаем локальный прогресс
-    localStorage.removeItem('quiz_progress');
+    // ИСПРАВЛЕНО: Прогресс хранится в БД, очистка через API не требуется (прогресс удаляется при удалении ответов)
     setSavedProgress(null);
     setShowResumeScreen(false);
     // Сбрасываем флаги восстановления прогресса (и state, и ref)
@@ -2263,15 +2181,14 @@ export default function QuizPage() {
       }
       
       if (Object.keys(answersToSubmit).length === 0) {
-        clientLogger.log('📦 Ответы пустые, пытаемся загрузить из localStorage...');
+        clientLogger.log('📦 Ответы пустые, пытаемся загрузить из БД...');
         try {
-          const savedProgressStr = localStorage.getItem('quiz_progress');
-          if (savedProgressStr) {
-            const savedProgress = JSON.parse(savedProgressStr);
-            if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
-              answersToSubmit = savedProgress.answers;
-              if (isMountedRef.current) {
-                setAnswers(savedProgress.answers);
+          // ИСПРАВЛЕНО: Загружаем ответы из БД через API, не из localStorage
+          const progressResponse = await api.getQuizProgress();
+          if (progressResponse?.progress?.answers && Object.keys(progressResponse.progress.answers).length > 0) {
+            answersToSubmit = progressResponse.progress.answers;
+            if (isMountedRef.current) {
+              setAnswers(progressResponse.progress.answers);
               }
               clientLogger.log('✅ Загружены ответы из localStorage:', Object.keys(savedProgress.answers).length);
             }
@@ -2771,16 +2688,15 @@ export default function QuizPage() {
         }
       }
       
-      // ВАЖНО: При перепрохождении анкеты НЕ устанавливаем флаг is_retaking_quiz в localStorage
+      // ВАЖНО: При перепрохождении анкеты НЕ устанавливаем флаг is_retaking_quiz в БД
       // Флаг должен быть очищен после успешной отправки, чтобы при следующем заходе показывалась обычная анкета
       // ВАЖНО: Очищаем флаг ПЕРЕД редиректом, чтобы при возврате на /quiz не показывался экран "что хотите изменить?"
       try {
-        if (typeof window !== 'undefined') {
-          // Очищаем флаги перепрохождения независимо от isRetakingQuiz, чтобы избежать показа экрана "что хотите изменить?" после редиректа
-          localStorage.removeItem('is_retaking_quiz');
-          localStorage.removeItem('full_retake_from_home');
-          clientLogger.log('✅ Флаги перепрохождения очищены после успешной отправки ответов');
-        }
+        // Очищаем флаги перепрохождения независимо от isRetakingQuiz, чтобы избежать показа экрана "что хотите изменить?" после редиректа
+        const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+        await setIsRetakingQuiz(false);
+        await setFullRetakeFromHome(false);
+        clientLogger.log('✅ Флаги перепрохождения очищены после успешной отправки ответов');
       } catch (storageError) {
         clientLogger.warn('⚠️ Ошибка при очистке localStorage (некритично):', storageError);
       }
@@ -2881,15 +2797,23 @@ export default function QuizPage() {
       // Не нужно генерировать план на клиенте - просто редиректим на /plan?state=generating
       clientLogger.log('✅ Профиль создан, генерация плана запущена на бэкенде, редиректим на /plan?state=generating');
       
+      // ИСПРАВЛЕНО: Устанавливаем hasPlanProgress = true, чтобы пользователь не редиректился на /quiz после прохождения анкеты
+      try {
+        const { setHasPlanProgress } = await import('@/lib/user-preferences');
+        await setHasPlanProgress(true);
+        clientLogger.log('✅ hasPlanProgress установлен в true после прохождения анкеты');
+      } catch (error) {
+        clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
+      }
+      
       // ВАЖНО: Очищаем флаги перепрохождения ПЕРЕД редиректом, чтобы при возврате на /quiz не показывался экран "что хотите изменить?"
       try {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('is_retaking_quiz');
-          localStorage.removeItem('full_retake_from_home');
-          clientLogger.log('✅ Флаги перепрохождения очищены перед редиректом на /plan');
-        }
+        const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+        await setIsRetakingQuiz(false);
+        await setFullRetakeFromHome(false);
+        clientLogger.log('✅ Флаги перепрохождения очищены перед редиректом на /plan');
       } catch (storageError) {
-        clientLogger.warn('⚠️ Ошибка при очистке localStorage перед редиректом (некритично):', storageError);
+        clientLogger.warn('⚠️ Ошибка при очистке флагов перед редиректом (некритично):', storageError);
       }
       
       // Устанавливаем этап "done" перед редиректом
@@ -3217,11 +3141,8 @@ export default function QuizPage() {
     }
     
     // ВАЖНО: Очищаем localStorage СРАЗУ, чтобы предотвратить повторную загрузку прогресса
-    // из loadSavedProgress или loadSavedProgressFromServer
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('quiz_progress');
-      clientLogger.log('✅ localStorage очищен от quiz_progress');
-    }
+    // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
+    clientLogger.log('✅ Прогресс хранится в БД');
     
     // ВАЖНО: Сохраняем копию savedProgress перед очисткой, так как мы будем использовать его данные
     const progressToRestore = { ...savedProgress };
@@ -3847,10 +3768,13 @@ export default function QuizPage() {
           });
         } catch (err) {
           clientLogger.warn('⚠️ Failed to check entitlements for retake screen', err);
-          // Fallback на localStorage для обратной совместимости
-          if (typeof window !== 'undefined') {
-            setHasRetakingPayment(localStorage.getItem('payment_retaking_completed') === 'true');
-            setHasFullRetakePayment(localStorage.getItem('payment_full_retake_completed') === 'true');
+          // Fallback на БД для обратной совместимости
+          try {
+            const { getPaymentRetakingCompleted, getPaymentFullRetakeCompleted } = await import('@/lib/user-preferences');
+            setHasRetakingPayment(await getPaymentRetakingCompleted());
+            setHasFullRetakePayment(await getPaymentFullRetakeCompleted());
+          } catch (fallbackError) {
+            // ignore
           }
         }
       };
@@ -4063,8 +3987,37 @@ export default function QuizPage() {
   }
 
   if (!questionnaire) {
+    // ИСПРАВЛЕНО: Проверяем, завершена ли анкета, перед показом лоадера "Подготавливаем анкету"
+    // Если анкета завершена - редиректим на /plan, а не показываем лоадер
+    const checkQuizCompleted = async () => {
+      try {
+        const profile = await api.getCurrentProfile();
+        if (profile && profile.id) {
+          // Профиль существует - проверяем, завершена ли анкета
+          const response = await api.getQuizProgress();
+          const isCompleted = response?.isCompleted === true;
+          
+          if (isCompleted) {
+            // Анкета завершена - редиректим на /plan
+            clientLogger.log('✅ Анкета завершена, но questionnaire не загружен - редиректим на /plan');
+            window.location.replace('/plan?state=generating');
+            return;
+          }
+        }
+      } catch (err) {
+        // При ошибке продолжаем показывать лоадер
+        clientLogger.warn('⚠️ Ошибка при проверке завершенности анкеты:', err);
+      }
+    };
+    
+    // Проверяем завершенность анкеты только если не идет редирект
+    if (!isRedirectingToPlan) {
+      checkQuizCompleted();
+    }
+    
     // Фолбэк, когда анкета ещё не успела загрузиться (например, после холодного старта сервера)
     // Вместо жёсткой ошибки показываем экран "подготовки" с мягким текстом.
+    // ИСПРАВЛЕНО: Показываем лоадер только если анкета НЕ завершена
     return (
       <div
         style={{
@@ -4097,7 +4050,7 @@ export default function QuizPage() {
             textAlign: 'center',
           }}
         >
-          Подготавливаем анкету
+          Загрузка анкеты...
         </h1>
         <p
           style={{
@@ -4130,7 +4083,7 @@ export default function QuizPage() {
       showRetakeScreen,
       isRetakingQuiz,
       hasRetakingPayment,
-      paymentKey: typeof window !== 'undefined' ? localStorage.getItem('payment_retaking_completed') : 'N/A',
+      paymentKey: 'stored in DB', // ИСПРАВЛЕНО: Флаги оплаты хранятся в БД
     });
     
     const handleTopicSelect = (topic: QuizTopic) => {
@@ -4148,10 +4101,13 @@ export default function QuizPage() {
 
       clientLogger.log('✅ Full retake payment completed, starting full questionnaire reset');
 
-      // Сбрасываем флаг оплаты после использования
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('payment_full_retake_completed');
+      // Сбрасываем флаг оплаты после использования в БД
+      try {
+        const { setPaymentFullRetakeCompleted } = await import('@/lib/user-preferences');
+        await setPaymentFullRetakeCompleted(false);
         clientLogger.log('🔄 Full retake payment flag cleared');
+      } catch (err) {
+        clientLogger.warn('Failed to clear full retake payment flag:', err);
       }
 
       // Полное перепрохождение:
@@ -4176,11 +4132,13 @@ export default function QuizPage() {
       setAutoSubmitTriggered(false);
       setError(null);
 
-      if (typeof window !== 'undefined') {
-        // Очищаем локальный прогресс и флаги перепрохождения
-        localStorage.removeItem('quiz_progress');
-        localStorage.removeItem('is_retaking_quiz');
-        localStorage.removeItem('full_retake_from_home');
+      // ИСПРАВЛЕНО: Очищаем флаги перепрохождения в БД
+      try {
+        const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+        await setIsRetakingQuiz(false);
+        await setFullRetakeFromHome(false);
+      } catch (err) {
+        clientLogger.warn('Failed to clear retake flags:', err);
       }
 
       // Начинаем анкету с самого начала
@@ -4332,10 +4290,13 @@ export default function QuizPage() {
                 clientLogger.log('✅ Full retake payment completed, entitlements updated', { hasRetakeFull });
               } catch (err) {
                 clientLogger.warn('⚠️ Failed to refresh entitlements after payment, using fallback', err);
-                // Fallback на localStorage для обратной совместимости
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('payment_full_retake_completed', 'true');
+                // Сохраняем флаг оплаты в БД
+                try {
+                  const { setPaymentFullRetakeCompleted } = await import('@/lib/user-preferences');
+                  await setPaymentFullRetakeCompleted(true);
                   setHasFullRetakePayment(true);
+                } catch (err) {
+                  clientLogger.warn('Failed to save full retake payment flag:', err);
                 }
               }
               

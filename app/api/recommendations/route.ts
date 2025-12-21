@@ -664,8 +664,9 @@ export async function GET(request: NextRequest) {
 
     // ИСПРАВЛЕНО: Используем buildRuleContext для создания типизированного контекста правил
     // Это обеспечивает единую точку маппинга полей и консистентность
+    // ИСПРАВЛЕНО: Передаем concerns из ответов для правил, которые проверяют concerns: { hasSome: [...] }
     const { buildRuleContext } = await import('@/lib/rule-context');
-    const ruleContext = buildRuleContext(profile, skinScores, normalizedSkinType, normalizedSensitivity);
+    const ruleContext = buildRuleContext(profile, skinScores, normalizedSkinType, normalizedSensitivity, questionnaireAnswers.concerns);
     
     // Используем ruleContext как profileWithScores для обратной совместимости
     const profileWithScores: any = {

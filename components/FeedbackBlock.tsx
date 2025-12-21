@@ -54,29 +54,48 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
     
     // Для plan_recommendations: показываем только один раз, если еще не отправляли
     if (feedbackType === 'plan_recommendations') {
-      const feedbackSent = localStorage.getItem(PLAN_FEEDBACK_SENT_KEY);
-      if (feedbackSent === 'true') {
-        // Обратная связь уже отправлена - не показываем больше
-              setIsVisible(false);
-              return;
-            }
-      // Если еще не отправляли - показываем
-      setIsVisible(true);
-      return;
+      const checkFeedback = async () => {
+        try {
+          const { getPlanFeedbackSent } = await import('@/lib/user-preferences');
+          const feedbackSent = await getPlanFeedbackSent();
+          if (feedbackSent) {
+            // Обратная связь уже отправлена - не показываем больше
+            setIsVisible(false);
+            return;
+          }
+          // Если еще не отправляли - показываем
+          setIsVisible(true);
+        } catch (error) {
+          // При ошибке показываем виджет
+          setIsVisible(true);
         }
+      };
+      checkFeedback();
+      return;
+    }
     
     // Для service: показываем раз в неделю
-    const feedbackKey = LAST_FEEDBACK_KEY;
-    const lastFeedbackDate = localStorage.getItem(feedbackKey);
-      if (lastFeedbackDate) {
-        const lastDate = new Date(lastFeedbackDate);
-        const now = new Date();
-        const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
-        
-        if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
-          setIsVisible(false);
+    const checkServiceFeedback = async () => {
+      try {
+        const { getLastPlanFeedbackDate } = await import('@/lib/user-preferences');
+        const lastFeedbackDate = await getLastPlanFeedbackDate();
+        if (lastFeedbackDate) {
+          const lastDate = new Date(lastFeedbackDate);
+          const now = new Date();
+          const daysSinceLastFeedback = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+          
+          if (daysSinceLastFeedback < FEEDBACK_COOLDOWN_DAYS) {
+            setIsVisible(false);
+            return;
+          }
         }
+        setIsVisible(true);
+      } catch (error) {
+        // При ошибке показываем виджет
+        setIsVisible(true);
       }
+    };
+    checkServiceFeedback();
   }, [feedbackType, hasProfile]);
 
   // Если виджет скрыт, не рендерим его
@@ -90,15 +109,18 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       await onSubmit({ isRelevant: true });
       setShowThankYou(true);
       
-      // Сохраняем дату отправки и флаг отправки
-      if (typeof window !== 'undefined') {
+      // Сохраняем дату отправки и флаг отправки в БД
+      try {
+        const { setPlanFeedbackSent, setLastPlanFeedbackDate } = await import('@/lib/user-preferences');
         if (feedbackType === 'plan_recommendations') {
           // Для plan_recommendations: помечаем как отправленное, больше не показываем
-          localStorage.setItem(PLAN_FEEDBACK_SENT_KEY, 'true');
+          await setPlanFeedbackSent(true);
         } else {
           // Для service: сохраняем дату для cooldown
-        localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+          await setLastPlanFeedbackDate(new Date().toISOString());
         }
+      } catch (error) {
+        console.warn('Failed to save feedback flag:', error);
       }
       
       // Скрываем виджет после отправки
@@ -127,15 +149,18 @@ export function FeedbackBlock({ onSubmit, feedbackType = 'plan_recommendations' 
       setShowFeedback(false);
       setComment('');
       
-      // Сохраняем дату отправки и флаг отправки
-      if (typeof window !== 'undefined') {
+      // Сохраняем дату отправки и флаг отправки в БД
+      try {
+        const { setPlanFeedbackSent, setLastPlanFeedbackDate } = await import('@/lib/user-preferences');
         if (feedbackType === 'plan_recommendations') {
           // Для plan_recommendations: помечаем как отправленное, больше не показываем
-          localStorage.setItem(PLAN_FEEDBACK_SENT_KEY, 'true');
+          await setPlanFeedbackSent(true);
         } else {
           // Для service: сохраняем дату для cooldown
-        localStorage.setItem(LAST_FEEDBACK_KEY, new Date().toISOString());
+          await setLastPlanFeedbackDate(new Date().toISOString());
         }
+      } catch (error) {
+        console.warn('Failed to save feedback flag:', error);
       }
       
       // Скрываем виджет после отправки

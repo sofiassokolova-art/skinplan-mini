@@ -1385,7 +1385,9 @@ export default function PlanPage() {
 
   // Остальная часть UI компонента
 
-  // Показываем специальный экран генерации плана
+  // ИСПРАВЛЕНО: Показываем только один лоадер - "Загружаем план" или "Подбираем уход под вашу кожу…"
+  // Приоритет: если generatingState === 'generating', показываем экран генерации
+  // Иначе показываем обычный лоадер "Загрузка плана..."
   if (generatingState === 'generating') {
     return (
       <div style={{ 
@@ -1400,7 +1402,7 @@ export default function PlanPage() {
         color: 'white'
       }}>
         <div style={{ fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
-          Подбираем уход под вашу кожу…
+          Загружаем план…
         </div>
         <div style={{ 
           width: '280px', 
@@ -1430,7 +1432,8 @@ export default function PlanPage() {
     );
   }
 
-  if (loading) {
+  // ИСПРАВЛЕНО: Показываем лоадер "Загрузка плана..." только если НЕ идет генерация
+  if (loading && generatingState !== 'generating') {
     return (
       <div style={{
         display: 'flex',

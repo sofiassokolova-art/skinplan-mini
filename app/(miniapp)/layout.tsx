@@ -55,17 +55,25 @@ function LayoutContent({
   // Скрываем навигацию на главной странице до завершения проверки plan_progress
   useEffect(() => {
     if (pathname === '/') {
-      // Проверяем наличие plan_progress в localStorage
+      // Проверяем наличие plan_progress в БД
       // Если его нет - значит пользователь новый, скрываем навигацию (будет редирект на /quiz)
-      const hasPlanProgress = typeof window !== 'undefined' && localStorage.getItem('plan_progress') !== null;
-      if (!hasPlanProgress) {
-        // Новый пользователь - скрываем навигацию (будет редирект на /quiz)
-        setIsCheckingProfile(true);
-        // Навигация останется скрытой, так как пользователь будет редиректнут
-      } else {
-        // Пользователь не новый - показываем навигацию сразу
-        setIsCheckingProfile(false);
-      }
+      const checkPlanProgress = async () => {
+        try {
+          const { getHasPlanProgress } = await import('@/lib/user-preferences');
+          const hasPlanProgress = await getHasPlanProgress();
+          if (!hasPlanProgress) {
+            // Новый пользователь - скрываем навигацию (будет редирект на /quiz)
+            setIsCheckingProfile(true);
+          } else {
+            // Пользователь не новый - показываем навигацию сразу
+            setIsCheckingProfile(false);
+          }
+        } catch {
+          // При ошибке показываем навигацию (лучше показать, чем скрыть)
+          setIsCheckingProfile(false);
+        }
+      };
+      checkPlanProgress();
     } else {
       setIsCheckingProfile(false);
     }

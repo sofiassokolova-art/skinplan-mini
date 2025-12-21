@@ -45,6 +45,7 @@ model User {
   clientLogs               ClientLog[]
   questionnaireSubmissions QuestionnaireSubmission[]
   questionnaireProgress    QuestionnaireProgress[]
+  userPreferences          UserPreferences?
   payments                 Payment[]
   entitlements             Entitlement[]
 
@@ -639,6 +640,42 @@ model ClientLog {
   @@index([level])
   @@index([createdAt])
   @@map("client_logs")
+}
+
+// ============================================
+// ПОЛЬЗОВАТЕЛЬСКИЕ НАСТРОЙКИ И ФЛАГИ
+// ============================================
+
+model UserPreferences {
+  id     String @id @default(cuid())
+  userId String @unique @map("user_id")
+
+  // Флаги перепрохождения анкеты
+  isRetakingQuiz             Boolean @default(false) @map("is_retaking_quiz")
+  fullRetakeFromHome         Boolean @default(false) @map("full_retake_from_home")
+  paymentRetakingCompleted   Boolean @default(false) @map("payment_retaking_completed")
+  paymentFullRetakeCompleted Boolean @default(false) @map("payment_full_retake_completed")
+
+  // Прогресс и кэш
+  hasPlanProgress Boolean @default(false) @map("has_plan_progress")
+  routineProducts Json?   @map("routine_products") // Кэш продуктов рутины
+
+  // Фидбек
+  planFeedbackSent        Boolean   @default(false) @map("plan_feedback_sent")
+  serviceFeedbackSent     Boolean   @default(false) @map("service_feedback_sent")
+  lastPlanFeedbackDate    DateTime? @map("last_plan_feedback_date")
+  lastServiceFeedbackDate DateTime? @map("last_service_feedback_date")
+
+  // Дополнительные настройки (JSON для расширяемости)
+  extra Json? // Для будущих настроек
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_preferences")
 }
 
 // ============================================

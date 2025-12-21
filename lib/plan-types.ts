@@ -58,5 +58,7 @@ export {
   isWeeklyFocusDay,
   getStepDescription,
   getStepCategoryLabel,
-  type StepDescription,
 } from './plan-formatters';
+
+// Реэкспортируем тип отдельно (интерфейс нужно экспортировать через export type)
+export type { StepDescription } from './plan-formatters';
