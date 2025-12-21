@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
-import { selectCarePlanTemplate, type CarePlanProfileInput } from '@/lib/care-plan-templates';
+import { selectCarePlanTemplate, type CarePlanProfileInput, type RoutineComplexity } from '@/lib/care-plan-templates';
 import type { SkinProfile } from '@/lib/skinprofile-types';
 import { getQuestionCodesForTopic, topicRequiresPlanRebuild, type QuestionTopicId } from '@/lib/questionnaire-topics';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
@@ -192,11 +192,16 @@ export async function POST(request: NextRequest) {
       // ИСПРАВЛЕНО: Логируем выбранный шаблон плана для отладки
       // Это помогает понять, почему был выбран конкретный шаблон
       try {
+        // ИСПРАВЛЕНО: Нормализуем routineComplexity - 'any' преобразуем в 'medium'
+        const normalizedRoutineComplexity = (newProfile.routineComplexity === 'any' || !newProfile.routineComplexity)
+          ? 'medium'
+          : (newProfile.routineComplexity as RoutineComplexity);
+        
         const carePlanProfileInput: CarePlanProfileInput = {
           skinType: (updatedProfile.skinType || 'normal') as NonNullable<SkinProfile["skinType"]>,
           mainGoals: newProfile.mainGoals.length > 0 ? newProfile.mainGoals : ['general'],
           sensitivityLevel: (updatedProfile.sensitivityLevel || 'low') as NonNullable<SkinProfile["sensitivity"]>,
-          routineComplexity: newProfile.routineComplexity || 'medium',
+          routineComplexity: normalizedRoutineComplexity,
           acneLevel: updatedProfile.acneLevel ?? null,
           dehydrationLevel: updatedProfile.dehydrationLevel ?? null,
           rosaceaRisk: updatedProfile.rosaceaRisk ?? null,
