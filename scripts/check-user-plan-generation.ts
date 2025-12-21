@@ -125,11 +125,14 @@ async function checkPlanGeneration() {
           if (rule.skinTypesAllowed && !rule.skinTypesAllowed.includes(stepProfile.skinType || '')) {
             console.log(`        Причина: тип кожи ${stepProfile.skinType} не в списке разрешенных: ${rule.skinTypesAllowed.join(', ')}`);
           }
-          if (rule.avoidDiagnoses && stepProfile.diagnoses.some(d => rule.avoidDiagnoses!.includes(d))) {
-            console.log(`        Причина: диагнозы ${stepProfile.diagnoses.filter(d => rule.avoidDiagnoses!.includes(d)).join(', ')} в списке запрещенных`);
+          if (rule.avoidDiagnoses && stepProfile.diagnoses.some(d => rule.avoidDiagnoses!.includes(d as any))) {
+            console.log(`        Причина: диагнозы ${stepProfile.diagnoses.filter(d => rule.avoidDiagnoses!.includes(d as any)).join(', ')} в списке запрещенных`);
           }
-          if (rule.avoidIfContra && stepProfile.contraindications.some(c => rule.avoidIfContra!.includes(c))) {
-            console.log(`        Причина: противопоказания ${stepProfile.contraindications.filter(c => rule.avoidIfContra!.includes(c)).join(', ')} в списке запрещенных`);
+          if (rule.avoidIfContraFromProfile && stepProfile.contraindications.some(c => rule.avoidIfContraFromProfile!.includes(c as any))) {
+            console.log(`        Причина: противопоказания ${stepProfile.contraindications.filter(c => rule.avoidIfContraFromProfile!.includes(c as any)).join(', ')} в списке запрещенных`);
+          }
+          if (rule.avoidIfSensitivity && stepProfile.sensitivity && rule.avoidIfSensitivity.includes(stepProfile.sensitivity as any)) {
+            console.log(`        Причина: уровень чувствительности ${stepProfile.sensitivity} в списке запрещенных`);
           }
         } else {
           console.log(`        Причина: правило для шага ${step} не найдено`);
@@ -149,11 +152,14 @@ async function checkPlanGeneration() {
           if (rule.skinTypesAllowed && !rule.skinTypesAllowed.includes(stepProfile.skinType || '')) {
             console.log(`        Причина: тип кожи ${stepProfile.skinType} не в списке разрешенных: ${rule.skinTypesAllowed.join(', ')}`);
           }
-          if (rule.avoidDiagnoses && stepProfile.diagnoses.some(d => rule.avoidDiagnoses!.includes(d))) {
-            console.log(`        Причина: диагнозы ${stepProfile.diagnoses.filter(d => rule.avoidDiagnoses!.includes(d)).join(', ')} в списке запрещенных`);
+          if (rule.avoidDiagnoses && stepProfile.diagnoses.some(d => rule.avoidDiagnoses!.includes(d as any))) {
+            console.log(`        Причина: диагнозы ${stepProfile.diagnoses.filter(d => rule.avoidDiagnoses!.includes(d as any)).join(', ')} в списке запрещенных`);
           }
-          if (rule.avoidIfContra && stepProfile.contraindications.some(c => rule.avoidIfContra!.includes(c))) {
-            console.log(`        Причина: противопоказания ${stepProfile.contraindications.filter(c => rule.avoidIfContra!.includes(c)).join(', ')} в списке запрещенных`);
+          if (rule.avoidIfContraFromProfile && stepProfile.contraindications.some(c => rule.avoidIfContraFromProfile!.includes(c as any))) {
+            console.log(`        Причина: противопоказания ${stepProfile.contraindications.filter(c => rule.avoidIfContraFromProfile!.includes(c as any)).join(', ')} в списке запрещенных`);
+          }
+          if (rule.avoidIfSensitivity && stepProfile.sensitivity && rule.avoidIfSensitivity.includes(stepProfile.sensitivity as any)) {
+            console.log(`        Причина: уровень чувствительности ${stepProfile.sensitivity} в списке запрещенных`);
           }
         } else {
           console.log(`        Причина: правило для шага ${step} не найдено`);

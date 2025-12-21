@@ -256,7 +256,11 @@ export async function generate28DayPlan(
   });
   const normalizedSensitivity = normalizeSensitivityForRules(profile.sensitivityLevel);
   
-  const stepProfile: import('@/lib/skinprofile-types').SkinProfile = {
+  // ИСПРАВЛЕНО (P0): Добавляем rosaceaRisk и medicalMarkers в stepProfile для canApplyStep
+  const stepProfile: import('@/lib/skinprofile-types').SkinProfile & { 
+    rosaceaRisk?: string | null; 
+    medicalMarkers?: { rosaceaRisk?: "low" | "medium" | "high" | "critical" } 
+  } = {
     ...createEmptySkinProfile(),
     skinType: normalizedSkinType as any,
     sensitivity: normalizedSensitivity as any,
@@ -269,6 +273,11 @@ export async function generate28DayPlan(
           ['acne', 'pores', 'pigmentation', 'barrier', 'dehydration', 'wrinkles', 'antiage', 'general', 'dark_circles'].includes(g as GoalKey)
         ) as GoalKey[])
       : [],
+    // ИСПРАВЛЕНО (P0): Добавляем rosaceaRisk и medicalMarkers для canApplyStep
+    rosaceaRisk: profile.rosaceaRisk || null,
+    medicalMarkers: {
+      rosaceaRisk: medicalMarkers.rosaceaRisk as "low" | "medium" | "high" | "critical" | undefined,
+    },
   };
 
   // ИСПРАВЛЕНО: Нормализуем diagnoses - берем из medicalMarkers (источник истины), 
@@ -417,13 +426,13 @@ export async function generate28DayPlan(
     // ДОБАВЛЕНО: Передаем дополнительные факторы для персонализации
     acneLevel: profile.acneLevel ?? null,
     dehydrationLevel: profile.dehydrationLevel ?? null,
-    rosaceaRisk: profile.rosaceaRisk ?? null,
-    pigmentationRisk: profile.pigmentationRisk ?? null,
-    ageGroup: profile.ageGroup ?? null,
+    rosaceaRisk: profile.rosaceaRisk as CarePlanProfileInput['rosaceaRisk'] ?? null,
+    pigmentationRisk: profile.pigmentationRisk as CarePlanProfileInput['pigmentationRisk'] ?? null,
+    ageGroup: (profile.ageGroup ?? null) as CarePlanProfileInput['ageGroup'],
   };
 
   const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
-  
+
   // ИСПРАВЛЕНО: Логируем выбранный шаблон для диагностики
   logger.info('Care plan template selected', {
     userId,
@@ -2308,9 +2317,11 @@ export async function generate28DayPlan(
     steps: Array.from(allPossibleSteps),
   });
   
-  // ИСПРАВЛЕНО (P1): Проверяем все возможные шаги один раз с получением причины
-  const stepAllowancePromises = Array.from(allPossibleSteps).map(async (step) => {
-    const result = await canApplyStep(step, stepProfile);
+  // ИСПРАВЛЕНО (P1, P2): Проверяем все возможные шаги один раз с получением причины
+  // ИСПРАВЛЕНО (P2): canApplyStep теперь синхронная, убран async/await
+  const rosaceaRisk = profile.rosaceaRisk as "low" | "medium" | "high" | "critical" | null | undefined;
+  Array.from(allPossibleSteps).forEach((step) => {
+    const result = canApplyStep(step, stepProfile, rosaceaRisk);
     stepAllowanceCache.set(step, result);
     if (!result.allowed) {
       logger.debug('Step not allowed for profile (cached)', {
@@ -2319,12 +2330,11 @@ export async function generate28DayPlan(
         skinType: stepProfile.skinType,
         sensitivity: stepProfile.sensitivity,
         diagnoses: stepProfile.diagnoses,
+        rosaceaRisk,
         userId,
       });
     }
-    return { step, isAllowed: result.allowed };
   });
-  await Promise.all(stepAllowancePromises);
   
   logger.info('Step allowance cache populated', {
     userId,
@@ -2570,6 +2580,7 @@ export async function generate28DayPlan(
             alreadySelected: selectedProductsForDay,
             protocol: dermatologyProtocol,
             profileClassification,
+            stepCategory: step, // ИСПРАВЛЕНО (P1): Передаем stepCategory для точного определения типа шага
           };
           
           const filteredResults = filterProductsWithDermatologyLogic(stepProducts, context);

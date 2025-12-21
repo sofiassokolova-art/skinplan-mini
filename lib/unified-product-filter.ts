@@ -120,9 +120,18 @@ export function filterProducts(
       alreadySelected,
       protocol,
       profileClassification,
+      stepCategory, // ИСПРАВЛЕНО (P1): Передаем stepCategory для точного определения типа шага
     };
 
     const dermatologyResults = filterByProtocol(filtered, protocol, selectionContext);
+    // ИСПРАВЛЕНО (P0): Проверка контракта - массив должен быть той же длины
+    if (process.env.NODE_ENV !== 'production' && dermatologyResults.length !== filtered.length) {
+      logger.error('filterByProtocol contract violated', {
+        inputLength: filtered.length,
+        outputLength: dermatologyResults.length,
+        stepCategory,
+      });
+    }
     filtered = dermatologyResults
       .filter(r => r.allowed)
       .map(r => r.product);
@@ -137,6 +146,14 @@ export function filterProducts(
 
     // Проверка дублирования
     const duplicationResults = checkForDuplication(filtered, selectionContext);
+    // ИСПРАВЛЕНО (P0): Проверка контракта - массив должен быть той же длины
+    if (process.env.NODE_ENV !== 'production' && duplicationResults.length !== filtered.length) {
+      logger.error('checkForDuplication contract violated', {
+        inputLength: filtered.length,
+        outputLength: duplicationResults.length,
+        stepCategory,
+      });
+    }
     filtered = duplicationResults
       .filter(r => r.allowed)
       .map(r => r.product);
@@ -145,6 +162,14 @@ export function filterProducts(
     const titrationResults = filtered.map(product => 
       checkTitrationSchedule(product, selectionContext)
     );
+    // ИСПРАВЛЕНО (P0): Проверка контракта - массив должен быть той же длины
+    if (process.env.NODE_ENV !== 'production' && titrationResults.length !== filtered.length) {
+      logger.error('checkTitrationSchedule contract violated', {
+        inputLength: filtered.length,
+        outputLength: titrationResults.length,
+        stepCategory,
+      });
+    }
     filtered = titrationResults
       .filter(r => r.allowed)
       .map(r => r.product);
@@ -274,6 +299,7 @@ export function filterProductsWithReasons(
       alreadySelected,
       protocol,
       profileClassification,
+      stepCategory, // ИСПРАВЛЕНО (P1): Передаем stepCategory для точного определения типа шага
     };
 
     // 1. Фильтрация по протоколу
@@ -282,20 +308,35 @@ export function filterProductsWithReasons(
       protocol,
       selectionContext
     );
+    // ИСПРАВЛЕНО (P0): Проверка контракта - массив должен быть той же длины
+    if (process.env.NODE_ENV !== 'production' && protocolResults.length !== results.length) {
+      logger.error('filterByProtocol contract violated in filterProductsWithReasons', {
+        inputLength: results.length,
+        outputLength: protocolResults.length,
+        stepCategory,
+      });
+    }
     results = results.map((result, index) => {
       const protocolResult = protocolResults[index];
-      if (!protocolResult.allowed) {
+      if (!protocolResult || !protocolResult.allowed) {
         return {
           ...result,
-          allowed: false,
+          allowed: strictness === 'soft' ? result.allowed : false, // ИСПРАВЛЕНО (P1): При soft не меняем allowed, только добавляем reason
           reason: result.reason 
-            ? `${result.reason}; ${protocolResult.reason || 'Не разрешен протоколом'}`
-            : protocolResult.reason || 'Не разрешен протоколом',
+            ? `${result.reason}; ${protocolResult?.reason || 'Не разрешен протоколом'}`
+            : protocolResult?.reason || 'Не разрешен протоколом',
         };
       }
-      return result;
+      // ИСПРАВЛЕНО: Добавляем warning из протокола (soft allowlist)
+      return {
+        ...result,
+        warning: protocolResult.warning || result.warning,
+      };
     });
-    results = results.filter(r => r.allowed);
+    // ИСПРАВЛЕНО (P1): При soft не фильтруем allowed=false, только помечаем reason
+    if (strictness === 'hard') {
+      results = results.filter(r => r.allowed);
+    }
 
     // 2. Проверка совместимости с уже выбранными
     const compatibilityResults = results.map(result => {
@@ -303,7 +344,7 @@ export function filterProductsWithReasons(
       if (!compatCheck.allowed) {
         return {
           ...result,
-          allowed: false,
+          allowed: strictness === 'soft' ? result.allowed : false, // ИСПРАВЛЕНО (P1): При soft не меняем allowed, только добавляем reason
           reason: result.reason 
             ? `${result.reason}; ${compatCheck.reason || 'Несовместим с выбранными продуктами'}`
             : compatCheck.reason || 'Несовместим с выбранными продуктами',
@@ -313,28 +354,40 @@ export function filterProductsWithReasons(
       }
       return result;
     });
-    results = compatibilityResults.filter(r => r.allowed);
+    // ИСПРАВЛЕНО (P1): При soft не фильтруем allowed=false, только помечаем reason
+    results = strictness === 'hard' ? compatibilityResults.filter(r => r.allowed) : compatibilityResults;
 
     // 3. Проверка дублирования
     const duplicationResults = checkForDuplication(
       results.map(r => r.product),
       selectionContext
     );
+    // ИСПРАВЛЕНО (P0): Проверка контракта - массив должен быть той же длины
+    if (process.env.NODE_ENV !== 'production' && duplicationResults.length !== results.length) {
+      logger.error('checkForDuplication contract violated in filterProductsWithReasons', {
+        inputLength: results.length,
+        outputLength: duplicationResults.length,
+        stepCategory,
+      });
+    }
     results = results.map((result, index) => {
       const dupCheck = duplicationResults[index];
-      if (!dupCheck.allowed) {
+      if (!dupCheck || !dupCheck.allowed) {
         return {
           ...result,
-          allowed: false,
+          allowed: strictness === 'soft' ? result.allowed : false, // ИСПРАВЛЕНО (P1): При soft не меняем allowed, только добавляем reason
           reason: result.reason 
-            ? `${result.reason}; ${dupCheck.reason || 'Дублирует активные ингредиенты'}`
-            : dupCheck.reason || 'Дублирует активные ингредиенты',
-          recommendation: dupCheck.recommendation,
+            ? `${result.reason}; ${dupCheck?.reason || 'Дублирует активные ингредиенты'}`
+            : dupCheck?.reason || 'Дублирует активные ингредиенты',
+          recommendation: dupCheck?.recommendation,
         };
       }
       return result;
     });
-    results = results.filter(r => r.allowed);
+    // ИСПРАВЛЕНО (P1): При soft не фильтруем allowed=false, только помечаем reason
+    if (strictness === 'hard') {
+      results = results.filter(r => r.allowed);
+    }
 
     // 4. Проверка расписания (titration)
     const titrationResults = results.map(result => {
@@ -342,7 +395,7 @@ export function filterProductsWithReasons(
       if (!titrationCheck.allowed) {
         return {
           ...result,
-          allowed: false,
+          allowed: strictness === 'soft' ? result.allowed : false, // ИСПРАВЛЕНО (P1): При soft не меняем allowed, только добавляем reason
           reason: result.reason 
             ? `${result.reason}; ${titrationCheck.reason || 'Не соответствует расписанию применения'}`
             : titrationCheck.reason || 'Не соответствует расписанию применения',
@@ -351,7 +404,8 @@ export function filterProductsWithReasons(
       }
       return result;
     });
-    results = titrationResults;
+    // ИСПРАВЛЕНО (P1): При soft не фильтруем allowed=false, только помечаем reason
+    results = strictness === 'hard' ? titrationResults.filter(r => r.allowed) : titrationResults;
   }
 
   return results;
