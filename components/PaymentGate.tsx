@@ -659,7 +659,7 @@ export function PaymentGate({
           {retakeCta && (
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 if (typeof window !== 'undefined') {
                   // ИСПРАВЛЕНО: ретейк-ссылка должна открывать экран выбора тем
                   // (/quiz показывает экран выбора тем, когда is_retaking_quiz=true)

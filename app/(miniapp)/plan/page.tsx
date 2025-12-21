@@ -1433,7 +1433,7 @@ export default function PlanPage() {
   }
 
   // ИСПРАВЛЕНО: Показываем лоадер "Загрузка плана..." только если НЕ идет генерация
-  if (loading && generatingState !== 'generating') {
+  if (loading && generatingState !== 'ready' && generatingState !== null) {
     return (
       <div style={{
         display: 'flex',

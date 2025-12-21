@@ -26,6 +26,12 @@ export async function GET(request: NextRequest) {
       update: {},
     });
 
+
+
+
+
+
+
     const duration = Date.now() - startTime;
     logApiRequest(method, path, 200, duration, userId);
 

@@ -468,20 +468,16 @@ export function PlanPageClientNew({
       <PaymentGate
         price={199}
         productCode="plan_access"
-        isRetaking={typeof window !== 'undefined' ? 
-          (async () => {
-            try {
-              const { getIsRetakingQuiz, getFullRetakeFromHome } = await import('@/lib/user-preferences');
-              return await getIsRetakingQuiz() || await getFullRetakeFromHome();
-            } catch {
-              return false;
-            }
-          })() : false}
+        isRetaking={false}
         onPaymentComplete={() => {
           setNeedsFirstPayment(false);
           clientLogger.log('✅ Payment completed on plan page');
         }}
-        retakeCta={planExpired ? { text: 'Изменились цели? Перепройти анкету', href: '/quiz' } : undefined}
+        retakeCta={
+          planExpired
+            ? { text: 'Изменились цели? Перепройти анкету', href: '/quiz' }
+            : undefined
+        }
       >
         {/* Контент внутри PaymentGate (показывается с блюром до оплаты, без блюра после оплаты) */}
         {/* Инфографика плана */}

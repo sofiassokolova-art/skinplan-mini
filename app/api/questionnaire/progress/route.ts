@@ -183,6 +183,7 @@ export async function GET(request: NextRequest) {
     // ИСПРАВЛЕНО: Обрабатываем случай, когда таблица questionnaire_progress не существует
     let savedProgress = null;
     try {
+      // Use the correct Prisma model name (camelCase)
       savedProgress = await prisma.questionnaireProgress.findUnique({
         where: {
           userId_questionnaireId: {

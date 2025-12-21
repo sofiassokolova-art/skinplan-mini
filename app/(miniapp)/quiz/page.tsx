@@ -197,24 +197,23 @@ export default function QuizPage() {
             } catch (clearError) {
               // ignore
             }
-            } else if (isNetworkError) {
-              // Сетевая ошибка - не очищаем флаги, попробуем еще раз позже
-              clientLogger.warn('⚠️ Сетевая ошибка при проверке профиля для перепрохождения, попробуем позже:', err?.message);
-              // Не очищаем флаги, чтобы пользователь мог попробовать еще раз
-            } else {
-              // Другая ошибка - логируем, но не блокируем пользователя
-              clientLogger.warn('⚠️ Ошибка при проверке профиля для перепрохождения:', {
-                message: err?.message,
-                status: err?.status,
-                name: err?.name,
-              });
-              // Не очищаем флаги при неизвестной ошибке - возможно, это временная проблема
-            }
+          } else if (isNetworkError) {
+            // Сетевая ошибка - не очищаем флаги, попробуем еще раз позже
+            clientLogger.warn('⚠️ Сетевая ошибка при проверке профиля для перепрохождения, попробуем позже:', err?.message);
+            // Не очищаем флаги, чтобы пользователь мог попробовать еще раз
+          } else {
+            // Другая ошибка - логируем, но не блокируем пользователя
+            clientLogger.warn('⚠️ Ошибка при проверке профиля для перепрохождения:', {
+              message: err?.message,
+              status: err?.status,
+              name: err?.name,
+            });
+            // Не очищаем флаги при неизвестной ошибке - возможно, это временная проблема
           }
-        };
-        
-        checkProfileAndShowRetake().catch(() => {});
-      }
+        }
+      };
+      
+      checkRetakeFlags().catch(() => {});
     }
   }, []);
   
@@ -305,114 +304,127 @@ export default function QuizPage() {
           // Если флаги перепрохождения установлены, но профиля нет - очищаем флаги
           // Это может быть остаточный флаг от предыдущей сессии
           if (isRetakingFromStorage || fullRetakeFromHome) {
-            const profile = await api.getCurrentProfile();
-            if (!profile || !profile.id) {
-              // Профиля нет, но флаги перепрохождения установлены - это ошибка
-              clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
-              const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
-              await setIsRetakingQuiz(false);
-              await setFullRetakeFromHome(false);
-              // Продолжаем как новый пользователь
-              return;
-            }
-            // Профиль есть - это нормальное перепрохождение
-          } catch (err: any) {
-            // Профиля нет - очищаем флаги
-            const isNotFound = err?.status === 404 || 
-                              err?.message?.includes('404') || 
-                              err?.message?.includes('No profile') ||
-                              err?.message?.includes('Profile not found');
-            if (isNotFound) {
-              clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
-              try {
+            try {
+              const profile = await api.getCurrentProfile();
+              if (!profile || !profile.id) {
+                // Профиля нет, но флаги перепрохождения установлены - это ошибка
+                clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
                 const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
                 await setIsRetakingQuiz(false);
                 await setFullRetakeFromHome(false);
-              } catch (clearError) {
-                // ignore
+                // Продолжаем как новый пользователь
+                return;
+              }
+              // Профиль есть - это нормальное перепрохождение
+            } catch (profileErr: any) {
+              // Профиля нет - очищаем флаги
+              const isNotFound = profileErr?.status === 404 || 
+                                profileErr?.message?.includes('404') || 
+                                profileErr?.message?.includes('No profile') ||
+                                profileErr?.message?.includes('Profile not found');
+              if (isNotFound) {
+                clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
+                try {
+                  const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+                  await setIsRetakingQuiz(false);
+                  await setFullRetakeFromHome(false);
+                } catch (clearError) {
+                  // ignore
+                }
               }
             }
           }
-        };
-        checkProfile().catch(() => {});
-      } else {
-        // Флагов перепрохождения нет - проверяем профиль и завершенность анкеты
-        // ИСПРАВЛЕНО: Проверяем не только наличие профиля, но и завершенность анкеты
-        // ВАЖНО: Эта проверка выполняется только один раз при первой инициализации
-        // Если пользователь уже на инфо-экране или в процессе прохождения анкеты, не проверяем
-        const checkProfileAndRedirect = async () => {
-          // ИСПРАВЛЕНО: Не выполняем проверку, если пользователь находится на инфо-экране
-          // Это предотвращает редирект во время показа инфо-экранов после последнего вопроса
-          // ВАЖНО: Также проверяем флаг quiz_just_submitted еще раз (на случай, если он был установлен после начала проверки)
-          const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
-          if (justSubmittedCheck) {
-            clientLogger.log('✅ Флаг quiz_just_submitted обнаружен во время проверки профиля - прерываем проверку');
-            if (typeof window !== 'undefined') {
-              sessionStorage.removeItem('quiz_just_submitted');
-              window.location.replace('/plan');
-            }
-            return;
+        } catch (err: any) {
+          // Ошибка при проверке флагов - логируем, но не блокируем
+          clientLogger.warn('⚠️ Ошибка при проверке флагов перепрохождения:', err?.message);
+        }
+      };
+      
+      checkRetakeFlags().catch(() => {});
+      
+      // ИСПРАВЛЕНО: Проверяем профиль и завершенность анкеты
+      // ИСПРАВЛЕНО: Проверяем не только наличие профиля, но и завершенность анкеты
+      // ВАЖНО: Эта проверка выполняется только один раз при первой инициализации
+      // Если пользователь уже на инфо-экране или в процессе прохождения анкеты, не проверяем
+      const checkProfileAndRedirect = async () => {
+        // ИСПРАВЛЕНО: Не выполняем проверку, если пользователь находится на инфо-экране
+        // Это предотвращает редирект во время показа инфо-экранов после последнего вопроса
+        // ВАЖНО: Также проверяем флаг quiz_just_submitted еще раз (на случай, если он был установлен после начала проверки)
+        const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+        if (justSubmittedCheck) {
+          clientLogger.log('✅ Флаг quiz_just_submitted обнаружен во время проверки профиля - прерываем проверку');
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('quiz_just_submitted');
+            window.location.replace('/plan');
           }
-          
-          if (pendingInfoScreen || currentQuestionIndex >= allQuestions.length) {
-            clientLogger.log('⏸️ Пропускаем проверку профиля: пользователь на инфо-экране или анкета завершена', {
-              hasPendingInfoScreen: !!pendingInfoScreen,
-              currentQuestionIndex,
-              allQuestionsLength: allQuestions.length,
-            });
-            return;
-          }
-          
-          try {
-            const profile = await api.getCurrentProfile();
-            if (profile && (profile as any).id) {
-              // Профиль существует - проверяем, завершена ли анкета
-              try {
-                const response = await api.getQuizProgress();
-                const progress = response?.progress;
-                const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
-                // ИСПРАВЛЕНО: isCompleted находится в корне ответа, а не в progress
-                const isCompleted = response?.isCompleted === true;
-                
-                // Если анкета завершена и нет флага перепрохождения - редиректим на /plan
-                if (isCompleted && !isRetakingFromStorage && !fullRetakeFromHome) {
-                  clientLogger.log('✅ Профиль существует и анкета завершена - редиректим на /plan', {
-                    hasAnswers,
-                    isCompleted,
-                  });
-                  initCompletedRef.current = true;
-                  setLoading(false);
-                  window.location.replace('/plan');
-                  return;
-                }
-              } catch (progressErr) {
-                // Если не удалось проверить прогресс, но профиль есть - все равно редиректим
-                // Это может быть сразу после отправки ответов, когда прогресс еще не обновился
-                clientLogger.log('✅ Профиль существует (прогресс не проверен) - редиректим на /plan');
+          return;
+        }
+        
+        if (pendingInfoScreen || currentQuestionIndex >= allQuestions.length) {
+          clientLogger.log('⏸️ Пропускаем проверку профиля: пользователь на инфо-экране или анкета завершена', {
+            hasPendingInfoScreen: !!pendingInfoScreen,
+            currentQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+          });
+          return;
+        }
+        
+        try {
+          const profile = await api.getCurrentProfile();
+          if (profile && (profile as any).id) {
+            // Профиль существует - проверяем, завершена ли анкета
+            try {
+              const response = await api.getQuizProgress();
+              const progress = response?.progress;
+              const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
+              // ИСПРАВЛЕНО: isCompleted находится в корне ответа, а не в progress
+              const isCompleted = response?.isCompleted === true;
+              
+              // Если анкета завершена и нет флага перепрохождения - редиректим на /plan
+              if (
+                isCompleted &&
+                !window.sessionStorage.getItem('quiz_retake') &&
+                !window.sessionStorage.getItem('quiz_full_retake_from_home')
+              ) {
+                clientLogger.log('✅ Профиль существует и анкета завершена - редиректим на /plan', {
+                  hasAnswers,
+                  isCompleted,
+                });
                 initCompletedRef.current = true;
                 setLoading(false);
                 window.location.replace('/plan');
                 return;
               }
-            }
-          } catch (err: any) {
-            // Профиля нет - это нормально, продолжаем инициализацию
-            const isNotFound = err?.status === 404 || 
-                              err?.message?.includes('404') || 
-                              err?.message?.includes('No profile') ||
-                              err?.message?.includes('Profile not found');
-            if (!isNotFound) {
-              clientLogger.warn('⚠️ Ошибка при проверке профиля:', err);
+            } catch (progressErr) {
+              // Если не удалось проверить прогресс, но профиль есть - все равно редиректим
+              // Это может быть сразу после отправки ответов, когда прогресс еще не обновился
+              clientLogger.log('✅ Профиль существует (прогресс не проверен) - редиректим на /plan');
+              initCompletedRef.current = true;
+              setLoading(false);
+              window.location.replace('/plan');
+              return;
             }
           }
-        };
-        // Выполняем проверку асинхронно, но не блокируем инициализацию
-        checkProfileAndRedirect().catch(() => {});
-      }
+        } catch (err: any) {
+          // Профиля нет - это нормально, продолжаем инициализацию
+          const isNotFound = err?.status === 404 || 
+                            err?.message?.includes('404') || 
+                            err?.message?.includes('No profile') ||
+                            err?.message?.includes('Profile not found');
+          if (!isNotFound) {
+            clientLogger.warn('⚠️ Ошибка при проверке профиля:', err);
+          }
+        }
+      };
+      
+      // Выполняем проверку асинхронно, но не блокируем инициализацию
+      checkProfileAndRedirect().catch(() => {});
     }
-    
-    // ИСПРАВЛЕНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
-    // не выполняем повторную инициализацию
+  }, []);
+  
+  // ИСПРАВЛЕНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
+  // не выполняем повторную инициализацию
+  useEffect(() => {
     // ВАЖНО: НЕ блокируем, если показывается pendingInfoScreen - это нормальный ход анкеты
     // ВАЖНО: Также НЕ блокируем, если currentQuestionIndex >= allQuestions.length (анкета завершена, ожидается автоотправка)
     if (initCompletedRef.current && !isStartingOverRef.current && !pendingInfoScreen && 
@@ -818,12 +830,11 @@ export default function QuizPage() {
         setIsStartingOver(false);
       }
     } catch (initErr: any) {
-        console.error('❌ Error in init function:', initErr?.message);
-        setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
-        setLoading(false);
-        initInProgressRef.current = false;
-      }
-    };
+      console.error('❌ Error in init function:', initErr?.message);
+      setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
+      setLoading(false);
+      initInProgressRef.current = false;
+    }
     
     // ВАЖНО: Добавляем таймаут для init(), чтобы гарантировать, что loading всегда будет false
     const initTimeout = setTimeout(() => {
@@ -855,12 +866,13 @@ export default function QuizPage() {
         saveProgressTimeoutRef.current = null;
       }
       isMountedRef.current = false;
-    };
-  }, []);
-
-  // Загружаем предыдущие ответы при повторном прохождении анкеты
-  // Этот useEffect срабатывает после того, как questionnaire загружен и isRetakingQuiz установлен
-  useEffect(() => {
+    }
+      }
+      isMountedRef.current = false;
+      // (Было забыто вернуть закрывающую скобку для useEffect)
+      // Корректно завершаем useEffect и начинаем следующий useEffect
+      // ⬆️ Закрывающая скобка и return для предыдущего useEffect были добавлены выше
+      // ⬇️ Новый useEffect начинается здесь
     if (isRetakingQuiz && questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       clientLogger.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
       // Вызываем функцию напрямую, не добавляя в зависимости, чтобы избежать проблем
@@ -2189,12 +2201,11 @@ export default function QuizPage() {
             answersToSubmit = progressResponse.progress.answers;
             if (isMountedRef.current) {
               setAnswers(progressResponse.progress.answers);
-              }
-              clientLogger.log('✅ Загружены ответы из localStorage:', Object.keys(savedProgress.answers).length);
             }
+            clientLogger.log('✅ Загружены ответы из БД:', Object.keys(progressResponse.progress.answers).length);
           }
         } catch (e) {
-          console.error('❌ Ошибка загрузки из localStorage:', e);
+          console.error('❌ Ошибка загрузки из БД:', e);
         }
       }
 
@@ -4091,7 +4102,7 @@ export default function QuizPage() {
       router.push(`/quiz/update/${topic.id}`);
     };
 
-    const handleFullRetake = () => {
+    const handleFullRetake = async () => {
       // Для полного перепрохождения нужна отдельная оплата 99₽
       if (!hasFullRetakePayment) {
         clientLogger.log('⚠️ Full retake payment not completed, showing payment gate');

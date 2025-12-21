@@ -414,6 +414,12 @@ export async function generate28DayPlan(
     mainGoals: finalMainGoals.length > 0 ? finalMainGoals : ['general'],
     sensitivityLevel: (profile.sensitivityLevel || 'low') as NonNullable<SkinProfile["sensitivity"]>,
     routineComplexity,
+    // ДОБАВЛЕНО: Передаем дополнительные факторы для персонализации
+    acneLevel: profile.acneLevel ?? null,
+    dehydrationLevel: profile.dehydrationLevel ?? null,
+    rosaceaRisk: profile.rosaceaRisk ?? null,
+    pigmentationRisk: profile.pigmentationRisk ?? null,
+    ageGroup: profile.ageGroup ?? null,
   };
 
   const carePlanTemplate = selectCarePlanTemplate(carePlanProfileInput);
