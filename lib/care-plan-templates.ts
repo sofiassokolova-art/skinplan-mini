@@ -13,6 +13,10 @@ import type { SkinProfile } from './skinprofile-types';
 
 export type RoutineComplexity = 'minimal' | 'medium' | 'maximal';
 
+// ИСПРАВЛЕНО: Добавлены union-типы для безопасности типизации
+export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
+export type AgeGroup = '18_25' | '26_30' | '31_40' | '41_50' | '50_plus';
+
 export type CarePlanTemplate = {
   id: string;
   conditions: {
@@ -23,9 +27,9 @@ export type CarePlanTemplate = {
     // ДОБАВЛЕНО: Дополнительные факторы для персонализации
     acneLevels?: number[]; // [0, 1, 2, 3, 4, 5] - уровни акне
     dehydrationLevels?: number[]; // [0, 1, 2, 3, 4, 5] - уровни обезвоженности
-    rosaceaRisks?: string[]; // ['none', 'low', 'medium', 'high']
-    pigmentationRisks?: string[]; // ['none', 'low', 'medium', 'high']
-    ageGroups?: string[]; // ['18_25', '26_30', '31_40', '41_50', '50_plus']
+    rosaceaRisks?: RiskLevel[]; // ИСПРАВЛЕНО: Используем union-тип
+    pigmentationRisks?: RiskLevel[]; // ИСПРАВЛЕНО: Используем union-тип
+    ageGroups?: AgeGroup[]; // ИСПРАВЛЕНО: Используем union-тип
   };
   morning: StepCategory[];
   evening: StepCategory[];
@@ -40,9 +44,9 @@ export type CarePlanProfileInput = {
   // ДОБАВЛЕНО: Дополнительные факторы для персонализации
   acneLevel?: number | null;
   dehydrationLevel?: number | null;
-  rosaceaRisk?: string | null;
-  pigmentationRisk?: string | null;
-  ageGroup?: string | null;
+  rosaceaRisk?: RiskLevel | null; // ИСПРАВЛЕНО: Используем union-тип
+  pigmentationRisk?: RiskLevel | null; // ИСПРАВЛЕНО: Используем union-тип
+  ageGroup?: AgeGroup | null; // ИСПРАВЛЕНО: Используем union-тип
 };
 
 export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
@@ -103,7 +107,7 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       routineComplexity: ['medium', 'maximal'],
     },
     morning: ['cleanser_balancing', 'serum_niacinamide', 'treatment_acne_bpo', 'moisturizer_balancing', 'spf_50_oily'],
-    evening: ['cleanser_balancing', 'treatment_acne_azelaic', 'treatment_exfoliant_strong', 'moisturizer_balancing'],
+    evening: ['cleanser_balancing', 'treatment_acne_azelaic', 'moisturizer_balancing'],
     weekly: ['mask_clay', 'treatment_exfoliant_strong'],
   },
   {
@@ -124,7 +128,7 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       dehydrationLevels: [3, 4, 5], // Высокий уровень обезвоженности
       routineComplexity: ['medium', 'maximal'],
     },
-    morning: ['cleanser_gentle', 'serum_hydrating', 'serum_hydrating', 'moisturizer_barrier', 'spf_50_face'],
+    morning: ['cleanser_gentle', 'toner_hydrating', 'serum_hydrating', 'moisturizer_barrier', 'spf_50_face'],
     evening: ['cleanser_gentle', 'serum_hydrating', 'moisturizer_barrier', 'balm_barrier_repair'],
     weekly: ['mask_hydrating', 'mask_soothing'],
   },
@@ -147,7 +151,7 @@ export const CARE_PLAN_TEMPLATES: CarePlanTemplate[] = [
       routineComplexity: ['medium', 'maximal'],
     },
     morning: ['cleanser_gentle', 'serum_vitc', 'serum_niacinamide', 'spf_50_face'],
-    evening: ['cleanser_gentle', 'treatment_pigmentation', 'treatment_exfoliant_mild', 'moisturizer_light'],
+    evening: ['cleanser_gentle', 'treatment_pigmentation', 'moisturizer_light'],
     weekly: ['mask_hydrating', 'treatment_exfoliant_mild'],
   },
   {
@@ -191,37 +195,31 @@ export function selectCarePlanTemplate(
 ): CarePlanTemplate {
   const { skinType, mainGoals, sensitivityLevel, routineComplexity, acneLevel, dehydrationLevel, rosaceaRisk, pigmentationRisk, ageGroup } = profile;
 
-  // ИСПРАВЛЕНО: Нормализуем тип кожи для сравнения с шаблонами
-  // Шаблоны могут использовать "combo", "combination_dry", "combination_oily"
-  // Нужно проверить все варианты
-  const normalizeForTemplateMatch = (dbSkinType: NonNullable<SkinProfile["skinType"]>): string[] => {
-    if (dbSkinType === 'combination_dry' || dbSkinType === 'combination_oily') {
-      return [dbSkinType];
-    }
-    return [dbSkinType];
-  };
+  // ИСПРАВЛЕНО: Обработка 'general' в mainGoals - не блокируем подбор шаблонов
+  // Если mainGoals содержит только 'general', считаем это нейтральным и не фильтруем по mainGoals
+  const effectiveMainGoals = mainGoals.filter((g): g is Exclude<GoalKey, 'general'> => g !== 'general');
+  const hasOnlyGeneral = mainGoals.length > 0 && effectiveMainGoals.length === 0;
 
+  // ИСПРАВЛЕНО: Используем matchesTemplate как первый фильтр для базовых условий
   const matchesTemplate = (tpl: CarePlanTemplate): boolean => {
     const cond = tpl.conditions;
 
     if (cond.skinTypes && cond.skinTypes.length > 0) {
-      // ИСПРАВЛЕНО: Проверяем все нормализованные варианты типа кожи
-      if (!skinType) return false; // Если тип кожи не указан, не подходит
-      const normalizedVariants = normalizeForTemplateMatch(skinType);
-      const hasMatch = normalizedVariants.some(variant => cond.skinTypes!.includes(variant as NonNullable<SkinProfile["skinType"]>));
-      if (!hasMatch) return false;
+      if (!skinType) return false;
+      if (!cond.skinTypes.includes(skinType)) return false;
     }
 
-    if (cond.mainGoals && cond.mainGoals.length > 0) {
-      const hasAnyGoal = cond.mainGoals.some((g) => mainGoals.includes(g));
-      if (!hasAnyGoal) return false;
+    // ИСПРАВЛЕНО: Если mainGoals содержит только 'general', не фильтруем по mainGoals
+    if (cond.mainGoals && cond.mainGoals.length > 0 && !hasOnlyGeneral) {
+      // Фильтруем 'general' из cond.mainGoals для сравнения
+      const templateGoals = cond.mainGoals.filter((g): g is Exclude<GoalKey, 'general'> => g !== 'general');
+      if (templateGoals.length > 0) {
+        const hasAnyGoal = templateGoals.some((g) => effectiveMainGoals.includes(g));
+        if (!hasAnyGoal) return false;
+      }
     }
 
     if (cond.sensitivityLevels && cond.sensitivityLevels.length > 0) {
-      // ИСПРАВЛЕНО: Проверяем соответствие уровня чувствительности
-      // В БД может быть "high", но в шаблонах может быть "very_high"
-      // Если в шаблоне есть "very_high", а в БД "high", это не совпадает
-      // Но если в шаблоне есть "high", а в БД "high", это совпадает
       if (!sensitivityLevel || !cond.sensitivityLevels.includes(sensitivityLevel)) return false;
     }
 
@@ -257,70 +255,71 @@ export function selectCarePlanTemplate(
     return true;
   };
 
-  // ДОБАВЛЕНО: Система скоринга для выбора наиболее подходящего шаблона
-  // Вместо простого поиска первого совпадения, оцениваем все шаблоны по релевантности
+  // ИСПРАВЛЕНО: Используем matchesTemplate как первый фильтр, затем scoring как tie-breaker
+  // Сначала фильтруем шаблоны по базовым условиям
+  const matchingTemplates = CARE_PLAN_TEMPLATES.filter(matchesTemplate);
+
+  if (matchingTemplates.length === 0) {
+    // Если ничего не подошло, возвращаем дефолтный шаблон
+    return CARE_PLAN_TEMPLATES.find((tpl) => tpl.id === 'default_balanced')!;
+  }
+
+  if (matchingTemplates.length === 1) {
+    // Если подошел только один шаблон, возвращаем его
+    return matchingTemplates[0];
+  }
+
+  // ИСПРАВЛЕНО: Система скоринга только для бонусов (без штрафов)
+  // Используем scoring как tie-breaker между подходящими шаблонами
   const scoreTemplate = (tpl: CarePlanTemplate): number => {
     let score = 0;
     const cond = tpl.conditions;
 
-    // Базовые условия (обязательные для совпадения)
-    if (cond.skinTypes && cond.skinTypes.length > 0) {
-      if (!skinType) return -1;
-      const normalizedVariants = normalizeForTemplateMatch(skinType);
-      if (!normalizedVariants.some(variant => cond.skinTypes!.includes(variant as NonNullable<SkinProfile["skinType"]>))) {
-        return -1; // Не подходит
-      }
-      score += 10; // Высокий приоритет
-    }
-
-    if (cond.mainGoals && cond.mainGoals.length > 0) {
-      const hasAnyGoal = cond.mainGoals.some((g) => mainGoals.includes(g));
-      if (!hasAnyGoal) return -1; // Не подходит
+    // Базовые условия дают базовый балл
+    if (cond.skinTypes && cond.skinTypes.length > 0 && skinType) {
       score += 10;
     }
 
-    if (cond.sensitivityLevels && cond.sensitivityLevels.length > 0) {
-      if (!sensitivityLevel || !cond.sensitivityLevels.includes(sensitivityLevel)) return -1;
+    if (cond.mainGoals && cond.mainGoals.length > 0 && !hasOnlyGeneral) {
+      // Фильтруем 'general' из cond.mainGoals для сравнения
+      const templateGoals = cond.mainGoals.filter((g): g is Exclude<GoalKey, 'general'> => g !== 'general');
+      if (templateGoals.length > 0) {
+        const hasAnyGoal = templateGoals.some((g) => effectiveMainGoals.includes(g));
+        if (hasAnyGoal) score += 10;
+      }
+    }
+
+    if (cond.sensitivityLevels && cond.sensitivityLevels.length > 0 && sensitivityLevel) {
       score += 8;
     }
 
     if (cond.routineComplexity && cond.routineComplexity.length > 0) {
-      if (!cond.routineComplexity.includes(routineComplexity)) return -1;
       score += 5;
     }
 
-    // ДОБАВЛЕНО: Дополнительные факторы увеличивают релевантность
+    // ИСПРАВЛЕНО: Только бонусы за совпадение дополнительных факторов, без штрафов
     if (cond.acneLevels && cond.acneLevels.length > 0) {
       if (acneLevel !== null && acneLevel !== undefined && cond.acneLevels.includes(acneLevel)) {
-        score += 15; // Высокий приоритет для специфичных условий
+        score += 15; // Высокий бонус за специфичное совпадение
       }
-    } else if (acneLevel !== null && acneLevel !== undefined && acneLevel >= 3) {
-      // Если шаблон не учитывает акне, но у пользователя высокий уровень - снижаем приоритет
-      score -= 5;
     }
 
     if (cond.dehydrationLevels && cond.dehydrationLevels.length > 0) {
       if (dehydrationLevel !== null && dehydrationLevel !== undefined && cond.dehydrationLevels.includes(dehydrationLevel)) {
         score += 12;
       }
-    } else if (dehydrationLevel !== null && dehydrationLevel !== undefined && dehydrationLevel >= 3) {
-      score -= 5;
     }
 
     if (cond.rosaceaRisks && cond.rosaceaRisks.length > 0) {
       if (rosaceaRisk && cond.rosaceaRisks.includes(rosaceaRisk)) {
         score += 10;
       }
-    } else if (rosaceaRisk && (rosaceaRisk === 'medium' || rosaceaRisk === 'high')) {
-      score -= 3;
     }
 
     if (cond.pigmentationRisks && cond.pigmentationRisks.length > 0) {
       if (pigmentationRisk && cond.pigmentationRisks.includes(pigmentationRisk)) {
         score += 10;
       }
-    } else if (pigmentationRisk && (pigmentationRisk === 'medium' || pigmentationRisk === 'high')) {
-      score -= 3;
     }
 
     if (cond.ageGroups && cond.ageGroups.length > 0) {
@@ -332,19 +331,14 @@ export function selectCarePlanTemplate(
     return score;
   };
 
-  // Сортируем шаблоны по релевантности
-  const scoredTemplates = CARE_PLAN_TEMPLATES.map(tpl => ({
+  // Сортируем подходящие шаблоны по релевантности
+  const scoredTemplates = matchingTemplates.map(tpl => ({
     template: tpl,
     score: scoreTemplate(tpl),
-  })).filter(item => item.score >= 0) // Убираем неподходящие
-    .sort((a, b) => b.score - a.score); // Сортируем по убыванию релевантности
+  })).sort((a, b) => b.score - a.score); // Сортируем по убыванию релевантности
 
   // Выбираем наиболее релевантный шаблон
-  const matched = scoredTemplates.length > 0 
-    ? scoredTemplates[0].template 
-    : CARE_PLAN_TEMPLATES.find((tpl) => tpl.id === 'default_balanced')!;
-
-  return matched;
+  return scoredTemplates[0].template;
 }
 
 
