@@ -23,7 +23,6 @@ function LayoutContent({
   const searchParams = useSearchParams();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [isCheckingProfile, setIsCheckingProfile] = useState(false); // Флаг: идет ли проверка профиля на главной странице
 
   useEffect(() => {
     try {
@@ -50,46 +49,6 @@ function LayoutContent({
     }
   }, [initData, isAuthorized, initialize]);
 
-  // ИСПРАВЛЕНО: Проверка профиля теперь делается на бэкенде
-  // На главной странице сразу редиректим на /quiz для новых пользователей
-  // ИСПРАВЛЕНО: Навигация показывается по умолчанию, скрывается только для новых пользователей
-  useEffect(() => {
-    if (pathname === '/') {
-      // ИСПРАВЛЕНО: Показываем навигацию по умолчанию, пока идет проверка
-      setIsCheckingProfile(false);
-      
-      // Проверяем наличие plan_progress в БД
-      // Если его нет - значит пользователь новый, скрываем навигацию (будет редирект на /quiz)
-      const checkPlanProgress = async () => {
-        try {
-          const { getHasPlanProgress } = await import('@/lib/user-preferences');
-          const hasPlanProgress = await getHasPlanProgress();
-          if (!hasPlanProgress) {
-            // Новый пользователь - скрываем навигацию (будет редирект на /quiz)
-            setIsCheckingProfile(true);
-          } else {
-            // Пользователь не новый - показываем навигацию
-            setIsCheckingProfile(false);
-          }
-        } catch {
-          // ИСПРАВЛЕНО: При ошибке показываем навигацию (лучше показать, чем скрыть)
-          setIsCheckingProfile(false);
-        }
-      };
-      
-      // ИСПРАВЛЕНО: Таймаут на случай, если проверка затягивается - показываем навигацию через 1 секунду
-      const timeoutId = setTimeout(() => {
-        setIsCheckingProfile(false);
-      }, 1000);
-      
-      checkPlanProgress().finally(() => {
-        clearTimeout(timeoutId);
-      });
-    } else {
-      setIsCheckingProfile(false);
-    }
-  }, [pathname]);
-  
   // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
   /* useEffect(() => {
     if (pathname === '/' && initData) {
@@ -131,14 +90,13 @@ function LayoutContent({
   const planState = searchParams?.get('state');
   const isPlanGenerating = pathname === '/plan' && planState === 'generating';
   
-  // Скрываем навигацию на определенных страницах, на экране прогресса и во время проверки профиля на главной
+  // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
   const hideNav = pathname === '/quiz' || 
                   pathname.startsWith('/quiz/') || 
                   pathname === '/loading' ||
                   pathname.startsWith('/loading/') ||
                   isResumeScreen ||
-                  isPlanGenerating ||
-                  (pathname === '/' && isCheckingProfile); // Скрываем навигацию на главной во время проверки профиля
+                  isPlanGenerating;
   
   // Скрываем логотип на главной странице, на странице незавершенной анкеты, на странице анкеты (там логотип на фоне), и на страницах плана, избранного и профиля (там логотип встроен в страницу)
   const showLogo = pathname !== '/' && 
