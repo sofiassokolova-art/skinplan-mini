@@ -1,0 +1,94 @@
+
+> skinplan-mini@0.0.0 build
+> next build --webpack
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/sofasokolova/package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * /Users/sofasokolova/skinplan-mini/package-lock.json
+
+   ▲ Next.js 16.0.10 (webpack)
+   - Environments: .env.local, .env
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+Failed to compile.
+
+./app/(miniapp)/quiz/page.tsx
+Error:   [31mx[0m 'const' declarations must be initialized
+     ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:866:1]
+ [2m863[0m |       }
+ [2m864[0m |       isMountedRef.current = false;
+ [2m865[0m |     };
+ [2m866[0m |   }, []);
+     : [35;1m     ^^[0m
+ [2m867[0m | 
+ [2m868[0m |   // Загружаем предыдущие ответы при повторном прохождении анкеты
+ [2m869[0m |   // Этот useEffect срабатывает после того, как questionnaire загружен и isRetakingQuiz установлен
+     `----
+  [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:866:1]
+ [2m863[0m |       }
+ [2m864[0m |       isMountedRef.current = false;
+ [2m865[0m |     };
+ [2m866[0m |   }, []);
+     : [35;1m       ^[0m
+ [2m867[0m | 
+ [2m868[0m |   // Загружаем предыдущие ответы при повторном прохождении анкеты
+ [2m869[0m |   // Этот useEffect срабатывает после того, как questionnaire загружен и isRetakingQuiz установлен
+     `----
+  [31mx[0m Expected a semicolon
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:2203:1]
+ [2m2200[0m |               clientLogger.log('✅ Загружены ответы из localStorage:', Object.keys(savedProgress.answers).length);
+ [2m2201[0m |             }
+ [2m2202[0m |           }
+ [2m2203[0m |         } catch (e) {
+      : [35;1m        ^[0m
+ [2m2204[0m |           console.error('❌ Ошибка загрузки из localStorage:', e);
+ [2m2205[0m |         }
+ [2m2206[0m |       }
+      `----
+  [31mx[0m Expected a semicolon
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:2203:1]
+ [2m2200[0m |               clientLogger.log('✅ Загружены ответы из localStorage:', Object.keys(savedProgress.answers).length);
+ [2m2201[0m |             }
+ [2m2202[0m |           }
+ [2m2203[0m |         } catch (e) {
+      : [35;1m          ^^^^^[0m
+ [2m2204[0m |           console.error('❌ Ошибка загрузки из localStorage:', e);
+ [2m2205[0m |         }
+ [2m2206[0m |       }
+      `----
+  [31mx[0m Expected a semicolon
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:2208:1]
+ [2m2205[0m |         }
+ [2m2206[0m |       }
+ [2m2207[0m | 
+ [2m2208[0m |       if (Object.keys(answersToSubmit).length === 0) {
+      : [35;1m      ^[0m
+ [2m2209[0m |         console.error('❌ Нет ответов для отправки');
+ [2m2210[0m |         clientLogger.error('❌ Нет ответов для отправки - блокируем вызов API', {
+ [2m2211[0m |           answersToSubmitKeys: Object.keys(answersToSubmit),
+      `----
+  [31mx[0m Expected ',', got 'catch'
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:2932:1]
+ [2m2929[0m |           console.error('❌ Ошибка при редиректе (SSR):', redirectError);
+ [2m2930[0m |         }
+ [2m2931[0m |       }
+ [2m2932[0m |     } catch (err: any) {
+      : [35;1m      ^^^^^[0m
+ [2m2933[0m |       // ВАЖНО: Все операции должны быть безопасными, чтобы не выбрасывать новые ошибки
+ [2m2934[0m |       // Закрываем лоадер финализации при любой ошибке
+ [2m2935[0m |       if (isMountedRef.current) {
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./app/(miniapp)/quiz/page.tsx
+
+
+> Build failed because of webpack errors

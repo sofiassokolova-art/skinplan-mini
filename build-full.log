@@ -1,0 +1,112 @@
+
+> skinplan-mini@0.0.0 build
+> next build --webpack
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/sofasokolova/package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * /Users/sofasokolova/skinplan-mini/package-lock.json
+
+   ▲ Next.js 16.0.10 (webpack)
+   - Environments: .env.local, .env
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+Failed to compile.
+
+./app/(miniapp)/quiz/page.tsx
+Error:   [31mx[0m 'const' declarations must be initialized
+     ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:866:1]
+ [2m863[0m |       }
+ [2m864[0m |       isMountedRef.current = false;
+ [2m865[0m |     };
+ [2m866[0m |   }, []);
+     : [35;1m     ^^[0m
+ [2m867[0m | 
+ [2m868[0m |   // Загружаем предыдущие ответы при повторном прохождении анкеты
+ [2m869[0m |   // Этот useEffect срабатывает после того, как questionnaire загружен и isRetakingQuiz установлен
+     `----
+  [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:866:1]
+ [2m863[0m |       }
+ [2m864[0m |       isMountedRef.current = false;
+ [2m865[0m |     };
+ [2m866[0m |   }, []);
+     : [35;1m       ^[0m
+ [2m867[0m | 
+ [2m868[0m |   // Загружаем предыдущие ответы при повторном прохождении анкеты
+ [2m869[0m |   // Этот useEffect срабатывает после того, как questionnaire загружен и isRetakingQuiz установлен
+     `----
+  [31mx[0m await isn't allowed in non-async function
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:4112:1]
+ [2m4109[0m | 
+ [2m4110[0m |       // Сбрасываем флаг оплаты после использования в БД
+ [2m4111[0m |       try {
+ [2m4112[0m |         const { setPaymentFullRetakeCompleted } = await import('@/lib/user-preferences');
+      : [35;1m                                                  ^^^^^[0m
+ [2m4113[0m |         await setPaymentFullRetakeCompleted(false);
+ [2m4114[0m |         clientLogger.log('🔄 Full retake payment flag cleared');
+ [2m4115[0m |       } catch (err) {
+      `----
+  [31mx[0m await isn't allowed in non-async function
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:4113:1]
+ [2m4110[0m |       // Сбрасываем флаг оплаты после использования в БД
+ [2m4111[0m |       try {
+ [2m4112[0m |         const { setPaymentFullRetakeCompleted } = await import('@/lib/user-preferences');
+ [2m4113[0m |         await setPaymentFullRetakeCompleted(false);
+      : [35;1m        ^^^^^[0m
+ [2m4114[0m |         clientLogger.log('🔄 Full retake payment flag cleared');
+ [2m4115[0m |       } catch (err) {
+ [2m4116[0m |         clientLogger.warn('Failed to clear full retake payment flag:', err);
+      `----
+  [31mx[0m await isn't allowed in non-async function
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:4143:1]
+ [2m4140[0m | 
+ [2m4141[0m |       // ИСПРАВЛЕНО: Очищаем флаги перепрохождения в БД
+ [2m4142[0m |       try {
+ [2m4143[0m |         const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+      : [35;1m                                                             ^^^^^[0m
+ [2m4144[0m |         await setIsRetakingQuiz(false);
+ [2m4145[0m |         await setFullRetakeFromHome(false);
+ [2m4146[0m |       } catch (err) {
+      `----
+  [31mx[0m await isn't allowed in non-async function
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:4144:1]
+ [2m4141[0m |       // ИСПРАВЛЕНО: Очищаем флаги перепрохождения в БД
+ [2m4142[0m |       try {
+ [2m4143[0m |         const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+ [2m4144[0m |         await setIsRetakingQuiz(false);
+      : [35;1m        ^^^^^[0m
+ [2m4145[0m |         await setFullRetakeFromHome(false);
+ [2m4146[0m |       } catch (err) {
+ [2m4147[0m |         clientLogger.warn('Failed to clear retake flags:', err);
+      `----
+  [31mx[0m await isn't allowed in non-async function
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:4145:1]
+ [2m4142[0m |       try {
+ [2m4143[0m |         const { setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
+ [2m4144[0m |         await setIsRetakingQuiz(false);
+ [2m4145[0m |         await setFullRetakeFromHome(false);
+      : [35;1m        ^^^^^[0m
+ [2m4146[0m |       } catch (err) {
+ [2m4147[0m |         clientLogger.warn('Failed to clear retake flags:', err);
+ [2m4148[0m |       }
+      `----
+  [31mx[0m Expected ',', got '<eof>'
+      ,-[[36;1;4m/Users/sofasokolova/skinplan-mini/app/(miniapp)/quiz/page.tsx[0m:6658:1]
+ [2m6655[0m |       )}
+ [2m6656[0m |     </div>
+ [2m6657[0m |   );
+ [2m6658[0m | }
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./app/(miniapp)/quiz/page.tsx
+
+
+> Build failed because of webpack errors
