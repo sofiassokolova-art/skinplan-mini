@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { buildSkinProfileFromAnswers } from '@/lib/skinprofile-rules-engine';
-import { selectCarePlanTemplate, type CarePlanProfileInput, type RoutineComplexity } from '@/lib/care-plan-templates';
+import { selectCarePlanTemplate, type CarePlanProfileInput, type RoutineComplexity, type RiskLevel, type AgeGroup } from '@/lib/care-plan-templates';
 import type { SkinProfile } from '@/lib/skinprofile-types';
 import { getQuestionCodesForTopic, topicRequiresPlanRebuild, type QuestionTopicId } from '@/lib/questionnaire-topics';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
@@ -197,6 +197,38 @@ export async function POST(request: NextRequest) {
           ? 'medium'
           : (newProfile.routineComplexity as RoutineComplexity);
         
+        // ИСПРАВЛЕНО: Нормализуем rosaceaRisk и pigmentationRisk в RiskLevel
+        const normalizeRiskLevel = (risk: string | null | undefined): RiskLevel | null => {
+          if (!risk) return null;
+          const riskLower = risk.toLowerCase();
+          if (riskLower === 'none' || riskLower === 'low' || riskLower === 'medium' || riskLower === 'high') {
+            return riskLower as RiskLevel;
+          }
+          // Если значение не соответствует RiskLevel, возвращаем null
+          return null;
+        };
+        
+        // ИСПРАВЛЕНО: Нормализуем ageGroup в AgeGroup
+        const normalizeAgeGroup = (age: string | null | undefined): AgeGroup | null => {
+          if (!age) return null;
+          // Маппинг из формата БД в формат AgeGroup
+          const ageMap: Record<string, AgeGroup> = {
+            '18_24': '18_25',
+            '25_34': '26_30',
+            '35_44': '31_40',
+            '45_54': '41_50',
+            '55plus': '50_plus',
+          };
+          if (ageMap[age]) {
+            return ageMap[age];
+          }
+          // Если уже в правильном формате
+          if (['18_25', '26_30', '31_40', '41_50', '50_plus'].includes(age)) {
+            return age as AgeGroup;
+          }
+          return null;
+        };
+        
         const carePlanProfileInput: CarePlanProfileInput = {
           skinType: (updatedProfile.skinType || 'normal') as NonNullable<SkinProfile["skinType"]>,
           mainGoals: newProfile.mainGoals.length > 0 ? newProfile.mainGoals : ['general'],
@@ -204,9 +236,9 @@ export async function POST(request: NextRequest) {
           routineComplexity: normalizedRoutineComplexity,
           acneLevel: updatedProfile.acneLevel ?? null,
           dehydrationLevel: updatedProfile.dehydrationLevel ?? null,
-          rosaceaRisk: updatedProfile.rosaceaRisk ?? null,
-          pigmentationRisk: updatedProfile.pigmentationRisk ?? null,
-          ageGroup: newProfile.ageGroup ?? null,
+          rosaceaRisk: normalizeRiskLevel(updatedProfile.rosaceaRisk),
+          pigmentationRisk: normalizeRiskLevel(updatedProfile.pigmentationRisk),
+          ageGroup: normalizeAgeGroup(newProfile.ageGroup),
         };
         const selectedTemplate = selectCarePlanTemplate(carePlanProfileInput);
         console.log('📋 Selected care plan template after profile update', {
