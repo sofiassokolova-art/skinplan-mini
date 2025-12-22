@@ -287,8 +287,9 @@ export default function PlanPage() {
     
     // ИСПРАВЛЕНО: Абсолютный таймаут на всю страницу (35 секунд)
     // Если за это время план не загрузился - показываем fallback-экран
+    // ИСПРАВЛЕНО: Используем refs вместо state значений из замыкания, чтобы избежать stale closure
     const absoluteTimeout = setTimeout(() => {
-      if (isMountedRef.current && loading && !planData) {
+      if (isMountedRef.current && loadingRef.current && !planDataRef.current) {
         clientLogger.warn('⚠️ Absolute timeout reached - showing fallback screen');
         safeSetLoading(false);
         safeSetError('Не удалось загрузить план за отведенное время. Пожалуйста, попробуйте обновить страницу или перейти в анкету.');
