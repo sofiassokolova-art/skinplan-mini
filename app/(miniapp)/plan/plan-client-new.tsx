@@ -63,24 +63,38 @@ export function PlanPageClientNew({
   // Состояние для имени пользователя
   const [userName, setUserName] = useState<string | null>(null);
   
+  // ИСПРАВЛЕНО: Защита от setState после unmount для параллельных запросов
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Загружаем проблемы кожи и информацию о пользователе при монтировании
   useEffect(() => {
+    let cancelled = false; // ИСПРАВЛЕНО: Флаг отмены для предотвращения setState после unmount
+    
     const loadSkinIssues = async () => {
       try {
         const analysisData = await api.getAnalysis();
-        if (analysisData?.issues && Array.isArray(analysisData.issues)) {
+        if (!cancelled && isMountedRef.current && analysisData?.issues && Array.isArray(analysisData.issues)) {
           setSkinIssues(analysisData.issues);
         }
       } catch (err) {
         // Игнорируем ошибки - проблемы не критичны для отображения плана
-        clientLogger.warn('Could not load skin issues:', err);
+        if (!cancelled) {
+          clientLogger.warn('Could not load skin issues:', err);
+        }
       }
     };
     
     const loadUserInfo = async () => {
       try {
         const profile = await api.getCurrentProfile();
-        if (profile) {
+        if (!cancelled && isMountedRef.current && profile) {
           // ИСПРАВЛЕНО: Используем функции форматирования для единообразия
           const { formatSkinType } = await import('@/lib/format-helpers');
           
@@ -94,7 +108,9 @@ export function PlanPageClientNew({
           });
         }
       } catch (err) {
-        clientLogger.warn('Could not load user info:', err);
+        if (!cancelled) {
+          clientLogger.warn('Could not load user info:', err);
+        }
       }
     };
     
@@ -104,7 +120,7 @@ export function PlanPageClientNew({
         // Приоритет: ответ USER_NAME > профиль
         // Запрашиваем ответы из API (кэш больше не используется, данные в БД)
         const userAnswers = await api.getUserAnswers() as any;
-        if (userAnswers && Array.isArray(userAnswers)) {
+        if (!cancelled && isMountedRef.current && userAnswers && Array.isArray(userAnswers)) {
           const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
           if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
             const userNameFromAnswer = String(nameAnswer.answerValue).trim();
@@ -114,21 +130,25 @@ export function PlanPageClientNew({
           }
         }
         // Если имени нет в ответах, пробуем из профиля
-        const userProfile = await api.getUserProfile();
-        if (userProfile?.firstName) {
-          setUserName(userProfile.firstName);
-          clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
+        if (!cancelled && isMountedRef.current) {
+          const userProfile = await api.getUserProfile();
+          if (userProfile?.firstName) {
+            setUserName(userProfile.firstName);
+            clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
+          }
         }
       } catch (err: any) {
         // ИСПРАВЛЕНО: Не логируем 429 и 405 ошибки как warning
         // 429 - это нормально при rate limiting
         // 405 - может быть временной проблемой с endpoint
-        if (err?.status !== 429 && err?.status !== 405) {
-          clientLogger.warn('Could not load user name:', err);
-        } else if (err?.status === 405) {
-          // HTTP 405 - логируем только в development, это проблема с endpoint
-          if (process.env.NODE_ENV === 'development') {
-            clientLogger.warn('HTTP 405 when loading user name - check endpoint:', err);
+        if (!cancelled) {
+          if (err?.status !== 429 && err?.status !== 405) {
+            clientLogger.warn('Could not load user name:', err);
+          } else if (err?.status === 405) {
+            // HTTP 405 - логируем только в development, это проблема с endpoint
+            if (process.env.NODE_ENV === 'development') {
+              clientLogger.warn('HTTP 405 when loading user name - check endpoint:', err);
+            }
           }
         }
       }
@@ -141,11 +161,15 @@ export function PlanPageClientNew({
         const isRetakingQuiz = await getIsRetakingQuiz();
         const fullRetakeFromHome = await getFullRetakeFromHome();
         // Пользователь перепроходит анкету, если установлен любой из флагов
-        setIsRetaking(isRetakingQuiz || fullRetakeFromHome);
+        if (!cancelled && isMountedRef.current) {
+          setIsRetaking(isRetakingQuiz || fullRetakeFromHome);
+        }
       } catch (err) {
         // Игнорируем ошибки - если не удалось загрузить, считаем что не перепроходит
-        clientLogger.warn('Could not load retaking status:', err);
-        setIsRetaking(false);
+        if (!cancelled) {
+          clientLogger.warn('Could not load retaking status:', err);
+          setIsRetaking(false);
+        }
       }
     };
     
@@ -153,6 +177,10 @@ export function PlanPageClientNew({
     loadUserInfo();
     loadUserName();
     loadRetakingStatus();
+    
+    return () => {
+      cancelled = true; // ИСПРАВЛЕНО: Отменяем все запросы при размонтировании
+    };
   }, []);
   
   // Инициализируем selectedDay без зависимости от searchParams в useState
@@ -205,12 +233,8 @@ export function PlanPageClientNew({
   const cartLoadInProgressRef = useRef(false);
 
   // Загружаем данные корзине при монтировании
+  // ИСПРАВЛЕНО: Убрана двойная проверка ref - проверка только внутри loadCart()
   useEffect(() => {
-    // ИСПРАВЛЕНО: Защита от множественных вызовов
-    if (cartLoadInProgressRef.current) {
-      return;
-    }
-    cartLoadInProgressRef.current = true;
     loadCart();
   }, [plan28]);
 

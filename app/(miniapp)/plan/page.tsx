@@ -83,8 +83,10 @@ export default function PlanPage() {
   const [error, setError] = useState<string | null>(null);
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [generatingState, setGeneratingState] = useState<'generating' | 'ready' | null>(null);
+  const generatingStateRef = useRef<'generating' | 'ready' | null>(null); // ИСПРАВЛЕНО: Ref для проверки в таймаутах
   const [shouldRedirectToQuiz, setShouldRedirectToQuiz] = useState(false);
   const isMountedRef = useRef(true);
+  const pageLoadStartTimeRef = useRef<number>(Date.now()); // ИСПРАВЛЕНО: Время начала загрузки страницы для абсолютного таймаута
   const loadPlanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const planGenerationCooldownRef = useRef<number>(0);
   const planGenerationInFlightRef = useRef<Promise<GeneratedPlan | null> | null>(null);
@@ -227,6 +229,7 @@ export default function PlanPage() {
           // План готов - переходим к загрузке
           if (isMountedRef.current) {
             setGeneratingState('ready');
+            generatingStateRef.current = 'ready'; // ИСПРАВЛЕНО: Синхронизируем ref
             // Очищаем polling
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
@@ -261,8 +264,24 @@ export default function PlanPage() {
     }
   };
 
+  // ИСПРАВЛЕНО: Синхронизируем generatingStateRef с generatingState
+  useEffect(() => {
+    generatingStateRef.current = generatingState;
+  }, [generatingState]);
+
   useEffect(() => {
     isMountedRef.current = true;
+    pageLoadStartTimeRef.current = Date.now(); // ИСПРАВЛЕНО: Запоминаем время начала загрузки страницы
+    
+    // ИСПРАВЛЕНО: Абсолютный таймаут на всю страницу (35 секунд)
+    // Если за это время план не загрузился - показываем fallback-экран
+    const absoluteTimeout = setTimeout(() => {
+      if (isMountedRef.current && loading && !planData) {
+        clientLogger.warn('⚠️ Absolute timeout reached - showing fallback screen');
+        safeSetLoading(false);
+        safeSetError('Не удалось загрузить план за отведенное время. Пожалуйста, попробуйте обновить страницу или перейти в анкету.');
+      }
+    }, 35000); // 35 секунд
     
     // ИСПРАВЛЕНО: Проверяем state из URL напрямую, чтобы избежать проблем с задержкой searchParams
     let state: string | null = null;
@@ -281,6 +300,7 @@ export default function PlanPage() {
       clientLogger.log('✅ State=generating detected, starting polling');
       pollPlanStatusStartTimeRef.current = Date.now(); // Сбрасываем таймер при старте polling
       setGeneratingState('generating');
+      generatingStateRef.current = 'generating'; // ИСПРАВЛЕНО: Синхронизируем ref сразу
       safeSetLoading(true);
 
       // ИСПРАВЛЕНО: при /plan?state=generating мы обязаны "пнуть" генерацию,
@@ -303,15 +323,17 @@ export default function PlanPage() {
       // Начинаем polling статуса плана
       pollingIntervalRef.current = setInterval(pollPlanStatus, 1500);
       
-      // Таймаут на 60 секунд
+      // ИСПРАВЛЕНО: Таймаут на 60 секунд - используем ref вместо значения из замыкания
       setTimeout(() => {
-        if (isMountedRef.current && generatingState === 'generating') {
+        // ИСПРАВЛЕНО: Проверяем через ref, чтобы получить актуальное значение
+        if (isMountedRef.current && generatingStateRef.current === 'generating') {
           clientLogger.warn('Plan generation timeout, loading plan anyway');
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
           }
           setGeneratingState('ready');
+          generatingStateRef.current = 'ready'; // ИСПРАВЛЕНО: Синхронизируем ref
           router.replace('/plan');
           loadPlan(0, true);
         }
@@ -335,7 +357,8 @@ export default function PlanPage() {
     
     return () => {
       isMountedRef.current = false;
-      // Очищаем таймер при размонтировании
+      // Очищаем таймеры при размонтировании
+      clearTimeout(absoluteTimeout); // ИСПРАВЛЕНО: Очищаем абсолютный таймаут
       if (loadPlanTimeoutRef.current) {
         clearTimeout(loadPlanTimeoutRef.current);
         loadPlanTimeoutRef.current = null;
@@ -1119,6 +1142,7 @@ export default function PlanPage() {
                   profileVersion: profileCheck.version,
                 });
                 setGeneratingState('generating');
+                generatingStateRef.current = 'generating'; // ИСПРАВЛЕНО: Синхронизируем ref
                 if (!pollingIntervalRef.current) {
                   pollingIntervalRef.current = setInterval(pollPlanStatus, 1500);
                 }
@@ -1717,6 +1741,93 @@ export default function PlanPage() {
     return null;
   }
   
+  // ИСПРАВЛЕНО: Показываем fallback-экран при таймауте или критической ошибке
+  // Это предотвращает бесконечную загрузку и дает пользователю возможность действовать
+  if (error && (error.includes('Не удалось загрузить план за отведенное время') || 
+                error.includes('Таймаут') || 
+                error.includes('timeout'))) {
+    const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '24px',
+          padding: '32px',
+          maxWidth: '500px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        }}>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#0A5F59',
+            marginBottom: '12px',
+          }}>
+            Не удалось загрузить план
+          </h2>
+          <p style={{
+            color: '#475467',
+            marginBottom: '24px',
+            lineHeight: '1.6',
+          }}>
+            {error}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '12px',
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+              }}
+            >
+              Обновить страницу
+            </button>
+            <button
+              onClick={() => router.push('/quiz')}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '12px',
+                backgroundColor: 'transparent',
+                color: '#0A5F59',
+                border: '1px solid #0A5F59',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              Перейти в анкету
+            </button>
+            {!hasInitData && (
+              <p style={{
+                color: '#6B7280',
+                fontSize: '14px',
+                marginTop: '8px',
+              }}>
+                Убедитесь, что приложение открыто через Telegram Mini App
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Если нет planData и загрузка завершена, но нет ошибки - показываем лоадер
   // (это не должно происходить, но на всякий случай)
   if (!planData && !loading && !error) {
