@@ -257,9 +257,11 @@ export function PlanPageClientNew({
     } catch (err) {
       clientLogger.warn('Could not load cart:', err);
     } finally {
-      if (isMountedRef.current) {
-        cartLoadInProgressRef.current = false;
-      }
+      // ИСПРАВЛЕНО: Сбрасываем cartLoadInProgressRef безусловно, независимо от isMountedRef
+      // Это предотвращает блокировку загрузки корзины при следующем монтировании компонента
+      // Если компонент размонтируется во время API вызова, ref должен быть сброшен,
+      // иначе при следующем монтировании loadCart() сразу вернется без загрузки
+      cartLoadInProgressRef.current = false;
     }
   }, []); // Пустые зависимости, так как функция не зависит от props/state
 
