@@ -257,7 +257,7 @@ export function PlanPageClientNew({
     } catch (err) {
       clientLogger.warn('Could not load cart:', err);
     } finally {
-      // ИСПРАВЛЕНО: Сбрасываем cartLoadInProgressRef безусловно, независимо от isMountedRef
+      // КРИТИЧНО: Сбрасываем cartLoadInProgressRef безусловно, независимо от isMountedRef
       // Это предотвращает блокировку загрузки корзины при следующем монтировании компонента
       // Если компонент размонтируется во время API вызова, ref должен быть сброшен,
       // иначе при следующем монтировании loadCart() сразу вернется без загрузки
@@ -606,4 +606,3 @@ export function PlanPageClientNew({
     </div>
   );
 }
-
