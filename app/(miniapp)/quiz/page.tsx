@@ -525,6 +525,21 @@ export default function QuizPage() {
         // Ждем готовности Telegram WebApp
         clientLogger.log('⏳ Waiting for Telegram WebApp...');
         await waitForTelegram();
+        
+        // ИСПРАВЛЕНО: Проверяем, что initData действительно появился после ожидания
+        // Если нет и мы не в dev - показываем явный экран ошибки
+        if (!isDev && typeof window !== 'undefined') {
+          const hasInitData = !!window.Telegram?.WebApp?.initData;
+          if (!hasInitData) {
+            clientLogger.error('❌ Telegram initData not available after waitForTelegram');
+            setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
+            setLoading(false);
+            initCompletedRef.current = true;
+            initInProgressRef.current = false;
+            return;
+          }
+        }
+        
         clientLogger.log('✅ Telegram WebApp ready');
 
         // ИСПРАВЛЕНО: Загружаем анкету ВСЕГДА, даже при перепрохождении
@@ -1265,6 +1280,18 @@ export default function QuizPage() {
       setLoading(true);
       setError(null);
       
+      // ИСПРАВЛЕНО: Проверяем Telegram initData перед загрузкой анкеты
+      // Если initData нет и мы не в dev - показываем явный экран ошибки
+      if (!isDev && typeof window !== 'undefined') {
+        const hasInitData = !!window.Telegram?.WebApp?.initData;
+        if (!hasInitData) {
+          clientLogger.error('❌ Telegram initData not available, cannot load questionnaire');
+          setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
+          setLoading(false);
+          return null;
+        }
+      }
+      
       // ВАЖНО: Добавляем таймаут для загрузки анкеты, чтобы не ждать бесконечно
       const loadPromise = api.getActiveQuestionnaire();
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -1292,6 +1319,8 @@ export default function QuizPage() {
             data,
             dataType: typeof data,
           });
+          // ИСПРАВЛЕНО: Сбрасываем loading перед retry, чтобы не было бесконечной загрузки
+          setLoading(false);
           // Повторная попытка через 1 секунду (без рекурсии)
           setTimeout(() => {
             loadQuestionnaire().catch((retryErr) => {
@@ -1461,6 +1490,12 @@ export default function QuizPage() {
       
       setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при ошибке
       return null;
+    } finally {
+      // КРИТИЧНО: Гарантируем, что loading всегда будет false после завершения функции
+      // Это предотвращает бесконечную загрузку при любых исходах (успех, ошибка, retry)
+      // ИСПРАВЛЕНО: Проверяем, что loading еще true, чтобы избежать лишних обновлений
+      // Но в finally мы всегда сбрасываем, чтобы гарантировать выход из состояния загрузки
+      setLoading(false);
     }
   };
 
@@ -5987,9 +6022,9 @@ export default function QuizPage() {
       );
     }
     
-    // ИСПРАВЛЕНО: Показываем ошибку только если это не ошибка загрузки анкеты (которая уже исправлена)
-    // Если анкета загружена, но есть ошибка - это может быть ошибка отправки ответов, показываем её
-    if (error && (!error.includes('загрузить анкету') && !error.includes('Invalid questionnaire') && !error.includes('Questionnaire has no questions'))) {
+    // ИСПРАВЛЕНО: Показываем ошибку если loading = false и error установлен
+    // Это включает ошибки Telegram initData, ошибки загрузки анкеты и ошибки отправки ответов
+    if (error && !loading) {
       return (
         <div style={{ 
           padding: '20px',
