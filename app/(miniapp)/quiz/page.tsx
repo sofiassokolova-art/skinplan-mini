@@ -1204,7 +1204,7 @@ export default function QuizPage() {
       }
       isMountedRef.current = false;
     };
-  }, [questionnaire, isRetakingQuiz, showRetakeScreen, error, isStartingOver, hasResumed, pendingInfoScreen, currentQuestionIndex, allQuestions.length, isSubmitting]);
+  }, [questionnaire, isRetakingQuiz, showRetakeScreen, error, isStartingOver, hasResumed, pendingInfoScreen, currentQuestionIndex, allQuestions, isSubmitting]);
   
   // Загружаем предыдущие ответы для повторного прохождения анкеты
   useEffect(() => {
