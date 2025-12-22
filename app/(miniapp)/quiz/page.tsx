@@ -4096,11 +4096,21 @@ export default function QuizPage() {
   // Это предотвращает бесконечную загрузку, если loading остался true из-за ошибки
   // ИСПРАВЛЕНО: Добавлена защита от залипшего loading - если init() завершен, но loading=true, сбрасываем его
   if (loading) {
-    // Проверяем, не зависла ли загрузка
-    if (initCompletedRef.current && !initInProgressRef.current) {
+    // ИСПРАВЛЕНО: Проверяем абсолютный таймаут перед другими проверками
+    if (loadingStartTimeRef.current && Date.now() - loadingStartTimeRef.current > 15000) {
+      clientLogger.warn('⚠️ Абсолютный таймаут loading в рендере: сбрасываем loading после 15 секунд');
+      setLoading(false);
+      loadingStartTimeRef.current = null;
+      if (!initCompletedRef.current) {
+        initCompletedRef.current = true;
+        initInProgressRef.current = false;
+      }
+      // Продолжаем рендер анкеты (не показываем лоадер)
+    } else if (initCompletedRef.current && !initInProgressRef.current) {
       // init() завершен, но loading все еще true - это ошибка, сбрасываем
       clientLogger.warn('⚠️ loading=true, но init() завершен - сбрасываем loading');
       setLoading(false);
+      loadingStartTimeRef.current = null;
       // Продолжаем рендер анкеты (не показываем лоадер)
     } else if (!initCompletedRef.current) {
       // init() еще не завершен - показываем лоадер
