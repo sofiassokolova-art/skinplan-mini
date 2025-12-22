@@ -569,13 +569,28 @@ export default function QuizPage() {
     if (initInProgressRef.current) {
       // Проверяем, не завис ли init() - если прошло больше 10 секунд, сбрасываем
       if (initStartTimeRef.current && Date.now() - initStartTimeRef.current > 10000) {
-        clientLogger.warn('⚠️ Init seems stuck, resetting initInProgressRef');
+        clientLogger.warn('⚠️ Init seems stuck, resetting initInProgressRef', {
+          elapsed: Date.now() - initStartTimeRef.current,
+          initCompleted: initCompletedRef.current,
+        });
         initInProgressRef.current = false;
         initStartTimeRef.current = null;
+        // КРИТИЧНО: Если init() завис, принудительно сбрасываем loading
+        setLoading(false);
+        initCompletedRef.current = true;
       } else {
+        clientLogger.log('⏸️ init() уже выполняется, пропускаем', {
+          elapsed: initStartTimeRef.current ? Date.now() - initStartTimeRef.current : 0,
+        });
         return;
       }
     }
+    
+    clientLogger.log('🚀 Начинаем init()', {
+      timestamp: Date.now(),
+      initStartTimeRef: initStartTimeRef.current,
+    });
+    
     initInProgressRef.current = true;
     // Сохраняем время начала инициализации для проверки зависания
     initStartTimeRef.current = Date.now();
