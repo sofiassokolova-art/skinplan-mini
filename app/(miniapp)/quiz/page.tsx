@@ -835,9 +835,11 @@ export default function QuizPage() {
       // Используем setTimeout, чтобы гарантировать, что состояние обновилось после loadSavedProgressFromServer
       setTimeout(() => {
         setLoading(false);
+        // ИСПРАВЛЕНО: Устанавливаем initCompletedRef после установки loading = false
+        // Это гарантирует, что проверка на строке 438 будет работать правильно
+        // и loading не останется true навсегда
+        initCompletedRef.current = true;
       }, 100); // ИСПРАВЛЕНО: Увеличиваем задержку до 100ms, чтобы гарантировать обновление состояния
-      // ИСПРАВЛЕНО: Не устанавливаем initCompletedRef сразу, чтобы не блокировать загрузку прогресса при возврате
-      // initCompletedRef.current = true;
       initInProgressRef.current = false;
       
       // ВАЖНО: Если это была повторная инициализация после "Начать заново",
@@ -851,6 +853,7 @@ export default function QuizPage() {
       console.error('❌ Error in init function:', initErr?.message);
       setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
       setLoading(false);
+      initCompletedRef.current = true; // ИСПРАВЛЕНО: Устанавливаем initCompletedRef даже при ошибке
       initInProgressRef.current = false;
     }
     
@@ -868,11 +871,16 @@ export default function QuizPage() {
         console.error('❌ Unhandled error in init promise:', err?.message);
         setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
         setLoading(false);
+        initCompletedRef.current = true; // ИСПРАВЛЕНО: Устанавливаем initCompletedRef даже при ошибке
         initInProgressRef.current = false;
       })
       .finally(() => {
         clearTimeout(initTimeout);
+        // ИСПРАВЛЕНО: Устанавливаем loading = false в finally, чтобы гарантировать его установку
+        // Это гарантирует, что loading всегда будет false после завершения init()
         setLoading(false);
+        // ИСПРАВЛЕНО: Устанавливаем initCompletedRef в finally, чтобы гарантировать его установку
+        initCompletedRef.current = true;
         initInProgressRef.current = false;
       });
     
