@@ -598,8 +598,21 @@ export default function QuizPage() {
         clientLogger.log('✅ Telegram WebApp initialized');
         
         // Ждем готовности Telegram WebApp
+        // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом 5 секунд, чтобы гарантировать завершение
         clientLogger.log('⏳ Waiting for Telegram WebApp...');
-        await waitForTelegram();
+        try {
+          await Promise.race([
+            waitForTelegram(),
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                clientLogger.warn('⚠️ Таймаут ожидания Telegram WebApp (5 секунд) - продолжаем без initData');
+                resolve();
+              }, 5000);
+            }),
+          ]);
+        } catch (waitErr) {
+          clientLogger.warn('⚠️ Ошибка при ожидании Telegram WebApp:', waitErr);
+        }
         
         // ИСПРАВЛЕНО: Проверяем, что initData действительно появился после ожидания
         // Если нет и мы не в dev - показываем явный экран ошибки
@@ -623,6 +636,7 @@ export default function QuizPage() {
         // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер
         // Анкета загрузится мгновенно, и пользователь увидит вопросы без задержки
         // КРИТИЧНО: При перепрохождении анкета должна загрузиться ДО показа экрана выбора тем
+        // ИСПРАВЛЕНО: Обернули загрузку анкеты в Promise.race с таймаутом, чтобы гарантировать завершение init()
         if (!questionnaire) {
           try {
             clientLogger.log('📥 Loading questionnaire in init', { 
@@ -630,7 +644,18 @@ export default function QuizPage() {
               showRetakeScreen,
               hasError: !!error,
             });
-            const loadedQuestionnaire = await loadQuestionnaire();
+            // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом 15 секунд, чтобы гарантировать завершение
+            const loadedQuestionnaire = await Promise.race([
+              loadQuestionnaire(),
+              new Promise<null>((resolve) => {
+                setTimeout(() => {
+                  clientLogger.warn('⚠️ Таймаут загрузки анкеты в init() (15 секунд) - продолжаем без анкеты');
+                  setError('Не удалось загрузить анкету за отведенное время. Пожалуйста, обновите страницу.');
+                  setLoading(false);
+                  resolve(null);
+                }, 15000);
+              }),
+            ]);
             // ИСПРАВЛЕНО: Очищаем ошибку при успешной загрузке анкеты
             // Это предотвращает показ временных ошибок, которые уже исправлены
             if (loadedQuestionnaire) {
@@ -670,6 +695,8 @@ export default function QuizPage() {
             if (!isRetakingQuiz && !error) {
               setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
             }
+            // КРИТИЧНО: Гарантируем, что loading будет false даже при ошибке
+            setLoading(false);
           }
         } else {
           // ИСПРАВЛЕНО: Если анкета уже загружена, очищаем ошибки загрузки
@@ -688,16 +715,35 @@ export default function QuizPage() {
       // 2. Анкета полностью завершена (есть все ответы)
       // 3. Пользователь не нажал "Начать заново"
       // ВАЖНО: Защита от повторных проверок профиля
+      // ИСПРАВЛЕНО: Обернули проверку профиля в Promise.race с таймаутом, чтобы гарантировать завершение init()
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !isStartingOverRef.current && !profileCheckInProgressRef.current) {
         profileCheckInProgressRef.current = true;
         try {
-          const profile = await api.getCurrentProfile();
+          // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом 10 секунд, чтобы гарантировать завершение
+          const profile = await Promise.race([
+            api.getCurrentProfile(),
+            new Promise<any>((resolve) => {
+              setTimeout(() => {
+                clientLogger.warn('⚠️ Таймаут проверки профиля (10 секунд) - продолжаем без профиля');
+                resolve(null);
+              }, 10000);
+            }),
+          ]);
           if (profile && profile.id) {
             // Профиль существует - проверяем, завершена ли анкета
             if (!isStartingOverRef.current) {
               // Проверяем, есть ли ответы на анкету (завершена ли анкета)
+              // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом, чтобы гарантировать завершение init()
               try {
-                const response = await api.getQuizProgress();
+                const response = await Promise.race([
+                  api.getQuizProgress(),
+                  new Promise<any>((resolve) => {
+                    setTimeout(() => {
+                      clientLogger.warn('⚠️ Таймаут проверки прогресса анкеты (10 секунд) - продолжаем без прогресса');
+                      resolve({ progress: null, isCompleted: false });
+                    }, 10000);
+                  }),
+                ]);
                 const progress = response?.progress;
                 // Проверяем, что есть ответы И что анкета завершена (все вопросы отвечены)
                 const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
@@ -793,8 +839,17 @@ export default function QuizPage() {
             clientLogger.log('ℹ️ Профиль не найден (404) - проверяем, завершена ли анкета');
             
             // ИСПРАВЛЕНО: Если анкета завершена, но профиль не найден - автоматически отправляем ответы для создания профиля
+            // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом, чтобы гарантировать завершение init()
             try {
-              const response = await api.getQuizProgress();
+              const response = await Promise.race([
+                api.getQuizProgress(),
+                new Promise<any>((resolve) => {
+                  setTimeout(() => {
+                    clientLogger.warn('⚠️ Таймаут проверки прогресса анкеты при отсутствии профиля (10 секунд) - продолжаем без прогресса');
+                    resolve({ progress: null, isCompleted: false });
+                  }, 10000);
+                }),
+              ]);
               const progress = response?.progress;
               const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
               const isCompleted = response?.isCompleted === true;
