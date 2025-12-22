@@ -904,11 +904,20 @@ export default function QuizPage() {
     }
     
     // ВАЖНО: Добавляем таймаут для init(), чтобы гарантировать, что loading всегда будет false
+    // ИСПРАВЛЕНО: Используем ref для проверки актуального значения loading в таймауте
+    const loadingRefForTimeout = useRef(true);
+    
     const initTimeout = setTimeout(() => {
-      if (loading) {
+      // ИСПРАВЛЕНО: Проверяем актуальное значение loading через ref
+      // Синхронизируем ref перед проверкой
+      loadingRefForTimeout.current = loading;
+      if (loadingRefForTimeout.current) {
         clientLogger.warn('⚠️ Init timeout: forcing loading = false after 10 seconds');
         setLoading(false);
         setError('Таймаут загрузки. Пожалуйста, обновите страницу.');
+        initCompletedRef.current = true;
+        initInProgressRef.current = false;
+        initStartTimeRef.current = null;
       }
     }, 10000); // 10 секунд таймаут
     
@@ -919,14 +928,18 @@ export default function QuizPage() {
         setLoading(false);
         initCompletedRef.current = true; // ИСПРАВЛЕНО: Устанавливаем initCompletedRef даже при ошибке
         initInProgressRef.current = false;
+        initStartTimeRef.current = null;
       })
       .finally(() => {
         clearTimeout(initTimeout);
-        // ИСПРАВЛЕНО: Устанавливаем loading = false в finally, чтобы гарантировать его установку
-        // Это гарантирует, что loading всегда будет false после завершения init()
-        setLoading(false);
-        // ИСПРАВЛЕНО: Устанавливаем initCompletedRef в finally, чтобы гарантировать его установку
-        initCompletedRef.current = true;
+        // ИСПРАВЛЕНО: НЕ устанавливаем loading = false в finally, так как это должно устанавливаться внутри init()
+        // Это предотвращает преждевременное скрытие лоадера до завершения инициализации
+        // init() сам устанавливает loading = false после завершения всех операций (строка 884)
+        // ИСПРАВЛЕНО: Устанавливаем initCompletedRef и initInProgressRef только если они еще не установлены
+        // Это предотвращает перезапись значений, установленных внутри init()
+        if (!initCompletedRef.current) {
+          initCompletedRef.current = true;
+        }
         initInProgressRef.current = false;
         initStartTimeRef.current = null;
       });
