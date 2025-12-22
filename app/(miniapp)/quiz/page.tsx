@@ -1203,13 +1203,11 @@ export default function QuizPage() {
         saveProgressTimeoutRef.current = null;
       }
       isMountedRef.current = false;
-    }
-      }
-      isMountedRef.current = false;
-      // (Было забыто вернуть закрывающую скобку для useEffect)
-      // Корректно завершаем useEffect и начинаем следующий useEffect
-      // ⬆️ Закрывающая скобка и return для предыдущего useEffect были добавлены выше
-      // ⬇️ Новый useEffect начинается здесь
+    };
+  }, [questionnaire, isRetakingQuiz, showRetakeScreen, error, isStartingOver, hasResumed, pendingInfoScreen, currentQuestionIndex, allQuestions.length, isSubmitting]);
+  
+  // Загружаем предыдущие ответы для повторного прохождения анкеты
+  useEffect(() => {
     if (isRetakingQuiz && questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       clientLogger.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
       // Вызываем функцию напрямую, не добавляя в зависимости, чтобы избежать проблем
