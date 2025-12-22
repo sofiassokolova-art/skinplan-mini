@@ -185,10 +185,23 @@ export default function QuizPage() {
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
   // ИСПРАВЛЕНО: Проверяем флаг из localStorage при монтировании
   // ВАЖНО: Проверяем наличие профиля перед показом экрана перепрохождения
+  // ИСПРАВЛЕНО: Для нового пользователя (нет hasPlanProgress) не проверяем флаги перепрохождения
+  // Это оптимизирует загрузку и предотвращает избыточные запросы к /api/user/preferences
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       const checkRetakeFlags = async () => {
         try {
+          // ИСПРАВЛЕНО: Сначала проверяем hasPlanProgress - если его нет, значит пользователь новый
+          // и не нужно проверять флаги перепрохождения
+          const { getHasPlanProgress } = await import('@/lib/user-preferences');
+          const hasPlanProgress = await getHasPlanProgress();
+          
+          if (!hasPlanProgress) {
+            // Новый пользователь - не проверяем флаги перепрохождения
+            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку флагов перепрохождения');
+            return;
+          }
+          
           const { getIsRetakingQuiz, getFullRetakeFromHome, setIsRetakingQuiz, setFullRetakeFromHome } = await import('@/lib/user-preferences');
           const isRetakingFromStorage = await getIsRetakingQuiz();
           const fullRetakeFromHome = await getFullRetakeFromHome();
@@ -370,10 +383,23 @@ export default function QuizPage() {
     // Если профиль есть и анкета завершена, не показываем начало анкеты, а редиректим на /plan
     // ВАЖНО: Проверяем синхронно, чтобы предотвратить показ первого экрана
     // ВАЖНО: НЕ проверяем профиль, если флаг quiz_just_submitted установлен (уже обработано выше)
+    // ИСПРАВЛЕНО: Для нового пользователя (нет hasPlanProgress) не проверяем флаги перепрохождения
+    // Это оптимизирует загрузку и предотвращает избыточные запросы к /api/user/preferences
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !initCompletedRef.current && !justSubmitted) {
       // ИСПРАВЛЕНО: Проверяем флаги перепрохождения ПЕРЕД проверкой профиля
       const checkRetakeFlags = async () => {
         try {
+          // ИСПРАВЛЕНО: Сначала проверяем hasPlanProgress - если его нет, значит пользователь новый
+          // и не нужно проверять флаги перепрохождения
+          const { getHasPlanProgress } = await import('@/lib/user-preferences');
+          const hasPlanProgress = await getHasPlanProgress();
+          
+          if (!hasPlanProgress) {
+            // Новый пользователь - не проверяем флаги перепрохождения
+            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку флагов перепрохождения');
+            return;
+          }
+          
           const { getIsRetakingQuiz, getFullRetakeFromHome } = await import('@/lib/user-preferences');
           const isRetakingFromStorage = await getIsRetakingQuiz();
           const fullRetakeFromHome = await getFullRetakeFromHome();
