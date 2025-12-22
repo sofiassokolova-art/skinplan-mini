@@ -1806,18 +1806,18 @@ export default function PlanPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button
               onClick={() => window.location.reload()}
-              style={{
-                padding: '12px 24px',
-                borderRadius: '12px',
-                backgroundColor: '#0A5F59',
-                color: 'white',
+            style={{
+              padding: '12px 24px',
+              borderRadius: '12px',
+              backgroundColor: '#0A5F59',
+              color: 'white',
                 border: 'none',
-                fontSize: '16px',
-                fontWeight: '600',
+              fontSize: '16px',
+              fontWeight: '600',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-              }}
-            >
+              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+            }}
+          >
               Обновить страницу
             </button>
             <button
@@ -1849,7 +1849,7 @@ export default function PlanPage() {
       </div>
     );
   }
-
+  
   // Если нет planData и загрузка завершена, но нет ошибки - показываем лоадер
   // (это не должно происходить, но на всякий случай)
   if (!planData && !loading && !error) {
