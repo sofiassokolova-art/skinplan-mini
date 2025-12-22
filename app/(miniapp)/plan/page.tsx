@@ -84,6 +84,8 @@ export default function PlanPage() {
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [generatingState, setGeneratingState] = useState<'generating' | 'ready' | null>(null);
   const generatingStateRef = useRef<'generating' | 'ready' | null>(null); // ИСПРАВЛЕНО: Ref для проверки в таймаутах
+  const loadingRef = useRef(true); // ИСПРАВЛЕНО: Ref для проверки в таймаутах (избегаем stale closure)
+  const planDataRef = useRef<PlanData | null>(null); // ИСПРАВЛЕНО: Ref для проверки в таймаутах (избегаем stale closure)
   const [shouldRedirectToQuiz, setShouldRedirectToQuiz] = useState(false);
   const isMountedRef = useRef(true);
   const pageLoadStartTimeRef = useRef<number>(Date.now()); // ИСПРАВЛЕНО: Время начала загрузки страницы для абсолютного таймаута
