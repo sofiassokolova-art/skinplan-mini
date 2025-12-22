@@ -611,19 +611,18 @@ export default function QuizPage() {
                   // ИСПРАВЛЕНО: Проверяем наличие плана БЕЗ вызова api.getPlan() для нового пользователя
                   // Вместо этого проверяем через getHasPlanProgress - если его нет, значит плана нет
                   // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
+                  // ИСПРАВЛЕНО: Для нового пользователя (нет hasPlanProgress) не вызываем api.getPlan() вообще
+                  // Проверка плана должна происходить только на бэкенде, не на фронте
                   let hasPlan = false;
                   try {
                     const { getHasPlanProgress } = await import('@/lib/user-preferences');
                     const hasPlanProgress = await getHasPlanProgress();
-                    if (hasPlanProgress) {
-                      // plan_progress есть - проверяем наличие плана через API
-                      // Только если plan_progress есть, вызываем api.getPlan()
-                      const plan = await api.getPlan();
-                      hasPlan = !!(plan && (plan.plan28 || plan.weeks));
-                    } else {
-                      // plan_progress нет - значит плана нет, не вызываем api.getPlan()
-                      hasPlan = false;
-                    }
+                    // ИСПРАВЛЕНО: Если plan_progress нет, значит пользователь новый, плана нет
+                    // Не вызываем api.getPlan() для нового пользователя, чтобы не показывать лоадер плана
+                    hasPlan = hasPlanProgress === true;
+                    // ИСПРАВЛЕНО: Не вызываем api.getPlan() даже если hasPlanProgress есть
+                    // Проверка плана должна происходить только на бэкенде
+                    // Если hasPlanProgress есть, значит план был создан, и этого достаточно
                   } catch (planErr) {
                     // План не найден - это нормально для нового пользователя
                     hasPlan = false;
@@ -833,13 +832,12 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Всегда устанавливаем loading = false после завершения init()
       // Экран resume сам управляет своим показом, а loading должен быть false для показа анкеты
       // Используем setTimeout, чтобы гарантировать, что состояние обновилось после loadSavedProgressFromServer
-      setTimeout(() => {
-        setLoading(false);
-        // ИСПРАВЛЕНО: Устанавливаем initCompletedRef после установки loading = false
-        // Это гарантирует, что проверка на строке 438 будет работать правильно
-        // и loading не останется true навсегда
-        initCompletedRef.current = true;
-      }, 100); // ИСПРАВЛЕНО: Увеличиваем задержку до 100ms, чтобы гарантировать обновление состояния
+      // ИСПРАВЛЕНО: Устанавливаем loading = false СРАЗУ, а не через setTimeout, чтобы предотвратить бесконечную загрузку
+      setLoading(false);
+      // ИСПРАВЛЕНО: Устанавливаем initCompletedRef после установки loading = false
+      // Это гарантирует, что проверка на строке 438 будет работать правильно
+      // и loading не останется true навсегда
+      initCompletedRef.current = true;
       initInProgressRef.current = false;
       
       // ВАЖНО: Если это была повторная инициализация после "Начать заново",
