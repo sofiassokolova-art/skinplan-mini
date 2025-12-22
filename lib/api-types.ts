@@ -211,7 +211,7 @@ export interface CartResponse {
     id: string;
     productId: number;
     quantity: number;
-    product: {
+    product?: {
       id: number;
       name: string;
       brand: { id?: number; name: string };
