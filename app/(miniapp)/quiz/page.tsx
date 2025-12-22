@@ -536,6 +536,14 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Если инициализация уже завершена и пользователь НЕ нажал "Начать заново",
   // не выполняем повторную инициализацию
   useEffect(() => {
+    clientLogger.log('🔄 useEffect для init() вызван', {
+      initCompleted: initCompletedRef.current,
+      initInProgress: initInProgressRef.current,
+      loading,
+      pendingInfoScreen,
+      isSubmitting,
+    });
+    
     // ВАЖНО: НЕ блокируем, если показывается pendingInfoScreen - это нормальный ход анкеты
     // ВАЖНО: Также НЕ блокируем, если currentQuestionIndex >= allQuestions.length (анкета завершена, ожидается автоотправка)
     if (initCompletedRef.current && !isStartingOverRef.current && !pendingInfoScreen && 
@@ -604,6 +612,15 @@ export default function QuizPage() {
     };
 
     const init = async () => {
+      const initStartTime = Date.now();
+      clientLogger.log('🚀 init() начат', {
+        timestamp: initStartTime,
+        questionnaire: !!questionnaire,
+        isStartingOver: isStartingOverRef.current,
+        initCompleted: initCompletedRef.current,
+        initInProgress: initInProgressRef.current,
+      });
+      
       try {
         // Если анкета уже загружена и это повторная инициализация после "Начать заново",
         // пропускаем загрузку анкеты и сразу устанавливаем loading = false
@@ -619,25 +636,26 @@ export default function QuizPage() {
         }
         
         // Инициализируем Telegram WebApp
-        clientLogger.log('🔄 Initializing Telegram WebApp...');
+        clientLogger.log('🔄 Initializing Telegram WebApp...', { elapsed: Date.now() - initStartTime });
         initialize();
-        clientLogger.log('✅ Telegram WebApp initialized');
+        clientLogger.log('✅ Telegram WebApp initialized', { elapsed: Date.now() - initStartTime });
         
         // Ждем готовности Telegram WebApp
         // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом 5 секунд, чтобы гарантировать завершение
-        clientLogger.log('⏳ Waiting for Telegram WebApp...');
+        clientLogger.log('⏳ Waiting for Telegram WebApp...', { elapsed: Date.now() - initStartTime });
         try {
           await Promise.race([
             waitForTelegram(),
             new Promise<void>((resolve) => {
               setTimeout(() => {
-                clientLogger.warn('⚠️ Таймаут ожидания Telegram WebApp (5 секунд) - продолжаем без initData');
+                clientLogger.warn('⚠️ Таймаут ожидания Telegram WebApp (5 секунд) - продолжаем без initData', { elapsed: Date.now() - initStartTime });
                 resolve();
               }, 5000);
             }),
           ]);
+          clientLogger.log('✅ waitForTelegram завершен', { elapsed: Date.now() - initStartTime });
         } catch (waitErr) {
-          clientLogger.warn('⚠️ Ошибка при ожидании Telegram WebApp:', waitErr);
+          clientLogger.warn('⚠️ Ошибка при ожидании Telegram WebApp:', waitErr, { elapsed: Date.now() - initStartTime });
         }
         
         // ИСПРАВЛЕНО: Проверяем, что initData действительно появился после ожидания
@@ -669,6 +687,7 @@ export default function QuizPage() {
               isRetakingQuiz, 
               showRetakeScreen,
               hasError: !!error,
+              elapsed: Date.now() - initStartTime,
             });
             // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом 15 секунд, чтобы гарантировать завершение
             const loadedQuestionnaire = await Promise.race([
@@ -742,9 +761,17 @@ export default function QuizPage() {
       // 3. Пользователь не нажал "Начать заново"
       // ВАЖНО: Защита от повторных проверок профиля
       // ИСПРАВЛЕНО: Обернули проверку профиля в Promise.race с таймаутом, чтобы гарантировать завершение init()
+      clientLogger.log('🔍 Проверка профиля', { 
+        hasInitData: !!(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData),
+        isStartingOver: isStartingOverRef.current,
+        profileCheckInProgress: profileCheckInProgressRef.current,
+        elapsed: Date.now() - initStartTime,
+      });
+      
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && !isStartingOverRef.current && !profileCheckInProgressRef.current) {
         profileCheckInProgressRef.current = true;
         try {
+          clientLogger.log('📞 Вызов api.getCurrentProfile()', { elapsed: Date.now() - initStartTime });
           // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом 10 секунд, чтобы гарантировать завершение
           const profile = await Promise.race([
             api.getCurrentProfile(),
@@ -1062,22 +1089,25 @@ export default function QuizPage() {
         setIsStartingOver(false);
       }
       
-      clientLogger.log('✅ init() завершен успешно');
+      const totalElapsed = Date.now() - initStartTime;
+      clientLogger.log('✅ init() завершен успешно', { totalElapsed });
     } catch (initErr: any) {
+      const totalElapsed = Date.now() - initStartTime;
       console.error('❌ Error in init function:', initErr?.message);
       setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
       setLoading(false);
       initCompletedRef.current = true; // ИСПРАВЛЕНО: Устанавливаем initCompletedRef даже при ошибке
       initInProgressRef.current = false;
-      clientLogger.error('❌ init() завершен с ошибкой:', initErr);
+      clientLogger.error('❌ init() завершен с ошибкой:', { error: initErr, totalElapsed });
     } finally {
       // КРИТИЧНО: Гарантируем, что loading всегда будет false после завершения init()
       // Это предотвращает бесконечную загрузку даже если что-то пошло не так
+      const totalElapsed = Date.now() - initStartTime;
       setLoading(false);
       initCompletedRef.current = true;
       initInProgressRef.current = false;
       initStartTimeRef.current = null;
-      clientLogger.log('✅ init() finally блок выполнен - гарантированно установлен loading = false');
+      clientLogger.log('✅ init() finally блок выполнен - гарантированно установлен loading = false', { totalElapsed });
     }
     
     // ВАЖНО: Добавляем таймаут для init(), чтобы гарантировать, что loading всегда будет false
