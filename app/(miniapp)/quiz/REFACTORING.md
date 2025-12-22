@@ -24,12 +24,12 @@
 - [ ] `QuestionScreen.tsx` - экран вопроса (требует вынесения логики из page.tsx)
 
 ### 4. Вынести хуки (уже частично есть)
-- [x] `useQuizState` - уже существует
-- [x] `useQuizAutoSubmit` - уже существует
-- [x] `useQuizProgress` - уже существует
-- [x] `useQuizRetake` - уже существует
-- [ ] `useQuizInit` - объединить логику инициализации
-- [ ] `useResumeLogic` - логика resume экрана
+- [x] `useQuizState` - уже существует ✅
+- [x] `useQuizAutoSubmit` - уже существует ✅
+- [x] `useQuizProgress` - уже существует ✅
+- [x] `useQuizRetake` - уже существует ✅
+- [x] `useQuizInit` - объединить логику инициализации ✅
+- [x] `useResumeLogic` - логика resume экрана ✅
 
 ### 5. Рефакторинг page.tsx
 - [ ] Использовать state machine (`useQuizStateMachine`)
