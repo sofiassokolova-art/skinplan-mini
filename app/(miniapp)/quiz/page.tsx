@@ -1121,7 +1121,7 @@ export default function QuizPage() {
       initInProgressRef.current = false;
       initStartTimeRef.current = null;
       clientLogger.log('✅ init() finally блок выполнен - гарантированно установлен loading = false', { totalElapsed });
-    }
+    };
     
     // ВАЖНО: Добавляем таймаут для init(), чтобы гарантировать, что loading всегда будет false
     // ИСПРАВЛЕНО: Используем ref для проверки актуального значения loading в таймауте
@@ -1206,7 +1206,12 @@ export default function QuizPage() {
   
   // Загружаем предыдущие ответы для повторного прохождения анкеты
   useEffect(() => {
-    if (isRetakingQuiz && questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+    if (
+      isRetakingQuiz &&
+      questionnaire &&
+      typeof window !== 'undefined' &&
+      window.Telegram?.WebApp?.initData
+    ) {
       clientLogger.log('🔄 Загружаем предыдущие ответы для повторного прохождения...');
       // Вызываем функцию напрямую, не добавляя в зависимости, чтобы избежать проблем
       (async () => {
@@ -1269,65 +1274,8 @@ export default function QuizPage() {
   // ПЕРЕМЕЩЕНО НИЖЕ после объявления allQuestions
 
   // Загружаем сохранённый прогресс из localStorage (fallback)
-  const loadSavedProgress = () => {
-    if (typeof window === 'undefined') return;
-    
-    // ВАЖНО: Если пользователь уже нажал "Продолжить", не загружаем прогресс
-    // Это предотвращает повторное появление экрана "Вы не завершили анкету"
-    if (hasResumedRef.current || hasResumed) {
-      clientLogger.log('⏸️ loadSavedProgress: пропущено, так как hasResumed = true (пользователь уже продолжил)');
-      return;
-    }
-    
-    // ИСПРАВЛЕНО: Прогресс загружается из БД через API, не из localStorage
-    // Прогресс уже загружен через loadProgressFromServer выше
-    // Эта функция больше не нужна, так как данные в БД
-  };
 
   // Загружаем предыдущие ответы для повторного прохождения анкеты
-  const loadPreviousAnswers = async (quizData?: Questionnaire) => {
-    const quiz = quizData || questionnaire;
-    if (!quiz) {
-      clientLogger.warn('⚠️ Cannot load previous answers: questionnaire not loaded');
-      return;
-    }
-    
-    try {
-      // Загружаем с параметром retaking=true, чтобы получить ответы даже при наличии профиля
-      const response = await fetch(`/api/questionnaire/progress?retaking=true`, {
-        headers: {
-          'X-Telegram-Init-Data': typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
-            ? window.Telegram.WebApp.initData
-            : '',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json() as {
-          progress?: {
-            answers: Record<number, string | string[]>;
-            questionIndex: number;
-            infoScreenIndex: number;
-          } | null;
-        };
-        
-        if (data?.progress?.answers && Object.keys(data.progress.answers).length > 0) {
-          clientLogger.log('✅ Загружены предыдущие ответы для повторного прохождения:', Object.keys(data.progress.answers).length, 'ответов');
-          clientLogger.log('📝 Ответы:', data.progress.answers);
-          // Заполняем форму предыдущими ответами
-          setAnswers(data.progress.answers);
-          // Устанавливаем индекс вопроса, если он есть (для перехода к нужному вопросу)
-          if (data.progress.questionIndex !== undefined && data.progress.questionIndex >= 0) {
-            setCurrentQuestionIndex(data.progress.questionIndex);
-          }
-        } else {
-          clientLogger.log('⚠️ Нет сохраненных ответов для предзаполнения');
-        }
-      }
-    } catch (err: any) {
-      clientLogger.warn('⚠️ Не удалось загрузить предыдущие ответы:', err);
-    }
-  };
 
   // Загружаем прогресс с сервера (синхронизация между устройствами)
   const loadProgressInProgressRef = useRef(false);
@@ -1511,19 +1459,10 @@ export default function QuizPage() {
   };
 
   // Сохраняем прогресс в localStorage и на сервер
-  const saveProgress = async (newAnswers?: Record<number, string | string[]>, newQuestionIndex?: number, newInfoScreenIndex?: number, skipDebounce?: boolean) => {
+  const saveProgress = async (newAnswers?: Record<number, string | string[]>, newQuestionIndex?: number, newInfoScreenIndex?: number) => {
     if (typeof window === 'undefined') return;
     
-    const finalQuestionIndex = newQuestionIndex !== undefined ? newQuestionIndex : currentQuestionIndex;
-    const finalInfoScreenIndex = newInfoScreenIndex !== undefined ? newInfoScreenIndex : currentInfoScreenIndex;
-    const finalAnswers = newAnswers || answers;
     
-    const progress = {
-      answers: finalAnswers,
-      questionIndex: finalQuestionIndex,
-      infoScreenIndex: finalInfoScreenIndex,
-      timestamp: Date.now(),
-    };
     
     // ИСПРАВЛЕНО: Безопасное сохранение с обработкой ошибок
     // ИСПРАВЛЕНО: Прогресс сохраняется в БД через API, localStorage больше не используется
@@ -2204,62 +2143,6 @@ export default function QuizPage() {
       }
       
       // ВАЖНО: Логируем на сервер асинхронно, но не блокируем выполнение
-      const logPromise = (async () => {
-        try {
-          if (currentInitData) {
-            const logResponse = await fetch('/api/logs', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': currentInitData,
-              },
-              body: JSON.stringify({
-                level: 'info',
-                message: 'submitAnswers called',
-                context: {
-                  timestamp: new Date().toISOString(),
-                  hasQuestionnaire: !!questionnaire,
-                  answersCount: Object.keys(answers).length,
-                },
-                url: typeof window !== 'undefined' ? window.location.href : undefined,
-                userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
-              }),
-            });
-            
-            if (!logResponse.ok) {
-              const errorText = await logResponse.text().catch(() => 'Unknown error');
-              console.error('❌ Ошибка сохранения лога (submitAnswers called):', {
-                status: logResponse.status,
-                statusText: logResponse.statusText,
-                error: errorText,
-              });
-            }
-          } else {
-            // Отправляем анонимно
-            await fetch('/api/logs', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                level: 'info',
-                message: 'submitAnswers called (no initData)',
-                context: {
-                  timestamp: new Date().toISOString(),
-                  hasQuestionnaire: !!questionnaire,
-                  answersCount: Object.keys(answers).length,
-                  hasInitData: false,
-                },
-                url: typeof window !== 'undefined' ? window.location.href : undefined,
-                userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
-              }),
-            }).catch(() => {});
-          }
-        } catch (logError) {
-          // Игнорируем ошибки логирования, чтобы не блокировать выполнение
-          console.warn('⚠️ Ошибка при логировании (submitAnswers called):', logError);
-        }
-      })();
       
       // НЕ ждем завершения логирования - продолжаем выполнение
       // logPromise будет выполняться в фоне
@@ -3136,27 +3019,6 @@ export default function QuizPage() {
       clientLogger.log('🔍 Проверка shouldGeneratePlan:', logData);
       
       // ВАЖНО: Отправляем лог на сервер для диагностики (неблокирующе)
-      const logPromise = (async () => {
-        try {
-          const currentInitData = await getInitData();
-          if (currentInitData) {
-            await fetch('/api/logs', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'X-Telegram-Init-Data': currentInitData,
-              },
-              body: JSON.stringify({
-                level: 'info',
-                message: 'shouldGeneratePlan check result',
-                context: logData,
-              }),
-            }).catch(() => {});
-          }
-        } catch (logError) {
-          // Игнорируем ошибки логирования
-        }
-      })();
       
       // ВАЖНО: Генерация плана теперь происходит на бэкенде в submitAnswers
       // Не нужно генерировать план на клиенте - просто редиректим на /plan?state=generating
@@ -4982,7 +4844,6 @@ export default function QuizPage() {
     const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
 
     // Разбиваем subtitle на строки для многострочного отображения
-    const subtitleLines = screen.subtitle?.split('\n').filter(line => line.trim()) || [];
 
     // Специальный рендеринг для welcome экрана
     if (isWelcomeScreen) {
@@ -6303,13 +6164,6 @@ export default function QuizPage() {
       );
     }
 
-    const answersCount = Object.keys(answers || {}).length;
-    const looksLikeCompletion =
-      questionnaire !== null &&
-      !loading &&
-      allQuestions.length > 0 &&
-      currentQuestionIndex >= allQuestions.length &&
-      answersCount > 0;
 
     // ИСПРАВЛЕНО: Убрали плановый лоадер "Создаем ваш план ухода..." из /quiz
     // Если isSubmitting === true, мы уже редиректим на /plan выше (строка 3967)
@@ -6747,7 +6601,6 @@ export default function QuizPage() {
         {currentQuestion.type === 'single_choice' && currentQuestion.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentQuestion.options.map((option) => {
-              const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
               const isSelected = answers[currentQuestion.id] === option.value;
               
               return (
