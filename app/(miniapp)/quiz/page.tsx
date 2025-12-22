@@ -104,6 +104,13 @@ export default function QuizPage() {
   const submitAnswersRef = useRef<(() => Promise<void>) | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Дебаунсинг для сохранения метаданных позиции
   const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null); // Последний сохраненный ответ для дедупликации
+  // ИСПРАВЛЕНО: loadingRefForTimeout объявлен на уровне компонента для синхронизации с loading
+  const loadingRefForTimeout = useRef(true);
+  
+  // ИСПРАВЛЕНО: Синхронизируем loadingRefForTimeout с loading для использования в таймаутах
+  useEffect(() => {
+    loadingRefForTimeout.current = loading;
+  }, [loading]);
   
   // ИСПРАВЛЕНО: Храним значения из localStorage в state после mount, чтобы избежать hydration mismatch
   const [paidTopics, setPaidTopics] = useState<Set<string>>(new Set());
@@ -770,9 +777,18 @@ export default function QuizPage() {
                   clientLogger.log('✅ Профиль создан автоматически после обнаружения завершенной анкеты');
                   
                   // После создания профиля редиректим на /plan
-                  initCompletedRef.current = true;
+                  // ИСПРАВЛЕНО: Устанавливаем loading = false и initCompletedRef перед редиректом
+                  // Это гарантирует, что состояние будет обновлено даже если редирект не произойдет сразу
                   setLoading(false);
-                  window.location.replace('/plan');
+                  initCompletedRef.current = true;
+                  initInProgressRef.current = false;
+                  initStartTimeRef.current = null;
+                  // Используем setTimeout для гарантии, что состояние обновилось перед редиректом
+                  setTimeout(() => {
+                    if (typeof window !== 'undefined') {
+                      window.location.replace('/plan');
+                    }
+                  }, 0);
                   return;
                 } catch (submitErr: any) {
                   console.error('❌ Ошибка при автоматической отправке ответов для создания профиля:', submitErr);
@@ -905,14 +921,16 @@ export default function QuizPage() {
     
     // ВАЖНО: Добавляем таймаут для init(), чтобы гарантировать, что loading всегда будет false
     // ИСПРАВЛЕНО: Используем ref для проверки актуального значения loading в таймауте
-    const loadingRefForTimeout = useRef(true);
-    
+    // loadingRefForTimeout объявлен на уровне компонента и синхронизируется через useEffect
     const initTimeout = setTimeout(() => {
-      // ИСПРАВЛЕНО: Проверяем актуальное значение loading через ref
-      // Синхронизируем ref перед проверкой
-      loadingRefForTimeout.current = loading;
+      // ИСПРАВЛЕНО: Используем ref, который синхронизируется с loading через useEffect
+      // Это гарантирует, что мы проверяем актуальное значение loading, а не значение из замыкания
       if (loadingRefForTimeout.current) {
-        clientLogger.warn('⚠️ Init timeout: forcing loading = false after 10 seconds');
+        clientLogger.warn('⚠️ Init timeout: forcing loading = false after 10 seconds', {
+          loading: loadingRefForTimeout.current,
+          initCompleted: initCompletedRef.current,
+          initInProgress: initInProgressRef.current,
+        });
         setLoading(false);
         setError('Таймаут загрузки. Пожалуйста, обновите страницу.');
         initCompletedRef.current = true;
