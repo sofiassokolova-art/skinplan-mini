@@ -1144,9 +1144,17 @@ export default function QuizPage() {
       }
     }, 20000); // 20 секунд абсолютный таймаут
     
+    const useEffectStartTime = Date.now();
+    clientLogger.log('🚀 Вызов init() из useEffect...', { useEffectStartTime });
     init()
+      .then(() => {
+        const elapsed = Date.now() - useEffectStartTime;
+        clientLogger.log('✅ init() promise resolved', { elapsed });
+      })
       .catch((err) => {
+        const elapsed = Date.now() - useEffectStartTime;
         console.error('❌ Unhandled error in init promise:', err?.message);
+        clientLogger.error('❌ init() promise rejected', { error: err, elapsed });
         setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
         setLoading(false);
         initCompletedRef.current = true; // ИСПРАВЛЕНО: Устанавливаем initCompletedRef даже при ошибке
