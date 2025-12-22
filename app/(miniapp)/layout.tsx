@@ -23,6 +23,7 @@ function LayoutContent({
   const searchParams = useSearchParams();
   const { initData, initialize } = useTelegram();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isNewUser, setIsNewUser] = useState<boolean | null>(null); // null = еще не проверено
 
   useEffect(() => {
     try {
@@ -48,6 +49,25 @@ function LayoutContent({
       // Не блокируем приложение при ошибке инициализации
     }
   }, [initData, isAuthorized, initialize]);
+
+  // ИСПРАВЛЕНО: Проверяем, является ли пользователь новым (нет hasPlanProgress)
+  // Это нужно для скрытия навигации на главной странице для нового пользователя
+  useEffect(() => {
+    if (pathname === '/') {
+      const checkNewUser = async () => {
+        try {
+          const { getHasPlanProgress } = await import('@/lib/user-preferences');
+          const hasPlanProgress = await getHasPlanProgress();
+          setIsNewUser(!hasPlanProgress);
+        } catch {
+          setIsNewUser(false);
+        }
+      };
+      checkNewUser();
+    } else {
+      setIsNewUser(null);
+    }
+  }, [pathname]);
 
   // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
   /* useEffect(() => {
@@ -91,12 +111,15 @@ function LayoutContent({
   const isPlanGenerating = pathname === '/plan' && planState === 'generating';
   
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
+  // ИСПРАВЛЕНО: Скрываем навигацию на главной странице для нового пользователя
+  // Это предотвращает показ навигации с лоадером "загрузка плана" для нового пользователя
   const hideNav = pathname === '/quiz' || 
                   pathname.startsWith('/quiz/') || 
                   pathname === '/loading' ||
                   pathname.startsWith('/loading/') ||
                   isResumeScreen ||
-                  isPlanGenerating;
+                  isPlanGenerating ||
+                  (pathname === '/' && isNewUser === true); // Скрываем навигацию для нового пользователя на главной
   
   // Скрываем логотип на главной странице, на странице незавершенной анкеты, на странице анкеты (там логотип на фоне), и на страницах плана, избранного и профиля (там логотип встроен в страницу)
   const showLogo = pathname !== '/' && 

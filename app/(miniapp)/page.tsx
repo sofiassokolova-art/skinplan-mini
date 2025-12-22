@@ -170,39 +170,21 @@ export default function HomePage() {
       }
 
       // ИСПРАВЛЕНО: Сначала проверяем plan_progress БЕЗ установки loading = true
-      // Если plan_progress нет, проверяем наличие плана через API (план может быть только что создан)
-      // Это предотвращает редирект на /quiz, если план уже существует, но hasPlanProgress не установлен
-      const { getHasPlanProgress, setHasPlanProgress } = await import('@/lib/user-preferences');
+      // Для нового пользователя сразу редиректим на /quiz БЕЗ проверки плана
+      // Проверка плана должна происходить только на бэкенде, не на фронте
+      // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
+      const { getHasPlanProgress } = await import('@/lib/user-preferences');
       const hasPlanProgress = await getHasPlanProgress();
       
       if (!hasPlanProgress) {
-        // Нет plan_progress - проверяем, может быть план только что создан
-        // ИСПРАВЛЕНО: Проверяем план БЕЗ установки loading = true, чтобы не показывать лоадер
-        // Если план есть - устанавливаем hasPlanProgress и загружаем рекомендации
-        // Если плана нет - редиректим на /quiz
-        clientLogger.log('ℹ️ No plan_progress - checking if plan exists (may be just created)');
-        const planExists = await checkPlanExists();
-        
-        if (planExists) {
-          // План существует, но hasPlanProgress не установлен - устанавливаем его и загружаем рекомендации
-          clientLogger.log('✅ Plan exists but hasPlanProgress not set - setting it and loading recommendations');
-          try {
-            await setHasPlanProgress(true);
-          } catch (error) {
-            clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
-          }
-          // Устанавливаем loading = true и загружаем рекомендации
-          setLoading(true);
-          await loadRecommendations();
-          loadUserNameAsync();
-          return;
-        } else {
-          // Плана нет - значит пользователь новый, редиректим на /quiz БЕЗ лоадера
-          clientLogger.log('ℹ️ No plan_progress and no plan - redirecting to /quiz (new user)');
-          setLoading(false);
-          router.replace('/quiz');
-          return;
-        }
+        // Нет plan_progress - значит пользователь новый, редиректим на /quiz БЕЗ проверки плана
+        // ИСПРАВЛЕНО: Не вызываем checkPlanExists() для нового пользователя, чтобы не показывать лоадер плана
+        // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер "загрузка плана"
+        // Проверка плана должна происходить только на бэкенде через API endpoint
+        clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, skipping plan check)');
+        setLoading(false);
+        router.replace('/quiz');
+        return;
       }
 
       // plan_progress есть - устанавливаем loading = true и проверяем наличие плана через API
