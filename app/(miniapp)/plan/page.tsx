@@ -1432,8 +1432,10 @@ export default function PlanPage() {
     );
   }
 
-  // ИСПРАВЛЕНО: Показываем лоадер "Загрузка плана..." только если НЕ идет генерация
-  if (loading && generatingState !== 'ready' && generatingState !== null) {
+  // ИСПРАВЛЕНО: Показываем лоадер "Загрузка плана..." если loading = true и НЕ идет генерация
+  // После проверки на строке 1391 generatingState уже не может быть 'generating'
+  // Поэтому проверяем только loading и что generatingState !== 'generating'
+  if (loading && generatingState !== 'generating') {
     return (
       <div style={{
         display: 'flex',
