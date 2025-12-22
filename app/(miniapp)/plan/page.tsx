@@ -178,11 +178,20 @@ export default function PlanPage() {
   };
 
   // Polling статуса генерации плана
-  const pollPlanStatusStartTimeRef = useRef<number>(Date.now());
+  // ИСПРАВЛЕНО: Инициализируем как null, чтобы не учитывать время до начала polling
+  // Устанавливается только когда polling действительно начинается (строка 314)
+  const pollPlanStatusStartTimeRef = useRef<number | null>(null);
   const MAX_POLLING_DURATION = 120000; // 2 минуты максимум
   
   const pollPlanStatus = async () => {
     try {
+      // ИСПРАВЛЕНО: Проверяем, что polling действительно начался
+      // Если ref равен null, устанавливаем его сейчас (защита от вызова до установки)
+      if (pollPlanStatusStartTimeRef.current === null) {
+        pollPlanStatusStartTimeRef.current = Date.now();
+        clientLogger.log('⚠️ pollPlanStatusStartTimeRef was null, setting it now');
+      }
+      
       // ИСПРАВЛЕНО: Останавливаем polling если прошло слишком много времени
       const pollingDuration = Date.now() - pollPlanStatusStartTimeRef.current;
       if (pollingDuration > MAX_POLLING_DURATION) {
