@@ -106,10 +106,45 @@ export default function QuizPage() {
   const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null); // Последний сохраненный ответ для дедупликации
   // ИСПРАВЛЕНО: loadingRefForTimeout объявлен на уровне компонента для синхронизации с loading
   const loadingRefForTimeout = useRef(true);
+  // Время начала загрузки для абсолютного таймаута
+  const loadingStartTimeRef = useRef<number | null>(null);
   
   // ИСПРАВЛЕНО: Синхронизируем loadingRefForTimeout с loading для использования в таймаутах
   useEffect(() => {
     loadingRefForTimeout.current = loading;
+    // ИСПРАВЛЕНО: Отслеживаем время начала загрузки
+    if (loading && loadingStartTimeRef.current === null) {
+      loadingStartTimeRef.current = Date.now();
+    } else if (!loading) {
+      loadingStartTimeRef.current = null;
+    }
+  }, [loading]);
+  
+  // ИСПРАВЛЕНО: Абсолютный таймаут для loading - если loading остается true больше 15 секунд, сбрасываем его
+  useEffect(() => {
+    if (!loading) return;
+    
+    const timeout = setTimeout(() => {
+      if (loadingRefForTimeout.current && loadingStartTimeRef.current) {
+        const duration = Date.now() - loadingStartTimeRef.current;
+        if (duration > 15000) {
+          clientLogger.warn('⚠️ Абсолютный таймаут loading: сбрасываем loading после 15 секунд', {
+            duration,
+            initCompleted: initCompletedRef.current,
+            initInProgress: initInProgressRef.current,
+          });
+          setLoading(false);
+          loadingStartTimeRef.current = null;
+          // Гарантируем, что initCompletedRef установлен, чтобы не показывать лоадер
+          if (!initCompletedRef.current) {
+            initCompletedRef.current = true;
+            initInProgressRef.current = false;
+          }
+        }
+      }
+    }, 15000); // 15 секунд абсолютный таймаут
+    
+    return () => clearTimeout(timeout);
   }, [loading]);
   
   // ИСПРАВЛЕНО: Храним значения из localStorage в state после mount, чтобы избежать hydration mismatch
