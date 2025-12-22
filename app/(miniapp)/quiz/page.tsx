@@ -893,6 +893,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Добавлена дополнительная проверка hasResumed ПЕРЕД вызовом loadSavedProgressFromServer
       // ИСПРАВЛЕНО: Добавлена проверка loadProgressInProgressRef и progressLoadInProgressRef
       // Это предотвращает повторные вызовы в Telegram Mini App, где могут быть особенности с рендерингом
+      // ИСПРАВЛЕНО: Обернули загрузку прогресса в Promise.race с таймаутом, чтобы гарантировать завершение init()
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && !hasResumed && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
@@ -907,37 +908,46 @@ export default function QuizPage() {
             loadProgressInProgress: loadProgressInProgressRef.current,
             progressLoadInProgress: progressLoadInProgressRef.current,
           });
-          return;
-        }
-        progressLoadInProgressRef.current = true;
-        try {
-          clientLogger.log('🔄 Загружаем прогресс с сервера...');
-          await loadSavedProgressFromServer();
-          // loadSavedProgressFromServer сам устанавливает setShowResumeScreen(true) если есть прогресс
-          // и очищает localStorage если прогресса нет на сервере
-          clientLogger.log('✅ Загрузка прогресса завершена', {
-            showResumeScreen,
-            hasSavedProgress: !!savedProgress,
-          });
-        } catch (err: any) {
-          // Если ошибка 401 - это нормально, просто не используем серверный прогресс
-          if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
-            clientLogger.warn('⚠️ Не удалось загрузить прогресс с сервера:', err);
-          }
-          // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
-          // Если на сервере нет прогресса, значит его не должно быть
-          // Но только если пользователь еще не продолжил анкету
-          if (!hasResumedRef.current && !hasResumed) {
-            setSavedProgress(null);
-            setShowResumeScreen(false);
-          }
-        } finally {
-          // ИСПРАВЛЕНО: Не сбрасываем флаг, если пользователь уже продолжил анкету
-          // Это предотвращает повторные вызовы в Telegram Mini App
-          if (!hasResumedRef.current && !hasResumed) {
-          progressLoadInProgressRef.current = false;
-          } else {
-            clientLogger.log('🔒 init: оставляем progressLoadInProgressRef установленным, так как hasResumed = true');
+        } else {
+          progressLoadInProgressRef.current = true;
+          try {
+            clientLogger.log('🔄 Загружаем прогресс с сервера...');
+            // ИСПРАВЛЕНО: Обернули в Promise.race с таймаутом 5 секунд, чтобы гарантировать завершение
+            await Promise.race([
+              loadSavedProgressFromServer(),
+              new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
+                  resolve();
+                }, 5000);
+              }),
+            ]);
+            // loadSavedProgressFromServer сам устанавливает setShowResumeScreen(true) если есть прогресс
+            // и очищает localStorage если прогресса нет на сервере
+            clientLogger.log('✅ Загрузка прогресса завершена', {
+              showResumeScreen,
+              hasSavedProgress: !!savedProgress,
+            });
+          } catch (err: any) {
+            // Если ошибка 401 - это нормально, просто не используем серверный прогресс
+            if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
+              clientLogger.warn('⚠️ Не удалось загрузить прогресс с сервера:', err);
+            }
+            // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
+            // Если на сервере нет прогресса, значит его не должно быть
+            // Но только если пользователь еще не продолжил анкету
+            if (!hasResumedRef.current && !hasResumed) {
+              setSavedProgress(null);
+              setShowResumeScreen(false);
+            }
+          } finally {
+            // ИСПРАВЛЕНО: Не сбрасываем флаг, если пользователь уже продолжил анкету
+            // Это предотвращает повторные вызовы в Telegram Mini App
+            if (!hasResumedRef.current && !hasResumed) {
+              progressLoadInProgressRef.current = false;
+            } else {
+              clientLogger.log('🔒 init: оставляем progressLoadInProgressRef установленным, так как hasResumed = true');
+            }
           }
         }
       } else {
@@ -954,8 +964,8 @@ export default function QuizPage() {
       // ВАЖНО: Если showResumeScreen был установлен в loadSavedProgressFromServer, loading уже установлен в false там
       // ИСПРАВЛЕНО: Всегда устанавливаем loading = false после завершения init()
       // Экран resume сам управляет своим показом, а loading должен быть false для показа анкеты
-      // Используем setTimeout, чтобы гарантировать, что состояние обновилось после loadSavedProgressFromServer
       // ИСПРАВЛЕНО: Устанавливаем loading = false СРАЗУ, а не через setTimeout, чтобы предотвратить бесконечную загрузку
+      // КРИТИЧНО: Это должно быть вызвано ВСЕГДА, даже если loadSavedProgressFromServer завис
       setLoading(false);
       // ИСПРАВЛЕНО: Устанавливаем initCompletedRef после установки loading = false
       // Это гарантирует, что проверка на строке 438 будет работать правильно

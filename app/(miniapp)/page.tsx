@@ -69,10 +69,13 @@ export default function HomePage() {
     
       // Загружаем данные (пользователь идентифицируется автоматически через initData)
       const initAndLoad = async () => {
+      // ИСПРАВЛЕНО: Устанавливаем loading = false сразу, чтобы не показывать лоадер плана для нового пользователя
+      // loading будет установлен в true только если hasPlanProgress === true
+      setLoading(false);
+      
       // Проверяем, что приложение открыто через Telegram
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
         clientLogger.log('Telegram WebApp не доступен, перенаправляем на анкету');
-        setLoading(false);
         router.push('/quiz');
         return;
       }
@@ -173,20 +176,8 @@ export default function HomePage() {
       // Для нового пользователя сразу редиректим на /quiz БЕЗ проверки плана
       // Проверка плана должна происходить только на бэкенде, не на фронте
       // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
-      // ИСПРАВЛЕНО: Добавлена обработка ошибок для getHasPlanProgress()
-      // Если API вызов упадет, редиректим на /quiz и устанавливаем loading = false
-      let hasPlanProgress = false;
-      try {
-        const { getHasPlanProgress } = await import('@/lib/user-preferences');
-        hasPlanProgress = await getHasPlanProgress();
-      } catch (err: any) {
-        // ИСПРАВЛЕНО: Если не удалось проверить plan_progress, считаем пользователя новым
-        // Редиректим на /quiz и устанавливаем loading = false, чтобы не было бесконечной загрузки
-        clientLogger.warn('⚠️ Error checking plan_progress, redirecting to /quiz:', err?.message || err);
-        setLoading(false);
-        router.replace('/quiz');
-        return;
-      }
+      const { getHasPlanProgress } = await import('@/lib/user-preferences');
+      const hasPlanProgress = await getHasPlanProgress();
       
       if (!hasPlanProgress) {
         // Нет plan_progress - значит пользователь новый, редиректим на /quiz БЕЗ проверки плана
@@ -194,8 +185,10 @@ export default function HomePage() {
         // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер "загрузка плана"
         // Проверка плана должна происходить только на бэкенде через API endpoint
         clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, skipping plan check)');
-        setLoading(false);
-        router.replace('/quiz');
+        // ИСПРАВЛЕНО: Используем window.location.replace для немедленного редиректа без показа страницы
+        if (typeof window !== 'undefined') {
+          window.location.replace('/quiz');
+        }
         return;
       }
 
