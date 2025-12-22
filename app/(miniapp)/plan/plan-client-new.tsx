@@ -134,9 +134,25 @@ export function PlanPageClientNew({
       }
     };
     
+    const loadRetakingStatus = async () => {
+      try {
+        // ИСПРАВЛЕНО: Проверяем флаги перепрохождения из БД, а не из localStorage
+        const { getIsRetakingQuiz, getFullRetakeFromHome } = await import('@/lib/user-preferences');
+        const isRetakingQuiz = await getIsRetakingQuiz();
+        const fullRetakeFromHome = await getFullRetakeFromHome();
+        // Пользователь перепроходит анкету, если установлен любой из флагов
+        setIsRetaking(isRetakingQuiz || fullRetakeFromHome);
+      } catch (err) {
+        // Игнорируем ошибки - если не удалось загрузить, считаем что не перепроходит
+        clientLogger.warn('Could not load retaking status:', err);
+        setIsRetaking(false);
+      }
+    };
+    
     loadSkinIssues();
     loadUserInfo();
     loadUserName();
+    loadRetakingStatus();
   }, []);
   
   // Инициализируем selectedDay без зависимости от searchParams в useState
@@ -150,6 +166,10 @@ export function PlanPageClientNew({
   // ИСПРАВЛЕНО: needsFirstPayment должен быть false по умолчанию - убираем блюр для покупки
   // Платеж не должен показываться автоматически при первой генерации плана
   const [needsFirstPayment, setNeedsFirstPayment] = useState(false);
+  
+  // ИСПРАВЛЕНО: Динамически определяем, перепроходит ли пользователь анкету
+  // Это нужно для правильного отображения текста в PaymentGate
+  const [isRetaking, setIsRetaking] = useState(false);
 
   const currentDayPlan = useMemo(() => {
     // ИСПРАВЛЕНО: Ищем день по dayIndex, с защитой от undefined
@@ -468,7 +488,7 @@ export function PlanPageClientNew({
       <PaymentGate
         price={199}
         productCode="plan_access"
-        isRetaking={false}
+        isRetaking={isRetaking}
         onPaymentComplete={() => {
           setNeedsFirstPayment(false);
           clientLogger.log('✅ Payment completed on plan page');
