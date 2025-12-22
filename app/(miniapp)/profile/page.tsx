@@ -372,23 +372,29 @@ export default function PersonalCabinet() {
   const validatePhone = (phone: string): { isValid: boolean; error?: string } => {
     const trimmed = phone.trim();
     
-    // Удаляем все нецифровые символы кроме + для проверки
-    const digitsOnly = trimmed.replace(/[^\d+]/g, '');
-    
     // Минимальная валидация: должен быть хотя бы 10 цифр (для российских номеров)
     // Или начинаться с + и содержать цифры
     if (trimmed.length === 0) {
       return { isValid: true }; // Пустой номер - это нормально (можно не указывать)
     }
     
+    // ИСПРАВЛЕНО: Проверяем, содержит ли номер + не в начале (некорректный формат)
+    if (trimmed.includes('+') && !trimmed.startsWith('+')) {
+      return { isValid: false, error: 'Символ + может быть только в начале номера' };
+    }
+    
     if (trimmed.startsWith('+')) {
       // Международный формат: + и минимум 10 цифр
-      const digitCount = digitsOnly.replace('+', '').length;
+      // Удаляем все нецифровые символы (включая +) для подсчета цифр
+      const digitsOnly = trimmed.replace(/[^\d]/g, '');
+      const digitCount = digitsOnly.length;
       if (digitCount < 10) {
         return { isValid: false, error: 'Номер должен содержать минимум 10 цифр' };
       }
     } else {
-      // Российский формат: минимум 10 цифр
+      // Российский формат: минимум 10 цифр, без символа +
+      // ИСПРАВЛЕНО: Удаляем все нецифровые символы (включая возможный +) для подсчета цифр
+      const digitsOnly = trimmed.replace(/[^\d]/g, '');
       const digitCount = digitsOnly.length;
       if (digitCount < 10) {
         return { isValid: false, error: 'Номер должен содержать минимум 10 цифр' };
