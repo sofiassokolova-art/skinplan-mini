@@ -1061,22 +1061,34 @@ export default function QuizPage() {
         isStartingOverRef.current = false;
         setIsStartingOver(false);
       }
+      
+      clientLogger.log('✅ init() завершен успешно');
     } catch (initErr: any) {
       console.error('❌ Error in init function:', initErr?.message);
       setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
       setLoading(false);
       initCompletedRef.current = true; // ИСПРАВЛЕНО: Устанавливаем initCompletedRef даже при ошибке
       initInProgressRef.current = false;
+      clientLogger.error('❌ init() завершен с ошибкой:', initErr);
+    } finally {
+      // КРИТИЧНО: Гарантируем, что loading всегда будет false после завершения init()
+      // Это предотвращает бесконечную загрузку даже если что-то пошло не так
+      setLoading(false);
+      initCompletedRef.current = true;
+      initInProgressRef.current = false;
+      initStartTimeRef.current = null;
+      clientLogger.log('✅ init() finally блок выполнен - гарантированно установлен loading = false');
     }
     
     // ВАЖНО: Добавляем таймаут для init(), чтобы гарантировать, что loading всегда будет false
     // ИСПРАВЛЕНО: Используем ref для проверки актуального значения loading в таймауте
     // loadingRefForTimeout объявлен на уровне компонента и синхронизируется через useEffect
+    // ИСПРАВЛЕНО: Уменьшили таймаут до 8 секунд для более быстрого отклика
     const initTimeout = setTimeout(() => {
       // ИСПРАВЛЕНО: Используем ref, который синхронизируется с loading через useEffect
       // Это гарантирует, что мы проверяем актуальное значение loading, а не значение из замыкания
       if (loadingRefForTimeout.current) {
-        clientLogger.warn('⚠️ Init timeout: forcing loading = false after 10 seconds', {
+        clientLogger.warn('⚠️ Init timeout: forcing loading = false after 8 seconds', {
           loading: loadingRefForTimeout.current,
           initCompleted: initCompletedRef.current,
           initInProgress: initInProgressRef.current,
@@ -1087,7 +1099,20 @@ export default function QuizPage() {
         initInProgressRef.current = false;
         initStartTimeRef.current = null;
       }
-    }, 10000); // 10 секунд таймаут
+    }, 8000); // 8 секунд таймаут
+    
+    // КРИТИЧНО: Добавляем абсолютный таймаут на уровне useEffect, который гарантированно сбросит loading
+    // Это последняя линия защиты от бесконечной загрузки
+    const absoluteTimeout = setTimeout(() => {
+      if (loadingRefForTimeout.current) {
+        clientLogger.error('❌ Абсолютный таймаут init() (20 секунд) - принудительно сбрасываем loading');
+        setLoading(false);
+        setError('Таймаут загрузки анкеты. Пожалуйста, обновите страницу.');
+        initCompletedRef.current = true;
+        initInProgressRef.current = false;
+        initStartTimeRef.current = null;
+      }
+    }, 20000); // 20 секунд абсолютный таймаут
     
     init()
       .catch((err) => {
@@ -1100,6 +1125,7 @@ export default function QuizPage() {
       })
       .finally(() => {
         clearTimeout(initTimeout);
+        clearTimeout(absoluteTimeout);
         // ИСПРАВЛЕНО: НЕ устанавливаем loading = false в finally, так как это должно устанавливаться внутри init()
         // Это предотвращает преждевременное скрытие лоадера до завершения инициализации
         // init() сам устанавливает loading = false после завершения всех операций (строка 884)
@@ -1110,11 +1136,15 @@ export default function QuizPage() {
         }
         initInProgressRef.current = false;
         initStartTimeRef.current = null;
+        // КРИТИЧНО: Гарантируем, что loading будет false в finally блоке promise chain
+        // Это дополнительная защита на случай, если finally блок в init() не выполнился
+        setLoading(false);
       });
     
     // Очищаем таймауты при размонтировании
     return () => {
       clearTimeout(initTimeout);
+      clearTimeout(absoluteTimeout);
       if (saveProgressTimeoutRef.current) {
         clearTimeout(saveProgressTimeoutRef.current);
         saveProgressTimeoutRef.current = null;
