@@ -4059,34 +4059,44 @@ export default function QuizPage() {
   // И только если isSubmitting === false (проверка выше)
   // ИСПРАВЛЕНО: Добавляем проверку initCompletedRef, чтобы не показывать лоадер после завершения init()
   // Это предотвращает бесконечную загрузку, если loading остался true из-за ошибки
-  if (loading && !initCompletedRef.current) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column',
-        gap: '16px',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-      }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(10, 95, 89, 0.2)',
-          borderTop: '4px solid #0A5F59',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анкеты...</div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+  // ИСПРАВЛЕНО: Добавлена защита от залипшего loading - если init() завершен, но loading=true, сбрасываем его
+  if (loading) {
+    // Проверяем, не зависла ли загрузка
+    if (initCompletedRef.current && !initInProgressRef.current) {
+      // init() завершен, но loading все еще true - это ошибка, сбрасываем
+      clientLogger.warn('⚠️ loading=true, но init() завершен - сбрасываем loading');
+      setLoading(false);
+      // Продолжаем рендер анкеты (не показываем лоадер)
+    } else if (!initCompletedRef.current) {
+      // init() еще не завершен - показываем лоадер
+      return (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          flexDirection: 'column',
+          gap: '16px',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid rgba(10, 95, 89, 0.2)',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анкеты...</div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      );
+    }
   }
 
   // ИСПРАВЛЕНО: Не показываем ошибку при перепрохождении анкеты
