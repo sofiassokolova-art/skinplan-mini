@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTelegram } from '@/lib/telegram-client';
 import { api } from '@/lib/api';
-import { INFO_SCREENS, getInfoScreenAfterQuestion, type InfoScreen } from './info-screens';
+import { INFO_SCREENS, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen, type InfoScreen } from './info-screens';
 import { getAllTopics } from '@/lib/quiz-topics';
 import type { QuizTopic } from '@/lib/quiz-topics';
 import { PaymentGate } from '@/components/PaymentGate';
@@ -1713,8 +1713,9 @@ export default function QuizPage() {
     // Если показывается информационный экран между вопросами, проверяем, есть ли следующий инфо-экран в цепочке
     // При повторном прохождении пропускаем все info screens
     if (pendingInfoScreen && !isRetakingQuiz) {
-      // Проверяем, есть ли следующий инфо-экран, который должен быть показан после текущего
-      const nextInfoScreen = INFO_SCREENS.find(screen => screen.showAfterQuestionCode === pendingInfoScreen.id);
+      // ИСПРАВЛЕНО: Используем getNextInfoScreenAfterScreen для цепочки экранов
+      // Это правильно разделяет триггеры: showAfterQuestionCode для вопросов, showAfterInfoScreenId для экранов
+      const nextInfoScreen = getNextInfoScreenAfterScreen(pendingInfoScreen.id);
       if (nextInfoScreen) {
         setPendingInfoScreen(nextInfoScreen);
         await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
@@ -5537,7 +5538,8 @@ export default function QuizPage() {
           {(() => {
             // Проверяем, является ли это последним инфо-экраном (want_improve)
             const isLastInfoScreen = screen.id === 'want_improve';
-            const nextInfoScreen = INFO_SCREENS.find(s => s.showAfterQuestionCode === screen.id);
+            // ИСПРАВЛЕНО: Используем getNextInfoScreenAfterScreen для цепочки экранов
+            const nextInfoScreen = getNextInfoScreenAfterScreen(screen.id);
             
             // Для последнего tinder-экрана кнопки обрабатываются отдельно ниже
             // Если это не tinder-экран, но последний - показываем кнопку "Получить план"
@@ -5650,32 +5652,72 @@ export default function QuizPage() {
                   }
                 };
                 
+                // ИСПРАВЛЕНО: Добавлена fallback кнопка "Пропустить и получить план" для предотвращения застревания
+                // Это страховка на случай, если основная кнопка не работает или initData отсутствует
+                const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+                
                 return (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleGetPlan();
-                    }}
-                    disabled={isSubmitting}
-                    style={{
-                      width: '100%',
-                      height: '64px',
-                      background: '#0A5F59',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '32px',
-                      fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 600,
-                      fontSize: '18px',
-                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                      opacity: isSubmitting ? 0.7 : 1,
-                      marginTop: '20px',
-                    }}
-                  >
-                    {isSubmitting ? 'Отправка...' : 'Получить план ухода'}
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleGetPlan();
+                      }}
+                      disabled={isSubmitting}
+                      style={{
+                        width: '100%',
+                        height: '64px',
+                        background: '#0A5F59',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '32px',
+                        fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+                        fontWeight: 600,
+                        fontSize: '18px',
+                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                        opacity: isSubmitting ? 0.7 : 1,
+                      }}
+                    >
+                      {isSubmitting ? 'Отправка...' : 'Получить план ухода'}
+                    </button>
+                    {/* ИСПРАВЛЕНО: Fallback кнопка для случаев, когда основная кнопка не работает */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Вызываем тот же handleGetPlan, но это fallback на случай проблем
+                        handleGetPlan();
+                      }}
+                      disabled={isSubmitting}
+                      style={{
+                        width: '100%',
+                        padding: '12px 24px',
+                        background: 'transparent',
+                        color: '#0A5F59',
+                        border: '1px solid #0A5F59',
+                        borderRadius: '16px',
+                        fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+                        fontWeight: 500,
+                        fontSize: '14px',
+                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                        opacity: isSubmitting ? 0.5 : 1,
+                      }}
+                    >
+                      Пропустить и получить план
+                    </button>
+                    {!hasInitData && !isDev && (
+                      <p style={{
+                        color: '#6B7280',
+                        fontSize: '12px',
+                        textAlign: 'center',
+                        marginTop: '8px',
+                      }}>
+                        Убедитесь, что приложение открыто через Telegram Mini App
+                      </p>
+                    )}
+                  </div>
                 );
               }
               

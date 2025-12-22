@@ -18,7 +18,9 @@ export interface InfoScreen {
   title: string;
   subtitle?: string;
   image?: string;
-  showAfterQuestionCode?: string; // Код вопроса, после которого показать экран
+  // ИСПРАВЛЕНО: Разделены триггеры на два явных поля для предотвращения путаницы
+  showAfterQuestionCode?: string; // Код вопроса (question.code), после которого показать экран
+  showAfterInfoScreenId?: string; // ID предыдущего инфо-экрана (infoScreen.id), после которого показать экран
   ctaText?: string;
   type?: 'default' | 'testimonials' | 'tinder' | 'comparison' | 'products' | 'transformation'; // Тип экрана для специального рендеринга
   content?: Testimonial[] | InfoScreenProduct[] | any; // Дополнительные данные для кастомного рендеринга
@@ -97,7 +99,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'general_info_intro',
     title: 'Общая информация',
     subtitle: 'Поможет нам подобрать подходящий уход',
-    showAfterQuestionCode: 'testimonials',
+    showAfterInfoScreenId: 'testimonials', // ИСПРАВЛЕНО: После экрана testimonials, а не вопроса
     ctaText: 'Продолжить',
   },
   // Вопросы: Возраст (age), Пол (gender)
@@ -130,7 +132,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'health_data',
     title: 'Нам важно учесть ваши данные о здоровье',
     subtitle: 'чтобы подобрать безопасный уход\n\nВаши данные защищены — они нужны только для точных рекомендаций',
-    showAfterQuestionCode: 'simple_care',
+    showAfterInfoScreenId: 'simple_care', // ИСПРАВЛЕНО: После экрана simple_care, а не вопроса
     ctaText: 'Продолжить',
   },
   // 15) Есть ли у вас диагнозы? - вопрос в БД (medical_diagnoses)
@@ -180,7 +182,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'habits_matter',
     title: 'Каждая привычка отражается на коже',
     subtitle: 'Давайте посмотрим, что влияет именно на вашу и как ей помочь',
-    showAfterQuestionCode: 'ai_showcase',
+    showAfterInfoScreenId: 'ai_showcase', // ИСПРАВЛЕНО: После экрана ai_showcase, а не вопроса
     ctaText: 'Продолжить',
   },
   // 26) Декоративная косметика - вопрос в БД (makeup_frequency)
@@ -203,7 +205,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'preferences_intro',
     title: '✨ Расскажите о ваших предпочтениях в уходе',
     subtitle: 'Это поможет учесть ваши ожидания — какие текстуры, форматы и ощущения от ухода вам ближе',
-    showAfterQuestionCode: 'ai_comparison',
+    showAfterInfoScreenId: 'ai_comparison', // ИСПРАВЛЕНО: После экрана ai_comparison, а не вопроса
     ctaText: 'Продолжить',
   },
   // 32) Тип ухода - вопрос в БД (care_type)
@@ -224,7 +226,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'motivation_focus',
     title: '🎯 Давайте сосредоточимся на вашей мотивации',
     subtitle: 'Исследования показывают: когда вы держите цель перед глазами, это помогает сохранить мотивацию и добиться долгосрочных результатов.',
-    showAfterQuestionCode: 'no_mistakes',
+    showAfterInfoScreenId: 'no_mistakes', // ИСПРАВЛЕНО: После экрана no_mistakes, а не вопроса
     ctaText: 'Продолжить',
   },
   
@@ -235,7 +237,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     subtitle: '«Я часто чувствую недовольство своей кожей, когда смотрю в зеркало»',
     image: '/illustrations/mirror_concern.jpg',
     type: 'tinder',
-    showAfterQuestionCode: 'motivation_focus',
+    showAfterInfoScreenId: 'motivation_focus', // ИСПРАВЛЕНО: После экрана motivation_focus, а не вопроса
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
   },
   
@@ -246,7 +248,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     subtitle: '«Я хочу заботиться о своей коже, но не знаю, какие средства выбрать»',
     image: '/illustrations/products_confusion.jpg',
     type: 'tinder',
-    showAfterQuestionCode: 'recognize_yourself_1', // После предыдущего инфо-экрана
+    showAfterInfoScreenId: 'recognize_yourself_1', // ИСПРАВЛЕНО: После предыдущего инфо-экрана
     ctaText: '', // Кнопки будут отдельными (Нет/Да)
   },
   
@@ -255,7 +257,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'created_for_you',
     title: 'SkinIQ создан для людей, как вы!',
     subtitle: '✨ 97% пользователей отмечают, что SkinIQ помогает лучше заботиться о коже\n🌿 92% заметили улучшения внешнего вида кожи\n⚡️ 85% увидели первые результаты уже в первый месяц\n\nОсновано на опросах и отзывах реальных пользователей',
-    showAfterQuestionCode: 'recognize_yourself_2',
+    showAfterInfoScreenId: 'recognize_yourself_2', // ИСПРАВЛЕНО: После экрана recognize_yourself_2, а не вопроса
     ctaText: 'Продолжить',
   },
   
@@ -266,7 +268,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     subtitle: 'Отслеживайте прогресс и улучшайте состояние кожи',
     image: '/illustrations/skin_transformation.jpg',
     type: 'transformation',
-    showAfterQuestionCode: 'created_for_you',
+    showAfterInfoScreenId: 'created_for_you', // ИСПРАВЛЕНО: После экрана created_for_you, а не вопроса
     ctaText: 'Продолжить',
     content: {
       from: 'Сейчас',
@@ -281,7 +283,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     title: 'Хотите улучшить состояние кожи?',
     image: '/illustrations/improve_skin.jpg',
     type: 'tinder',
-    showAfterQuestionCode: 'skin_transformation',
+    showAfterInfoScreenId: 'skin_transformation', // ИСПРАВЛЕНО: После экрана skin_transformation, а не вопроса
     ctaText: '', // Кнопки будут отдельными (❌ Нет / ✅ Да)
   },
 ];
@@ -291,7 +293,74 @@ export function getInfoScreenAfterQuestion(questionCode: string): InfoScreen | u
   return INFO_SCREENS.find(screen => screen.showAfterQuestionCode === questionCode);
 }
 
+// ИСПРАВЛЕНО: Функция для получения следующего инфо-экрана в цепочке (после другого инфо-экрана)
+export function getNextInfoScreenAfterScreen(screenId: string): InfoScreen | undefined {
+  return INFO_SCREENS.find(screen => screen.showAfterInfoScreenId === screenId);
+}
+
 // Функция для получения всех информационных экранов в порядке их показа
 export function getAllInfoScreens(): InfoScreen[] {
   return INFO_SCREENS;
+}
+
+// ИСПРАВЛЕНО: Dev-валидация цепочки инфо-экранов для предотвращения циклов и ошибок
+if (process.env.NODE_ENV === 'development') {
+  const validateInfoScreens = () => {
+    const screenIds = new Set(INFO_SCREENS.map(s => s.id));
+    const errors: string[] = [];
+    
+    // Проверяем уникальность id
+    if (screenIds.size !== INFO_SCREENS.length) {
+      errors.push('❌ Дубликаты id в INFO_SCREENS');
+    }
+    
+    // Проверяем, что все showAfterInfoScreenId указывают на существующие экраны
+    for (const screen of INFO_SCREENS) {
+      if (screen.showAfterInfoScreenId && !screenIds.has(screen.showAfterInfoScreenId)) {
+        errors.push(`❌ Экран "${screen.id}" ссылается на несуществующий showAfterInfoScreenId: "${screen.showAfterInfoScreenId}"`);
+      }
+    }
+    
+    // Проверяем циклы в цепочке
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+    
+    const checkCycle = (screenId: string): boolean => {
+      if (recursionStack.has(screenId)) {
+        errors.push(`❌ Обнаружен цикл в цепочке инфо-экранов, включающий: ${screenId}`);
+        return true;
+      }
+      if (visited.has(screenId)) {
+        return false;
+      }
+      
+      visited.add(screenId);
+      recursionStack.add(screenId);
+      
+      const screen = INFO_SCREENS.find(s => s.id === screenId);
+      if (screen?.showAfterInfoScreenId) {
+        if (checkCycle(screen.showAfterInfoScreenId)) {
+          return true;
+        }
+      }
+      
+      recursionStack.delete(screenId);
+      return false;
+    };
+    
+    for (const screen of INFO_SCREENS) {
+      if (screen.showAfterInfoScreenId && !visited.has(screen.id)) {
+        checkCycle(screen.id);
+      }
+    }
+    
+    if (errors.length > 0) {
+      console.error('🚨 Ошибки валидации INFO_SCREENS:', errors);
+    } else {
+      console.log('✅ INFO_SCREENS валидация пройдена');
+    }
+  };
+  
+  // Запускаем валидацию при загрузке модуля
+  validateInfoScreens();
 }
