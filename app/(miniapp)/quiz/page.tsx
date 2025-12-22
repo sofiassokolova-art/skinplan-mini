@@ -3933,6 +3933,51 @@ export default function QuizPage() {
     }
   }
 
+  // КРИТИЧНО: Синхронная проверка quiz_just_submitted ПЕРЕД любым рендером
+  // Это предотвращает показ лоадера "Загрузка анкеты..." для нового пользователя
+  // и предотвращает показ планового лоадера на 2 секунды
+  // ИСПРАВЛЕНО: Проверяем синхронно, до всех условных рендеров
+  if (typeof window !== 'undefined') {
+    const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
+    if (justSubmitted) {
+      // Очищаем флаг сразу, чтобы не проверять его снова
+      sessionStorage.removeItem('quiz_just_submitted');
+      // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
+      initCompletedRef.current = true;
+      // Редиректим на /plan?state=generating СРАЗУ, без задержек
+      // Используем window.location.replace для немедленного редиректа
+      window.location.replace('/plan?state=generating');
+      // Возвращаем минимальный лоадер "Перенаправление..." во время редиректа
+      return (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          flexDirection: 'column',
+          gap: '16px',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid rgba(10, 95, 89, 0.2)',
+            borderTop: '4px solid #0A5F59',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Перенаправление...</div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      );
+    }
+  }
+
   // ИСПРАВЛЕНО: Показываем лоадер "Загрузка анкеты..." только если анкета загружается
   // И только если isSubmitting === false (проверка выше)
   if (loading) {
