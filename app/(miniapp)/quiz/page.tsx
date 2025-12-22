@@ -3902,9 +3902,12 @@ export default function QuizPage() {
       // ВАЖНО: Используем ref для submitAnswers, чтобы избежать проблем с зависимостями useEffect
       const timeoutId = setTimeout(() => {
         // ИСПРАВЛЕНО: Проверяем, что компонент еще смонтирован, questionnaire существует, и нет активной отправки
-        if (isMountedRef.current && submitAnswersRef.current && questionnaire && !isSubmittingRef.current) {
+        // ИСПРАВЛЕНО: Также проверяем, что init() завершен, чтобы не показывать плановый лоадер для нового пользователя
+        if (isMountedRef.current && submitAnswersRef.current && questionnaire && !isSubmittingRef.current && initCompletedRef.current) {
           // ИСПРАВЛЕНО: Устанавливаем флаг перед вызовом, чтобы предотвратить двойную отправку
           isSubmittingRef.current = true;
+          // ИСПРАВЛЕНО: Устанавливаем isSubmitting = true только когда submitAnswers действительно будет вызвана
+          setIsSubmitting(true);
           // ВАЖНО: Не обновляем состояние после вызова submitAnswers, чтобы избежать React Error #300
           submitAnswersRef.current().catch((err) => {
             console.error('❌ Ошибка при автоматической отправке ответов:', err);
