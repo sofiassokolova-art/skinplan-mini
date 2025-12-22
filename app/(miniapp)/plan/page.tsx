@@ -269,6 +269,16 @@ export default function PlanPage() {
     generatingStateRef.current = generatingState;
   }, [generatingState]);
 
+  // ИСПРАВЛЕНО: Синхронизируем loadingRef с loading для использования в таймаутах
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
+  // ИСПРАВЛЕНО: Синхронизируем planDataRef с planData для использования в таймаутах
+  useEffect(() => {
+    planDataRef.current = planData;
+  }, [planData]);
+
   useEffect(() => {
     isMountedRef.current = true;
     pageLoadStartTimeRef.current = Date.now(); // ИСПРАВЛЕНО: Запоминаем время начала загрузки страницы
