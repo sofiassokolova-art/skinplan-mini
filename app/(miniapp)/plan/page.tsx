@@ -1433,8 +1433,8 @@ export default function PlanPage() {
   }
 
   // ИСПРАВЛЕНО: Показываем лоадер "Загрузка плана..." если loading = true и НЕ идет генерация
-  // После проверки на строке 1391 generatingState уже не может быть 'generating'
-  // Поэтому проверяем только loading и что generatingState !== 'generating'
+  // generatingState начинается как null и устанавливается только при state=generating в URL
+  // При обычной загрузке generatingState остается null, поэтому проверяем только что НЕ идет генерация
   if (loading && generatingState !== 'generating') {
     return (
       <div style={{
