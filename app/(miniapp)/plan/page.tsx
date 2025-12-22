@@ -186,10 +186,10 @@ export default function PlanPage() {
   const pollPlanStatus = async () => {
     try {
       // ИСПРАВЛЕНО: Проверяем, что polling действительно начался
-      // Если ref равен null, устанавливаем его сейчас (защита от вызова до установки)
+      // Если ref равен null, это означает, что polling еще не начался - устанавливаем его сейчас
       if (pollPlanStatusStartTimeRef.current === null) {
         pollPlanStatusStartTimeRef.current = Date.now();
-        clientLogger.log('⚠️ pollPlanStatusStartTimeRef was null, setting it now');
+        clientLogger.log('⚠️ pollPlanStatusStartTimeRef was null, setting it now (polling started)');
       }
       
       // ИСПРАВЛЕНО: Останавливаем polling если прошло слишком много времени
