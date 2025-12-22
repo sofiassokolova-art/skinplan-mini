@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PlanHeader } from '@/components/PlanHeader';
 import { DayView } from '@/components/DayView';
@@ -232,20 +232,9 @@ export function PlanPageClientNew({
   // ИСПРАВЛЕНО: Защита от множественных вызовов корзины
   const cartLoadInProgressRef = useRef(false);
 
-  // Загружаем данные корзине при монтировании
-  // ИСПРАВЛЕНО: Убрана двойная проверка ref - проверка только внутри loadCart()
-  useEffect(() => {
-    loadCart();
-  }, [plan28]);
-
-  // ИСПРАВЛЕНО: План - это платный продукт, поэтому PaymentGate показывается ВСЕГДА до оплаты
-  // PaymentGate показывается если:
-  // - Пользователь еще не оплатил план (проверяется через PaymentGate компонент)
-  // - Это первая генерация плана или перепрохождение - нужна оплата
-  // PaymentGate сам проверяет статус оплаты через localStorage и БД
-  // Мы просто всегда показываем PaymentGate - он сам решит, нужен ли блюр
-
-  const loadCart = async () => {
+  // ИСПРАВЛЕНО: Определяем loadCart ПЕРЕД useEffect, который его использует
+  // Защита от множественных вызовов реализована внутри функции через cartLoadInProgressRef
+  const loadCart = useCallback(async () => {
     // ИСПРАВЛЕНО: Защита от множественных вызовов
     if (cartLoadInProgressRef.current) {
       return;
@@ -258,13 +247,30 @@ export function PlanPageClientNew({
       items.forEach((item) => {
         quantitiesMap.set(item.product.id, item.quantity);
       });
-      setCartQuantities(quantitiesMap);
+      if (isMountedRef.current) {
+        setCartQuantities(quantitiesMap);
+      }
     } catch (err) {
       clientLogger.warn('Could not load cart:', err);
     } finally {
-      cartLoadInProgressRef.current = false;
+      if (isMountedRef.current) {
+        cartLoadInProgressRef.current = false;
+      }
     }
-  };
+  }, []); // Пустые зависимости, так как функция не зависит от props/state
+
+  // Загружаем данные корзины при изменении plan28
+  // ИСПРАВЛЕНО: loadCart определена выше, поэтому доступна в useEffect
+  useEffect(() => {
+    loadCart();
+  }, [plan28, loadCart]);
+
+  // ИСПРАВЛЕНО: План - это платный продукт, поэтому PaymentGate показывается ВСЕГДА до оплаты
+  // PaymentGate показывается если:
+  // - Пользователь еще не оплатил план (проверяется через PaymentGate компонент)
+  // - Это первая генерация плана или перепрохождение - нужна оплата
+  // PaymentGate сам проверяет статус оплаты через localStorage и БД
+  // Мы просто всегда показываем PaymentGate - он сам решит, нужен ли блюр
 
 
   const handleFeedbackSubmit = async (feedback: {
