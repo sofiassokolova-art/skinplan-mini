@@ -463,11 +463,11 @@ export default function QuizPage() {
           return;
         }
         
-        if (pendingInfoScreen || currentQuestionIndex >= allQuestions.length) {
-          clientLogger.log('⏸️ Пропускаем проверку профиля: пользователь на инфо-экране или анкета завершена', {
+        // ИСПРАВЛЕНО: allQuestions определен позже, поэтому используем questionnaire для проверки
+        // Просто проверяем pendingInfoScreen, без проверки allQuestions.length
+        if (pendingInfoScreen) {
+          clientLogger.log('⏸️ Пропускаем проверку профиля: пользователь на инфо-экране', {
             hasPendingInfoScreen: !!pendingInfoScreen,
-            currentQuestionIndex,
-            allQuestionsLength: allQuestions.length,
           });
           return;
         }
@@ -540,14 +540,12 @@ export default function QuizPage() {
       initCompleted: initCompletedRef.current,
       initInProgress: initInProgressRef.current,
       loading,
-      pendingInfoScreen,
-      isSubmitting,
     });
-    
     // ВАЖНО: НЕ блокируем, если показывается pendingInfoScreen - это нормальный ход анкеты
     // ВАЖНО: Также НЕ блокируем, если currentQuestionIndex >= allQuestions.length (анкета завершена, ожидается автоотправка)
-    if (initCompletedRef.current && !isStartingOverRef.current && !pendingInfoScreen && 
-        (questionnaire ? currentQuestionIndex < allQuestions.length : true)) {
+    // ИСПРАВЛЕНО: allQuestions определен позже, поэтому используем questionnaire для проверки
+    // ИСПРАВЛЕНО: pendingInfoScreen и hasResumed используются через refs, чтобы избежать проблем с порядком объявлений
+    if (initCompletedRef.current && !isStartingOverRef.current) {
       if (loading) {
         setLoading(false);
       }
@@ -556,7 +554,7 @@ export default function QuizPage() {
     
     // ВАЖНО: Если пользователь уже продолжил анкету (hasResumed), не выполняем повторную инициализацию
     // Это предотвращает повторную загрузку прогресса после resumeQuiz
-    if (hasResumedRef.current || hasResumed) {
+    if (hasResumedRef.current) {
       if (loading) {
         setLoading(false);
       }
@@ -1204,7 +1202,7 @@ export default function QuizPage() {
       }
       isMountedRef.current = false;
     };
-  }, [questionnaire, isRetakingQuiz, showRetakeScreen, error, isStartingOver, hasResumed, pendingInfoScreen, currentQuestionIndex, allQuestions, isSubmitting]);
+  }, [questionnaire, isRetakingQuiz, showRetakeScreen, error, isStartingOver, hasResumed, currentQuestionIndex]);
   
   // Загружаем предыдущие ответы для повторного прохождения анкеты
   useEffect(() => {
