@@ -65,7 +65,6 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     initialize();
-    setLoading(true); // ИСПРАВЛЕНО: Устанавливаем loading в true сразу при монтировании
     setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при инициализации компонента
     
       // Загружаем данные (пользователь идентифицируется автоматически через initData)
@@ -170,7 +169,27 @@ export default function HomePage() {
         return;
       }
 
-      // ИСПРАВЛЕНО: Сначала проверяем наличие плана через API
+      // ИСПРАВЛЕНО: Сначала проверяем plan_progress БЕЗ установки loading = true
+      // Для нового пользователя сразу редиректим на /quiz, не показывая лоадер "загрузка плана"
+      // Это предотвращает показ лоадера плана для нового пользователя
+      const { getHasPlanProgress } = await import('@/lib/user-preferences');
+      const hasPlanProgress = await getHasPlanProgress();
+      
+      if (!hasPlanProgress) {
+        // Нет plan_progress - значит пользователь новый, редиректим на /quiz БЕЗ проверки плана
+        // ИСПРАВЛЕНО: Не вызываем checkPlanExists() для нового пользователя, чтобы не показывать лоадер плана
+        // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер "загрузка плана"
+        clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, skipping plan check)');
+        setLoading(false);
+        router.replace('/quiz');
+        return;
+      }
+
+      // plan_progress есть - устанавливаем loading = true и проверяем наличие плана через API
+      // ИСПРАВЛЕНО: Устанавливаем loading = true только после проверки hasPlanProgress
+      // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
+      setLoading(true);
+      
       // Это предотвращает редирект на анкету, если пользователь зашел с нового устройства
       // или очистил localStorage, но план уже создан
       const planExists = await checkPlanExists();
@@ -184,25 +203,12 @@ export default function HomePage() {
         return;
       }
 
-      // Плана нет - проверяем наличие plan_progress в БД
-      // Если plan_progress есть - значит пользователь уже проходил анкету, загружаем рекомендации
-      // Если plan_progress нет - редиректим на /quiz
-      const { getHasPlanProgress } = await import('@/lib/user-preferences');
-      const hasPlanProgress = await getHasPlanProgress();
-      
-      if (hasPlanProgress) {
-        // plan_progress есть - значит пользователь уже проходил анкету, загружаем рекомендации
-        // ИСПРАВЛЕНО: Показываем PaymentGate даже если план еще не создан (он может генерироваться)
-        clientLogger.log('ℹ️ No plan but plan_progress exists - loading recommendations (plan may be generating)');
-        await loadRecommendations();
-        // Загружаем имя в фоне после загрузки рекомендаций
-        loadUserNameAsync();
-      } else {
-        // Нет plan_progress - значит пользователь новый, редиректим на /quiz
-        clientLogger.log('ℹ️ No plan and no plan_progress - redirecting to /quiz (new user)');
-        setLoading(false);
-        router.replace('/quiz');
-      }
+      // plan_progress есть, но плана нет - значит пользователь уже проходил анкету, загружаем рекомендации
+      // ИСПРАВЛЕНО: Показываем PaymentGate даже если план еще не создан (он может генерироваться)
+      clientLogger.log('ℹ️ No plan but plan_progress exists - loading recommendations (plan may be generating)');
+      await loadRecommendations();
+      // Загружаем имя в фоне после загрузки рекомендаций
+      loadUserNameAsync();
     };
 
     initAndLoad();

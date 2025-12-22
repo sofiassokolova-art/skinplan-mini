@@ -608,11 +608,22 @@ export default function QuizPage() {
                   const { getIsRetakingQuiz } = await import('@/lib/user-preferences');
                   const isRetakingFromStorage = await getIsRetakingQuiz();
                   
-                  // Проверяем наличие плана - если плана нет, не показываем экран перепрохождения
+                  // ИСПРАВЛЕНО: Проверяем наличие плана БЕЗ вызова api.getPlan() для нового пользователя
+                  // Вместо этого проверяем через getHasPlanProgress - если его нет, значит плана нет
+                  // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
                   let hasPlan = false;
                   try {
-                    const plan = await api.getPlan();
-                    hasPlan = !!(plan && (plan.plan28 || plan.weeks));
+                    const { getHasPlanProgress } = await import('@/lib/user-preferences');
+                    const hasPlanProgress = await getHasPlanProgress();
+                    if (hasPlanProgress) {
+                      // plan_progress есть - проверяем наличие плана через API
+                      // Только если plan_progress есть, вызываем api.getPlan()
+                      const plan = await api.getPlan();
+                      hasPlan = !!(plan && (plan.plan28 || plan.weeks));
+                    } else {
+                      // plan_progress нет - значит плана нет, не вызываем api.getPlan()
+                      hasPlan = false;
+                    }
                   } catch (planErr) {
                     // План не найден - это нормально для нового пользователя
                     hasPlan = false;
