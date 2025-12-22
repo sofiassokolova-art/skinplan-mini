@@ -83,6 +83,7 @@ export default function PlanPage() {
   const [error, setError] = useState<string | null>(null);
   const [planData, setPlanData] = useState<PlanData | null>(null);
   const [generatingState, setGeneratingState] = useState<'generating' | 'ready' | null>(null);
+  const [shouldRedirectToQuiz, setShouldRedirectToQuiz] = useState(false);
   const isMountedRef = useRef(true);
   const loadPlanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const planGenerationCooldownRef = useRef<number>(0);
@@ -346,6 +347,16 @@ export default function PlanPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ИСПРАВЛЕНО: Если нет профиля, сразу редиректим на /quiz вместо показа экрана ошибки
+  // Это предотвращает показ страницы плана на секунду перед редиректом
+  useEffect(() => {
+    if (error === 'no_profile' && !loading && !shouldRedirectToQuiz) {
+      clientLogger.log('❌ No profile found on plan page, redirecting to /quiz');
+      setShouldRedirectToQuiz(true);
+      router.replace('/quiz');
+    }
+  }, [error, loading, shouldRedirectToQuiz, router]);
 
   // Функция для генерации плана с проверкой профиля
   // Унифицированная функция для замены дублирующейся логики
@@ -1668,59 +1679,34 @@ export default function PlanPage() {
     );
   }
 
-  // Показываем ошибку только если точно нет профиля (не показываем если просто загрузка)
+  // ИСПРАВЛЕНО: Если нет профиля, сразу редиректим на /quiz вместо показа экрана ошибки
+  // Это предотвращает показ страницы плана на секунду перед редиректом
   if (error === 'no_profile' && !loading) {
+    // Показываем лоадер во время редиректа
     return (
       <div style={{
-        minHeight: '100vh',
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        alignItems: 'center',
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '16px',
         background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
       }}>
         <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderRadius: '24px',
-          padding: '32px',
-          maxWidth: '500px',
-          width: '100%',
-          textAlign: 'center',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-        }}>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#0A5F59',
-            marginBottom: '12px',
-          }}>
-            Профиль не найден
-          </h2>
-          <p style={{
-            color: '#475467',
-            marginBottom: '24px',
-            lineHeight: '1.6',
-          }}>
-            Для просмотра плана необходимо сначала пройти анкету.
-          </p>
-          <a
-            href="/quiz"
-            style={{
-              display: 'inline-block',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              backgroundColor: '#0A5F59',
-              color: 'white',
-              textDecoration: 'none',
-              fontSize: '16px',
-              fontWeight: '600',
-              boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
-            }}
-          >
-            Пройти анкету
-          </a>
-        </div>
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(10, 95, 89, 0.2)',
+          borderTop: '4px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }}></div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }

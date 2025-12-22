@@ -237,6 +237,8 @@ export default function QuizPage() {
 
   // Флаг для предотвращения множественных вызовов init
   const initInProgressRef = useRef(false);
+  // Время начала инициализации для проверки зависания
+  const initStartTimeRef = useRef<number | null>(null);
   // Флаг для предотвращения повторных проверок профиля
   const profileCheckInProgressRef = useRef(false);
   // Флаг для предотвращения повторных загрузок прогресса
@@ -453,10 +455,21 @@ export default function QuizPage() {
     }
 
     // ВАЖНО: Предотвращаем множественные вызовы init
+    // ИСПРАВЛЕНО: Если initInProgressRef установлен, но прошло больше 10 секунд - сбрасываем его
+    // Это предотвращает бесконечную загрузку, если init() завис
     if (initInProgressRef.current) {
-      return;
+      // Проверяем, не завис ли init() - если прошло больше 10 секунд, сбрасываем
+      if (initStartTimeRef.current && Date.now() - initStartTimeRef.current > 10000) {
+        clientLogger.warn('⚠️ Init seems stuck, resetting initInProgressRef');
+        initInProgressRef.current = false;
+        initStartTimeRef.current = null;
+      } else {
+        return;
+      }
     }
     initInProgressRef.current = true;
+    // Сохраняем время начала инициализации для проверки зависания
+    initStartTimeRef.current = Date.now();
     
     // Если пользователь нажал "Начать заново", разрешаем повторную инициализацию
     // но с флагом isStartingOverRef = true, чтобы не загружать прогресс
@@ -880,6 +893,7 @@ export default function QuizPage() {
         // ИСПРАВЛЕНО: Устанавливаем initCompletedRef в finally, чтобы гарантировать его установку
         initCompletedRef.current = true;
         initInProgressRef.current = false;
+        initStartTimeRef.current = null;
       });
     
     // Очищаем таймауты при размонтировании
