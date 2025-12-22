@@ -3385,86 +3385,6 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Убран дублирующий лоадер при isSubmitting
   // Редирект на /plan обрабатывается выше (строка 3967), поэтому этот лоадер не нужен
   // Если isSubmitting === true, мы уже редиректим на /plan, где будет показан правильный лоадер
-  // Этот код больше не выполняется, так как редирект происходит раньше
-  // Оставляем закомментированным для истории, но не используем
-  /*
-  if (isSubmitting) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column',
-        gap: '40px',
-        background: '#FFFFFF',
-        padding: '20px'
-      }}>
-        <div style={{
-          width: '60px',
-          height: '60px',
-          border: '3px solid #E5E7EB',
-          borderTop: '3px solid #000000',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        
-        <div className="quiz-title" style={{
-          fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontSize: '24px',
-          fontWeight: 700,
-          color: '#000000',
-          textAlign: 'center',
-          lineHeight: '1.3'
-        }}>
-          Подбираем персональный уход
-        </div>
-        
-        {/* Подзаголовок */}
-        <div style={{
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontSize: '16px',
-          color: '#6B7280',
-          textAlign: 'center',
-          lineHeight: '1.5',
-          maxWidth: '320px'
-        }}>
-          Анализируем ваши ответы и состояние кожи, чтобы собрать план ухода по шагам.
-        </div>
-        
-        {/* Прогресс-бар */}
-        <div style={{
-          width: '100%',
-          maxWidth: '320px',
-          height: '4px',
-          backgroundColor: '#E5E7EB',
-          borderRadius: '2px',
-          overflow: 'hidden',
-          position: 'relative'
-        }}>
-          <div style={{
-            width: '35%',
-            height: '100%',
-            backgroundColor: '#000000',
-            borderRadius: '2px',
-            animation: 'progress 2s ease-in-out infinite'
-          }}></div>
-        </div>
-        
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          @keyframes progress {
-            0% { width: 30%; }
-            50% { width: 45%; }
-            100% { width: 30%; }
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
   // ВАЖНО: все хуки должны вызываться до любых условных return'ов
@@ -6084,6 +6004,7 @@ export default function QuizPage() {
         </div>
       );
     }
+    */
     
     // ИСПРАВЛЕНО: Показываем ошибку если loading = false и error установлен
     // Это включает ошибки Telegram initData, ошибки загрузки анкеты и ошибки отправки ответов
