@@ -173,8 +173,20 @@ export default function HomePage() {
       // Для нового пользователя сразу редиректим на /quiz БЕЗ проверки плана
       // Проверка плана должна происходить только на бэкенде, не на фронте
       // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
-      const { getHasPlanProgress } = await import('@/lib/user-preferences');
-      const hasPlanProgress = await getHasPlanProgress();
+      // ИСПРАВЛЕНО: Добавлена обработка ошибок для getHasPlanProgress()
+      // Если API вызов упадет, редиректим на /quiz и устанавливаем loading = false
+      let hasPlanProgress = false;
+      try {
+        const { getHasPlanProgress } = await import('@/lib/user-preferences');
+        hasPlanProgress = await getHasPlanProgress();
+      } catch (err: any) {
+        // ИСПРАВЛЕНО: Если не удалось проверить plan_progress, считаем пользователя новым
+        // Редиректим на /quiz и устанавливаем loading = false, чтобы не было бесконечной загрузки
+        clientLogger.warn('⚠️ Error checking plan_progress, redirecting to /quiz:', err?.message || err);
+        setLoading(false);
+        router.replace('/quiz');
+        return;
+      }
       
       if (!hasPlanProgress) {
         // Нет plan_progress - значит пользователь новый, редиректим на /quiz БЕЗ проверки плана
