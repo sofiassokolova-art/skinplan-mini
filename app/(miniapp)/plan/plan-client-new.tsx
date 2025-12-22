@@ -241,11 +241,15 @@ export function PlanPageClientNew({
     }
     cartLoadInProgressRef.current = true;
     try {
-      const cart = await api.getCart() as { items?: Array<{ product: { id: number }; quantity: number }> };
+      const cart = await api.getCart() as { items?: Array<{ product?: { id: number }; productId?: number; quantity: number }> };
       const items = cart.items || [];
       const quantitiesMap = new Map<number, number>();
       items.forEach((item) => {
-        quantitiesMap.set(item.product.id, item.quantity);
+        // ИСПРАВЛЕНО: Обрабатываем опциональный product
+        const productId = item.product?.id || item.productId;
+        if (productId) {
+          quantitiesMap.set(productId, item.quantity);
+        }
       });
       if (isMountedRef.current) {
         setCartQuantities(quantitiesMap);
