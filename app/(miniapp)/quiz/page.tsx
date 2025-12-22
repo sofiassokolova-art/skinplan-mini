@@ -808,12 +808,19 @@ export default function QuizPage() {
                   isCompleted,
                   hasQuestionnaire: !!questionnaire,
                 });
+                // ИСПРАВЛЕНО: Для нового пользователя гарантируем, что loading будет false
+                // Это предотвращает бесконечную загрузку, если init() завершится раньше
+                setLoading(false);
               }
             } catch (progressErr: any) {
               clientLogger.log('ℹ️ Не удалось проверить прогресс анкеты, показываем полную анкету', progressErr);
+              // ИСПРАВЛЕНО: Гарантируем, что loading будет false даже при ошибке проверки прогресса
+              setLoading(false);
             }
           } else {
             clientLogger.log('ℹ️ Ошибка при проверке профиля, показываем полную анкету', err);
+            // ИСПРАВЛЕНО: Гарантируем, что loading будет false даже при ошибке проверки профиля
+            setLoading(false);
           }
           setIsRetakingQuiz(false);
           setShowRetakeScreen(false);
@@ -825,11 +832,15 @@ export default function QuizPage() {
         // При "Начать заново" показываем полную анкету
         setIsRetakingQuiz(false);
         setShowRetakeScreen(false);
+        // ИСПРАВЛЕНО: Гарантируем, что loading будет false при "Начать заново"
+        setLoading(false);
       } else {
         // Telegram WebApp не доступен - показываем полную анкету
         clientLogger.log('ℹ️ Telegram WebApp не доступен, показываем полную анкету');
         setIsRetakingQuiz(false);
         setShowRetakeScreen(false);
+        // ИСПРАВЛЕНО: Гарантируем, что loading будет false, если Telegram WebApp не доступен
+        setLoading(false);
       }
 
       // Загружаем прогресс с сервера (только если Telegram WebApp доступен)
