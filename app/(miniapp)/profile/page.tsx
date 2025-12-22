@@ -84,7 +84,8 @@ export default function PersonalCabinet() {
         setLoading(false);
         return;
       }
-      loadProfile();
+      // ИСПРАВЛЕНО: await loadProfile() для возможности "цеплять" последующие шаги без гонок
+      await loadProfile();
     };
 
     init();
@@ -112,7 +113,15 @@ export default function PersonalCabinet() {
         const userAnswersResponse = await api.getUserAnswers() as any;
         
         // ИСПРАВЛЕНО: Нормализуем формат ответа - API может возвращать массив напрямую или обернутый в объект
+        // Добавлена валидация структуры для предотвращения скрытия реальных проблем API
         let userAnswers: any[] = [];
+        
+        // Проверяем, что ответ не является ошибкой
+        if (userAnswersResponse && typeof userAnswersResponse === 'object' && 'error' in userAnswersResponse) {
+          clientLogger.warn('⚠️ API вернул ошибку вместо ответов', userAnswersResponse);
+          throw new Error('API returned error response');
+        }
+        
         if (Array.isArray(userAnswersResponse)) {
           userAnswers = userAnswersResponse;
         } else if (userAnswersResponse && typeof userAnswersResponse === 'object') {
@@ -144,6 +153,15 @@ export default function PersonalCabinet() {
           }
         }
         
+        // ИСПРАВЛЕНО: Валидация структуры ответов - фильтруем только похожие на ожидаемую структуру
+        // Это предотвращает скрытие реальных проблем API (например, неожиданный формат)
+        const looksLikeAnswer = (x: any) => {
+          if (!x || typeof x !== 'object') return false;
+          // Проверяем наличие хотя бы одного из ожидаемых полей
+          return 'answerValue' in x || 'question' in x || 'questionCode' in x || 'code' in x;
+        };
+        userAnswers = userAnswers.filter(looksLikeAnswer);
+        
         clientLogger.log('📋 Загружены ответы пользователя:', { 
           count: userAnswers.length,
           originalType: typeof userAnswersResponse,
@@ -152,20 +170,30 @@ export default function PersonalCabinet() {
         });
         
         if (userAnswers.length > 0) {
-          const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
+          // ИСПРАВЛЕНО: Поддержка альтернативных форматов ответа
+          // Поддерживаем: a.question?.code, a.questionCode, a.code
+          const nameAnswer = userAnswers.find((a: any) => {
+            const code = a.question?.code ?? a.questionCode ?? a.code;
+            return code === 'USER_NAME';
+          });
+          
+          // ИСПРАВЛЕНО: Поддержка альтернативных полей для значения ответа
+          const answerValue = nameAnswer?.answerValue ?? nameAnswer?.value ?? nameAnswer?.text;
+          
           clientLogger.log('🔍 Поиск ответа USER_NAME:', { 
             found: !!nameAnswer,
-            answerValue: nameAnswer?.answerValue,
-            questionCode: nameAnswer?.question?.code
+            answerValue,
+            questionCode: nameAnswer?.question?.code ?? nameAnswer?.questionCode ?? nameAnswer?.code
           });
-          if (nameAnswer && nameAnswer.answerValue && String(nameAnswer.answerValue).trim().length > 0) {
-            userNameFromAnswer = String(nameAnswer.answerValue).trim();
+          
+          if (nameAnswer && answerValue && String(answerValue).trim().length > 0) {
+            userNameFromAnswer = String(answerValue).trim();
             setDisplayNameFromAnswer(userNameFromAnswer);
             clientLogger.log('✅ Имя найдено в ответах USER_NAME:', userNameFromAnswer);
           } else {
             clientLogger.warn('⚠️ Ответ USER_NAME не найден или пустой', { 
               hasAnswer: !!nameAnswer,
-              answerValue: nameAnswer?.answerValue
+              answerValue
             });
           }
         } else {
@@ -188,37 +216,41 @@ export default function PersonalCabinet() {
         }
       }
       
+      // ИСПРАВЛЕНО: Выбираем один источник правды для Telegram user
+      // Приоритет: tg.initDataUnsafe.user (более надежный) > useTelegram().user (fallback)
+      const telegramUser = tg?.initDataUnsafe?.user || user;
+      
       // Данные пользователя: сначала из ответа USER_NAME, потом из БД, потом из Telegram
       if (dbUser) {
         const profile: UserProfile = {
-          id: dbUser.id || user?.id?.toString() || '',
-          telegramId: dbUser.telegramId || user?.id?.toString() || '',
-          username: dbUser.username || user?.username,
+          id: dbUser.id || telegramUser?.id?.toString() || '',
+          telegramId: dbUser.telegramId || telegramUser?.id?.toString() || '',
+          username: dbUser.username || telegramUser?.username,
           // ИСПРАВЛЕНО: Приоритет имени: ответ USER_NAME > БД > Telegram
-          firstName: userNameFromAnswer || dbUser.firstName || user?.first_name || undefined,
-          lastName: dbUser.lastName || user?.last_name || undefined,
-          language: dbUser.language || user?.language_code,
+          firstName: userNameFromAnswer || dbUser.firstName || telegramUser?.first_name || undefined,
+          lastName: dbUser.lastName || telegramUser?.last_name || undefined,
+          language: dbUser.language || telegramUser?.language_code,
           phoneNumber: dbUser.phoneNumber || undefined,
         };
         setUserProfile(profile);
         // ИСПРАВЛЕНО: Используем имя из ответа USER_NAME, если оно есть
-        setNameValue(userNameFromAnswer || [dbUser.firstName || user?.first_name, dbUser.lastName || user?.last_name].filter(Boolean).join(' ') || '');
+        setNameValue(userNameFromAnswer || [dbUser.firstName || telegramUser?.first_name, dbUser.lastName || telegramUser?.last_name].filter(Boolean).join(' ') || '');
         setPhoneValue(dbUser.phoneNumber || '');
-      } else if (user) {
+      } else if (telegramUser) {
         // Если БД недоступна, используем данные из Telegram
         const profile: UserProfile = {
-          id: user.id.toString(),
-          telegramId: user.id.toString(),
-          username: user.username,
+          id: telegramUser.id.toString(),
+          telegramId: telegramUser.id.toString(),
+          username: telegramUser.username,
           // ИСПРАВЛЕНО: Приоритет имени: ответ USER_NAME > Telegram
-          firstName: userNameFromAnswer || user.first_name || undefined,
-          lastName: user.last_name || undefined,
-          language: user.language_code,
+          firstName: userNameFromAnswer || telegramUser.first_name || undefined,
+          lastName: telegramUser.last_name || undefined,
+          language: telegramUser.language_code,
           phoneNumber: undefined,
         };
         setUserProfile(profile);
         // ИСПРАВЛЕНО: Используем имя из ответа USER_NAME, если оно есть
-        setNameValue(userNameFromAnswer || [user.first_name, user.last_name].filter(Boolean).join(' ') || '');
+        setNameValue(userNameFromAnswer || [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || '');
         setPhoneValue('');
       }
 
@@ -235,18 +267,49 @@ export default function PersonalCabinet() {
         try {
           const plan = await api.getPlan() as any;
           // Проверяем наличие плана в новом или старом формате
-          // ИСПРАВЛЕНО: Проверяем, что profile не null перед использованием
-          if (plan && (plan.weeks || plan.plan28) && profile) {
-            const createdAt = new Date(profile.createdAt || Date.now());
-            const now = new Date();
-            const daysDiff = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-            const currentDay = Math.min(daysDiff + 1, 28);
+          // ИСПРАВЛЕНО: Используем дату создания плана (plan.createdAt или daysSinceCreation) вместо skinProfile.createdAt
+          // Это более корректно, так как план может быть пересоздан, а профиль кожи - пересоздан раньше/позже
+          if (plan && (plan.weeks || plan.plan28)) {
+            let planStartDate: Date | null = null;
             
-            setPlanInfo({
-              currentDay: currentDay > 0 ? currentDay : 1,
-              totalDays: 28,
-              started: true,
-            });
+            // Пытаемся получить дату старта плана из разных источников
+            if (plan.createdAt) {
+              // Если план содержит createdAt напрямую
+              planStartDate = new Date(plan.createdAt);
+            } else if (plan.daysSinceCreation !== undefined) {
+              // Если есть daysSinceCreation, вычисляем дату старта обратно
+              const now = new Date();
+              planStartDate = new Date(now.getTime() - (plan.daysSinceCreation * 24 * 60 * 60 * 1000));
+            } else if (profile?.createdAt) {
+              // Fallback: используем дату создания профиля (старое поведение)
+              planStartDate = new Date(profile.createdAt);
+            }
+            
+            if (planStartDate) {
+              const now = new Date();
+              const daysDiff = Math.floor((now.getTime() - planStartDate.getTime()) / (1000 * 60 * 60 * 24));
+              const currentDay = Math.min(daysDiff + 1, 28);
+              
+              setPlanInfo({
+                currentDay: currentDay > 0 ? currentDay : 1,
+                totalDays: 28,
+                started: true,
+              });
+            } else {
+              // Если не удалось определить дату старта, используем fallback на профиль
+              if (profile) {
+                const createdAt = new Date(profile.createdAt || Date.now());
+                const now = new Date();
+                const daysDiff = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+                const currentDay = Math.min(daysDiff + 1, 28);
+                
+                setPlanInfo({
+                  currentDay: currentDay > 0 ? currentDay : 1,
+                  totalDays: 28,
+                  started: true,
+                });
+              }
+            }
           } else {
             // План еще не готов - это нормально, не показываем ошибку
             if (process.env.NODE_ENV === 'development') {
@@ -305,15 +368,54 @@ export default function PersonalCabinet() {
     }
   };
 
+  // ИСПРАВЛЕНО: Валидация телефона - простая проверка формата
+  const validatePhone = (phone: string): { isValid: boolean; error?: string } => {
+    const trimmed = phone.trim();
+    
+    // Удаляем все нецифровые символы кроме + для проверки
+    const digitsOnly = trimmed.replace(/[^\d+]/g, '');
+    
+    // Минимальная валидация: должен быть хотя бы 10 цифр (для российских номеров)
+    // Или начинаться с + и содержать цифры
+    if (trimmed.length === 0) {
+      return { isValid: true }; // Пустой номер - это нормально (можно не указывать)
+    }
+    
+    if (trimmed.startsWith('+')) {
+      // Международный формат: + и минимум 10 цифр
+      const digitCount = digitsOnly.replace('+', '').length;
+      if (digitCount < 10) {
+        return { isValid: false, error: 'Номер должен содержать минимум 10 цифр' };
+      }
+    } else {
+      // Российский формат: минимум 10 цифр
+      const digitCount = digitsOnly.length;
+      if (digitCount < 10) {
+        return { isValid: false, error: 'Номер должен содержать минимум 10 цифр' };
+      }
+    }
+    
+    return { isValid: true };
+  };
+
   const handleSavePhone = async () => {
     try {
+      const trimmedPhone = phoneValue.trim();
+      
+      // ИСПРАВЛЕНО: Валидация телефона перед сохранением
+      const validation = validatePhone(trimmedPhone);
+      if (!validation.isValid) {
+        toast.error(validation.error || 'Неверный формат номера телефона');
+        return;
+      }
+      
       await api.updateUserProfile({
-        phoneNumber: phoneValue.trim(),
+        phoneNumber: trimmedPhone,
       });
       
       setUserProfile(prev => prev ? {
         ...prev,
-        phoneNumber: phoneValue.trim(),
+        phoneNumber: trimmedPhone,
       } : null);
       
       setEditingPhone(false);
@@ -418,8 +520,11 @@ export default function PersonalCabinet() {
     : 0;
   const completedDays = planInfo.currentDay || 0;
 
-  // Получаем фото пользователя из Telegram
-  const userPhotoUrl = user?.photo_url || (tg?.initDataUnsafe?.user?.photo_url);
+  // ИСПРАВЛЕНО: Выбираем один источник правды для Telegram user
+  // Приоритет: tg.initDataUnsafe.user (более надежный) > useTelegram().user (fallback)
+  // Это предотвращает мигания при синхронизации useTelegram
+  const telegramUser = tg?.initDataUnsafe?.user || user;
+  const userPhotoUrl = telegramUser?.photo_url;
 
   return (
     <div style={{
@@ -485,7 +590,7 @@ export default function PersonalCabinet() {
               }}
             />
           ) : (
-          <TelegramUserAvatar user={user || undefined} size="lg" />
+            <TelegramUserAvatar user={telegramUser || undefined} size="lg" />
           )}
           <div>
             <h1 style={{
