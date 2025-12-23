@@ -104,6 +104,10 @@ export default function QuizPage() {
   const submitAnswersRef = useRef<(() => Promise<void>) | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Дебаунсинг для сохранения метаданных позиции
   const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null); // Последний сохраненный ответ для дедупликации
+  // Защита от бесконечного "Загрузка анкеты...":
+  // раньше проверка "анкета уже завершена?" запускалась прямо в рендере при questionnaire=null,
+  // что приводило к бесконечным повторным запросам и зависанию на лоадере при ошибках.
+  const quizCompletionCheckedRef = useRef(false);
   // ИСПРАВЛЕНО: loadingRefForTimeout объявлен на уровне компонента для синхронизации с loading
   const loadingRefForTimeout = useRef(true);
   // Время начала загрузки для абсолютного таймаута
@@ -181,6 +185,32 @@ export default function QuizPage() {
     };
     loadPaymentFlags();
   }, []);
+
+  // Если анкета (questionnaire) не загрузилась, но профиль уже есть и анкета завершена,
+  // редиректим на план. Важно: делаем это в useEffect, а не в рендере (иначе будут бесконечные запросы).
+  useEffect(() => {
+    if (quizCompletionCheckedRef.current) return;
+    if (isSubmitting) return;
+    if (questionnaire) return;
+    if (typeof window === 'undefined') return;
+    if (!window.Telegram?.WebApp?.initData) return;
+
+    quizCompletionCheckedRef.current = true;
+    (async () => {
+      try {
+        const profile = await api.getCurrentProfile();
+        if (profile && (profile as any).id) {
+          const response = await api.getQuizProgress();
+          if (response?.isCompleted === true) {
+            clientLogger.log('✅ Анкета завершена, но questionnaire не загружен - редиректим на /plan');
+            window.location.replace('/plan?state=generating');
+          }
+        }
+      } catch (err) {
+        // ignore: в этом случае просто останемся на лоадере/ошибке ниже
+      }
+    })();
+  }, [questionnaire, isSubmitting]);
   
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
   // ИСПРАВЛЕНО: Проверяем флаг из localStorage при монтировании
@@ -4176,9 +4206,9 @@ export default function QuizPage() {
     }
   }
 
-  // ИСПРАВЛЕНО: Не показываем ошибку при перепрохождении анкеты
-  // При перепрохождении анкета может загружаться в фоне, и ошибка не должна блокировать пользователя
-  if (error && !questionnaire && !isRetakingQuiz && !showRetakeScreen) {
+  // Если анкета не загрузилась и есть ошибка — показываем её (иначе пользователь может застрять
+  // на бесконечном "Загрузка анкеты..." особенно в режиме перепрохождения, где ошибки ранее скрывались).
+  if (error && !questionnaire && !isSubmitting) {
     return (
       <div style={{
         padding: '20px',
@@ -4226,34 +4256,7 @@ export default function QuizPage() {
   }
 
   if (!questionnaire) {
-    // ИСПРАВЛЕНО: Проверяем, завершена ли анкета, перед показом лоадера "Подготавливаем анкету"
-    // Если анкета завершена - редиректим на /plan, а не показываем лоадер
-    const checkQuizCompleted = async () => {
-      try {
-        const profile = await api.getCurrentProfile();
-        if (profile && profile.id) {
-          // Профиль существует - проверяем, завершена ли анкета
-          const response = await api.getQuizProgress();
-          const isCompleted = response?.isCompleted === true;
-          
-          if (isCompleted) {
-            // Анкета завершена - редиректим на /plan
-            clientLogger.log('✅ Анкета завершена, но questionnaire не загружен - редиректим на /plan');
-            window.location.replace('/plan?state=generating');
-            return;
-          }
-        }
-      } catch (err) {
-        // При ошибке продолжаем показывать лоадер
-        clientLogger.warn('⚠️ Ошибка при проверке завершенности анкеты:', err);
-      }
-    };
-    
-    // Проверяем завершенность анкеты только если анкета не отправляется
-    if (!isSubmitting) {
-      checkQuizCompleted();
-    }
-    
+    // Примечание: проверка "анкета уже завершена?" выполняется в useEffect выше (а не в рендере).
     // Фолбэк, когда анкета ещё не успела загрузиться (например, после холодного старта сервера)
     // Вместо жёсткой ошибки показываем экран "подготовки" с мягким текстом.
     // ИСПРАВЛЕНО: Показываем лоадер только если анкета НЕ завершена

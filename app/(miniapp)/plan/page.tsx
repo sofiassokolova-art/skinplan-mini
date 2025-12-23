@@ -94,6 +94,9 @@ export default function PlanPage() {
   const planGenerationInFlightRef = useRef<Promise<GeneratedPlan | null> | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const generateKickoffRef = useRef(false);
+  // Защита от бесконечного лоадера: если обработка данных плана падает,
+  // ограничиваем число повторов (раньше retries сбрасывались в 0 и цикл мог быть бесконечным).
+  const processPlanFailureCountRef = useRef(0);
 
   // Безопасные обертки для setState (проверяют mounted перед обновлением)
   const safeSetLoading = (value: boolean) => {
@@ -640,19 +643,20 @@ export default function PlanPage() {
       if (plan28 && plan28.days) {
         // Для нового формата plan28 собираем все productId из всех дней
         const allProductIds = new Set<number>();
-        plan28.days.forEach(day => {
-          day.morning.forEach(step => {
-            if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
-          });
-          day.evening.forEach(step => {
-            if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
-          });
-          day.weekly.forEach(step => {
-            if (step.productId) allProductIds.add(Number(step.productId));
-            step.alternatives.forEach(alt => allProductIds.add(Number(alt)));
-          });
+        plan28.days.forEach((day: any) => {
+          const addStepProducts = (step: any) => {
+            if (step?.productId) allProductIds.add(Number(step.productId));
+            const alternatives = Array.isArray(step?.alternatives) ? step.alternatives : [];
+            alternatives.forEach((alt: any) => allProductIds.add(Number(alt)));
+          };
+
+          const morningSteps = Array.isArray(day?.morning) ? day.morning : [];
+          const eveningSteps = Array.isArray(day?.evening) ? day.evening : [];
+          const weeklySteps = Array.isArray(day?.weekly) ? day.weekly : [];
+
+          morningSteps.forEach(addStepProducts);
+          eveningSteps.forEach(addStepProducts);
+          weeklySteps.forEach(addStepProducts);
         });
 
         // Загружаем продукты из API - ОСНОВНАЯ ЛОГИКА
@@ -849,6 +853,8 @@ export default function PlanPage() {
         planExpired, // Сохраняем флаг истечения плана
       });
 
+      // Если дошли сюда — обработка успешна, сбрасываем счетчик ошибок обработки.
+      processPlanFailureCountRef.current = 0;
       safeSetLoading(false);
     } catch (err: any) {
       console.error('❌ Error processing plan data:', err);
@@ -883,17 +889,22 @@ export default function PlanPage() {
         clientLogger.warn('Failed to save error log:', logError);
       }
       
-      // При ошибке обработки плана не показываем экран генерации
-      // Вместо этого пытаемся загрузить план заново или показываем обычный лоадер
-      console.error('❌ Error processing plan, attempting to reload...');
-      // ВАЖНО: Сбрасываем ошибку и показываем только лоадер
-      // Не показываем ошибку пользователю, так как план может еще генерироваться
+      // Раньше тут был потенциально бесконечный цикл: ошибка → loading=true → loadPlan(0) → снова ошибка...
+      // Ограничиваем число повторов и делаем ретраи с увеличивающимся retryCount.
+      processPlanFailureCountRef.current += 1;
+      const attempt = processPlanFailureCountRef.current;
+
+      if (attempt >= 3) {
+        safeSetError('Не удалось обработать данные плана. Попробуйте обновить страницу или перейдите в анкету.');
+        safeSetLoading(false);
+        return;
+      }
+
       safeSetError(null);
       safeSetLoading(true);
-      // Пробуем загрузить план еще раз через небольшую задержку
       setTimeout(() => {
         if (isMountedRef.current) {
-          loadPlan(0);
+          loadPlan(attempt);
         }
       }, 2000);
     }
