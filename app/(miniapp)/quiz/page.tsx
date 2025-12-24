@@ -3172,12 +3172,31 @@ export default function QuizPage() {
       currentQuestionIndex > allQuestions.length ||
       (currentQuestionIndex === allQuestions.length && !isQuizCompleted);
     
+    // КРИТИЧНО: Для нового пользователя без сохраненного прогресса всегда начинаем с 0
+    // Это предотвращает ситуацию, когда currentQuestionIndex установлен из старого прогресса,
+    // но после фильтрации вопросов он выходит за границы
+    const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers).length === 0;
+    const shouldResetToZero = hasNoSavedProgress && currentQuestionIndex > 0 && answersCount === 0 && !isRetakingQuiz && !hasResumed;
+    
+    if (shouldResetToZero) {
+      clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 для нового пользователя', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        hasNoSavedProgress,
+        answersCount,
+        isRetakingQuiz,
+        hasResumed,
+      });
+      setCurrentQuestionIndex(0);
+      return;
+    }
+    
     if (isOutOfBounds && !isSubmitting && !showResumeScreen) {
       // Если анкета завершена — держим индекс на allQuestions.length для автоотправки.
-      // Иначе корректируем на последний валидный вопрос.
+      // Иначе корректируем на последний валидный вопрос или на 0 для нового пользователя.
       const correctedIndex = isQuizCompleted
         ? allQuestions.length
-        : (allQuestions.length > 0 ? Math.max(0, allQuestions.length - 1) : 0);
+        : (hasNoSavedProgress && answersCount === 0 ? 0 : Math.max(0, Math.min(currentQuestionIndex, allQuestions.length - 1)));
       
       clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
         currentQuestionIndex,
@@ -3191,12 +3210,13 @@ export default function QuizPage() {
         isRetakingQuiz,
         showRetakeScreen,
         hasQuestionnaire: !!questionnaire,
+        hasNoSavedProgress,
       });
       
       setCurrentQuestionIndex(correctedIndex);
       return;
     }
-  }, [questionnaire, allQuestions, currentQuestionIndex, isSubmitting, loading, hasResumed, showResumeScreen, answers]);
+  }, [questionnaire, allQuestions, currentQuestionIndex, isSubmitting, loading, hasResumed, showResumeScreen, answers, savedProgress, isRetakingQuiz]);
 
   // Корректируем currentQuestionIndex после восстановления прогресса
   // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
