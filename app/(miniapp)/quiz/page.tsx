@@ -716,87 +716,22 @@ export default function QuizPage() {
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init
+  // УБРАНО ДУБЛИРОВАНИЕ: проверка профиля уже есть в init(), поэтому здесь только устанавливаем флаги на основе уже загруженных данных
   useEffect(() => {
     if (!questionnaire || loading) return;
     if (isStartingOverRef.current) return;
     if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) return;
     if (profileCheckInProgressRef.current) return;
-
-    const checkProfileAndRetake = async () => {
-      profileCheckInProgressRef.current = true;
-      try {
-        clientLogger.log('🔍 Проверка профиля для определения режима анкеты');
-        
-        const profile = await Promise.race([
-          api.getCurrentProfile(),
-          new Promise<any>((resolve) => {
-            setTimeout(() => {
-              clientLogger.warn('⚠️ Таймаут проверки профиля (10 секунд) - продолжаем без профиля');
-              resolve(null);
-            }, 10000);
-          }),
-        ]);
-
-        if (profile && profile.id) {
-          // Профиль существует - проверяем, завершена ли анкета
-          const response = await Promise.race([
-            api.getQuizProgress(),
-            new Promise<any>((resolve) => {
-              setTimeout(() => {
-                clientLogger.warn('⚠️ Таймаут проверки прогресса анкеты (10 секунд) - продолжаем без прогресса');
-                resolve({ progress: null, isCompleted: false });
-              }, 10000);
-            }),
-          ]);
-
-          const progress = response?.progress;
-          const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
-          const isCompleted = response?.isCompleted === true;
-
-          if (hasAnswers && isCompleted) {
-            // Анкета полностью завершена - проверяем, хочет ли пользователь перепроходить
-            const isRetakingFromStorage = await userPreferences.getIsRetakingQuiz();
-            const hasPlanProgress = await userPreferences.getHasPlanProgress();
-            const hasPlan = hasPlanProgress === true;
-            
-            const isDirectQuizAccess = typeof window !== 'undefined' && 
-              (window.location.pathname === '/quiz' || window.location.pathname.startsWith('/quiz/'));
-
-            if (isDirectQuizAccess) {
-              // Пользователь явно зашел на /quiz - показываем анкету для перепрохождения
-              setIsRetakingQuiz(true);
-              setShowRetakeScreen(false);
-            } else if (isRetakingFromStorage && hasPlan) {
-              // Пользователь нажал "Перепройти анкету" И план существует - показываем экран выбора тем
-              setIsRetakingQuiz(true);
-              setShowRetakeScreen(true);
-            } else {
-              // Профиль есть, анкета завершена, но пользователь зашел на /quiz - показываем анкету
-              setIsRetakingQuiz(true);
-              setShowRetakeScreen(false);
-            }
-          } else {
-            // Профиль есть, но анкета не завершена - показываем полную анкету
-            setIsRetakingQuiz(false);
-            setShowRetakeScreen(false);
-          }
-        } else {
-          // Профиля нет - показываем полную анкету для нового пользователя
-          setIsRetakingQuiz(false);
-          setShowRetakeScreen(false);
-        }
-      } catch (err: any) {
-        // При ошибке показываем полную анкету
-        clientLogger.log('ℹ️ Ошибка при проверке профиля, показываем полную анкету', err);
-        setIsRetakingQuiz(false);
-        setShowRetakeScreen(false);
-      } finally {
-        profileCheckInProgressRef.current = false;
-      }
-    };
-
-    checkProfileAndRetake();
-  }, [questionnaire, loading]);
+    // ИСПРАВЛЕНО: Не проверяем профиль здесь, так как это уже сделано в init()
+    // Просто устанавливаем флаги на основе сохраненных данных
+    if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+      // Есть сохраненный прогресс - это не новый пользователь
+      // Флаги isRetakingQuiz и showRetakeScreen уже установлены в init() или в других useEffect
+      return;
+    }
+    // Для нового пользователя без сохраненного прогресса флаги уже установлены в init()
+    // Не нужно делать дополнительные проверки
+  }, [questionnaire, loading, savedProgress]);
 
   const loadSavedProgressFromServer = async () => {
     // ИСПРАВЛЕНО: Логируем вызов для отладки в Telegram Mini App
@@ -1395,7 +1330,16 @@ export default function QuizPage() {
       if (!questionnaire) return;
       const newInfoIndex = initialInfoScreens.length;
       setCurrentInfoScreenIndex(newInfoIndex);
+      // КРИТИЧНО: Для нового пользователя всегда начинаем с первого вопроса (индекс 0)
+      // Это гарантирует, что после прохождения всех инфо-экранов вопросы начнут отображаться
       setCurrentQuestionIndex(0);
+      clientLogger.log('✅ Завершены все начальные инфо-экраны, переходим к вопросам', {
+        newInfoIndex,
+        allQuestionsLength: allQuestions.length,
+        currentQuestionIndex: 0,
+        isRetakingQuiz,
+        showRetakeScreen,
+      });
       await saveProgress(answers, 0, newInfoIndex);
       return;
     }
@@ -3395,20 +3339,21 @@ export default function QuizPage() {
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
     const shouldShow = currentInfoScreenIndex < initialInfoScreens.length;
     
-    // Логирование для отладки
-    clientLogger.log('📺 isShowingInitialInfoScreen check', {
-      shouldShow,
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-      showResumeScreen,
-      showRetakeScreen,
-      hasSavedProgress: !!savedProgress,
-      hasResumed,
-      isRetakingQuiz,
-      currentQuestionIndex,
-      answersCount: Object.keys(answers).length,
-      loading,
-    });
+    // Логирование только если shouldShow = true (чтобы не засорять логи)
+    if (shouldShow) {
+      clientLogger.log('📺 isShowingInitialInfoScreen: true', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        showResumeScreen,
+        showRetakeScreen,
+        hasSavedProgress: !!savedProgress,
+        hasResumed,
+        isRetakingQuiz,
+        currentQuestionIndex,
+        answersCount: Object.keys(answers).length,
+        loading,
+      });
+    }
     
     return shouldShow;
   }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length, loading]);
@@ -3420,28 +3365,41 @@ export default function QuizPage() {
     // ВАЖНО: При перепрохождении (retake) мы пропускаем info screens,
     // поэтому pendingInfoScreen не должен блокировать отображение вопросов.
     if (isShowingInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz)) {
-      clientLogger.log('⏸️ currentQuestion: null (blocked by info screen)', {
-        isShowingInitialInfoScreen,
-        pendingInfoScreen: !!pendingInfoScreen,
-        isRetakingQuiz,
-      });
+      // Логируем только если это неожиданное состояние (для отладки)
+      if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
+        clientLogger.log('⏸️ currentQuestion: null (blocked by info screen)', {
+          isShowingInitialInfoScreen,
+          pendingInfoScreen: !!pendingInfoScreen,
+          isRetakingQuiz,
+          currentQuestionIndex,
+          answersCount: Object.keys(answers).length,
+        });
+      }
       return null;
     }
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
       const question = allQuestions[currentQuestionIndex];
-      clientLogger.log('✅ currentQuestion found', {
-        questionId: question?.id,
-        questionCode: question?.code,
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-      });
+      // Логируем только при первом отображении вопроса или при изменении индекса
+      if (currentQuestionIndex === 0 || currentQuestionIndex % 5 === 0) {
+        clientLogger.log('✅ currentQuestion found', {
+          questionId: question?.id,
+          questionCode: question?.code,
+          currentQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+        });
+      }
       return question;
     }
-    clientLogger.warn('⚠️ currentQuestion: null (index out of bounds)', {
-      currentQuestionIndex,
-      allQuestionsLength: allQuestions.length,
-      allQuestionsRawLength: allQuestionsRaw.length,
-    });
+    // Логируем только если это реальная проблема (индекс выходит за границы)
+    if (allQuestions.length > 0) {
+      clientLogger.warn('⚠️ currentQuestion: null (index out of bounds)', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        allQuestionsRawLength: allQuestionsRaw.length,
+        isShowingInitialInfoScreen,
+        currentInfoScreenIndex,
+      });
+    }
     return null;
   }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions, allQuestionsRaw.length]);
 
