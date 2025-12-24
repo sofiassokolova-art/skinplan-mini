@@ -199,7 +199,7 @@ function CartPageContent() {
                       {item.product.name}
                     </h3>
                     <p style={{ fontSize: '14px', color: '#475467', marginBottom: '8px' }}>
-                      {item.product.brand.name}
+                      {item.product.brand?.name || 'Unknown'}
                       {item.product.price && ` • ${item.product.price} ₽`}
                     </p>
                     <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '12px' }}>

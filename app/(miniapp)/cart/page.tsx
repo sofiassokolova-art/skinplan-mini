@@ -45,7 +45,7 @@ export default function CartPage() {
       name: item.product.name,
       brand: {
         id: item.product.brand?.id || 0,
-        name: item.product.brand.name,
+        name: item.product.brand?.name || 'Unknown',
       },
       price: item.product.price,
       imageUrl: item.product.imageUrl,
