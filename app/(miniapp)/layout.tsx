@@ -53,20 +53,33 @@ function LayoutContent({
   // ИСПРАВЛЕНО: Проверяем, является ли пользователь новым (нет hasPlanProgress)
   // Это нужно для скрытия навигации на главной странице для нового пользователя
   useEffect(() => {
+    let isMounted = true; // Флаг для отслеживания, валиден ли еще эффект
+    
     if (pathname === '/') {
       const checkNewUser = async () => {
         try {
           const { getHasPlanProgress } = await import('@/lib/user-preferences');
           const hasPlanProgress = await getHasPlanProgress();
-          setIsNewUser(!hasPlanProgress);
+          // ИСПРАВЛЕНО: Проверяем, что компонент еще смонтирован перед вызовом setState
+          if (isMounted) {
+            setIsNewUser(!hasPlanProgress);
+          }
         } catch {
-          setIsNewUser(false);
+          // ИСПРАВЛЕНО: Проверяем, что компонент еще смонтирован перед вызовом setState
+          if (isMounted) {
+            setIsNewUser(false);
+          }
         }
       };
       checkNewUser();
     } else {
       setIsNewUser(null);
     }
+    
+    // Cleanup функция: помечаем эффект как невалидный при размонтировании или изменении зависимостей
+    return () => {
+      isMounted = false;
+    };
   }, [pathname]);
 
   // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
