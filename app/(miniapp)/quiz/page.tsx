@@ -3141,7 +3141,8 @@ export default function QuizPage() {
       savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
       questionIds: allQuestions.map((q: Question) => q.id),
       questionCodes: allQuestions.map((q: Question) => q.code),
-  }, [allQuestions]);
+    });
+  }, [allQuestions, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, answers, savedProgress]);
 
   // ИСПРАВЛЕНО: Обработка edge case - когда allQuestions.length === 0
   // Показываем явное сообщение вместо поломанного UI
