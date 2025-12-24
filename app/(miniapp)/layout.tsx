@@ -73,7 +73,10 @@ function LayoutContent({
       };
       checkNewUser();
     } else {
-      setIsNewUser(null);
+      // Синхронный вызов setState безопасен, но для консистентности тоже проверяем флаг
+      if (isMounted) {
+        setIsNewUser(null);
+      }
     }
     
     // Cleanup функция: помечаем эффект как невалидный при размонтировании или изменении зависимостей
