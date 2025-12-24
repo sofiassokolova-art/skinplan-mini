@@ -429,10 +429,23 @@ export default function QuizPage() {
       checkRetakeFlags().catch(() => {});
       
       // ИСПРАВЛЕНО: Проверяем профиль и завершенность анкеты
-      // ИСПРАВЛЕНО: Проверяем не только наличие профиля, но и завершенность анкеты
-      // ВАЖНО: Эта проверка выполняется только один раз при первой инициализации
-      // Если пользователь уже на инфо-экране или в процессе прохождения анкеты, не проверяем
+      // ИСПРАВЛЕНО: Для нового пользователя не проверяем профиль - это лишний запрос
+      // Проверяем hasPlanProgress перед проверкой профиля
       const checkProfileAndRedirect = async () => {
+        // ИСПРАВЛЕНО: Проверяем hasPlanProgress ПЕРЕД проверкой профиля
+        // Если hasPlanProgress нет, значит пользователь новый и не нужно проверять профиль
+        try {
+          const hasPlanProgress = await userPreferences.getHasPlanProgress();
+          if (!hasPlanProgress) {
+            // Новый пользователь - не проверяем профиль
+            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку профиля');
+            return;
+          }
+        } catch (err) {
+          // При ошибке проверки hasPlanProgress продолжаем проверку профиля на всякий случай
+          clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, продолжаем проверку профиля:', err);
+        }
+        
         // ИСПРАВЛЕНО: Не выполняем проверку, если пользователь находится на инфо-экране
         // Это предотвращает редирект во время показа инфо-экранов после последнего вопроса
         // ВАЖНО: Также проверяем флаг quiz_just_submitted еще раз (на случай, если он был установлен после начала проверки)
@@ -675,18 +688,43 @@ export default function QuizPage() {
       }
 
       // 3) прогресс/резюм
+      // ИСПРАВЛЕНО: Для нового пользователя не загружаем прогресс - это лишний запрос
+      // Проверяем hasPlanProgress перед загрузкой прогресса
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && !hasResumed && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
-        await Promise.race([
-          loadSavedProgressFromServer(),
-          new Promise<void>((resolve) => {
-            setTimeout(() => {
-              clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
-              resolve();
-            }, 5000);
-          }),
-        ]);
+        // ИСПРАВЛЕНО: Проверяем, есть ли план прогресс - если нет, значит пользователь новый
+        // и не нужно загружать прогресс анкеты
+        try {
+          const hasPlanProgress = await userPreferences.getHasPlanProgress();
+          if (!hasPlanProgress) {
+            // Новый пользователь - не загружаем прогресс
+            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем загрузку прогресса анкеты');
+          } else {
+            // Пользователь не новый - загружаем прогресс
+            await Promise.race([
+              loadSavedProgressFromServer(),
+              new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
+                  resolve();
+                }, 5000);
+              }),
+            ]);
+          }
+        } catch (err) {
+          // При ошибке проверки hasPlanProgress загружаем прогресс на всякий случай
+          clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, загружаем прогресс:', err);
+          await Promise.race([
+            loadSavedProgressFromServer(),
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
+                resolve();
+              }, 5000);
+            }),
+          ]);
+        }
       }
 
       clientLogger.log('✅ init done', { totalElapsed: Date.now() - initStartTime });
@@ -1103,6 +1141,20 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Очищаем ошибки при успешной загрузке
       // Это предотвращает показ временных ошибок, которые уже исправлены
       setError(null);
+      
+      // ИСПРАВЛЕНО: Для нового пользователя без сохраненного прогресса гарантируем, что currentQuestionIndex = 0
+      // Это предотвращает проблему с невалидным индексом после загрузки анкеты
+      const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers).length === 0;
+      if (hasNoSavedProgress && currentQuestionIndex !== 0 && !isRetakingQuiz && !hasResumed) {
+        clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 после загрузки анкеты для нового пользователя', {
+          currentQuestionIndex,
+          hasNoSavedProgress,
+          isRetakingQuiz,
+          hasResumed,
+        });
+        setCurrentQuestionIndex(0);
+      }
+      
       setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при успешной загрузке
       return questionnaireData; // Возвращаем загруженную анкету
     } catch (err: any) {
@@ -3099,11 +3151,23 @@ export default function QuizPage() {
         answersCount: Object.keys(answers).length,
         questionnaireId: questionnaire.id,
         allQuestionsRawLength: questionnaire.groups?.flatMap(g => g.questions || []).length + (questionnaire.questions || []).length,
+        isRetakingQuiz,
+        showRetakeScreen,
       });
       // Не показываем ошибку пользователю, просто логируем - возможно это временная ситуация
     }
     
-    if (allQuestions.length === 0) return;
+    if (allQuestions.length === 0) {
+      clientLogger.warn('⚠️ allQuestions.length === 0 после фильтрации', {
+        questionnaireId: questionnaire.id,
+        allQuestionsRawLength: allQuestionsRaw.length,
+        answersCount: Object.keys(answers).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        isRetakingQuiz,
+        showRetakeScreen,
+      });
+      return;
+    }
     
     // ИСПРАВЛЕНО: Проверяем и корректируем currentQuestionIndex, если он выходит за пределы
     // Это может произойти при неправильно сохраненном прогрессе, после фильтрации вопросов или при первой загрузке
@@ -3114,7 +3178,8 @@ export default function QuizPage() {
     // (все вопросы отвечены, автоотправка проверяет `>= allQuestions.length`).
     const isOutOfBounds =
       currentQuestionIndex > allQuestions.length ||
-      (currentQuestionIndex === allQuestions.length && !isQuizCompleted);
+      (currentQuestionIndex === allQuestions.length && !isQuizCompleted) ||
+      currentQuestionIndex < 0;
     
     // КРИТИЧНО: Для нового пользователя без сохраненного прогресса всегда начинаем с 0
     // Это предотвращает ситуацию, когда currentQuestionIndex установлен из старого прогресса,
@@ -3135,6 +3200,7 @@ export default function QuizPage() {
       return;
     }
     
+    // ИСПРАВЛЕНО: Корректируем индекс СРАЗУ, если он невалидный
     if (isOutOfBounds && !isSubmitting && !showResumeScreen) {
       // Если анкета завершена — держим индекс на allQuestions.length для автоотправки.
       // Иначе корректируем на последний валидный вопрос или на 0 для нового пользователя.
@@ -3155,12 +3221,19 @@ export default function QuizPage() {
         showRetakeScreen,
         hasQuestionnaire: !!questionnaire,
         hasNoSavedProgress,
+        allQuestionsRawLength: allQuestionsRaw.length,
       });
       
-      setCurrentQuestionIndex(correctedIndex);
+      // КРИТИЧНО: Используем setTimeout, чтобы избежать обновления state во время рендера
+      // Но только если индекс действительно нужно изменить
+      if (correctedIndex !== currentQuestionIndex) {
+        setTimeout(() => {
+          setCurrentQuestionIndex(correctedIndex);
+        }, 0);
+      }
       return;
     }
-  }, [questionnaire, allQuestions, currentQuestionIndex, isSubmitting, loading, hasResumed, showResumeScreen, answers, savedProgress, isRetakingQuiz]);
+  }, [questionnaire, allQuestions, currentQuestionIndex, isSubmitting, loading, hasResumed, showResumeScreen, answers, savedProgress, isRetakingQuiz, showRetakeScreen, allQuestionsRaw.length]);
 
   // Корректируем currentQuestionIndex после восстановления прогресса
   // Это важно, потому что после фильтрации вопросов индекс может стать невалидным
@@ -3377,6 +3450,58 @@ export default function QuizPage() {
       }
       return null;
     }
+    
+    // ИСПРАВЛЕНО: Если allQuestions пустой, логируем и возвращаем null
+    if (allQuestions.length === 0) {
+      clientLogger.warn('⚠️ currentQuestion: null (allQuestions is empty)', {
+        currentQuestionIndex,
+        allQuestionsRawLength: allQuestionsRaw.length,
+        hasQuestionnaire: !!questionnaire,
+        questionnaireId: questionnaire?.id,
+        loading,
+        isShowingInitialInfoScreen,
+      });
+      return null;
+    }
+    
+    // ИСПРАВЛЕНО: Если индекс выходит за пределы, корректируем его СРАЗУ
+    if (currentQuestionIndex < 0 || currentQuestionIndex >= allQuestions.length) {
+      clientLogger.warn('⚠️ currentQuestion: null (index out of bounds) - корректируем', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        allQuestionsRawLength: allQuestionsRaw.length,
+        isShowingInitialInfoScreen,
+        currentInfoScreenIndex,
+        hasResumed,
+        showResumeScreen,
+        answersCount: Object.keys(answers).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+      });
+      
+      // КРИТИЧНО: Если индекс невалидный, устанавливаем валидный индекс
+      // Используем setTimeout, чтобы избежать обновления state во время рендера
+      setTimeout(() => {
+        const correctedIndex = currentQuestionIndex < 0 
+          ? 0 
+          : Math.max(0, Math.min(currentQuestionIndex, allQuestions.length - 1));
+        if (correctedIndex !== currentQuestionIndex) {
+          clientLogger.log('🔄 Корректируем currentQuestionIndex', {
+            oldIndex: currentQuestionIndex,
+            newIndex: correctedIndex,
+            allQuestionsLength: allQuestions.length,
+          });
+          setCurrentQuestionIndex(correctedIndex);
+        }
+      }, 0);
+      
+      // Временно возвращаем первый вопрос, если индекс невалидный
+      // Это предотвратит показ "Вопрос не найден" во время корректировки
+      if (allQuestions.length > 0 && currentQuestionIndex >= allQuestions.length) {
+        return allQuestions[0];
+      }
+      return null;
+    }
+    
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
       const question = allQuestions[currentQuestionIndex];
       // Логируем только при первом отображении вопроса или при изменении индекса
@@ -3390,18 +3515,9 @@ export default function QuizPage() {
       }
       return question;
     }
-    // Логируем только если это реальная проблема (индекс выходит за границы)
-    if (allQuestions.length > 0) {
-      clientLogger.warn('⚠️ currentQuestion: null (index out of bounds)', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        allQuestionsRawLength: allQuestionsRaw.length,
-        isShowingInitialInfoScreen,
-        currentInfoScreenIndex,
-      });
-    }
+    
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions, allQuestionsRaw.length]);
+  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions, allQuestionsRaw.length, questionnaire, loading, hasResumed, showResumeScreen, answers, savedProgress]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
   useEffect(() => {
@@ -3718,7 +3834,22 @@ export default function QuizPage() {
   if (!questionnaire) {
     // ИСПРАВЛЕНО: Проверяем, завершена ли анкета, перед показом лоадера "Подготавливаем анкету"
     // Если анкета завершена - редиректим на /plan, а не показываем лоадер
+    // ИСПРАВЛЕНО: Для нового пользователя не проверяем завершенность - это лишний запрос
     const checkQuizCompleted = async () => {
+      // ИСПРАВЛЕНО: Проверяем hasPlanProgress ПЕРЕД проверкой профиля
+      // Если hasPlanProgress нет, значит пользователь новый и не нужно проверять завершенность
+      try {
+        const hasPlanProgress = await userPreferences.getHasPlanProgress();
+        if (!hasPlanProgress) {
+          // Новый пользователь - не проверяем завершенность анкеты
+          clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку завершенности анкеты');
+          return;
+        }
+      } catch (err) {
+        // При ошибке проверки hasPlanProgress продолжаем проверку завершенности на всякий случай
+        clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, продолжаем проверку завершенности:', err);
+      }
+      
       try {
         const profile = await api.getCurrentProfile();
         if (profile && profile.id) {
@@ -5477,6 +5608,32 @@ export default function QuizPage() {
       </div>
     );
   };
+
+  // ИСПРАВЛЕНО: Добавляем диагностическое логирование для понимания состояния рендера
+  useEffect(() => {
+    if (!loading && questionnaire) {
+      clientLogger.log('🔍 Состояние рендера анкеты', {
+        loading,
+        hasQuestionnaire: !!questionnaire,
+        questionnaireId: questionnaire?.id,
+        allQuestionsLength: allQuestions.length,
+        allQuestionsRawLength: allQuestionsRaw.length,
+        currentQuestionIndex,
+        hasCurrentQuestion: !!currentQuestion,
+        currentQuestionId: currentQuestion?.id,
+        isShowingInitialInfoScreen,
+        pendingInfoScreen: !!pendingInfoScreen,
+        showResumeScreen,
+        hasResumed,
+        isRetakingQuiz,
+        showRetakeScreen,
+        answersCount: Object.keys(answers).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        currentInfoScreenIndex,
+        error: error || null,
+      });
+    }
+  }, [loading, questionnaire, allQuestions.length, currentQuestionIndex, currentQuestion, isShowingInitialInfoScreen, pendingInfoScreen, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, answers, savedProgress, currentInfoScreenIndex, error, allQuestionsRaw.length]);
 
   // ИСПРАВЛЕНО: Проверяем showResumeScreen ПЕРЕД isShowingInitialInfoScreen,
   // чтобы предотвратить мигание начальных экранов перед показом экрана продолжения
