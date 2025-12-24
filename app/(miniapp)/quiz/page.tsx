@@ -3131,14 +3131,16 @@ export default function QuizPage() {
   
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
-    if (allQuestions.length > 0) {
-      // Логируем только в консоль, не используем addDebugLog чтобы избежать проблем с хуками
-      clientLogger.log('✅ allQuestions after filtering', {
-        total: allQuestions.length,
-        questionIds: allQuestions.map((q: Question) => q.id),
-        questionCodes: allQuestions.map((q: Question) => q.code),
-      });
-    }
+    // Логируем всегда для отладки
+    clientLogger.log('📊 allQuestions state', {
+      allQuestionsRawLength: allQuestionsRaw.length,
+      allQuestionsLength: allQuestions.length,
+      isRetakingQuiz,
+      showRetakeScreen,
+      answersCount: Object.keys(answers).length,
+      savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+      questionIds: allQuestions.map((q: Question) => q.id),
+      questionCodes: allQuestions.map((q: Question) => q.code),
   }, [allQuestions]);
 
   // ИСПРАВЛЕНО: Обработка edge case - когда allQuestions.length === 0
@@ -3372,20 +3374,20 @@ export default function QuizPage() {
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
     const shouldShow = currentInfoScreenIndex < initialInfoScreens.length;
     
-    // Логирование для отладки (только в development)
-    if (process.env.NODE_ENV === 'development' && shouldShow) {
-      clientLogger.log('📺 isShowingInitialInfoScreen: true', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        showResumeScreen,
-        showRetakeScreen,
-        hasSavedProgress: !!savedProgress,
-        hasResumed,
-        isRetakingQuiz,
-        currentQuestionIndex,
-        answersCount: Object.keys(answers).length,
-      });
-    }
+    // Логирование для отладки
+    clientLogger.log('📺 isShowingInitialInfoScreen check', {
+      shouldShow,
+      currentInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+      showResumeScreen,
+      showRetakeScreen,
+      hasSavedProgress: !!savedProgress,
+      hasResumed,
+      isRetakingQuiz,
+      currentQuestionIndex,
+      answersCount: Object.keys(answers).length,
+      loading,
+    });
     
     return shouldShow;
   }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length, loading]);
@@ -3394,17 +3396,33 @@ export default function QuizPage() {
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   const currentQuestion = useMemo(() => {
-    // Убираем все console.log из useMemo - они могут вызывать проблемы с рендерингом
     // ВАЖНО: При перепрохождении (retake) мы пропускаем info screens,
     // поэтому pendingInfoScreen не должен блокировать отображение вопросов.
     if (isShowingInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz)) {
+      clientLogger.log('⏸️ currentQuestion: null (blocked by info screen)', {
+        isShowingInitialInfoScreen,
+        pendingInfoScreen: !!pendingInfoScreen,
+        isRetakingQuiz,
+      });
       return null;
     }
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
-      return allQuestions[currentQuestionIndex];
+      const question = allQuestions[currentQuestionIndex];
+      clientLogger.log('✅ currentQuestion found', {
+        questionId: question?.id,
+        questionCode: question?.code,
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+      });
+      return question;
     }
+    clientLogger.warn('⚠️ currentQuestion: null (index out of bounds)', {
+      currentQuestionIndex,
+      allQuestionsLength: allQuestions.length,
+      allQuestionsRawLength: allQuestionsRaw.length,
+    });
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions]);
+  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions, allQuestionsRaw.length]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
   useEffect(() => {
