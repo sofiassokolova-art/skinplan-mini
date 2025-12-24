@@ -714,6 +714,90 @@ export default function QuizPage() {
     };
   }, [init]);
 
+  // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
+  // Вынесено в отдельный useEffect после завершения init
+  useEffect(() => {
+    if (!questionnaire || loading) return;
+    if (isStartingOverRef.current) return;
+    if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) return;
+    if (profileCheckInProgressRef.current) return;
+
+    const checkProfileAndRetake = async () => {
+      profileCheckInProgressRef.current = true;
+      try {
+        clientLogger.log('🔍 Проверка профиля для определения режима анкеты');
+        
+        const profile = await Promise.race([
+          api.getCurrentProfile(),
+          new Promise<any>((resolve) => {
+            setTimeout(() => {
+              clientLogger.warn('⚠️ Таймаут проверки профиля (10 секунд) - продолжаем без профиля');
+              resolve(null);
+            }, 10000);
+          }),
+        ]);
+
+        if (profile && profile.id) {
+          // Профиль существует - проверяем, завершена ли анкета
+          const response = await Promise.race([
+            api.getQuizProgress(),
+            new Promise<any>((resolve) => {
+              setTimeout(() => {
+                clientLogger.warn('⚠️ Таймаут проверки прогресса анкеты (10 секунд) - продолжаем без прогресса');
+                resolve({ progress: null, isCompleted: false });
+              }, 10000);
+            }),
+          ]);
+
+          const progress = response?.progress;
+          const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
+          const isCompleted = response?.isCompleted === true;
+
+          if (hasAnswers && isCompleted) {
+            // Анкета полностью завершена - проверяем, хочет ли пользователь перепроходить
+            const isRetakingFromStorage = await userPreferences.getIsRetakingQuiz();
+            const hasPlanProgress = await userPreferences.getHasPlanProgress();
+            const hasPlan = hasPlanProgress === true;
+            
+            const isDirectQuizAccess = typeof window !== 'undefined' && 
+              (window.location.pathname === '/quiz' || window.location.pathname.startsWith('/quiz/'));
+
+            if (isDirectQuizAccess) {
+              // Пользователь явно зашел на /quiz - показываем анкету для перепрохождения
+              setIsRetakingQuiz(true);
+              setShowRetakeScreen(false);
+            } else if (isRetakingFromStorage && hasPlan) {
+              // Пользователь нажал "Перепройти анкету" И план существует - показываем экран выбора тем
+              setIsRetakingQuiz(true);
+              setShowRetakeScreen(true);
+            } else {
+              // Профиль есть, анкета завершена, но пользователь зашел на /quiz - показываем анкету
+              setIsRetakingQuiz(true);
+              setShowRetakeScreen(false);
+            }
+          } else {
+            // Профиль есть, но анкета не завершена - показываем полную анкету
+            setIsRetakingQuiz(false);
+            setShowRetakeScreen(false);
+          }
+        } else {
+          // Профиля нет - показываем полную анкету для нового пользователя
+          setIsRetakingQuiz(false);
+          setShowRetakeScreen(false);
+        }
+      } catch (err: any) {
+        // При ошибке показываем полную анкету
+        clientLogger.log('ℹ️ Ошибка при проверке профиля, показываем полную анкету', err);
+        setIsRetakingQuiz(false);
+        setShowRetakeScreen(false);
+      } finally {
+        profileCheckInProgressRef.current = false;
+      }
+    };
+
+    checkProfileAndRetake();
+  }, [questionnaire, loading]);
+
   const loadSavedProgressFromServer = async () => {
     // ИСПРАВЛЕНО: Логируем вызов для отладки в Telegram Mini App
     clientLogger.log('🔄 loadSavedProgressFromServer: вызов', {
