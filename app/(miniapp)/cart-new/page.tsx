@@ -36,35 +36,13 @@ function CartPageContent() {
   const { data: cartData, isLoading: loading } = useCart();
   const removeFromCartMutation = useRemoveFromCart();
   
-  // ИСПРАВЛЕНО: Добавлена явная типизация для параметра item и обработка опционального product
-  // Аналогично wishlist странице, используем тернарный оператор для fallback значений
-  const cartItems: CartItem[] = (cartData?.items || [])
-    .filter((item: CartResponse['items'][0]) => item.product != null) // Фильтруем элементы без product
-    .map((item: CartResponse['items'][0]) => ({
-      id: item.id,
-      product: item.product ? {
-        id: item.product.id,
-        name: item.product.name,
-        brand: {
-          id: item.product.brand?.id || 0,
-          name: item.product.brand?.name || 'Unknown',
-        },
-        price: item.product.price,
-        imageUrl: item.product.imageUrl,
-        link: item.product.link || null,
-        marketLinks: item.product.marketLinks || null,
-      } : {
-        id: item.productId,
-        name: 'Неизвестный продукт',
-        brand: { id: 0, name: 'Unknown' },
-        price: null,
-        imageUrl: null,
-        link: null,
-        marketLinks: null,
-      },
-      quantity: item.quantity,
-      createdAt: item.createdAt,
-    }));
+  // ИСПРАВЛЕНО: Добавлена явная типизация для параметра item
+  const cartItems: CartItem[] = (cartData?.items || []).map((item: CartResponse['items'][0]) => ({
+    id: item.id,
+    product: item.product,
+    quantity: item.quantity,
+    createdAt: item.createdAt,
+  }));
 
   const handleRemove = async (productId: number) => {
     try {
@@ -377,4 +355,3 @@ function CartPageContent() {
 export default function CartPage() {
   return <CartPageContent />;
 }
-

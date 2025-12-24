@@ -108,19 +108,22 @@ function AnalysisPageContent() {
     } else {
       newSet.add(productId);
     }
-    setInRoutineProducts(newSet);
     
-    // Сохраняем в БД для сохранения состояния между сессиями
-    // План будет использовать выбранные продукты при генерации
+    // ИСПРАВЛЕНО: Сначала сохраняем в БД, только при успехе обновляем локальное состояние
+    // Это предотвращает рассинхронизацию между UI и сервером
     try {
       const { setRoutineProducts } = await import('@/lib/user-preferences');
       const routineProducts = Array.from(newSet);
       await setRoutineProducts(routineProducts);
+      
+      // Только после успешного сохранения обновляем локальное состояние
+      setInRoutineProducts(newSet);
+      toast.success(wasInRoutine ? 'Удалено из ухода' : 'Добавлено в уход');
     } catch (err) {
-      clientLogger.warn('Could not save routine products to DB:', err);
+      clientLogger.error('Could not save routine products to DB:', err);
+      toast.error('Не удалось сохранить изменения. Пожалуйста, попробуйте еще раз.');
+      // Не обновляем локальное состояние при ошибке, чтобы UI оставался синхронизированным с сервером
     }
-    
-    toast.success(wasInRoutine ? 'Удалено из ухода' : 'Добавлено в уход');
   };
 
   // ИСПРАВЛЕНО: Используем React Query хуки для автоматической инвалидации кэша

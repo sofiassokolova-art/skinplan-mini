@@ -69,13 +69,13 @@ export default function HomePage() {
     
       // Загружаем данные (пользователь идентифицируется автоматически через initData)
       const initAndLoad = async () => {
-      // ИСПРАВЛЕНО: Устанавливаем loading = false сразу, чтобы не показывать лоадер плана для нового пользователя
-      // loading будет установлен в true только если hasPlanProgress === true
-      setLoading(false);
+      // ИСПРАВЛЕНО: Не устанавливаем loading = false сразу, чтобы избежать flash UI до завершения загрузки
+      // loading будет установлен в false только после завершения всех асинхронных операций
       
       // Проверяем, что приложение открыто через Telegram
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
         clientLogger.log('Telegram WebApp не доступен, перенаправляем на анкету');
+        setLoading(false);
         router.push('/quiz');
         return;
       }
@@ -165,6 +165,8 @@ export default function HomePage() {
         } catch (error) {
           clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
         }
+        // ИСПРАВЛЕНО: Устанавливаем loading = false перед редиректом
+        setLoading(false);
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('quiz_just_submitted');
           window.location.replace('/plan?state=generating');
@@ -185,6 +187,8 @@ export default function HomePage() {
         // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер "загрузка плана"
         // Проверка плана должна происходить только на бэкенде через API endpoint
         clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, skipping plan check)');
+        // ИСПРАВЛЕНО: Устанавливаем loading = false перед редиректом для нового пользователя
+        setLoading(false);
         // ИСПРАВЛЕНО: Используем window.location.replace для немедленного редиректа без показа страницы
         if (typeof window !== 'undefined') {
           window.location.replace('/quiz');
@@ -517,7 +521,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-cleanser',
           title: 'Очищение',
-          subtitle: data.steps.cleanser[0]?.name || 'Очищающее средство',
+          subtitle: data?.steps?.cleanser?.[0]?.name || 'Очищающее средство',
           icon: ICONS.cleanser,
           howto: {
             steps: ['Смочите лицо тёплой водой', '1–2 нажатия геля в ладони', 'Массируйте 30–40 сек', 'Смойте, промокните полотенцем'],
@@ -532,7 +536,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-toner',
           title: 'Тонер',
-          subtitle: data.steps.toner[0]?.name || 'Тоник',
+          subtitle: data?.steps?.toner?.[0]?.name || 'Тоник',
           icon: ICONS.toner,
           howto: {
             steps: ['Нанесите 3–5 капель на руки', 'Распределите похлопывающими движениями', 'Дайте впитаться 30–60 сек'],
@@ -547,7 +551,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-active',
           title: 'Актив',
-          subtitle: data.steps.treatment[0]?.name || 'Активное средство',
+          subtitle: data?.steps?.treatment?.[0]?.name || 'Активное средство',
           icon: ICONS.serum,
           howto: {
             steps: ['1–2 пипетки на сухую кожу', 'Наносите на T‑зону и щеки', 'Подождите 1–2 минуты до крема'],
@@ -562,7 +566,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-cream',
           title: 'Крем',
-          subtitle: data.steps.moisturizer[0]?.name || 'Увлажняющий крем',
+          subtitle: data?.steps?.moisturizer?.[0]?.name || 'Увлажняющий крем',
           icon: ICONS.cream,
           howto: {
             steps: ['Горох крема распределить по лицу', 'Мягко втереть по массажным линиям'],
@@ -577,7 +581,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-spf',
           title: 'SPF-защита',
-          subtitle: data.steps.spf[0]?.name || 'SPF 50',
+          subtitle: data?.steps?.spf?.[0]?.name || 'SPF 50',
           icon: ICONS.spf,
           howto: {
             steps: ['Нанести 2 пальца SPF (лицо/шея)', 'Обновлять каждые 2–3 часа на улице'],
@@ -593,7 +597,7 @@ export default function HomePage() {
         morning.push({
           id: 'morning-lip-balm',
           title: 'Бальзам для губ',
-          subtitle: data.steps.lip_care[0]?.name || 'Бальзам для губ',
+          subtitle: data?.steps?.lip_care?.[0]?.name || 'Бальзам для губ',
           icon: ICONS.cream, // Используем иконку крема как временную
           howto: {
             steps: ['Нанести на губы тонким слоем', 'Обновлять по необходимости в течение дня'],
@@ -609,7 +613,7 @@ export default function HomePage() {
         evening.push({
           id: 'evening-cleanser',
           title: 'Очищение',
-          subtitle: data.steps.cleanser[0]?.name || 'Двойное очищение',
+          subtitle: data?.steps?.cleanser?.[0]?.name || 'Двойное очищение',
           icon: ICONS.cleanser,
           howto: {
             steps: ['1) Масло: сухими руками распределить, эмульгировать водой', '2) Гель: умыть 30–40 сек, смыть'],
@@ -654,7 +658,7 @@ export default function HomePage() {
         evening.push({
           id: 'evening-cream',
           title: 'Крем',
-          subtitle: data.steps.moisturizer[0]?.name || 'Питательный крем',
+          subtitle: data?.steps?.moisturizer?.[0]?.name || 'Питательный крем',
           icon: ICONS.cream,
           howto: {
             steps: ['Горох крема', 'Распределить, не втирая сильно'],
