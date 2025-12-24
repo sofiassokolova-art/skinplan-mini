@@ -5757,6 +5757,99 @@ export default function QuizPage() {
   // Если вопрос все еще не найден после всех проверок
   // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
   if (!currentQuestion) {
+    // ИСПРАВЛЕНО: Если анкета загружена, но allQuestions пустой, показываем лоадер или сообщение
+    if (questionnaire && !loading && allQuestions.length === 0) {
+      // Это может произойти во время фильтрации или если все вопросы были отфильтрованы
+      // Показываем лоадер, так как это временное состояние
+      if (allQuestionsRaw.length === 0) {
+        // Если даже allQuestionsRaw пустой, значит анкета не содержит вопросов
+        return (
+          <div style={{ 
+            padding: '20px', 
+            textAlign: 'center',
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+          }}>
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              borderRadius: '24px',
+              padding: '32px',
+              maxWidth: '500px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            }}>
+              <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+                Анкета не содержит вопросов
+              </h2>
+              <p style={{ color: '#475467', marginBottom: '24px', lineHeight: '1.6' }}>
+                Пожалуйста, обратитесь в поддержку.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  width: '100%',
+                  padding: '16px 24px',
+                  borderRadius: '12px',
+                  backgroundColor: '#0A5F59',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 12px rgba(10, 95, 89, 0.3)',
+                }}
+              >
+                Обновить страницу
+              </button>
+            </div>
+          </div>
+        );
+      }
+      // Если allQuestionsRaw не пустой, но allQuestions пустой - значит все вопросы отфильтрованы
+      // Это временное состояние во время фильтрации, показываем лоадер
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              border: '4px solid #0A5F59',
+              borderTop: '4px solid transparent',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 24px',
+            }} />
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Загрузка анкеты...
+            </h2>
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+              Подготовка вопросов
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
     // ИСПРАВЛЕНО: Показываем ошибку только если анкета не загружена И ошибка связана с загрузкой анкеты
     // Это предотвращает показ временных ошибок, которые уже исправлены
     if (!questionnaire && !loading && error && (error.includes('загрузить анкету') || error.includes('Invalid questionnaire') || error.includes('Questionnaire has no questions'))) {
