@@ -5757,8 +5757,9 @@ export default function QuizPage() {
   // Если вопрос все еще не найден после всех проверок
   // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
   if (!currentQuestion) {
-    // ИСПРАВЛЕНО: Если анкета загружена, но allQuestions пустой, показываем лоадер или сообщение
-    if (questionnaire && !loading && allQuestions.length === 0) {
+    // ИСПРАВЛЕНО: Если allQuestions пустой, показываем лоадер или сообщение
+    // Проверяем независимо от состояния loading, чтобы предотвратить ошибки рендеринга
+    if (allQuestions.length === 0) {
       // Это может произойти во время фильтрации или если все вопросы были отфильтрованы
       // Показываем лоадер, так как это временное состояние
       if (allQuestionsRaw.length === 0) {
@@ -6146,6 +6147,47 @@ export default function QuizPage() {
     // Если анкета загружена и есть вопросы, но вопрос еще не найден - это временное состояние
     // Вместо лоадера просто показываем пустой экран или первый вопрос
     // (вопрос должен найтись сразу после загрузки анкеты)
+  }
+
+  // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: Если currentQuestion === null и allQuestions пустой, показываем лоадер
+  // Это предотвращает ошибки рендеринга, если мы дошли до этого места
+  if (!currentQuestion && allQuestions.length === 0 && !loading) {
+    return (
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.56)',
+          backdropFilter: 'blur(28px)',
+          borderRadius: '24px',
+          padding: '48px',
+          maxWidth: '400px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            border: '4px solid #0A5F59',
+            borderTop: '4px solid transparent',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 24px',
+          }} />
+          <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+            Загрузка анкеты...
+          </h2>
+          <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
+            Подготовка вопросов
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
