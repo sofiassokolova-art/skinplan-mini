@@ -15,12 +15,37 @@ export function ServiceFeedbackPopup() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // ТЗ: Проверяем pathname ПЕРЕД любыми async операциями
+    // КРИТИЧНО: Проверяем pathname ПЕРЕД любыми async операциями
     // На /quiz не показываем попап и не делаем запросы
+    // ИСПРАВЛЕНО: Также не показываем на главной странице для нового пользователя
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
       if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
         return; // Не показываем попап на /quiz
+      }
+      
+      // КРИТИЧНО: На главной странице проверяем, есть ли план, ПЕРЕД вызовом getUserPreferences
+      // Это предотвращает запросы к /api/user/preferences для нового пользователя
+      if (pathname === '/') {
+        // Проверяем sessionStorage для hasPlanProgress БЕЗ API вызова
+        try {
+          const cached = sessionStorage.getItem('user_preferences_cache');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const hasPlanProgress = parsed?.data?.hasPlanProgress ?? false;
+            if (!hasPlanProgress) {
+              // Новый пользователь без плана - не показываем попап и не делаем запросы
+              return;
+            }
+          } else {
+            // Если кэша нет, не делаем запросы на главной - попап показывается только после формирования плана
+            // Новый пользователь будет редиректить на /quiz, где попап не показывается
+            return;
+          }
+        } catch {
+          // При ошибке парсинга не показываем попап на главной
+          return;
+        }
       }
     }
     
@@ -28,10 +53,56 @@ export function ServiceFeedbackPopup() {
     const checkShouldShow = async () => {
       if (typeof window === 'undefined') return;
       
-      // ТЗ: Проверяем pathname еще раз внутри async функции
+      // КРИТИЧНО: Проверяем pathname еще раз внутри async функции
       const pathname = window.location.pathname;
       if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
         return; // Не показываем попап на /quiz
+      }
+      
+      // КРИТИЧНО: На главной странице проверяем наличие плана ПЕРЕД вызовом getUserPreferences
+      if (pathname === '/') {
+        // Проверяем sessionStorage для hasPlanProgress БЕЗ API вызова
+        try {
+          const cached = sessionStorage.getItem('user_preferences_cache');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const hasPlanProgress = parsed?.data?.hasPlanProgress ?? false;
+            if (!hasPlanProgress) {
+              // Новый пользователь без плана - не показываем попап и не делаем запросы
+              return;
+            }
+          } else {
+            // Если кэша нет, не делаем запросы на главной
+            return;
+          }
+        } catch {
+          // При ошибке парсинга не показываем попап на главной
+          return;
+        }
+      }
+
+      // ВАЖНО: Проверяем наличие профиля ПЕРЕД вызовом getUserPreferences
+      // Это предотвращает запросы для нового пользователя
+      try {
+        const profile = await api.getCurrentProfile() as any;
+        if (!profile || !profile.createdAt) {
+          // Если профиль не найден, не показываем поп-ап
+          // Это означает, что пользователь новый и плана еще нет
+          return;
+        }
+        
+        const profileCreatedAt = new Date(profile.createdAt);
+        const now = new Date();
+        const daysSincePlanGeneration = Math.floor((now.getTime() - profileCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Поп-ап показывается только через 3 дня после генерации плана
+        if (daysSincePlanGeneration < 3) {
+          return; // Не показываем попап, если прошло меньше 3 дней
+        }
+      } catch (profileError) {
+        // Если профиль не найден, не показываем поп-ап
+        // Это означает, что пользователь новый и плана еще нет
+        return;
       }
 
       // Если пользователь уже отправил обратную связь через попап - больше не показываем
@@ -44,32 +115,6 @@ export function ServiceFeedbackPopup() {
         }
       } catch (error) {
         // При ошибке продолжаем проверку
-      }
-
-      // ВАЖНО: Проверяем, прошло ли 3 дня с момента генерации плана
-      try {
-        const profile = await api.getCurrentProfile() as any;
-        if (profile && profile.createdAt) {
-          const profileCreatedAt = new Date(profile.createdAt);
-          const now = new Date();
-          const daysSincePlanGeneration = Math.floor((now.getTime() - profileCreatedAt.getTime()) / (1000 * 60 * 60 * 24));
-          
-          // Поп-ап показывается только через 3 дня после генерации плана
-          if (daysSincePlanGeneration < 3) {
-            console.log(`⚠️ Plan generated ${daysSincePlanGeneration} days ago, need 3 days. Skipping service feedback popup.`);
-            setIsVisible(false);
-            return;
-          }
-        } else {
-          // Если профиль не найден, не показываем поп-ап
-          setIsVisible(false);
-          return;
-        }
-      } catch (profileError) {
-        // Если профиль не найден, не показываем поп-ап
-        console.log('⚠️ Profile not found, skipping service feedback popup');
-        setIsVisible(false);
-        return;
       }
 
       try {
