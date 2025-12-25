@@ -18,8 +18,8 @@ const sizeMap = {
 // Размеры из графики
 const BALL_SMALL = 20;
 const BALL_LARGE = 48;
-const MERGED_2 = { width: 60, height: 38 };
-const MERGED_3 = { width: 96, height: 38 };
+const MERGED_2 = { width: 60, height: 38 }; // Переходное состояние: 2 шара слились
+const MERGED_3 = { width: 96, height: 38 }; // Все 3 шара слились
 
 export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: SpinnerProps) {
   const scale = sizeMap[size];
@@ -28,8 +28,8 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
   const merged2 = { width: MERGED_2.width * scale, height: MERGED_2.height * scale };
   const merged3 = { width: MERGED_3.width * scale, height: MERGED_3.height * scale };
 
-  // Цвет шариков (светло-зеленый из графики)
-  const ballColor = '#A8E6CF'; // Светло-зеленый цвет
+  // Цвет шариков (яркий лайм-зеленый из графики)
+  const ballColor = '#D5FE61'; // Яркий лайм-зеленый цвет для переходных состояний
 
   // Центр контейнера
   const centerX = merged3.width / 2;
@@ -101,23 +101,71 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
             top: ${centerY - ballSmall / 2}px;
             transform: translate(-50%, -50%);
           }
-          /* Состояние 3 (45-60%): 2 шара слиплись + 1 маленький */
-          45%, 60% {
+          /* Состояние 3 (45-60%): 2 шара слиплись + 1 маленький - переходное аморфное состояние */
+          45% {
+            width: ${merged2.width * 0.9}px;
+            height: ${merged2.height * 1.1}px;
+            border-radius: ${merged2.height / 2}px;
+            left: ${centerX - merged3.width / 2 + merged2.width / 2}px;
+            top: ${centerY - merged2.height / 2}px;
+            transform: translate(-50%, -50%) scale(1.0, 0.9);
+          }
+          50% {
             width: ${merged2.width}px;
             height: ${merged2.height}px;
             border-radius: ${merged2.height / 2}px;
             left: ${centerX - merged3.width / 2 + merged2.width / 2}px;
             top: ${centerY - merged2.height / 2}px;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(1.05, 0.95);
           }
-          /* Состояние 4 (65-80%): все 3 шара слиплись */
-          65%, 80% {
+          55% {
+            width: ${merged2.width * 1.05}px;
+            height: ${merged2.height * 0.95}px;
+            border-radius: ${merged2.height / 2}px;
+            left: ${centerX - merged3.width / 2 + merged2.width / 2}px;
+            top: ${centerY - merged2.height / 2}px;
+            transform: translate(-50%, -50%) scale(1.08, 0.92);
+          }
+          60% {
+            width: ${merged2.width}px;
+            height: ${merged2.height}px;
+            border-radius: ${merged2.height / 2}px;
+            left: ${centerX - merged3.width / 2 + merged2.width / 2}px;
+            top: ${centerY - merged2.height / 2}px;
+            transform: translate(-50%, -50%) scale(1.05, 0.95);
+          }
+          /* Состояние 4 (65-80%): все 3 шара слиплись - переходное аморфное состояние */
+          65% {
+            width: ${merged3.width * 0.95}px;
+            height: ${merged3.height * 1.05}px;
+            border-radius: ${merged3.height / 2}px;
+            left: ${centerX}px;
+            top: ${centerY - merged3.height / 2}px;
+            transform: translate(-50%, -50%) scale(1.0, 0.96);
+          }
+          70% {
             width: ${merged3.width}px;
             height: ${merged3.height}px;
             border-radius: ${merged3.height / 2}px;
             left: ${centerX}px;
             top: ${centerY - merged3.height / 2}px;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scale(1.02, 0.98);
+          }
+          75% {
+            width: ${merged3.width * 1.03}px;
+            height: ${merged3.height * 0.97}px;
+            border-radius: ${merged3.height / 2}px;
+            left: ${centerX}px;
+            top: ${centerY - merged3.height / 2}px;
+            transform: translate(-50%, -50%) scale(1.04, 0.96);
+          }
+          80% {
+            width: ${merged3.width}px;
+            height: ${merged3.height}px;
+            border-radius: ${merged3.height / 2}px;
+            left: ${centerX}px;
+            top: ${centerY - merged3.height / 2}px;
+            transform: translate(-50%, -50%) scale(1.02, 0.98);
           }
           /* Состояние 5 (85-100%): 1 большой + 2 маленьких */
           85%, 100% {
@@ -158,6 +206,7 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
             top: ${centerY - merged2.height / 2}px;
             transform: translate(-50%, -50%);
             opacity: 0;
+            z-index: -1;
           }
           /* Состояние 4 (65-80%): все 3 шара слиплись - скрыт (часть слипшегося) */
           65%, 80% {
