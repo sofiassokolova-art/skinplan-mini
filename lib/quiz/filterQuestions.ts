@@ -201,8 +201,26 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   // ИСПРАВЛЕНО: Используем эффективные ответы (объединение answers и savedProgressAnswers)
   const effectiveAnswers = getEffectiveAnswers(answers, savedProgressAnswers);
 
+  // ИСПРАВЛЕНО: Проверяем, есть ли ответы вообще
+  // Если ответов нет (новый пользователь), показываем все вопросы без фильтрации
+  const hasAnyAnswers = Object.keys(effectiveAnswers).length > 0;
+  
   const filteredQuestions = questions.filter((question) => {
     try {
+      // ИСПРАВЛЕНО: Если нет ответов, показываем все вопросы (кроме исключений для retake)
+      // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
+      if (!hasAnyAnswers) {
+        // При повторном прохождении все равно исключаем вопросы про пол и возраст
+        if (isRetakingQuiz && !showRetakeScreen) {
+          const normalizedCode = question.code?.toLowerCase();
+          if (normalizedCode === 'gender' || normalizedCode === 'age') {
+            return false;
+          }
+        }
+        // Для нового пользователя показываем все остальные вопросы
+        return true;
+      }
+      
       // ИСПРАВЛЕНО: Используем normalizedCode для всех проверок
       const normalizedCode = question.code?.toLowerCase();
       
@@ -241,7 +259,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       
       if (isMakeupQuestion) {
         const gender = getAnswerByCode('gender', questions, effectiveAnswers);
-        if (!gender.question) {
+        if (!gender.question || !gender.value) {
           // Пол еще не выбран - показываем вопрос (он будет скрыт позже)
           return true;
         }
@@ -257,7 +275,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       
       if (isPregnancyQuestion) {
         const gender = getAnswerByCode('gender', questions, effectiveAnswers);
-        if (!gender.question) {
+        if (!gender.question || !gender.value) {
           // Пол еще не выбран - показываем вопрос (он будет скрыт позже)
           return true;
         }
@@ -274,6 +292,27 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       return true;
     }
   });
+  
+  // ИСПРАВЛЕНО: Если после фильтрации не осталось вопросов, возвращаем все вопросы
+  // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
+  if (filteredQuestions.length === 0 && questions.length > 0) {
+    console.warn('⚠️ All questions filtered out, returning all questions as fallback', {
+      originalCount: questions.length,
+      hasAnyAnswers,
+      isRetakingQuiz,
+      showRetakeScreen,
+    });
+    // Возвращаем все вопросы, кроме исключений для retake
+    return questions.filter((question) => {
+      if (isRetakingQuiz && !showRetakeScreen) {
+        const normalizedCode = question.code?.toLowerCase();
+        if (normalizedCode === 'gender' || normalizedCode === 'age') {
+          return false;
+        }
+      }
+      return true;
+    });
+  }
 
   return filteredQuestions;
 }

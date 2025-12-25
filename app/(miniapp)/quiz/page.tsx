@@ -943,10 +943,14 @@ export default function QuizPage() {
       });
       
       // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
+      // ВАЖНО: Проверяем _meta ДО обработки данных, чтобы не тратить время на парсинг
       const _meta = (data as any)?._meta;
       if (_meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
         const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
-        if (!justSubmittedCheck) {
+        const retakeCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_retake') === 'true' : false;
+        const fullRetakeCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_full_retake_from_home') === 'true' : false;
+        
+        if (!justSubmittedCheck && !retakeCheck && !fullRetakeCheck) {
           clientLogger.log('✅ Бэкенд сообщил, что анкета завершена - редиректим на /plan', {
             isCompleted: _meta.isCompleted,
             hasProfile: _meta.hasProfile,
