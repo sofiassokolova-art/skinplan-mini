@@ -3784,7 +3784,7 @@ export default function QuizPage() {
       groupsCount: questionnaire?.groups?.length || 0,
       questionsCount: questionnaire?.questions?.length || 0,
     });
-  }, [questionnaire, questionnaireRef.current]); // ИСПРАВЛЕНО: Добавляем questionnaireRef.current в зависимости, чтобы useMemo пересчитывался при изменении ref
+  }, [questionnaire]); // ИСПРАВЛЕНО: questionnaire в зависимостях, чтобы useMemo пересчитывался при изменении state
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
