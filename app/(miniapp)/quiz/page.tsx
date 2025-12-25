@@ -879,18 +879,28 @@ export default function QuizPage() {
 
   const loadQuestionnaire = async () => {
     // ИСПРАВЛЕНО: Guard против множественных вызовов loadQuestionnaire
-    // ВАЖНО: Проверяем только refs, не state, чтобы избежать race conditions
+    // КРИТИЧНО: Устанавливаем флаги СРАЗУ, чтобы предотвратить параллельные вызовы
+    // Проверяем и устанавливаем атомарно
     if (loadQuestionnaireInProgressRef.current) {
-      clientLogger.warn('⛔ loadQuestionnaire() skipped: already in progress');
+      clientLogger.warn('⛔ loadQuestionnaire() skipped: already in progress', {
+        attempted: loadQuestionnaireAttemptedRef.current,
+        hasRef: !!questionnaireRef.current,
+        hasState: !!questionnaire,
+      });
       return null;
     }
     // ИСПРАВЛЕНО: Проверяем ref вместо state, чтобы избежать race conditions
     // Это предотвращает повторные вызовы даже если state еще не обновился
     if (loadQuestionnaireAttemptedRef.current && questionnaireRef.current) {
-      clientLogger.warn('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref');
+      clientLogger.warn('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref', {
+        questionnaireId: questionnaireRef.current?.id,
+        hasState: !!questionnaire,
+      });
       return null;
     }
     
+    // КРИТИЧНО: Устанавливаем флаги СРАЗУ, до любых асинхронных операций
+    // Это предотвращает параллельные вызовы
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
     
@@ -1389,6 +1399,13 @@ export default function QuizPage() {
         isRetakingQuiz,
         showRetakeScreen,
         errorResponse: err?.response?.data || err?.response || null,
+        // ИСПРАВЛЕНО: Добавляем информацию о том, что могло вызвать ошибку
+        errorMessageIncludes: {
+          timeout: errorMessage.includes('timeout') || errorMessage.includes('Timeout') || errorMessage.includes('Таймаут'),
+          network: errorMessage.includes('network') || errorMessage.includes('Network') || errorMessage.includes('fetch'),
+          loadFailed: errorMessage.includes('Load') && errorMessage.includes('fail'),
+          abort: errorMessage.includes('abort') || errorMessage.includes('Abort'),
+        },
       });
       
       // Только для критических ошибок устанавливаем error state
