@@ -4354,7 +4354,7 @@ export default function QuizPage() {
         }}>
           <div style={{
             position: 'relative',
-            width: '160px',
+            width: '120px',
             height: '100px',
             display: 'flex',
             alignItems: 'center',
@@ -4374,144 +4374,124 @@ export default function QuizPage() {
           <style>{`
             .loader-shapes {
               position: relative;
-              width: 160px;
+              width: 120px;
               height: 100px;
             }
             
             .loader-shape {
               position: absolute;
-              background: #32CD32;
+              background: #D5FE61;
               top: 50%;
               transform: translateY(-50%);
             }
             
             .loader-shape-1 {
-              width: 32px;
-              height: 32px;
-              left: 0;
-              border-radius: 50%;
-              animation: morph-left 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+              animation: morph-left 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             }
             
             .loader-shape-2 {
-              width: 42px;
-              height: 42px;
-              right: 0;
-              border-radius: 50%;
-              animation: morph-right 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+              animation: morph-right 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             }
             
             @keyframes morph-left {
-              0% {
+              /* Состояние 1: маленький круг (20x20) слева */
+              0%, 100% {
                 border-radius: 50%;
-                width: 32px;
-                height: 32px;
+                width: 20px;
+                height: 20px;
                 left: 0;
+                opacity: 1;
               }
-              15% {
+              /* Состояние 2: маленький круг (20x20) слева */
+              20% {
                 border-radius: 50%;
-                width: 32px;
-                height: 32px;
+                width: 20px;
+                height: 20px;
                 left: 0;
+                opacity: 1;
               }
-              25% {
-                border-radius: 48% 52% 48% 52%;
-                width: 36px;
-                height: 36px;
-                left: 15px;
+              /* Состояние 3: начало слияния - вытянутая форма (60x38) слева */
+              40% {
+                border-radius: 50% 50% 50% 50%;
+                width: 60px;
+                height: 38px;
+                left: 0;
+                opacity: 1;
               }
-              35% {
-                border-radius: 40% 60% 40% 60%;
-                width: 50px;
-                height: 40px;
-                left: 25px;
-              }
+              /* Состояние 4: очень вытянутая форма (96x38) по центру - обе формы слиты */
               50% {
-                border-radius: 25% 75% 25% 75%;
-                width: 100px;
-                height: 45px;
-                left: 30px;
+                border-radius: 50% 50% 50% 50%;
+                width: 96px;
+                height: 38px;
+                left: 12px;
+                opacity: 1;
               }
-              65% {
-                border-radius: 40% 60% 40% 60%;
-                width: 50px;
-                height: 40px;
-                left: 55px;
-              }
-              75% {
-                border-radius: 48% 52% 48% 52%;
-                width: 42px;
-                height: 42px;
-                left: 70px;
-              }
-              85% {
-                border-radius: 50%;
-                width: 42px;
-                height: 42px;
-                left: 75px;
-              }
-              100% {
-                border-radius: 50%;
-                width: 32px;
-                height: 32px;
+              /* Состояние 5: вытянутая форма (60x38) слева */
+              60% {
+                border-radius: 50% 50% 50% 50%;
+                width: 60px;
+                height: 38px;
                 left: 0;
+                opacity: 1;
+              }
+              /* Состояние 6: большой круг (48x48) слева */
+              80% {
+                border-radius: 50%;
+                width: 48px;
+                height: 48px;
+                left: 0;
+                opacity: 1;
               }
             }
             
             @keyframes morph-right {
-              0% {
+              /* Состояние 1: большой круг (48x48) справа */
+              0%, 100% {
                 border-radius: 50%;
-                width: 42px;
-                height: 42px;
+                width: 48px;
+                height: 48px;
                 right: 0;
+                opacity: 1;
               }
-              15% {
-                border-radius: 50%;
-                width: 42px;
-                height: 42px;
+              /* Состояние 2: вытянутая форма (60x38) справа */
+              20% {
+                border-radius: 50% 50% 50% 50%;
+                width: 60px;
+                height: 38px;
                 right: 0;
+                opacity: 1;
               }
-              25% {
-                border-radius: 52% 48% 52% 48%;
-                width: 46px;
-                height: 46px;
-                right: 15px;
+              /* Состояние 3: начало слияния - правая форма начинает исчезать */
+              40% {
+                border-radius: 50% 50% 50% 50%;
+                width: 60px;
+                height: 38px;
+                right: 0;
+                opacity: 0.5;
               }
-              35% {
-                border-radius: 60% 40% 60% 40%;
-                width: 50px;
-                height: 40px;
-                right: 25px;
-              }
+              /* Состояние 4: очень вытянутая форма (96x38) по центру - обе формы слиты, правая полностью скрыта */
               50% {
-                border-radius: 75% 25% 75% 25%;
-                width: 100px;
-                height: 45px;
-                right: 30px;
+                border-radius: 50% 50% 50% 50%;
+                width: 0;
+                height: 38px;
+                right: 12px;
+                opacity: 0;
               }
-              65% {
-                border-radius: 60% 40% 60% 40%;
-                width: 50px;
-                height: 40px;
-                right: 55px;
-              }
-              75% {
-                border-radius: 52% 48% 52% 48%;
-                width: 36px;
-                height: 36px;
-                right: 70px;
-              }
-              85% {
+              /* Состояние 5: маленький круг (20x20) справа появляется */
+              60% {
                 border-radius: 50%;
-                width: 32px;
-                height: 32px;
-                right: 75px;
-              }
-              100% {
-                border-radius: 50%;
-                width: 42px;
-                height: 42px;
+                width: 20px;
+                height: 20px;
                 right: 0;
+                opacity: 1;
+              }
+              /* Состояние 6: маленький круг (20x20) справа */
+              80% {
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                right: 0;
+                opacity: 1;
               }
             }
           `}</style>
