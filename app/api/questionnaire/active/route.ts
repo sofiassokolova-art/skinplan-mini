@@ -142,6 +142,23 @@ export async function GET(request: NextRequest) {
       plainQuestionsCount: plainQuestions.length,
       groupsQuestionsCount,
     });
+    
+    // ИСПРАВЛЕНО: Проверяем, что анкета содержит вопросы
+    // Если вопросов нет - это критическая ошибка, логируем предупреждение
+    if (totalQuestionsCount === 0) {
+      logger.error('❌ Active questionnaire has no questions!', {
+        questionnaireId: questionnaire.id,
+        name: questionnaire.name,
+        groupsCount: groups.length,
+        plainQuestionsCount: plainQuestions.length,
+        groupsDetails: groups.map(g => ({
+          id: g.id,
+          title: g.title,
+          questionsCount: g.questions?.length || 0,
+        })),
+      });
+      // НЕ возвращаем ошибку - продолжаем, но фронтенд должен обработать это
+    }
 
     // Форматируем данные в структуру, похожую на Quiz.tsx
     // Для совместимости с существующим фронтендом
