@@ -69,18 +69,30 @@ export function useCart() {
   React.useEffect(() => {
     // ИСПРАВЛЕНО: Проверяем нового пользователя только если Telegram готов И мы не на /quiz
     // КРИТИЧНО: Проверяем pathname ПЕРЕД вызовом getHasPlanProgress, чтобы не делать API запросы на /quiz
+    // ИСПРАВЛЕНО: Проверяем синхронно через window.location для надежности
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
     const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
                          pathname === '/quiz' || pathname.startsWith('/quiz/');
     
     if (isOnQuizPage) {
       // На /quiz не проверяем нового пользователя - это лишний запрос
+      // ИСПРАВЛЕНО: Устанавливаем isNewUser в false и выходим СРАЗУ, без вызова getHasPlanProgress
       setIsNewUser(false);
       return;
     }
     
-    if (pathname === '/' && isTelegramReady) {
+    // ИСПРАВЛЕНО: Проверяем pathname еще раз перед вызовом getHasPlanProgress
+    // Это дополнительная защита на случай, если pathname изменился между проверками
+    if (pathname === '/' && isTelegramReady && !isOnQuizPage) {
       const checkNewUser = async () => {
+        // ИСПРАВЛЕНО: Проверяем pathname еще раз внутри async функции
+        const checkPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+        const stillOnQuiz = checkPath === '/quiz' || checkPath.startsWith('/quiz/');
+        if (stillOnQuiz) {
+          setIsNewUser(false);
+          return;
+        }
+        
         try {
           const { getHasPlanProgress } = await import('@/lib/user-preferences');
           const hasPlanProgress = await getHasPlanProgress();
@@ -99,11 +111,23 @@ export function useCart() {
   // 1. На странице анкеты (проверяем синхронно через window.location для надежности)
   // 2. Telegram не готов
   // 3. Новый пользователь на главной странице
+  // КРИТИЧНО: Проверяем pathname синхронно ПЕРЕД вызовом useQuery, чтобы предотвратить запросы на /quiz
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
+                       pathname === '/quiz' || pathname.startsWith('/quiz/');
   
-  const shouldLoad = !isOnQuizPage && 
-                     isTelegramReady && // Telegram должен быть готов
+  // ИСПРАВЛЕНО: Если на /quiz, сразу возвращаем disabled query без вызова API
+  if (isOnQuizPage) {
+    return useQuery({
+      queryKey: [CART_QUERY_KEY],
+      queryFn: () => api.getCart() as Promise<any>,
+      staleTime: 1 * 60 * 1000,
+      gcTime: 5 * 60 * 1000,
+      enabled: false, // КРИТИЧНО: Отключаем запрос на /quiz
+    });
+  }
+  
+  const shouldLoad = isTelegramReady && // Telegram должен быть готов
                      !isNewUser; // Не загружаем для новых пользователей на главной
   
   return useQuery({
