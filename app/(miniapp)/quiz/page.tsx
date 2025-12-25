@@ -209,6 +209,9 @@ export default function QuizPage() {
 
   // Флаг для предотвращения множественных вызовов init
   const initInProgressRef = useRef(false);
+  // ИСПРАВЛЕНО: Ref для отслеживания, был ли уже вызван init() при монтировании
+  // Это предотвращает множественные вызовы даже при пересоздании функции init
+  const initCalledRef = useRef(false);
   // Время начала инициализации для проверки зависания
   const initStartTimeRef = useRef<number | null>(null);
   // Флаг для предотвращения повторных проверок профиля
@@ -669,8 +672,36 @@ export default function QuizPage() {
 
   // ИСПРАВЛЕНО: useEffect для init - делаем "однократным"
   // init запускается ровно тогда, когда поменялся сам init (по сути — при первом маунте и когда questionnaire-логика реально изменилась)
+  // КРИТИЧНО: Добавлена дополнительная защита от множественных вызовов
   useEffect(() => {
     isMountedRef.current = true;
+    
+    // ИСПРАВЛЕНО: Проверяем, не был ли уже вызван init() при монтировании
+    // Это предотвращает множественные вызовы даже при пересоздании функции init
+    if (initCalledRef.current) {
+      clientLogger.log('⛔ useEffect: init() already called on mount, skipping');
+      return;
+    }
+    
+    // ИСПРАВЛЕНО: Проверяем, не выполняется ли уже init() или не завершен ли он
+    // Это предотвращает множественные вызовы при пересоздании init
+    if (initInProgressRef.current) {
+      clientLogger.log('⛔ useEffect: init() already in progress, skipping');
+      return;
+    }
+    
+    if (initCompletedRef.current && !isStartingOverRef.current) {
+      clientLogger.log('⛔ useEffect: init() already completed, skipping');
+      return;
+    }
+    
+    // ИСПРАВЛЕНО: Устанавливаем флаг, что init() был вызван
+    initCalledRef.current = true;
+    clientLogger.warn('🚀 useEffect: calling init()', {
+      initCalled: initCalledRef.current,
+      initInProgress: initInProgressRef.current,
+      initCompleted: initCompletedRef.current,
+    });
     init();
 
     return () => {
@@ -3334,10 +3365,11 @@ export default function QuizPage() {
     setIsStartingOver(true);
     clientLogger.log('🔒 isStartingOverRef установлен в true');
     
-    // ВАЖНО: Сбрасываем initCompletedRef, чтобы позволить повторную инициализацию
+    // ВАЖНО: Сбрасываем initCompletedRef и initCalledRef, чтобы позволить повторную инициализацию
     // но с правильными флагами (isStartingOverRef = true), чтобы не загружать прогресс
     initCompletedRef.current = false;
-    clientLogger.log('🔄 initCompletedRef сброшен для повторной инициализации');
+    initCalledRef.current = false; // ИСПРАВЛЕНО: Сбрасываем initCalledRef для повторной инициализации
+    clientLogger.log('🔄 initCompletedRef и initCalledRef сброшены для повторной инициализации');
     
     // Очищаем весь прогресс (локальный и серверный)
     await clearProgress();
