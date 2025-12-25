@@ -1569,17 +1569,12 @@ export default function QuizPage() {
       
       // КРИТИЧНО: Устанавливаем state
       // ИСПРАВЛЕНО: Используем функциональную форму setQuestionnaire для гарантированного обновления
+      // ИСПРАВЛЕНО: Убрали проверку на одинаковый ID - всегда обновляем, чтобы гарантировать установку в state
+      // Это предотвращает зависание лоадера, если анкета не установлена в state из-за проверки на ID
       setQuestionnaire((prevQuestionnaire) => {
-        // ИСПРАВЛЕНО: Проверяем, что мы действительно устанавливаем новую анкету
-        // НО: если prevQuestionnaire null или undefined, мы ВСЕГДА устанавливаем новую анкету
-        if (prevQuestionnaire && prevQuestionnaire.id === questionnaireToSet.id) {
-          clientLogger.log('⚠️ Questionnaire with same ID already in state, skipping update', {
-            questionnaireId: questionnaireToSet.id,
-            prevQuestionnaireId: prevQuestionnaire.id,
-          });
-          return prevQuestionnaire; // Не обновляем, если уже установлена та же анкета
-        }
-        
+        // ИСПРАВЛЕНО: Всегда обновляем, даже если ID совпадает
+        // Это гарантирует, что questionnaire будет установлен в state после загрузки
+        // Проверка на одинаковый ID может блокировать обновление, если анкета уже была установлена ранее
         clientLogger.log('✅ setQuestionnaire called (functional form)', {
           questionnaireId: questionnaireToSet.id,
           totalQuestions: totalQuestionsBeforeSet,
@@ -1587,6 +1582,7 @@ export default function QuizPage() {
           prevQuestionnaireIsNull: prevQuestionnaire === null,
           prevQuestionnaireIsUndefined: prevQuestionnaire === undefined,
           isNewObject: questionnaireToSet !== questionnaireData,
+          sameId: prevQuestionnaire?.id === questionnaireToSet.id,
         });
         
         return questionnaireToSet;
