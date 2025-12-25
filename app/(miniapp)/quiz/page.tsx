@@ -68,12 +68,25 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Синхронизируем questionnaireRef с state для предотвращения рассинхронизации
   // Это гарантирует, что ref всегда актуален, даже если state обновляется асинхронно
   useEffect(() => {
-    if (questionnaire && questionnaireRef.current !== questionnaire) {
-      clientLogger.log('🔄 Syncing questionnaireRef with state', {
-        questionnaireId: questionnaire.id,
-        refId: questionnaireRef.current?.id,
-      });
-      questionnaireRef.current = questionnaire;
+    if (questionnaire) {
+      if (questionnaireRef.current !== questionnaire) {
+        clientLogger.log('🔄 Syncing questionnaireRef with state', {
+          questionnaireId: questionnaire.id,
+          refId: questionnaireRef.current?.id,
+          hasGroups: !!questionnaire.groups,
+          groupsCount: questionnaire.groups?.length || 0,
+          hasQuestions: !!questionnaire.questions,
+          questionsCount: questionnaire.questions?.length || 0,
+        });
+        questionnaireRef.current = questionnaire;
+      }
+    } else {
+      // ИСПРАВЛЕНО: Логируем, если questionnaire стал null
+      if (questionnaireRef.current) {
+        clientLogger.log('⚠️ Questionnaire state became null, but ref still has data', {
+          refId: questionnaireRef.current?.id,
+        });
+      }
     }
   }, [questionnaire]);
   
@@ -3549,9 +3562,11 @@ export default function QuizPage() {
   // ВАЖНО: все хуки должны вызываться до любых условных return'ов
   // ИСПРАВЛЕНО: Используем questionnaireRef.current вместо state, чтобы избежать race condition
   // State обновляется асинхронно, а ref обновляется синхронно, поэтому ref всегда актуален
+  // КРИТИЧНО: Добавляем questionnaire в зависимости, чтобы useMemo пересчитывался при изменении state
   const allQuestionsRaw = useMemo(() => {
     try {
       // ИСПРАВЛЕНО: Используем ref вместо state для получения актуального значения
+      // НО: также проверяем state, чтобы useMemo пересчитывался при изменении state
       const currentQuestionnaire = questionnaireRef.current || questionnaire;
       
       // ИСПРАВЛЕНО: Детальное логирование для диагностики
@@ -3562,6 +3577,10 @@ export default function QuizPage() {
         questionnaireRefId: questionnaireRef.current?.id,
         usingRef: !!questionnaireRef.current,
         usingState: !!questionnaire && !questionnaireRef.current,
+        questionnaireGroupsCount: questionnaire?.groups?.length || 0,
+        questionnaireQuestionsCount: questionnaire?.questions?.length || 0,
+        refGroupsCount: questionnaireRef.current?.groups?.length || 0,
+        refQuestionsCount: questionnaireRef.current?.questions?.length || 0,
       });
       
       if (!currentQuestionnaire) {
@@ -3570,6 +3589,8 @@ export default function QuizPage() {
           questionnaireRefId: questionnaireRef.current?.id,
           hasQuestionnaireState: !!questionnaire,
           questionnaireStateId: (questionnaire as Questionnaire | null)?.id,
+          loading,
+          initCompleted: initCompletedRef.current,
         });
         return [];
       }
@@ -3763,7 +3784,7 @@ export default function QuizPage() {
       groupsCount: questionnaire?.groups?.length || 0,
       questionsCount: questionnaire?.questions?.length || 0,
     });
-  }, [questionnaire]);
+  }, [questionnaire, questionnaireRef.current]); // ИСПРАВЛЕНО: Добавляем questionnaireRef.current в зависимости, чтобы useMemo пересчитывался при изменении ref
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
