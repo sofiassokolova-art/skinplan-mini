@@ -65,6 +65,18 @@ export default function QuizPage() {
     isSubmittingRef.current = isSubmitting;
   }, [isSubmitting]);
   
+  // ИСПРАВЛЕНО: Синхронизируем questionnaireRef с state для предотвращения рассинхронизации
+  // Это гарантирует, что ref всегда актуален, даже если state обновляется асинхронно
+  useEffect(() => {
+    if (questionnaire && questionnaireRef.current !== questionnaire) {
+      clientLogger.log('🔄 Syncing questionnaireRef with state', {
+        questionnaireId: questionnaire.id,
+        refId: questionnaireRef.current?.id,
+      });
+      questionnaireRef.current = questionnaire;
+    }
+  }, [questionnaire]);
+  
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
   const [finalizingStep, setFinalizingStep] = useState<'answers' | 'plan' | 'done'>('answers');
@@ -1457,13 +1469,24 @@ export default function QuizPage() {
       questionnaireRef.current = questionnaireToSet;
       
       // КРИТИЧНО: Устанавливаем state
-      setQuestionnaire(questionnaireToSet);
-      
-      // ИСПРАВЛЕНО: Логируем сразу после setQuestionnaire
-      clientLogger.log('✅ setQuestionnaire called', {
-        questionnaireId: questionnaireToSet.id,
-        totalQuestions: totalQuestionsBeforeSet,
-        isNewObject: questionnaireToSet !== questionnaireData,
+      // ИСПРАВЛЕНО: Используем функциональную форму setQuestionnaire для гарантированного обновления
+      setQuestionnaire((prevQuestionnaire) => {
+        // Проверяем, что мы действительно устанавливаем новую анкету
+        if (prevQuestionnaire?.id === questionnaireToSet.id) {
+          clientLogger.log('⚠️ Questionnaire with same ID already in state, skipping update', {
+            questionnaireId: questionnaireToSet.id,
+          });
+          return prevQuestionnaire; // Не обновляем, если уже установлена та же анкета
+        }
+        
+        clientLogger.log('✅ setQuestionnaire called (functional form)', {
+          questionnaireId: questionnaireToSet.id,
+          totalQuestions: totalQuestionsBeforeSet,
+          prevQuestionnaireId: prevQuestionnaire?.id,
+          isNewObject: questionnaireToSet !== questionnaireData,
+        });
+        
+        return questionnaireToSet;
       });
       
       // ИСПРАВЛЕНО: Логируем после установки (в следующем тике, чтобы state обновился)
@@ -1473,8 +1496,10 @@ export default function QuizPage() {
           totalQuestions: totalQuestionsBeforeSet,
           refHasQuestionnaire: !!questionnaireRef.current,
           refQuestionnaireId: questionnaireRef.current?.id,
+          stateHasQuestionnaire: !!questionnaire,
+          stateQuestionnaireId: questionnaire?.id,
         });
-      }, 0);
+      }, 100); // Увеличено время ожидания для гарантированного обновления state
       
       // ИСПРАВЛЕНО: Используем preferences из метаданных вместо отдельных вызовов API
       // ИСПРАВЛЕНО: Обрабатываем preferences в try-catch, чтобы ошибки не прерывали загрузку анкеты
