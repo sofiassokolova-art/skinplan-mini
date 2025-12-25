@@ -80,10 +80,15 @@ function LayoutContent({
   // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz
   // ТЗ: На /quiz не должны выполняться запросы к /api/user/preferences
   useEffect(() => {
-    // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем запросы
-    // Проверяем синхронно через window.location для надежности
+    // КРИТИЧНО: Проверяем pathname на /quiz ПЕРЕД любыми проверками
+    // Это предотвращает вызовы getUserPreferences на /quiz
+    // ИСПРАВЛЕНО: Проверяем синхронно через window.location для надежности
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-    if (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) {
+    const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
+                         pathname === '/quiz' || pathname.startsWith('/quiz/');
+    
+    if (isOnQuizPage) {
+      // На /quiz не проверяем нового пользователя - это лишний запрос
       setIsNewUser(null);
       return;
     }
@@ -119,9 +124,20 @@ function LayoutContent({
     
     const checkNewUser = async () => {
       try {
+        // КРИТИЧНО: Проверяем pathname еще раз внутри async функции
+        // Это защита от race condition, если пользователь перешел на /quiz во время выполнения
+        const checkPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+        const stillOnQuiz = checkPath === '/quiz' || checkPath.startsWith('/quiz/');
+        if (stillOnQuiz || aborted) {
+          if (!aborted) {
+            setIsNewUser(null);
+          }
+          return;
+        }
+        
         const { getHasPlanProgress } = await import('@/lib/user-preferences');
         const hasPlanProgress = await getHasPlanProgress();
-        if (!aborted) {
+        if (!aborted && !stillOnQuiz) {
           setIsNewUser(!hasPlanProgress);
         }
       } catch {
