@@ -3034,16 +3034,41 @@ export default function QuizPage() {
   // При повторном прохождении исключаем вопросы про пол и возраст (они уже записаны в профиле)
   const allQuestions = useMemo<Question[]>(() => {
     try {
-    if (!allQuestionsRaw || allQuestionsRaw.length === 0) return [];
+    if (!allQuestionsRaw || allQuestionsRaw.length === 0) {
+      // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой
+      if (questionnaire) {
+        clientLogger.warn('⚠️ allQuestionsRaw is empty but questionnaire exists', {
+          questionnaireId: questionnaire.id,
+          hasGroups: !!questionnaire.groups,
+          groupsCount: questionnaire.groups?.length || 0,
+          hasQuestions: !!questionnaire.questions,
+          questionsCount: questionnaire.questions?.length || 0,
+        });
+      }
+      return [];
+    }
     
     // ИСПРАВЛЕНО: Используем единую функцию filterQuestions вместо дублирующей логики
-    return filterQuestions({
+    const filtered = filterQuestions({
       questions: allQuestionsRaw,
       answers,
       savedProgressAnswers: savedProgress?.answers,
       isRetakingQuiz,
       showRetakeScreen,
     });
+    
+    // ИСПРАВЛЕНО: Логируем, если все вопросы отфильтрованы
+    if (filtered.length === 0 && allQuestionsRaw.length > 0) {
+      clientLogger.warn('⚠️ All questions filtered out', {
+        allQuestionsRawLength: allQuestionsRaw.length,
+        answersCount: Object.keys(answers).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        isRetakingQuiz,
+        showRetakeScreen,
+      });
+    }
+    
+    return filtered;
     } catch (err) {
       console.error('❌ Error computing allQuestions:', err, {
         allQuestionsRawLength: allQuestionsRaw?.length,
@@ -3052,7 +3077,7 @@ export default function QuizPage() {
       // В случае ошибки возвращаем все вопросы из allQuestionsRaw (уже отсортированные)
       return allQuestionsRaw || [];
     }
-  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen]);
+  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire]);
   
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
