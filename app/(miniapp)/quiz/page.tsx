@@ -690,8 +690,30 @@ export default function QuizPage() {
             throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
           }
           
+          // КРИТИЧНО: Ждем, пока questionnaire будет установлен в state
+          // Это предотвращает завершение init() до того, как questionnaire появится в state
+          // ИСПРАВЛЕНО: Ждем максимум 1 секунду (10 попыток по 100ms)
+          // Используем замыкание для доступа к questionnaire state через ref
+          let stateWaitAttempts = 0;
+          const maxStateWaitAttempts = 10; // 10 * 100ms = 1 секунда максимум
+          while (stateWaitAttempts < maxStateWaitAttempts) {
+            // Проверяем через ref, который синхронизируется с state в useEffect
+            if (questionnaireRef.current) {
+              // Проверяем, что state обновился (через небольшую задержку для React batch updates)
+              await new Promise(resolve => setTimeout(resolve, 50));
+              break; // questionnaireRef установлен, значит state должен обновиться
+            }
+            clientLogger.log('⏳ Waiting for questionnaire state to update...', {
+              attempt: stateWaitAttempts + 1,
+              maxAttempts: maxStateWaitAttempts,
+            });
+            await new Promise(resolve => setTimeout(resolve, 100));
+            stateWaitAttempts++;
+          }
+          
           clientLogger.log('✅ Questionnaire loaded and set in ref', {
             questionnaireId: questionnaireRef.current?.id,
+            waitedForState: stateWaitAttempts > 0,
           });
         } else if (!loadQuestionnaireRef.current) {
           clientLogger.error('❌ loadQuestionnaireRef.current not set after waiting, cannot load questionnaire');
