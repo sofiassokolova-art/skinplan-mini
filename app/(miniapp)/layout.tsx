@@ -287,11 +287,14 @@ function LayoutFallback() {
                    pathname !== '/profile';
   
   // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
+  // ТЗ: Скрываем навигацию на /quiz и /plan* для чистого UX
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+  const isOnPlanPage = currentPath === '/plan' || currentPath.startsWith('/plan/');
   
   // Определяем, нужно ли скрывать навигацию (та же логика, что и в LayoutContent)
   const hideNav = isOnQuizPage ||
+                 isOnPlanPage ||
                  pathname === '/loading' ||
                  pathname.startsWith('/loading/');
   
