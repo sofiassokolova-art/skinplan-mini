@@ -29,36 +29,31 @@ async function request<T>(
 ): Promise<T> {
   // ИСПРАВЛЕНО: Блокируем запросы к /cart и /user/preferences на странице /quiz
   // Это предотвращает лишние запросы при загрузке анкеты
-  // КРИТИЧНО: Проверяем не только текущий pathname, но и переход к /quiz
+  // КРИТИЧНО: Проверяем только текущий pathname, чтобы не блокировать запросы к анкете
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    const referrer = document.referrer;
-    // Проверяем, находимся ли мы на /quiz или переходим на /quiz
+    // ИСПРАВЛЕНО: Проверяем только текущий pathname, чтобы не блокировать запросы к анкете
+    // Убрали проверку referrer, так как она может блокировать запросы даже когда мы уже на /quiz
     const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-    const isNavigatingToQuiz = referrer && (
-      referrer.includes('/quiz') || 
-      // Проверяем, не происходит ли переход к /quiz через Next.js router
-      (typeof window !== 'undefined' && (window as any).__NEXT_DATA__?.page === '/quiz')
-    );
     
-    if (isOnQuizPage || isNavigatingToQuiz) {
+    if (isOnQuizPage) {
       // Блокируем только определенные endpoints, которые не нужны на /quiz
+      // КРИТИЧНО: НЕ блокируем запросы к /questionnaire/active - они нужны для загрузки анкеты!
       if (endpoint === '/cart' || endpoint === '/user/preferences' || 
-          endpoint.includes('/cart') || endpoint.includes('/user/preferences')) {
+          (endpoint.includes('/cart') && !endpoint.includes('/questionnaire')) ||
+          (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'))) {
         console.log('🚫 Blocking API request on /quiz:', endpoint, {
           pathname,
-          referrer,
           isOnQuizPage,
-          isNavigatingToQuiz,
         });
         // Возвращаем дефолтные значения для заблокированных endpoints
-        if (endpoint === '/cart' || endpoint.includes('/cart')) {
+        if (endpoint === '/cart' || (endpoint.includes('/cart') && !endpoint.includes('/questionnaire'))) {
           return { items: [] } as T;
         }
-        if (endpoint === '/user/preferences' || endpoint.includes('/user/preferences')) {
+        if (endpoint === '/user/preferences' || (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'))) {
           return {
             isRetakingQuiz: false,
-            fullRetakeFromHome: false,
+            fullRetakingQuiz: false,
             paymentRetakingCompleted: false,
             paymentFullRetakeCompleted: false,
             hasPlanProgress: false,

@@ -624,14 +624,25 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Используем ref вместо state для проверки, чтобы избежать race conditions
       // ИСПРАВЛЕНО: Используем ref для доступа к loadQuestionnaire, так как она объявлена ниже
       // ИСПРАВЛЕНО: loadQuestionnaireRef.current устанавливается сразу при объявлении функции
-      if (!questionnaireRef.current && loadQuestionnaireRef.current) {
-        await loadQuestionnaireRef.current();
-      } else if (!questionnaireRef.current) {
-        // Если ref еще не установлен, ждем немного и пробуем еще раз
-        clientLogger.warn('⚠️ loadQuestionnaireRef.current not set, waiting...');
-        await new Promise(resolve => setTimeout(resolve, 200));
+      if (!questionnaireRef.current) {
+        // КРИТИЧНО: Ждем, пока loadQuestionnaireRef.current будет установлен
+        // Это может занять несколько рендеров, так как функция объявляется после init()
+        let attempts = 0;
+        const maxAttempts = 50; // 50 * 100ms = 5 секунд максимум
+        while (!loadQuestionnaireRef.current && attempts < maxAttempts) {
+          clientLogger.log('⏳ Waiting for loadQuestionnaireRef.current to be set...', {
+            attempt: attempts + 1,
+            maxAttempts,
+          });
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+        
         if (loadQuestionnaireRef.current && !questionnaireRef.current) {
           await loadQuestionnaireRef.current();
+        } else if (!loadQuestionnaireRef.current) {
+          clientLogger.error('❌ loadQuestionnaireRef.current not set after waiting, cannot load questionnaire');
+          throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
         }
       }
 
@@ -724,13 +735,14 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Устанавливаем флаг, что init() был вызван ДО вызова функции
     // Это предотвращает race condition, если компонент перерендерится во время выполнения init()
     // КРИТИЧНО: Устанавливаем initCalledRef ПЕРЕД вызовом init(), чтобы другие useEffect не вызвали init() повторно
+    // НЕ устанавливаем initInProgressRef здесь - это делает сам init() для правильной логики
     initCalledRef.current = true;
-    initInProgressRef.current = true; // Устанавливаем сразу, чтобы предотвратить параллельные вызовы
     
     clientLogger.log('🚀 useEffect: calling init()', {
       initCalled: initCalledRef.current,
       initInProgress: initInProgressRef.current,
       initCompleted: initCompletedRef.current,
+      hasLoadQuestionnaireRef: !!loadQuestionnaireRef.current,
     });
     
     // ИСПРАВЛЕНО: Вызываем init() напрямую, не через зависимость
