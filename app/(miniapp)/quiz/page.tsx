@@ -790,6 +790,11 @@ export default function QuizPage() {
           questionnaireId: questionnaire.id,
         });
       }
+      // ИСПРАВЛЕНО: Сбрасываем таймер когда анкета загружена
+      if (initCompletedTimeRef.current) {
+        clientLogger.log('✅ Questionnaire loaded, clearing fallback loader timer');
+        initCompletedTimeRef.current = null;
+      }
     }
   }, [questionnaire]);
 
