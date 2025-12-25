@@ -85,20 +85,10 @@ export function useResumeLogic(options: UseResumeLogicOptions) {
         progress?: SavedProgress & { timestamp: number } | null;
       };
 
-      // Проверяем наличие профиля
-      let hasProfile = false;
-      try {
-        const profile = await api.getCurrentProfile();
-        hasProfile = !!(profile && profile.id);
-      } catch (profileErr: any) {
-        const isNotFound = profileErr?.status === 404 || 
-                          profileErr?.message?.includes('404') || 
-                          profileErr?.message?.includes('No profile') ||
-                          profileErr?.message?.includes('Profile not found');
-        if (isNotFound) {
-          hasProfile = false;
-        }
-      }
+      // ИСПРАВЛЕНО: Проверка профиля теперь происходит на бэкенде
+      // Если прогресс есть, значит пользователь не новый (независимо от наличия профиля)
+      // hasProfile больше не нужен для определения показа экрана "Продолжить"
+      const hasProfile = false; // Не используется, оставлено для совместимости
 
       const answersCount = response?.progress?.answers 
         ? Object.keys(response.progress.answers).length 

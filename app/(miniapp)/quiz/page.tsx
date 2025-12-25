@@ -428,104 +428,8 @@ export default function QuizPage() {
       
       checkRetakeFlags().catch(() => {});
       
-      // ИСПРАВЛЕНО: Проверяем профиль и завершенность анкеты
-      // ИСПРАВЛЕНО: Для нового пользователя не проверяем профиль - это лишний запрос
-      // Проверяем hasPlanProgress перед проверкой профиля
-      const checkProfileAndRedirect = async () => {
-        // ИСПРАВЛЕНО: Проверяем hasPlanProgress ПЕРЕД проверкой профиля
-        // Если hasPlanProgress нет, значит пользователь новый и не нужно проверять профиль
-        try {
-          const hasPlanProgress = await userPreferences.getHasPlanProgress();
-          if (!hasPlanProgress) {
-            // Новый пользователь - не проверяем профиль
-            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку профиля');
-            return;
-          }
-        } catch (err) {
-          // При ошибке проверки hasPlanProgress продолжаем проверку профиля на всякий случай
-          clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, продолжаем проверку профиля:', err);
-        }
-        
-        // ИСПРАВЛЕНО: Не выполняем проверку, если пользователь находится на инфо-экране
-        // Это предотвращает редирект во время показа инфо-экранов после последнего вопроса
-        // ВАЖНО: Также проверяем флаг quiz_just_submitted еще раз (на случай, если он был установлен после начала проверки)
-        const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
-        if (justSubmittedCheck) {
-          clientLogger.log('✅ Флаг quiz_just_submitted обнаружен во время проверки профиля - прерываем проверку');
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('quiz_just_submitted');
-            window.location.replace('/plan');
-          }
-          return;
-        }
-        
-        // ИСПРАВЛЕНО: allQuestions определен позже, поэтому используем questionnaire для проверки
-        // Просто проверяем pendingInfoScreen, без проверки allQuestions.length
-        if (pendingInfoScreen) {
-          clientLogger.log('⏸️ Пропускаем проверку профиля: пользователь на инфо-экране', {
-            hasPendingInfoScreen: !!pendingInfoScreen,
-          });
-          return;
-        }
-        
-        try {
-          const profile = await api.getCurrentProfile();
-          if (profile && (profile as any).id) {
-            // Профиль существует - проверяем, завершена ли анкета
-            try {
-              const response = await api.getQuizProgress();
-              const progress = response?.progress;
-              const hasAnswers = progress && progress.answers && Object.keys(progress.answers).length > 0;
-              // ИСПРАВЛЕНО: isCompleted находится в корне ответа, а не в progress
-              const isCompleted = response?.isCompleted === true;
-              
-              // Если анкета завершена и нет флага перепрохождения - редиректим на /plan
-              if (
-                isCompleted &&
-                !window.sessionStorage.getItem('quiz_retake') &&
-                !window.sessionStorage.getItem('quiz_full_retake_from_home')
-              ) {
-                clientLogger.log('✅ Профиль существует и анкета завершена - редиректим на /plan', {
-                  hasAnswers,
-                  isCompleted,
-                });
-                initCompletedRef.current = true;
-                setLoading(false);
-                window.location.replace('/plan');
-                return;
-              }
-              // ИСПРАВЛЕНО: Если профиль есть, но анкета не завершена - не блокируем загрузку
-              // init() продолжит работу и установит loading = false
-            } catch (progressErr) {
-              // Если не удалось проверить прогресс, но профиль есть - все равно редиректим
-              // Это может быть сразу после отправки ответов, когда прогресс еще не обновился
-              clientLogger.log('✅ Профиль существует (прогресс не проверен) - редиректим на /plan');
-              initCompletedRef.current = true;
-              setLoading(false);
-              window.location.replace('/plan');
-              return;
-            }
-          } else {
-            // ИСПРАВЛЕНО: Профиль не найден (null) - это нормально, не блокируем загрузку
-            // init() продолжит работу и установит loading = false
-            clientLogger.log('ℹ️ Профиль не найден (null) - продолжаем инициализацию');
-          }
-        } catch (err: any) {
-          // Профиля нет - это нормально, продолжаем инициализацию
-          const isNotFound = err?.status === 404 || 
-                            err?.message?.includes('404') || 
-                            err?.message?.includes('No profile') ||
-                            err?.message?.includes('Profile not found');
-          if (!isNotFound) {
-            clientLogger.warn('⚠️ Ошибка при проверке профиля:', err);
-          }
-          // ИСПРАВЛЕНО: Не блокируем загрузку при отсутствии профиля
-          // init() продолжит работу и установит loading = false
-        }
-      };
-      
-      // Выполняем проверку асинхронно, но не блокируем инициализацию
-      checkProfileAndRedirect().catch(() => {});
+      // ИСПРАВЛЕНО: Проверка профиля и плана теперь происходит на бэкенде в /api/questionnaire/active
+      // На фронте только показываем лоадер и загружаем анкету
     }
   }, []);
   
@@ -1008,17 +912,53 @@ export default function QuizPage() {
         setTimeout(() => reject(new Error('Таймаут загрузки анкеты (10 секунд)')), 10000);
       });
       
-      const data = await Promise.race([loadPromise, timeoutPromise]);
+      const data = await Promise.race([loadPromise, timeoutPromise]) as any;
+      
+      // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
+      if (data?._meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
+        const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+        if (!justSubmittedCheck) {
+          clientLogger.log('✅ Бэкенд сообщил, что анкета завершена - редиректим на /plan', {
+            isCompleted: data._meta.isCompleted,
+            hasProfile: data._meta.hasProfile,
+          });
+          initCompletedRef.current = true;
+          setLoading(false);
+          if (typeof window !== 'undefined') {
+            window.location.replace('/plan');
+          }
+          return null;
+        }
+      }
       
       // ИСПРАВЛЕНО: Добавляем детальное логирование для диагностики
       clientLogger.log('📥 Questionnaire data received from API', {
         hasData: !!data,
         dataType: typeof data,
         dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-        dataString: typeof data === 'object' ? JSON.stringify(data).substring(0, 500) : String(data).substring(0, 200),
+        shouldRedirectToPlan: data?._meta?.shouldRedirectToPlan,
+        isCompleted: data?._meta?.isCompleted,
         isRetakingQuiz,
         showRetakeScreen,
       });
+      
+      // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
+      const _meta = (data as any)?._meta;
+      if (_meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
+        const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+        if (!justSubmittedCheck) {
+          clientLogger.log('✅ Бэкенд сообщил, что анкета завершена - редиректим на /plan', {
+            isCompleted: _meta.isCompleted,
+            hasProfile: _meta.hasProfile,
+          });
+          initCompletedRef.current = true;
+          setLoading(false);
+          if (typeof window !== 'undefined') {
+            window.location.replace('/plan');
+          }
+          return null;
+        }
+      }
       
       // ИСПРАВЛЕНО: Проверяем, что данные не пустые
       // При перепрохождении API может вернуть пустой объект - пробуем загрузить еще раз
@@ -1047,30 +987,34 @@ export default function QuizPage() {
         throw new Error('Invalid questionnaire data: received empty response');
       }
       
+      // ИСПРАВЛЕНО: Убираем _meta из данных перед обработкой
+      const { _meta: _, ...dataWithoutMeta } = data as any;
+      const cleanData = dataWithoutMeta;
+      
       // ИСПРАВЛЕНО: API может возвращать данные в обертке (success/data)
       // Проверяем, есть ли обертка, и извлекаем данные
       let questionnaireData: Questionnaire | null = null;
       
-      if (data && typeof data === 'object') {
+      if (cleanData && typeof cleanData === 'object') {
         // Проверяем, есть ли обертка ApiResponse (success/data)
-        if ('success' in data && 'data' in data && (data as any).success === true) {
-          questionnaireData = (data as any).data as Questionnaire;
-        } else if ('data' in data && !('success' in data)) {
+        if ('success' in cleanData && 'data' in cleanData && (cleanData as any).success === true) {
+          questionnaireData = (cleanData as any).data as Questionnaire;
+        } else if ('data' in cleanData && !('success' in cleanData)) {
           // Только data без success
-          questionnaireData = (data as any).data as Questionnaire;
-        } else if ('id' in data || 'groups' in data || 'questions' in data) {
+          questionnaireData = (cleanData as any).data as Questionnaire;
+        } else if ('id' in cleanData || 'groups' in cleanData || 'questions' in cleanData) {
           // Данные напрямую (без обертки) - проверяем наличие ключевых полей
-          questionnaireData = data as Questionnaire;
+          questionnaireData = cleanData as Questionnaire;
         } else {
           // Неизвестный формат - логируем для диагностики
           clientLogger.warn('⚠️ Unknown questionnaire data format', {
-            dataKeys: Object.keys(data),
-            hasId: 'id' in data,
-            hasGroups: 'groups' in data,
-            hasQuestions: 'questions' in data,
-            hasSuccess: 'success' in data,
-            hasData: 'data' in data,
-            dataPreview: JSON.stringify(data).substring(0, 300),
+            dataKeys: Object.keys(cleanData),
+            hasId: 'id' in cleanData,
+            hasGroups: 'groups' in cleanData,
+            hasQuestions: 'questions' in cleanData,
+            hasSuccess: 'success' in cleanData,
+            hasData: 'data' in cleanData,
+            dataPreview: JSON.stringify(cleanData).substring(0, 300),
           });
         }
       }
@@ -6149,9 +6093,11 @@ export default function QuizPage() {
     // (вопрос должен найтись сразу после загрузки анкеты)
   }
 
-  // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: Если currentQuestion === null и allQuestions пустой, показываем лоадер
+  // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: Если currentQuestion === null или allQuestions пустой, показываем лоадер
   // Это предотвращает ошибки рендеринга, если мы дошли до этого места
-  if (!currentQuestion && allQuestions.length === 0 && !loading) {
+  // ИСПРАВЛЕНО: Проверяем также случай, когда allQuestions.length === 0, даже если currentQuestion не null
+  // (это может произойти при race condition)
+  if ((!currentQuestion || allQuestions.length === 0) && !loading && !showResumeScreen && !showRetakeScreen) {
     return (
       <div style={{ 
         padding: '20px',
@@ -6357,7 +6303,7 @@ export default function QuizPage() {
             position: 'relative',
           }}>
             <div style={{
-              width: `${((currentQuestionIndex + 1) / allQuestions.length) * 100}%`,
+              width: `${allQuestions.length > 0 ? ((currentQuestionIndex + 1) / allQuestions.length) * 100 : 0}%`,
               height: '100%',
               backgroundColor: '#0A5F59',
               borderRadius: '3px',
@@ -6374,19 +6320,21 @@ export default function QuizPage() {
           color: '#0A5F59',
           marginBottom: '24px'
         }}>
-          {currentQuestion.text}
+          {currentQuestion?.text || ''}
         </h2>
 
-        {currentQuestion.type === 'single_choice' && currentQuestion.options && (
+        {currentQuestion?.type === 'single_choice' && currentQuestion?.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {currentQuestion.options.map((option) => {
-              const isSelected = answers[currentQuestion.id] === option.value;
+            {currentQuestion?.options?.map((option) => {
+              const isSelected = answers[currentQuestion?.id] === option.value;
               
               return (
                 <button
                   key={option.id}
                   onClick={async () => {
-                    await handleAnswer(currentQuestion.id, option.value);
+                    if (currentQuestion?.id) {
+                      await handleAnswer(currentQuestion.id, option.value);
+                    }
                     // ВАЖНО: Всегда переходим к следующему вопросу после выбора ответа
                     // Для последнего вопроса: если есть инфо-экран, показываем его через handleNext
                     // Если инфо-экрана нет, все равно вызываем handleNext, который обработает завершение анкеты
@@ -6412,6 +6360,7 @@ export default function QuizPage() {
             })}
             {/* Кнопки навигации */}
             {currentQuestionIndex === allQuestions.length - 1 && 
+             currentQuestion?.id &&
              answers[currentQuestion.id] && 
              (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) ? (
               // Последний вопрос - показываем "Получить план"
@@ -6464,7 +6413,7 @@ export default function QuizPage() {
             ) : (
               // Не последний вопрос или есть инфо-экраны - показываем "Далее"
               // При первом прохождении (!isRetakingQuiz) для single_choice кнопка не нужна - есть автопереход
-              answers[currentQuestion.id] && isRetakingQuiz && (
+              currentQuestion?.id && answers[currentQuestion.id] && isRetakingQuiz && (
                 <button
                   onClick={handleNext}
                   disabled={!answers[currentQuestion.id] || (Array.isArray(answers[currentQuestion.id]) && (answers[currentQuestion.id] as string[]).length === 0)}
@@ -6489,13 +6438,15 @@ export default function QuizPage() {
           </div>
         )}
 
-        {currentQuestion.type === 'free_text' && (
+        {currentQuestion?.type === 'free_text' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <input
               type="text"
-              value={(answers[currentQuestion.id] as string) || ''}
+              value={(answers[currentQuestion?.id] as string) || ''}
               onChange={(e) => {
-                handleAnswer(currentQuestion.id, e.target.value);
+                if (currentQuestion?.id) {
+                  handleAnswer(currentQuestion.id, e.target.value);
+                }
               }}
               placeholder="Введите ваше имя"
               style={{
@@ -6541,16 +6492,17 @@ export default function QuizPage() {
           </div>
         )}
 
-        {currentQuestion.type === 'multi_choice' && currentQuestion.options && (
+        {currentQuestion?.type === 'multi_choice' && currentQuestion?.options && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {currentQuestion.options.map((option) => {
-              const currentAnswers = (answers[currentQuestion.id] as string[]) || [];
+              const currentAnswers = (answers[currentQuestion?.id] as string[]) || [];
               const isSelected = currentAnswers.includes(option.value);
               
               return (
                 <button
                   key={option.id}
                   onClick={() => {
+                    if (!currentQuestion?.id) return;
                     const newAnswers = isSelected
                       ? currentAnswers.filter((v) => v !== option.value)
                       : [...currentAnswers, option.value];
@@ -6576,6 +6528,7 @@ export default function QuizPage() {
             })}
             {/* Кнопки навигации */}
             {currentQuestionIndex === allQuestions.length - 1 && 
+             currentQuestion?.id &&
              (isRetakingQuiz || !getInfoScreenAfterQuestion(currentQuestion.code)) ? (
               // Последний вопрос - показываем "Получить план"
               <div style={{ marginTop: '24px' }}>

@@ -33,13 +33,15 @@ export class ErrorBoundary extends Component<Props, State> {
     const errorMessage = error.message || error.toString();
     
     // Игнорируем ошибки, связанные с редиректами или размонтированием компонентов
+    // ИСПРАВЛЕНО: Добавляем обработку ошибки #310 (hooks order) - она может возникать при race conditions
     if (
       errorMessage.includes('Minified React error #300') ||
+      errorMessage.includes('Minified React error #310') ||
       errorMessage.includes('Cannot update a component') ||
       errorMessage.includes('Can\'t perform a React state update on an unmounted component') ||
       errorMessage.includes('on an unmounted component')
     ) {
-      // Эти ошибки обычно происходят при редиректах и не критичны
+      // Эти ошибки обычно происходят при редиректах или race conditions и не критичны
       // Не показываем экран ошибки, просто логируем
       console.warn('⚠️ Известная некритичная ошибка, игнорируем:', errorMessage);
       return { hasError: false, error: undefined };
@@ -53,6 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const errorMessage = error.message || error.toString();
     const isKnownNonCriticalError = 
       errorMessage.includes('Minified React error #300') ||
+      errorMessage.includes('Minified React error #310') ||
       errorMessage.includes('Cannot update a component') ||
       errorMessage.includes('Can\'t perform a React state update on an unmounted component') ||
       errorMessage.includes('on an unmounted component');

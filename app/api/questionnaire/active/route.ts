@@ -1,13 +1,60 @@
 // app/api/questionnaire/active/route.ts
 // Получение активной анкеты (обновленная версия с правильной структурой)
+// ИСПРАВЛЕНО: Проверяет профиль и план на бэкенде, возвращает информацию о редиректе
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getCurrentProfile } from '@/lib/get-current-profile';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    logger.info('Fetching active questionnaire');
+    // ИСПРАВЛЕНО: Проверяем авторизацию и получаем userId
+    const auth = await requireTelegramAuth(request, { ensureUser: false });
+    let userId: string | null = null;
+    let shouldRedirectToPlan = false;
+    let isCompleted = false;
+    
+    if (auth.ok) {
+      userId = auth.ctx.userId;
+      
+      // Проверяем наличие профиля
+      const profile = await getCurrentProfile(userId);
+      
+      if (profile && profile.id) {
+        // Профиль существует - проверяем, завершена ли анкета
+        const activeQuestionnaire = await prisma.questionnaire.findFirst({
+          where: { isActive: true },
+          select: { id: true },
+        });
+        
+        if (activeQuestionnaire) {
+          // Проверяем, есть ли ответы для активной анкеты
+          const userAnswers = await prisma.userAnswer.findMany({
+            where: {
+              userId,
+              questionnaireId: activeQuestionnaire.id,
+            },
+            take: 1,
+          });
+          
+          // Если есть ответы и профиль - анкета завершена
+          if (userAnswers.length > 0) {
+            isCompleted = true;
+            shouldRedirectToPlan = true;
+            
+            logger.info('Profile exists and questionnaire is completed, should redirect to plan', {
+              userId,
+              profileId: profile.id,
+              answersCount: userAnswers.length,
+            });
+          }
+        }
+      }
+    }
+    
+    logger.info('Fetching active questionnaire', { userId, shouldRedirectToPlan, isCompleted });
     const questionnaire = await prisma.questionnaire.findFirst({
       where: { isActive: true },
       include: {
@@ -118,9 +165,20 @@ export async function GET() {
       plainQuestionsCount: formatted.questions.length,
       groupsQuestionsCount,
       totalQuestions: totalQuestionsCount,
+      shouldRedirectToPlan,
+      isCompleted,
     });
 
-    return NextResponse.json(formatted);
+    // ИСПРАВЛЕНО: Возвращаем анкету с информацией о редиректе
+    return NextResponse.json({
+      ...formatted,
+      // Метаданные для фронтенда
+      _meta: {
+        shouldRedirectToPlan,
+        isCompleted,
+        hasProfile: !!userId, // userId будет null если не авторизован
+      },
+    });
   } catch (error: any) {
     logger.error('Error fetching active questionnaire', error, {
       errorMessage: error?.message,
