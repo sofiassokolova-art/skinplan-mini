@@ -16,12 +16,11 @@ export function ServiceFeedbackPopup() {
 
   useEffect(() => {
     // ТЗ: Проверяем pathname ПЕРЕД любыми async операциями
-    // На /quiz и /plan* не показываем попап и не делаем запросы
+    // На /quiz не показываем попап и не делаем запросы
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-          pathname === '/plan' || pathname.startsWith('/plan/')) {
-        return; // Не показываем попап на /quiz и /plan*
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        return; // Не показываем попап на /quiz
       }
     }
     
@@ -31,9 +30,8 @@ export function ServiceFeedbackPopup() {
       
       // ТЗ: Проверяем pathname еще раз внутри async функции
       const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-          pathname === '/plan' || pathname.startsWith('/plan/')) {
-        return; // Не показываем попап на /quiz и /plan*
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        return; // Не показываем попап на /quiz
       }
 
       // Если пользователь уже отправил обратную связь через попап - больше не показываем

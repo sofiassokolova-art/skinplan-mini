@@ -19,31 +19,25 @@ const CACHE_TTL = 30000; // 30 секунд кэш (увеличено для у
 
 // Получаем preferences с кэшированием
 export async function getUserPreferences() {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы - используем дефолтные значения
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы - используем дефолтные значения
   // КРИТИЧНО: Проверяем pathname, href и referrer СИНХРОННО перед любыми async операциями
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
     const href = window.location.href;
     const referrer = document.referrer;
     const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
-    const isNavigatingToPlan = referrer && (referrer.includes('/plan') || referrer.endsWith('/plan'));
     const isQuizInHref = href.includes('/quiz');
-    const isPlanInHref = href.includes('/plan');
     const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-    const isOnPlanPage = pathname === '/plan' || pathname.startsWith('/plan/');
-    const shouldBlock = isOnQuizPage || isOnPlanPage || isNavigatingToQuiz || isNavigatingToPlan || isQuizInHref || isPlanInHref;
+    const shouldBlock = isOnQuizPage || isNavigatingToQuiz || isQuizInHref;
     
     if (shouldBlock) {
-      console.log('⚠️ getUserPreferences called on /quiz or /plan - returning defaults without API call', {
+      console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call', {
         pathname,
         href,
         referrer,
         isNavigatingToQuiz,
-        isNavigatingToPlan,
         isQuizInHref,
-        isPlanInHref,
         isOnQuizPage,
-        isOnPlanPage,
         hasPendingRequest: !!pendingRequest,
       });
       // ИСПРАВЛЕНО: Возвращаем resolved Promise с дефолтными значениями
@@ -67,14 +61,13 @@ export async function getUserPreferences() {
   // ТЗ: Проверяем sessionStorage для hasPlanProgress (самый частый запрос)
   // Это предотвращает множественные запросы при загрузке страницы
   // ВАЖНО: Используем try-catch для всех операций с sessionStorage, так как они могут быть недоступны
-  // ТЗ: На /quiz и /plan* не используем кэш из sessionStorage
+  // ТЗ: На /quiz не используем кэш из sessionStorage
   if (typeof window !== 'undefined') {
     try {
       const pathname = window.location.pathname;
-      const isOnQuizOrPlan = pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-                            pathname === '/plan' || pathname.startsWith('/plan/');
+      const isOnQuiz = pathname === '/quiz' || pathname.startsWith('/quiz/');
       
-      if (!isOnQuizOrPlan) {
+      if (!isOnQuiz) {
         const cached = sessionStorage.getItem('user_preferences_cache');
         if (cached) {
           try {
@@ -96,13 +89,12 @@ export async function getUserPreferences() {
   
   // Проверяем кэш в памяти
   if (preferencesCache && Date.now() - preferencesCache.timestamp < CACHE_TTL) {
-    // ТЗ: Даже если есть кэш, проверяем pathname на /quiz и /plan*
-    // На /quiz и /plan* не используем кэш, возвращаем дефолтные значения
+    // ТЗ: Даже если есть кэш, проверяем pathname на /quiz
+    // На /quiz не используем кэш, возвращаем дефолтные значения
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-          pathname === '/plan' || pathname.startsWith('/plan/')) {
-        console.log('⚠️ getUserPreferences called on /quiz or /plan - returning defaults (ignoring cache)');
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        console.log('⚠️ getUserPreferences called on /quiz - returning defaults (ignoring cache)');
         return {
           isRetakingQuiz: false,
           fullRetakeFromHome: false,
@@ -122,14 +114,13 @@ export async function getUserPreferences() {
   }
 
   // ТЗ: Если уже есть запрос в процессе, проверяем pathname перед возвратом
-  // Если мы на /quiz или /plan*, не ждем pending запрос, возвращаем дефолтные значения
+  // Если мы на /quiz, не ждем pending запрос, возвращаем дефолтные значения
   if (pendingRequest) {
     // КРИТИЧНО: Проверяем pathname еще раз перед возвратом pending запроса
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-          pathname === '/plan' || pathname.startsWith('/plan/')) {
-        console.log('⚠️ getUserPreferences: pending request exists but we are on /quiz or /plan - returning defaults');
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        console.log('⚠️ getUserPreferences: pending request exists but we are on /quiz - returning defaults');
         return {
           isRetakingQuiz: false,
           fullRetakeFromHome: false,
@@ -242,11 +233,10 @@ export async function removeUserPreference(key: string) {
 // Helper функции для конкретных флагов (для удобства)
 
 export async function getIsRetakingQuiz(): Promise<boolean> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
       return false;
     }
   }
@@ -259,11 +249,10 @@ export async function setIsRetakingQuiz(value: boolean) {
 }
 
 export async function getFullRetakeFromHome(): Promise<boolean> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
       return false;
     }
   }
@@ -276,14 +265,13 @@ export async function setFullRetakeFromHome(value: boolean) {
 }
 
 export async function getHasPlanProgress(): Promise<boolean> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы - возвращаем false для нового пользователя
-  // Это предотвращает лишние запросы для нового пользователя на странице анкеты и плана
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы - возвращаем false для нового пользователя
+  // Это предотвращает лишние запросы для нового пользователя на странице анкеты
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
-      console.log('⚠️ getHasPlanProgress called on /quiz or /plan - returning false without API call');
-      return false; // Новый пользователь на анкете или плане
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getHasPlanProgress called on /quiz - returning false without API call');
+      return false; // Новый пользователь на анкете
     }
   }
   
@@ -296,11 +284,10 @@ export async function setHasPlanProgress(value: boolean) {
 }
 
 export async function getPaymentRetakingCompleted(): Promise<boolean> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
       return false;
     }
   }
@@ -313,11 +300,10 @@ export async function setPaymentRetakingCompleted(value: boolean) {
 }
 
 export async function getPaymentFullRetakeCompleted(): Promise<boolean> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
       return false;
     }
   }
@@ -330,11 +316,10 @@ export async function setPaymentFullRetakeCompleted(value: boolean) {
 }
 
 export async function getRoutineProducts(): Promise<any> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
       return null;
     }
   }
@@ -347,11 +332,10 @@ export async function setRoutineProducts(value: any) {
 }
 
 export async function getPlanFeedbackSent(): Promise<boolean> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
       return false;
     }
   }
@@ -364,13 +348,12 @@ export async function setPlanFeedbackSent(value: boolean) {
 }
 
 export async function getServiceFeedbackSent(): Promise<boolean> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
-      console.log('⚠️ getServiceFeedbackSent called on /quiz or /plan - returning false without API call');
-      return false; // На анкете и плане не показываем попап
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getServiceFeedbackSent called on /quiz - returning false without API call');
+      return false; // На анкете не показываем попап
     }
   }
   const prefs = await getUserPreferences();
@@ -382,11 +365,10 @@ export async function setServiceFeedbackSent(value: boolean) {
 }
 
 export async function getLastPlanFeedbackDate(): Promise<string | null> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
       return null;
     }
   }
@@ -399,13 +381,12 @@ export async function setLastPlanFeedbackDate(value: string | null) {
 }
 
 export async function getLastServiceFeedbackDate(): Promise<string | null> {
-  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-        pathname === '/plan' || pathname.startsWith('/plan/')) {
-      console.log('⚠️ getLastServiceFeedbackDate called on /quiz or /plan - returning null without API call');
-      return null; // На анкете и плане не показываем попап
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getLastServiceFeedbackDate called on /quiz - returning null without API call');
+      return null; // На анкете не показываем попап
     }
   }
   const prefs = await getUserPreferences();

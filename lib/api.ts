@@ -29,8 +29,8 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // ТЗ: Блокируем запросы к /cart и /user/preferences на страницах /quiz и /plan*
-  // Это предотвращает лишние запросы при загрузке анкеты и плана
+  // ТЗ: Блокируем запросы к /cart и /user/preferences на странице /quiz
+  // Это предотвращает лишние запросы при загрузке анкеты
   // КРИТИЧНО: Проверяем pathname СИНХРОННО перед любыми async операциями
   // ИСПРАВЛЕНО: Также проверяем document.referrer и window.location для раннего обнаружения навигации
   // КРИТИЧНО: Блокируем запросы ДО того, как они попадут в очередь React Query
@@ -39,16 +39,13 @@ async function request<T>(
     const href = window.location.href;
     const referrer = document.referrer;
     
-    // ИСПРАВЛЕНО: Проверяем все возможные индикаторы навигации на /quiz и /plan
+    // ИСПРАВЛЕНО: Проверяем все возможные индикаторы навигации на /quiz
     const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
-    const isNavigatingToPlan = referrer && (referrer.includes('/plan') || referrer.endsWith('/plan'));
     const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-    const isOnPlanPage = pathname === '/plan' || pathname.startsWith('/plan/');
     const isQuizInHref = href.includes('/quiz');
-    const isPlanInHref = href.includes('/plan');
     
-    // ТЗ: Блокируем запросы, если мы на /quiz или /plan* ИЛИ навигация на эти страницы
-    if (isOnQuizPage || isOnPlanPage || isNavigatingToQuiz || isNavigatingToPlan || isQuizInHref || isPlanInHref) {
+    // ТЗ: Блокируем запросы, если мы на /quiz ИЛИ навигация на /quiz
+    if (isOnQuizPage || isNavigatingToQuiz || isQuizInHref) {
       // Блокируем только определенные endpoints, которые не нужны на /quiz
       // КРИТИЧНО: НЕ блокируем запросы к /questionnaire/active - они нужны для загрузки анкеты!
       // ИСПРАВЛЕНО: Улучшена проверка endpoints для более точной блокировки
@@ -59,16 +56,13 @@ async function request<T>(
       
       if (isCartEndpoint || isPreferencesEndpoint) {
         // ТЗ: Логируем в production для диагностики проблемы
-        console.log('🚫 Blocking API request on /quiz or /plan:', endpoint, {
+        console.log('🚫 Blocking API request on /quiz:', endpoint, {
           pathname,
           href,
           referrer,
           isNavigatingToQuiz,
-          isNavigatingToPlan,
           isOnQuizPage,
-          isOnPlanPage,
           isQuizInHref,
-          isPlanInHref,
           isCartEndpoint,
           isPreferencesEndpoint,
         });

@@ -188,19 +188,16 @@ function LayoutContent({
   // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
   // Это гарантирует, что навигация не монтируется на /quiz даже при асинхронных обновлениях pathname
   // КРИТИЧНО: Проверяем оба варианта для максимальной надежности
-  // ТЗ: Скрываем навигацию на /quiz и /plan* для чистого UX
+  // ТЗ: Скрываем навигацию на /quiz для чистого UX
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const isOnQuizPage = (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) ||
                        (pathname === '/quiz' || pathname.startsWith('/quiz/'));
-  const isOnPlanPage = (currentPath === '/plan' || currentPath.startsWith('/plan/')) ||
-                       (pathname === '/plan' || pathname.startsWith('/plan/'));
   
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
   // ИСПРАВЛЕНО: Скрываем навигацию на главной странице для нового пользователя
   // Это предотвращает показ навигации с лоадером "загрузка плана" для нового пользователя
-  // ТЗ: Скрываем навигацию на /quiz и /plan* для чистого UX без элементов корзины
+  // ТЗ: Скрываем навигацию на /quiz для чистого UX без элементов корзины
   const hideNav = isOnQuizPage || 
-                  isOnPlanPage ||
                   pathname === '/loading' ||
                   pathname.startsWith('/loading/') ||
                   isResumeScreen ||
@@ -259,11 +256,11 @@ function LayoutContent({
       <PageTransition>
         {children}
       </PageTransition>
-      {/* ТЗ: НЕ монтируем BottomNavigation на /quiz и /plan* для чистого UX без элементов корзины */}
-      {/* КРИТИЧНО: Используем hideNav, который включает проверку isOnQuizPage, isOnPlanPage и проверку нового пользователя на главной */}
+      {/* ТЗ: НЕ монтируем BottomNavigation на /quiz для чистого UX без элементов корзины */}
+      {/* КРИТИЧНО: Используем hideNav, который включает проверку isOnQuizPage и проверку нового пользователя на главной */}
       {!hideNav && <BottomNavigation />}
-      {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты и плана) */}
-      {!isOnQuizPage && !isOnPlanPage && <ServiceFeedbackPopup />}
+      {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты) */}
+      {!isOnQuizPage && <ServiceFeedbackPopup />}
     </>
   );
 }
@@ -287,14 +284,12 @@ function LayoutFallback() {
                    pathname !== '/profile';
   
   // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
-  // ТЗ: Скрываем навигацию на /quiz и /plan* для чистого UX
+  // ТЗ: Скрываем навигацию на /quiz для чистого UX
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
-  const isOnPlanPage = currentPath === '/plan' || currentPath.startsWith('/plan/');
   
   // Определяем, нужно ли скрывать навигацию (та же логика, что и в LayoutContent)
   const hideNav = isOnQuizPage ||
-                 isOnPlanPage ||
                  pathname === '/loading' ||
                  pathname.startsWith('/loading/');
   
@@ -329,10 +324,10 @@ function LayoutFallback() {
           <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
         </div>
       </PageTransition>
-      {/* ТЗ: НЕ монтируем BottomNavigation на /quiz и /plan* для чистого UX без элементов корзины */}
-      {!hideNav && !isOnQuizPage && !isOnPlanPage && <BottomNavigation />}
-      {/* Сервисный попап для отзывов (НЕ на странице анкеты и плана) */}
-      {!isOnQuizPage && !isOnPlanPage && <ServiceFeedbackPopup />}
+      {/* ТЗ: НЕ монтируем BottomNavigation на /quiz для чистого UX без элементов корзины */}
+      {!hideNav && !isOnQuizPage && <BottomNavigation />}
+      {/* Сервисный попап для отзывов (НЕ на странице анкеты) */}
+      {!isOnQuizPage && <ServiceFeedbackPopup />}
     </>
   );
 }
