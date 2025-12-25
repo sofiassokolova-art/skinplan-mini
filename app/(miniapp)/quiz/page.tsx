@@ -1026,7 +1026,8 @@ export default function QuizPage() {
       });
     
     try {
-      setLoading(true);
+      // ИСПРАВЛЕНО: НЕ устанавливаем loading=true здесь, так как init() уже управляет loading
+      // Это предотвращает мигание лоадера из-за множественных изменений состояния
       setError(null);
       
       // ИСПРАВЛЕНО: Проверяем Telegram initData перед загрузкой анкеты
@@ -1191,7 +1192,7 @@ export default function QuizPage() {
         // КРИТИЧНО: Если данные пустые, это ошибка - не делаем retry
         clientLogger.error('❌ Empty or null data received - this is a backend issue, not retrying');
         setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
-        setLoading(false);
+        // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
         loadQuestionnaireInProgressRef.current = false;
         loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
         return null;
@@ -1218,7 +1219,7 @@ export default function QuizPage() {
         // Retry имеет смысл только если данные не пришли вообще, а не если они пустые
         clientLogger.error('❌ Questionnaire has no questions - this is a backend issue, not retrying');
         setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
-        setLoading(false);
+        // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
         loadQuestionnaireInProgressRef.current = false;
         loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
         questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
@@ -1503,7 +1504,8 @@ export default function QuizPage() {
         setCurrentQuestionIndex(0);
       }
       
-      setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при успешной загрузке
+      // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, так как init() управляет loading
+      // Это предотвращает мигание лоадера
       
       // ИСПРАВЛЕНО: Логируем успешное завершение загрузки
       clientLogger.warn('✅ loadQuestionnaire completed successfully', {
@@ -1559,7 +1561,7 @@ export default function QuizPage() {
           fullError: err,
         });
         setError('Анкета временно недоступна. Пожалуйста, попробуйте позже или обратитесь в поддержку.');
-        setLoading(false);
+        // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
         questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке пустой анкеты
         loadQuestionnaireAttemptedRef.current = false; // ИСПРАВЛЕНО: Сбрасываем attemptedRef, чтобы можно было повторить
         return null;
@@ -1591,7 +1593,7 @@ export default function QuizPage() {
           hasQuestionnaire: !!questionnaire,
         });
         // Не устанавливаем ошибку при перепрохождении или если анкета уже есть - пользователь может продолжить
-        setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false даже при ошибке при перепрохождении
+        // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
         return null;
       }
       
@@ -1638,16 +1640,14 @@ export default function QuizPage() {
         questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
       }
       
-      setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при ошибке
+      // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
       return null;
     } finally {
       // ИСПРАВЛЕНО: Сбрасываем флаг загрузки анкеты
       loadQuestionnaireInProgressRef.current = false;
-      // КРИТИЧНО: Гарантируем, что loading всегда будет false после завершения функции
-      // Это предотвращает бесконечную загрузку при любых исходах (успех, ошибка, retry)
-      // ИСПРАВЛЕНО: Проверяем, что loading еще true, чтобы избежать лишних обновлений
-      // Но в finally мы всегда сбрасываем, чтобы гарантировать выход из состояния загрузки
-      setLoading(false);
+      // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, так как init() управляет loading
+      // Это предотвращает мигание лоадера из-за множественных изменений состояния
+      // init() установит loading=false в своем finally блоке
     }
   }, [isDev, isRetakingQuiz, showRetakeScreen]); // ИСПРАВЛЕНО: Добавлены зависимости для useCallback
   
