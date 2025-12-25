@@ -7089,25 +7089,51 @@ export default function QuizPage() {
     // Анкета нужна для экрана выбора тем (чтобы показать доступные темы)
     // ВАЖНО: При showRetakeScreen = true не показываем лоадер "Подготавливаем анкету"
     // Экран выбора тем показывается сразу, анкета загружается в фоне
-    // ИСПРАВЛЕНО: Добавлена защита от множественных вызовов loadQuestionnaire()
+    // КРИТИЧНО: Этот код выполняется в render, поэтому нужно быть очень осторожным с вызовами
+    // ИСПРАВЛЕНО: Добавлена строгая защита от множественных вызовов loadQuestionnaire()
+    // Проверяем не только guards loadQuestionnaire, но и init() состояние
     if ((isRetakingQuiz || showRetakeScreen) && !questionnaire && !questionnaireRef.current) {
       // Анкета еще не загружена при перепрохождении - загружаем в фоне
       // Экран выбора тем покажется сразу, даже если анкета еще не загружена
-      // ИСПРАВЛЕНО: Проверяем guards перед вызовом loadQuestionnaire()
-      if (!loading && !loadQuestionnaireInProgressRef.current && !loadQuestionnaireAttemptedRef.current) {
+      // КРИТИЧНО: Проверяем ВСЕ guards перед вызовом loadQuestionnaire()
+      // Также проверяем, не вызывается ли уже init(), который тоже может вызвать loadQuestionnaire()
+      if (!loading && 
+          !loadQuestionnaireInProgressRef.current && 
+          !loadQuestionnaireAttemptedRef.current &&
+          !initInProgressRef.current &&
+          initCompletedRef.current) {
         // Не показываем лоадер при перепрохождении - загружаем в фоне
-        clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen');
+        // КРИТИЧНО: Устанавливаем флаги СРАЗУ, чтобы предотвратить повторные вызовы при следующем рендере
+        loadQuestionnaireInProgressRef.current = true;
+        loadQuestionnaireAttemptedRef.current = true;
+        
+        clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen', {
+          loading,
+          inProgress: loadQuestionnaireInProgressRef.current,
+          attempted: loadQuestionnaireAttemptedRef.current,
+          initInProgress: initInProgressRef.current,
+          initCompleted: initCompletedRef.current,
+        });
+        
         loadQuestionnaire().catch((err) => {
           clientLogger.error('❌ Failed to load questionnaire during retake', err);
           // При ошибке загрузки при перепрохождении не показываем ошибку пользователю
           // Экран выбора тем покажется без анкеты (темы загружаются из quiz-topics.ts)
+          // ИСПРАВЛЕНО: Сбрасываем флаги при ошибке, чтобы можно было повторить
+          loadQuestionnaireInProgressRef.current = false;
+          loadQuestionnaireAttemptedRef.current = false;
         });
       } else {
-        clientLogger.log('⛔ Skipping loadQuestionnaire() during retake - already in progress or attempted', {
-          loading,
-          inProgress: loadQuestionnaireInProgressRef.current,
-          attempted: loadQuestionnaireAttemptedRef.current,
-        });
+        // КРИТИЧНО: Логируем только в development, чтобы не засорять логи
+        if (process.env.NODE_ENV === 'development') {
+          clientLogger.log('⛔ Skipping loadQuestionnaire() during retake - already in progress or attempted', {
+            loading,
+            inProgress: loadQuestionnaireInProgressRef.current,
+            attempted: loadQuestionnaireAttemptedRef.current,
+            initInProgress: initInProgressRef.current,
+            initCompleted: initCompletedRef.current,
+          });
+        }
       }
     }
 
