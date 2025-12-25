@@ -250,9 +250,12 @@ export default function QuizPage() {
         
         // ИСПРАВЛЕНО: Также сбрасываем initCompletedRef при монтировании
         // Это гарантирует, что init() будет выполнен для нового пользователя
+        // НО: НЕ сбрасываем initCalledRef здесь, чтобы предотвратить множественные вызовы
+        // initCalledRef сбрасывается только при startOver()
         initCompletedRef.current = false;
         initInProgressRef.current = false;
         initStartTimeRef.current = null;
+        // initCalledRef НЕ сбрасываем - он должен оставаться true после первого вызова
       }
     } catch (error) {
       // Игнорируем ошибки sessionStorage (например, в приватном режиме)
@@ -536,10 +539,17 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Перестроен init с useCallback и защитой от повторов
   // Упрощенная версия: только telegram init, загрузка анкеты, прогресс
   const init = useCallback(async () => {
+    // ИСПРАВЛЕНО: Добавлена проверка initCalledRef для предотвращения множественных вызовов
+    if (initCalledRef.current && initCompletedRef.current && !isStartingOverRef.current) {
+      clientLogger.log('⛔ init() skipped: already called and completed');
+      return;
+    }
+    
     if (initInProgressRef.current) {
       clientLogger.log('⛔ init() skipped: already in progress');
       return;
     }
+    
     if (initCompletedRef.current && !isStartingOverRef.current) {
       clientLogger.log('⛔ init() skipped: already completed');
       return;
