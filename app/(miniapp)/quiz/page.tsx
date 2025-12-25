@@ -670,6 +670,29 @@ export default function QuizPage() {
         
         if (loadQuestionnaireRef.current && !questionnaireRef.current) {
           await loadQuestionnaireRef.current();
+          
+          // КРИТИЧНО: Ждем, пока questionnaire будет установлен в state
+          // Это предотвращает завершение init() до того, как questionnaire появится в state
+          // ИСПРАВЛЕНО: Ждем максимум 2 секунды (20 попыток по 100ms)
+          let waitAttempts = 0;
+          const maxWaitAttempts = 20; // 20 * 100ms = 2 секунды максимум
+          while (!questionnaireRef.current && waitAttempts < maxWaitAttempts) {
+            clientLogger.log('⏳ Waiting for questionnaire to be set in ref after loadQuestionnaire...', {
+              attempt: waitAttempts + 1,
+              maxAttempts: maxWaitAttempts,
+            });
+            await new Promise(resolve => setTimeout(resolve, 100));
+            waitAttempts++;
+          }
+          
+          if (!questionnaireRef.current) {
+            clientLogger.error('❌ questionnaireRef.current not set after loadQuestionnaire, even after waiting');
+            throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+          }
+          
+          clientLogger.log('✅ Questionnaire loaded and set in ref', {
+            questionnaireId: questionnaireRef.current?.id,
+          });
         } else if (!loadQuestionnaireRef.current) {
           clientLogger.error('❌ loadQuestionnaireRef.current not set after waiting, cannot load questionnaire');
           throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
