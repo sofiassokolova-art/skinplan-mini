@@ -9,7 +9,7 @@ interface LoaderScreenProps {
   message?: string;
 }
 
-export function LoaderScreen({ message = 'Загрузка анкеты...' }: LoaderScreenProps) {
+export function LoaderScreen({ message = 'Загружаем анкету, еще немного' }: LoaderScreenProps) {
   return (
     <div
       style={{

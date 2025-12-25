@@ -4379,7 +4379,7 @@ export default function QuizPage() {
             fontSize: '16px',
             fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: '500'
-          }}>Загрузка анкеты...</div>
+          }}>Загружаем анкету, еще немного</div>
           <style>{`
             .loader-shapes {
               position: relative;
@@ -4638,7 +4638,7 @@ export default function QuizPage() {
             textAlign: 'center',
           }}
         >
-          Загрузка анкеты...
+          Загружаем анкету, еще немного
         </h1>
         <p
           style={{
@@ -6577,7 +6577,7 @@ export default function QuizPage() {
               margin: '0 auto 24px',
             }} />
             <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-              Загрузка анкеты...
+              Загружаем анкету, еще немного
             </h2>
             <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
               Подготовка вопросов
@@ -7110,7 +7110,7 @@ export default function QuizPage() {
             margin: '0 auto 24px',
           }} />
           <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-            Загрузка анкеты...
+            Загружаем анкету, еще немного
           </h2>
           <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
             Подготовка вопросов
