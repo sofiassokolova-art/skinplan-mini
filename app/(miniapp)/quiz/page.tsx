@@ -249,13 +249,25 @@ export default function QuizPage() {
     }
   }, []); // Выполняется только при монтировании
 
+  // ИСПРАВЛЕНО: Refs для предотвращения множественных редиректов и history updates
+  // Это предотвращает SecurityError "Attempt to use history.replaceState() more than 100 times per 10 seconds"
+  const redirectInProgressRef = useRef(false);
+  const historyUpdateInProgressRef = useRef(false);
+  const lastHistoryUpdateTimeRef = useRef<number>(0);
+  
   useEffect(() => {
     // ИСПРАВЛЕНО: Проверяем, не была ли анкета только что отправлена
     // КРИТИЧНО: Проверяем флаг quiz_just_submitted САМЫМ ПЕРВЫМ, до любых других проверок
     // Это предотвращает редирект на первый экран после отправки ответов
+    // ВАЖНО: Добавлен guard против множественных редиректов
+    if (redirectInProgressRef.current) {
+      return; // Уже выполняется редирект
+    }
+    
     if (typeof window !== 'undefined') {
       const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
       if (justSubmitted) {
+        redirectInProgressRef.current = true; // Помечаем, что редирект начат
         clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
         // Очищаем флаг
         sessionStorage.removeItem('quiz_just_submitted');
@@ -428,14 +440,47 @@ export default function QuizPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    if (showResumeScreen) {
-      const url = new URL(window.location.href);
-      url.searchParams.set('resume', 'true');
-      window.history.replaceState({}, '', url.toString());
-    } else {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('resume');
-      window.history.replaceState({}, '', url.toString());
+    // ИСПРАВЛЕНО: Guard против множественных вызовов history.replaceState
+    // Это предотвращает SecurityError "Attempt to use history.replaceState() more than 100 times per 10 seconds"
+    if (typeof window === 'undefined') return;
+    
+    // ИСПРАВЛЕНО: Throttle history updates - не чаще раза в секунду
+    const now = Date.now();
+    if (historyUpdateInProgressRef.current || (now - lastHistoryUpdateTimeRef.current < 1000)) {
+      return; // Пропускаем, если обновление уже в процессе или было недавно
+    }
+    
+    // Проверяем текущее значение параметра resume в URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentResume = urlParams.get('resume') === 'true';
+    
+    // Обновляем URL только если значение изменилось
+    if (showResumeScreen && !currentResume) {
+      historyUpdateInProgressRef.current = true;
+      lastHistoryUpdateTimeRef.current = now;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('resume', 'true');
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {
+        // Игнорируем SecurityError
+        console.warn('Failed to update URL with resume param:', e);
+      } finally {
+        historyUpdateInProgressRef.current = false;
+      }
+    } else if (!showResumeScreen && currentResume) {
+      historyUpdateInProgressRef.current = true;
+      lastHistoryUpdateTimeRef.current = now;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('resume');
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {
+        // Игнорируем SecurityError
+        console.warn('Failed to remove resume param from URL:', e);
+      } finally {
+        historyUpdateInProgressRef.current = false;
+      }
     }
   }, [showResumeScreen]);
 
@@ -867,8 +912,14 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
       if (data?._meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
+        // ИСПРАВЛЕНО: Guard против множественных редиректов
+        if (redirectInProgressRef.current) {
+          return null; // Редирект уже в процессе
+        }
+        
         const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
         if (!justSubmittedCheck) {
+          redirectInProgressRef.current = true; // Помечаем, что редирект начат
           clientLogger.log('✅ Бэкенд сообщил, что анкета завершена - редиректим на /plan', {
             isCompleted: data._meta.isCompleted,
             hasProfile: data._meta.hasProfile,
@@ -902,11 +953,17 @@ export default function QuizPage() {
       // ВАЖНО: Проверяем _meta ДО обработки данных, чтобы не тратить время на парсинг
       const _meta = (data as any)?._meta;
       if (_meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
+        // ИСПРАВЛЕНО: Guard против множественных редиректов
+        if (redirectInProgressRef.current) {
+          return null; // Редирект уже в процессе
+        }
+        
         const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
         const retakeCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_retake') === 'true' : false;
         const fullRetakeCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_full_retake_from_home') === 'true' : false;
         
         if (!justSubmittedCheck && !retakeCheck && !fullRetakeCheck) {
+          redirectInProgressRef.current = true; // Помечаем, что редирект начат
           clientLogger.log('✅ Бэкенд сообщил, что анкета завершена - редиректим на /plan', {
             isCompleted: _meta.isCompleted,
             hasProfile: _meta.hasProfile,
@@ -1018,10 +1075,24 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Проверяем, что есть хотя бы один вопрос
       const totalQuestions = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
       if (totalQuestions === 0) {
+        // ИСПРАВЛЕНО: Детальное логирование для диагностики пустой анкеты
         clientLogger.error('❌ Questionnaire has no questions', {
+          questionnaireId: questionnaireData.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
-          groups: groups.map(g => ({ id: g.id, title: g.title, questions: g.questions?.length || 0 })),
+          groups: groups.map(g => ({
+            id: g.id,
+            title: g.title,
+            questionsCount: g.questions?.length || 0,
+            questions: g.questions?.map((q: any) => ({ id: q.id, code: q.code })) || [],
+          })),
+          plainQuestions: questions.map((q: any) => ({ id: q.id, code: q.code })),
+          rawDataStructure: {
+            hasGroups: !!questionnaireData.groups,
+            hasQuestions: !!questionnaireData.questions,
+            groupsType: Array.isArray(questionnaireData.groups),
+            questionsType: Array.isArray(questionnaireData.questions),
+          },
         });
         throw new Error('Questionnaire has no questions');
       }
@@ -2577,11 +2648,18 @@ export default function QuizPage() {
           const planUrl = profileId 
             ? `/plan?state=generating&profileId=${profileId}`
             : '/plan?state=generating';
+          // ИСПРАВЛЕНО: Guard против множественных редиректов
+          if (redirectInProgressRef.current) {
+            return; // Редирект уже в процессе
+          }
+          redirectInProgressRef.current = true;
           clientLogger.log('🔄 Редирект на /plan?state=generating после показа лоадера', {
             profileId: profileId || null,
             planUrl,
           });
-          window.location.replace(planUrl);
+          if (typeof window !== 'undefined') {
+            window.location.replace(planUrl);
+          }
           // После редиректа код не должен выполняться, но на всякий случай выходим
           return;
         } catch (redirectError) {
@@ -2666,6 +2744,11 @@ export default function QuizPage() {
       // ВАЖНО: Проверяем, что компонент еще смонтирован перед обновлением состояния
       if (!isMountedRef.current) {
         clientLogger.warn('⚠️ Компонент размонтирован, пропускаем обновление состояния');
+        // ИСПРАВЛЕНО: Guard против множественных редиректов
+        if (redirectInProgressRef.current) {
+          return; // Редирект уже в процессе
+        }
+        redirectInProgressRef.current = true;
         // Все равно пытаемся редиректить, даже если компонент размонтирован
         if (typeof window !== 'undefined') {
           setTimeout(() => {
@@ -2728,6 +2811,11 @@ export default function QuizPage() {
       // Сбрасываем флаг монтирования перед редиректом
       isMountedRef.current = false;
       
+      // ИСПРАВЛЕНО: Guard против множественных редиректов
+      if (redirectInProgressRef.current) {
+        return; // Редирект уже в процессе
+      }
+      redirectInProgressRef.current = true;
       if (typeof window !== 'undefined') {
         try {
           setTimeout(() => {
@@ -2787,6 +2875,11 @@ export default function QuizPage() {
     // Это предотвращает редирект на первый экран после отправки ответов
     const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
     if (justSubmitted) {
+      // ИСПРАВЛЕНО: Guard против множественных редиректов
+      if (redirectInProgressRef.current) {
+        return; // Редирект уже в процессе
+      }
+      redirectInProgressRef.current = true;
       clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('quiz_just_submitted');
@@ -2864,6 +2957,11 @@ export default function QuizPage() {
       // ВАЖНО: Проверяем флаг quiz_just_submitted перед сбросом currentQuestionIndex
       const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
       if (justSubmitted) {
+        // ИСПРАВЛЕНО: Guard против множественных редиректов
+        if (redirectInProgressRef.current) {
+          return; // Редирект уже в процессе
+        }
+        redirectInProgressRef.current = true;
         clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('quiz_just_submitted');
@@ -3712,8 +3810,15 @@ export default function QuizPage() {
           // Игнорируем ошибки sessionStorage
         }
       }
+      // ИСПРАВЛЕНО: Guard против множественных редиректов
+      if (redirectInProgressRef.current) {
+        return null; // Редирект уже в процессе
+      }
+      redirectInProgressRef.current = true;
       // Редиректим на /plan?state=generating, где будет показан лоадер
-      window.location.replace('/plan?state=generating');
+      if (typeof window !== 'undefined') {
+        window.location.replace('/plan?state=generating');
+      }
       // Показываем минимальный лоадер во время редиректа (не плановый!)
       return (
         <div style={{
@@ -3762,11 +3867,18 @@ export default function QuizPage() {
     if (justSubmitted) {
       // Очищаем флаг сразу, чтобы не проверять его снова
       sessionStorage.removeItem('quiz_just_submitted');
+      // ИСПРАВЛЕНО: Guard против множественных редиректов
+      if (redirectInProgressRef.current) {
+        return null; // Редирект уже в процессе
+      }
+      redirectInProgressRef.current = true;
       // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
       initCompletedRef.current = true;
       // Редиректим на /plan?state=generating СРАЗУ, без задержек
       // Используем window.location.replace для немедленного редиректа
-      window.location.replace('/plan?state=generating');
+      if (typeof window !== 'undefined') {
+        window.location.replace('/plan?state=generating');
+      }
       // Возвращаем минимальный лоадер "Перенаправление..." во время редиректа
       return (
         <div style={{
@@ -3902,9 +4014,16 @@ export default function QuizPage() {
           const isCompleted = response?.isCompleted === true;
           
           if (isCompleted) {
+            // ИСПРАВЛЕНО: Guard против множественных редиректов
+            if (redirectInProgressRef.current) {
+              return; // Редирект уже в процессе
+            }
+            redirectInProgressRef.current = true;
             // Анкета завершена - редиректим на /plan
             clientLogger.log('✅ Анкета завершена, но questionnaire не загружен - редиректим на /plan');
-            window.location.replace('/plan?state=generating');
+            if (typeof window !== 'undefined') {
+              window.location.replace('/plan?state=generating');
+            }
             return;
           }
         }

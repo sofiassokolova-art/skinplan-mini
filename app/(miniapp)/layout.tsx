@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BottomNavigation from '@/components/BottomNavigation';
 import PageTransition from '@/components/PageTransition';
@@ -25,31 +25,56 @@ function LayoutContent({
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isNewUser, setIsNewUser] = useState<boolean | null>(null); // null = еще не проверено
 
+  // ИСПРАВЛЕНО: Ref для предотвращения множественных попыток авторизации
+  const authInProgressRef = useRef(false);
+  const authAttemptedRef = useRef(false);
+  
   useEffect(() => {
-    try {
-      // Инициализация Telegram
-      initialize();
+    // ИСПРАВЛЕНО: Инициализация Telegram только один раз
+    initialize();
 
-      // Авторизация через Telegram
-      const authorize = async () => {
-        if (initData && !isAuthorized) {
-          try {
-            await api.authTelegram(initData);
-            setIsAuthorized(true);
-          } catch (error) {
-            console.error('Auth error:', error);
-            // Не блокируем приложение при ошибке авторизации
-          }
-        }
-      };
-
-      authorize();
-    } catch (error) {
-      console.error('Layout initialization error:', error);
-      // Не блокируем приложение при ошибке инициализации
+    // ИСПРАВЛЕНО: Авторизация через Telegram - однократная, без циклов
+    // Убрали isAuthorized из зависимостей, чтобы избежать бесконечных циклов
+    if (!initData) return; // Ждем initData
+    
+    // Guard против множественных попыток авторизации
+    if (authInProgressRef.current || authAttemptedRef.current || isAuthorized) {
+      return; // Уже авторизованы или авторизация в процессе
     }
-  }, [initData, isAuthorized, initialize]);
+    
+    let aborted = false;
+    authInProgressRef.current = true;
+    authAttemptedRef.current = true;
+    
+    const authorize = async () => {
+      try {
+        await api.authTelegram(initData);
+        if (!aborted) {
+          setIsAuthorized(true);
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        // Не блокируем приложение при ошибке авторизации
+        // Не пытаемся повторно - ошибка авторизации не должна блокировать UI
+      } finally {
+        if (!aborted) {
+          authInProgressRef.current = false;
+        }
+      }
+    };
 
+    authorize();
+    
+    return () => {
+      aborted = true;
+      authInProgressRef.current = false;
+    };
+  }, [initData, initialize]); // ИСПРАВЛЕНО: Убрали isAuthorized из зависимостей!
+
+  // ИСПРАВЛЕНО: Ref для предотвращения множественных проверок isNewUser
+  const newUserCheckInProgressRef = useRef(false);
+  const newUserCheckAttemptedRef = useRef(false);
+  
   // ИСПРАВЛЕНО: Проверяем, является ли пользователь новым (нет hasPlanProgress)
   // Это нужно для скрытия навигации на главной странице для нового пользователя
   // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz
@@ -74,20 +99,45 @@ function LayoutContent({
       return;
     }
     
-    if (pathname === '/') {
-      const checkNewUser = async () => {
-        try {
-          const { getHasPlanProgress } = await import('@/lib/user-preferences');
-          const hasPlanProgress = await getHasPlanProgress();
+    // ИСПРАВЛЕНО: Проверяем только на главной странице и только один раз
+    if (pathname !== '/') {
+      setIsNewUser(null);
+      return;
+    }
+    
+    // Guard против множественных проверок
+    if (newUserCheckInProgressRef.current || newUserCheckAttemptedRef.current || isNewUser !== null) {
+      return; // Уже проверяли или проверка в процессе
+    }
+    
+    let aborted = false;
+    newUserCheckInProgressRef.current = true;
+    newUserCheckAttemptedRef.current = true;
+    
+    const checkNewUser = async () => {
+      try {
+        const { getHasPlanProgress } = await import('@/lib/user-preferences');
+        const hasPlanProgress = await getHasPlanProgress();
+        if (!aborted) {
           setIsNewUser(!hasPlanProgress);
-        } catch {
+        }
+      } catch {
+        if (!aborted) {
           setIsNewUser(false);
         }
-      };
-      checkNewUser();
-    } else {
-      setIsNewUser(null);
-    }
+      } finally {
+        if (!aborted) {
+          newUserCheckInProgressRef.current = false;
+        }
+      }
+    };
+    
+    checkNewUser();
+    
+    return () => {
+      aborted = true;
+      newUserCheckInProgressRef.current = false;
+    };
   }, [pathname, initData]); // Добавляем initData в зависимости, чтобы перепроверить при его появлении
 
   // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
