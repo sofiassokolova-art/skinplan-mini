@@ -133,31 +133,67 @@ export async function GET(request: NextRequest) {
     );
     const totalQuestionsCount = groupsQuestionsCount + plainQuestions.length;
 
-    logger.info('Active questionnaire found', {
+    // ИСПРАВЛЕНО: Детальное логирование сырых данных из базы для диагностики
+    logger.info('Active questionnaire found (raw data from DB)', {
       questionnaireId: questionnaire.id,
       name: questionnaire.name,
       version: questionnaire.version,
       groupsCount: groups.length,
-      questionsCount: totalQuestionsCount,
       plainQuestionsCount: plainQuestions.length,
       groupsQuestionsCount,
+      totalQuestionsCount,
+      groupsDetails: groups.map(g => ({
+        id: g.id,
+        title: g.title,
+        position: g.position,
+        questionsCount: g.questions?.length || 0,
+        questions: g.questions?.map((q: any) => ({
+          id: q.id,
+          code: q.code,
+          position: q.position,
+        })) || [],
+      })),
+      plainQuestionsDetails: plainQuestions.map((q: any) => ({
+        id: q.id,
+        code: q.code,
+        position: q.position,
+        groupId: q.groupId,
+      })),
     });
     
     // ИСПРАВЛЕНО: Проверяем, что анкета содержит вопросы
-    // Если вопросов нет - это критическая ошибка, логируем предупреждение
+    // Если вопросов нет - это критическая ошибка, возвращаем 500
     if (totalQuestionsCount === 0) {
       logger.error('❌ Active questionnaire has no questions!', {
         questionnaireId: questionnaire.id,
         name: questionnaire.name,
+        version: questionnaire.version,
         groupsCount: groups.length,
         plainQuestionsCount: plainQuestions.length,
         groupsDetails: groups.map(g => ({
           id: g.id,
           title: g.title,
+          position: g.position,
           questionsCount: g.questions?.length || 0,
         })),
+        // Дополнительная диагностика: проверяем связи в базе
+        rawQuestionnaireData: {
+          hasQuestionGroups: !!questionnaire.questionGroups,
+          hasQuestions: !!questionnaire.questions,
+          questionGroupsType: Array.isArray(questionnaire.questionGroups),
+          questionsType: Array.isArray(questionnaire.questions),
+        },
       });
-      // НЕ возвращаем ошибку - продолжаем, но фронтенд должен обработать это
+      
+      // ИСПРАВЛЕНО: Возвращаем ошибку 500, чтобы фронтенд мог показать понятное сообщение
+      return NextResponse.json(
+        { 
+          error: 'Active questionnaire is empty',
+          message: 'Анкета временно недоступна. Пожалуйста, попробуйте позже.',
+          questionnaireId: questionnaire.id,
+        },
+        { status: 500 }
+      );
     }
 
     // Форматируем данные в структуру, похожую на Quiz.tsx

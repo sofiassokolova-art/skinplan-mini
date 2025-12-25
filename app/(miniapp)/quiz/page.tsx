@@ -1190,6 +1190,24 @@ export default function QuizPage() {
       clientLogger.error('❌ Error loading questionnaire', errorDetails);
       console.error('Ошибка загрузки анкеты:', err);
       
+      // ИСПРАВЛЕНО: Специальная обработка для пустой анкеты (500 от бэкенда)
+      // Проверяем разные варианты структуры ошибки (в зависимости от того, как API выбрасывает ошибку)
+      const errorStatus = err?.status || err?.response?.status || (err?.response?.ok === false ? err?.response?.status : null);
+      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message || '';
+      const errorData = err?.response?.data || err?.data || {};
+      
+      if (errorStatus === 500 || errorMessage.includes('empty') || errorMessage.includes('no questions') || errorMessage.includes('пуст') || errorMessage.includes('Active questionnaire is empty')) {
+        clientLogger.error('❌ Backend returned empty questionnaire error', {
+          status: errorStatus,
+          message: errorMessage,
+          questionnaireId: errorData?.questionnaireId,
+          fullError: err,
+        });
+        setError('Анкета временно недоступна. Пожалуйста, попробуйте позже или обратитесь в поддержку.');
+        setLoading(false);
+        return null;
+      }
+      
       // Если ошибка авторизации, не показываем её как критическую
       if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
         // Анкета публичная, эта ошибка не должна возникать
