@@ -1412,7 +1412,23 @@ export default function QuizPage() {
         questionnaireId: questionnaireData.id,
         totalQuestions: totalQuestionsBeforeSet,
         hasQuestionnaireState: !!questionnaireToSet,
+        hasRef: !!questionnaireRef.current,
+        refId: questionnaireRef.current?.id,
       });
+      
+      // ИСПРАВЛЕНО: Гарантируем, что ref установлен перед возвратом
+      // Это предотвращает повторные вызовы loadQuestionnaire
+      // КРИТИЧНО: ref уже установлен на строке 1330, но проверяем для надежности
+      if (!questionnaireRef.current) {
+        clientLogger.warn('⚠️ questionnaireRef.current is null after successful load, setting it now', {
+          questionnaireId: questionnaireData.id,
+        });
+        questionnaireRef.current = questionnaireToSet;
+      }
+      
+      // ИСПРАВЛЕНО: НЕ сбрасываем loadQuestionnaireInProgressRef здесь
+      // Это делается в finally блоке, чтобы предотвратить повторные вызовы
+      // КРИТИЧНО: Если сбросить здесь, может произойти повторная загрузка до завершения функции
       
       return questionnaireToSet; // ИСПРАВЛЕНО: Возвращаем questionnaireToSet вместо questionnaireData
     } catch (err: any) {
