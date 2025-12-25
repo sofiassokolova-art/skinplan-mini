@@ -546,6 +546,14 @@ export default function QuizPage() {
     const initStartTime = Date.now();
     initStartTimeRef.current = initStartTime;
 
+    // ИСПРАВЛЕНО: Логируем начало init() для диагностики
+    clientLogger.warn('🚀 init() started', {
+      initCompleted: initCompletedRef.current,
+      isStartingOver: isStartingOverRef.current,
+      hasQuestionnaire: !!questionnaireRef.current,
+      questionnaireId: questionnaireRef.current?.id,
+    });
+
     try {
       setLoading(true);
       setError(null);
@@ -569,7 +577,9 @@ export default function QuizPage() {
         if (!hasInitData) {
           clientLogger.error('❌ Telegram initData not available after waitForTelegram');
           setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
-          return;
+          // ИСПРАВЛЕНО: Не используем return здесь, чтобы блок finally всегда выполнялся
+          // Вместо этого устанавливаем флаги и бросаем ошибку, чтобы finally выполнился
+          throw new Error('Telegram initData not available');
         }
       }
 
