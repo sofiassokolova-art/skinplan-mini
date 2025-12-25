@@ -22,6 +22,8 @@ const DEFAULT_TIMEOUT = 30000; // 30 секунд по умолчанию
 const activeRequests = new Map<string, Promise<any>>();
 const requestCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 2000; // 2 секунды кэш для одинаковых запросов
+// ИСПРАВЛЕНО: Увеличенный кэш для анкеты (не меняется часто)
+const QUESTIONNAIRE_CACHE_TTL = 30000; // 30 секунд для /questionnaire/active
 
 async function request<T>(
   endpoint: string,
@@ -88,15 +90,26 @@ async function request<T>(
   const isGetRequest = !options.method || options.method === 'GET';
   const requestKey = isGetRequest ? `${options.method || 'GET'}:${endpoint}` : null;
   
-  // Если это GET запрос и он уже выполняется - возвращаем тот же промис
+  // ИСПРАВЛЕНО: Проверяем активные запросы ПЕРЕД любыми async операциями
+  // Это предотвращает race conditions, когда два запроса приходят почти одновременно
   if (requestKey && activeRequests.has(requestKey)) {
+    if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
+      console.log('🔄 Reusing active request for:', endpoint);
+    }
     return activeRequests.get(requestKey) as Promise<T>;
   }
   
-  // Если это GET запрос и есть свежий кэш - возвращаем из кэша
+  // ИСПРАВЛЕНО: Проверяем кэш с правильным TTL для анкеты
   if (requestKey && requestCache.has(requestKey)) {
     const cached = requestCache.get(requestKey)!;
-    if (Date.now() - cached.timestamp < CACHE_TTL) {
+    const isQuestionnaireEndpoint = endpoint.includes('/questionnaire/active');
+    const cacheTTL = isQuestionnaireEndpoint ? QUESTIONNAIRE_CACHE_TTL : CACHE_TTL;
+    const age = Date.now() - cached.timestamp;
+    
+    if (age < cacheTTL) {
+      if (process.env.NODE_ENV === 'development' && isQuestionnaireEndpoint) {
+        console.log('💾 Using cached questionnaire data, age:', age, 'ms');
+      }
       return Promise.resolve(cached.data) as Promise<T>;
     }
     requestCache.delete(requestKey);
@@ -207,7 +220,8 @@ async function request<T>(
     return response;
   })();
   
-  // ИСПРАВЛЕНО: Сохраняем промис для GET запросов, чтобы предотвратить дублирование
+  // ИСПРАВЛЕНО: Сохраняем промис для GET запросов СРАЗУ, чтобы предотвратить race conditions
+  // КРИТИЧНО: Сохраняем ДО await, чтобы другие запросы могли переиспользовать этот промис
   if (requestKey) {
     activeRequests.set(requestKey, requestPromise);
   }
@@ -394,8 +408,15 @@ async function request<T>(
   const data = await response.json() as T;
   
   // Кэшируем результат для GET запросов
+  // ИСПРАВЛЕНО: Очищаем activeRequests ПОСЛЕ успешного получения данных
+  // Это позволяет новым запросам использовать кэш вместо активного промиса
   if (requestKey) {
     requestCache.set(requestKey, { data, timestamp: Date.now() });
+    activeRequests.delete(requestKey);
+    
+    if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
+      console.log('✅ Questionnaire cached, activeRequests cleared for:', endpoint);
+    }
   }
   
   return data;
@@ -405,11 +426,6 @@ async function request<T>(
       activeRequests.delete(requestKey);
     }
     throw error;
-  } finally {
-    // ИСПРАВЛЕНО: Удаляем промис из activeRequests после завершения
-    if (requestKey) {
-      activeRequests.delete(requestKey);
-    }
   }
 }
 

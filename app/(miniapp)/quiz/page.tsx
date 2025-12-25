@@ -7059,16 +7059,24 @@ export default function QuizPage() {
     // Анкета нужна для экрана выбора тем (чтобы показать доступные темы)
     // ВАЖНО: При showRetakeScreen = true не показываем лоадер "Подготавливаем анкету"
     // Экран выбора тем показывается сразу, анкета загружается в фоне
-    if ((isRetakingQuiz || showRetakeScreen) && !questionnaire) {
+    // ИСПРАВЛЕНО: Добавлена защита от множественных вызовов loadQuestionnaire()
+    if ((isRetakingQuiz || showRetakeScreen) && !questionnaire && !questionnaireRef.current) {
       // Анкета еще не загружена при перепрохождении - загружаем в фоне
       // Экран выбора тем покажется сразу, даже если анкета еще не загружена
-      if (!loading) {
+      // ИСПРАВЛЕНО: Проверяем guards перед вызовом loadQuestionnaire()
+      if (!loading && !loadQuestionnaireInProgressRef.current && !loadQuestionnaireAttemptedRef.current) {
         // Не показываем лоадер при перепрохождении - загружаем в фоне
         clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen');
         loadQuestionnaire().catch((err) => {
           clientLogger.error('❌ Failed to load questionnaire during retake', err);
           // При ошибке загрузки при перепрохождении не показываем ошибку пользователю
           // Экран выбора тем покажется без анкеты (темы загружаются из quiz-topics.ts)
+        });
+      } else {
+        clientLogger.log('⛔ Skipping loadQuestionnaire() during retake - already in progress or attempted', {
+          loading,
+          inProgress: loadQuestionnaireInProgressRef.current,
+          attempted: loadQuestionnaireAttemptedRef.current,
         });
       }
     }
