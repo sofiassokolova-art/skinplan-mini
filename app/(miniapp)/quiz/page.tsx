@@ -878,20 +878,24 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Guard против множественных вызовов loadQuestionnaire
     // ВАЖНО: Проверяем только refs, не state, чтобы избежать race conditions
     if (loadQuestionnaireInProgressRef.current) {
-      clientLogger.log('⛔ loadQuestionnaire() skipped: already in progress');
+      clientLogger.warn('⛔ loadQuestionnaire() skipped: already in progress');
       return null;
     }
     // ИСПРАВЛЕНО: Проверяем только attemptedRef, без questionnaire state
     // Это предотвращает повторные вызовы даже если state еще не обновился
-    if (loadQuestionnaireAttemptedRef.current) {
-      clientLogger.log('⛔ loadQuestionnaire() skipped: already attempted (questionnaire may be loading)');
+    if (loadQuestionnaireAttemptedRef.current && questionnaire) {
+      clientLogger.warn('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists');
       return null;
     }
     
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
     
-    clientLogger.log('🔄 loadQuestionnaire() started');
+    // КРИТИЧНО: Логируем с warn, чтобы точно отправить на сервер
+    clientLogger.warn('🔄 loadQuestionnaire() started', {
+      hasQuestionnaire: !!questionnaire,
+      questionnaireId: questionnaire?.id,
+    });
     
     try {
       setLoading(true);
@@ -990,8 +994,8 @@ export default function QuizPage() {
         }
       }
       
-      // ИСПРАВЛЕНО: Добавляем детальное логирование для диагностики
-      clientLogger.log('📥 Questionnaire data received from API', {
+      // КРИТИЧНО: Логируем с warn, чтобы точно отправить на сервер
+      clientLogger.warn('📥 Questionnaire data received from API', {
         hasData: !!data,
         dataType: typeof data,
         dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
@@ -1002,8 +1006,15 @@ export default function QuizPage() {
         // ИСПРАВЛЕНО: Добавляем детальную информацию о структуре данных
         groupsCount: data?.groups?.length || 0,
         questionsCount: data?.questions?.length || 0,
+        groupsWithQuestionsCount,
+        totalQuestionsInResponse,
         metaData: data?._meta || null,
-        dataPreview: data && typeof data === 'object' ? JSON.stringify(data).substring(0, 500) : String(data),
+        groupsDetails: data?.groups?.map((g: any) => ({
+          id: g?.id,
+          title: g?.title,
+          questionsCount: g?.questions?.length || 0,
+        })) || [],
+        dataPreview: data && typeof data === 'object' ? JSON.stringify(data).substring(0, 1000) : String(data),
       });
       
       // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
@@ -1049,18 +1060,13 @@ export default function QuizPage() {
           dataType: typeof data,
           dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
         });
-        if (isRetakingQuiz || showRetakeScreen) {
-          setLoading(false);
-          loadQuestionnaireInProgressRef.current = false;
-          setTimeout(() => {
-            loadQuestionnaire().catch((retryErr) => {
-              clientLogger.warn('⚠️ Failed to retry questionnaire load during retake', retryErr);
-              setLoading(false);
-            });
-          }, 1000);
-          return null;
-        }
-        throw new Error('Invalid questionnaire data: received empty or null response');
+        // КРИТИЧНО: Если данные пустые, это ошибка - не делаем retry
+        clientLogger.error('❌ Empty or null data received - this is a backend issue, not retrying');
+        setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
+        setLoading(false);
+        loadQuestionnaireInProgressRef.current = false;
+        loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
+        return null;
       }
       
       if (!hasAnyQuestions) {
@@ -1080,20 +1086,14 @@ export default function QuizPage() {
           })) || [],
         });
         
-        if (isRetakingQuiz || showRetakeScreen) {
-          // При перепрохождении пробуем загрузить еще раз через небольшую задержку
-          clientLogger.warn('⚠️ Empty questionnaire data received during retake, will retry');
-          setLoading(false);
-          loadQuestionnaireInProgressRef.current = false;
-          setTimeout(() => {
-            loadQuestionnaire().catch((retryErr) => {
-              clientLogger.warn('⚠️ Failed to retry questionnaire load during retake', retryErr);
-              setLoading(false);
-            });
-          }, 1000);
-          return null;
-        }
-        throw new Error('Invalid questionnaire data: received response with no questions');
+        // КРИТИЧНО: Если анкета пустая, это ошибка - не делаем retry
+        // Retry имеет смысл только если данные не пришли вообще, а не если они пустые
+        clientLogger.error('❌ Questionnaire has no questions - this is a backend issue, not retrying');
+        setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
+        setLoading(false);
+        loadQuestionnaireInProgressRef.current = false;
+        loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
+        return null;
       }
       
       // ИСПРАВЛЕНО: Убираем _meta из данных перед обработкой
@@ -1370,6 +1370,18 @@ export default function QuizPage() {
         return null;
       }
       
+      // КРИТИЧНО: Логируем ошибку с детальной информацией
+      clientLogger.error('❌ loadQuestionnaire exception caught', {
+        error: errorMessage,
+        errorStatus: err?.status,
+        errorType: typeof err,
+        errorName: err?.name,
+        errorStack: err?.stack?.substring(0, 500),
+        isRetakingQuiz,
+        showRetakeScreen,
+        errorResponse: err?.response?.data || err?.response || null,
+      });
+      
       // Только для критических ошибок устанавливаем error state
       // Для временных ошибок (таймаут, сеть) можно попробовать еще раз
       if (err?.message?.includes('Таймаут') || err?.message?.includes('network') || err?.message?.includes('Network')) {
@@ -1377,8 +1389,18 @@ export default function QuizPage() {
         // Пользователь может попробовать обновить страницу
         clientLogger.warn('⚠️ Temporary error loading questionnaire, user can retry', { error: errorMessage });
         setError('Не удалось загрузить анкету. Проверьте подключение к интернету и обновите страницу.');
+        // КРИТИЧНО: Сбрасываем attemptedRef при временных ошибках, чтобы можно было повторить
+        loadQuestionnaireAttemptedRef.current = false;
+      } else if (err?.status === 500) {
+        // Для 500 ошибок (пустая анкета) показываем понятное сообщение
+        const errorData = err?.response?.data || err?.response || {};
+        const serverMessage = errorData.message || errorData.error || 'Анкета временно недоступна';
+        setError(serverMessage);
+        loadQuestionnaireAttemptedRef.current = false;
       } else {
         setError(errorMessage);
+        // Для других ошибок тоже сбрасываем, чтобы можно было повторить
+        loadQuestionnaireAttemptedRef.current = false;
       }
       
       setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при ошибке
