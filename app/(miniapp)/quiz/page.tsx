@@ -629,7 +629,7 @@ export default function QuizPage() {
         waitForTelegram(),
         new Promise<void>((resolve) =>
           setTimeout(() => {
-            clientLogger.warn('⚠️ waitForTelegram timeout (5s) → continue');
+            clientLogger.log('⚠️ waitForTelegram timeout (5s) → continue');
             resolve();
           }, 5000)
         ),

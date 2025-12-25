@@ -763,6 +763,16 @@ export const api = {
 
   // Корзина
   async getCart(): Promise<CartResponse> {
+    // ИСПРАВЛЕНО: Проверяем pathname перед вызовом request, чтобы предотвратить запросы на /quiz
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🚫 getCart() called on /quiz - returning empty cart without API call');
+        }
+        return { items: [] } as CartResponse;
+      }
+    }
     return request<CartResponse>('/cart');
   },
 
