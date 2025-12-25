@@ -1038,7 +1038,7 @@ export default function QuizPage() {
     // КРИТИЧНО: Проверяем и устанавливаем флаги атомарно, чтобы предотвратить race conditions
     // Используем двойную проверку для надежности
     if (loadQuestionnaireInProgressRef.current) {
-      clientLogger.warn('⛔ loadQuestionnaire() skipped: already in progress', {
+      clientLogger.log('⛔ loadQuestionnaire() skipped: already in progress', {
         attempted: loadQuestionnaireAttemptedRef.current,
         hasRef: !!questionnaireRef.current,
         hasState: !!questionnaire,
@@ -1049,7 +1049,7 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Проверяем ref вместо state, чтобы избежать race conditions
     // Это предотвращает повторные вызовы даже если state еще не обновился
     if (loadQuestionnaireAttemptedRef.current && questionnaireRef.current) {
-      clientLogger.warn('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref', {
+      clientLogger.log('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref', {
         questionnaireId: questionnaireRef.current?.id,
         hasState: !!questionnaire,
         stackTrace: new Error().stack?.substring(0, 300), // Добавляем stack trace для диагностики
@@ -1476,10 +1476,12 @@ export default function QuizPage() {
       // КРИТИЧНО: Устанавливаем state
       // ИСПРАВЛЕНО: Используем функциональную форму setQuestionnaire для гарантированного обновления
       setQuestionnaire((prevQuestionnaire) => {
-        // Проверяем, что мы действительно устанавливаем новую анкету
-        if (prevQuestionnaire?.id === questionnaireToSet.id) {
+        // ИСПРАВЛЕНО: Проверяем, что мы действительно устанавливаем новую анкету
+        // НО: если prevQuestionnaire null или undefined, мы ВСЕГДА устанавливаем новую анкету
+        if (prevQuestionnaire && prevQuestionnaire.id === questionnaireToSet.id) {
           clientLogger.log('⚠️ Questionnaire with same ID already in state, skipping update', {
             questionnaireId: questionnaireToSet.id,
+            prevQuestionnaireId: prevQuestionnaire.id,
           });
           return prevQuestionnaire; // Не обновляем, если уже установлена та же анкета
         }
@@ -1488,6 +1490,8 @@ export default function QuizPage() {
           questionnaireId: questionnaireToSet.id,
           totalQuestions: totalQuestionsBeforeSet,
           prevQuestionnaireId: prevQuestionnaire?.id,
+          prevQuestionnaireIsNull: prevQuestionnaire === null,
+          prevQuestionnaireIsUndefined: prevQuestionnaire === undefined,
           isNewObject: questionnaireToSet !== questionnaireData,
         });
         
@@ -3767,9 +3771,9 @@ export default function QuizPage() {
   const allQuestions = useMemo<Question[]>(() => {
     try {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) {
-      // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой
+      // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой (используем log вместо warn для диагностики)
       if (questionnaire) {
-        clientLogger.warn('⚠️ allQuestionsRaw is empty but questionnaire exists', {
+        clientLogger.log('⚠️ allQuestionsRaw is empty but questionnaire exists', {
           questionnaireId: questionnaire?.id,
           hasGroups: !!questionnaire.groups,
           groupsCount: questionnaire.groups?.length || 0,
@@ -3777,7 +3781,7 @@ export default function QuizPage() {
           questionsCount: questionnaire.questions?.length || 0,
         });
       } else {
-        clientLogger.warn('⚠️ allQuestionsRaw is empty and questionnaire is null');
+        clientLogger.log('⚠️ allQuestionsRaw is empty and questionnaire is null');
       }
       return [];
     }
@@ -4167,9 +4171,9 @@ export default function QuizPage() {
       return null;
     }
     
-    // ИСПРАВЛЕНО: Если allQuestions пустой, логируем и возвращаем null
+    // ИСПРАВЛЕНО: Если allQuestions пустой, логируем и возвращаем null (используем log вместо warn для диагностики)
     if (allQuestions.length === 0) {
-      clientLogger.warn('⚠️ currentQuestion: null (allQuestions is empty)', {
+      clientLogger.log('⚠️ currentQuestion: null (allQuestions is empty)', {
         currentQuestionIndex,
         allQuestionsRawLength: allQuestionsRaw.length,
         allQuestionsLength: allQuestions.length,

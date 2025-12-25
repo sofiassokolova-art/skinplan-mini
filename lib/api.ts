@@ -39,18 +39,27 @@ async function request<T>(
     if (isOnQuizPage) {
       // Блокируем только определенные endpoints, которые не нужны на /quiz
       // КРИТИЧНО: НЕ блокируем запросы к /questionnaire/active - они нужны для загрузки анкеты!
-      if (endpoint === '/cart' || endpoint === '/user/preferences' || 
-          (endpoint.includes('/cart') && !endpoint.includes('/questionnaire')) ||
-          (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'))) {
-        console.log('🚫 Blocking API request on /quiz:', endpoint, {
-          pathname,
-          isOnQuizPage,
-        });
+      // ИСПРАВЛЕНО: Улучшена проверка endpoints для более точной блокировки
+      const isCartEndpoint = endpoint === '/cart' || 
+                            endpoint.includes('/cart') && !endpoint.includes('/questionnaire');
+      const isPreferencesEndpoint = endpoint === '/user/preferences' || 
+                                    (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'));
+      
+      if (isCartEndpoint || isPreferencesEndpoint) {
+        // ИСПРАВЛЕНО: Используем console.log вместо console.log для диагностики
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🚫 Blocking API request on /quiz:', endpoint, {
+            pathname,
+            isOnQuizPage,
+            isCartEndpoint,
+            isPreferencesEndpoint,
+          });
+        }
         // Возвращаем дефолтные значения для заблокированных endpoints
-        if (endpoint === '/cart' || (endpoint.includes('/cart') && !endpoint.includes('/questionnaire'))) {
+        if (isCartEndpoint) {
           return { items: [] } as T;
         }
-        if (endpoint === '/user/preferences' || (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'))) {
+        if (isPreferencesEndpoint) {
           return {
             isRetakingQuiz: false,
             fullRetakingQuiz: false,
