@@ -924,6 +924,7 @@ export default function QuizPage() {
       const groupsWithQuestionsCount = data?.groups?.reduce((sum: number, g: any) => sum + (g?.questions?.length || 0), 0) || 0;
       const totalQuestionsInResponse = groupsWithQuestionsCount + questionsCount;
       
+      // КРИТИЧНО: Детальное логирование структуры данных
       clientLogger.log('📥 Raw API response received', {
         hasData: !!data,
         dataType: typeof data,
@@ -940,9 +941,31 @@ export default function QuizPage() {
           id: g?.id,
           title: g?.title,
           questionsCount: g?.questions?.length || 0,
+          questions: (g?.questions || []).map((q: any) => ({
+            id: q?.id,
+            code: q?.code,
+            hasOptions: !!(q?.options && Array.isArray(q.options) && q.options.length > 0),
+          })),
         })) || [],
-        dataPreview: data && typeof data === 'object' ? JSON.stringify(data).substring(0, 1000) : String(data),
+        rootQuestionsDetails: (data?.questions || []).map((q: any) => ({
+          id: q?.id,
+          code: q?.code,
+          hasOptions: !!(q?.options && Array.isArray(q.options) && q.options.length > 0),
+        })),
+        // ИСПРАВЛЕНО: Полный JSON для диагностики (первые 2000 символов)
+        fullDataPreview: data && typeof data === 'object' ? JSON.stringify(data, null, 2).substring(0, 2000) : String(data),
       });
+      
+      // КРИТИЧНО: Проверяем, что данные действительно содержат вопросы
+      if (totalQuestionsInResponse === 0) {
+        clientLogger.error('❌ API returned questionnaire with ZERO questions!', {
+          data,
+          groupsCount,
+          questionsCount,
+          groupsWithQuestionsCount,
+          fullData: JSON.stringify(data, null, 2),
+        });
+      }
       
       // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
       if (data?._meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
@@ -1198,14 +1221,46 @@ export default function QuizPage() {
       });
       
       // ИСПРАВЛЕНО: Логируем перед установкой questionnaire в state
+      const totalQuestionsBeforeSet = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
       clientLogger.log('✅ Setting questionnaire in state', {
         questionnaireId: questionnaireData.id,
         groupsCount: groups.length,
         questionsCount: questions.length,
-        totalQuestions: groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length,
+        totalQuestions: totalQuestionsBeforeSet,
+        groupsStructure: groups.map(g => ({
+          id: g.id,
+          title: g.title,
+          questionsCount: g.questions?.length || 0,
+          questionIds: (g.questions || []).map((q: any) => q?.id).filter(Boolean),
+        })),
+        rootQuestionIds: questions.map((q: any) => q?.id).filter(Boolean),
       });
       
+      // КРИТИЧНО: Проверяем, что данные не пустые перед установкой
+      if (totalQuestionsBeforeSet === 0) {
+        clientLogger.error('❌ Attempting to set questionnaire with ZERO questions in state!', {
+          questionnaireId: questionnaireData.id,
+          groupsCount: groups.length,
+          questionsCount: questions.length,
+          groups: groups.map(g => ({
+            id: g.id,
+            title: g.title,
+            questions: g.questions || [],
+          })),
+          questions,
+        });
+        throw new Error('Cannot set questionnaire with zero questions');
+      }
+      
       setQuestionnaire(questionnaireData);
+      
+      // ИСПРАВЛЕНО: Логируем после установки (в следующем тике, чтобы state обновился)
+      setTimeout(() => {
+        clientLogger.log('✅ Questionnaire set in state (verified)', {
+          questionnaireId: questionnaireData.id,
+          totalQuestions: totalQuestionsBeforeSet,
+        });
+      }, 0);
       
       // ИСПРАВЛЕНО: Используем preferences из метаданных вместо отдельных вызовов API
       const prefs = _meta?.preferences;
@@ -3166,14 +3221,26 @@ export default function QuizPage() {
   // ВАЖНО: все хуки должны вызываться до любых условных return'ов
   const allQuestionsRaw = useMemo(() => {
     try {
-    if (!questionnaire) {
-      clientLogger.log('⚠️ No questionnaire, allQuestionsRaw is empty');
-      return [];
-    }
+      // КРИТИЧНО: Детальное логирование для диагностики
+      clientLogger.log('📊 allQuestionsRaw useMemo triggered', {
+        hasQuestionnaire: !!questionnaire,
+        questionnaireId: questionnaire?.id,
+        questionnaireType: typeof questionnaire,
+        questionnaireKeys: questionnaire && typeof questionnaire === 'object' ? Object.keys(questionnaire) : [],
+      });
+      
+      if (!questionnaire) {
+        clientLogger.log('⚠️ No questionnaire, allQuestionsRaw is empty');
+        return [];
+      }
       
       // Защита от ошибок при доступе к groups и questions
       const groups = questionnaire.groups || [];
       const questions = questionnaire.questions || [];
+      
+      // КРИТИЧНО: Проверяем структуру данных
+      const groupsType = Array.isArray(groups) ? 'array' : typeof groups;
+      const questionsType = Array.isArray(questions) ? 'array' : typeof questions;
       
       // ИСПРАВЛЕНО: Безопасное логирование с проверками
       try {
@@ -3181,17 +3248,49 @@ export default function QuizPage() {
           questionnaireId: questionnaire?.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
+          groupsType,
+          questionsType,
+          groupsIsArray: Array.isArray(groups),
+          questionsIsArray: Array.isArray(questions),
           groupsStructure: groups.map(g => ({
             id: g?.id,
             title: g?.title,
             questionsCount: g?.questions?.length || 0,
+            questionsIsArray: Array.isArray(g?.questions),
             questionIds: (g?.questions || []).map((q: Question) => q?.id).filter(Boolean),
           })),
           rootQuestionIds: questions.map((q: Question) => q?.id).filter(Boolean),
+          // КРИТИЧНО: Полная структура questionnaire для диагностики
+          questionnaireStructure: {
+            hasId: !!questionnaire.id,
+            hasGroups: 'groups' in questionnaire,
+            hasQuestions: 'questions' in questionnaire,
+            groupsValue: groups,
+            questionsValue: questions,
+          },
         });
       } catch (logErr) {
         // Игнорируем ошибки логирования
         console.warn('Failed to log allQuestionsRaw extraction start:', logErr);
+      }
+      
+      // КРИТИЧНО: Проверяем, что groups и questions - это массивы
+      if (!Array.isArray(groups)) {
+        clientLogger.error('❌ questionnaire.groups is not an array!', {
+          groups,
+          groupsType: typeof groups,
+          questionnaire,
+        });
+        return [];
+      }
+      
+      if (!Array.isArray(questions)) {
+        clientLogger.error('❌ questionnaire.questions is not an array!', {
+          questions,
+          questionsType: typeof questions,
+          questionnaire,
+        });
+        return [];
       }
       
       // ИСПРАВЛЕНО: Сохраняем порядок групп и вопросов БЕЗ дополнительной сортировки
@@ -3247,6 +3346,31 @@ export default function QuizPage() {
     // Groups уже отсортированы по position в API, вопросы внутри групп тоже отсортированы
     // Сохраняем порядок из Map без дополнительной сортировки
     const raw = Array.from(questionsMap.values());
+    
+    // КРИТИЧНО: Логируем результат извлечения
+    clientLogger.log('📊 allQuestionsRaw: Extraction complete', {
+      questionsFromGroupsCount: questionsFromGroups.length,
+      rootQuestionsCount: questions.length,
+      totalExtracted: raw.length,
+      extractedQuestionIds: raw.map(q => q?.id).filter(Boolean),
+      hasEmptyResult: raw.length === 0,
+    });
+    
+    if (raw.length === 0) {
+      clientLogger.error('❌ allQuestionsRaw is EMPTY after extraction!', {
+        questionnaireId: questionnaire?.id,
+        groupsCount: groups.length,
+        questionsCount: questions.length,
+        questionsFromGroupsCount: questionsFromGroups.length,
+        groupsStructure: groups.map(g => ({
+          id: g?.id,
+          title: g?.title,
+          questions: g?.questions || [],
+          questionsCount: g?.questions?.length || 0,
+        })),
+        rootQuestions: questions,
+      });
+    }
       
       // Убираем вызов addDebugLog из useMemo, чтобы избежать проблем с хуками
       // Логируем только в консоль
