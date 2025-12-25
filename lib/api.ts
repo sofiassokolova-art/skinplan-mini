@@ -289,20 +289,17 @@ async function request<T>(
       throw notFoundError;
     }
     
-    // ИСПРАВЛЕНО: Для ошибок 500 и других статусов правильно парсим ответ
-    const errorText = await response.text().catch(() => 'Unknown error');
-    let errorData: any = {};
-    try {
-      errorData = JSON.parse(errorText);
-    } catch {
-      // Если не JSON, используем текст как есть
-      errorData = { error: errorText || `HTTP ${response.status}` };
-    }
-    const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}`;
-    
     // Для 400 ошибок (Bad Request)
     if (response.status === 400) {
-      throw new Error(errorMessage || 'Некорректный запрос. Проверьте данные и попробуйте снова.');
+      const errorText = await response.text().catch(() => 'Unknown error');
+      let errorData: any = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText || 'Bad request' };
+      }
+      const errorMsg = errorData.error || errorData.message || 'Некорректный запрос. Проверьте данные и попробуйте снова.';
+      throw new Error(errorMsg);
     }
     
     // Для 429 (rate limit) добавляем информацию о времени ожидания
@@ -321,16 +318,16 @@ async function request<T>(
       throw rateLimitError;
     }
     
-    // Для 500 ошибок добавляем детальную информацию
-    if (response.status === 500) {
-      const apiError = new Error(errorMessage) as any;
-      apiError.status = 500;
-      apiError.details = errorData.details || errorData;
-      throw apiError;
+    // Для остальных ошибок (кроме уже обработанных 401, 404, 405, 500)
+    const errorText = await response.text().catch(() => 'Unknown error');
+    let errorData: any = {};
+    try {
+      errorData = JSON.parse(errorText);
+    } catch {
+      errorData = { error: errorText || `HTTP ${response.status}` };
     }
-    
-    // Для остальных ошибок
-    const apiError = new Error(errorMessage) as any;
+    const errorMsg = errorData.error || errorData.message || `HTTP ${response.status}`;
+    const apiError = new Error(errorMsg) as any;
     apiError.status = response.status;
     apiError.details = errorData.details || errorData;
     throw apiError;

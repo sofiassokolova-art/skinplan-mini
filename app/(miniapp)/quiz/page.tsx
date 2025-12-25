@@ -1193,13 +1193,13 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Специальная обработка для пустой анкеты (500 от бэкенда)
       // Проверяем разные варианты структуры ошибки (в зависимости от того, как API выбрасывает ошибку)
       const errorStatus = err?.status || err?.response?.status || (err?.response?.ok === false ? err?.response?.status : null);
-      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message || '';
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || '';
       const errorData = err?.response?.data || err?.data || {};
       
-      if (errorStatus === 500 || errorMessage.includes('empty') || errorMessage.includes('no questions') || errorMessage.includes('пуст') || errorMessage.includes('Active questionnaire is empty')) {
+      if (errorStatus === 500 || errorMsg.includes('empty') || errorMsg.includes('no questions') || errorMsg.includes('пуст') || errorMsg.includes('Active questionnaire is empty')) {
         clientLogger.error('❌ Backend returned empty questionnaire error', {
           status: errorStatus,
-          message: errorMessage,
+          message: errorMsg,
           questionnaireId: errorData?.questionnaireId,
           fullError: err,
         });
