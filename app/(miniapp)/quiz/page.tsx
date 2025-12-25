@@ -220,6 +220,8 @@ export default function QuizPage() {
   const loadQuestionnaireAttemptedRef = useRef(false);
   // ИСПРАВЛЕНО: Ref для хранения questionnaire в guards (вместо state, чтобы избежать race conditions)
   const questionnaireRef = useRef<Questionnaire | null>(null);
+  // ИСПРАВЛЕНО: Ref для хранения функции loadQuestionnaire, чтобы использовать её в init до объявления
+  const loadQuestionnaireRef = useRef<(() => Promise<any>) | null>(null);
 
   // ИСПРАВЛЕНО: Очищаем quiz_just_submitted и isSubmitting при входе на /quiz
   // Это предотвращает показ планового лоадера для нового пользователя из-за "залипшего" флага
@@ -573,8 +575,9 @@ export default function QuizPage() {
 
       // 2) загрузка анкеты (если нужна)
       // ИСПРАВЛЕНО: Используем ref вместо state для проверки, чтобы избежать race conditions
-      if (!questionnaireRef.current) {
-        await loadQuestionnaire();
+      // ИСПРАВЛЕНО: Используем ref для доступа к loadQuestionnaire, так как она объявлена ниже
+      if (!questionnaireRef.current && loadQuestionnaireRef.current) {
+        await loadQuestionnaireRef.current();
       }
 
       // 3) прогресс/резюм
@@ -631,7 +634,7 @@ export default function QuizPage() {
       setLoading(false);
       clientLogger.log('🏁 init finally', { totalElapsed });
     }
-  }, [waitForTelegram, initialize, isDev, hasResumed, isStartingOver, loadQuestionnaire]); // ИСПРАВЛЕНО: Добавлен loadQuestionnaire в зависимости
+  }, [waitForTelegram, initialize, isDev, hasResumed, isStartingOver]); // ИСПРАВЛЕНО: loadQuestionnaire убран из зависимостей, так как он объявлен ниже и стабилен благодаря useCallback
 
   // ИСПРАВЛЕНО: useEffect для init - делаем "однократным"
   // init запускается ровно тогда, когда поменялся сам init (по сути — при первом маунте и когда questionnaire-логика реально изменилась)
@@ -1449,6 +1452,11 @@ export default function QuizPage() {
       setLoading(false);
     }
   }, [isDev, isRetakingQuiz, showRetakeScreen]); // ИСПРАВЛЕНО: Добавлены зависимости для useCallback
+  
+  // ИСПРАВЛЕНО: Сохраняем функцию в ref для использования в init
+  useEffect(() => {
+    loadQuestionnaireRef.current = loadQuestionnaire;
+  }, [loadQuestionnaire]);
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
     addDebugLog('💾 handleAnswer called', { 
