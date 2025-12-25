@@ -153,10 +153,22 @@ export default function QuizPage() {
     if (typeof window === 'undefined') return;
     
     // Загружаем флаги оплаты из БД
+    // ИСПРАВЛЕНО: Используем preferences из метаданных анкеты вместо отдельных вызовов API
     const loadPaymentFlags = async () => {
       try {
-        const hasRetaking = await userPreferences.getPaymentRetakingCompleted();
-        const hasFullRetake = await userPreferences.getPaymentFullRetakeCompleted();
+        // Используем preferences из state, если они уже загружены
+        let hasRetaking = userPreferencesData?.paymentRetakingCompleted ?? false;
+        let hasFullRetake = userPreferencesData?.paymentFullRetakeCompleted ?? false;
+        
+        // Если preferences еще не загружены, загружаем их из API (fallback)
+        if (!userPreferencesData) {
+          hasRetaking = await userPreferences.getPaymentRetakingCompleted();
+          hasFullRetake = await userPreferences.getPaymentFullRetakeCompleted();
+          setUserPreferencesData({
+            paymentRetakingCompleted: hasRetaking,
+            paymentFullRetakeCompleted: hasFullRetake,
+          });
+        }
         
         const paidSet = new Set<string>();
         if (hasRetaking) {
@@ -313,8 +325,19 @@ export default function QuizPage() {
             return;
           }
           
-          const isRetakingFromStorage = await userPreferences.getIsRetakingQuiz();
-          const fullRetakeFromHome = await userPreferences.getFullRetakeFromHome();
+          // ИСПРАВЛЕНО: Используем preferences из метаданных анкеты вместо отдельных вызовов API
+          let isRetakingFromStorage = userPreferencesData?.isRetakingQuiz ?? false;
+          let fullRetakeFromHome = userPreferencesData?.fullRetakeFromHome ?? false;
+          
+          // Если preferences еще не загружены, загружаем их из API (fallback)
+          if (!userPreferencesData) {
+            isRetakingFromStorage = await userPreferences.getIsRetakingQuiz();
+            fullRetakeFromHome = await userPreferences.getFullRetakeFromHome();
+            setUserPreferencesData({
+              isRetakingQuiz: isRetakingFromStorage,
+              fullRetakeFromHome: fullRetakeFromHome,
+            });
+          }
           
           // Если флаги перепрохождения установлены, но профиля нет - очищаем флаги
           // Это может быть остаточный флаг от предыдущей сессии
@@ -3362,10 +3385,17 @@ export default function QuizPage() {
       clientLogger.warn('⚠️ currentQuestion: null (allQuestions is empty)', {
         currentQuestionIndex,
         allQuestionsRawLength: allQuestionsRaw.length,
+        allQuestionsLength: allQuestions.length,
         hasQuestionnaire: !!questionnaire,
         questionnaireId: questionnaire?.id,
+        questionnaireGroupsCount: questionnaire?.groups?.length || 0,
+        questionnaireQuestionsCount: questionnaire?.questions?.length || 0,
         loading,
         isShowingInitialInfoScreen,
+        answersCount: Object.keys(answers).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        isRetakingQuiz,
+        showRetakeScreen,
       });
       return null;
     }
@@ -3452,10 +3482,14 @@ export default function QuizPage() {
           });
         } catch (err) {
           clientLogger.warn('⚠️ Failed to check entitlements for retake screen', err);
-          // Fallback на БД для обратной совместимости
+          // Fallback на preferences из state или API для обратной совместимости
           try {
-            setHasRetakingPayment(await userPreferences.getPaymentRetakingCompleted());
-            setHasFullRetakePayment(await userPreferences.getPaymentFullRetakeCompleted());
+            const hasRetaking = userPreferencesData?.paymentRetakingCompleted ?? 
+              await userPreferences.getPaymentRetakingCompleted();
+            const hasFullRetake = userPreferencesData?.paymentFullRetakeCompleted ?? 
+              await userPreferences.getPaymentFullRetakeCompleted();
+            setHasRetakingPayment(hasRetaking);
+            setHasFullRetakePayment(hasFullRetake);
           } catch (fallbackError) {
             // ignore
           }
