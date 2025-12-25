@@ -226,7 +226,16 @@ async function request<T>(
   
   // ИСПРАВЛЕНО: Сохраняем промис для GET запросов СРАЗУ, чтобы предотвратить race conditions
   // КРИТИЧНО: Сохраняем ДО await, чтобы другие запросы могли переиспользовать этот промис
+  // ИСПРАВЛЕНО: Проверяем еще раз, не появился ли уже активный запрос (double-check pattern)
   if (requestKey) {
+    // ИСПРАВЛЕНО: Double-check pattern для предотвращения race conditions
+    if (activeRequests.has(requestKey)) {
+      // Если запрос уже появился, используем его вместо создания нового
+      if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
+        console.log('🔄 Reusing active request (double-check):', endpoint);
+      }
+      return activeRequests.get(requestKey) as Promise<T>;
+    }
     activeRequests.set(requestKey, requestPromise);
   }
   

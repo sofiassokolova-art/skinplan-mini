@@ -1727,12 +1727,9 @@ export default function QuizPage() {
   }, [isDev, isRetakingQuiz, showRetakeScreen]); // ИСПРАВЛЕНО: Добавлены зависимости для useCallback
   
   // ИСПРАВЛЕНО: Сохраняем функцию в ref для использования в init
-  // ИСПРАВЛЕНО: Устанавливаем ref сразу при объявлении функции, чтобы он был доступен в init
+  // КРИТИЧНО: Устанавливаем ref СИНХРОННО при объявлении функции, чтобы он был доступен в init ДО того, как init() начнет ждать
+  // ИСПРАВЛЕНО: Не используем useEffect, так как он может выполниться после того, как init() уже начал ждать
   loadQuestionnaireRef.current = loadQuestionnaire;
-  
-  useEffect(() => {
-    loadQuestionnaireRef.current = loadQuestionnaire;
-  }, [loadQuestionnaire]);
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
     addDebugLog('💾 handleAnswer called', { 
