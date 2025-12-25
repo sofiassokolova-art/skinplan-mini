@@ -4349,22 +4349,170 @@ export default function QuizPage() {
           alignItems: 'center', 
           height: '100vh',
           flexDirection: 'column',
-          gap: '16px',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+          gap: '24px',
+          background: '#FFFFFF'
         }}>
           <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid rgba(10, 95, 89, 0.2)',
-            borderTop: '4px solid #0A5F59',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка анкеты...</div>
+            position: 'relative',
+            width: '160px',
+            height: '100px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div className="loader-shapes">
+              <div className="loader-shape loader-shape-1"></div>
+              <div className="loader-shape loader-shape-2"></div>
+            </div>
+          </div>
+          <div style={{ 
+            color: '#0A5F59', 
+            fontSize: '16px',
+            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: '500'
+          }}>Загрузка анкеты...</div>
           <style>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
+            .loader-shapes {
+              position: relative;
+              width: 160px;
+              height: 100px;
+            }
+            
+            .loader-shape {
+              position: absolute;
+              background: #32CD32;
+              top: 50%;
+              transform: translateY(-50%);
+            }
+            
+            .loader-shape-1 {
+              width: 32px;
+              height: 32px;
+              left: 0;
+              border-radius: 50%;
+              animation: morph-left 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            }
+            
+            .loader-shape-2 {
+              width: 42px;
+              height: 42px;
+              right: 0;
+              border-radius: 50%;
+              animation: morph-right 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            }
+            
+            @keyframes morph-left {
+              0% {
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                left: 0;
+              }
+              15% {
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                left: 0;
+              }
+              25% {
+                border-radius: 48% 52% 48% 52%;
+                width: 36px;
+                height: 36px;
+                left: 15px;
+              }
+              35% {
+                border-radius: 40% 60% 40% 60%;
+                width: 50px;
+                height: 40px;
+                left: 25px;
+              }
+              50% {
+                border-radius: 25% 75% 25% 75%;
+                width: 100px;
+                height: 45px;
+                left: 30px;
+              }
+              65% {
+                border-radius: 40% 60% 40% 60%;
+                width: 50px;
+                height: 40px;
+                left: 55px;
+              }
+              75% {
+                border-radius: 48% 52% 48% 52%;
+                width: 42px;
+                height: 42px;
+                left: 70px;
+              }
+              85% {
+                border-radius: 50%;
+                width: 42px;
+                height: 42px;
+                left: 75px;
+              }
+              100% {
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                left: 0;
+              }
+            }
+            
+            @keyframes morph-right {
+              0% {
+                border-radius: 50%;
+                width: 42px;
+                height: 42px;
+                right: 0;
+              }
+              15% {
+                border-radius: 50%;
+                width: 42px;
+                height: 42px;
+                right: 0;
+              }
+              25% {
+                border-radius: 52% 48% 52% 48%;
+                width: 46px;
+                height: 46px;
+                right: 15px;
+              }
+              35% {
+                border-radius: 60% 40% 60% 40%;
+                width: 50px;
+                height: 40px;
+                right: 25px;
+              }
+              50% {
+                border-radius: 75% 25% 75% 25%;
+                width: 100px;
+                height: 45px;
+                right: 30px;
+              }
+              65% {
+                border-radius: 60% 40% 60% 40%;
+                width: 50px;
+                height: 40px;
+                right: 55px;
+              }
+              75% {
+                border-radius: 52% 48% 52% 48%;
+                width: 36px;
+                height: 36px;
+                right: 70px;
+              }
+              85% {
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                right: 75px;
+              }
+              100% {
+                border-radius: 50%;
+                width: 42px;
+                height: 42px;
+                right: 0;
+              }
             }
           `}</style>
         </div>
