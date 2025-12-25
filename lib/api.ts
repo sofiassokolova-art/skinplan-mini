@@ -237,6 +237,33 @@ async function request<T>(
       throw methodError;
     }
     
+    // ИСПРАВЛЕНО: Для 500 ошибок (Internal Server Error) - критическая ошибка сервера
+    // Может означать пустую анкету или другую проблему на бэкенде
+    if (response.status === 500) {
+      const errorText = await response.text().catch(() => '');
+      let errorData: any = {};
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText || 'Internal server error' };
+      }
+      
+      // Логируем 500 ошибки (они критичны)
+      console.error('❌ 500 Internal Server Error:', { 
+        endpoint, 
+        error: errorData.error || errorData.message,
+        questionnaireId: errorData.questionnaireId,
+      });
+      
+      const serverError = new Error(errorData.message || errorData.error || 'Ошибка сервера') as any;
+      serverError.status = 500;
+      serverError.response = {
+        status: 500,
+        data: errorData,
+      };
+      throw serverError;
+    }
+    
     // Для 404 ошибок (Not Found) - обычно означает отсутствие профиля
     // Это нормальная ситуация для новых пользователей или когда профиль не найден
     if (response.status === 404) {
