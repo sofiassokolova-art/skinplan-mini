@@ -68,6 +68,17 @@ export function useCart() {
   
   React.useEffect(() => {
     // ИСПРАВЛЕНО: Проверяем нового пользователя только если Telegram готов И мы не на /quiz
+    // КРИТИЧНО: Проверяем pathname ПЕРЕД вызовом getHasPlanProgress, чтобы не делать API запросы на /quiz
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+    const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
+                         pathname === '/quiz' || pathname.startsWith('/quiz/');
+    
+    if (isOnQuizPage) {
+      // На /quiz не проверяем нового пользователя - это лишний запрос
+      setIsNewUser(false);
+      return;
+    }
+    
     if (pathname === '/' && isTelegramReady) {
       const checkNewUser = async () => {
         try {

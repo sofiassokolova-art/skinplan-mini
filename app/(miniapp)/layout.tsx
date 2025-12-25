@@ -185,8 +185,10 @@ function LayoutContent({
   
   // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
   // Это гарантирует, что навигация не монтируется на /quiz даже при асинхронных обновлениях pathname
+  // КРИТИЧНО: Проверяем оба варианта для максимальной надежности
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+  const isOnQuizPage = (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) ||
+                       (pathname === '/quiz' || pathname.startsWith('/quiz/'));
   
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
   // ИСПРАВЛЕНО: Скрываем навигацию на главной странице для нового пользователя

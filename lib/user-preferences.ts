@@ -186,6 +186,16 @@ export async function setFullRetakeFromHome(value: boolean) {
 }
 
 export async function getHasPlanProgress(): Promise<boolean> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы - возвращаем false для нового пользователя
+  // Это предотвращает лишние запросы для нового пользователя на странице анкеты
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getHasPlanProgress called on /quiz - returning false without API call');
+      return false; // Новый пользователь на анкете
+    }
+  }
+  
   const prefs = await getUserPreferences();
   return prefs.hasPlanProgress;
 }
