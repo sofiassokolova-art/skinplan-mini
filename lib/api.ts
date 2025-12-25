@@ -29,17 +29,33 @@ async function request<T>(
 ): Promise<T> {
   // ИСПРАВЛЕНО: Блокируем запросы к /cart и /user/preferences на странице /quiz
   // Это предотвращает лишние запросы при загрузке анкеты
+  // КРИТИЧНО: Проверяем не только текущий pathname, но и переход к /quiz
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    const referrer = document.referrer;
+    // Проверяем, находимся ли мы на /quiz или переходим на /quiz
+    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
+    const isNavigatingToQuiz = referrer && (
+      referrer.includes('/quiz') || 
+      // Проверяем, не происходит ли переход к /quiz через Next.js router
+      (typeof window !== 'undefined' && (window as any).__NEXT_DATA__?.page === '/quiz')
+    );
+    
+    if (isOnQuizPage || isNavigatingToQuiz) {
       // Блокируем только определенные endpoints, которые не нужны на /quiz
-      if (endpoint === '/cart' || endpoint === '/user/preferences') {
-        console.log('🚫 Blocking API request on /quiz:', endpoint);
+      if (endpoint === '/cart' || endpoint === '/user/preferences' || 
+          endpoint.includes('/cart') || endpoint.includes('/user/preferences')) {
+        console.log('🚫 Blocking API request on /quiz:', endpoint, {
+          pathname,
+          referrer,
+          isOnQuizPage,
+          isNavigatingToQuiz,
+        });
         // Возвращаем дефолтные значения для заблокированных endpoints
-        if (endpoint === '/cart') {
+        if (endpoint === '/cart' || endpoint.includes('/cart')) {
           return { items: [] } as T;
         }
-        if (endpoint === '/user/preferences') {
+        if (endpoint === '/user/preferences' || endpoint.includes('/user/preferences')) {
           return {
             isRetakingQuiz: false,
             fullRetakeFromHome: false,

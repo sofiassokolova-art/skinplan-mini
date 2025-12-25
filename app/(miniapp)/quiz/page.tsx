@@ -688,7 +688,7 @@ export default function QuizPage() {
       initInProgressRef.current = false;
       initStartTimeRef.current = null;
       setLoading(false);
-      clientLogger.warn('🏁 init finally - setting initCompletedRef=true and loading=false', { 
+      clientLogger.log('🏁 init finally - setting initCompletedRef=true and loading=false', { 
         totalElapsed,
         hasQuestionnaire: !!questionnaireRef.current,
         questionnaireId: questionnaireRef.current?.id,
@@ -704,27 +704,30 @@ export default function QuizPage() {
     
     // ИСПРАВЛЕНО: Проверяем, не был ли уже вызван init() при монтировании
     // Это предотвращает множественные вызовы даже при перерендере компонента
-    if (initCalledRef.current) {
-      clientLogger.log('⛔ useEffect: init() already called on mount, skipping');
+    // КРИТИЧНО: Проверяем ПЕРЕД установкой флага, чтобы избежать race condition
+    if (initCalledRef.current || initInProgressRef.current) {
+      clientLogger.log('⛔ useEffect: init() already called or in progress, skipping', {
+        initCalled: initCalledRef.current,
+        initInProgress: initInProgressRef.current,
+        initCompleted: initCompletedRef.current,
+      });
       return;
     }
     
-    // ИСПРАВЛЕНО: Проверяем, не выполняется ли уже init() или не завершен ли он
-    // Это предотвращает множественные вызовы при перерендере
-    if (initInProgressRef.current) {
-      clientLogger.log('⛔ useEffect: init() already in progress, skipping');
-      return;
-    }
-    
-    if (initCompletedRef.current && !isStartingOverRef.current) {
-      clientLogger.log('⛔ useEffect: init() already completed, skipping');
+    if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
+      clientLogger.log('⛔ useEffect: init() already completed with questionnaire, skipping', {
+        questionnaireId: questionnaireRef.current?.id,
+      });
       return;
     }
     
     // ИСПРАВЛЕНО: Устанавливаем флаг, что init() был вызван ДО вызова функции
     // Это предотвращает race condition, если компонент перерендерится во время выполнения init()
+    // КРИТИЧНО: Устанавливаем initCalledRef ПЕРЕД вызовом init(), чтобы другие useEffect не вызвали init() повторно
     initCalledRef.current = true;
-    clientLogger.warn('🚀 useEffect: calling init()', {
+    initInProgressRef.current = true; // Устанавливаем сразу, чтобы предотвратить параллельные вызовы
+    
+    clientLogger.log('🚀 useEffect: calling init()', {
       initCalled: initCalledRef.current,
       initInProgress: initInProgressRef.current,
       initCompleted: initCompletedRef.current,
@@ -736,6 +739,10 @@ export default function QuizPage() {
 
     return () => {
       isMountedRef.current = false;
+      // ИСПРАВЛЕНО: НЕ сбрасываем initCalledRef и initInProgressRef при размонтировании
+      // Это предотвращает повторные вызовы init() при перемонтировании компонента
+      // Если компонент размонтировался и монтируется снова, init() не должен вызываться повторно
+      // если он уже был вызван и завершен
     };
   }, []); // ИСПРАВЛЕНО: Пустой массив зависимостей - вызываем только один раз при монтировании
 
@@ -1018,8 +1025,8 @@ export default function QuizPage() {
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
     
-      // КРИТИЧНО: Логируем с warn, чтобы точно отправить на сервер
-      clientLogger.warn('🔄 loadQuestionnaire() started', {
+      // ИСПРАВЛЕНО: Логируем с log для диагностики (warn только для реальных проблем)
+      clientLogger.log('🔄 loadQuestionnaire() started', {
         hasQuestionnaire: !!questionnaireRef.current,
         questionnaireId: questionnaireRef.current?.id,
         hasQuestionnaireState: !!questionnaire,
@@ -1123,8 +1130,8 @@ export default function QuizPage() {
         }
       }
       
-      // КРИТИЧНО: Логируем с warn, чтобы точно отправить на сервер
-      clientLogger.warn('📥 Questionnaire data received from API', {
+      // ИСПРАВЛЕНО: Логируем с log для диагностики (warn только для реальных проблем)
+      clientLogger.log('📥 Questionnaire data received from API', {
         hasData: !!data,
         dataType: typeof data,
         dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
@@ -1231,7 +1238,7 @@ export default function QuizPage() {
       const cleanData = dataWithoutMeta;
       
       // ИСПРАВЛЕНО: Логируем структуру данных перед извлечением
-      clientLogger.warn('🔍 Extracting questionnaire data from API response', {
+      clientLogger.log('🔍 Extracting questionnaire data from API response', {
         hasCleanData: !!cleanData,
         cleanDataKeys: cleanData && typeof cleanData === 'object' ? Object.keys(cleanData) : [],
         hasId: 'id' in (cleanData || {}),
@@ -1249,15 +1256,15 @@ export default function QuizPage() {
         // Проверяем, есть ли обертка ApiResponse (success/data)
         if ('success' in cleanData && 'data' in cleanData && (cleanData as any).success === true) {
           questionnaireData = (cleanData as any).data as Questionnaire;
-          clientLogger.warn('✅ Extracted questionnaire from success/data wrapper');
+          clientLogger.log('✅ Extracted questionnaire from success/data wrapper');
         } else if ('data' in cleanData && !('success' in cleanData)) {
           // Только data без success
           questionnaireData = (cleanData as any).data as Questionnaire;
-          clientLogger.warn('✅ Extracted questionnaire from data wrapper');
+          clientLogger.log('✅ Extracted questionnaire from data wrapper');
         } else if ('id' in cleanData || 'groups' in cleanData || 'questions' in cleanData) {
           // Данные напрямую (без обертки) - проверяем наличие ключевых полей
           questionnaireData = cleanData as Questionnaire;
-          clientLogger.warn('✅ Using cleanData directly as questionnaire');
+          clientLogger.log('✅ Using cleanData directly as questionnaire');
         } else {
           // Неизвестный формат - логируем для диагностики
           clientLogger.warn('⚠️ Unknown questionnaire data format', {
@@ -1273,7 +1280,7 @@ export default function QuizPage() {
       }
       
       // ИСПРАВЛЕНО: Логируем результат извлечения
-      clientLogger.warn('🔍 Questionnaire data extraction result', {
+      clientLogger.log('🔍 Questionnaire data extraction result', {
         hasQuestionnaireData: !!questionnaireData,
         questionnaireDataId: questionnaireData?.id,
         questionnaireDataKeys: questionnaireData && typeof questionnaireData === 'object' ? Object.keys(questionnaireData) : [],
@@ -1355,8 +1362,8 @@ export default function QuizPage() {
           return Array.from(new Set(allIds));
         })(),
       });
-      // ИСПРАВЛЕНО: Логируем структуру анкеты для диагностики (используем warn для отправки на сервер)
-      clientLogger.warn('📦 Questionnaire loaded from API (before validation)', {
+      // ИСПРАВЛЕНО: Логируем структуру анкеты для диагностики
+      clientLogger.log('📦 Questionnaire loaded from API (before validation)', {
         questionnaireId: questionnaireData?.id,
         hasGroups: !!questionnaireData?.groups,
         groupsCount: questionnaireData?.groups?.length || 0,
@@ -1373,8 +1380,8 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Логируем перед установкой questionnaire в state
       const totalQuestionsBeforeSet = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
-      // ИСПРАВЛЕНО: Используем warn для гарантированной отправки на сервер
-      clientLogger.warn('✅ Setting questionnaire in state (before setQuestionnaire)', {
+      // ИСПРАВЛЕНО: Логируем для диагностики
+      clientLogger.log('✅ Setting questionnaire in state (before setQuestionnaire)', {
         questionnaireId: questionnaireData.id,
         groupsCount: groups.length,
         questionsCount: questions.length,
@@ -1407,7 +1414,7 @@ export default function QuizPage() {
       }
       
       // ИСПРАВЛЕНО: Логируем перед установкой state для диагностики
-      clientLogger.warn('🔄 About to call setQuestionnaire', {
+      clientLogger.log('🔄 About to call setQuestionnaire', {
         questionnaireId: questionnaireData.id,
         totalQuestions: totalQuestionsBeforeSet,
         hasGroups: !!questionnaireData.groups,
@@ -1432,7 +1439,7 @@ export default function QuizPage() {
       setQuestionnaire(questionnaireToSet);
       
       // ИСПРАВЛЕНО: Логируем сразу после setQuestionnaire
-      clientLogger.warn('✅ setQuestionnaire called', {
+      clientLogger.log('✅ setQuestionnaire called', {
         questionnaireId: questionnaireToSet.id,
         totalQuestions: totalQuestionsBeforeSet,
         isNewObject: questionnaireToSet !== questionnaireData,
@@ -1440,7 +1447,7 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Логируем после установки (в следующем тике, чтобы state обновился)
       setTimeout(() => {
-        clientLogger.warn('✅ Questionnaire set in state (verified)', {
+        clientLogger.log('✅ Questionnaire set in state (verified)', {
           questionnaireId: questionnaireData.id,
           totalQuestions: totalQuestionsBeforeSet,
           refHasQuestionnaire: !!questionnaireRef.current,
@@ -1508,7 +1515,7 @@ export default function QuizPage() {
       // Это предотвращает мигание лоадера
       
       // ИСПРАВЛЕНО: Логируем успешное завершение загрузки
-      clientLogger.warn('✅ loadQuestionnaire completed successfully', {
+      clientLogger.log('✅ loadQuestionnaire completed successfully', {
         questionnaireId: questionnaireData.id,
         totalQuestions: totalQuestionsBeforeSet,
         hasQuestionnaireState: !!questionnaireToSet,
@@ -3492,8 +3499,8 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Используем ref вместо state для получения актуального значения
       const currentQuestionnaire = questionnaireRef.current || questionnaire;
       
-      // КРИТИЧНО: Детальное логирование для диагностики (используем warn для отправки на сервер)
-      clientLogger.warn('📊 allQuestionsRaw useMemo triggered', {
+      // ИСПРАВЛЕНО: Детальное логирование для диагностики
+      clientLogger.log('📊 allQuestionsRaw useMemo triggered', {
         hasQuestionnaire: !!questionnaire,
         questionnaireId: questionnaire?.id,
         hasQuestionnaireRef: !!questionnaireRef.current,
@@ -3503,7 +3510,7 @@ export default function QuizPage() {
       });
       
       if (!currentQuestionnaire) {
-        clientLogger.warn('⚠️ No questionnaire in ref or state, allQuestionsRaw is empty', {
+        clientLogger.log('⚠️ No questionnaire in ref or state, allQuestionsRaw is empty', {
           hasQuestionnaireRef: !!questionnaireRef.current,
           questionnaireRefId: questionnaireRef.current?.id,
           hasQuestionnaireState: !!questionnaire,
@@ -3521,9 +3528,9 @@ export default function QuizPage() {
       const groupsType = Array.isArray(groups) ? 'array' : typeof groups;
       const questionsType = Array.isArray(questions) ? 'array' : typeof questions;
       
-      // ИСПРАВЛЕНО: Безопасное логирование с проверками (используем warn для отправки на сервер)
+      // ИСПРАВЛЕНО: Безопасное логирование с проверками
       try {
-        clientLogger.warn('📊 allQuestionsRaw: Starting extraction', {
+        clientLogger.log('📊 allQuestionsRaw: Starting extraction', {
           questionnaireId: currentQuestionnaire?.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
@@ -3626,8 +3633,8 @@ export default function QuizPage() {
     // Сохраняем порядок из Map без дополнительной сортировки
     const raw = Array.from(questionsMap.values());
     
-    // КРИТИЧНО: Логируем результат извлечения (используем warn для отправки на сервер)
-    clientLogger.warn('📊 allQuestionsRaw: Extraction complete', {
+    // ИСПРАВЛЕНО: Логируем результат извлечения
+    clientLogger.log('📊 allQuestionsRaw: Extraction complete', {
       questionsFromGroupsCount: questionsFromGroups.length,
       rootQuestionsCount: questions.length,
       totalExtracted: raw.length,
@@ -3653,9 +3660,9 @@ export default function QuizPage() {
         rootQuestions: questions,
       });
     } else {
-      // ИСПРАВЛЕНО: Логируем успешное извлечение (используем warn для отправки на сервер)
+      // ИСПРАВЛЕНО: Логируем успешное извлечение
       try {
-        clientLogger.warn('✅ allQuestionsRaw loaded successfully', {
+        clientLogger.log('✅ allQuestionsRaw loaded successfully', {
           total: raw.length,
           fromGroups: questionsFromGroups.length,
           fromQuestions: questions.length,
@@ -3693,7 +3700,7 @@ export default function QuizPage() {
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state для диагностики
   useEffect(() => {
-    clientLogger.warn('🔄 questionnaire state changed', {
+    clientLogger.log('🔄 questionnaire state changed', {
       hasQuestionnaire: !!questionnaire,
       questionnaireId: questionnaire?.id,
       questionnaireRef: !!questionnaireRef.current,
@@ -4432,7 +4439,7 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Логируем состояние перед проверкой лоадера
   if (loading && !initCompletedRef.current) {
       // init() еще не завершен - показываем лоадер
-      clientLogger.warn('⏳ Showing loader: loading=true, initCompleted=false', {
+      clientLogger.log('⏳ Showing loader: loading=true, initCompleted=false', {
         loading,
         initCompleted: initCompletedRef.current,
         hasQuestionnaire: !!questionnaire,
