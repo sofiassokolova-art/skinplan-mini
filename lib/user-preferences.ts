@@ -64,21 +64,28 @@ export async function getUserPreferences() {
     }
   }
   
-  // ИСПРАВЛЕНО: Проверяем sessionStorage для hasPlanProgress (самый частый запрос)
+  // ТЗ: Проверяем sessionStorage для hasPlanProgress (самый частый запрос)
   // Это предотвращает множественные запросы при загрузке страницы
   // ВАЖНО: Используем try-catch для всех операций с sessionStorage, так как они могут быть недоступны
+  // ТЗ: На /quiz и /plan* не используем кэш из sessionStorage
   if (typeof window !== 'undefined') {
     try {
-      const cached = sessionStorage.getItem('user_preferences_cache');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          const cacheAge = Date.now() - parsed.timestamp;
-          if (cacheAge < CACHE_TTL && parsed.data) {
-            return parsed.data;
+      const pathname = window.location.pathname;
+      const isOnQuizOrPlan = pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+                            pathname === '/plan' || pathname.startsWith('/plan/');
+      
+      if (!isOnQuizOrPlan) {
+        const cached = sessionStorage.getItem('user_preferences_cache');
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            const cacheAge = Date.now() - parsed.timestamp;
+            if (cacheAge < CACHE_TTL && parsed.data) {
+              return parsed.data;
+            }
+          } catch (e) {
+            // Игнорируем ошибки парсинга
           }
-        } catch (e) {
-          // Игнорируем ошибки парсинга
         }
       }
     } catch (e) {
@@ -89,12 +96,13 @@ export async function getUserPreferences() {
   
   // Проверяем кэш в памяти
   if (preferencesCache && Date.now() - preferencesCache.timestamp < CACHE_TTL) {
-    // ИСПРАВЛЕНО: Даже если есть кэш, проверяем pathname на /quiz
-    // На /quiz не используем кэш, возвращаем дефолтные значения
+    // ТЗ: Даже если есть кэш, проверяем pathname на /quiz и /plan*
+    // На /quiz и /plan* не используем кэш, возвращаем дефолтные значения
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-        console.log('⚠️ getUserPreferences called on /quiz - returning defaults (ignoring cache)');
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+          pathname === '/plan' || pathname.startsWith('/plan/')) {
+        console.log('⚠️ getUserPreferences called on /quiz or /plan - returning defaults (ignoring cache)');
         return {
           isRetakingQuiz: false,
           fullRetakeFromHome: false,
