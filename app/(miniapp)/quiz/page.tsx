@@ -851,6 +851,20 @@ export default function QuizPage() {
       
       const data = await Promise.race([loadPromise, timeoutPromise]) as any;
       
+      // ИСПРАВЛЕНО: Логируем сырой ответ от API для диагностики
+      clientLogger.log('📥 Raw API response received', {
+        hasData: !!data,
+        dataType: typeof data,
+        dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+        hasId: data?.id !== undefined,
+        hasGroups: data?.groups !== undefined,
+        hasQuestions: data?.questions !== undefined,
+        hasMeta: data?._meta !== undefined,
+        groupsCount: data?.groups?.length || 0,
+        questionsCount: data?.questions?.length || 0,
+        dataPreview: data && typeof data === 'object' ? JSON.stringify(data).substring(0, 500) : String(data),
+      });
+      
       // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
       if (data?._meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
         const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;

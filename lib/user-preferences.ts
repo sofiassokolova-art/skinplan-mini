@@ -47,6 +47,28 @@ export async function getUserPreferences() {
     return preferencesCache.data;
   }
 
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы - используем дефолтные значения
+  // Preferences будут загружены из метаданных анкеты в loadQuestionnaire
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call');
+      return {
+        isRetakingQuiz: false,
+        fullRetakeFromHome: false,
+        paymentRetakingCompleted: false,
+        paymentFullRetakeCompleted: false,
+        hasPlanProgress: false,
+        routineProducts: null,
+        planFeedbackSent: false,
+        serviceFeedbackSent: false,
+        lastPlanFeedbackDate: null,
+        lastServiceFeedbackDate: null,
+        extra: null,
+      };
+    }
+  }
+
   // ИСПРАВЛЕНО: Если уже есть запрос в процессе, ждем его вместо создания нового
   if (pendingRequest) {
     return pendingRequest;
