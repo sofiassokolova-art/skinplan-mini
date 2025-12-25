@@ -62,31 +62,80 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null); // Имя пользователя для приветствия
 
+  // ИСПРАВЛЕНО: Состояние для отслеживания редиректа
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
   useEffect(() => {
     setMounted(true);
     initialize();
-    setError(null); // ИСПРАВЛЕНО: Очищаем ошибку при инициализации компонента
+    setError(null);
     
-      // Загружаем данные (пользователь идентифицируется автоматически через initData)
-      const initAndLoad = async () => {
-      // ИСПРАВЛЕНО: Не устанавливаем loading = true сразу для нового пользователя
-      // Сначала проверяем hasPlanProgress, и только потом устанавливаем loading = true
-      // Это предотвращает показ лоадера плана для нового пользователя
-      
-      // Проверяем, что приложение открыто через Telegram
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-        clientLogger.log('Telegram WebApp не доступен, перенаправляем на анкету');
+    // Загружаем данные (пользователь идентифицируется автоматически через initData)
+    const initAndLoad = async () => {
+      // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД ВСЕМ
+      // Это предотвращает редирект на /quiz сразу после отправки анкеты
+      const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+      if (justSubmitted) {
+        clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
+        try {
+          const { setHasPlanProgress } = await import('@/lib/user-preferences');
+          await setHasPlanProgress(true);
+        } catch (error) {
+          clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
+        }
         setLoading(false);
-        router.push('/quiz');
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('quiz_just_submitted');
+          window.location.replace('/plan?state=generating');
+        }
         return;
       }
 
+      // ИСПРАВЛЕНО: Для нового пользователя - СРАЗУ редирект на /quiz БЕЗ показа контента
+      // Проверяем hasPlanProgress ПЕРВЫМ делом, до любых других проверок
+      // Это гарантирует, что новый пользователь не увидит лоадер, ошибки или навигацию
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        // Если Telegram не доступен, все равно редиректим на /quiz
+        clientLogger.log('Telegram WebApp не доступен, перенаправляем на анкету');
+        setIsRedirecting(true);
+        if (typeof window !== 'undefined') {
+          window.location.replace('/quiz');
+        }
+        return;
+      }
+      
+      // ИСПРАВЛЕНО: Проверяем авторизацию перед проверкой hasPlanProgress
+      try {
+        await api.authTelegram(window.Telegram.WebApp.initData);
+        clientLogger.log('✅ Authorization successful');
+      } catch (authError: any) {
+        // Не блокируем приложение при ошибке авторизации
+        clientLogger.warn('⚠️ Authorization failed, but continuing (non-blocking):', authError?.message);
+      }
+      
+      // КРИТИЧНО: Проверяем hasPlanProgress СРАЗУ, без установки loading = true
+      // Если пользователь новый - редиректим на /quiz БЕЗ показа контента
+      const { getHasPlanProgress } = await import('@/lib/user-preferences');
+      const hasPlanProgress = await getHasPlanProgress();
+      
+      if (!hasPlanProgress) {
+        // Нет plan_progress - значит пользователь новый
+        // ИСПРАВЛЕНО: Сразу редиректим на /quiz БЕЗ показа контента, лоадера или ошибок
+        clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, no content shown)');
+        setIsRedirecting(true);
+        if (typeof window !== 'undefined') {
+          window.location.replace('/quiz');
+        }
+        return;
+      }
+
+      // plan_progress есть - пользователь не новый, загружаем контент
+      // ИСПРАВЛЕНО: Устанавливаем loading = true только для существующих пользователей
+      setLoading(true);
+
       // ОПТИМИЗИРОВАНО: Загружаем имя пользователя асинхронно, не блокируя основную загрузку
-      // ИСПРАВЛЕНО: Имя всегда берется с сервера, не из localStorage
-      // Приоритет: ответ USER_NAME > профиль
       const loadUserNameAsync = async () => {
         try {
-          // Запрашиваем ответы из API (кэш больше не используется, данные в БД)
           const userAnswers = await api.getUserAnswers() as any;
           if (userAnswers && Array.isArray(userAnswers)) {
             const nameAnswer = userAnswers.find((a: any) => a.question?.code === 'USER_NAME');
@@ -98,20 +147,15 @@ export default function HomePage() {
             }
           }
           
-          // Если имени нет в ответах, пробуем из профиля
           const userProfile = await api.getUserProfile();
           if (userProfile?.firstName) {
             setUserName(userProfile.firstName);
             clientLogger.log('✅ User name loaded from profile:', userProfile.firstName);
           }
         } catch (err: any) {
-          // ИСПРАВЛЕНО: Не логируем 429 и 405 ошибки как warning
-          // 429 - это нормально при rate limiting
-          // 405 - может быть временной проблемой с endpoint
           if (err?.status !== 429 && err?.status !== 405) {
             clientLogger.warn('Could not load user name:', err);
           } else if (err?.status === 405) {
-            // HTTP 405 - логируем только в development, это проблема с endpoint
             if (process.env.NODE_ENV === 'development') {
               clientLogger.warn('HTTP 405 when loading user name - check endpoint:', err);
             }
@@ -138,99 +182,29 @@ export default function HomePage() {
           return exists;
         } catch (err: any) {
           if (err?.status === 404 || err?.isNotFound) {
-            // Плана нет — это нормально для нового пользователя
             setHasPlan(false);
             clientLogger.log('ℹ️ Plan not found (404) when checking from home page');
             return false;
           } else {
-            // ИСПРАВЛЕНО: Не логируем как warning, если это не критичная ошибка
-            // Многие ошибки могут быть временными (сеть, таймауты)
             if (err?.status !== 429 && err?.status !== 408) {
               clientLogger.warn('Could not check plan existence from home page', err);
             }
-            // Не знаем наверняка — считаем, что плана нет, но не редиректим тут.
             return false;
           }
         }
       };
-
-      // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД проверкой профиля
-      // Это предотвращает редирект на /quiz сразу после отправки анкеты
-      const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
-      if (justSubmitted) {
-        clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
-        // ИСПРАВЛЕНО: Устанавливаем hasPlanProgress = true, чтобы пользователь не редиректился на /quiz
-        try {
-          const { setHasPlanProgress } = await import('@/lib/user-preferences');
-          await setHasPlanProgress(true);
-        } catch (error) {
-          clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
-        }
-        // ИСПРАВЛЕНО: Устанавливаем loading = false перед редиректом
-        setLoading(false);
-        if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('quiz_just_submitted');
-          window.location.replace('/plan?state=generating');
-        }
-        return;
-      }
-
-      // ИСПРАВЛЕНО: Сначала проверяем plan_progress БЕЗ установки loading = true
-      // Для нового пользователя сразу редиректим на /quiz БЕЗ проверки плана
-      // Проверка плана должна происходить только на бэкенде, не на фронте
-      // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
-      // ВАЖНО: Проверяем готовность Telegram WebApp перед вызовом API
-      // (выше уже есть проверка на строке 76, но для надежности проверяем еще раз)
-      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
-        clientLogger.log('Telegram WebApp не доступен при проверке plan_progress, перенаправляем на анкету');
-        setLoading(false);
-        router.push('/quiz');
-        return;
-      }
       
-      // ИСПРАВЛЕНО: Устанавливаем loading = false перед проверкой hasPlanProgress
-      // Это предотвращает показ лоадера плана для нового пользователя
-      setLoading(false);
-      
-      const { getHasPlanProgress } = await import('@/lib/user-preferences');
-      const hasPlanProgress = await getHasPlanProgress();
-      
-      if (!hasPlanProgress) {
-        // Нет plan_progress - значит пользователь новый, редиректим на /quiz БЕЗ проверки плана
-        // ИСПРАВЛЕНО: Не вызываем checkPlanExists() для нового пользователя, чтобы не показывать лоадер плана
-        // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер "загрузка плана"
-        // Проверка плана должна происходить только на бэкенде через API endpoint
-        clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, skipping plan check)');
-        // ИСПРАВЛЕНО: Используем window.location.replace для немедленного редиректа без показа страницы
-        if (typeof window !== 'undefined') {
-          window.location.replace('/quiz');
-        }
-        return;
-      }
-
-      // plan_progress есть - устанавливаем loading = true и проверяем наличие плана через API
-      // ИСПРАВЛЕНО: Устанавливаем loading = true только после проверки hasPlanProgress
-      // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
-      setLoading(true);
-      
-      // Это предотвращает редирект на анкету, если пользователь зашел с нового устройства
-      // или очистил localStorage, но план уже создан
       const planExists = await checkPlanExists();
       
       if (planExists) {
-        // План существует - загружаем рекомендации
         clientLogger.log('✅ Plan exists - loading recommendations');
         await loadRecommendations();
-        // Загружаем имя в фоне после загрузки рекомендаций
         loadUserNameAsync();
         return;
       }
 
-      // plan_progress есть, но плана нет - значит пользователь уже проходил анкету, загружаем рекомендации
-      // ИСПРАВЛЕНО: Показываем PaymentGate даже если план еще не создан (он может генерироваться)
       clientLogger.log('ℹ️ No plan but plan_progress exists - loading recommendations (plan may be generating)');
       await loadRecommendations();
-      // Загружаем имя в фоне после загрузки рекомендаций
       loadUserNameAsync();
     };
 
@@ -753,6 +727,12 @@ export default function HomePage() {
       );
     }
   };
+
+  // ИСПРАВЛЕНО: Для нового пользователя не показываем никакого контента
+  // Просто возвращаем null во время редиректа
+  if (isRedirecting) {
+    return null;
+  }
 
   if (!mounted || loading) {
     return (

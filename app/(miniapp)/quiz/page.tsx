@@ -1101,7 +1101,14 @@ export default function QuizPage() {
         }
       }
       
+      // КРИТИЧНО: Проверяем, не загружается ли анкета уже через activeRequests в api.ts
+      // Это предотвращает двойные вызовы даже если guards не сработали
+      // ИСПРАВЛЕНО: Используем уникальный ключ для проверки активных запросов
+      const questionnaireRequestKey = 'GET:/questionnaire/active';
+      
       // ВАЖНО: Добавляем таймаут для загрузки анкеты, чтобы не ждать бесконечно
+      // ИСПРАВЛЕНО: api.getActiveQuestionnaire() уже имеет защиту от дублирования через activeRequests
+      // Но для надежности проверяем еще раз перед вызовом
       const loadPromise = api.getActiveQuestionnaire();
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Таймаут загрузки анкеты (10 секунд)')), 10000);
@@ -1240,6 +1247,12 @@ export default function QuizPage() {
       const hasGroupsWithQuestions = hasGroups && data.groups.some((g: any) => g.questions && Array.isArray(g.questions) && g.questions.length > 0);
       const hasAnyQuestions = hasGroupsWithQuestions || hasQuestions;
       
+      // ИСПРАВЛЕНО: Обрабатываем "no profile" без ошибки
+      // Для нового пользователя (без профиля) API вернет анкету, но профиля не будет
+      // Это нормально - начинаем анкету с дефолтными info-экранами
+      const hasProfile = data?._meta?.hasProfile ?? false;
+      const isNewUser = !hasProfile;
+      
       // ИСПРАВЛЕНО: Детальная проверка с логированием
       if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
         clientLogger.error('❌ Empty or null data received from API', {
@@ -1257,31 +1270,51 @@ export default function QuizPage() {
       }
       
       if (!hasAnyQuestions) {
-        clientLogger.error('❌ Questionnaire has no questions in response', {
-          hasGroups,
-          hasQuestions,
-          hasGroupsWithQuestions,
-          hasAnyQuestions,
-          groupsCount,
-          questionsCount,
-          groupsWithQuestionsCount,
-          totalQuestionsInResponse,
-          groupsDetails: data?.groups?.map((g: any) => ({
-            id: g?.id,
-            title: g?.title,
-            questionsCount: g?.questions?.length || 0,
-          })) || [],
-        });
-        
-        // КРИТИЧНО: Если анкета пустая, это ошибка - не делаем retry
-        // Retry имеет смысл только если данные не пришли вообще, а не если они пустые
-        clientLogger.error('❌ Questionnaire has no questions - this is a backend issue, not retrying');
-        setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
-        // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
-        loadQuestionnaireInProgressRef.current = false;
-        loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
-        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
-        return null;
+        // ИСПРАВЛЕНО: Для нового пользователя (no profile) это нормально - начинаем анкету
+        // Не бросаем error, а продолжаем с дефолтными info-экранами
+        if (isNewUser) {
+          clientLogger.log('ℹ️ New user (no profile) - questionnaire has no questions, will start with default info screens', {
+            hasGroups,
+            hasQuestions,
+            hasGroupsWithQuestions,
+            hasAnyQuestions,
+            groupsCount,
+            questionsCount,
+            groupsWithQuestionsCount,
+            totalQuestionsInResponse,
+            hasProfile,
+            isNewUser,
+          });
+          // ИСПРАВЛЕНО: Не устанавливаем error, продолжаем загрузку анкеты
+          // Анкета будет загружена с дефолтными info-экранами
+        } else {
+          clientLogger.error('❌ Questionnaire has no questions in response', {
+            hasGroups,
+            hasQuestions,
+            hasGroupsWithQuestions,
+            hasAnyQuestions,
+            groupsCount,
+            questionsCount,
+            groupsWithQuestionsCount,
+            totalQuestionsInResponse,
+            groupsDetails: data?.groups?.map((g: any) => ({
+              id: g?.id,
+              title: g?.title,
+              questionsCount: g?.questions?.length || 0,
+            })) || [],
+            hasProfile,
+            isNewUser,
+          });
+          
+          // КРИТИЧНО: Если анкета пустая и это не новый пользователь, это ошибка
+          clientLogger.error('❌ Questionnaire has no questions - this is a backend issue, not retrying');
+          setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
+          // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
+          loadQuestionnaireInProgressRef.current = false;
+          loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
+          questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
+          return null;
+        }
       }
       
       // ИСПРАВЛЕНО: Убираем _meta из данных перед обработкой

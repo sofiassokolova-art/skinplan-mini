@@ -336,6 +336,36 @@ export default function MiniappLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // ИСПРАВЛЕНО: Проверяем pathname на /quiz ДО монтирования QueryProvider
+  // Это предотвращает инициализацию любых глобальных запросов на /quiz
+  // ВАЖНО: Проверяем синхронно через window.location для надежности
+  // ИСПРАВЛЕНО: Используем useState для SSR-совместимости
+  const [isOnQuizPage, setIsOnQuizPage] = useState(false);
+  
+  useEffect(() => {
+    // ИСПРАВЛЕНО: Проверяем pathname на клиенте после монтирования
+    // Это предотвращает проблемы с SSR и гарантирует правильную проверку
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      setIsOnQuizPage(pathname === '/quiz' || pathname.startsWith('/quiz/'));
+    }
+  }, []);
+  
+  // ИСПРАВЛЕНО: На /quiz монтируем только минимальную структуру без QueryProvider
+  // QueryProvider может инициализировать запросы через React Query, поэтому на /quiz не монтируем его
+  // ВАЖНО: Это критично для предотвращения любых глобальных запросов на /quiz
+  // ИСПРАВЛЕНО: Для SSR используем проверку через window.location синхронно
+  const isOnQuizPageSync = typeof window !== 'undefined' && 
+                           (window.location.pathname === '/quiz' || window.location.pathname.startsWith('/quiz/'));
+  
+  if (isOnQuizPageSync || isOnQuizPage) {
+    return (
+      <Suspense fallback={<LayoutFallback />}>
+        <LayoutContent>{children}</LayoutContent>
+      </Suspense>
+    );
+  }
+  
   return (
     <QueryProvider>
       <Suspense fallback={<LayoutFallback />}>

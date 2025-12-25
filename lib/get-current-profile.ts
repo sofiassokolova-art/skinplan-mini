@@ -55,9 +55,10 @@ function isMissingCurrentProfileColumn(err: any): boolean {
 export async function getCurrentProfile(userId: string) {
   const result = await getCurrentProfileWithDetails(userId);
   
-  // Логируем результат для диагностики
+  // ИСПРАВЛЕНО: Логируем результат для диагностики
+  // Для нового пользователя (no profile) это нормально - логируем как INFO, не WARN
   if (result.strategy === 'none') {
-    logger.warn('No profile found for user', {
+    logger.info('No profile found for user (new user - normal)', {
       userId,
       strategy: result.strategy,
       hasCurrentProfileColumn: result.hasCurrentProfileColumn,

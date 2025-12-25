@@ -78,7 +78,8 @@ export async function GET(request: NextRequest) {
           }
         }
       } else {
-        // ИСПРАВЛЕНО: Для нового пользователя (без профиля) логируем, что анкета будет возвращена
+        // ИСПРАВЛЕНО: Для нового пользователя (без профиля) логируем как INFO, не WARN
+        // Это нормальная ситуация для нового пользователя - не логируем как предупреждение
         logger.info('New user (no profile) - will return active questionnaire', {
           userId,
           hasProfile: false,

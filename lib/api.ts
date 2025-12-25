@@ -29,32 +29,29 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // ТЗ: Блокируем запросы к /cart и /user/preferences на странице /quiz
+  // КРИТИЧНО: Блокируем запросы к /cart и /user/preferences на странице /quiz
   // Это предотвращает лишние запросы при загрузке анкеты
-  // КРИТИЧНО: Проверяем pathname СИНХРОННО перед любыми async операциями
-  // ИСПРАВЛЕНО: Также проверяем document.referrer и window.location для раннего обнаружения навигации
-  // КРИТИЧНО: Блокируем запросы ДО того, как они попадут в очередь React Query
-  if (typeof window !== 'undefined') {
-    const pathname = window.location.pathname;
-    const href = window.location.href;
-    const referrer = document.referrer;
-    
-    // ИСПРАВЛЕНО: Проверяем все возможные индикаторы навигации на /quiz
-    const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
-    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
-    const isQuizInHref = href.includes('/quiz');
-    
-    // ТЗ: Блокируем запросы, если мы на /quiz ИЛИ навигация на /quiz
-    if (isOnQuizPage || isNavigatingToQuiz || isQuizInHref) {
-      // Блокируем только определенные endpoints, которые не нужны на /quiz
-      // КРИТИЧНО: НЕ блокируем запросы к /questionnaire/active - они нужны для загрузки анкеты!
-      // ИСПРАВЛЕНО: Улучшена проверка endpoints для более точной блокировки
-      const isCartEndpoint = endpoint === '/cart' || 
-                            (endpoint.includes('/cart') && !endpoint.includes('/questionnaire'));
-      const isPreferencesEndpoint = endpoint === '/user/preferences' || 
-                                    (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'));
+  // ИСПРАВЛЕНО: Проверяем pathname СИНХРОННО в самом начале, даже до проверки window
+  // Это гарантирует, что блокировка работает даже при первой загрузке страницы
+  const isCartEndpoint = endpoint === '/cart' || 
+                        (endpoint.includes('/cart') && !endpoint.includes('/questionnaire'));
+  const isPreferencesEndpoint = endpoint === '/user/preferences' || 
+                                (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'));
+  
+  // КРИТИЧНО: Блокируем cart и preferences на /quiz ДО любых других проверок
+  if (isCartEndpoint || isPreferencesEndpoint) {
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      const href = window.location.href;
+      const referrer = document.referrer;
       
-      if (isCartEndpoint || isPreferencesEndpoint) {
+      // ИСПРАВЛЕНО: Проверяем все возможные индикаторы навигации на /quiz
+      const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
+      const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
+      const isQuizInHref = href.includes('/quiz');
+      
+      // ТЗ: Блокируем запросы, если мы на /quiz ИЛИ навигация на /quiz
+      if (isOnQuizPage || isNavigatingToQuiz || isQuizInHref) {
         // ТЗ: Логируем в production для диагностики проблемы
         console.log('🚫 Blocking API request on /quiz:', endpoint, {
           pathname,
@@ -86,6 +83,27 @@ async function request<T>(
             extra: null,
           } as T);
         }
+      }
+    } else {
+      // ИСПРАВЛЕНО: На сервере (SSR) также блокируем cart и preferences
+      // Это предотвращает запросы при SSR на /quiz
+      if (isCartEndpoint) {
+        return Promise.resolve({ items: [] } as T);
+      }
+      if (isPreferencesEndpoint) {
+        return Promise.resolve({
+          isRetakingQuiz: false,
+          fullRetakingQuiz: false,
+          paymentRetakingCompleted: false,
+          paymentFullRetakeCompleted: false,
+          hasPlanProgress: false,
+          routineProducts: null,
+          planFeedbackSent: false,
+          serviceFeedbackSent: false,
+          lastPlanFeedbackDate: null,
+          lastServiceFeedbackDate: null,
+          extra: null,
+        } as T);
       }
     }
   }
@@ -227,16 +245,29 @@ async function request<T>(
   // ИСПРАВЛЕНО: Сохраняем промис для GET запросов СРАЗУ, чтобы предотвратить race conditions
   // КРИТИЧНО: Сохраняем ДО await, чтобы другие запросы могли переиспользовать этот промис
   // ИСПРАВЛЕНО: Проверяем еще раз, не появился ли уже активный запрос (double-check pattern)
+  // КРИТИЧНО: Для /questionnaire/active это особенно важно - предотвращаем двойные вызовы
   if (requestKey) {
     // ИСПРАВЛЕНО: Double-check pattern для предотвращения race conditions
     if (activeRequests.has(requestKey)) {
       // Если запрос уже появился, используем его вместо создания нового
       if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
-        console.log('🔄 Reusing active request (double-check):', endpoint);
+        console.log('🔄 Reusing active request (double-check):', endpoint, {
+          activeRequestsSize: activeRequests.size,
+          requestKey,
+        });
       }
       return activeRequests.get(requestKey) as Promise<T>;
     }
+    // КРИТИЧНО: Сохраняем промис СРАЗУ, до начала выполнения
+    // Это гарантирует, что параллельные вызовы будут использовать один и тот же промис
     activeRequests.set(requestKey, requestPromise);
+    
+    if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
+      console.log('📝 New active request registered:', endpoint, {
+        activeRequestsSize: activeRequests.size,
+        requestKey,
+      });
+    }
   }
   
   try {
