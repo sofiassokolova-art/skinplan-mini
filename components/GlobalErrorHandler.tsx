@@ -9,6 +9,17 @@ export function GlobalErrorHandler() {
   useEffect(() => {
     // Обработчик необработанных ошибок
     const handleError = (event: ErrorEvent) => {
+      // ИСПРАВЛЕНО: Безопасное получение URL с обработкой SecurityError
+      let url = 'N/A';
+      try {
+        if (typeof window !== 'undefined' && window.location) {
+          url = window.location.href;
+        }
+      } catch (e) {
+        // SecurityError может возникнуть в iframe или других ограниченных контекстах
+        url = 'N/A (SecurityError)';
+      }
+      
       const errorDetails = {
         message: event.message,
         filename: event.filename,
@@ -17,7 +28,7 @@ export function GlobalErrorHandler() {
         error: event.error,
         errorStack: event.error?.stack,
         errorName: event.error?.name,
-        url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+        url,
         timestamp: new Date().toISOString(),
       };
       
@@ -58,12 +69,23 @@ export function GlobalErrorHandler() {
 
     // Обработчик необработанных отклоненных промисов
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // ИСПРАВЛЕНО: Безопасное получение URL с обработкой SecurityError
+      let url = 'N/A';
+      try {
+        if (typeof window !== 'undefined' && window.location) {
+          url = window.location.href;
+        }
+      } catch (e) {
+        // SecurityError может возникнуть в iframe или других ограниченных контекстах
+        url = 'N/A (SecurityError)';
+      }
+      
       const rejectionDetails = {
         reason: event.reason,
         reasonString: String(event.reason),
         reasonStack: event.reason?.stack,
         reasonName: event.reason?.name,
-        url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+        url,
         timestamp: new Date().toISOString(),
       };
       

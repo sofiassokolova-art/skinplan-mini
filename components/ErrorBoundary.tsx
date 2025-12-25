@@ -65,11 +65,22 @@ export class ErrorBoundary extends Component<Props, State> {
       console.warn('⚠️ Известная некритичная ошибка (не отправляем в БД):', errorMessage);
       return;
     }
+    // ИСПРАВЛЕНО: Безопасное получение URL с обработкой SecurityError
+    let url = 'N/A';
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        url = window.location.href;
+      }
+    } catch (e) {
+      // SecurityError может возникнуть в iframe или других ограниченных контекстах
+      url = 'N/A (SecurityError)';
+    }
+    
     const errorDetails = {
       message: error.message,
       stack: error.stack,
       componentStack: errorInfo.componentStack,
-      url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+      url,
       userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'N/A',
       timestamp: new Date().toISOString(),
       errorName: error.name,
@@ -155,11 +166,21 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       // Логируем, когда показывается экран ошибки
       if (this.state.error) {
+        // ИСПРАВЛЕНО: Безопасное получение URL с обработкой SecurityError
+        let url = 'N/A';
+        try {
+          if (typeof window !== 'undefined' && window.location) {
+            url = window.location.href;
+          }
+        } catch (e) {
+          url = 'N/A (SecurityError)';
+        }
+        
         console.error('🔴 ErrorBoundary: Rendering error screen', {
           errorMessage: this.state.error.message,
           errorName: this.state.error.name,
           errorStack: this.state.error.stack,
-          url: typeof window !== 'undefined' ? window.location.href : 'N/A',
+          url,
           timestamp: new Date().toISOString(),
         });
       }
