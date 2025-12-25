@@ -3396,9 +3396,9 @@ export default function QuizPage() {
       const groupsType = Array.isArray(groups) ? 'array' : typeof groups;
       const questionsType = Array.isArray(questions) ? 'array' : typeof questions;
       
-      // ИСПРАВЛЕНО: Безопасное логирование с проверками
+      // ИСПРАВЛЕНО: Безопасное логирование с проверками (используем warn для отправки на сервер)
       try {
-        clientLogger.log('📊 allQuestionsRaw: Starting extraction', {
+        clientLogger.warn('📊 allQuestionsRaw: Starting extraction', {
           questionnaireId: questionnaire?.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
@@ -3501,13 +3501,16 @@ export default function QuizPage() {
     // Сохраняем порядок из Map без дополнительной сортировки
     const raw = Array.from(questionsMap.values());
     
-    // КРИТИЧНО: Логируем результат извлечения
-    clientLogger.log('📊 allQuestionsRaw: Extraction complete', {
+    // КРИТИЧНО: Логируем результат извлечения (используем warn для отправки на сервер)
+    clientLogger.warn('📊 allQuestionsRaw: Extraction complete', {
       questionsFromGroupsCount: questionsFromGroups.length,
       rootQuestionsCount: questions.length,
       totalExtracted: raw.length,
       extractedQuestionIds: raw.map(q => q?.id).filter(Boolean),
       hasEmptyResult: raw.length === 0,
+      questionnaireId: questionnaire?.id,
+      groupsCount: groups.length,
+      questionsCount: questions.length,
     });
     
     if (raw.length === 0) {
@@ -3524,13 +3527,10 @@ export default function QuizPage() {
         })),
         rootQuestions: questions,
       });
-    }
-      
-      // Убираем вызов addDebugLog из useMemo, чтобы избежать проблем с хуками
-      // Логируем только в консоль
-      // ИСПРАВЛЕНО: Безопасное логирование с проверками
+    } else {
+      // ИСПРАВЛЕНО: Логируем успешное извлечение (используем warn для отправки на сервер)
       try {
-        clientLogger.log('📋 allQuestionsRaw loaded', {
+        clientLogger.warn('✅ allQuestionsRaw loaded successfully', {
           total: raw.length,
           fromGroups: questionsFromGroups.length,
           fromQuestions: questions.length,
@@ -3548,6 +3548,7 @@ export default function QuizPage() {
         // Игнорируем ошибки логирования
         console.warn('Failed to log allQuestionsRaw:', logErr);
       }
+    }
     return raw;
     } catch (err) {
       console.error('❌ Error computing allQuestionsRaw:', err, {
