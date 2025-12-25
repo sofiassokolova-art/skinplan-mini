@@ -876,17 +876,22 @@ export default function QuizPage() {
 
   const loadQuestionnaire = async () => {
     // ИСПРАВЛЕНО: Guard против множественных вызовов loadQuestionnaire
+    // ВАЖНО: Проверяем только refs, не state, чтобы избежать race conditions
     if (loadQuestionnaireInProgressRef.current) {
       clientLogger.log('⛔ loadQuestionnaire() skipped: already in progress');
       return null;
     }
-    if (loadQuestionnaireAttemptedRef.current && questionnaire) {
-      clientLogger.log('⛔ loadQuestionnaire() skipped: already loaded');
+    // ИСПРАВЛЕНО: Проверяем только attemptedRef, без questionnaire state
+    // Это предотвращает повторные вызовы даже если state еще не обновился
+    if (loadQuestionnaireAttemptedRef.current) {
+      clientLogger.log('⛔ loadQuestionnaire() skipped: already attempted (questionnaire may be loading)');
       return null;
     }
     
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
+    
+    clientLogger.log('🔄 loadQuestionnaire() started');
     
     try {
       setLoading(true);
@@ -914,6 +919,11 @@ export default function QuizPage() {
       const data = await Promise.race([loadPromise, timeoutPromise]) as any;
       
       // ИСПРАВЛЕНО: Логируем сырой ответ от API для диагностики
+      const groupsCount = data?.groups?.length || 0;
+      const questionsCount = data?.questions?.length || 0;
+      const groupsWithQuestionsCount = data?.groups?.reduce((sum: number, g: any) => sum + (g?.questions?.length || 0), 0) || 0;
+      const totalQuestionsInResponse = groupsWithQuestionsCount + questionsCount;
+      
       clientLogger.log('📥 Raw API response received', {
         hasData: !!data,
         dataType: typeof data,
@@ -922,9 +932,16 @@ export default function QuizPage() {
         hasGroups: data?.groups !== undefined,
         hasQuestions: data?.questions !== undefined,
         hasMeta: data?._meta !== undefined,
-        groupsCount: data?.groups?.length || 0,
-        questionsCount: data?.questions?.length || 0,
-        dataPreview: data && typeof data === 'object' ? JSON.stringify(data).substring(0, 500) : String(data),
+        groupsCount,
+        questionsCount,
+        groupsWithQuestionsCount,
+        totalQuestionsInResponse,
+        groupsDetails: data?.groups?.map((g: any) => ({
+          id: g?.id,
+          title: g?.title,
+          questionsCount: g?.questions?.length || 0,
+        })) || [],
+        dataPreview: data && typeof data === 'object' ? JSON.stringify(data).substring(0, 1000) : String(data),
       });
       
       // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
@@ -1002,20 +1019,16 @@ export default function QuizPage() {
       const hasGroupsWithQuestions = hasGroups && data.groups.some((g: any) => g.questions && Array.isArray(g.questions) && g.questions.length > 0);
       const hasAnyQuestions = hasGroupsWithQuestions || hasQuestions;
       
-      if (!data || (typeof data === 'object' && Object.keys(data).length === 0) || !hasAnyQuestions) {
+      // ИСПРАВЛЕНО: Детальная проверка с логированием
+      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+        clientLogger.error('❌ Empty or null data received from API', {
+          data,
+          dataType: typeof data,
+          dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+        });
         if (isRetakingQuiz || showRetakeScreen) {
-          // При перепрохождении пробуем загрузить еще раз через небольшую задержку
-          clientLogger.warn('⚠️ Empty questionnaire data received during retake, will retry', { 
-            data,
-            dataType: typeof data,
-            hasGroups,
-            hasQuestions,
-            hasGroupsWithQuestions,
-            hasAnyQuestions,
-          });
-          // ИСПРАВЛЕНО: Сбрасываем loading перед retry, чтобы не было бесконечной загрузки
           setLoading(false);
-          // Повторная попытка через 1 секунду (без рекурсии)
+          loadQuestionnaireInProgressRef.current = false;
           setTimeout(() => {
             loadQuestionnaire().catch((retryErr) => {
               clientLogger.warn('⚠️ Failed to retry questionnaire load during retake', retryErr);
@@ -1024,16 +1037,40 @@ export default function QuizPage() {
           }, 1000);
           return null;
         }
-        clientLogger.error('❌ Empty questionnaire data received from API', { 
-          data,
-          dataType: typeof data,
+        throw new Error('Invalid questionnaire data: received empty or null response');
+      }
+      
+      if (!hasAnyQuestions) {
+        clientLogger.error('❌ Questionnaire has no questions in response', {
           hasGroups,
           hasQuestions,
           hasGroupsWithQuestions,
           hasAnyQuestions,
-          dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+          groupsCount,
+          questionsCount,
+          groupsWithQuestionsCount,
+          totalQuestionsInResponse,
+          groupsDetails: data?.groups?.map((g: any) => ({
+            id: g?.id,
+            title: g?.title,
+            questionsCount: g?.questions?.length || 0,
+          })) || [],
         });
-        throw new Error('Invalid questionnaire data: received empty response or no questions');
+        
+        if (isRetakingQuiz || showRetakeScreen) {
+          // При перепрохождении пробуем загрузить еще раз через небольшую задержку
+          clientLogger.warn('⚠️ Empty questionnaire data received during retake, will retry');
+          setLoading(false);
+          loadQuestionnaireInProgressRef.current = false;
+          setTimeout(() => {
+            loadQuestionnaire().catch((retryErr) => {
+              clientLogger.warn('⚠️ Failed to retry questionnaire load during retake', retryErr);
+              setLoading(false);
+            });
+          }, 1000);
+          return null;
+        }
+        throw new Error('Invalid questionnaire data: received response with no questions');
       }
       
       // ИСПРАВЛЕНО: Убираем _meta из данных перед обработкой
@@ -1158,6 +1195,14 @@ export default function QuizPage() {
           questionIds: (g?.questions || []).map((q: any) => q?.id).filter(Boolean),
         })) || [],
         rootQuestionIds: (questionnaireData?.questions || []).map((q: any) => q?.id).filter(Boolean),
+      });
+      
+      // ИСПРАВЛЕНО: Логируем перед установкой questionnaire в state
+      clientLogger.log('✅ Setting questionnaire in state', {
+        questionnaireId: questionnaireData.id,
+        groupsCount: groups.length,
+        questionsCount: questions.length,
+        totalQuestions: groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length,
       });
       
       setQuestionnaire(questionnaireData);

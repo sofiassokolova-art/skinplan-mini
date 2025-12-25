@@ -183,11 +183,15 @@ function LayoutContent({
   const planState = searchParams?.get('state');
   const isPlanGenerating = pathname === '/plan' && planState === 'generating';
   
+  // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
+  // Это гарантирует, что навигация не монтируется на /quiz даже при асинхронных обновлениях pathname
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+  
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
   // ИСПРАВЛЕНО: Скрываем навигацию на главной странице для нового пользователя
   // Это предотвращает показ навигации с лоадером "загрузка плана" для нового пользователя
-  const hideNav = pathname === '/quiz' || 
-                  pathname.startsWith('/quiz/') || 
+  const hideNav = isOnQuizPage || 
                   pathname === '/loading' ||
                   pathname.startsWith('/loading/') ||
                   isResumeScreen ||
@@ -246,9 +250,10 @@ function LayoutContent({
       <PageTransition>
         {children}
       </PageTransition>
-      {!hideNav && <BottomNavigation />}
+      {/* ИСПРАВЛЕНО: НЕ монтируем BottomNavigation на /quiz, чтобы предотвратить вызов useCart */}
+      {!hideNav && !isOnQuizPage && <BottomNavigation />}
       {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты) */}
-      {pathname !== '/quiz' && !pathname.startsWith('/quiz/') && <ServiceFeedbackPopup />}
+      {!isOnQuizPage && <ServiceFeedbackPopup />}
     </>
   );
 }
@@ -271,9 +276,12 @@ function LayoutFallback() {
                    pathname !== '/cart-new' &&
                    pathname !== '/profile';
   
+  // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+  
   // Определяем, нужно ли скрывать навигацию (та же логика, что и в LayoutContent)
-  const hideNav = pathname === '/quiz' || 
-                 pathname.startsWith('/quiz/') ||
+  const hideNav = isOnQuizPage ||
                  pathname === '/loading' ||
                  pathname.startsWith('/loading/');
   
@@ -308,9 +316,10 @@ function LayoutFallback() {
           <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
         </div>
       </PageTransition>
-      {!hideNav && <BottomNavigation />}
+      {/* ИСПРАВЛЕНО: НЕ монтируем BottomNavigation на /quiz, чтобы предотвратить вызов useCart */}
+      {!hideNav && !isOnQuizPage && <BottomNavigation />}
       {/* Сервисный попап для отзывов */}
-      {pathname !== '/quiz' && !pathname.startsWith('/quiz/') && <ServiceFeedbackPopup />}
+      {!isOnQuizPage && <ServiceFeedbackPopup />}
     </>
   );
 }
