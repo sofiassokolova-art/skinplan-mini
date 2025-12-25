@@ -1350,31 +1350,43 @@ export default function QuizPage() {
       }, 0);
       
       // ИСПРАВЛЕНО: Используем preferences из метаданных вместо отдельных вызовов API
-      const prefs = _meta?.preferences;
-      if (prefs) {
-        // Сохраняем preferences в state для использования в других местах
-        setUserPreferencesData(prefs);
-        
-        // Устанавливаем флаги перепрохождения из метаданных
-        if (prefs.isRetakingQuiz !== undefined) {
-          setIsRetakingQuiz(prefs.isRetakingQuiz);
-        }
-        if (prefs.fullRetakeFromHome !== undefined) {
-          if (prefs.fullRetakeFromHome) {
-            setShowRetakeScreen(true);
-            setIsRetakingQuiz(true);
-            // Очищаем флаг после использования
-            userPreferences.setFullRetakeFromHome(false).catch(() => {});
+      // ИСПРАВЛЕНО: Обрабатываем preferences в try-catch, чтобы ошибки не прерывали загрузку анкеты
+      try {
+        const prefs = _meta?.preferences;
+        if (prefs) {
+          // Сохраняем preferences в state для использования в других местах
+          setUserPreferencesData(prefs);
+          
+          // Устанавливаем флаги перепрохождения из метаданных
+          if (prefs.isRetakingQuiz !== undefined) {
+            setIsRetakingQuiz(prefs.isRetakingQuiz);
           }
+          if (prefs.fullRetakeFromHome !== undefined) {
+            if (prefs.fullRetakeFromHome) {
+              setShowRetakeScreen(true);
+              setIsRetakingQuiz(true);
+              // Очищаем флаг после использования
+              // ИСПРАВЛЕНО: Обрабатываем ошибку очистки флага, чтобы она не прерывала загрузку
+              userPreferences.setFullRetakeFromHome(false).catch((err: any) => {
+                clientLogger.warn('⚠️ Failed to clear fullRetakeFromHome flag (non-critical)', err);
+              });
+            }
+          }
+          if (prefs.paymentRetakingCompleted !== undefined) {
+            setHasRetakingPayment(prefs.paymentRetakingCompleted);
+          }
+          if (prefs.paymentFullRetakeCompleted !== undefined) {
+            setHasFullRetakePayment(prefs.paymentFullRetakeCompleted);
+          }
+          
+          clientLogger.log('✅ Preferences loaded from questionnaire metadata', prefs);
         }
-        if (prefs.paymentRetakingCompleted !== undefined) {
-          setHasRetakingPayment(prefs.paymentRetakingCompleted);
-        }
-        if (prefs.paymentFullRetakeCompleted !== undefined) {
-          setHasFullRetakePayment(prefs.paymentFullRetakeCompleted);
-        }
-        
-        clientLogger.log('✅ Preferences loaded from questionnaire metadata', prefs);
+      } catch (prefsErr: any) {
+        // ИСПРАВЛЕНО: Ошибки при обработке preferences не должны прерывать загрузку анкеты
+        clientLogger.warn('⚠️ Error processing preferences (non-critical, continuing)', {
+          error: prefsErr?.message,
+          errorStack: prefsErr?.stack?.substring(0, 200),
+        });
       }
       // ИСПРАВЛЕНО: Очищаем ошибки при успешной загрузке
       // Это предотвращает показ временных ошибок, которые уже исправлены
@@ -1394,7 +1406,15 @@ export default function QuizPage() {
       }
       
       setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при успешной загрузке
-      return questionnaireData; // Возвращаем загруженную анкету
+      
+      // ИСПРАВЛЕНО: Логируем успешное завершение загрузки
+      clientLogger.warn('✅ loadQuestionnaire completed successfully', {
+        questionnaireId: questionnaireData.id,
+        totalQuestions: totalQuestionsBeforeSet,
+        hasQuestionnaireState: !!questionnaireToSet,
+      });
+      
+      return questionnaireToSet; // ИСПРАВЛЕНО: Возвращаем questionnaireToSet вместо questionnaireData
     } catch (err: any) {
       // ИСПРАВЛЕНО: Улучшено логирование ошибок для диагностики
       const errorDetails = {
