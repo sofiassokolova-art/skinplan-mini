@@ -649,20 +649,23 @@ export default function QuizPage() {
 
       // 2) загрузка анкеты (если нужна)
       // ИСПРАВЛЕНО: Используем ref вместо state для проверки, чтобы избежать race conditions
-      // ИСПРАВЛЕНО: Используем ref для доступа к loadQuestionnaire, так как она объявлена ниже
-      // ИСПРАВЛЕНО: loadQuestionnaireRef.current устанавливается сразу при объявлении функции
+      // КРИТИЧНО: loadQuestionnaire объявлена как useCallback ниже, но ref устанавливается синхронно
+      // Поэтому проверяем ref напрямую, без ожидания
       if (!questionnaireRef.current) {
-        // КРИТИЧНО: Ждем, пока loadQuestionnaireRef.current будет установлен
-        // Это может занять несколько рендеров, так как функция объявляется после init()
-        let attempts = 0;
-        const maxAttempts = 50; // 50 * 100ms = 5 секунд максимум
-        while (!loadQuestionnaireRef.current && attempts < maxAttempts) {
-          clientLogger.log('⏳ Waiting for loadQuestionnaireRef.current to be set...', {
-            attempt: attempts + 1,
-            maxAttempts,
-          });
-          await new Promise(resolve => setTimeout(resolve, 100));
-          attempts++;
+        // КРИТИЧНО: Проверяем, установлен ли ref. Если нет - ждем короткое время
+        // Это защита от race condition, когда init() вызывается до того, как useCallback создал функцию
+        if (!loadQuestionnaireRef.current) {
+          // Ждем максимум 1 секунду (10 попыток по 100ms)
+          let attempts = 0;
+          const maxAttempts = 10; // 10 * 100ms = 1 секунда максимум
+          while (!loadQuestionnaireRef.current && attempts < maxAttempts) {
+            clientLogger.log('⏳ Waiting for loadQuestionnaireRef.current to be set...', {
+              attempt: attempts + 1,
+              maxAttempts,
+            });
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+          }
         }
         
         if (loadQuestionnaireRef.current && !questionnaireRef.current) {
