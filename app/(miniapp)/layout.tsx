@@ -77,14 +77,13 @@ function LayoutContent({
   
   // ИСПРАВЛЕНО: Проверяем, является ли пользователь новым (нет hasPlanProgress)
   // Это нужно для скрытия навигации на главной странице для нового пользователя
-  // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz или /plan
-  // ТЗ: На /quiz и /plan* не должны выполняться запросы к /api/user/preferences
+  // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz
+  // ТЗ: На /quiz не должны выполняться запросы к /api/user/preferences
   useEffect(() => {
-    // ИСПРАВЛЕНО: НА /quiz и /plan* НИКОГДА не делаем запросы
+    // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем запросы
     // Проверяем синхронно через window.location для надежности
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-    if (currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
-        currentPath === '/plan' || currentPath.startsWith('/plan/')) {
+    if (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) {
       setIsNewUser(null);
       return;
     }
