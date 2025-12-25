@@ -218,6 +218,8 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Флаг для предотвращения множественных вызовов loadQuestionnaire
   const loadQuestionnaireInProgressRef = useRef(false);
   const loadQuestionnaireAttemptedRef = useRef(false);
+  // ИСПРАВЛЕНО: Ref для хранения questionnaire в guards (вместо state, чтобы избежать race conditions)
+  const questionnaireRef = useRef<Questionnaire | null>(null);
 
   // ИСПРАВЛЕНО: Очищаем quiz_just_submitted и isSubmitting при входе на /quiz
   // Это предотвращает показ планового лоадера для нового пользователя из-за "залипшего" флага
@@ -570,7 +572,8 @@ export default function QuizPage() {
       }
 
       // 2) загрузка анкеты (если нужна)
-      if (!questionnaire) {
+      // ИСПРАВЛЕНО: Используем ref вместо state для проверки, чтобы избежать race conditions
+      if (!questionnaireRef.current) {
         await loadQuestionnaire();
       }
 
@@ -881,21 +884,22 @@ export default function QuizPage() {
       clientLogger.warn('⛔ loadQuestionnaire() skipped: already in progress');
       return null;
     }
-    // ИСПРАВЛЕНО: Проверяем только attemptedRef, без questionnaire state
+    // ИСПРАВЛЕНО: Проверяем ref вместо state, чтобы избежать race conditions
     // Это предотвращает повторные вызовы даже если state еще не обновился
-    if (loadQuestionnaireAttemptedRef.current && questionnaire) {
-      clientLogger.warn('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists');
+    if (loadQuestionnaireAttemptedRef.current && questionnaireRef.current) {
+      clientLogger.warn('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref');
       return null;
     }
     
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
     
-    // КРИТИЧНО: Логируем с warn, чтобы точно отправить на сервер
-    clientLogger.warn('🔄 loadQuestionnaire() started', {
-      hasQuestionnaire: !!questionnaire,
-      questionnaireId: questionnaire?.id,
-    });
+      // КРИТИЧНО: Логируем с warn, чтобы точно отправить на сервер
+      clientLogger.warn('🔄 loadQuestionnaire() started', {
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+        hasQuestionnaireState: !!questionnaire,
+      });
     
     try {
       setLoading(true);
@@ -1093,6 +1097,7 @@ export default function QuizPage() {
         setLoading(false);
         loadQuestionnaireInProgressRef.current = false;
         loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
+        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
         return null;
       }
       
@@ -1252,6 +1257,8 @@ export default function QuizPage() {
         throw new Error('Cannot set questionnaire with zero questions');
       }
       
+      // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД установкой state, чтобы guards работали корректно
+      questionnaireRef.current = questionnaireData;
       setQuestionnaire(questionnaireData);
       
       // ИСПРАВЛЕНО: Логируем после установки (в следующем тике, чтобы state обновился)
@@ -1337,6 +1344,8 @@ export default function QuizPage() {
         });
         setError('Анкета временно недоступна. Пожалуйста, попробуйте позже или обратитесь в поддержку.');
         setLoading(false);
+        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке пустой анкеты
+        loadQuestionnaireAttemptedRef.current = false; // ИСПРАВЛЕНО: Сбрасываем attemptedRef, чтобы можно было повторить
         return null;
       }
       
@@ -1391,16 +1400,19 @@ export default function QuizPage() {
         setError('Не удалось загрузить анкету. Проверьте подключение к интернету и обновите страницу.');
         // КРИТИЧНО: Сбрасываем attemptedRef при временных ошибках, чтобы можно было повторить
         loadQuestionnaireAttemptedRef.current = false;
+        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
       } else if (err?.status === 500) {
         // Для 500 ошибок (пустая анкета) показываем понятное сообщение
         const errorData = err?.response?.data || err?.response || {};
         const serverMessage = errorData.message || errorData.error || 'Анкета временно недоступна';
         setError(serverMessage);
         loadQuestionnaireAttemptedRef.current = false;
+        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
       } else {
         setError(errorMessage);
         // Для других ошибок тоже сбрасываем, чтобы можно было повторить
         loadQuestionnaireAttemptedRef.current = false;
+        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
       }
       
       setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при ошибке
