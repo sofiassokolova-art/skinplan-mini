@@ -601,8 +601,9 @@ export default function QuizPage() {
       // 3) прогресс/резюм
       // ИСПРАВЛЕНО: Для нового пользователя не загружаем прогресс - это лишний запрос
       // Проверяем hasPlanProgress перед загрузкой прогресса
+      // ИСПРАВЛЕНО: Используем только refs для проверки, чтобы не зависеть от state в зависимостях useCallback
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
-          !hasResumedRef.current && !hasResumed && 
+          !hasResumedRef.current && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
         try {
           // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты
@@ -656,7 +657,7 @@ export default function QuizPage() {
         questionnaireId: questionnaireRef.current?.id,
       });
     }
-  }, [waitForTelegram, initialize, isDev, hasResumed, isStartingOver]); // ИСПРАВЛЕНО: loadQuestionnaire убран из зависимостей, так как он объявлен ниже и стабилен благодаря useCallback
+  }, [waitForTelegram, initialize, isDev]); // ИСПРАВЛЕНО: hasResumed и isStartingOver убраны из зависимостей, используем refs внутри функции
 
   // ИСПРАВЛЕНО: useEffect для init - делаем "однократным"
   // init запускается ровно тогда, когда поменялся сам init (по сути — при первом маунте и когда questionnaire-логика реально изменилась)
