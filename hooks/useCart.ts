@@ -117,13 +117,18 @@ export function useCart() {
                        pathname === '/quiz' || pathname.startsWith('/quiz/');
   
   // ИСПРАВЛЕНО: Если на /quiz, сразу возвращаем disabled query без вызова API
+  // КРИТИЧНО: Также отключаем refetchOnMount, refetchOnWindowFocus и refetchOnReconnect
+  // чтобы предотвратить любые запросы даже из кэша
   if (isOnQuizPage) {
     return useQuery({
       queryKey: [CART_QUERY_KEY],
       queryFn: () => api.getCart() as Promise<any>,
-      staleTime: 1 * 60 * 1000,
-      gcTime: 5 * 60 * 1000,
+      staleTime: Infinity, // КРИТИЧНО: Устанавливаем Infinity, чтобы не делать запросы из кэша
+      gcTime: 0, // КРИТИЧНО: Не кэшируем на /quiz
       enabled: false, // КРИТИЧНО: Отключаем запрос на /quiz
+      refetchOnMount: false, // КРИТИЧНО: Не делаем запросы при монтировании
+      refetchOnWindowFocus: false, // КРИТИЧНО: Не делаем запросы при фокусе окна
+      refetchOnReconnect: false, // КРИТИЧНО: Не делаем запросы при переподключении
     });
   }
   

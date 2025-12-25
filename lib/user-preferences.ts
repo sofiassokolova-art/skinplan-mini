@@ -95,8 +95,29 @@ export async function getUserPreferences() {
     return preferencesCache.data;
   }
 
-  // ИСПРАВЛЕНО: Если уже есть запрос в процессе, ждем его вместо создания нового
+  // ИСПРАВЛЕНО: Если уже есть запрос в процессе, проверяем pathname перед возвратом
+  // Если мы на /quiz, не ждем pending запрос, возвращаем дефолтные значения
   if (pendingRequest) {
+    // КРИТИЧНО: Проверяем pathname еще раз перед возвратом pending запроса
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        console.log('⚠️ getUserPreferences: pending request exists but we are on /quiz - returning defaults');
+        return {
+          isRetakingQuiz: false,
+          fullRetakeFromHome: false,
+          paymentRetakingCompleted: false,
+          paymentFullRetakeCompleted: false,
+          hasPlanProgress: false,
+          routineProducts: null,
+          planFeedbackSent: false,
+          serviceFeedbackSent: false,
+          lastPlanFeedbackDate: null,
+          lastServiceFeedbackDate: null,
+          extra: null,
+        };
+      }
+    }
     return pendingRequest;
   }
 
