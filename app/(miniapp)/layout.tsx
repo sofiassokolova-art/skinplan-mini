@@ -54,16 +54,22 @@ function LayoutContent({
   // Это нужно для скрытия навигации на главной странице для нового пользователя
   // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz
   useEffect(() => {
+    // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем запросы
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      setIsNewUser(null);
+      return;
+    }
+    
     // ИСПРАВЛЕНО: Проверяем готовность Telegram WebApp перед вызовом API
+    // Используем initData из useTelegram, так как он уже проверяет готовность
     const isTelegramReady = Boolean(
-      typeof window !== 'undefined' && 
-      window.Telegram?.WebApp?.initData && 
-      typeof window.Telegram?.WebApp?.initData === 'string' &&
-      window.Telegram.WebApp.initData.length > 0
+      initData && 
+      typeof initData === 'string' &&
+      initData.length > 0
     );
     
-    // Не делаем запросы на /quiz или если Telegram не готов
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/') || !isTelegramReady) {
+    // Не делаем запросы, если Telegram не готов
+    if (!isTelegramReady) {
       setIsNewUser(null);
       return;
     }

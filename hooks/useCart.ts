@@ -21,7 +21,14 @@ export function useCart() {
   const [isTelegramReady, setIsTelegramReady] = React.useState(false);
   
   // ИСПРАВЛЕНО: Проверяем готовность Telegram WebApp перед любыми запросами
+  // ВАЖНО: На /quiz НИКОГДА не делаем запросы, даже после таймаута
   React.useEffect(() => {
+    // ИСПРАВЛЕНО: На /quiz сразу устанавливаем isTelegramReady = false и не меняем
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      setIsTelegramReady(false);
+      return;
+    }
+    
     const checkTelegramReady = () => {
       const isReady = Boolean(
         typeof window !== 'undefined' && 
@@ -35,13 +42,21 @@ export function useCart() {
     // Проверяем сразу
     checkTelegramReady();
     
+    // Если Telegram уже готов - не нужно ждать
+    if (typeof window !== 'undefined' && 
+        window.Telegram?.WebApp?.initData && 
+        typeof window.Telegram.WebApp.initData === 'string' &&
+        window.Telegram.WebApp.initData.length > 0) {
+      return; // Telegram готов, не нужно проверять дальше
+    }
+    
     // Проверяем периодически (на случай, если Telegram загрузится позже)
     const interval = setInterval(checkTelegramReady, 100);
     const timeout = setTimeout(() => {
       clearInterval(interval);
-      // После 5 секунд считаем, что Telegram не загрузится, но все равно не делаем запросы на /quiz
+      // После 5 секунд разрешаем запросы на других страницах (но не на /quiz)
       if (pathname !== '/quiz' && !pathname.startsWith('/quiz/')) {
-        setIsTelegramReady(true); // Разрешаем запросы на других страницах
+        setIsTelegramReady(true);
       }
     }, 5000);
     
