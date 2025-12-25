@@ -265,13 +265,14 @@ export async function setFullRetakeFromHome(value: boolean) {
 }
 
 export async function getHasPlanProgress(): Promise<boolean> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы - возвращаем false для нового пользователя
-  // Это предотвращает лишние запросы для нового пользователя на странице анкеты
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы - возвращаем false для нового пользователя
+  // Это предотвращает лишние запросы для нового пользователя на странице анкеты и плана
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-      console.log('⚠️ getHasPlanProgress called on /quiz - returning false without API call');
-      return false; // Новый пользователь на анкете
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
+      console.log('⚠️ getHasPlanProgress called on /quiz or /plan - returning false without API call');
+      return false; // Новый пользователь на анкете или плане
     }
   }
   
@@ -348,12 +349,13 @@ export async function setPlanFeedbackSent(value: boolean) {
 }
 
 export async function getServiceFeedbackSent(): Promise<boolean> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-      console.log('⚠️ getServiceFeedbackSent called on /quiz - returning false without API call');
-      return false; // На анкете не показываем попап
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
+      console.log('⚠️ getServiceFeedbackSent called on /quiz or /plan - returning false without API call');
+      return false; // На анкете и плане не показываем попап
     }
   }
   const prefs = await getUserPreferences();
@@ -381,12 +383,13 @@ export async function setLastPlanFeedbackDate(value: string | null) {
 }
 
 export async function getLastServiceFeedbackDate(): Promise<string | null> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-      console.log('⚠️ getLastServiceFeedbackDate called on /quiz - returning null without API call');
-      return null; // На анкете не показываем попап
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
+      console.log('⚠️ getLastServiceFeedbackDate called on /quiz or /plan - returning null without API call');
+      return null; // На анкете и плане не показываем попап
     }
   }
   const prefs = await getUserPreferences();
