@@ -71,35 +71,28 @@ export async function getUserPreferences() {
   
   // Проверяем кэш в памяти
   if (preferencesCache && Date.now() - preferencesCache.timestamp < CACHE_TTL) {
-    return preferencesCache.data;
-  }
-
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы - используем дефолтные значения
-  // Preferences будут загружены из метаданных анкеты в loadQuestionnaire
-  // КРИТИЧНО: Проверяем pathname СИНХРОННО перед любыми async операциями
-  if (typeof window !== 'undefined') {
-    const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-      console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call', {
-        pathname,
-        hasPendingRequest: !!pendingRequest,
-      });
-      // ИСПРАВЛЕНО: Возвращаем resolved Promise с дефолтными значениями
-      // Это предотвращает любые async операции на /quiz
-      return Promise.resolve({
-        isRetakingQuiz: false,
-        fullRetakeFromHome: false,
-        paymentRetakingCompleted: false,
-        paymentFullRetakeCompleted: false,
-        hasPlanProgress: false,
-        routineProducts: null,
-        planFeedbackSent: false,
-        serviceFeedbackSent: false,
-        lastPlanFeedbackDate: null,
-        lastServiceFeedbackDate: null,
-        extra: null,
-      });
+    // ИСПРАВЛЕНО: Даже если есть кэш, проверяем pathname на /quiz
+    // На /quiz не используем кэш, возвращаем дефолтные значения
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        console.log('⚠️ getUserPreferences called on /quiz - returning defaults (ignoring cache)');
+        return {
+          isRetakingQuiz: false,
+          fullRetakeFromHome: false,
+          paymentRetakingCompleted: false,
+          paymentFullRetakeCompleted: false,
+          hasPlanProgress: false,
+          routineProducts: null,
+          planFeedbackSent: false,
+          serviceFeedbackSent: false,
+          lastPlanFeedbackDate: null,
+          lastServiceFeedbackDate: null,
+          extra: null,
+        };
+      }
     }
+    return preferencesCache.data;
   }
 
   // ИСПРАВЛЕНО: Если уже есть запрос в процессе, ждем его вместо создания нового

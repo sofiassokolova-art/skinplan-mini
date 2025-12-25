@@ -15,9 +15,24 @@ export function ServiceFeedbackPopup() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // ИСПРАВЛЕНО: Проверяем pathname ПЕРЕД любыми async операциями
+    // На /quiz не показываем попап и не делаем запросы
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        return; // Не показываем попап на /quiz
+      }
+    }
+    
     // Проверяем, нужно ли показывать попап
     const checkShouldShow = async () => {
       if (typeof window === 'undefined') return;
+      
+      // ИСПРАВЛЕНО: Проверяем pathname еще раз внутри async функции
+      const pathname = window.location.pathname;
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+        return; // Не показываем попап на /quiz
+      }
 
       // Если пользователь уже отправил обратную связь через попап - больше не показываем
       try {
