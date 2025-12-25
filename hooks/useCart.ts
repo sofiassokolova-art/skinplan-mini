@@ -119,16 +119,26 @@ export function useCart() {
   // ИСПРАВЛЕНО: Если на /quiz, сразу возвращаем disabled query без вызова API
   // КРИТИЧНО: Также отключаем refetchOnMount, refetchOnWindowFocus и refetchOnReconnect
   // чтобы предотвратить любые запросы даже из кэша
+  // ИСПРАВЛЕНО: queryFn должен возвращать Promise, но он не будет вызван если enabled: false
   if (isOnQuizPage) {
     return useQuery({
       queryKey: [CART_QUERY_KEY],
-      queryFn: () => api.getCart() as Promise<any>,
+      queryFn: async () => {
+        // КРИТИЧНО: Эта функция НЕ должна вызываться, если enabled: false
+        // Но на всякий случай проверяем еще раз и возвращаем пустой результат
+        const checkPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+        if (checkPath === '/quiz' || checkPath.startsWith('/quiz/')) {
+          return { items: [] };
+        }
+        return api.getCart() as Promise<any>;
+      },
       staleTime: Infinity, // КРИТИЧНО: Устанавливаем Infinity, чтобы не делать запросы из кэша
       gcTime: 0, // КРИТИЧНО: Не кэшируем на /quiz
-      enabled: false, // КРИТИЧНО: Отключаем запрос на /quiz
+      enabled: false, // КРИТИЧНО: Отключаем запрос на /quiz - это должно предотвратить вызов queryFn
       refetchOnMount: false, // КРИТИЧНО: Не делаем запросы при монтировании
       refetchOnWindowFocus: false, // КРИТИЧНО: Не делаем запросы при фокусе окна
       refetchOnReconnect: false, // КРИТИЧНО: Не делаем запросы при переподключении
+      retry: false, // КРИТИЧНО: Не повторяем запросы при ошибках
     });
   }
   

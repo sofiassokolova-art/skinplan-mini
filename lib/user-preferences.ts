@@ -314,6 +314,14 @@ export async function setLastPlanFeedbackDate(value: string | null) {
 }
 
 export async function getLastServiceFeedbackDate(): Promise<string | null> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getLastServiceFeedbackDate called on /quiz - returning null without API call');
+      return null; // На анкете не показываем попап
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.lastServiceFeedbackDate;
 }
