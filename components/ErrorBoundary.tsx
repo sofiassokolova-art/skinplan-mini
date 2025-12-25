@@ -223,7 +223,11 @@ export class ErrorBoundary extends Component<Props, State> {
               marginTop: '24px',
             }}>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.reload();
+                  }
+                }}
                 style={{
                   padding: '12px 24px',
                   borderRadius: '12px',
