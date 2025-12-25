@@ -19,23 +19,31 @@ const CACHE_TTL = 30000; // 30 секунд кэш (увеличено для у
 
 // Получаем preferences с кэшированием
 export async function getUserPreferences() {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы - используем дефолтные значения
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы - используем дефолтные значения
   // КРИТИЧНО: Проверяем pathname, href и referrer СИНХРОННО перед любыми async операциями
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
     const href = window.location.href;
     const referrer = document.referrer;
     const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
+    const isNavigatingToPlan = referrer && (referrer.includes('/plan') || referrer.endsWith('/plan'));
     const isQuizInHref = href.includes('/quiz');
-    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/') || isNavigatingToQuiz || isQuizInHref;
+    const isPlanInHref = href.includes('/plan');
+    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
+    const isOnPlanPage = pathname === '/plan' || pathname.startsWith('/plan/');
+    const shouldBlock = isOnQuizPage || isOnPlanPage || isNavigatingToQuiz || isNavigatingToPlan || isQuizInHref || isPlanInHref;
     
-    if (isOnQuizPage) {
-      console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call', {
+    if (shouldBlock) {
+      console.log('⚠️ getUserPreferences called on /quiz or /plan - returning defaults without API call', {
         pathname,
         href,
         referrer,
         isNavigatingToQuiz,
+        isNavigatingToPlan,
         isQuizInHref,
+        isPlanInHref,
+        isOnQuizPage,
+        isOnPlanPage,
         hasPendingRequest: !!pendingRequest,
       });
       // ИСПРАВЛЕНО: Возвращаем resolved Promise с дефолтными значениями

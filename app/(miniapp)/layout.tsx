@@ -77,12 +77,14 @@ function LayoutContent({
   
   // ИСПРАВЛЕНО: Проверяем, является ли пользователь новым (нет hasPlanProgress)
   // Это нужно для скрытия навигации на главной странице для нового пользователя
-  // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz
+  // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz или /plan
+  // ТЗ: На /quiz и /plan* не должны выполняться запросы к /api/user/preferences
   useEffect(() => {
-    // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем запросы
+    // ИСПРАВЛЕНО: НА /quiz и /plan* НИКОГДА не делаем запросы
     // Проверяем синхронно через window.location для надежности
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-    if (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) {
+    if (currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
+        currentPath === '/plan' || currentPath.startsWith('/plan/')) {
       setIsNewUser(null);
       return;
     }
@@ -186,14 +188,19 @@ function LayoutContent({
   // ИСПРАВЛЕНО: Проверяем pathname синхронно через window.location для надежности
   // Это гарантирует, что навигация не монтируется на /quiz даже при асинхронных обновлениях pathname
   // КРИТИЧНО: Проверяем оба варианта для максимальной надежности
+  // ТЗ: Скрываем навигацию на /quiz и /plan* для чистого UX
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const isOnQuizPage = (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) ||
                        (pathname === '/quiz' || pathname.startsWith('/quiz/'));
+  const isOnPlanPage = (currentPath === '/plan' || currentPath.startsWith('/plan/')) ||
+                       (pathname === '/plan' || pathname.startsWith('/plan/'));
   
   // Скрываем навигацию на определенных страницах и в режимах/экранах, где она мешает UX
   // ИСПРАВЛЕНО: Скрываем навигацию на главной странице для нового пользователя
   // Это предотвращает показ навигации с лоадером "загрузка плана" для нового пользователя
+  // ТЗ: Скрываем навигацию на /quiz и /plan* для чистого UX без элементов корзины
   const hideNav = isOnQuizPage || 
+                  isOnPlanPage ||
                   pathname === '/loading' ||
                   pathname.startsWith('/loading/') ||
                   isResumeScreen ||
@@ -252,11 +259,11 @@ function LayoutContent({
       <PageTransition>
         {children}
       </PageTransition>
-      {/* ИСПРАВЛЕНО: НЕ монтируем BottomNavigation на /quiz и для нового пользователя на главной, чтобы предотвратить вызов useCart */}
-      {/* КРИТИЧНО: Используем hideNav, который включает проверку isOnQuizPage и проверку нового пользователя на главной */}
+      {/* ТЗ: НЕ монтируем BottomNavigation на /quiz и /plan* для чистого UX без элементов корзины */}
+      {/* КРИТИЧНО: Используем hideNav, который включает проверку isOnQuizPage, isOnPlanPage и проверку нового пользователя на главной */}
       {!hideNav && <BottomNavigation />}
-      {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты) */}
-      {!isOnQuizPage && <ServiceFeedbackPopup />}
+      {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты и плана) */}
+      {!isOnQuizPage && !isOnPlanPage && <ServiceFeedbackPopup />}
     </>
   );
 }
@@ -319,10 +326,10 @@ function LayoutFallback() {
           <div style={{ color: '#0A5F59', fontSize: '16px' }}>Загрузка...</div>
         </div>
       </PageTransition>
-      {/* ИСПРАВЛЕНО: НЕ монтируем BottomNavigation на /quiz, чтобы предотвратить вызов useCart */}
-      {!hideNav && !isOnQuizPage && <BottomNavigation />}
-      {/* Сервисный попап для отзывов */}
-      {!isOnQuizPage && <ServiceFeedbackPopup />}
+      {/* ТЗ: НЕ монтируем BottomNavigation на /quiz и /plan* для чистого UX без элементов корзины */}
+      {!hideNav && !isOnQuizPage && !isOnPlanPage && <BottomNavigation />}
+      {/* Сервисный попап для отзывов (НЕ на странице анкеты и плана) */}
+      {!isOnQuizPage && !isOnPlanPage && <ServiceFeedbackPopup />}
     </>
   );
 }

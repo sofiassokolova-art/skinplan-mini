@@ -107,33 +107,41 @@ export function useCart() {
     }
   }, [pathname, isTelegramReady]);
   
-  // ИСПРАВЛЕНО: Не загружаем корзину если:
-  // 1. На странице анкеты (проверяем синхронно через window.location для надежности)
+  // ТЗ: Не загружаем корзину если:
+  // 1. На странице анкеты или плана (проверяем синхронно через window.location для надежности)
   // 2. Telegram не готов
   // 3. Новый пользователь на главной странице
-  // КРИТИЧНО: Проверяем pathname синхронно ПЕРЕД вызовом useQuery, чтобы предотвратить запросы на /quiz
-  // ИСПРАВЛЕНО: Проверяем также document.referrer и href для раннего обнаружения навигации на /quiz
+  // КРИТИЧНО: Проверяем pathname синхронно ПЕРЕД вызовом useQuery, чтобы предотвратить запросы на /quiz и /plan
+  // ИСПРАВЛЕНО: Проверяем также document.referrer и href для раннего обнаружения навигации
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const href = typeof window !== 'undefined' ? window.location.href : '';
   const referrer = typeof window !== 'undefined' ? document.referrer : '';
   const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
+  const isNavigatingToPlan = referrer && (referrer.includes('/plan') || referrer.endsWith('/plan'));
   const isQuizInHref = href.includes('/quiz');
+  const isPlanInHref = href.includes('/plan');
   const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
-                       pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-                       isNavigatingToQuiz || isQuizInHref;
+                       pathname === '/quiz' || pathname.startsWith('/quiz/');
+  const isOnPlanPage = currentPath === '/plan' || currentPath.startsWith('/plan/') ||
+                       pathname === '/plan' || pathname.startsWith('/plan/');
+  const shouldBlock = isOnQuizPage || isOnPlanPage || isNavigatingToQuiz || isNavigatingToPlan || isQuizInHref || isPlanInHref;
   
-  // ИСПРАВЛЕНО: Если на /quiz, сразу возвращаем disabled query без вызова API
+  // ТЗ: Если на /quiz или /plan*, сразу возвращаем disabled query без вызова API
   // КРИТИЧНО: Также отключаем refetchOnMount, refetchOnWindowFocus и refetchOnReconnect
   // чтобы предотвратить любые запросы даже из кэша
   // ИСПРАВЛЕНО: queryFn должен возвращать Promise, но он не будет вызван если enabled: false
-  if (isOnQuizPage) {
+  if (shouldBlock) {
     if (process.env.NODE_ENV === 'development') {
-      console.log('🚫 useCart: blocking on /quiz', {
+      console.log('🚫 useCart: blocking on /quiz or /plan', {
         currentPath,
         pathname,
         referrer,
         isNavigatingToQuiz,
+        isNavigatingToPlan,
         isOnQuizPage,
+        isOnPlanPage,
+        isQuizInHref,
+        isPlanInHref,
       });
     }
     return useQuery({
@@ -142,9 +150,10 @@ export function useCart() {
         // КРИТИЧНО: Эта функция НЕ должна вызываться, если enabled: false
         // Но на всякий случай проверяем еще раз и возвращаем пустой результат
         const checkPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-        if (checkPath === '/quiz' || checkPath.startsWith('/quiz/')) {
+        if (checkPath === '/quiz' || checkPath.startsWith('/quiz/') ||
+            checkPath === '/plan' || checkPath.startsWith('/plan/')) {
           if (process.env.NODE_ENV === 'development') {
-            console.warn('⚠️ useCart queryFn called on /quiz despite enabled: false - returning empty');
+            console.warn('⚠️ useCart queryFn called on /quiz or /plan despite enabled: false - returning empty');
           }
           return { items: [] };
         }

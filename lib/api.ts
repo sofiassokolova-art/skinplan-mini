@@ -29,23 +29,26 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  // ИСПРАВЛЕНО: Блокируем запросы к /cart и /user/preferences на странице /quiz
-  // Это предотвращает лишние запросы при загрузке анкеты
+  // ТЗ: Блокируем запросы к /cart и /user/preferences на страницах /quiz и /plan*
+  // Это предотвращает лишние запросы при загрузке анкеты и плана
   // КРИТИЧНО: Проверяем pathname СИНХРОННО перед любыми async операциями
-  // ИСПРАВЛЕНО: Также проверяем document.referrer и window.location для раннего обнаружения навигации на /quiz
+  // ИСПРАВЛЕНО: Также проверяем document.referrer и window.location для раннего обнаружения навигации
   // КРИТИЧНО: Блокируем запросы ДО того, как они попадут в очередь React Query
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
     const href = window.location.href;
     const referrer = document.referrer;
     
-    // ИСПРАВЛЕНО: Проверяем все возможные индикаторы навигации на /quiz
+    // ИСПРАВЛЕНО: Проверяем все возможные индикаторы навигации на /quiz и /plan
     const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
+    const isNavigatingToPlan = referrer && (referrer.includes('/plan') || referrer.endsWith('/plan'));
     const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
+    const isOnPlanPage = pathname === '/plan' || pathname.startsWith('/plan/');
     const isQuizInHref = href.includes('/quiz');
+    const isPlanInHref = href.includes('/plan');
     
-    // КРИТИЧНО: Блокируем запросы, если мы на /quiz ИЛИ навигация на /quiz
-    if (isOnQuizPage || isNavigatingToQuiz || isQuizInHref) {
+    // ТЗ: Блокируем запросы, если мы на /quiz или /plan* ИЛИ навигация на эти страницы
+    if (isOnQuizPage || isOnPlanPage || isNavigatingToQuiz || isNavigatingToPlan || isQuizInHref || isPlanInHref) {
       // Блокируем только определенные endpoints, которые не нужны на /quiz
       // КРИТИЧНО: НЕ блокируем запросы к /questionnaire/active - они нужны для загрузки анкеты!
       // ИСПРАВЛЕНО: Улучшена проверка endpoints для более точной блокировки
@@ -55,14 +58,17 @@ async function request<T>(
                                     (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'));
       
       if (isCartEndpoint || isPreferencesEndpoint) {
-        // ИСПРАВЛЕНО: Логируем в production для диагностики проблемы
-        console.log('🚫 Blocking API request on /quiz:', endpoint, {
+        // ТЗ: Логируем в production для диагностики проблемы
+        console.log('🚫 Blocking API request on /quiz or /plan:', endpoint, {
           pathname,
           href,
           referrer,
           isNavigatingToQuiz,
+          isNavigatingToPlan,
           isOnQuizPage,
+          isOnPlanPage,
           isQuizInHref,
+          isPlanInHref,
           isCartEndpoint,
           isPreferencesEndpoint,
         });
