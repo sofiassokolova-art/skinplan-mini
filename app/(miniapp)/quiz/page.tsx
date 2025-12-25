@@ -559,7 +559,15 @@ export default function QuizPage() {
       setError(null);
 
       // 1) telegram init + ожидание (race)
-      initialize();
+      // ИСПРАВЛЕНО: initialize вызывается напрямую, не через зависимость useCallback
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        try {
+          window.Telegram.WebApp.ready();
+          window.Telegram.WebApp.expand();
+        } catch (err) {
+          console.warn('⚠️ Error initializing Telegram WebApp:', err);
+        }
+      }
 
       await Promise.race([
         waitForTelegram(),
@@ -657,7 +665,7 @@ export default function QuizPage() {
         questionnaireId: questionnaireRef.current?.id,
       });
     }
-  }, [waitForTelegram, initialize, isDev]); // ИСПРАВЛЕНО: hasResumed и isStartingOver убраны из зависимостей, используем refs внутри функции
+  }, [waitForTelegram, isDev]); // ИСПРАВЛЕНО: initialize убран из зависимостей, так как это стабильная функция, которая не меняет логику
 
   // ИСПРАВЛЕНО: useEffect для init - делаем "однократным"
   // init запускается ровно тогда, когда поменялся сам init (по сути — при первом маунте и когда questionnaire-логика реально изменилась)

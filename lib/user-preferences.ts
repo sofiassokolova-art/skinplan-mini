@@ -267,6 +267,14 @@ export async function setPlanFeedbackSent(value: boolean) {
 }
 
 export async function getServiceFeedbackSent(): Promise<boolean> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getServiceFeedbackSent called on /quiz - returning false without API call');
+      return false; // На анкете не показываем попап
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.serviceFeedbackSent;
 }
