@@ -14,15 +14,22 @@ export default function BottomNavigation() {
   
   // ИСПРАВЛЕНО: НЕ вызываем useCart на /quiz, чтобы предотвратить лишние запросы
   // Проверяем pathname синхронно через window.location для надежности
+  // КРИТИЧНО: Проверяем ПЕРЕД вызовом useCart, чтобы предотвратить любые запросы
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
-  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
+                       pathname === '/quiz' || pathname.startsWith('/quiz/');
+  
+  // ИСПРАВЛЕНО: Если на /quiz, не вызываем useCart вообще (возвращаем null для компонента)
+  // Это предотвращает любые запросы к API корзины на странице анкеты
+  if (isOnQuizPage) {
+    return null; // КРИТИЧНО: Не рендерим компонент на /quiz
+  }
   
   // ИСПРАВЛЕНО: Используем React Query для кэширования корзины
   // Это значительно снижает количество запросов к API
   // Кэш автоматически обновляется при добавлении/удалении товаров через React Query хуки
-  // ВАЖНО: useCart должен быть вызван всегда (правило хуков), но внутри хука есть guard
   const { data: cartData } = useCart();
-  const cartCount = isOnQuizPage ? 0 : (cartData?.items?.length || 0);
+  const cartCount = cartData?.items?.length || 0;
 
   // Track scroll for hide/show effect
   useEffect(() => {
