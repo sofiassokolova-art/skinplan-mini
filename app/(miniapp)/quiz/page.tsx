@@ -248,13 +248,20 @@ export default function QuizPage() {
         setIsSubmitting(false);
         isSubmittingRef.current = false;
         
-        // ИСПРАВЛЕНО: Также сбрасываем initCompletedRef при монтировании
-        // Это гарантирует, что init() будет выполнен для нового пользователя
-        // НО: НЕ сбрасываем initCalledRef здесь, чтобы предотвратить множественные вызовы
-        // initCalledRef сбрасывается только при startOver()
-        initCompletedRef.current = false;
-        initInProgressRef.current = false;
-        initStartTimeRef.current = null;
+        // ИСПРАВЛЕНО: НЕ сбрасываем initCompletedRef при монтировании, если init() уже был вызван
+        // Это предотвращает повторные вызовы init() при перемонтировании компонента
+        // initCompletedRef сбрасывается только при startOver() или при явной необходимости
+        // ИСПРАВЛЕНО: Сбрасываем только initInProgressRef для безопасности, но не initCompletedRef
+        // если init() уже был вызван и завершен
+        if (!initCalledRef.current) {
+          // Только для нового монтирования (первый раз) сбрасываем флаги
+          initCompletedRef.current = false;
+          initInProgressRef.current = false;
+          initStartTimeRef.current = null;
+        } else {
+          // Если init() уже был вызван, только сбрасываем inProgress для безопасности
+          initInProgressRef.current = false;
+        }
         // initCalledRef НЕ сбрасываем - он должен оставаться true после первого вызова
       }
     } catch (error) {
@@ -540,9 +547,15 @@ export default function QuizPage() {
   // Упрощенная версия: только telegram init, загрузка анкеты, прогресс
   const init = useCallback(async () => {
     // ИСПРАВЛЕНО: Добавлена проверка initCalledRef для предотвращения множественных вызовов
+    // ИСПРАВЛЕНО: Также проверяем наличие анкеты в ref, чтобы не загружать повторно
     if (initCalledRef.current && initCompletedRef.current && !isStartingOverRef.current) {
-      clientLogger.log('⛔ init() skipped: already called and completed');
-      return;
+      // Если анкета уже загружена, не нужно вызывать init() повторно
+      if (questionnaireRef.current) {
+        clientLogger.log('⛔ init() skipped: already called, completed, and questionnaire loaded', {
+          questionnaireId: questionnaireRef.current.id,
+        });
+        return;
+      }
     }
     
     if (initInProgressRef.current) {
@@ -550,8 +563,11 @@ export default function QuizPage() {
       return;
     }
     
-    if (initCompletedRef.current && !isStartingOverRef.current) {
-      clientLogger.log('⛔ init() skipped: already completed');
+    if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
+      // Если init завершен и анкета загружена, не нужно вызывать init() повторно
+      clientLogger.log('⛔ init() skipped: already completed with questionnaire', {
+        questionnaireId: questionnaireRef.current.id,
+      });
       return;
     }
 
@@ -560,7 +576,7 @@ export default function QuizPage() {
     initStartTimeRef.current = initStartTime;
 
     // ИСПРАВЛЕНО: Логируем начало init() для диагностики
-    clientLogger.warn('🚀 init() started', {
+    clientLogger.log('🚀 init() started', {
       initCompleted: initCompletedRef.current,
       isStartingOver: isStartingOverRef.current,
       hasQuestionnaire: !!questionnaireRef.current,
@@ -722,6 +738,20 @@ export default function QuizPage() {
       isMountedRef.current = false;
     };
   }, []); // ИСПРАВЛЕНО: Пустой массив зависимостей - вызываем только один раз при монтировании
+
+  // ИСПРАВЛЕНО: Синхронизация questionnaireRef с state для предотвращения рассинхронизации
+  // Это гарантирует, что ref всегда содержит актуальное значение state
+  useEffect(() => {
+    if (questionnaire) {
+      // Обновляем ref только если state изменился и отличается от ref
+      if (questionnaireRef.current?.id !== questionnaire.id) {
+        questionnaireRef.current = questionnaire;
+        clientLogger.log('🔄 questionnaireRef synchronized with state', {
+          questionnaireId: questionnaire.id,
+        });
+      }
+    }
+  }, [questionnaire]);
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init
@@ -3455,29 +3485,37 @@ export default function QuizPage() {
 
   // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
   // ВАЖНО: все хуки должны вызываться до любых условных return'ов
+  // ИСПРАВЛЕНО: Используем questionnaireRef.current вместо state, чтобы избежать race condition
+  // State обновляется асинхронно, а ref обновляется синхронно, поэтому ref всегда актуален
   const allQuestionsRaw = useMemo(() => {
     try {
+      // ИСПРАВЛЕНО: Используем ref вместо state для получения актуального значения
+      const currentQuestionnaire = questionnaireRef.current || questionnaire;
+      
       // КРИТИЧНО: Детальное логирование для диагностики (используем warn для отправки на сервер)
       clientLogger.warn('📊 allQuestionsRaw useMemo triggered', {
         hasQuestionnaire: !!questionnaire,
         questionnaireId: questionnaire?.id,
-        questionnaireType: typeof questionnaire,
-        questionnaireKeys: questionnaire && typeof questionnaire === 'object' ? Object.keys(questionnaire) : [],
-        questionnaireRef: !!questionnaireRef.current,
+        hasQuestionnaireRef: !!questionnaireRef.current,
         questionnaireRefId: questionnaireRef.current?.id,
+        usingRef: !!questionnaireRef.current,
+        usingState: !!questionnaire && !questionnaireRef.current,
       });
       
-      if (!questionnaire) {
-        clientLogger.warn('⚠️ No questionnaire in state, allQuestionsRaw is empty', {
+      if (!currentQuestionnaire) {
+        clientLogger.warn('⚠️ No questionnaire in ref or state, allQuestionsRaw is empty', {
           hasQuestionnaireRef: !!questionnaireRef.current,
           questionnaireRefId: questionnaireRef.current?.id,
+          hasQuestionnaireState: !!questionnaire,
+          questionnaireStateId: questionnaire?.id,
         });
         return [];
       }
       
+      // ИСПРАВЛЕНО: Используем currentQuestionnaire (из ref или state)
       // Защита от ошибок при доступе к groups и questions
-      const groups = questionnaire.groups || [];
-      const questions = questionnaire.questions || [];
+      const groups = currentQuestionnaire.groups || [];
+      const questions = currentQuestionnaire.questions || [];
       
       // КРИТИЧНО: Проверяем структуру данных
       const groupsType = Array.isArray(groups) ? 'array' : typeof groups;
@@ -3486,7 +3524,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Безопасное логирование с проверками (используем warn для отправки на сервер)
       try {
         clientLogger.warn('📊 allQuestionsRaw: Starting extraction', {
-          questionnaireId: questionnaire?.id,
+          questionnaireId: currentQuestionnaire?.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
           groupsType,
@@ -3503,9 +3541,9 @@ export default function QuizPage() {
           rootQuestionIds: questions.map((q: Question) => q?.id).filter(Boolean),
           // КРИТИЧНО: Полная структура questionnaire для диагностики
           questionnaireStructure: {
-            hasId: !!questionnaire.id,
-            hasGroups: 'groups' in questionnaire,
-            hasQuestions: 'questions' in questionnaire,
+            hasId: !!currentQuestionnaire.id,
+            hasGroups: 'groups' in currentQuestionnaire,
+            hasQuestions: 'questions' in currentQuestionnaire,
             groupsValue: groups,
             questionsValue: questions,
           },
@@ -3520,7 +3558,7 @@ export default function QuizPage() {
         clientLogger.error('❌ questionnaire.groups is not an array!', {
           groups,
           groupsType: typeof groups,
-          questionnaire,
+          questionnaire: currentQuestionnaire,
         });
         return [];
       }
@@ -3529,7 +3567,7 @@ export default function QuizPage() {
         clientLogger.error('❌ questionnaire.questions is not an array!', {
           questions,
           questionsType: typeof questions,
-          questionnaire,
+          questionnaire: currentQuestionnaire,
         });
         return [];
       }
@@ -3595,14 +3633,14 @@ export default function QuizPage() {
       totalExtracted: raw.length,
       extractedQuestionIds: raw.map(q => q?.id).filter(Boolean),
       hasEmptyResult: raw.length === 0,
-      questionnaireId: questionnaire?.id,
-      groupsCount: groups.length,
+          questionnaireId: currentQuestionnaire?.id,
+          groupsCount: groups.length,
       questionsCount: questions.length,
     });
     
     if (raw.length === 0) {
       clientLogger.error('❌ allQuestionsRaw is EMPTY after extraction!', {
-        questionnaireId: questionnaire?.id,
+        questionnaireId: currentQuestionnaire?.id,
         groupsCount: groups.length,
         questionsCount: questions.length,
         questionsFromGroupsCount: questionsFromGroups.length,
@@ -3638,16 +3676,20 @@ export default function QuizPage() {
     }
     return raw;
     } catch (err) {
-      console.error('❌ Error computing allQuestionsRaw:', err, {
-        questionnaire,
-        hasGroups: !!questionnaire?.groups,
-        hasQuestions: !!questionnaire?.questions,
-        groupsCount: questionnaire?.groups?.length,
-        questionsCount: questionnaire?.questions?.length,
+      const currentQuestionnaire = questionnaireRef.current || questionnaire;
+      clientLogger.error('❌ Error computing allQuestionsRaw:', {
+        err,
+        questionnaire: currentQuestionnaire,
+        hasGroups: !!currentQuestionnaire?.groups,
+        hasQuestions: !!currentQuestionnaire?.questions,
+        groupsCount: currentQuestionnaire?.groups?.length,
+        questionsCount: currentQuestionnaire?.questions?.length,
+        hasRef: !!questionnaireRef.current,
+        hasState: !!questionnaire,
       });
       return [];
     }
-  }, [questionnaire]);
+  }, [questionnaire]); // ИСПРАВЛЕНО: Зависимость от questionnaire state, но используем ref внутри для актуального значения
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state для диагностики
   useEffect(() => {

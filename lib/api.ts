@@ -27,6 +27,37 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // ИСПРАВЛЕНО: Блокируем запросы к /cart и /user/preferences на странице /quiz
+  // Это предотвращает лишние запросы при загрузке анкеты
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      // Блокируем только определенные endpoints, которые не нужны на /quiz
+      if (endpoint === '/cart' || endpoint === '/user/preferences') {
+        console.log('🚫 Blocking API request on /quiz:', endpoint);
+        // Возвращаем дефолтные значения для заблокированных endpoints
+        if (endpoint === '/cart') {
+          return { items: [] } as T;
+        }
+        if (endpoint === '/user/preferences') {
+          return {
+            isRetakingQuiz: false,
+            fullRetakeFromHome: false,
+            paymentRetakingCompleted: false,
+            paymentFullRetakeCompleted: false,
+            hasPlanProgress: false,
+            routineProducts: null,
+            planFeedbackSent: false,
+            serviceFeedbackSent: false,
+            lastPlanFeedbackDate: null,
+            lastServiceFeedbackDate: null,
+            extra: null,
+          } as T;
+        }
+      }
+    }
+  }
+  
   // ИСПРАВЛЕНО: Создаем уникальный ключ для запроса (GET запросы кэшируем)
   const isGetRequest = !options.method || options.method === 'GET';
   const requestKey = isGetRequest ? `${options.method || 'GET'}:${endpoint}` : null;
