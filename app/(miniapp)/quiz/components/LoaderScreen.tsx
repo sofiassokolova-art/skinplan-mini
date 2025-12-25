@@ -26,7 +26,7 @@ export function LoaderScreen({ message = 'Загружаем анкету, ещ�
       <Spinner size="large" />
       <div
         style={{
-          color: '#0A5F59',
+          color: '#000000',
           fontSize: '18px',
           fontWeight: '500',
           textAlign: 'center',

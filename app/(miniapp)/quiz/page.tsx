@@ -4375,7 +4375,7 @@ export default function QuizPage() {
             </div>
           </div>
           <div style={{ 
-            color: '#0A5F59', 
+            color: '#000000', 
             fontSize: '16px',
             fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: '500'
@@ -4633,7 +4633,7 @@ export default function QuizPage() {
           style={{
             fontSize: '22px',
             fontWeight: 700,
-            color: '#0A5F59',
+            color: '#000000',
             marginBottom: '8px',
             textAlign: 'center',
           }}
@@ -6576,7 +6576,7 @@ export default function QuizPage() {
               animation: 'spin 1s linear infinite',
               margin: '0 auto 24px',
             }} />
-            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+            <h2 style={{ color: '#000000', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
               Загружаем анкету, еще немного
             </h2>
             <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
@@ -7109,7 +7109,7 @@ export default function QuizPage() {
             animation: 'spin 1s linear infinite',
             margin: '0 auto 24px',
           }} />
-          <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+          <h2 style={{ color: '#000000', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
             Загружаем анкету, еще немного
           </h2>
           <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
