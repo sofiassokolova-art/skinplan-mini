@@ -69,8 +69,9 @@ export default function HomePage() {
     
       // Загружаем данные (пользователь идентифицируется автоматически через initData)
       const initAndLoad = async () => {
-      // ИСПРАВЛЕНО: Не устанавливаем loading = false сразу, чтобы избежать flash UI до завершения загрузки
-      // loading будет установлен в false только после завершения всех асинхронных операций
+      // ИСПРАВЛЕНО: Не устанавливаем loading = true сразу для нового пользователя
+      // Сначала проверяем hasPlanProgress, и только потом устанавливаем loading = true
+      // Это предотвращает показ лоадера плана для нового пользователя
       
       // Проверяем, что приложение открыто через Telegram
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
@@ -187,6 +188,10 @@ export default function HomePage() {
         return;
       }
       
+      // ИСПРАВЛЕНО: Устанавливаем loading = false перед проверкой hasPlanProgress
+      // Это предотвращает показ лоадера плана для нового пользователя
+      setLoading(false);
+      
       const { getHasPlanProgress } = await import('@/lib/user-preferences');
       const hasPlanProgress = await getHasPlanProgress();
       
@@ -196,8 +201,6 @@ export default function HomePage() {
         // ИСПРАВЛЕНО: Не устанавливаем loading = true, чтобы не показывать лоадер "загрузка плана"
         // Проверка плана должна происходить только на бэкенде через API endpoint
         clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, skipping plan check)');
-        // ИСПРАВЛЕНО: Устанавливаем loading = false перед редиректом для нового пользователя
-        setLoading(false);
         // ИСПРАВЛЕНО: Используем window.location.replace для немедленного редиректа без показа страницы
         if (typeof window !== 'undefined') {
           window.location.replace('/quiz');

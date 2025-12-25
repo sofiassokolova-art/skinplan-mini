@@ -576,8 +576,16 @@ export default function QuizPage() {
       // 2) загрузка анкеты (если нужна)
       // ИСПРАВЛЕНО: Используем ref вместо state для проверки, чтобы избежать race conditions
       // ИСПРАВЛЕНО: Используем ref для доступа к loadQuestionnaire, так как она объявлена ниже
+      // ИСПРАВЛЕНО: loadQuestionnaireRef.current устанавливается сразу при объявлении функции
       if (!questionnaireRef.current && loadQuestionnaireRef.current) {
         await loadQuestionnaireRef.current();
+      } else if (!questionnaireRef.current) {
+        // Если ref еще не установлен, ждем немного и пробуем еще раз
+        clientLogger.warn('⚠️ loadQuestionnaireRef.current not set, waiting...');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        if (loadQuestionnaireRef.current && !questionnaireRef.current) {
+          await loadQuestionnaireRef.current();
+        }
       }
 
       // 3) прогресс/резюм
@@ -1123,6 +1131,17 @@ export default function QuizPage() {
       const { _meta: _, ...dataWithoutMeta } = data as any;
       const cleanData = dataWithoutMeta;
       
+      // ИСПРАВЛЕНО: Логируем структуру данных перед извлечением
+      clientLogger.warn('🔍 Extracting questionnaire data from API response', {
+        hasCleanData: !!cleanData,
+        cleanDataKeys: cleanData && typeof cleanData === 'object' ? Object.keys(cleanData) : [],
+        hasId: 'id' in (cleanData || {}),
+        hasGroups: 'groups' in (cleanData || {}),
+        hasQuestions: 'questions' in (cleanData || {}),
+        hasSuccess: 'success' in (cleanData || {}),
+        hasData: 'data' in (cleanData || {}),
+      });
+      
       // ИСПРАВЛЕНО: API может возвращать данные в обертке (success/data)
       // Проверяем, есть ли обертка, и извлекаем данные
       let questionnaireData: Questionnaire | null = null;
@@ -1131,12 +1150,15 @@ export default function QuizPage() {
         // Проверяем, есть ли обертка ApiResponse (success/data)
         if ('success' in cleanData && 'data' in cleanData && (cleanData as any).success === true) {
           questionnaireData = (cleanData as any).data as Questionnaire;
+          clientLogger.warn('✅ Extracted questionnaire from success/data wrapper');
         } else if ('data' in cleanData && !('success' in cleanData)) {
           // Только data без success
           questionnaireData = (cleanData as any).data as Questionnaire;
+          clientLogger.warn('✅ Extracted questionnaire from data wrapper');
         } else if ('id' in cleanData || 'groups' in cleanData || 'questions' in cleanData) {
           // Данные напрямую (без обертки) - проверяем наличие ключевых полей
           questionnaireData = cleanData as Questionnaire;
+          clientLogger.warn('✅ Using cleanData directly as questionnaire');
         } else {
           // Неизвестный формат - логируем для диагностики
           clientLogger.warn('⚠️ Unknown questionnaire data format', {
@@ -1150,6 +1172,13 @@ export default function QuizPage() {
           });
         }
       }
+      
+      // ИСПРАВЛЕНО: Логируем результат извлечения
+      clientLogger.warn('🔍 Questionnaire data extraction result', {
+        hasQuestionnaireData: !!questionnaireData,
+        questionnaireDataId: questionnaireData?.id,
+        questionnaireDataKeys: questionnaireData && typeof questionnaireData === 'object' ? Object.keys(questionnaireData) : [],
+      });
       
       if (!questionnaireData) {
         clientLogger.error('❌ Could not extract questionnaire data from API response', { 
@@ -1227,8 +1256,8 @@ export default function QuizPage() {
           return Array.from(new Set(allIds));
         })(),
       });
-      // ИСПРАВЛЕНО: Логируем структуру анкеты для диагностики
-      clientLogger.log('📦 Questionnaire loaded from API', {
+      // ИСПРАВЛЕНО: Логируем структуру анкеты для диагностики (используем warn для отправки на сервер)
+      clientLogger.warn('📦 Questionnaire loaded from API (before validation)', {
         questionnaireId: questionnaireData?.id,
         hasGroups: !!questionnaireData?.groups,
         groupsCount: questionnaireData?.groups?.length || 0,
@@ -1245,11 +1274,14 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Логируем перед установкой questionnaire в state
       const totalQuestionsBeforeSet = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
-      clientLogger.log('✅ Setting questionnaire in state', {
+      // ИСПРАВЛЕНО: Используем warn для гарантированной отправки на сервер
+      clientLogger.warn('✅ Setting questionnaire in state (before setQuestionnaire)', {
         questionnaireId: questionnaireData.id,
         groupsCount: groups.length,
         questionsCount: questions.length,
         totalQuestions: totalQuestionsBeforeSet,
+        hasGroups: !!questionnaireData.groups,
+        hasQuestions: !!questionnaireData.questions,
         groupsStructure: groups.map(g => ({
           id: g.id,
           title: g.title,
@@ -1277,13 +1309,34 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД установкой state, чтобы guards работали корректно
       questionnaireRef.current = questionnaireData;
+      
+      // ИСПРАВЛЕНО: Логируем перед установкой state для диагностики
+      clientLogger.warn('🔄 About to call setQuestionnaire', {
+        questionnaireId: questionnaireData.id,
+        totalQuestions: totalQuestionsBeforeSet,
+        hasGroups: !!questionnaireData.groups,
+        groupsCount: questionnaireData.groups?.length || 0,
+        hasQuestions: !!questionnaireData.questions,
+        questionsCount: questionnaireData.questions?.length || 0,
+        questionnaireDataKeys: Object.keys(questionnaireData),
+      });
+      
+      // КРИТИЧНО: Устанавливаем state
       setQuestionnaire(questionnaireData);
+      
+      // ИСПРАВЛЕНО: Логируем сразу после setQuestionnaire
+      clientLogger.warn('✅ setQuestionnaire called', {
+        questionnaireId: questionnaireData.id,
+        totalQuestions: totalQuestionsBeforeSet,
+      });
       
       // ИСПРАВЛЕНО: Логируем после установки (в следующем тике, чтобы state обновился)
       setTimeout(() => {
-        clientLogger.log('✅ Questionnaire set in state (verified)', {
+        clientLogger.warn('✅ Questionnaire set in state (verified)', {
           questionnaireId: questionnaireData.id,
           totalQuestions: totalQuestionsBeforeSet,
+          refHasQuestionnaire: !!questionnaireRef.current,
+          refQuestionnaireId: questionnaireRef.current?.id,
         });
       }, 0);
       
@@ -1454,6 +1507,9 @@ export default function QuizPage() {
   }, [isDev, isRetakingQuiz, showRetakeScreen]); // ИСПРАВЛЕНО: Добавлены зависимости для useCallback
   
   // ИСПРАВЛЕНО: Сохраняем функцию в ref для использования в init
+  // ИСПРАВЛЕНО: Устанавливаем ref сразу при объявлении функции, чтобы он был доступен в init
+  loadQuestionnaireRef.current = loadQuestionnaire;
+  
   useEffect(() => {
     loadQuestionnaireRef.current = loadQuestionnaire;
   }, [loadQuestionnaire]);
