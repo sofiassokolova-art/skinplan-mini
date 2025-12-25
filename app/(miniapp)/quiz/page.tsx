@@ -4691,19 +4691,6 @@ export default function QuizPage() {
       </div>
     );
   }
-
-  // ИСПРАВЛЕНО: Ref для отслеживания времени завершения init() для показа второго лоадера
-  const initCompletedTimeRef = useRef<number | null>(null);
-  
-  // ИСПРАВЛЕНО: Отслеживаем время завершения init()
-  // ИСПРАВЛЕНО: Сбрасываем таймер когда анкета загружена
-  useEffect(() => {
-    if (questionnaire && initCompletedTimeRef.current) {
-      // Анкета загружена - сбрасываем таймер
-      clientLogger.log('✅ Questionnaire loaded, clearing fallback loader timer');
-      initCompletedTimeRef.current = null;
-    }
-  }, [questionnaire]);
   
   // ИСПРАВЛЕНО: Если init() еще не завершен, показываем основной лоадер (уже показан выше)
   // Если init() завершен, но анкета не загружена - продолжаем показывать основной лоадер
