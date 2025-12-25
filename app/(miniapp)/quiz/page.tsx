@@ -525,15 +525,16 @@ export default function QuizPage() {
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && !hasResumed && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
-        // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты, если они уже загружены
-        // Это убирает необходимость в отдельном вызове /api/user/preferences
-        const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? 
-          (questionnaire ? await userPreferences.getHasPlanProgress() : false);
-        
-        if (!hasPlanProgress) {
-          // Новый пользователь - не загружаем прогресс
-          clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем загрузку прогресса анкеты');
-        } else {
+        try {
+          // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты, если они уже загружены
+          // Это убирает необходимость в отдельном вызове /api/user/preferences
+          const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? 
+            (questionnaire ? await userPreferences.getHasPlanProgress() : false);
+          
+          if (!hasPlanProgress) {
+            // Новый пользователь - не загружаем прогресс
+            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем загрузку прогресса анкеты');
+          } else {
             // Пользователь не новый - загружаем прогресс
             await Promise.race([
               loadSavedProgressFromServer(),
