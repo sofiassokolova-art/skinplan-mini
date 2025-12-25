@@ -91,6 +91,14 @@ export default function QuizPage() {
   const [hasRetakingPayment, setHasRetakingPayment] = useState(false); // Флаг оплаты перепрохождения темы
   const [hasFullRetakePayment, setHasFullRetakePayment] = useState(false); // Флаг оплаты полного перепрохождения
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
+  // ИСПРАВЛЕНО: Сохраняем preferences из метаданных анкеты, чтобы не делать отдельные запросы
+  const [userPreferencesData, setUserPreferencesData] = useState<{
+    hasPlanProgress?: boolean;
+    isRetakingQuiz?: boolean;
+    fullRetakeFromHome?: boolean;
+    paymentRetakingCompleted?: boolean;
+    paymentFullRetakeCompleted?: boolean;
+  } | null>(null);
   const hasResumedRef = useRef(false); // Синхронный ref для проверки в асинхронных функциях
   const [isStartingOver, setIsStartingOver] = useState(false);
   const [daysSincePlanGeneration, setDaysSincePlanGeneration] = useState<number | null>(null); // Дней с момента генерации плана // Флаг: пользователь нажал "Начать заново"
@@ -172,91 +180,9 @@ export default function QuizPage() {
   }, []);
   
   // ВАЖНО: Все хуки должны быть объявлены ПЕРЕД ранними return'ами
-  // ИСПРАВЛЕНО: Проверяем флаг из localStorage при монтировании
-  // ВАЖНО: Проверяем наличие профиля перед показом экрана перепрохождения
-  // ИСПРАВЛЕНО: Для нового пользователя (нет hasPlanProgress) не проверяем флаги перепрохождения
-  // Это оптимизирует загрузку и предотвращает избыточные запросы к /api/user/preferences
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-      const checkRetakeFlags = async () => {
-        try {
-          // ИСПРАВЛЕНО: Сначала проверяем hasPlanProgress - если его нет, значит пользователь новый
-          // и не нужно проверять флаги перепрохождения
-          const hasPlanProgress = await userPreferences.getHasPlanProgress();
-          
-          if (!hasPlanProgress) {
-            // Новый пользователь - не проверяем флаги перепрохождения
-            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку флагов перепрохождения');
-            return;
-          }
-          
-          const isRetakingFromStorage = await userPreferences.getIsRetakingQuiz();
-          const fullRetakeFromHome = await userPreferences.getFullRetakeFromHome();
-          
-          if (isRetakingFromStorage || fullRetakeFromHome) {
-            // ИСПРАВЛЕНО: Проверяем наличие профиля перед показом экрана перепрохождения
-            // Если профиля нет, но флаги установлены - это ошибка, очищаем флаги
-            const profile = await api.getCurrentProfile();
-            if (profile && profile.id) {
-              // Профиль есть - это нормальное перепрохождение
-              setIsRetakingQuiz(true);
-              
-              if (fullRetakeFromHome) {
-                await userPreferences.setFullRetakeFromHome(false);
-                clientLogger.log('✅ Полное перепрохождение с главной страницы - показываем экран выбора тем с оплатой');
-              }
-              
-              setShowRetakeScreen(true);
-              clientLogger.log('✅ Флаг перепрохождения найден и профиль существует - показываем экран выбора тем');
-            } else {
-              // Профиля нет, но флаги установлены - это ошибка, очищаем флаги
-              clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
-              await userPreferences.setIsRetakingQuiz(false);
-              await userPreferences.setFullRetakeFromHome(false);
-            }
-          }
-        } catch (err: any) {
-          // ИСПРАВЛЕНО: Улучшена обработка ошибок при проверке профиля
-          const isNotFound = err?.status === 404 || 
-                            err?.message?.includes('404') || 
-                            err?.message?.includes('No profile') ||
-                            err?.message?.includes('Profile not found') ||
-                            err?.message?.includes('not found');
-          
-          // Проверяем, не является ли это сетевой ошибкой или таймаутом
-          const isNetworkError = err?.message?.includes('network') || 
-                                err?.message?.includes('Network') ||
-                                err?.message?.includes('fetch') ||
-                                err?.message?.includes('timeout') ||
-                                err?.message?.includes('Таймаут');
-          
-          if (isNotFound) {
-            clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
-            try {
-              await userPreferences.setIsRetakingQuiz(false);
-              await userPreferences.setFullRetakeFromHome(false);
-            } catch (clearError) {
-              // ignore
-            }
-          } else if (isNetworkError) {
-            // Сетевая ошибка - не очищаем флаги, попробуем еще раз позже
-            clientLogger.warn('⚠️ Сетевая ошибка при проверке профиля для перепрохождения, попробуем позже:', err?.message);
-            // Не очищаем флаги, чтобы пользователь мог попробовать еще раз
-          } else {
-            // Другая ошибка - логируем, но не блокируем пользователя
-            clientLogger.warn('⚠️ Ошибка при проверке профиля для перепрохождения:', {
-              message: err?.message,
-              status: err?.status,
-              name: err?.name,
-            });
-            // Не очищаем флаги при неизвестной ошибке - возможно, это временная проблема
-          }
-        }
-      };
-      
-      checkRetakeFlags().catch(() => {});
-    }
-  }, []);
+  // ИСПРАВЛЕНО: Флаги перепрохождения теперь загружаются из метаданных анкеты
+  // Это убирает необходимость в отдельных вызовах /api/user/preferences
+  // Флаги устанавливаются в loadQuestionnaire после получения метаданных
   
   // Функция для добавления логов (только в development)
   // ВАЖНО: оборачиваем в useCallback, чтобы функция не менялась между рендерами
@@ -375,9 +301,11 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Проверяем флаги перепрохождения ПЕРЕД проверкой профиля
       const checkRetakeFlags = async () => {
         try {
-          // ИСПРАВЛЕНО: Сначала проверяем hasPlanProgress - если его нет, значит пользователь новый
-          // и не нужно проверять флаги перепрохождения
-          const hasPlanProgress = await userPreferences.getHasPlanProgress();
+          // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты, если они уже загружены
+          // Это убирает необходимость в отдельном вызове /api/user/preferences
+          // Если анкета еще не загружена, используем fallback на API
+          const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? 
+            (questionnaire ? false : await userPreferences.getHasPlanProgress());
           
           if (!hasPlanProgress) {
             // Новый пользователь - не проверяем флаги перепрохождения
@@ -597,14 +525,15 @@ export default function QuizPage() {
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && !hasResumed && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
-        // ИСПРАВЛЕНО: Проверяем, есть ли план прогресс - если нет, значит пользователь новый
-        // и не нужно загружать прогресс анкеты
-        try {
-          const hasPlanProgress = await userPreferences.getHasPlanProgress();
-          if (!hasPlanProgress) {
-            // Новый пользователь - не загружаем прогресс
-            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем загрузку прогресса анкеты');
-          } else {
+        // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты, если они уже загружены
+        // Это убирает необходимость в отдельном вызове /api/user/preferences
+        const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? 
+          (questionnaire ? await userPreferences.getHasPlanProgress() : false);
+        
+        if (!hasPlanProgress) {
+          // Новый пользователь - не загружаем прогресс
+          clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем загрузку прогресса анкеты');
+        } else {
             // Пользователь не новый - загружаем прогресс
             await Promise.race([
               loadSavedProgressFromServer(),
@@ -1086,6 +1015,34 @@ export default function QuizPage() {
         })(),
       });
       setQuestionnaire(questionnaireData);
+      
+      // ИСПРАВЛЕНО: Используем preferences из метаданных вместо отдельных вызовов API
+      const prefs = _meta?.preferences;
+      if (prefs) {
+        // Сохраняем preferences в state для использования в других местах
+        setUserPreferencesData(prefs);
+        
+        // Устанавливаем флаги перепрохождения из метаданных
+        if (prefs.isRetakingQuiz !== undefined) {
+          setIsRetakingQuiz(prefs.isRetakingQuiz);
+        }
+        if (prefs.fullRetakeFromHome !== undefined) {
+          if (prefs.fullRetakeFromHome) {
+            setShowRetakeScreen(true);
+            setIsRetakingQuiz(true);
+            // Очищаем флаг после использования
+            userPreferences.setFullRetakeFromHome(false).catch(() => {});
+          }
+        }
+        if (prefs.paymentRetakingCompleted !== undefined) {
+          setHasRetakingPayment(prefs.paymentRetakingCompleted);
+        }
+        if (prefs.paymentFullRetakeCompleted !== undefined) {
+          setHasFullRetakePayment(prefs.paymentFullRetakeCompleted);
+        }
+        
+        clientLogger.log('✅ Preferences loaded from questionnaire metadata', prefs);
+      }
       // ИСПРАВЛЕНО: Очищаем ошибки при успешной загрузке
       // Это предотвращает показ временных ошибок, которые уже исправлены
       setError(null);
@@ -3784,19 +3741,14 @@ export default function QuizPage() {
     // Если анкета завершена - редиректим на /plan, а не показываем лоадер
     // ИСПРАВЛЕНО: Для нового пользователя не проверяем завершенность - это лишний запрос
     const checkQuizCompleted = async () => {
-      // ИСПРАВЛЕНО: Проверяем hasPlanProgress ПЕРЕД проверкой профиля
-      // Если hasPlanProgress нет, значит пользователь новый и не нужно проверять завершенность
-      try {
-        const hasPlanProgress = await userPreferences.getHasPlanProgress();
+        // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты, если они уже загружены
+        // Это убирает необходимость в отдельном вызове /api/user/preferences
+        const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? false;
         if (!hasPlanProgress) {
           // Новый пользователь - не проверяем завершенность анкеты
           clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем проверку завершенности анкеты');
           return;
         }
-      } catch (err) {
-        // При ошибке проверки hasPlanProgress продолжаем проверку завершенности на всякий случай
-        clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, продолжаем проверку завершенности:', err);
-      }
       
       try {
         const profile = await api.getCurrentProfile();

@@ -15,9 +15,34 @@ export async function GET(request: NextRequest) {
     let userId: string | null = null;
     let shouldRedirectToPlan = false;
     let isCompleted = false;
+    let hasPlanProgress = false;
+    let isRetakingQuiz = false;
+    let fullRetakeFromHome = false;
+    let paymentRetakingCompleted = false;
+    let paymentFullRetakeCompleted = false;
     
     if (auth.ok) {
       userId = auth.ctx.userId;
+      
+      // ИСПРАВЛЕНО: Получаем preferences пользователя одним запросом
+      const userPrefs = await prisma.userPreferences.findUnique({
+        where: { userId },
+        select: {
+          hasPlanProgress: true,
+          isRetakingQuiz: true,
+          fullRetakeFromHome: true,
+          paymentRetakingCompleted: true,
+          paymentFullRetakeCompleted: true,
+        },
+      });
+      
+      if (userPrefs) {
+        hasPlanProgress = userPrefs.hasPlanProgress;
+        isRetakingQuiz = userPrefs.isRetakingQuiz;
+        fullRetakeFromHome = userPrefs.fullRetakeFromHome;
+        paymentRetakingCompleted = userPrefs.paymentRetakingCompleted;
+        paymentFullRetakeCompleted = userPrefs.paymentFullRetakeCompleted;
+      }
       
       // Проверяем наличие профиля
       const profile = await getCurrentProfile(userId);
@@ -169,7 +194,7 @@ export async function GET(request: NextRequest) {
       isCompleted,
     });
 
-    // ИСПРАВЛЕНО: Возвращаем анкету с информацией о редиректе
+    // ИСПРАВЛЕНО: Возвращаем анкету с информацией о редиректе и preferences
     return NextResponse.json({
       ...formatted,
       // Метаданные для фронтенда
@@ -177,6 +202,14 @@ export async function GET(request: NextRequest) {
         shouldRedirectToPlan,
         isCompleted,
         hasProfile: !!userId, // userId будет null если не авторизован
+        // ИСПРАВЛЕНО: Добавляем preferences в метаданные, чтобы не делать отдельные запросы
+        preferences: {
+          hasPlanProgress,
+          isRetakingQuiz,
+          fullRetakeFromHome,
+          paymentRetakingCompleted,
+          paymentFullRetakeCompleted,
+        },
       },
     });
   } catch (error: any) {
