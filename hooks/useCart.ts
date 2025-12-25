@@ -112,15 +112,28 @@ export function useCart() {
   // 2. Telegram не готов
   // 3. Новый пользователь на главной странице
   // КРИТИЧНО: Проверяем pathname синхронно ПЕРЕД вызовом useQuery, чтобы предотвратить запросы на /quiz
+  // ИСПРАВЛЕНО: Проверяем также document.referrer для раннего обнаружения навигации на /quiz
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+  const referrer = typeof window !== 'undefined' ? document.referrer : '';
+  const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
   const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
-                       pathname === '/quiz' || pathname.startsWith('/quiz/');
+                       pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+                       isNavigatingToQuiz;
   
   // ИСПРАВЛЕНО: Если на /quiz, сразу возвращаем disabled query без вызова API
   // КРИТИЧНО: Также отключаем refetchOnMount, refetchOnWindowFocus и refetchOnReconnect
   // чтобы предотвратить любые запросы даже из кэша
   // ИСПРАВЛЕНО: queryFn должен возвращать Promise, но он не будет вызван если enabled: false
   if (isOnQuizPage) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚫 useCart: blocking on /quiz', {
+        currentPath,
+        pathname,
+        referrer,
+        isNavigatingToQuiz,
+        isOnQuizPage,
+      });
+    }
     return useQuery({
       queryKey: [CART_QUERY_KEY],
       queryFn: async () => {
@@ -128,6 +141,9 @@ export function useCart() {
         // Но на всякий случай проверяем еще раз и возвращаем пустой результат
         const checkPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
         if (checkPath === '/quiz' || checkPath.startsWith('/quiz/')) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ useCart queryFn called on /quiz despite enabled: false - returning empty');
+          }
           return { items: [] };
         }
         return api.getCart() as Promise<any>;

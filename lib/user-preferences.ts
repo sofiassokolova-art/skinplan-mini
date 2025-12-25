@@ -215,6 +215,13 @@ export async function removeUserPreference(key: string) {
 // Helper функции для конкретных флагов (для удобства)
 
 export async function getIsRetakingQuiz(): Promise<boolean> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.isRetakingQuiz;
 }
@@ -224,6 +231,13 @@ export async function setIsRetakingQuiz(value: boolean) {
 }
 
 export async function getFullRetakeFromHome(): Promise<boolean> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.fullRetakeFromHome;
 }
@@ -252,6 +266,13 @@ export async function setHasPlanProgress(value: boolean) {
 }
 
 export async function getPaymentRetakingCompleted(): Promise<boolean> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.paymentRetakingCompleted;
 }
@@ -261,6 +282,13 @@ export async function setPaymentRetakingCompleted(value: boolean) {
 }
 
 export async function getPaymentFullRetakeCompleted(): Promise<boolean> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.paymentFullRetakeCompleted;
 }
@@ -270,6 +298,13 @@ export async function setPaymentFullRetakeCompleted(value: boolean) {
 }
 
 export async function getRoutineProducts(): Promise<any> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return null;
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.routineProducts;
 }
@@ -279,6 +314,13 @@ export async function setRoutineProducts(value: any) {
 }
 
 export async function getPlanFeedbackSent(): Promise<boolean> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return false;
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.planFeedbackSent;
 }
@@ -305,6 +347,13 @@ export async function setServiceFeedbackSent(value: boolean) {
 }
 
 export async function getLastPlanFeedbackDate(): Promise<string | null> {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      return null;
+    }
+  }
   const prefs = await getUserPreferences();
   return prefs.lastPlanFeedbackDate;
 }
