@@ -24,9 +24,10 @@ export function ServiceFeedbackPopup() {
         return; // Не показываем попап на /quiz
       }
       
-      // КРИТИЧНО: На главной странице проверяем, есть ли план, ПЕРЕД вызовом getUserPreferences
+      // КРИТИЧНО: На главной странице (/home) проверяем, есть ли план, ПЕРЕД вызовом getUserPreferences
       // Это предотвращает запросы к /api/user/preferences для нового пользователя
-      if (pathname === '/') {
+      // ИСПРАВЛЕНО: Проверяем /home вместо /, так как / теперь просто редирект
+      if (pathname === '/home') {
         // Проверяем sessionStorage для hasPlanProgress БЕЗ API вызова
         try {
           const cached = sessionStorage.getItem('user_preferences_cache');
@@ -59,8 +60,9 @@ export function ServiceFeedbackPopup() {
         return; // Не показываем попап на /quiz
       }
       
-      // КРИТИЧНО: На главной странице проверяем наличие плана ПЕРЕД вызовом getUserPreferences
-      if (pathname === '/') {
+      // КРИТИЧНО: На главной странице (/home) проверяем наличие плана ПЕРЕД вызовом getUserPreferences
+      // ИСПРАВЛЕНО: Проверяем /home вместо /, так как / теперь просто редирект
+      if (pathname === '/home') {
         // Проверяем sessionStorage для hasPlanProgress БЕЗ API вызова
         try {
           const cached = sessionStorage.getItem('user_preferences_cache');

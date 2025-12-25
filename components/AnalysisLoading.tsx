@@ -50,7 +50,7 @@ export function AnalysisLoading({ onComplete, duration = 6000 }: AnalysisLoading
         textAlign: 'center',
       }}>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/home')}
           style={{
             background: 'none',
             border: 'none',

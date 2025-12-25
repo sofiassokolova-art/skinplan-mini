@@ -152,7 +152,7 @@ function QuizUpdateResultContent() {
           </button>
           
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/home')}
             style={{
               width: '100%',
               padding: '16px',

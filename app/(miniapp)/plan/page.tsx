@@ -1561,7 +1561,7 @@ export default function PlanPage() {
             Для просмотра плана необходимо открыть приложение через Telegram Mini App.
           </p>
           <a
-            href="/"
+            href="/home"
             style={{
               display: 'inline-block',
               padding: '12px 24px',

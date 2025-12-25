@@ -477,7 +477,7 @@ export function PlanPageClientNew({
         marginBottom: '20px',
       }}>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/home')}
           style={{
             background: 'none',
             border: 'none',

@@ -111,7 +111,7 @@ export default function CartPage() {
         marginRight: '-20px',
       }}>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/home')}
           style={{
             background: 'none',
             border: 'none',

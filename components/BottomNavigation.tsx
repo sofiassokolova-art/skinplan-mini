@@ -49,7 +49,7 @@ export default function BottomNavigation() {
   }, []);
 
   const navItems = [
-    { path: '/', label: 'Главная', icon: 'home' },
+    { path: '/home', label: 'Главная', icon: 'home' },
     { path: '/plan', label: 'План', icon: 'plan' },
     { path: '/cart', label: 'Избранное', icon: 'wishlist' },
     { path: '/profile', label: 'Профиль', icon: 'profile' },
@@ -59,8 +59,8 @@ export default function BottomNavigation() {
   const showCartButton = cartCount > 0;
 
   const isActive = (path: string) => {
-    if (path === '/') {
-      return pathname === '/';
+    if (path === '/home') {
+      return pathname === '/home';
     }
     // Для /cart нужно точное совпадение или /cart/..., но не /cart-new
     if (path === '/cart') {

@@ -89,7 +89,7 @@ export default function ClearStoragePage() {
 
       // Автоматически перенаправляем на главную через 3 секунды
       setTimeout(() => {
-        router.push('/');
+        router.push('/home');
       }, 3000);
     } catch (error: any) {
       console.error('Ошибка при очистке:', error);

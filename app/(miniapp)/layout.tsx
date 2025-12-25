@@ -242,7 +242,7 @@ function LayoutContent({
           textAlign: 'center',
         }}>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/home')}
             style={{
               background: 'none',
               border: 'none',
