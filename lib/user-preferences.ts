@@ -113,14 +113,15 @@ export async function getUserPreferences() {
     return preferencesCache.data;
   }
 
-  // ИСПРАВЛЕНО: Если уже есть запрос в процессе, проверяем pathname перед возвратом
-  // Если мы на /quiz, не ждем pending запрос, возвращаем дефолтные значения
+  // ТЗ: Если уже есть запрос в процессе, проверяем pathname перед возвратом
+  // Если мы на /quiz или /plan*, не ждем pending запрос, возвращаем дефолтные значения
   if (pendingRequest) {
     // КРИТИЧНО: Проверяем pathname еще раз перед возвратом pending запроса
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname;
-      if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-        console.log('⚠️ getUserPreferences: pending request exists but we are on /quiz - returning defaults');
+      if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+          pathname === '/plan' || pathname.startsWith('/plan/')) {
+        console.log('⚠️ getUserPreferences: pending request exists but we are on /quiz or /plan - returning defaults');
         return {
           isRetakingQuiz: false,
           fullRetakeFromHome: false,
@@ -233,10 +234,11 @@ export async function removeUserPreference(key: string) {
 // Helper функции для конкретных флагов (для удобства)
 
 export async function getIsRetakingQuiz(): Promise<boolean> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
       return false;
     }
   }
@@ -249,10 +251,11 @@ export async function setIsRetakingQuiz(value: boolean) {
 }
 
 export async function getFullRetakeFromHome(): Promise<boolean> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
       return false;
     }
   }
@@ -285,10 +288,11 @@ export async function setHasPlanProgress(value: boolean) {
 }
 
 export async function getPaymentRetakingCompleted(): Promise<boolean> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
       return false;
     }
   }
@@ -301,10 +305,11 @@ export async function setPaymentRetakingCompleted(value: boolean) {
 }
 
 export async function getPaymentFullRetakeCompleted(): Promise<boolean> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
       return false;
     }
   }
@@ -317,10 +322,11 @@ export async function setPaymentFullRetakeCompleted(value: boolean) {
 }
 
 export async function getRoutineProducts(): Promise<any> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
       return null;
     }
   }
@@ -333,10 +339,11 @@ export async function setRoutineProducts(value: any) {
 }
 
 export async function getPlanFeedbackSent(): Promise<boolean> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
       return false;
     }
   }
@@ -367,10 +374,11 @@ export async function setServiceFeedbackSent(value: boolean) {
 }
 
 export async function getLastPlanFeedbackDate(): Promise<string | null> {
-  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы
+  // ТЗ: НА /quiz и /plan* НИКОГДА не делаем API вызовы
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') ||
+        pathname === '/plan' || pathname.startsWith('/plan/')) {
       return null;
     }
   }
