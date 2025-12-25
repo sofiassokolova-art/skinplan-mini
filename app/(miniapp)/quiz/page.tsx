@@ -4399,7 +4399,7 @@ export default function QuizPage() {
         }}>
           <div style={{
             position: 'relative',
-            width: '120px',
+            width: '160px',
             height: '100px',
             display: 'flex',
             alignItems: 'center',
@@ -4414,12 +4414,12 @@ export default function QuizPage() {
             color: '#000000', 
             fontSize: '16px',
             fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: '500'
+            fontWeight: '200' // Inter Extra Light
           }}>Загружаем анкету, еще немного</div>
           <style>{`
             .loader-shapes {
               position: relative;
-              width: 120px;
+              width: 160px;
               height: 100px;
             }
             
@@ -4431,11 +4431,11 @@ export default function QuizPage() {
             }
             
             .loader-shape-1 {
-              animation: morph-left 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+              animation: morph-left 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             }
             
             .loader-shape-2 {
-              animation: morph-right 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+              animation: morph-right 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             }
             
             @keyframes morph-left {
@@ -4445,6 +4445,7 @@ export default function QuizPage() {
                 width: 20px;
                 height: 20px;
                 left: 0;
+                transform: translateY(-50%);
                 opacity: 1;
               }
               /* Состояние 2: маленький круг (20x20) слева */
@@ -4453,38 +4454,34 @@ export default function QuizPage() {
                 width: 20px;
                 height: 20px;
                 left: 0;
+                transform: translateY(-50%);
                 opacity: 1;
               }
-              /* Состояние 3: начало слияния - вытянутая форма (60x38) слева */
+              /* Состояние 3: очень вытянутая форма (96x38) по центру - слияние */
               40% {
-                border-radius: 50% 50% 50% 50%;
-                width: 60px;
-                height: 38px;
-                left: 0;
-                opacity: 1;
-              }
-              /* Состояние 4: очень вытянутая форма (96x38) по центру - обе формы слиты */
-              50% {
-                border-radius: 50% 50% 50% 50%;
+                border-radius: 50%;
                 width: 96px;
                 height: 38px;
                 left: 12px;
+                transform: translateY(-50%);
                 opacity: 1;
               }
-              /* Состояние 5: вытянутая форма (60x38) слева */
+              /* Состояние 4: вытянутая форма (60x38) слева */
               60% {
-                border-radius: 50% 50% 50% 50%;
+                border-radius: 50%;
                 width: 60px;
                 height: 38px;
                 left: 0;
+                transform: translateY(-50%);
                 opacity: 1;
               }
-              /* Состояние 6: большой круг (48x48) слева */
+              /* Состояние 5: большой круг (48x48) слева */
               80% {
                 border-radius: 50%;
                 width: 48px;
                 height: 48px;
                 left: 0;
+                transform: translateY(-50%);
                 opacity: 1;
               }
             }
@@ -4496,46 +4493,43 @@ export default function QuizPage() {
                 width: 48px;
                 height: 48px;
                 right: 0;
+                transform: translateY(-50%);
                 opacity: 1;
               }
               /* Состояние 2: вытянутая форма (60x38) справа */
               20% {
-                border-radius: 50% 50% 50% 50%;
+                border-radius: 50%;
                 width: 60px;
                 height: 38px;
                 right: 0;
+                transform: translateY(-50%);
                 opacity: 1;
               }
-              /* Состояние 3: начало слияния - правая форма начинает исчезать */
+              /* Состояние 3: очень вытянутая форма (96x38) по центру - слияние, правая форма скрыта */
               40% {
-                border-radius: 50% 50% 50% 50%;
-                width: 60px;
-                height: 38px;
-                right: 0;
-                opacity: 0.5;
-              }
-              /* Состояние 4: очень вытянутая форма (96x38) по центру - обе формы слиты, правая полностью скрыта */
-              50% {
-                border-radius: 50% 50% 50% 50%;
+                border-radius: 50%;
                 width: 0;
                 height: 38px;
                 right: 12px;
+                transform: translateY(-50%);
                 opacity: 0;
               }
-              /* Состояние 5: маленький круг (20x20) справа появляется */
+              /* Состояние 4: маленький круг (20x20) справа */
               60% {
                 border-radius: 50%;
                 width: 20px;
                 height: 20px;
                 right: 0;
+                transform: translateY(-50%);
                 opacity: 1;
               }
-              /* Состояние 6: маленький круг (20x20) справа */
+              /* Состояние 5: маленький круг (20x20) справа */
               80% {
                 border-radius: 50%;
                 width: 20px;
                 height: 20px;
                 right: 0;
+                transform: translateY(-50%);
                 opacity: 1;
               }
             }
