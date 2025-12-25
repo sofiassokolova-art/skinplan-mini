@@ -252,9 +252,9 @@ function LayoutContent({
       <PageTransition>
         {children}
       </PageTransition>
-      {/* ИСПРАВЛЕНО: НЕ монтируем BottomNavigation на /quiz, чтобы предотвратить вызов useCart */}
-      {/* КРИТИЧНО: Проверяем только isOnQuizPage, hideNav уже включает эту проверку, но для надежности используем явную проверку */}
-      {!isOnQuizPage && <BottomNavigation />}
+      {/* ИСПРАВЛЕНО: НЕ монтируем BottomNavigation на /quiz и для нового пользователя на главной, чтобы предотвратить вызов useCart */}
+      {/* КРИТИЧНО: Используем hideNav, который включает проверку isOnQuizPage и проверку нового пользователя на главной */}
+      {!hideNav && <BottomNavigation />}
       {/* Сервисный попап для отзывов (показывается раз в неделю, НЕ на странице анкеты) */}
       {!isOnQuizPage && <ServiceFeedbackPopup />}
     </>
