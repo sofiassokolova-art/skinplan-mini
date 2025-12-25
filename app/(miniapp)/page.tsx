@@ -115,8 +115,33 @@ export default function HomePage() {
       
       // КРИТИЧНО: Проверяем hasPlanProgress СРАЗУ, без установки loading = true
       // Если пользователь новый - редиректим на /quiz БЕЗ показа контента
-      const { getHasPlanProgress } = await import('@/lib/user-preferences');
-      const hasPlanProgress = await getHasPlanProgress();
+      // ИСПРАВЛЕНО: Используем sessionStorage для проверки hasPlanProgress БЕЗ API вызова
+      // Это предотвращает запрос к /api/user/preferences на главной странице
+      let hasPlanProgress = false;
+      try {
+        if (typeof window !== 'undefined') {
+          const cached = sessionStorage.getItem('user_preferences_cache');
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              hasPlanProgress = parsed?.data?.hasPlanProgress ?? false;
+              clientLogger.log('ℹ️ Using cached hasPlanProgress from sessionStorage:', hasPlanProgress);
+            } catch {
+              // Если кэш поврежден, игнорируем
+            }
+          }
+        }
+        
+        // Если в кэше нет - делаем API запрос, но только если мы не редиректим на /quiz
+        if (!hasPlanProgress) {
+          const { getHasPlanProgress } = await import('@/lib/user-preferences');
+          hasPlanProgress = await getHasPlanProgress();
+        }
+      } catch (error) {
+        // При ошибке считаем, что пользователь новый
+        clientLogger.warn('⚠️ Error checking hasPlanProgress, assuming new user:', error);
+        hasPlanProgress = false;
+      }
       
       if (!hasPlanProgress) {
         // Нет plan_progress - значит пользователь новый

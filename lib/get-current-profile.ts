@@ -171,19 +171,8 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
     // ИСПРАВЛЕНО: Используем множественный orderBy для надежности
     // ИСПРАВЛЕНО: Убран count() - он не нужен для функциональности, только для логов
     
-    // DEBUG: Проверяем идентичность БД перед запросом профилей
-    try {
-      const dbIdentity = await prisma.$queryRaw<Array<{ current_database: string; current_schema: string }>>`
-        SELECT current_database() as current_database, current_schema() as current_schema
-      `;
-      logger.warn('DEBUG: DB identity in getCurrentProfile', { 
-        userId,
-        dbIdentity: dbIdentity[0],
-      });
-    } catch (dbIdentityError) {
-      logger.warn('DEBUG: Failed to get DB identity in getCurrentProfile', { error: (dbIdentityError as any)?.message });
-    }
-    
+    // ИСПРАВЛЕНО: Убраны DEBUG логи - они засоряют логи и не нужны в production
+    // Если нужна диагностика, можно включить через logger.debug в development режиме
     const profiles = await prisma.skinProfile.findMany({
       where: { userId },
       orderBy: [
@@ -191,13 +180,6 @@ async function getCurrentProfileWithDetails(userId: string): Promise<ResolveResu
         { createdAt: 'desc' },
       ],
       take: 1,
-    });
-    
-    // DEBUG: Логируем результат запроса профилей
-    logger.warn('DEBUG: profiles found in getCurrentProfile', {
-      userId,
-      profilesCount: profiles.length,
-      profileIds: profiles.map(p => p.id),
     });
 
     if (profiles.length === 0) {

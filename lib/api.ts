@@ -23,7 +23,9 @@ const activeRequests = new Map<string, Promise<any>>();
 const requestCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 2000; // 2 секунды кэш для одинаковых запросов
 // ИСПРАВЛЕНО: Увеличенный кэш для анкеты (не меняется часто)
-const QUESTIONNAIRE_CACHE_TTL = 30000; // 30 секунд для /questionnaire/active
+// КРИТИЧНО: Увеличено до 5 минут, чтобы предотвратить повторные запросы
+// Анкета не меняется часто, поэтому можно кэшировать дольше
+const QUESTIONNAIRE_CACHE_TTL = 300000; // 5 минут для /questionnaire/active
 
 async function request<T>(
   endpoint: string,
