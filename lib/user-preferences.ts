@@ -20,12 +20,22 @@ const CACHE_TTL = 30000; // 30 секунд кэш (увеличено для у
 // Получаем preferences с кэшированием
 export async function getUserPreferences() {
   // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы - используем дефолтные значения
-  // КРИТИЧНО: Проверяем pathname СИНХРОННО перед любыми async операциями
+  // КРИТИЧНО: Проверяем pathname, href и referrer СИНХРОННО перед любыми async операциями
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    const href = window.location.href;
+    const referrer = document.referrer;
+    const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
+    const isQuizInHref = href.includes('/quiz');
+    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/') || isNavigatingToQuiz || isQuizInHref;
+    
+    if (isOnQuizPage) {
       console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call', {
         pathname,
+        href,
+        referrer,
+        isNavigatingToQuiz,
+        isQuizInHref,
         hasPendingRequest: !!pendingRequest,
       });
       // ИСПРАВЛЕНО: Возвращаем resolved Promise с дефолтными значениями

@@ -112,13 +112,15 @@ export function useCart() {
   // 2. Telegram не готов
   // 3. Новый пользователь на главной странице
   // КРИТИЧНО: Проверяем pathname синхронно ПЕРЕД вызовом useQuery, чтобы предотвратить запросы на /quiz
-  // ИСПРАВЛЕНО: Проверяем также document.referrer для раннего обнаружения навигации на /quiz
+  // ИСПРАВЛЕНО: Проверяем также document.referrer и href для раннего обнаружения навигации на /quiz
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+  const href = typeof window !== 'undefined' ? window.location.href : '';
   const referrer = typeof window !== 'undefined' ? document.referrer : '';
   const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
+  const isQuizInHref = href.includes('/quiz');
   const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/') ||
                        pathname === '/quiz' || pathname.startsWith('/quiz/') ||
-                       isNavigatingToQuiz;
+                       isNavigatingToQuiz || isQuizInHref;
   
   // ИСПРАВЛЕНО: Если на /quiz, сразу возвращаем disabled query без вызова API
   // КРИТИЧНО: Также отключаем refetchOnMount, refetchOnWindowFocus и refetchOnReconnect

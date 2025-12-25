@@ -32,16 +32,20 @@ async function request<T>(
   // ИСПРАВЛЕНО: Блокируем запросы к /cart и /user/preferences на странице /quiz
   // Это предотвращает лишние запросы при загрузке анкеты
   // КРИТИЧНО: Проверяем pathname СИНХРОННО перед любыми async операциями
-  // ИСПРАВЛЕНО: Также проверяем document.referrer для раннего обнаружения навигации на /quiz
+  // ИСПРАВЛЕНО: Также проверяем document.referrer и window.location для раннего обнаружения навигации на /quiz
+  // КРИТИЧНО: Блокируем запросы ДО того, как они попадут в очередь React Query
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    // ИСПРАВЛЕНО: Проверяем также referrer для раннего обнаружения навигации на /quiz
-    // Это помогает блокировать запросы, которые происходят во время навигации
+    const href = window.location.href;
     const referrer = document.referrer;
-    const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
-    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/') || isNavigatingToQuiz;
     
-    if (isOnQuizPage) {
+    // ИСПРАВЛЕНО: Проверяем все возможные индикаторы навигации на /quiz
+    const isNavigatingToQuiz = referrer && (referrer.includes('/quiz') || referrer.endsWith('/quiz'));
+    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
+    const isQuizInHref = href.includes('/quiz');
+    
+    // КРИТИЧНО: Блокируем запросы, если мы на /quiz ИЛИ навигация на /quiz
+    if (isOnQuizPage || isNavigatingToQuiz || isQuizInHref) {
       // Блокируем только определенные endpoints, которые не нужны на /quiz
       // КРИТИЧНО: НЕ блокируем запросы к /questionnaire/active - они нужны для загрузки анкеты!
       // ИСПРАВЛЕНО: Улучшена проверка endpoints для более точной блокировки
@@ -51,17 +55,17 @@ async function request<T>(
                                     (endpoint.includes('/user/preferences') && !endpoint.includes('/questionnaire'));
       
       if (isCartEndpoint || isPreferencesEndpoint) {
-        // ИСПРАВЛЕНО: Логируем только в development для диагностики
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🚫 Blocking API request on /quiz:', endpoint, {
-            pathname,
-            referrer,
-            isNavigatingToQuiz,
-            isOnQuizPage,
-            isCartEndpoint,
-            isPreferencesEndpoint,
-          });
-        }
+        // ИСПРАВЛЕНО: Логируем в production для диагностики проблемы
+        console.log('🚫 Blocking API request on /quiz:', endpoint, {
+          pathname,
+          href,
+          referrer,
+          isNavigatingToQuiz,
+          isOnQuizPage,
+          isQuizInHref,
+          isCartEndpoint,
+          isPreferencesEndpoint,
+        });
         // Возвращаем дефолтные значения для заблокированных endpoints
         // КРИТИЧНО: Возвращаем resolved Promise, чтобы не блокировать код, который ожидает результат
         if (isCartEndpoint) {
