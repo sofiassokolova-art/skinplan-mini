@@ -19,6 +19,33 @@ const CACHE_TTL = 30000; // 30 секунд кэш (увеличено для у
 
 // Получаем preferences с кэшированием
 export async function getUserPreferences() {
+  // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы - используем дефолтные значения
+  // КРИТИЧНО: Проверяем pathname СИНХРОННО перед любыми async операциями
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+      console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call', {
+        pathname,
+        hasPendingRequest: !!pendingRequest,
+      });
+      // ИСПРАВЛЕНО: Возвращаем resolved Promise с дефолтными значениями
+      // Это предотвращает любые async операции на /quiz
+      return {
+        isRetakingQuiz: false,
+        fullRetakeFromHome: false,
+        paymentRetakingCompleted: false,
+        paymentFullRetakeCompleted: false,
+        hasPlanProgress: false,
+        routineProducts: null,
+        planFeedbackSent: false,
+        serviceFeedbackSent: false,
+        lastPlanFeedbackDate: null,
+        lastServiceFeedbackDate: null,
+        extra: null,
+      };
+    }
+  }
+  
   // ИСПРАВЛЕНО: Проверяем sessionStorage для hasPlanProgress (самый частый запрос)
   // Это предотвращает множественные запросы при загрузке страницы
   // ВАЖНО: Используем try-catch для всех операций с sessionStorage, так как они могут быть недоступны
@@ -49,11 +76,17 @@ export async function getUserPreferences() {
 
   // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем API вызовы - используем дефолтные значения
   // Preferences будут загружены из метаданных анкеты в loadQuestionnaire
+  // КРИТИЧНО: Проверяем pathname СИНХРОННО перед любыми async операциями
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
     if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
-      console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call');
-      return {
+      console.log('⚠️ getUserPreferences called on /quiz - returning defaults without API call', {
+        pathname,
+        hasPendingRequest: !!pendingRequest,
+      });
+      // ИСПРАВЛЕНО: Возвращаем resolved Promise с дефолтными значениями
+      // Это предотвращает любые async операции на /quiz
+      return Promise.resolve({
         isRetakingQuiz: false,
         fullRetakeFromHome: false,
         paymentRetakingCompleted: false,
@@ -65,7 +98,7 @@ export async function getUserPreferences() {
         lastPlanFeedbackDate: null,
         lastServiceFeedbackDate: null,
         extra: null,
-      };
+      });
     }
   }
 
