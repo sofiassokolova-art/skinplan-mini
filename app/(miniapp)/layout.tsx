@@ -80,7 +80,9 @@ function LayoutContent({
   // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz
   useEffect(() => {
     // ИСПРАВЛЕНО: НА /quiz НИКОГДА не делаем запросы
-    if (pathname === '/quiz' || pathname.startsWith('/quiz/')) {
+    // Проверяем синхронно через window.location для надежности
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+    if (currentPath === '/quiz' || currentPath.startsWith('/quiz/')) {
       setIsNewUser(null);
       return;
     }

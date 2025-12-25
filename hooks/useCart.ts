@@ -85,11 +85,13 @@ export function useCart() {
   }, [pathname, isTelegramReady]);
   
   // ИСПРАВЛЕНО: Не загружаем корзину если:
-  // 1. На странице анкеты
+  // 1. На странице анкеты (проверяем синхронно через window.location для надежности)
   // 2. Telegram не готов
   // 3. Новый пользователь на главной странице
-  const shouldLoad = pathname !== '/quiz' && 
-                     !pathname.startsWith('/quiz/') && 
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+  const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+  
+  const shouldLoad = !isOnQuizPage && 
                      isTelegramReady && // Telegram должен быть готов
                      !isNewUser; // Не загружаем для новых пользователей на главной
   

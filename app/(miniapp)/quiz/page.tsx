@@ -215,6 +215,9 @@ export default function QuizPage() {
   const profileCheckInProgressRef = useRef(false);
   // Флаг для предотвращения повторных загрузок прогресса
   const progressLoadInProgressRef = useRef(false);
+  // ИСПРАВЛЕНО: Флаг для предотвращения множественных вызовов loadQuestionnaire
+  const loadQuestionnaireInProgressRef = useRef(false);
+  const loadQuestionnaireAttemptedRef = useRef(false);
 
   // ИСПРАВЛЕНО: Очищаем quiz_just_submitted и isSubmitting при входе на /quiz
   // Это предотвращает показ планового лоадера для нового пользователя из-за "залипшего" флага
@@ -625,7 +628,7 @@ export default function QuizPage() {
       setLoading(false);
       clientLogger.log('🏁 init finally', { totalElapsed });
     }
-  }, [questionnaire, waitForTelegram, initialize, isDev, hasResumed, isStartingOver]);
+  }, [waitForTelegram, initialize, isDev, hasResumed, isStartingOver]); // ИСПРАВЛЕНО: Убрали questionnaire из зависимостей, чтобы предотвратить повторные вызовы
 
   // ИСПРАВЛЕНО: useEffect для init - делаем "однократным"
   // init запускается ровно тогда, когда поменялся сам init (по сути — при первом маунте и когда questionnaire-логика реально изменилась)
@@ -872,6 +875,19 @@ export default function QuizPage() {
   };
 
   const loadQuestionnaire = async () => {
+    // ИСПРАВЛЕНО: Guard против множественных вызовов loadQuestionnaire
+    if (loadQuestionnaireInProgressRef.current) {
+      clientLogger.log('⛔ loadQuestionnaire() skipped: already in progress');
+      return null;
+    }
+    if (loadQuestionnaireAttemptedRef.current && questionnaire) {
+      clientLogger.log('⛔ loadQuestionnaire() skipped: already loaded');
+      return null;
+    }
+    
+    loadQuestionnaireInProgressRef.current = true;
+    loadQuestionnaireAttemptedRef.current = true;
+    
     try {
       setLoading(true);
       setError(null);
@@ -884,6 +900,7 @@ export default function QuizPage() {
           clientLogger.error('❌ Telegram initData not available, cannot load questionnaire');
           setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
           setLoading(false);
+          loadQuestionnaireInProgressRef.current = false;
           return null;
         }
       }
@@ -979,12 +996,22 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Проверяем, что данные не пустые
       // При перепрохождении API может вернуть пустой объект - пробуем загрузить еще раз
-      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+      // ВАЖНО: Проверяем не только наличие данных, но и наличие groups/questions
+      const hasGroups = data?.groups && Array.isArray(data.groups) && data.groups.length > 0;
+      const hasQuestions = data?.questions && Array.isArray(data.questions) && data.questions.length > 0;
+      const hasGroupsWithQuestions = hasGroups && data.groups.some((g: any) => g.questions && Array.isArray(g.questions) && g.questions.length > 0);
+      const hasAnyQuestions = hasGroupsWithQuestions || hasQuestions;
+      
+      if (!data || (typeof data === 'object' && Object.keys(data).length === 0) || !hasAnyQuestions) {
         if (isRetakingQuiz || showRetakeScreen) {
           // При перепрохождении пробуем загрузить еще раз через небольшую задержку
           clientLogger.warn('⚠️ Empty questionnaire data received during retake, will retry', { 
             data,
             dataType: typeof data,
+            hasGroups,
+            hasQuestions,
+            hasGroupsWithQuestions,
+            hasAnyQuestions,
           });
           // ИСПРАВЛЕНО: Сбрасываем loading перед retry, чтобы не было бесконечной загрузки
           setLoading(false);
@@ -1000,8 +1027,13 @@ export default function QuizPage() {
         clientLogger.error('❌ Empty questionnaire data received from API', { 
           data,
           dataType: typeof data,
+          hasGroups,
+          hasQuestions,
+          hasGroupsWithQuestions,
+          hasAnyQuestions,
+          dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
         });
-        throw new Error('Invalid questionnaire data: received empty response');
+        throw new Error('Invalid questionnaire data: received empty response or no questions');
       }
       
       // ИСПРАВЛЕНО: Убираем _meta из данных перед обработкой
@@ -1252,6 +1284,8 @@ export default function QuizPage() {
       setLoading(false); // ИСПРАВЛЕНО: Устанавливаем loading = false при ошибке
       return null;
     } finally {
+      // ИСПРАВЛЕНО: Сбрасываем флаг загрузки анкеты
+      loadQuestionnaireInProgressRef.current = false;
       // КРИТИЧНО: Гарантируем, что loading всегда будет false после завершения функции
       // Это предотвращает бесконечную загрузку при любых исходах (успех, ошибка, retry)
       // ИСПРАВЛЕНО: Проверяем, что loading еще true, чтобы избежать лишних обновлений
