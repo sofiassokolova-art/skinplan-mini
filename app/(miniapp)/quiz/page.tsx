@@ -1256,14 +1256,14 @@ export default function QuizPage() {
       try {
         const isArray = Array.isArray(value);
         addDebugLog('📤 Saving to server', {
-          questionnaireId: questionnaire.id,
+          questionnaireId: questionnaire?.id,
           questionId,
           questionIdType: typeof questionId,
           hasValue: !!value,
           isArray,
         });
         await api.saveQuizProgress(
-          questionnaire.id,
+          questionnaire?.id!,
           questionId,
           isArray ? undefined : (value as string),
           isArray ? (value as string[]) : undefined,
@@ -1279,7 +1279,7 @@ export default function QuizPage() {
           console.error('❌ Ошибка сохранения прогресса на сервер:', {
             error: err.message,
             questionId,
-            questionnaireId: questionnaire.id,
+            questionnaireId: questionnaire?.id,
             errorDetails: err,
           });
         }
@@ -1962,7 +1962,7 @@ export default function QuizPage() {
         });
 
       clientLogger.log('📤 Отправка ответов на сервер:', {
-        questionnaireId: questionnaire.id,
+        questionnaireId: questionnaire?.id,
         answersCount: answerArray.length,
         answerArrayQuestionIds: answerArray.map(a => a.questionId),
         answerArraySample: answerArray.slice(0, 5),
@@ -1982,7 +1982,7 @@ export default function QuizPage() {
             message: '📤 Отправка ответов на сервер',
             context: {
               timestamp: new Date().toISOString(),
-              questionnaireId: questionnaire.id,
+              questionnaireId: questionnaire?.id,
               answersCount: answerArray.length,
               answerArrayQuestionIds: answerArray.map(a => a.questionId),
             },
@@ -2009,7 +2009,7 @@ export default function QuizPage() {
       try {
         // ВАЖНО: Логируем перед вызовом API
         clientLogger.log('📤 Вызываем api.submitAnswers:', {
-          questionnaireId: questionnaire.id,
+          questionnaireId: questionnaire?.id,
           answersCount: answerArray.length,
           answerQuestionIds: answerArray.map(a => a.questionId),
           answerArraySample: answerArray.slice(0, 3),
@@ -2031,7 +2031,7 @@ export default function QuizPage() {
         
         // ВАЖНО: Логируем непосредственно перед вызовом API
         clientLogger.log('🚀 Вызываем api.submitAnswers СЕЙЧАС:', {
-          questionnaireId: questionnaire.id,
+          questionnaireId: questionnaire?.id,
           answersCount: answerArray.length,
           hasInitData: !!currentInitData,
           answerQuestionIds: answerArray.map(a => a.questionId),
@@ -2049,7 +2049,7 @@ export default function QuizPage() {
               level: 'info',
               message: '🚀 About to call api.submitAnswers',
               context: {
-                questionnaireId: questionnaire.id,
+                questionnaireId: questionnaire?.id,
                 answersCount: answerArray.length,
                 answerQuestionIds: answerArray.map(a => a.questionId),
                 timestamp: new Date().toISOString(),
@@ -2060,7 +2060,7 @@ export default function QuizPage() {
         }
         
         result = await api.submitAnswers({
-          questionnaireId: questionnaire.id,
+          questionnaireId: questionnaire?.id!,
           answers: answerArray,
         });
         
@@ -2160,7 +2160,7 @@ export default function QuizPage() {
           message: submitError?.message,
           status: submitError?.status,
           stack: submitError?.stack,
-          questionnaireId: questionnaire.id,
+          questionnaireId: questionnaire?.id,
           answersCount: answerArray.length,
         });
         clientLogger.error('❌ Ошибка при отправке ответов:', {
@@ -2168,7 +2168,7 @@ export default function QuizPage() {
           message: submitError?.message,
           status: submitError?.status,
           stack: submitError?.stack?.substring(0, 500),
-          questionnaireId: questionnaire.id,
+          questionnaireId: questionnaire?.id,
           answersCount: answerArray.length,
           errorName: submitError?.name,
           errorType: typeof submitError,
@@ -2189,7 +2189,7 @@ export default function QuizPage() {
               context: {
                 error: submitError?.message || String(submitError),
                 status: submitError?.status,
-                questionnaireId: questionnaire.id,
+                questionnaireId: questionnaire?.id,
                 answersCount: answerArray.length,
                 stack: submitError?.stack?.substring(0, 500),
               },
@@ -2969,7 +2969,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Безопасное логирование с проверками
       try {
         clientLogger.log('📊 allQuestionsRaw: Starting extraction', {
-          questionnaireId: questionnaire.id,
+          questionnaireId: questionnaire?.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
           groupsStructure: groups.map(g => ({
@@ -3083,7 +3083,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой
       if (questionnaire) {
         clientLogger.warn('⚠️ allQuestionsRaw is empty but questionnaire exists', {
-          questionnaireId: questionnaire.id,
+          questionnaireId: questionnaire?.id,
           hasGroups: !!questionnaire.groups,
           groupsCount: questionnaire.groups?.length || 0,
           hasQuestions: !!questionnaire.questions,
