@@ -1,5 +1,5 @@
 // app/(miniapp)/quiz/components/Spinner.tsx
-// Переиспользуемый компонент спиннера с 3 шарами и перемычкой между ними (5 состояний)
+// Переиспользуемый компонент спиннера с 3 шарами и перемычками между ними (6 состояний)
 
 'use client';
 
@@ -41,6 +41,11 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
   const centerX = totalWidth / 2;
   const centerY = ballSmall / 2;
 
+  // Позиции шаров
+  const ball1X = 0;
+  const ball2X = distance;
+  const ball3X = distance * 2;
+
   return (
     <div
       style={{
@@ -69,7 +74,7 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
             backgroundColor: ballColor,
             border: `1px solid ${borderColor}`,
             borderRadius: '50%',
-            animation: 'ball1 2.5s ease-in-out infinite',
+            animation: 'ball1 3s ease-in-out infinite',
           }}
         />
         
@@ -82,7 +87,7 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
             backgroundColor: ballColor,
             border: `1px solid ${borderColor}`,
             borderRadius: '50%',
-            animation: 'ball2 2.5s ease-in-out infinite',
+            animation: 'ball2 3s ease-in-out infinite',
           }}
         />
         
@@ -95,7 +100,7 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
             backgroundColor: ballColor,
             border: `1px solid ${borderColor}`,
             borderRadius: '50%',
-            animation: 'ball3 2.5s ease-in-out infinite',
+            animation: 'ball3 3s ease-in-out infinite',
           }}
         />
 
@@ -105,7 +110,7 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
             position: 'absolute',
             backgroundColor: bridgeColor,
             border: `1px solid ${borderColor}`,
-            animation: 'bridge1 2.5s ease-in-out infinite',
+            animation: 'bridge1 3s ease-in-out infinite',
           }}
         />
 
@@ -115,285 +120,229 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
             position: 'absolute',
             backgroundColor: bridgeColor,
             border: `1px solid ${borderColor}`,
-            animation: 'bridge2 2.5s ease-in-out infinite',
+            animation: 'bridge2 3s ease-in-out infinite',
           }}
         />
       </div>
       <style jsx>{`
+        /* Состояние 1 (0-16.66%): 2 шара - маленький слева, большой справа */
+        /* Состояние 2 (16.66-33.33%): 2 блоба - круг слева, справа "арахис" (2 шара + перемычка) */
+        /* Состояние 3 (33.33-50%): 1 большой блоб - все 3 шара соединены перемычками */
+        /* Состояние 4 (50-66.66%): 2 блоба - "арахис" слева, круг справа */
+        /* Состояние 5 (66.66-83.33%): 2 шара - большой слева, маленький справа */
+        /* Состояние 6 (83.33-100%): возврат к состоянию 1 */
+
         @keyframes ball1 {
-          /* Состояние 1 (0-20%): 3 маленьких шара отдельно */
-          0%, 20% {
-            left: 0;
+          /* Состояние 1: маленький шар слева */
+          0%, 16.66% {
+            left: ${ball1X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
           }
-          /* Состояние 2 (25-40%): 2 маленьких + 1 большой */
-          25%, 40% {
-            left: 0;
+          /* Состояние 2: маленький круг слева */
+          16.67%, 33.33% {
+            left: ${ball1X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
           }
-          /* Состояние 3 (45-60%): 2 шара соединены перемычкой + 1 маленький */
-          45%, 60% {
-            left: 0;
+          /* Состояние 3: часть большого блоба (левая выпуклость) */
+          33.34%, 50% {
+            left: ${ball1X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
           }
-          /* Состояние 4 (65-80%): все 3 шара соединены перемычками */
-          65%, 80% {
-            left: 0;
+          /* Состояние 4: часть "арахиса" слева (левая выпуклость) */
+          50.01%, 66.66% {
+            left: ${ball1X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
           }
-          /* Состояние 5 (85-100%): 1 большой + 2 маленьких */
-          85%, 100% {
-            left: ${centerX - ballLarge / 2}px;
+          /* Состояние 5: большой шар слева */
+          66.67%, 83.33% {
+            left: ${ball1X}px;
             top: ${centerY - ballLarge / 2}px;
             width: ${ballLarge}px;
             height: ${ballLarge}px;
+          }
+          /* Состояние 6: возврат к состоянию 1 */
+          83.34%, 100% {
+            left: ${ball1X}px;
+            top: 0;
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
           }
         }
 
         @keyframes ball2 {
-          /* Состояние 1 (0-20%): 3 маленьких шара отдельно */
-          0%, 20% {
-            left: ${distance}px;
+          /* Состояние 1: скрыт (только 2 шара видны) */
+          0%, 16.66% {
+            left: ${ball2X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
+            opacity: 0;
           }
-          /* Состояние 2 (25-40%): 2 маленьких + 1 большой */
-          25%, 40% {
-            left: ${distance}px;
+          /* Состояние 2: часть "арахиса" справа (правая выпуклость) */
+          16.67%, 33.33% {
+            left: ${ball2X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
+            opacity: 1;
           }
-          /* Состояние 3 (45-60%): 2 шара соединены перемычкой + 1 маленький */
-          45%, 60% {
-            left: ${distance}px;
+          /* Состояние 3: часть большого блоба (центральная выпуклость) */
+          33.34%, 50% {
+            left: ${ball2X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
+            opacity: 1;
           }
-          /* Состояние 4 (65-80%): все 3 шара соединены перемычками */
-          65%, 80% {
-            left: ${distance}px;
+          /* Состояние 4: часть "арахиса" слева (правая выпуклость) */
+          50.01%, 66.66% {
+            left: ${ball2X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
+            opacity: 1;
           }
-          /* Состояние 5 (85-100%): 1 большой + 2 маленьких */
-          85%, 100% {
-            left: ${centerX - ballSmall / 2}px;
-            top: ${centerY - ballSmall / 2}px;
+          /* Состояние 5: скрыт (только 2 шара видны) */
+          66.67%, 83.33% {
+            left: ${ball2X}px;
+            top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
+            opacity: 0;
+          }
+          /* Состояние 6: возврат к состоянию 1 */
+          83.34%, 100% {
+            left: ${ball2X}px;
+            top: 0;
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            opacity: 0;
           }
         }
 
         @keyframes ball3 {
-          /* Состояние 1 (0-20%): 3 маленьких шара отдельно */
-          0%, 20% {
-            left: ${distance * 2}px;
-            top: 0;
-            width: ${ballSmall}px;
-            height: ${ballSmall}px;
-          }
-          /* Состояние 2 (25-40%): 2 маленьких + 1 большой */
-          25%, 40% {
-            left: ${distance * 2}px;
+          /* Состояние 1: большой шар справа */
+          0%, 16.66% {
+            left: ${ball3X}px;
             top: ${centerY - ballLarge / 2}px;
             width: ${ballLarge}px;
             height: ${ballLarge}px;
           }
-          /* Состояние 3 (45-60%): 2 шара соединены перемычкой + 1 маленький */
-          45%, 60% {
-            left: ${distance * 2}px;
+          /* Состояние 2: часть "арахиса" справа (левая выпуклость) */
+          16.67%, 33.33% {
+            left: ${ball3X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
           }
-          /* Состояние 4 (65-80%): все 3 шара соединены перемычками */
-          65%, 80% {
-            left: ${distance * 2}px;
+          /* Состояние 3: часть большого блоба (правая выпуклость) */
+          33.34%, 50% {
+            left: ${ball3X}px;
             top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
           }
-          /* Состояние 5 (85-100%): 1 большой + 2 маленьких */
-          85%, 100% {
-            left: ${centerX + ballLarge / 2}px;
-            top: ${centerY - ballSmall / 2}px;
+          /* Состояние 4: маленький круг справа */
+          50.01%, 66.66% {
+            left: ${ball3X}px;
+            top: 0;
             width: ${ballSmall}px;
             height: ${ballSmall}px;
+          }
+          /* Состояние 5: маленький шар справа */
+          66.67%, 83.33% {
+            left: ${ball3X}px;
+            top: 0;
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+          }
+          /* Состояние 6: возврат к состоянию 1 */
+          83.34%, 100% {
+            left: ${ball3X}px;
+            top: ${centerY - ballLarge / 2}px;
+            width: ${ballLarge}px;
+            height: ${ballLarge}px;
           }
         }
 
         @keyframes bridge1 {
-          /* Состояние 1 (0-20%): перемычки нет */
-          0%, 20% {
-            left: ${ballSmall - bridgeWidth / 2}px;
+          /* Состояние 1: перемычки нет */
+          0%, 16.66% {
+            left: ${ball1X + ballSmall - bridgeWidth / 2}px;
             top: ${(ballSmall - bridgeHeight) / 2}px;
             width: 0;
             height: ${bridgeHeight}px;
             clip-path: polygon(0% 0%, 0% 100%, 0% 100%, 0% 0%);
             opacity: 0;
           }
-          /* Состояние 2 (25-40%): перемычки нет */
-          25%, 40% {
-            left: ${ballSmall - bridgeWidth / 2}px;
+          /* Состояние 2: перемычка появляется между шаром 2 и 3 (справа) */
+          16.67%, 33.33% {
+            left: ${ball2X + ballSmall - bridgeWidth / 2}px;
+            top: ${(ballSmall - bridgeHeight) / 2}px;
+            width: ${distance}px;
+            height: ${bridgeHeight}px;
+            clip-path: polygon(
+              0% 20%, 
+              0% 80%, 
+              50% 100%, 
+              100% 80%, 
+              100% 20%, 
+              50% 0%
+            );
+            opacity: 1;
+          }
+          /* Состояние 3: перемычка между шаром 1 и 2 (левая перемычка большого блоба) */
+          33.34%, 50% {
+            left: ${ball1X + ballSmall - bridgeWidth / 2}px;
+            top: ${(ballSmall - bridgeHeight) / 2}px;
+            width: ${distance}px;
+            height: ${bridgeHeight}px;
+            clip-path: polygon(
+              0% 20%, 
+              0% 80%, 
+              50% 100%, 
+              100% 80%, 
+              100% 20%, 
+              50% 0%
+            );
+            opacity: 1;
+          }
+          /* Состояние 4: перемычка между шаром 1 и 2 (левая перемычка "арахиса") */
+          50.01%, 66.66% {
+            left: ${ball1X + ballSmall - bridgeWidth / 2}px;
+            top: ${(ballSmall - bridgeHeight) / 2}px;
+            width: ${distance}px;
+            height: ${bridgeHeight}px;
+            clip-path: polygon(
+              0% 20%, 
+              0% 80%, 
+              50% 100%, 
+              100% 80%, 
+              100% 20%, 
+              50% 0%
+            );
+            opacity: 1;
+          }
+          /* Состояние 5: перемычки нет */
+          66.67%, 83.33% {
+            left: ${ball1X + ballSmall - bridgeWidth / 2}px;
             top: ${(ballSmall - bridgeHeight) / 2}px;
             width: 0;
             height: ${bridgeHeight}px;
             clip-path: polygon(0% 0%, 0% 100%, 0% 100%, 0% 0%);
             opacity: 0;
           }
-          /* Состояние 3 (45-60%): перемычка появляется с V-образными впадинами */
-          45% {
-            left: ${ballSmall - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${bridgeWidth}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 20%, 
-              0% 80%, 
-              50% 100%, 
-              100% 80%, 
-              100% 20%, 
-              50% 0%
-            );
-            opacity: 1;
-          }
-          50% {
-            left: ${ballSmall - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 15%, 
-              0% 85%, 
-              50% 100%, 
-              100% 85%, 
-              100% 15%, 
-              50% 0%
-            );
-            opacity: 1;
-          }
-          55% {
-            left: ${ballSmall - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 18%, 
-              0% 82%, 
-              50% 100%, 
-              100% 82%, 
-              100% 18%, 
-              50% 0%
-            );
-            opacity: 1;
-          }
-          60% {
-            left: ${ballSmall - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 20%, 
-              0% 80%, 
-              50% 100%, 
-              100% 80%, 
-              100% 20%, 
-              50% 0%
-            );
-            opacity: 1;
-          }
-          /* Состояние 4 (65-80%): перемычка расширяется для соединения всех 3 шаров */
-          65% {
-            left: ${ballSmall - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance * 2}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 20%, 
-              0% 80%, 
-              25% 100%, 
-              50% 95%, 
-              75% 100%, 
-              100% 80%, 
-              100% 20%, 
-              75% 0%, 
-              50% 5%, 
-              25% 0%
-            );
-            opacity: 1;
-          }
-          70% {
-            left: ${ballSmall - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance * 2}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 18%, 
-              0% 82%, 
-              25% 100%, 
-              50% 95%, 
-              75% 100%, 
-              100% 82%, 
-              100% 18%, 
-              75% 0%, 
-              50% 5%, 
-              25% 0%
-            );
-            opacity: 1;
-          }
-          75% {
-            left: ${ballSmall - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance * 2}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 20%, 
-              0% 80%, 
-              25% 100%, 
-              50% 95%, 
-              75% 100%, 
-              100% 80%, 
-              100% 20%, 
-              75% 0%, 
-              50% 5%, 
-              25% 0%
-            );
-            opacity: 1;
-          }
-          80% {
-            left: ${ballSmall - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance * 2}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 20%, 
-              0% 80%, 
-              25% 100%, 
-              50% 95%, 
-              75% 100%, 
-              100% 80%, 
-              100% 20%, 
-              75% 0%, 
-              50% 5%, 
-              25% 0%
-            );
-            opacity: 1;
-          }
-          /* Состояние 5 (85-100%): перемычка исчезает */
-          85%, 100% {
-            left: ${ballSmall - bridgeWidth / 2}px;
+          /* Состояние 6: возврат к состоянию 1 */
+          83.34%, 100% {
+            left: ${ball1X + ballSmall - bridgeWidth / 2}px;
             top: ${(ballSmall - bridgeHeight) / 2}px;
             width: 0;
             height: ${bridgeHeight}px;
@@ -403,81 +352,18 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
         }
 
         @keyframes bridge2 {
-          /* Состояние 1 (0-20%): перемычки нет */
-          0%, 20% {
-            left: ${ballSmall + distance - bridgeWidth / 2}px;
+          /* Состояние 1: перемычки нет */
+          0%, 16.66% {
+            left: ${ball2X + ballSmall - bridgeWidth / 2}px;
             top: ${(ballSmall - bridgeHeight) / 2}px;
             width: 0;
             height: ${bridgeHeight}px;
             clip-path: polygon(0% 0%, 0% 100%, 0% 100%, 0% 0%);
             opacity: 0;
           }
-          /* Состояние 2 (25-40%): перемычки нет */
-          25%, 40% {
-            left: ${ballSmall + distance - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: 0;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(0% 0%, 0% 100%, 0% 100%, 0% 0%);
-            opacity: 0;
-          }
-          /* Состояние 3 (45-60%): перемычки нет */
-          45%, 60% {
-            left: ${ballSmall + distance - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: 0;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(0% 0%, 0% 100%, 0% 100%, 0% 0%);
-            opacity: 0;
-          }
-          /* Состояние 4 (65-80%): перемычка появляется с V-образными впадинами */
-          65% {
-            left: ${ballSmall + distance - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${bridgeWidth}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 20%, 
-              0% 80%, 
-              50% 100%, 
-              100% 80%, 
-              100% 20%, 
-              50% 0%
-            );
-            opacity: 1;
-          }
-          70% {
-            left: ${ballSmall + distance - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 15%, 
-              0% 85%, 
-              50% 100%, 
-              100% 85%, 
-              100% 15%, 
-              50% 0%
-            );
-            opacity: 1;
-          }
-          75% {
-            left: ${ballSmall + distance - bridgeWidth / 2}px;
-            top: ${(ballSmall - bridgeHeight) / 2}px;
-            width: ${distance}px;
-            height: ${bridgeHeight}px;
-            clip-path: polygon(
-              0% 18%, 
-              0% 82%, 
-              50% 100%, 
-              100% 82%, 
-              100% 18%, 
-              50% 0%
-            );
-            opacity: 1;
-          }
-          80% {
-            left: ${ballSmall + distance - bridgeWidth / 2}px;
+          /* Состояние 2: перемычка между шаром 2 и 3 (правая перемычка "арахиса") */
+          16.67%, 33.33% {
+            left: ${ball2X + ballSmall - bridgeWidth / 2}px;
             top: ${(ballSmall - bridgeHeight) / 2}px;
             width: ${distance}px;
             height: ${bridgeHeight}px;
@@ -491,9 +377,43 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
             );
             opacity: 1;
           }
-          /* Состояние 5 (85-100%): перемычка исчезает */
-          85%, 100% {
-            left: ${ballSmall + distance - bridgeWidth / 2}px;
+          /* Состояние 3: перемычка между шаром 2 и 3 (правая перемычка большого блоба) */
+          33.34%, 50% {
+            left: ${ball2X + ballSmall - bridgeWidth / 2}px;
+            top: ${(ballSmall - bridgeHeight) / 2}px;
+            width: ${distance}px;
+            height: ${bridgeHeight}px;
+            clip-path: polygon(
+              0% 20%, 
+              0% 80%, 
+              50% 100%, 
+              100% 80%, 
+              100% 20%, 
+              50% 0%
+            );
+            opacity: 1;
+          }
+          /* Состояние 4: перемычки нет */
+          50.01%, 66.66% {
+            left: ${ball2X + ballSmall - bridgeWidth / 2}px;
+            top: ${(ballSmall - bridgeHeight) / 2}px;
+            width: 0;
+            height: ${bridgeHeight}px;
+            clip-path: polygon(0% 0%, 0% 100%, 0% 100%, 0% 0%);
+            opacity: 0;
+          }
+          /* Состояние 5: перемычки нет */
+          66.67%, 83.33% {
+            left: ${ball2X + ballSmall - bridgeWidth / 2}px;
+            top: ${(ballSmall - bridgeHeight) / 2}px;
+            width: 0;
+            height: ${bridgeHeight}px;
+            clip-path: polygon(0% 0%, 0% 100%, 0% 100%, 0% 0%);
+            opacity: 0;
+          }
+          /* Состояние 6: возврат к состоянию 1 */
+          83.34%, 100% {
+            left: ${ball2X + ballSmall - bridgeWidth / 2}px;
             top: ${(ballSmall - bridgeHeight) / 2}px;
             width: 0;
             height: ${bridgeHeight}px;
