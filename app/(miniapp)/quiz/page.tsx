@@ -5765,7 +5765,11 @@ export default function QuizPage() {
           <div style={{ padding: '20px' }}>
             <h1>Ошибка загрузки вопроса</h1>
             <p>Попробуйте обновить страницу</p>
-            <button onClick={() => window.location.reload()}>Обновить страницу</button>
+            <button onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.location.reload();
+              }
+            }}>Обновить страницу</button>
           </div>
         );
       }
@@ -5821,7 +5825,11 @@ export default function QuizPage() {
                 Пожалуйста, обратитесь в поддержку.
               </p>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.reload();
+                  }
+                }}
                 style={{
                   width: '100%',
                   padding: '16px 24px',
@@ -5908,10 +5916,14 @@ export default function QuizPage() {
               Ошибка загрузки анкеты
             </h2>
             <p style={{ color: '#475467', marginBottom: '24px', lineHeight: '1.6' }}>
-              {error}
+              {typeof error === 'string' ? error : ((error as any)?.message || 'Произошла ошибка загрузки анкеты')}
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
+              }}
               style={{
                 width: '100%',
                 padding: '16px 24px',
@@ -6030,7 +6042,11 @@ export default function QuizPage() {
                 Попробовать снова
               </button>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.reload();
+                  }
+                }}
                 style={{
                   padding: '12px 24px',
                   borderRadius: '12px',
@@ -6133,10 +6149,14 @@ export default function QuizPage() {
               Ошибка загрузки анкеты
             </h2>
             <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
-              {error}
+              {typeof error === 'string' ? error : ((error as any)?.message || 'Произошла ошибка загрузки анкеты')}
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
+              }}
               style={{
                 padding: '12px 20px',
                 borderRadius: '12px',
@@ -6215,10 +6235,14 @@ export default function QuizPage() {
               Не удалось загрузить анкету
             </h2>
             <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
-              {error || 'Пожалуйста, откройте приложение через Telegram или обновите страницу.'}
+              {typeof error === 'string' ? error : ((error as any)?.message || 'Пожалуйста, откройте приложение через Telegram или обновите страницу.')}
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
+              }}
               style={{
                 backgroundColor: '#0A5F59',
                 color: 'white',
@@ -6275,7 +6299,11 @@ export default function QuizPage() {
               Похоже, что все вопросы анкеты были отфильтрованы. Пожалуйста, обновите страницу или обратитесь в поддержку.
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
+              }}
               style={{
                 backgroundColor: '#0A5F59',
                 color: 'white',
@@ -6332,7 +6360,11 @@ export default function QuizPage() {
               Анкета загружена, но в ней нет вопросов. Пожалуйста, обновите страницу или обратитесь в поддержку.
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
+              }}
               style={{
                 backgroundColor: '#0A5F59',
                 color: 'white',
