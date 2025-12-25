@@ -1,5 +1,5 @@
 // app/(miniapp)/quiz/components/Spinner.tsx
-// Переиспользуемый компонент спиннера
+// Переиспользуемый компонент спиннера с 3 слипающимися шариками (5 состояний)
 
 'use client';
 
@@ -10,13 +10,30 @@ interface SpinnerProps {
 }
 
 const sizeMap = {
-  small: 24,
-  medium: 48,
-  large: 64,
+  small: 0.75,
+  medium: 1,
+  large: 1.25,
 };
 
+// Размеры из графики
+const BALL_SMALL = 20;
+const BALL_LARGE = 48;
+const MERGED_2 = { width: 60, height: 38 };
+const MERGED_3 = { width: 96, height: 38 };
+
 export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: SpinnerProps) {
-  const spinnerSize = sizeMap[size];
+  const scale = sizeMap[size];
+  const ballSmall = BALL_SMALL * scale;
+  const ballLarge = BALL_LARGE * scale;
+  const merged2 = { width: MERGED_2.width * scale, height: MERGED_2.height * scale };
+  const merged3 = { width: MERGED_3.width * scale, height: MERGED_3.height * scale };
+
+  // Цвет шариков (светло-зеленый из графики)
+  const ballColor = '#A8E6CF'; // Светло-зеленый цвет
+
+  // Центр контейнера
+  const centerX = merged3.width / 2;
+  const centerY = ballLarge / 2;
 
   return (
     <div
@@ -24,30 +41,196 @@ export function Spinner({ size = 'medium', color = '#0A5F59', className = '' }: 
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
+        position: 'relative',
+        width: `${merged3.width + 40}px`,
+        height: `${ballLarge + 40}px`,
       }}
       className={className}
     >
       <div
         style={{
-          width: `${spinnerSize}px`,
-          height: `${spinnerSize}px`,
-          border: `4px solid rgba(${color === '#0A5F59' ? '10, 95, 89' : '255, 255, 255'}, 0.2)`,
-          borderTop: `4px solid ${color}`,
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
+          position: 'relative',
+          width: `${merged3.width}px`,
+          height: `${ballLarge}px`,
         }}
-      />
+      >
+        {/* Шар 1 (левый) */}
+        <div
+          style={{
+            position: 'absolute',
+            backgroundColor: ballColor,
+            animation: 'ball1 2.5s ease-in-out infinite',
+          }}
+        />
+        
+        {/* Шар 2 (центральный) */}
+        <div
+          style={{
+            position: 'absolute',
+            backgroundColor: ballColor,
+            animation: 'ball2 2.5s ease-in-out infinite',
+          }}
+        />
+        
+        {/* Шар 3 (правый) */}
+        <div
+          style={{
+            position: 'absolute',
+            backgroundColor: ballColor,
+            animation: 'ball3 2.5s ease-in-out infinite',
+          }}
+        />
+      </div>
       <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
+        @keyframes ball1 {
+          /* Состояние 1 (0-20%): 3 маленьких шара отдельно */
+          0%, 20% {
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            border-radius: 50%;
+            left: ${centerX - merged3.width / 2 + ballSmall / 2}px;
+            top: ${centerY - ballSmall / 2}px;
+            transform: translate(-50%, -50%);
           }
-          100% {
-            transform: rotate(360deg);
+          /* Состояние 2 (25-40%): 2 маленьких + 1 большой */
+          25%, 40% {
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            border-radius: 50%;
+            left: ${centerX - merged3.width / 3}px;
+            top: ${centerY - ballSmall / 2}px;
+            transform: translate(-50%, -50%);
+          }
+          /* Состояние 3 (45-60%): 2 шара слиплись + 1 маленький */
+          45%, 60% {
+            width: ${merged2.width}px;
+            height: ${merged2.height}px;
+            border-radius: ${merged2.height / 2}px;
+            left: ${centerX - merged3.width / 2 + merged2.width / 2}px;
+            top: ${centerY - merged2.height / 2}px;
+            transform: translate(-50%, -50%);
+          }
+          /* Состояние 4 (65-80%): все 3 шара слиплись */
+          65%, 80% {
+            width: ${merged3.width}px;
+            height: ${merged3.height}px;
+            border-radius: ${merged3.height / 2}px;
+            left: ${centerX}px;
+            top: ${centerY - merged3.height / 2}px;
+            transform: translate(-50%, -50%);
+          }
+          /* Состояние 5 (85-100%): 1 большой + 2 маленьких */
+          85%, 100% {
+            width: ${ballLarge}px;
+            height: ${ballLarge}px;
+            border-radius: 50%;
+            left: ${centerX}px;
+            top: ${centerY - ballLarge / 2}px;
+            transform: translate(-50%, -50%);
+          }
+        }
+
+        @keyframes ball2 {
+          /* Состояние 1 (0-20%): 3 маленьких шара отдельно */
+          0%, 20% {
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            border-radius: 50%;
+            left: ${centerX}px;
+            top: ${centerY - ballSmall / 2}px;
+            transform: translate(-50%, -50%);
+          }
+          /* Состояние 2 (25-40%): 2 маленьких + 1 большой */
+          25%, 40% {
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            border-radius: 50%;
+            left: ${centerX}px;
+            top: ${centerY - ballSmall / 2}px;
+            transform: translate(-50%, -50%);
+          }
+          /* Состояние 3 (45-60%): 2 шара слиплись + 1 маленький - скрыт (часть слипшегося) */
+          45%, 60% {
+            width: ${merged2.width}px;
+            height: ${merged2.height}px;
+            border-radius: ${merged2.height / 2}px;
+            left: ${centerX - merged3.width / 2 + merged2.width / 2}px;
+            top: ${centerY - merged2.height / 2}px;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+          }
+          /* Состояние 4 (65-80%): все 3 шара слиплись - скрыт (часть слипшегося) */
+          65%, 80% {
+            width: ${merged3.width}px;
+            height: ${merged3.height}px;
+            border-radius: ${merged3.height / 2}px;
+            left: ${centerX}px;
+            top: ${centerY - merged3.height / 2}px;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+          }
+          /* Состояние 5 (85-100%): 1 большой + 2 маленьких */
+          85%, 100% {
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            border-radius: 50%;
+            left: ${centerX - merged3.width / 4}px;
+            top: ${centerY - ballSmall / 2}px;
+            transform: translate(-50%, -50%);
+            opacity: 1;
+          }
+        }
+
+        @keyframes ball3 {
+          /* Состояние 1 (0-20%): 3 маленьких шара отдельно */
+          0%, 20% {
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            border-radius: 50%;
+            left: ${centerX + merged3.width / 2 - ballSmall / 2}px;
+            top: ${centerY - ballSmall / 2}px;
+            transform: translate(-50%, -50%);
+          }
+          /* Состояние 2 (25-40%): 2 маленьких + 1 большой */
+          25%, 40% {
+            width: ${ballLarge}px;
+            height: ${ballLarge}px;
+            border-radius: 50%;
+            left: ${centerX + merged3.width / 3}px;
+            top: ${centerY - ballLarge / 2}px;
+            transform: translate(-50%, -50%);
+          }
+          /* Состояние 3 (45-60%): 2 шара слиплись + 1 маленький */
+          45%, 60% {
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            border-radius: 50%;
+            left: ${centerX + merged3.width / 2 - ballSmall / 2}px;
+            top: ${centerY - ballSmall / 2}px;
+            transform: translate(-50%, -50%);
+          }
+          /* Состояние 4 (65-80%): все 3 шара слиплись - скрыт (часть слипшегося) */
+          65%, 80% {
+            width: ${merged3.width}px;
+            height: ${merged3.height}px;
+            border-radius: ${merged3.height / 2}px;
+            left: ${centerX}px;
+            top: ${centerY - merged3.height / 2}px;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+          }
+          /* Состояние 5 (85-100%): 1 большой + 2 маленьких */
+          85%, 100% {
+            width: ${ballSmall}px;
+            height: ${ballSmall}px;
+            border-radius: 50%;
+            left: ${centerX + merged3.width / 4}px;
+            top: ${centerY - ballSmall / 2}px;
+            transform: translate(-50%, -50%);
+            opacity: 1;
           }
         }
       `}</style>
     </div>
   );
 }
-
