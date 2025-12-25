@@ -1307,9 +1307,6 @@ export default function QuizPage() {
         throw new Error('Cannot set questionnaire with zero questions');
       }
       
-      // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД установкой state, чтобы guards работали корректно
-      questionnaireRef.current = questionnaireData;
-      
       // ИСПРАВЛЕНО: Логируем перед установкой state для диагностики
       clientLogger.warn('🔄 About to call setQuestionnaire', {
         questionnaireId: questionnaireData.id,
@@ -1321,13 +1318,25 @@ export default function QuizPage() {
         questionnaireDataKeys: Object.keys(questionnaireData),
       });
       
+      // КРИТИЧНО: Создаем новый объект, чтобы React обновил state (reference equality)
+      // ИСПРАВЛЕНО: Используем spread operator для создания нового объекта
+      const questionnaireToSet = {
+        ...questionnaireData,
+        groups: [...(questionnaireData.groups || [])],
+        questions: [...(questionnaireData.questions || [])],
+      };
+      
+      // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД установкой state, чтобы guards работали корректно
+      questionnaireRef.current = questionnaireToSet;
+      
       // КРИТИЧНО: Устанавливаем state
-      setQuestionnaire(questionnaireData);
+      setQuestionnaire(questionnaireToSet);
       
       // ИСПРАВЛЕНО: Логируем сразу после setQuestionnaire
       clientLogger.warn('✅ setQuestionnaire called', {
-        questionnaireId: questionnaireData.id,
+        questionnaireId: questionnaireToSet.id,
         totalQuestions: totalQuestionsBeforeSet,
+        isNewObject: questionnaireToSet !== questionnaireData,
       });
       
       // ИСПРАВЛЕНО: Логируем после установки (в следующем тике, чтобы state обновился)
@@ -3341,16 +3350,21 @@ export default function QuizPage() {
   // ВАЖНО: все хуки должны вызываться до любых условных return'ов
   const allQuestionsRaw = useMemo(() => {
     try {
-      // КРИТИЧНО: Детальное логирование для диагностики
-      clientLogger.log('📊 allQuestionsRaw useMemo triggered', {
+      // КРИТИЧНО: Детальное логирование для диагностики (используем warn для отправки на сервер)
+      clientLogger.warn('📊 allQuestionsRaw useMemo triggered', {
         hasQuestionnaire: !!questionnaire,
         questionnaireId: questionnaire?.id,
         questionnaireType: typeof questionnaire,
         questionnaireKeys: questionnaire && typeof questionnaire === 'object' ? Object.keys(questionnaire) : [],
+        questionnaireRef: !!questionnaireRef.current,
+        questionnaireRefId: questionnaireRef.current?.id,
       });
       
       if (!questionnaire) {
-        clientLogger.log('⚠️ No questionnaire, allQuestionsRaw is empty');
+        clientLogger.warn('⚠️ No questionnaire in state, allQuestionsRaw is empty', {
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          questionnaireRefId: questionnaireRef.current?.id,
+        });
         return [];
       }
       
@@ -3525,6 +3539,18 @@ export default function QuizPage() {
       });
       return [];
     }
+  }, [questionnaire]);
+  
+  // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state для диагностики
+  useEffect(() => {
+    clientLogger.warn('🔄 questionnaire state changed', {
+      hasQuestionnaire: !!questionnaire,
+      questionnaireId: questionnaire?.id,
+      questionnaireRef: !!questionnaireRef.current,
+      questionnaireRefId: questionnaireRef.current?.id,
+      groupsCount: questionnaire?.groups?.length || 0,
+      questionsCount: questionnaire?.questions?.length || 0,
+    });
   }, [questionnaire]);
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
