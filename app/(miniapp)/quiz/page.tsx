@@ -157,18 +157,11 @@ export default function QuizPage() {
     const loadPaymentFlags = async () => {
       try {
         // Используем preferences из state, если они уже загружены
-        let hasRetaking = userPreferencesData?.paymentRetakingCompleted ?? false;
-        let hasFullRetake = userPreferencesData?.paymentFullRetakeCompleted ?? false;
-        
-        // Если preferences еще не загружены, загружаем их из API (fallback)
-        if (!userPreferencesData) {
-          hasRetaking = await userPreferences.getPaymentRetakingCompleted();
-          hasFullRetake = await userPreferences.getPaymentFullRetakeCompleted();
-          setUserPreferencesData({
-            paymentRetakingCompleted: hasRetaking,
-            paymentFullRetakeCompleted: hasFullRetake,
-          });
-        }
+        // ИСПРАВЛЕНО: Используем preferences из метаданных анкеты
+        // Если preferences еще не загружены, просто используем false (не делаем API вызов)
+        // Preferences будут загружены вместе с анкетой в loadQuestionnaire
+        const hasRetaking = userPreferencesData?.paymentRetakingCompleted ?? false;
+        const hasFullRetake = userPreferencesData?.paymentFullRetakeCompleted ?? false;
         
         const paidSet = new Set<string>();
         if (hasRetaking) {
@@ -313,11 +306,10 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Проверяем флаги перепрохождения ПЕРЕД проверкой профиля
       const checkRetakeFlags = async () => {
         try {
-          // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты, если они уже загружены
-          // Это убирает необходимость в отдельном вызове /api/user/preferences
-          // Если анкета еще не загружена, используем fallback на API
-          const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? 
-            (questionnaire ? false : await userPreferences.getHasPlanProgress());
+          // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты
+          // Если preferences еще не загружены (анкета еще не загружена), просто используем false
+          // Это предотвращает лишние вызовы API - preferences будут загружены вместе с анкетой
+          const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? false;
           
           if (!hasPlanProgress) {
             // Новый пользователь - не проверяем флаги перепрохождения
@@ -325,19 +317,11 @@ export default function QuizPage() {
             return;
           }
           
-          // ИСПРАВЛЕНО: Используем preferences из метаданных анкеты вместо отдельных вызовов API
-          let isRetakingFromStorage = userPreferencesData?.isRetakingQuiz ?? false;
-          let fullRetakeFromHome = userPreferencesData?.fullRetakeFromHome ?? false;
-          
-          // Если preferences еще не загружены, загружаем их из API (fallback)
-          if (!userPreferencesData) {
-            isRetakingFromStorage = await userPreferences.getIsRetakingQuiz();
-            fullRetakeFromHome = await userPreferences.getFullRetakeFromHome();
-            setUserPreferencesData({
-              isRetakingQuiz: isRetakingFromStorage,
-              fullRetakeFromHome: fullRetakeFromHome,
-            });
-          }
+          // ИСПРАВЛЕНО: Используем preferences из метаданных анкеты
+          // Если preferences еще не загружены, просто используем false (не делаем API вызов)
+          // Preferences будут загружены вместе с анкетой в loadQuestionnaire
+          const isRetakingFromStorage = userPreferencesData?.isRetakingQuiz ?? false;
+          const fullRetakeFromHome = userPreferencesData?.fullRetakeFromHome ?? false;
           
           // Если флаги перепрохождения установлены, но профиля нет - очищаем флаги
           // Это может быть остаточный флаг от предыдущей сессии
@@ -549,10 +533,10 @@ export default function QuizPage() {
           !hasResumedRef.current && !hasResumed && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
         try {
-          // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты, если они уже загружены
-          // Это убирает необходимость в отдельном вызове /api/user/preferences
-          const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? 
-            (questionnaire ? await userPreferences.getHasPlanProgress() : false);
+          // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты
+          // Если preferences еще не загружены, просто используем false (не делаем API вызов)
+          // Preferences будут загружены вместе с анкетой в loadQuestionnaire
+          const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? false;
           
           if (!hasPlanProgress) {
             // Новый пользователь - не загружаем прогресс
@@ -893,6 +877,11 @@ export default function QuizPage() {
         isCompleted: data?._meta?.isCompleted,
         isRetakingQuiz,
         showRetakeScreen,
+        // ИСПРАВЛЕНО: Добавляем детальную информацию о структуре данных
+        groupsCount: data?.groups?.length || 0,
+        questionsCount: data?.questions?.length || 0,
+        metaData: data?._meta || null,
+        dataPreview: data && typeof data === 'object' ? JSON.stringify(data).substring(0, 500) : String(data),
       });
       
       // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
@@ -1038,6 +1027,22 @@ export default function QuizPage() {
           return Array.from(new Set(allIds));
         })(),
       });
+      // ИСПРАВЛЕНО: Логируем структуру анкеты для диагностики
+      clientLogger.log('📦 Questionnaire loaded from API', {
+        questionnaireId: questionnaireData?.id,
+        hasGroups: !!questionnaireData?.groups,
+        groupsCount: questionnaireData?.groups?.length || 0,
+        hasQuestions: !!questionnaireData?.questions,
+        questionsCount: questionnaireData?.questions?.length || 0,
+        groupsStructure: questionnaireData?.groups?.map((g: any) => ({
+          id: g?.id,
+          title: g?.title,
+          questionsCount: g?.questions?.length || 0,
+          questionIds: (g?.questions || []).map((q: any) => q?.id).filter(Boolean),
+        })) || [],
+        rootQuestionIds: (questionnaireData?.questions || []).map((q: any) => q?.id).filter(Boolean),
+      });
+      
       setQuestionnaire(questionnaireData);
       
       // ИСПРАВЛЕНО: Используем preferences из метаданных вместо отдельных вызовов API
@@ -2961,6 +2966,25 @@ export default function QuizPage() {
       const groups = questionnaire.groups || [];
       const questions = questionnaire.questions || [];
       
+      // ИСПРАВЛЕНО: Безопасное логирование с проверками
+      try {
+        clientLogger.log('📊 allQuestionsRaw: Starting extraction', {
+          questionnaireId: questionnaire.id,
+          groupsCount: groups.length,
+          questionsCount: questions.length,
+          groupsStructure: groups.map(g => ({
+            id: g?.id,
+            title: g?.title,
+            questionsCount: g?.questions?.length || 0,
+            questionIds: (g?.questions || []).map((q: Question) => q?.id).filter(Boolean),
+          })),
+          rootQuestionIds: questions.map((q: Question) => q?.id).filter(Boolean),
+        });
+      } catch (logErr) {
+        // Игнорируем ошибки логирования
+        console.warn('Failed to log allQuestionsRaw extraction start:', logErr);
+      }
+      
       // ИСПРАВЛЕНО: Сохраняем порядок групп и вопросов БЕЗ дополнительной сортировки
       // Groups уже отсортированы по position в API, вопросы внутри групп тоже отсортированы
       // flatMap сохраняет порядок: сначала все вопросы из первой группы, потом из второй и т.д.
@@ -2977,6 +3001,10 @@ export default function QuizPage() {
             if (q && q.id && !seenIds.has(q.id)) {
               questionsFromGroups.push(q);
               seenIds.add(q.id);
+            } else if (q && !q.id) {
+              clientLogger.warn('⚠️ Question without id found in group', { groupId: g.id, question: q });
+            } else if (q && seenIds.has(q.id)) {
+              clientLogger.warn('⚠️ Duplicate question id in group', { groupId: g.id, questionId: q.id });
             }
           });
         } catch (err) {
@@ -3000,6 +3028,8 @@ export default function QuizPage() {
     questions.forEach((q: Question) => {
       if (q && q.id && !questionsMap.has(q.id)) {
         questionsMap.set(q.id, q);
+      } else if (q && !q.id) {
+        clientLogger.warn('⚠️ Question without id found in root questions', { question: q });
       }
     });
     
@@ -3011,19 +3041,34 @@ export default function QuizPage() {
       
       // Убираем вызов addDebugLog из useMemo, чтобы избежать проблем с хуками
       // Логируем только в консоль
-      clientLogger.log('📋 allQuestionsRaw loaded', {
-      total: raw.length,
-        fromGroups: questionsFromGroups.length,
-        fromQuestions: questions.length,
-        uniqueQuestionIds: raw.map((q: Question) => q.id),
-        duplicatesRemoved: (questionsFromGroups.length + questions.length) - raw.length,
-    });
+      // ИСПРАВЛЕНО: Безопасное логирование с проверками
+      try {
+        clientLogger.log('📋 allQuestionsRaw loaded', {
+          total: raw.length,
+          fromGroups: questionsFromGroups.length,
+          fromQuestions: questions.length,
+          uniqueQuestionIds: raw.length > 0 ? raw.map((q: Question) => q?.id).filter(Boolean) : [],
+          duplicatesRemoved: (questionsFromGroups.length + questions.length) - raw.length,
+          sampleQuestion: raw[0] ? {
+            id: raw[0]?.id,
+            code: raw[0]?.code,
+            type: raw[0]?.type,
+            hasOptions: !!raw[0]?.options,
+            optionsCount: raw[0]?.options?.length || 0,
+          } : null,
+        });
+      } catch (logErr) {
+        // Игнорируем ошибки логирования
+        console.warn('Failed to log allQuestionsRaw:', logErr);
+      }
     return raw;
     } catch (err) {
       console.error('❌ Error computing allQuestionsRaw:', err, {
         questionnaire,
         hasGroups: !!questionnaire?.groups,
         hasQuestions: !!questionnaire?.questions,
+        groupsCount: questionnaire?.groups?.length,
+        questionsCount: questionnaire?.questions?.length,
       });
       return [];
     }
@@ -3044,8 +3089,25 @@ export default function QuizPage() {
           hasQuestions: !!questionnaire.questions,
           questionsCount: questionnaire.questions?.length || 0,
         });
+      } else {
+        clientLogger.warn('⚠️ allQuestionsRaw is empty and questionnaire is null');
       }
       return [];
+    }
+    
+    // ИСПРАВЛЕНО: Безопасное логирование с проверками
+    try {
+      clientLogger.log('🔍 allQuestions: Starting filter', {
+        allQuestionsRawLength: allQuestionsRaw.length,
+        answersCount: Object.keys(answers || {}).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        isRetakingQuiz,
+        showRetakeScreen,
+        answerKeys: Object.keys(answers || {}),
+      });
+    } catch (logErr) {
+      // Игнорируем ошибки логирования
+      console.warn('Failed to log allQuestions filter start:', logErr);
     }
     
     // ИСПРАВЛЕНО: Используем единую функцию filterQuestions вместо дублирующей логики
@@ -3056,6 +3118,19 @@ export default function QuizPage() {
       isRetakingQuiz,
       showRetakeScreen,
     });
+    
+    // ИСПРАВЛЕНО: Безопасное логирование с проверками
+    try {
+      clientLogger.log('✅ allQuestions: Filter completed', {
+        originalCount: allQuestionsRaw.length,
+        filteredCount: filtered.length,
+        filteredQuestionIds: filtered.length > 0 ? filtered.map((q: Question) => q?.id).filter(Boolean) : [],
+        removedCount: allQuestionsRaw.length - filtered.length,
+      });
+    } catch (logErr) {
+      // Игнорируем ошибки логирования
+      console.warn('Failed to log allQuestions filter result:', logErr);
+    }
     
     // ИСПРАВЛЕНО: Логируем, если все вопросы отфильтрованы
     if (filtered.length === 0 && allQuestionsRaw.length > 0) {
@@ -3507,17 +3582,12 @@ export default function QuizPage() {
           });
         } catch (err) {
           clientLogger.warn('⚠️ Failed to check entitlements for retake screen', err);
-          // Fallback на preferences из state или API для обратной совместимости
-          try {
-            const hasRetaking = userPreferencesData?.paymentRetakingCompleted ?? 
-              await userPreferences.getPaymentRetakingCompleted();
-            const hasFullRetake = userPreferencesData?.paymentFullRetakeCompleted ?? 
-              await userPreferences.getPaymentFullRetakeCompleted();
-            setHasRetakingPayment(hasRetaking);
-            setHasFullRetakePayment(hasFullRetake);
-          } catch (fallbackError) {
-            // ignore
-          }
+          // Fallback на preferences из state (не делаем API вызов)
+          // Preferences будут загружены вместе с анкетой в loadQuestionnaire
+          const hasRetaking = userPreferencesData?.paymentRetakingCompleted ?? false;
+          const hasFullRetake = userPreferencesData?.paymentFullRetakeCompleted ?? false;
+          setHasRetakingPayment(hasRetaking);
+          setHasFullRetakePayment(hasFullRetake);
         }
       };
       checkEntitlements();
@@ -6109,11 +6179,179 @@ export default function QuizPage() {
     // (вопрос должен найтись сразу после загрузки анкеты)
   }
 
-  // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: Если currentQuestion === null или allQuestions пустой, показываем лоадер
-  // Это предотвращает ошибки рендеринга, если мы дошли до этого места
-  // ИСПРАВЛЕНО: Проверяем также случай, когда allQuestions.length === 0, даже если currentQuestion не null
-  // (это может произойти при race condition)
+  // ИСПРАВЛЕНО: Заменяем бесконечный лоадер на явную обработку ошибок
+  // Различаем два случая: анкета не загрузилась vs все вопросы отфильтрованы
   if ((!currentQuestion || allQuestions.length === 0) && !loading && !showResumeScreen && !showRetakeScreen) {
+    // Случай 1: Анкета не загрузилась (questionnaire === null)
+    if (!questionnaire) {
+      clientLogger.error('❌ Questionnaire not loaded - showing error to user', {
+        loading,
+        error,
+        hasQuestionnaire: !!questionnaire,
+      });
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '24px',
+            }}>⚠️</div>
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Не удалось загрузить анкету
+            </h2>
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
+              {error || 'Пожалуйста, откройте приложение через Telegram или обновите страницу.'}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+              }}
+            >
+              Обновить страницу
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Случай 2: Анкета загрузилась, но все вопросы отфильтрованы
+    if (questionnaire && allQuestionsRaw.length > 0 && allQuestions.length === 0) {
+      clientLogger.error('❌ All questions filtered out - showing error to user', {
+        allQuestionsRawLength: allQuestionsRaw.length,
+        allQuestionsLength: allQuestions.length,
+        answersCount: Object.keys(answers).length,
+        isRetakingQuiz,
+        showRetakeScreen,
+      });
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '24px',
+            }}>⚠️</div>
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Все вопросы отфильтрованы
+            </h2>
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
+              Похоже, что все вопросы анкеты были отфильтрованы. Пожалуйста, обновите страницу или обратитесь в поддержку.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+              }}
+            >
+              Обновить страницу
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Случай 3: Анкета загрузилась, но allQuestionsRaw пустой (анкета без вопросов)
+    if (questionnaire && allQuestionsRaw.length === 0) {
+      clientLogger.error('❌ Questionnaire loaded but has no questions - showing error to user', {
+        questionnaireId: questionnaire.id,
+        hasGroups: !!questionnaire.groups,
+        groupsCount: questionnaire.groups?.length || 0,
+        hasQuestions: !!questionnaire.questions,
+        questionsCount: questionnaire.questions?.length || 0,
+      });
+      return (
+        <div style={{ 
+          padding: '20px',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.56)',
+            backdropFilter: 'blur(28px)',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '400px',
+            textAlign: 'center',
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '24px',
+            }}>⚠️</div>
+            <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
+              Анкета пуста
+            </h2>
+            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5', marginBottom: '24px' }}>
+              Анкета загружена, но в ней нет вопросов. Пожалуйста, обновите страницу или обратитесь в поддержку.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                backgroundColor: '#0A5F59',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '12px 24px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+              }}
+            >
+              Обновить страницу
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // Случай 4: Все еще загрузка (fallback на лоадер, но с таймаутом)
     return (
       <div style={{ 
         padding: '20px',

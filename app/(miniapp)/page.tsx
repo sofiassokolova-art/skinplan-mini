@@ -178,6 +178,15 @@ export default function HomePage() {
       // Для нового пользователя сразу редиректим на /quiz БЕЗ проверки плана
       // Проверка плана должна происходить только на бэкенде, не на фронте
       // Это предотвращает показ лоадера "загрузка плана" для нового пользователя
+      // ВАЖНО: Проверяем готовность Telegram WebApp перед вызовом API
+      // (выше уже есть проверка на строке 76, но для надежности проверяем еще раз)
+      if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
+        clientLogger.log('Telegram WebApp не доступен при проверке plan_progress, перенаправляем на анкету');
+        setLoading(false);
+        router.push('/quiz');
+        return;
+      }
+      
       const { getHasPlanProgress } = await import('@/lib/user-preferences');
       const hasPlanProgress = await getHasPlanProgress();
       

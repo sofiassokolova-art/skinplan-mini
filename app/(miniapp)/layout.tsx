@@ -52,38 +52,37 @@ function LayoutContent({
 
   // ИСПРАВЛЕНО: Проверяем, является ли пользователь новым (нет hasPlanProgress)
   // Это нужно для скрытия навигации на главной странице для нового пользователя
+  // ВАЖНО: Не делаем запросы, пока Telegram WebApp не готов или мы на /quiz
   useEffect(() => {
-    let isMounted = true; // Флаг для отслеживания, валиден ли еще эффект
+    // ИСПРАВЛЕНО: Проверяем готовность Telegram WebApp перед вызовом API
+    const isTelegramReady = Boolean(
+      typeof window !== 'undefined' && 
+      window.Telegram?.WebApp?.initData && 
+      typeof window.Telegram?.WebApp?.initData === 'string' &&
+      window.Telegram.WebApp.initData.length > 0
+    );
+    
+    // Не делаем запросы на /quiz или если Telegram не готов
+    if (pathname === '/quiz' || pathname.startsWith('/quiz/') || !isTelegramReady) {
+      setIsNewUser(null);
+      return;
+    }
     
     if (pathname === '/') {
       const checkNewUser = async () => {
         try {
           const { getHasPlanProgress } = await import('@/lib/user-preferences');
           const hasPlanProgress = await getHasPlanProgress();
-          // ИСПРАВЛЕНО: Проверяем, что компонент еще смонтирован перед вызовом setState
-          if (isMounted) {
-            setIsNewUser(!hasPlanProgress);
-          }
+          setIsNewUser(!hasPlanProgress);
         } catch {
-          // ИСПРАВЛЕНО: Проверяем, что компонент еще смонтирован перед вызовом setState
-          if (isMounted) {
-            setIsNewUser(false);
-          }
+          setIsNewUser(false);
         }
       };
       checkNewUser();
     } else {
-      // Синхронный вызов setState безопасен, но для консистентности тоже проверяем флаг
-      if (isMounted) {
-        setIsNewUser(null);
-      }
+      setIsNewUser(null);
     }
-    
-    // Cleanup функция: помечаем эффект как невалидный при размонтировании или изменении зависимостей
-    return () => {
-      isMounted = false;
-    };
-  }, [pathname]);
+  }, [pathname, initData]); // Добавляем initData в зависимости, чтобы перепроверить при его появлении
 
   // УДАЛЕНО: Старая проверка профиля, которая вызывала множественные запросы
   /* useEffect(() => {

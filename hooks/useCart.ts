@@ -16,10 +16,44 @@ export function useCart() {
   
   // ИСПРАВЛЕНО: Не загружаем корзину на странице анкеты и на главной странице для новых пользователей
   // Проверяем наличие plan_progress в БД - если его нет, значит пользователь новый
+  // ВАЖНО: Также проверяем готовность Telegram WebApp перед вызовом API
   const [isNewUser, setIsNewUser] = React.useState(false);
+  const [isTelegramReady, setIsTelegramReady] = React.useState(false);
+  
+  // ИСПРАВЛЕНО: Проверяем готовность Telegram WebApp перед любыми запросами
+  React.useEffect(() => {
+    const checkTelegramReady = () => {
+      const isReady = Boolean(
+        typeof window !== 'undefined' && 
+        window.Telegram?.WebApp?.initData && 
+        typeof window.Telegram.WebApp.initData === 'string' &&
+        window.Telegram.WebApp.initData.length > 0
+      );
+      setIsTelegramReady(isReady);
+    };
+    
+    // Проверяем сразу
+    checkTelegramReady();
+    
+    // Проверяем периодически (на случай, если Telegram загрузится позже)
+    const interval = setInterval(checkTelegramReady, 100);
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      // После 5 секунд считаем, что Telegram не загрузится, но все равно не делаем запросы на /quiz
+      if (pathname !== '/quiz' && !pathname.startsWith('/quiz/')) {
+        setIsTelegramReady(true); // Разрешаем запросы на других страницах
+      }
+    }, 5000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [pathname]);
   
   React.useEffect(() => {
-    if (pathname === '/') {
+    // ИСПРАВЛЕНО: Проверяем нового пользователя только если Telegram готов И мы не на /quiz
+    if (pathname === '/' && isTelegramReady) {
       const checkNewUser = async () => {
         try {
           const { getHasPlanProgress } = await import('@/lib/user-preferences');
@@ -33,9 +67,15 @@ export function useCart() {
     } else {
       setIsNewUser(false);
     }
-  }, [pathname]);
+  }, [pathname, isTelegramReady]);
+  
+  // ИСПРАВЛЕНО: Не загружаем корзину если:
+  // 1. На странице анкеты
+  // 2. Telegram не готов
+  // 3. Новый пользователь на главной странице
   const shouldLoad = pathname !== '/quiz' && 
                      !pathname.startsWith('/quiz/') && 
+                     isTelegramReady && // Telegram должен быть готов
                      !isNewUser; // Не загружаем для новых пользователей на главной
   
   return useQuery({

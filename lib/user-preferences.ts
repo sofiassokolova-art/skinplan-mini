@@ -10,39 +10,93 @@ let preferencesCache: {
   timestamp: number;
 } | null = null;
 
-const CACHE_TTL = 5000; // 5 секунд кэш
+// ИСПРАВЛЕНО: Промис для синхронизации одновременных запросов
+// Если несколько компонентов вызывают getUserPreferences() одновременно,
+// они все ждут одного запроса вместо создания множественных запросов
+let pendingRequest: Promise<any> | null = null;
+
+const CACHE_TTL = 30000; // 30 секунд кэш (увеличено для уменьшения запросов)
 
 // Получаем preferences с кэшированием
 export async function getUserPreferences() {
-  // Проверяем кэш
+  // ИСПРАВЛЕНО: Проверяем sessionStorage для hasPlanProgress (самый частый запрос)
+  // Это предотвращает множественные запросы при загрузке страницы
+  // ВАЖНО: Используем try-catch для всех операций с sessionStorage, так как они могут быть недоступны
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = sessionStorage.getItem('user_preferences_cache');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          const cacheAge = Date.now() - parsed.timestamp;
+          if (cacheAge < CACHE_TTL && parsed.data) {
+            return parsed.data;
+          }
+        } catch (e) {
+          // Игнорируем ошибки парсинга
+        }
+      }
+    } catch (e) {
+      // Игнорируем ошибки sessionStorage (может быть недоступен в приватном режиме и т.д.)
+      // Продолжаем выполнение с проверкой кэша в памяти
+    }
+  }
+  
+  // Проверяем кэш в памяти
   if (preferencesCache && Date.now() - preferencesCache.timestamp < CACHE_TTL) {
     return preferencesCache.data;
   }
 
-  try {
-    const prefs = await api.getUserPreferences();
-    preferencesCache = {
-      data: prefs,
-      timestamp: Date.now(),
-    };
-    return prefs;
-  } catch (error) {
-    // Если ошибка - возвращаем значения по умолчанию
-    console.warn('Failed to get user preferences, using defaults:', error);
-    return {
-      isRetakingQuiz: false,
-      fullRetakeFromHome: false,
-      paymentRetakingCompleted: false,
-      paymentFullRetakeCompleted: false,
-      hasPlanProgress: false,
-      routineProducts: null,
-      planFeedbackSent: false,
-      serviceFeedbackSent: false,
-      lastPlanFeedbackDate: null,
-      lastServiceFeedbackDate: null,
-      extra: null,
-    };
+  // ИСПРАВЛЕНО: Если уже есть запрос в процессе, ждем его вместо создания нового
+  if (pendingRequest) {
+    return pendingRequest;
   }
+
+  // Создаем новый запрос
+  pendingRequest = (async () => {
+    try {
+      const prefs = await api.getUserPreferences();
+      preferencesCache = {
+        data: prefs,
+        timestamp: Date.now(),
+      };
+      
+      // ИСПРАВЛЕНО: Сохраняем в sessionStorage для использования между компонентами
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('user_preferences_cache', JSON.stringify({
+            data: prefs,
+            timestamp: Date.now(),
+          }));
+        } catch (e) {
+          // Игнорируем ошибки sessionStorage (может быть заполнен)
+        }
+      }
+      
+      return prefs;
+    } catch (error) {
+      // Если ошибка - возвращаем значения по умолчанию
+      console.warn('Failed to get user preferences, using defaults:', error);
+      return {
+        isRetakingQuiz: false,
+        fullRetakeFromHome: false,
+        paymentRetakingCompleted: false,
+        paymentFullRetakeCompleted: false,
+        hasPlanProgress: false,
+        routineProducts: null,
+        planFeedbackSent: false,
+        serviceFeedbackSent: false,
+        lastPlanFeedbackDate: null,
+        lastServiceFeedbackDate: null,
+        extra: null,
+      };
+    } finally {
+      // Очищаем pendingRequest после завершения
+      pendingRequest = null;
+    }
+  })();
+
+  return pendingRequest;
 }
 
 // Обновляем preferences
@@ -63,6 +117,14 @@ export async function updateUserPreferences(updates: Partial<{
     await api.updateUserPreferences(updates);
     // Инвалидируем кэш
     preferencesCache = null;
+    // ИСПРАВЛЕНО: Инвалидируем sessionStorage кэш
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('user_preferences_cache');
+      } catch (e) {
+        // Игнорируем ошибки
+      }
+    }
   } catch (error) {
     console.error('Failed to update user preferences:', error);
     throw error;
@@ -176,5 +238,13 @@ export async function setLastServiceFeedbackDate(value: string | null) {
 // Инвалидируем кэш (для принудительного обновления)
 export function invalidatePreferencesCache() {
   preferencesCache = null;
+  // ИСПРАВЛЕНО: Инвалидируем sessionStorage кэш
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.removeItem('user_preferences_cache');
+    } catch (e) {
+      // Игнорируем ошибки
+    }
+  }
 }
 

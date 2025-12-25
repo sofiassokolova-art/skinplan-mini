@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
         paymentFullRetakeCompleted = userPrefs.paymentFullRetakeCompleted;
       }
       
-      // Проверяем наличие профиля
+      // ИСПРАВЛЕНО: Проверяем наличие профиля
+      // ВАЖНО: Для нового пользователя (без профиля) анкета все равно должна возвращаться
       const profile = await getCurrentProfile(userId);
       
       if (profile && profile.id) {
@@ -76,6 +77,12 @@ export async function GET(request: NextRequest) {
             });
           }
         }
+      } else {
+        // ИСПРАВЛЕНО: Для нового пользователя (без профиля) логируем, что анкета будет возвращена
+        logger.info('New user (no profile) - will return active questionnaire', {
+          userId,
+          hasProfile: false,
+        });
       }
     }
     
