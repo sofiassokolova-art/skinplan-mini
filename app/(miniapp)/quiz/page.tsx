@@ -3507,7 +3507,7 @@ export default function QuizPage() {
           hasQuestionnaireRef: !!questionnaireRef.current,
           questionnaireRefId: questionnaireRef.current?.id,
           hasQuestionnaireState: !!questionnaire,
-          questionnaireStateId: questionnaire?.id,
+          questionnaireStateId: (questionnaire as Questionnaire | null)?.id,
         });
         return [];
       }
