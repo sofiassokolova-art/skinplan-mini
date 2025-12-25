@@ -631,7 +631,7 @@ export default function QuizPage() {
       setLoading(false);
       clientLogger.log('🏁 init finally', { totalElapsed });
     }
-  }, [waitForTelegram, initialize, isDev, hasResumed, isStartingOver]); // ИСПРАВЛЕНО: Убрали questionnaire из зависимостей, чтобы предотвратить повторные вызовы
+  }, [waitForTelegram, initialize, isDev, hasResumed, isStartingOver, loadQuestionnaire]); // ИСПРАВЛЕНО: Добавлен loadQuestionnaire в зависимости
 
   // ИСПРАВЛЕНО: useEffect для init - делаем "однократным"
   // init запускается ровно тогда, когда поменялся сам init (по сути — при первом маунте и когда questionnaire-логика реально изменилась)
@@ -877,15 +877,18 @@ export default function QuizPage() {
     }
   };
 
-  const loadQuestionnaire = async () => {
+  // ИСПРАВЛЕНО: Обернуто в useCallback для предотвращения пересоздания функции
+  // Это критично, чтобы предотвратить множественные вызовы из разных мест
+  const loadQuestionnaire = useCallback(async () => {
     // ИСПРАВЛЕНО: Guard против множественных вызовов loadQuestionnaire
-    // КРИТИЧНО: Устанавливаем флаги СРАЗУ, чтобы предотвратить параллельные вызовы
-    // Проверяем и устанавливаем атомарно
+    // КРИТИЧНО: Проверяем и устанавливаем флаги атомарно, чтобы предотвратить race conditions
+    // Используем двойную проверку для надежности
     if (loadQuestionnaireInProgressRef.current) {
       clientLogger.warn('⛔ loadQuestionnaire() skipped: already in progress', {
         attempted: loadQuestionnaireAttemptedRef.current,
         hasRef: !!questionnaireRef.current,
         hasState: !!questionnaire,
+        stackTrace: new Error().stack?.substring(0, 300), // Добавляем stack trace для диагностики
       });
       return null;
     }
@@ -895,12 +898,14 @@ export default function QuizPage() {
       clientLogger.warn('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref', {
         questionnaireId: questionnaireRef.current?.id,
         hasState: !!questionnaire,
+        stackTrace: new Error().stack?.substring(0, 300), // Добавляем stack trace для диагностики
       });
       return null;
     }
     
     // КРИТИЧНО: Устанавливаем флаги СРАЗУ, до любых асинхронных операций
     // Это предотвращает параллельные вызовы
+    // ВАЖНО: Устанавливаем оба флага одновременно для атомарности
     loadQuestionnaireInProgressRef.current = true;
     loadQuestionnaireAttemptedRef.current = true;
     
@@ -1443,7 +1448,7 @@ export default function QuizPage() {
       // Но в finally мы всегда сбрасываем, чтобы гарантировать выход из состояния загрузки
       setLoading(false);
     }
-  };
+  }, [isDev, isRetakingQuiz, showRetakeScreen]); // ИСПРАВЛЕНО: Добавлены зависимости для useCallback
 
   const handleAnswer = async (questionId: number, value: string | string[]) => {
     addDebugLog('💾 handleAnswer called', { 
