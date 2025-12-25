@@ -640,7 +640,11 @@ export default function QuizPage() {
       initInProgressRef.current = false;
       initStartTimeRef.current = null;
       setLoading(false);
-      clientLogger.log('🏁 init finally', { totalElapsed });
+      clientLogger.warn('🏁 init finally - setting initCompletedRef=true and loading=false', { 
+        totalElapsed,
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+      });
     }
   }, [waitForTelegram, initialize, isDev, hasResumed, isStartingOver]); // ИСПРАВЛЕНО: loadQuestionnaire убран из зависимостей, так как он объявлен ниже и стабилен благодаря useCallback
 
@@ -1414,6 +1418,8 @@ export default function QuizPage() {
         hasQuestionnaireState: !!questionnaireToSet,
         hasRef: !!questionnaireRef.current,
         refId: questionnaireRef.current?.id,
+        initCompleted: initCompletedRef.current,
+        initInProgress: initInProgressRef.current,
       });
       
       // ИСПРАВЛЕНО: Гарантируем, что ref установлен перед возвратом
@@ -4316,8 +4322,16 @@ export default function QuizPage() {
 
   // ИСПРАВЛЕНО: Убрали setLoading(false) из рендера - это вызывает повторные рендеры
   // Абсолютные таймауты уже реализованы в useEffect
+  // ИСПРАВЛЕНО: Логируем состояние перед проверкой лоадера
   if (loading && !initCompletedRef.current) {
       // init() еще не завершен - показываем лоадер
+      clientLogger.warn('⏳ Showing loader: loading=true, initCompleted=false', {
+        loading,
+        initCompleted: initCompletedRef.current,
+        hasQuestionnaire: !!questionnaire,
+        questionnaireId: questionnaire?.id,
+        initInProgress: initInProgressRef.current,
+      });
       return (
         <div style={{ 
           display: 'flex', 
