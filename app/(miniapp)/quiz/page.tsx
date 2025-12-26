@@ -711,8 +711,8 @@ export default function QuizPage() {
             stateWaitAttempts++;
           }
           
-          // ИСПРАВЛЕНО: Сохраняем значение в переменную для правильного вывода типа TypeScript
-          const currentQuestionnaire = questionnaireRef.current;
+          // ИСПРАВЛЕНО: Сохраняем значение в переменную с явным типом для правильного вывода типа TypeScript
+          const currentQuestionnaire: Questionnaire | null = questionnaireRef.current;
           clientLogger.log('✅ Questionnaire loaded and set in ref', {
             questionnaireId: currentQuestionnaire ? currentQuestionnaire.id : undefined,
             waitedForState: stateWaitAttempts > 0,
