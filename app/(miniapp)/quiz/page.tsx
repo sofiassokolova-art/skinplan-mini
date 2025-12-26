@@ -3899,16 +3899,47 @@ export default function QuizPage() {
     }
   }, [questionnaire]); // ИСПРАВЛЕНО: Зависимость от questionnaire state, но используем ref внутри для актуального значения
   
-  // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state для диагностики
+  // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
+  // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
   useEffect(() => {
-    clientLogger.log('🔄 questionnaire state changed', {
-      hasQuestionnaire: !!questionnaire,
-      questionnaireId: questionnaire?.id,
-      questionnaireRef: !!questionnaireRef.current,
-      questionnaireRefId: questionnaireRef.current?.id,
-      groupsCount: questionnaire?.groups?.length || 0,
-      questionsCount: questionnaire?.questions?.length || 0,
+    const hasQuestionnaireState = !!questionnaire;
+    const hasQuestionnaireRef = !!questionnaireRef.current;
+    const stateId = questionnaire?.id;
+    const refId = questionnaireRef.current?.id;
+    
+    clientLogger.log('🔄 questionnaire state/ref changed', {
+      hasQuestionnaireState,
+      hasQuestionnaireRef,
+      stateId,
+      refId,
+      stateGroupsCount: questionnaire?.groups?.length || 0,
+      stateQuestionsCount: questionnaire?.questions?.length || 0,
+      refGroupsCount: questionnaireRef.current?.groups?.length || 0,
+      refQuestionsCount: questionnaireRef.current?.questions?.length || 0,
     });
+    
+    // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, 
+    // принудительно пересчитываем allQuestionsRaw через изменение зависимости
+    // Это гарантирует, что allQuestionsRaw будет вычислен даже если state еще не обновился
+    if (hasQuestionnaireRef && !hasQuestionnaireState && refId) {
+      clientLogger.warn('⚠️ Questionnaire in ref but not in state - forcing recalculation', {
+        refId,
+        stateId,
+      });
+      // Принудительно обновляем state, чтобы useMemo пересчитался
+      // Но только если ref действительно содержит анкету
+      if (questionnaireRef.current) {
+        // Используем setTimeout, чтобы избежать обновления state во время рендера
+        setTimeout(() => {
+          if (questionnaireRef.current && !questionnaire) {
+            clientLogger.log('🔄 Forcing questionnaire state update from ref', {
+              refId: questionnaireRef.current.id,
+            });
+            setQuestionnaire(questionnaireRef.current);
+          }
+        }, 0);
+      }
+    }
   }, [questionnaire]); // ИСПРАВЛЕНО: questionnaire в зависимостях, чтобы useMemo пересчитывался при изменении state
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
@@ -7466,6 +7497,38 @@ export default function QuizPage() {
   // Это помогает диагностировать проблему с отображением анкеты
   // ИСПРАВЛЕНО: Используем questionnaireRef.current если questionnaire (state) еще не обновился
   const questionnaireToRender = questionnaire || questionnaireRef.current;
+  
+  // КРИТИЧНО: Проверяем, почему анкета может не отображаться
+  // Если анкета загружена, но loading все еще true - это проблема
+  if (questionnaireToRender && loading) {
+    clientLogger.warn('⚠️ CRITICAL: Questionnaire loaded but loading=true - this blocks rendering!', {
+      hasQuestionnaire: !!questionnaire,
+      hasQuestionnaireRef: !!questionnaireRef.current,
+      questionnaireId: questionnaireToRender?.id,
+      loading,
+      initCompleted: initCompletedRef.current,
+      initInProgress: initInProgressRef.current,
+    });
+  }
+  
+  // КРИТИЧНО: Если анкета загружена, но не отображается - логируем все условия
+  if (questionnaireToRender && !loading && !error) {
+    clientLogger.log('✅ Questionnaire should be visible - all conditions met', {
+      hasQuestionnaire: !!questionnaire,
+      hasQuestionnaireRef: !!questionnaireRef.current,
+      questionnaireId: questionnaireToRender?.id,
+      loading,
+      error: error || null,
+      showResumeScreen,
+      showRetakeScreen,
+      isShowingInitialInfoScreen,
+      pendingInfoScreen: !!pendingInfoScreen,
+      isRetakingQuiz,
+      hasResumed,
+      initCompleted: initCompletedRef.current,
+    });
+  }
+  
   clientLogger.log('✅ Rendering main questionnaire view', {
     hasQuestionnaire: !!questionnaire,
     hasQuestionnaireRef: !!questionnaireRef.current,
@@ -7484,6 +7547,8 @@ export default function QuizPage() {
     pendingInfoScreen: !!pendingInfoScreen,
     isRetakingQuiz,
     hasResumed,
+    initCompleted: initCompletedRef.current,
+    initInProgress: initInProgressRef.current,
   });
   
   return (
