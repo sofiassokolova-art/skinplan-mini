@@ -7459,9 +7459,13 @@ export default function QuizPage() {
 
   // КРИТИЧНО: Логируем, что именно показывается пользователю в конце рендера
   // Это помогает диагностировать проблему с отображением анкеты
+  // ИСПРАВЛЕНО: Используем questionnaireRef.current если questionnaire (state) еще не обновился
+  const questionnaireToRender = questionnaire || questionnaireRef.current;
   clientLogger.log('✅ Rendering main questionnaire view', {
     hasQuestionnaire: !!questionnaire,
-    questionnaireId: questionnaire?.id,
+    hasQuestionnaireRef: !!questionnaireRef.current,
+    hasQuestionnaireToRender: !!questionnaireToRender,
+    questionnaireId: questionnaire?.id || questionnaireRef.current?.id || null,
     hasCurrentQuestion: !!currentQuestion,
     currentQuestionId: currentQuestion?.id,
     currentQuestionIndex,
