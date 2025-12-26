@@ -18,12 +18,15 @@ export default function RootPage() {
     const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
     if (justSubmitted) {
       clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
-      try {
-        const { setHasPlanProgress } = await import('@/lib/user-preferences');
-        await setHasPlanProgress(true);
-      } catch (error) {
-        clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
-      }
+      // ИСПРАВЛЕНО: Оборачиваем async операции в отдельную функцию, так как useEffect не может быть async
+      (async () => {
+        try {
+          const { setHasPlanProgress } = await import('@/lib/user-preferences');
+          await setHasPlanProgress(true);
+        } catch (error) {
+          clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
+        }
+      })();
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('quiz_just_submitted');
         window.location.replace('/plan?state=generating');
