@@ -1701,8 +1701,14 @@ export default function QuizPage() {
         setCurrentQuestionIndex(0);
       }
       
-      // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, так как init() управляет loading
-      // Это предотвращает мигание лоадера
+      // КРИТИЧНО: Устанавливаем loading=false после успешной загрузки анкеты
+      // Это гарантирует, что анкета отобразится после загрузки
+      // ИСПРАВЛЕНО: Устанавливаем loading=false здесь, чтобы анкета открылась сразу после загрузки
+      // init() также установит loading=false в finally, но это не помешает
+      setLoading(false);
+      clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false', {
+        questionnaireId: questionnaireData.id,
+      });
       
       // ИСПРАВЛЕНО: Логируем успешное завершение загрузки
       clientLogger.log('✅ loadQuestionnaire completed successfully', {
