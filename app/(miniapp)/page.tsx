@@ -81,11 +81,16 @@ export default function RootPage() {
         
         // Если в кэше нет - делаем API запрос, но только если мы не редиректим на /quiz
         // ИСПРАВЛЕНО: Проверяем pathname перед вызовом getHasPlanProgress, чтобы не делать запрос на /quiz
+        // ИСПРАВЛЕНО: Если hasPlanProgress === false (новый пользователь), не делаем API запрос - сразу редиректим
         if (!hasPlanProgress) {
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
           const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
           
-          if (!isOnQuizPage) {
+          // ИСПРАВЛЕНО: Не делаем API запрос, если мы на главной странице и собираемся редиректить на /quiz
+          // Это предотвращает вызов /api/user/preferences на главной странице перед редиректом
+          // Если hasPlanProgress === false из кэша, значит пользователь новый, и мы все равно редиректим на /quiz
+          // Поэтому нет смысла делать API запрос
+          if (!isOnQuizPage && currentPath !== '/') {
             const { getHasPlanProgress } = await import('@/lib/user-preferences');
             hasPlanProgress = await getHasPlanProgress();
           }
