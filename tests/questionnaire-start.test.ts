@@ -571,6 +571,134 @@ describe.skipIf(!hasDatabase)('Questionnaire Start', () => {
     });
   });
 
+  describe('Loader behavior and API performance', () => {
+    it('should return questionnaire quickly to avoid loader issues', async () => {
+      if (!testQuestionnaireId) {
+        throw new Error('Test questionnaire ID not set');
+      }
+      
+      const startTime = Date.now();
+      const request = createMockRequestWithAuth(testUserId);
+      const response = await getActiveQuestionnaire(request);
+      const duration = Date.now() - startTime;
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      
+      // Проверяем, что API отвечает достаточно быстро (менее 5 секунд)
+      // Это важно для правильной работы лоадеров на фронтенде
+      expect(duration).toBeLessThan(5000);
+      
+      // Проверяем, что данные корректны и готовы к отображению
+      expect(data).toHaveProperty('id');
+      expect(data).toHaveProperty('groups');
+      expect(data).toHaveProperty('questions');
+      
+      // Проверяем, что анкета содержит вопросы (чтобы не было пустой анкеты)
+      const totalQuestions = 
+        (data.groups || []).reduce((sum: number, g: any) => sum + (g.questions?.length || 0), 0) +
+        (data.questions || []).length;
+      expect(totalQuestions).toBeGreaterThan(0);
+    });
+
+    it('should return questionnaire with correct structure to prevent loader hanging', async () => {
+      if (!testQuestionnaireId) {
+        throw new Error('Test questionnaire ID not set');
+      }
+      
+      const request = createMockRequestWithAuth(testUserId);
+      const response = await getActiveQuestionnaire(request);
+      
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      
+      // КРИТИЧНО: Проверяем, что структура данных правильная
+      // Неправильная структура может вызвать проблемы с лоадерами на фронтенде
+      
+      // Проверяем обязательные поля
+      expect(data).toHaveProperty('id');
+      expect(typeof data.id).toBe('number');
+      expect(data).toHaveProperty('name');
+      expect(typeof data.name).toBe('string');
+      expect(data).toHaveProperty('version');
+      expect(typeof data.version).toBe('number');
+      
+      // Проверяем, что groups и questions - это массивы (не null, не undefined)
+      expect(Array.isArray(data.groups)).toBe(true);
+      expect(Array.isArray(data.questions)).toBe(true);
+      
+      // Проверяем метаданные (важно для правильной работы лоадеров)
+      expect(data).toHaveProperty('_meta');
+      expect(data._meta).toHaveProperty('shouldRedirectToPlan');
+      expect(typeof data._meta.shouldRedirectToPlan).toBe('boolean');
+      expect(data._meta).toHaveProperty('isCompleted');
+      expect(typeof data._meta.isCompleted).toBe('boolean');
+      expect(data._meta).toHaveProperty('preferences');
+      expect(typeof data._meta.preferences.hasPlanProgress).toBe('boolean');
+      
+      // Проверяем, что если анкета не завершена, shouldRedirectToPlan = false
+      // Это важно для правильного отображения лоадера/анкеты
+      if (!data._meta.isCompleted) {
+        expect(data._meta.shouldRedirectToPlan).toBe(false);
+      }
+    });
+
+    it('should not have loading state issues when questionnaire is loaded', async () => {
+      if (!testQuestionnaireId) {
+        throw new Error('Test questionnaire ID not set');
+      }
+      
+      // Симулируем последовательные запросы (как на фронтенде)
+      const request1 = createMockRequestWithAuth(testUserId);
+      const response1 = await getActiveQuestionnaire(request1);
+      expect(response1.status).toBe(200);
+      const data1 = await response1.json();
+      
+      // Второй запрос должен вернуть те же данные быстро
+      const startTime = Date.now();
+      const request2 = createMockRequestWithAuth(testUserId);
+      const response2 = await getActiveQuestionnaire(request2);
+      const duration = Date.now() - startTime;
+      
+      expect(response2.status).toBe(200);
+      const data2 = await response2.json();
+      
+      // Проверяем, что данные одинаковые
+      expect(data1.id).toBe(data2.id);
+      
+      // Проверяем, что второй запрос быстрый (может быть кеширован)
+      expect(duration).toBeLessThan(3000);
+      
+      // Проверяем, что структура данных стабильна
+      expect(data1._meta.shouldRedirectToPlan).toBe(data2._meta.shouldRedirectToPlan);
+      expect(data1._meta.isCompleted).toBe(data2._meta.isCompleted);
+    });
+
+    it('should return progress quickly to avoid loader hanging', async () => {
+      if (!testQuestionnaireId) {
+        throw new Error('Test questionnaire ID not set');
+      }
+      
+      const startTime = Date.now();
+      const request = createMockRequestWithAuth(testUserIdWithProgress);
+      const response = await getQuestionnaireProgress(request);
+      const duration = Date.now() - startTime;
+      
+      expect(response.status).toBe(200);
+      
+      // Проверяем, что API отвечает быстро (менее 5 секунд)
+      // Это важно для правильной работы лоадеров
+      expect(duration).toBeLessThan(5000);
+      
+      const data = await response.json();
+      
+      // Проверяем, что структура данных правильная
+      expect(data).toHaveProperty('progress');
+      expect(data).toHaveProperty('isCompleted');
+      expect(typeof data.isCompleted).toBe('boolean');
+    });
+  });
+
   describe('Questionnaire initialization flow', () => {
     it('should have active questionnaire with questions', async () => {
       if (!testQuestionnaireId) {
