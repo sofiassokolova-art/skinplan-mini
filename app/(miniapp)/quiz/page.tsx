@@ -895,6 +895,7 @@ export default function QuizPage() {
     if (loadQuestionnaireAttemptedRef.current) return;
     if (initInProgressRef.current) return;
     if (!initCompletedRef.current) return;
+    if (!loadQuestionnaireRef.current) return; // ИСПРАВЛЕНО: Проверяем, что функция доступна
 
     // КРИТИЧНО: Устанавливаем флаги СРАЗУ, чтобы предотвратить повторные вызовы
     loadQuestionnaireInProgressRef.current = true;
@@ -908,7 +909,9 @@ export default function QuizPage() {
       initCompleted: initCompletedRef.current,
     });
 
-    loadQuestionnaire().catch((err) => {
+    // ИСПРАВЛЕНО: Используем loadQuestionnaireRef.current вместо прямого вызова
+    // Это решает проблему с использованием переменной до её объявления
+    loadQuestionnaireRef.current().catch((err) => {
       clientLogger.error('❌ Failed to load questionnaire during retake', err);
       // При ошибке загрузки при перепрохождении не показываем ошибку пользователю
       // Экран выбора тем покажется без анкеты (темы загружаются из quiz-topics.ts)
@@ -916,7 +919,7 @@ export default function QuizPage() {
       loadQuestionnaireInProgressRef.current = false;
       loadQuestionnaireAttemptedRef.current = false;
     });
-  }, [isRetakingQuiz, showRetakeScreen, questionnaire, loading, loadQuestionnaire]);
+  }, [isRetakingQuiz, showRetakeScreen, questionnaire, loading]); // ИСПРАВЛЕНО: Убрали loadQuestionnaire из зависимостей, используем ref
 
   const loadSavedProgressFromServer = async () => {
     // ИСПРАВЛЕНО: Логируем вызов для отладки в Telegram Mini App
