@@ -1701,12 +1701,23 @@ export default function QuizPage() {
         setCurrentQuestionIndex(0);
       }
       
-      // КРИТИЧНО: Устанавливаем loading=false после успешной загрузки анкеты
+      // КРИТИЧНО: Устанавливаем loading=false ПОСЛЕ установки state
       // Это гарантирует, что анкета отобразится после загрузки
-      // ИСПРАВЛЕНО: Устанавливаем loading=false здесь, чтобы анкета открылась сразу после загрузки
-      // init() также установит loading=false в finally, но это не помешает
+      // ИСПРАВЛЕНО: Используем setTimeout для гарантированного обновления state перед сбросом loading
+      // Это предотвращает ситуацию, когда loading сбрасывается до того, как state обновился
+      setTimeout(() => {
+        setLoading(false);
+        clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false (after state update)', {
+          questionnaireId: questionnaireData.id,
+          hasQuestionnaireState: !!questionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+        });
+      }, 0);
+      
+      // КРИТИЧНО: Также устанавливаем loading=false сразу, чтобы не задерживать отображение
+      // Если state обновится быстро, это сработает сразу
       setLoading(false);
-      clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false', {
+      clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false (immediate)', {
         questionnaireId: questionnaireData.id,
       });
       
