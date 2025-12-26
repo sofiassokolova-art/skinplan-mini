@@ -3916,31 +3916,39 @@ export default function QuizPage() {
       stateQuestionsCount: questionnaire?.questions?.length || 0,
       refGroupsCount: questionnaireRef.current?.groups?.length || 0,
       refQuestionsCount: questionnaireRef.current?.questions?.length || 0,
+      loading,
     });
     
     // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, 
-    // принудительно пересчитываем allQuestionsRaw через изменение зависимости
-    // Это гарантирует, что allQuestionsRaw будет вычислен даже если state еще не обновился
+    // принудительно обновляем state и сбрасываем loading
+    // Это гарантирует, что анкета отобразится сразу после загрузки
     if (hasQuestionnaireRef && !hasQuestionnaireState && refId) {
-      clientLogger.warn('⚠️ Questionnaire in ref but not in state - forcing recalculation', {
+      clientLogger.warn('⚠️ Questionnaire in ref but not in state - forcing state update and loading=false', {
         refId,
         stateId,
+        loading,
       });
       // Принудительно обновляем state, чтобы useMemo пересчитался
       // Но только если ref действительно содержит анкету
       if (questionnaireRef.current) {
-        // Используем setTimeout, чтобы избежать обновления state во время рендера
-        setTimeout(() => {
-          if (questionnaireRef.current && !questionnaire) {
-            clientLogger.log('🔄 Forcing questionnaire state update from ref', {
-              refId: questionnaireRef.current.id,
-            });
-            setQuestionnaire(questionnaireRef.current);
-          }
-        }, 0);
+        clientLogger.log('🔄 Forcing questionnaire state update from ref', {
+          refId: questionnaireRef.current.id,
+        });
+        setQuestionnaire(questionnaireRef.current);
+        // КРИТИЧНО: Сбрасываем loading, чтобы анкета отобразилась
+        setLoading(false);
       }
     }
-  }, [questionnaire]); // ИСПРАВЛЕНО: questionnaire в зависимостях, чтобы useMemo пересчитывался при изменении state
+    
+    // КРИТИЧНО: Если анкета загружена в state, но loading все еще true - сбрасываем loading
+    if (hasQuestionnaireState && loading && stateId) {
+      clientLogger.warn('⚠️ Questionnaire in state but loading=true - forcing loading=false', {
+        stateId,
+        loading,
+      });
+      setLoading(false);
+    }
+  }, [questionnaire, loading]); // ИСПРАВЛЕНО: questionnaire и loading в зависимостях
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
@@ -4696,7 +4704,9 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Показываем лоадер только если анкета действительно не загружена
   // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, чтобы не блокировать отображение
   // если анкета загружена в ref, но state еще не обновился
-  if (loading && !initCompletedRef.current && !questionnaire && !questionnaireRef.current) {
+  // КРИТИЧНО: НЕ показываем лоадер, если анкета загружена в ref или state - это блокирует рендеринг анкеты
+  const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
+  if (loading && !initCompletedRef.current && !hasQuestionnaireAnywhere) {
       // init() еще не завершен и анкета не загружена - показываем лоадер
       // ИСПРАВЛЕНО: TypeScript - в этом блоке questionnaire и questionnaireRef.current гарантированно null
       // поэтому не логируем questionnaireId
@@ -4911,7 +4921,9 @@ export default function QuizPage() {
   // Если init() завершен, но анкета не загружена - продолжаем показывать основной лоадер
   // Второй лоадер показываем только если init() завершен И прошло достаточно времени (5 секунд)
   // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, так как state может обновляться асинхронно
-  if (!questionnaire && !questionnaireRef.current && initCompletedRef.current) {
+  // КРИТИЧНО: НЕ показываем fallback loader, если анкета загружена в ref или state - это блокирует рендеринг анкеты
+  const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
+  if (!hasQuestionnaireAnywhere && initCompletedRef.current) {
     // КРИТИЧНО: Детальное логирование для диагностики - почему анкета не отображается
     // ИСПРАВЛЕНО: В этом блоке questionnaireRef.current гарантированно null, поэтому не логируем его ID
     clientLogger.warn('⚠️ Questionnaire not loaded but init completed - showing fallback loader', {
