@@ -4874,11 +4874,13 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Если init() еще не завершен, показываем основной лоадер (уже показан выше)
   // Если init() завершен, но анкета не загружена - продолжаем показывать основной лоадер
   // Второй лоадер показываем только если init() завершен И прошло достаточно времени (5 секунд)
-  if (!questionnaire && initCompletedRef.current) {
+  // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, так как state может обновляться асинхронно
+  if (!questionnaire && !questionnaireRef.current && initCompletedRef.current) {
     // КРИТИЧНО: Детальное логирование для диагностики - почему анкета не отображается
     // ИСПРАВЛЕНО: questionnaire здесь null, поэтому используем questionnaireRef для получения ID
     clientLogger.warn('⚠️ Questionnaire not loaded but init completed - showing fallback loader', {
       hasQuestionnaire: false, // questionnaire здесь всегда null в этом блоке
+      hasQuestionnaireRef: !!questionnaireRef.current,
       questionnaireId: questionnaireRef.current?.id || null,
       questionnaireRefExists: !!questionnaireRef.current,
       questionnaireRefId: questionnaireRef.current?.id || null,
