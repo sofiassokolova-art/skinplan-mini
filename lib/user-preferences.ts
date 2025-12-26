@@ -139,8 +139,54 @@ export async function getUserPreferences() {
     return pendingRequest;
   }
 
+  // КРИТИЧНО: Проверяем pathname еще раз ПЕРЕД созданием нового запроса
+  // Это защита от race condition, когда вызов был инициирован до перехода на /quiz
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
+    if (isOnQuizPage) {
+      console.log('⚠️ getUserPreferences: preventing new request creation on /quiz - returning defaults');
+      return {
+        isRetakingQuiz: false,
+        fullRetakeFromHome: false,
+        paymentRetakingCompleted: false,
+        paymentFullRetakeCompleted: false,
+        hasPlanProgress: false,
+        routineProducts: null,
+        planFeedbackSent: false,
+        serviceFeedbackSent: false,
+        lastPlanFeedbackDate: null,
+        lastServiceFeedbackDate: null,
+        extra: null,
+      };
+    }
+  }
+
   // Создаем новый запрос
   pendingRequest = (async () => {
+    // КРИТИЧНО: Проверяем pathname еще раз ВНУТРИ async функции перед API вызовом
+    // Это финальная защита от race condition
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      const isOnQuizPage = pathname === '/quiz' || pathname.startsWith('/quiz/');
+      if (isOnQuizPage) {
+        console.log('⚠️ getUserPreferences: preventing API call inside async function on /quiz - returning defaults');
+        return {
+          isRetakingQuiz: false,
+          fullRetakeFromHome: false,
+          paymentRetakingCompleted: false,
+          paymentFullRetakeCompleted: false,
+          hasPlanProgress: false,
+          routineProducts: null,
+          planFeedbackSent: false,
+          serviceFeedbackSent: false,
+          lastPlanFeedbackDate: null,
+          lastServiceFeedbackDate: null,
+          extra: null,
+        };
+      }
+    }
+    
     try {
       const prefs = await api.getUserPreferences();
       preferencesCache = {

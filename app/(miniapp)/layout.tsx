@@ -127,6 +127,8 @@ function LayoutContent({
       try {
         // КРИТИЧНО: Проверяем pathname еще раз внутри async функции
         // Это защита от race condition, если пользователь перешел на /quiz во время выполнения
+        // КРИТИЧНО: Проверяем pathname еще раз внутри async функции
+        // Это защита от race condition, если пользователь перешел на /quiz во время выполнения
         const checkPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
         const stillOnQuiz = checkPath === '/quiz' || checkPath.startsWith('/quiz/');
         if (stillOnQuiz || aborted) {
@@ -136,7 +138,29 @@ function LayoutContent({
           return;
         }
         
+        // КРИТИЧНО: Проверяем pathname еще раз ПЕРЕД импортом и вызовом getHasPlanProgress
+        // Это дополнительная защита от race condition
+        const finalCheckPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+        const stillOnQuizFinal = finalCheckPath === '/quiz' || finalCheckPath.startsWith('/quiz/');
+        if (stillOnQuizFinal || aborted) {
+          if (!aborted) {
+            setIsNewUser(null);
+          }
+          return;
+        }
+        
         const { getHasPlanProgress } = await import('@/lib/user-preferences');
+        // КРИТИЧНО: Проверяем pathname еще раз ПЕРЕД вызовом getHasPlanProgress
+        // Это финальная защита от race condition
+        const preCallCheckPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
+        const preCallStillOnQuiz = preCallCheckPath === '/quiz' || preCallCheckPath.startsWith('/quiz/');
+        if (preCallStillOnQuiz || aborted) {
+          if (!aborted) {
+            setIsNewUser(null);
+          }
+          return;
+        }
+        
         const hasPlanProgress = await getHasPlanProgress();
         if (!aborted && !stillOnQuiz) {
           setIsNewUser(!hasPlanProgress);
