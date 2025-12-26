@@ -6899,74 +6899,9 @@ export default function QuizPage() {
           </div>
         );
       }
-      // Если allQuestionsRaw не пустой, но allQuestions пустой - значит все вопросы отфильтрованы
-      // Это временное состояние во время фильтрации, показываем лоадер
-      return (
-        <div style={{ 
-          padding: '20px',
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.56)',
-            backdropFilter: 'blur(28px)',
-            borderRadius: '24px',
-            padding: '48px',
-            maxWidth: '400px',
-            textAlign: 'center',
-          }}>
-            <div style={{
-              position: 'relative',
-              width: '72px',
-              height: '72px',
-              margin: '0 auto 32px',
-            }}>
-              <div style={{
-                width: '72px',
-                height: '72px',
-                border: '4px solid rgba(10, 95, 89, 0.2)',
-                borderTop: '4px solid #0A5F59',
-                borderRight: '4px solid #D5FE61',
-              borderRadius: '50%',
-                animation: 'spin-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
-                boxShadow: '0 4px 20px rgba(10, 95, 89, 0.25)',
-              }} />
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(213, 254, 97, 0.4) 0%, transparent 70%)',
-                animation: 'pulse-inner 1.5s ease-in-out infinite',
-            }} />
-            </div>
-            <h2 style={{ 
-              color: '#0A5F59', 
-              marginBottom: '12px', 
-              fontSize: '22px', 
-              fontWeight: '700',
-              letterSpacing: '-0.02em'
-            }}>
-              Загружаем анкету
-            </h2>
-            <p style={{ 
-              color: '#475467', 
-              fontSize: '16px', 
-              lineHeight: '1.6',
-              opacity: 0.9
-            }}>
-              Подготовка вопросов...
-            </p>
-          </div>
-        </div>
-      );
+      // УПРОЩЕНО: Убран лоадер для случая, когда все вопросы отфильтрованы
+      // Это не нужно для нового пользователя - анкета должна отображаться сразу
+      // Если все вопросы отфильтрованы - это ошибка, показываем ошибку (обрабатывается ниже)
     }
     
     // ИСПРАВЛЕНО: Показываем ошибку только если анкета не загружена И ошибка связана с загрузкой анкеты
