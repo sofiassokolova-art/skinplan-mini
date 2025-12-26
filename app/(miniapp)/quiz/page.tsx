@@ -4639,7 +4639,29 @@ export default function QuizPage() {
 
   // ИСПРАВЛЕНО: Убрали setLoading(false) из рендера - это вызывает повторные рендеры
   // Абсолютные таймауты уже реализованы в useEffect
-  // ИСПРАВЛЕНО: Логируем состояние перед проверкой лоадера
+  // ИСПРАВЛЕНО: Детальное логирование для диагностики проблемы с отображением анкеты
+  // Логируем состояние перед каждым условием рендеринга
+  clientLogger.log('🔍 Quiz page render - checking what to display', {
+    loading,
+    initCompleted: initCompletedRef.current,
+    hasQuestionnaire: !!questionnaire,
+    questionnaireId: questionnaire?.id,
+    questionnaireRefId: questionnaireRef.current?.id,
+    initInProgress: initInProgressRef.current,
+    error: error || null,
+    showResumeScreen,
+    showRetakeScreen,
+    isRetakingQuiz,
+    isSubmitting,
+    isStartingOver: isStartingOverRef.current,
+    hasResumed: hasResumedRef.current,
+    currentQuestionIndex,
+    currentInfoScreenIndex,
+    isShowingInitialInfoScreen: isShowingInitialInfoScreen,
+    savedProgressExists: !!savedProgress,
+    savedAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
+  });
+  
   if (loading && !initCompletedRef.current) {
       // init() еще не завершен - показываем лоадер
       clientLogger.log('⏳ Showing loader: loading=true, initCompleted=false', {
@@ -4853,6 +4875,22 @@ export default function QuizPage() {
   // Если init() завершен, но анкета не загружена - продолжаем показывать основной лоадер
   // Второй лоадер показываем только если init() завершен И прошло достаточно времени (5 секунд)
   if (!questionnaire && initCompletedRef.current) {
+    // КРИТИЧНО: Детальное логирование для диагностики - почему анкета не отображается
+    clientLogger.warn('⚠️ Questionnaire not loaded but init completed - showing fallback loader', {
+      hasQuestionnaire: !!questionnaire,
+      questionnaireId: questionnaire?.id,
+      questionnaireRefExists: !!questionnaireRef.current,
+      questionnaireRefId: questionnaireRef.current?.id,
+      initCompleted: initCompletedRef.current,
+      initInProgress: initInProgressRef.current,
+      loading,
+      error: error || null,
+      loadQuestionnaireInProgress: loadQuestionnaireInProgressRef.current,
+      loadQuestionnaireAttempted: loadQuestionnaireAttemptedRef.current,
+      timeSinceInitCompleted: initCompletedTimeRef.current 
+        ? Date.now() - initCompletedTimeRef.current 
+        : null,
+    });
     // ИСПРАВЛЕНО: Проверяем, завершена ли анкета, перед показом лоадера "Подготавливаем анкету"
     // Если анкета завершена - редиректим на /plan, а не показываем лоадер
     // ИСПРАВЛЕНО: Для нового пользователя не проверяем завершенность - это лишний запрос
@@ -7418,6 +7456,26 @@ export default function QuizPage() {
     );
   }
 
+  // КРИТИЧНО: Логируем, что именно показывается пользователю в конце рендера
+  // Это помогает диагностировать проблему с отображением анкеты
+  clientLogger.log('✅ Rendering main questionnaire view', {
+    hasQuestionnaire: !!questionnaire,
+    questionnaireId: questionnaire?.id,
+    hasCurrentQuestion: !!currentQuestion,
+    currentQuestionId: currentQuestion?.id,
+    currentQuestionIndex,
+    allQuestionsLength: allQuestions.length,
+    allQuestionsRawLength: allQuestionsRaw.length,
+    loading,
+    error: error || null,
+    showResumeScreen,
+    showRetakeScreen,
+    isShowingInitialInfoScreen,
+    pendingInfoScreen: !!pendingInfoScreen,
+    isRetakingQuiz,
+    hasResumed,
+  });
+  
   return (
     <div style={{ 
       padding: '20px',
