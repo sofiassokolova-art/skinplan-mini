@@ -1142,15 +1142,17 @@ export default function QuizPage() {
       setError(null);
       
       // ИСПРАВЛЕНО: Проверяем Telegram initData перед загрузкой анкеты
-      // Если initData нет и мы не в dev - показываем явный экран ошибки
+      // ИСПРАВЛЕНО: Делаем проверку более мягкой - не блокируем загрузку, а только логируем предупреждение
+      // Анкета может быть публичной и загружаться без initData
       if (!isDev && typeof window !== 'undefined') {
         const hasInitData = !!window.Telegram?.WebApp?.initData;
         if (!hasInitData) {
-          clientLogger.error('❌ Telegram initData not available, cannot load questionnaire');
-          setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
-          setLoading(false);
-          loadQuestionnaireInProgressRef.current = false;
-          return null;
+          clientLogger.warn('⚠️ Telegram initData not available, but continuing to load questionnaire...');
+          // ИСПРАВЛЕНО: Не блокируем загрузку анкеты, так как она может быть публичной
+          // setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
+          // setLoading(false);
+          // loadQuestionnaireInProgressRef.current = false;
+          // return null;
         }
       }
       
