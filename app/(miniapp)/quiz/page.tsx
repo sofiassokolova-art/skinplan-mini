@@ -4878,12 +4878,14 @@ export default function QuizPage() {
   if (!questionnaire && !questionnaireRef.current && initCompletedRef.current) {
     // КРИТИЧНО: Детальное логирование для диагностики - почему анкета не отображается
     // ИСПРАВЛЕНО: questionnaire здесь null, поэтому используем questionnaireRef для получения ID
+    // ИСПРАВЛЕНО: TypeScript - проверяем questionnaireRef.current перед доступом к id
+    const questionnaireRefValue = questionnaireRef.current;
     clientLogger.warn('⚠️ Questionnaire not loaded but init completed - showing fallback loader', {
       hasQuestionnaire: false, // questionnaire здесь всегда null в этом блоке
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      questionnaireId: questionnaireRef.current?.id || null,
-      questionnaireRefExists: !!questionnaireRef.current,
-      questionnaireRefId: questionnaireRef.current?.id || null,
+      hasQuestionnaireRef: !!questionnaireRefValue,
+      questionnaireId: questionnaireRefValue?.id || null,
+      questionnaireRefExists: !!questionnaireRefValue,
+      questionnaireRefId: questionnaireRefValue?.id || null,
       initCompleted: initCompletedRef.current,
       initInProgress: initInProgressRef.current,
       loading,
