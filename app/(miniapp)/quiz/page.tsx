@@ -4743,24 +4743,27 @@ export default function QuizPage() {
   // КРИТИЧНО: НЕ показываем лоадер, если анкета загружена в ref или state - это блокирует рендеринг анкеты
   const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
   
-  // КРИТИЧНО: Если анкета загружена, но loading все еще true - принудительно сбрасываем loading
+  // КРИТИЧНО: Если анкета загружена, но loading все еще true - принудительно сбрасываем loading СРАЗУ
   // Это должно обрабатываться в useEffect, но на всякий случай делаем это и здесь
-  // Используем ref для отслеживания, чтобы не создавать бесконечный цикл
-  if (hasQuestionnaireAnywhere && loading && !loadingResetAttemptedRef.current) {
-    loadingResetAttemptedRef.current = true;
-    // Используем queueMicrotask для обновления state после текущего рендера
-    queueMicrotask(() => {
-      setLoading(false);
-      clientLogger.warn('⚠️ CRITICAL: Questionnaire loaded but loading=true - forcing loading=false in render', {
-        hasQuestionnaire: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+  // КРИТИЧНО: НЕ используем queueMicrotask - сбрасываем loading СРАЗУ, чтобы анкета отобразилась
+  if (hasQuestionnaireAnywhere && loading) {
+    // КРИТИЧНО: Если анкета в ref, но не в state - принудительно обновляем state
+    if (questionnaireRef.current && !questionnaire) {
+      clientLogger.warn('⚠️ CRITICAL: Questionnaire in ref but not in state - forcing state update IMMEDIATELY', {
+        refId: questionnaireRef.current.id,
+        stateId: questionnaire?.id,
         loading,
       });
-      // Сбрасываем флаг после небольшой задержки, чтобы можно было повторить при необходимости
-      setTimeout(() => {
-        loadingResetAttemptedRef.current = false;
-      }, 1000);
+      // Принудительно обновляем state СРАЗУ
+      setQuestionnaire(questionnaireRef.current);
+    }
+    // КРИТИЧНО: Сбрасываем loading СРАЗУ, без queueMicrotask
+    setLoading(false);
+    clientLogger.warn('⚠️ CRITICAL: Questionnaire loaded but loading=true - forcing loading=false IMMEDIATELY in render', {
+      hasQuestionnaire: !!questionnaire,
+      hasQuestionnaireRef: !!questionnaireRef.current,
+      questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+      loading,
     });
   }
   
@@ -4769,7 +4772,9 @@ export default function QuizPage() {
   // КРИТИЧНО: Если анкета загружена (в ref или state), НЕ показываем лоадер, даже если loading=true
   // Это гарантирует, что анкета отобразится сразу после загрузки
   // useEffect выше уже обрабатывает принудительный сброс loading, если анкета загружена
-  if (loading && !hasQuestionnaireAnywhere) {
+  // КРИТИЧНО: Проверяем hasQuestionnaireAnywhere еще раз, так как мы могли обновить state выше
+  const hasQuestionnaireAnywhereAfterUpdate = !!questionnaire || !!questionnaireRef.current;
+  if (loading && !hasQuestionnaireAnywhereAfterUpdate) {
       // init() еще не завершен и анкета не загружена - показываем лоадер
       // ИСПРАВЛЕНО: TypeScript - в этом блоке questionnaire и questionnaireRef.current гарантированно null
       // поэтому не логируем questionnaireId
