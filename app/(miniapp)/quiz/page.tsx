@@ -3948,6 +3948,17 @@ export default function QuizPage() {
       });
       setLoading(false);
     }
+    
+    // КРИТИЧНО: Если анкета загружена в ref, но loading все еще true - сбрасываем loading
+    // Это дополнительная защита на случай, если state еще не обновился
+    if (hasQuestionnaireRef && loading && refId && !hasQuestionnaireState) {
+      clientLogger.warn('⚠️ Questionnaire in ref but loading=true (state not updated yet) - forcing loading=false', {
+        refId,
+        stateId,
+        loading,
+      });
+      setLoading(false);
+    }
   }, [questionnaire, loading]); // ИСПРАВЛЕНО: questionnaire и loading в зависимостях
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
