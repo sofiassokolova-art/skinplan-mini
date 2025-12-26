@@ -4749,7 +4749,7 @@ export default function QuizPage() {
     if (questionnaireRef.current && !questionnaire) {
       clientLogger.warn('⚠️ CRITICAL: Questionnaire in ref but not in state - forcing state update IMMEDIATELY', {
         refId: questionnaireRef.current.id,
-        stateId: questionnaire?.id,
+        stateId: null, // questionnaire здесь гарантированно null в этом блоке
         loading,
       });
       // Принудительно обновляем state СРАЗУ
