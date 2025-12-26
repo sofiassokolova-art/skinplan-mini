@@ -712,7 +712,7 @@ export default function QuizPage() {
           }
           
           clientLogger.log('✅ Questionnaire loaded and set in ref', {
-            questionnaireId: questionnaireRef.current?.id,
+            questionnaireId: questionnaireRef.current ? questionnaireRef.current.id : undefined,
             waitedForState: stateWaitAttempts > 0,
           });
         } else if (!loadQuestionnaireRef.current) {
