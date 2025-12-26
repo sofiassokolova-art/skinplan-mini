@@ -3945,8 +3945,15 @@ export default function QuizPage() {
         clientLogger.log('🔄 Forcing questionnaire state update from ref', {
           refId: questionnaireRef.current.id,
         });
-        setQuestionnaire(questionnaireRef.current);
-        // КРИТИЧНО: Сбрасываем loading, чтобы анкета отобразилась
+        // КРИТИЧНО: Используем функциональную форму для гарантированного обновления
+        setQuestionnaire((prev) => {
+          if (prev?.id === questionnaireRef.current?.id) {
+            // Если ID совпадает, все равно обновляем для гарантии
+            return questionnaireRef.current;
+          }
+          return questionnaireRef.current;
+        });
+        // КРИТИЧНО: Сбрасываем loading немедленно, чтобы анкета отобразилась
         setLoading(false);
       }
     }
