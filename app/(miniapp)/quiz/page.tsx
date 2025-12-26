@@ -7555,10 +7555,14 @@ export default function QuizPage() {
       isRetakingQuiz,
       hasResumed,
       initCompleted: initCompletedRef.current,
+      currentQuestion: !!currentQuestion,
+      currentQuestionIndex,
+      allQuestionsLength: allQuestions.length,
     });
   }
   
-  clientLogger.log('✅ Rendering main questionnaire view', {
+  // КРИТИЧНО: Логируем состояние перед рендерингом анкеты
+  clientLogger.log('🔍 Final render check - what will be displayed?', {
     hasQuestionnaire: !!questionnaire,
     hasQuestionnaireRef: !!questionnaireRef.current,
     hasQuestionnaireToRender: !!questionnaireToRender,
