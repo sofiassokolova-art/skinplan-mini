@@ -172,8 +172,10 @@ export function logApiRequest(
     userId,
   });
 
-  // ИСПРАВЛЕНО: Также сохраняем в KV (асинхронно, не блокирует)
-  setTimeout(async () => {
+  // ИСПРАВЛЕНО: Сохраняем в KV асинхронно, но без setTimeout
+  // Используем Promise.resolve().then() для неблокирующего выполнения
+  // Это гарантирует, что логирование произойдет даже если setTimeout не сработает
+  Promise.resolve().then(async () => {
     try {
       const { getRedis } = await import('@/lib/redis');
       const redis = getRedis();
@@ -236,7 +238,14 @@ export function logApiRequest(
         userId: userId || 'anonymous',
       });
     }
-  }, 0);
+  }).catch((error) => {
+    // Обрабатываем ошибки промиса (на случай, если Promise.resolve().then() не сработает)
+    console.error('❌ Failed to schedule API request log to KV:', {
+      method,
+      path,
+      error: error?.message,
+    });
+  });
 }
 
 // Helper для логирования ошибок API
