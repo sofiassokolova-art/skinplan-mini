@@ -1708,24 +1708,14 @@ export default function QuizPage() {
         setCurrentQuestionIndex(0);
       }
       
-      // КРИТИЧНО: Устанавливаем loading=false ПОСЛЕ установки state
-      // Это гарантирует, что анкета отобразится после загрузки
-      // ИСПРАВЛЕНО: Используем setTimeout для гарантированного обновления state перед сбросом loading
-      // Это предотвращает ситуацию, когда loading сбрасывается до того, как state обновился
-      setTimeout(() => {
-        setLoading(false);
-        clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false (after state update)', {
-          questionnaireId: questionnaireData.id,
-          hasQuestionnaireState: !!questionnaire,
-          hasQuestionnaireRef: !!questionnaireRef.current,
-        });
-      }, 0);
-      
-      // КРИТИЧНО: Также устанавливаем loading=false сразу, чтобы не задерживать отображение
-      // Если state обновится быстро, это сработает сразу
+      // КРИТИЧНО: Устанавливаем loading=false СРАЗУ после установки state
+      // НЕ используем setTimeout - это задерживает отображение анкеты
+      // State обновится в следующем рендере, но loading должен быть false СРАЗУ
       setLoading(false);
-      clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false (immediate)', {
+      clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false IMMEDIATELY', {
         questionnaireId: questionnaireData.id,
+        hasQuestionnaireState: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
       });
       
       // ИСПРАВЛЕНО: Логируем успешное завершение загрузки
