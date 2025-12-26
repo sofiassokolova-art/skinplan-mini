@@ -4681,10 +4681,10 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Детальное логирование для диагностики проблемы с отображением анкеты
   // Логируем состояние перед каждым условием рендеринга
   clientLogger.log('🔍 Quiz page render - checking what to display', {
-    loading,
-    initCompleted: initCompletedRef.current,
-    hasQuestionnaire: !!questionnaire,
-    questionnaireId: questionnaire?.id,
+        loading,
+        initCompleted: initCompletedRef.current,
+        hasQuestionnaire: !!questionnaire,
+        questionnaireId: questionnaire?.id,
     questionnaireRefId: questionnaireRef.current?.id,
     initInProgress: initInProgressRef.current,
     error: error || null,
@@ -4774,7 +4774,7 @@ export default function QuizPage() {
             <div style={{ 
               color: '#0A5F59', 
               fontSize: '20px',
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: '600',
               marginBottom: '8px',
               letterSpacing: '-0.02em'
@@ -4983,7 +4983,7 @@ export default function QuizPage() {
   // Второй лоадер показываем только если init() завершен И прошло достаточно времени (5 секунд)
   // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, так как state может обновляться асинхронно
   // КРИТИЧНО: НЕ показываем fallback loader, если анкета загружена в ref или state - это блокирует рендеринг анкеты
-  const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
+  // ИСПРАВЛЕНО: Используем уже объявленную переменную hasQuestionnaireAnywhere
   if (!hasQuestionnaireAnywhere && initCompletedRef.current) {
     // КРИТИЧНО: Детальное логирование для диагностики - почему анкета не отображается
     // ИСПРАВЛЕНО: В этом блоке questionnaireRef.current гарантированно null, поэтому не логируем его ID
@@ -5096,8 +5096,8 @@ export default function QuizPage() {
           alignItems: 'center',
           gap: '32px',
         }}>
-          <div
-            style={{
+        <div
+          style={{
               position: 'relative',
               width: '64px',
               height: '64px',
@@ -5107,9 +5107,9 @@ export default function QuizPage() {
               style={{
                 width: '64px',
                 height: '64px',
-                borderRadius: '50%',
+            borderRadius: '50%',
                 border: '4px solid rgba(10, 95, 89, 0.2)',
-                borderTop: '4px solid #0A5F59',
+            borderTop: '4px solid #0A5F59',
                 borderRight: '4px solid #D5FE61',
                 animation: 'spin-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
                 boxShadow: '0 4px 16px rgba(10, 95, 89, 0.2)',
@@ -5126,27 +5126,27 @@ export default function QuizPage() {
                 borderRadius: '50%',
                 background: 'radial-gradient(circle, rgba(213, 254, 97, 0.4) 0%, transparent 70%)',
                 animation: 'pulse-inner 1.5s ease-in-out infinite',
-              }}
-            />
+          }}
+        />
           </div>
           
           <div style={{ textAlign: 'center' }}>
-            <h1
-              style={{
+        <h1
+          style={{
                 fontSize: '24px',
-                fontWeight: 700,
+            fontWeight: 700,
                 color: '#0A5F59',
                 marginBottom: '12px',
-                textAlign: 'center',
+            textAlign: 'center',
                 letterSpacing: '-0.02em',
-              }}
-            >
+          }}
+        >
               Загружаем анкету
-            </h1>
-            <p
-              style={{
+        </h1>
+        <p
+          style={{
                 fontSize: '16px',
-                color: '#475467',
+            color: '#475467',
                 textAlign: 'center',
                 maxWidth: '320px',
                 lineHeight: '1.6',
@@ -5159,14 +5159,14 @@ export default function QuizPage() {
               style={{
                 fontSize: '13px',
                 color: '#6B7280',
-                textAlign: 'center',
-                maxWidth: '320px',
-                lineHeight: '1.5',
+            textAlign: 'center',
+            maxWidth: '320px',
+            lineHeight: '1.5',
                 opacity: 0.8,
-              }}
-            >
-              Это может занять несколько секунд при первом запуске.
-            </p>
+          }}
+        >
+          Это может занять несколько секунд при первом запуске.
+        </p>
           </div>
         </div>
         
@@ -7119,7 +7119,7 @@ export default function QuizPage() {
                 border: '4px solid rgba(10, 95, 89, 0.2)',
                 borderTop: '4px solid #0A5F59',
                 borderRight: '4px solid #D5FE61',
-                borderRadius: '50%',
+              borderRadius: '50%',
                 animation: 'spin-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
                 boxShadow: '0 4px 20px rgba(10, 95, 89, 0.25)',
               }} />
@@ -7133,7 +7133,7 @@ export default function QuizPage() {
                 borderRadius: '50%',
                 background: 'radial-gradient(circle, rgba(213, 254, 97, 0.4) 0%, transparent 70%)',
                 animation: 'pulse-inner 1.5s ease-in-out infinite',
-              }} />
+            }} />
             </div>
             <h2 style={{ 
               color: '#0A5F59', 
@@ -7671,7 +7671,7 @@ export default function QuizPage() {
               border: '4px solid rgba(10, 95, 89, 0.2)',
               borderTop: '4px solid #0A5F59',
               borderRight: '4px solid #D5FE61',
-              borderRadius: '50%',
+            borderRadius: '50%',
               animation: 'spin-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
               boxShadow: '0 4px 20px rgba(10, 95, 89, 0.25)',
             }} />
@@ -7685,7 +7685,7 @@ export default function QuizPage() {
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(213, 254, 97, 0.4) 0%, transparent 70%)',
               animation: 'pulse-inner 1.5s ease-in-out infinite',
-            }} />
+          }} />
           </div>
           <h2 style={{ 
             color: '#0A5F59', 
@@ -7766,7 +7766,7 @@ export default function QuizPage() {
     initCompleted: initCompletedRef.current,
     initInProgress: initInProgressRef.current,
   });
-  
+
   return (
     <div style={{ 
       padding: '20px',
