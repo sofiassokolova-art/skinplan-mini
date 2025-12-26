@@ -4,15 +4,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
+import { logger, logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
 import { getCurrentProfile } from '@/lib/get-current-profile';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const method = 'GET';
+  const path = '/api/questionnaire/active';
+  let userId: string | null = null;
+  
   try {
     // ИСПРАВЛЕНО: Проверяем авторизацию и получаем userId
     const auth = await requireTelegramAuth(request, { ensureUser: false });
-    let userId: string | null = null;
     let shouldRedirectToPlan = false;
     let isCompleted = false;
     let hasPlanProgress = false;
@@ -256,7 +260,8 @@ export async function GET(request: NextRequest) {
     });
 
     // ИСПРАВЛЕНО: Возвращаем анкету с информацией о редиректе и preferences
-    return NextResponse.json({
+    const duration = Date.now() - startTime;
+    const response = NextResponse.json({
       ...formatted,
       // Метаданные для фронтенда
       _meta: {
@@ -273,11 +278,21 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+    
+    // ИСПРАВЛЕНО: Логируем успешный запрос в KV для мониторинга
+    logApiRequest(method, path, 200, duration, userId);
+    
+    return response;
   } catch (error: any) {
+    const duration = Date.now() - startTime;
     logger.error('Error fetching active questionnaire', error, {
       errorMessage: error?.message,
       errorStack: error?.stack?.substring(0, 500),
     });
+    
+    // ИСПРАВЛЕНО: Логируем ошибку в KV для мониторинга
+    logApiError(method, path, error, userId);
+    
     return NextResponse.json(
       { error: 'Internal server error', details: process.env.NODE_ENV === 'development' ? error?.message : undefined },
       { status: 500 }

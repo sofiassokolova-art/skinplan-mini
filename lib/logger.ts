@@ -172,10 +172,10 @@ export function logApiRequest(
     userId,
   });
 
-  // ИСПРАВЛЕНО: Сохраняем в KV асинхронно, но без setTimeout
-  // Используем Promise.resolve().then() для неблокирующего выполнения
-  // Это гарантирует, что логирование произойдет даже если setTimeout не сработает
-  Promise.resolve().then(async () => {
+  // ИСПРАВЛЕНО: Сохраняем в KV асинхронно, но надежно
+  // Используем queueMicrotask для немедленного выполнения в следующем тике event loop
+  // Это гарантирует, что логирование произойдет даже если Promise.resolve().then() не сработает
+  queueMicrotask(async () => {
     try {
       const { getRedis } = await import('@/lib/redis');
       const redis = getRedis();
@@ -239,7 +239,7 @@ export function logApiRequest(
       });
     }
   }).catch((error) => {
-    // Обрабатываем ошибки промиса (на случай, если Promise.resolve().then() не сработает)
+    // Обрабатываем ошибки промиса (на случай, если queueMicrotask не сработает)
     console.error('❌ Failed to schedule API request log to KV:', {
       method,
       path,
