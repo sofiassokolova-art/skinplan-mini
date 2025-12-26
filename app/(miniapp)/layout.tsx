@@ -108,7 +108,8 @@ function LayoutContent({
     }
     
     // ИСПРАВЛЕНО: Проверяем только на главной странице и только один раз
-    if (pathname !== '/') {
+    // ИСПРАВЛЕНО: Также проверяем, что мы не на /quiz (дополнительная защита)
+    if (pathname !== '/' || isOnQuizPage) {
       setIsNewUser(null);
       return;
     }

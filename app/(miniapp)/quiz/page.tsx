@@ -7205,6 +7205,10 @@ export default function QuizPage() {
         loading,
         error,
         hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        questionnaireRefId: questionnaireRef.current?.id,
+        initCompleted: initCompletedRef.current,
+        initInProgress: initInProgressRef.current,
       });
       return (
         <div style={{ 
