@@ -4667,12 +4667,13 @@ export default function QuizPage() {
   // если анкета загружена в ref, но state еще не обновился
   if (loading && !initCompletedRef.current && !questionnaire && !questionnaireRef.current) {
       // init() еще не завершен и анкета не загружена - показываем лоадер
+      // ИСПРАВЛЕНО: TypeScript - в этом блоке questionnaire и questionnaireRef.current гарантированно null
+      // поэтому не логируем questionnaireId
       clientLogger.log('⏳ Showing loader: loading=true, initCompleted=false, no questionnaire', {
         loading,
         initCompleted: initCompletedRef.current,
-        hasQuestionnaire: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireId: questionnaire?.id || questionnaireRef.current?.id || null,
+        hasQuestionnaire: false, // questionnaire здесь всегда null в этом блоке
+        hasQuestionnaireRef: false, // questionnaireRef.current здесь всегда null в этом блоке
         initInProgress: initInProgressRef.current,
       });
       return (
