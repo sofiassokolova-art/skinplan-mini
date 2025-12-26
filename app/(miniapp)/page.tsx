@@ -50,8 +50,11 @@ export default function RootPage() {
     // ИСПРАВЛЕНО: Проверяем авторизацию перед проверкой hasPlanProgress
     const checkAndRedirect = async () => {
       try {
-        await api.authTelegram(window.Telegram.WebApp.initData);
-        clientLogger.log('✅ Authorization successful');
+        // ИСПРАВЛЕНО: Проверяем наличие window.Telegram перед использованием
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+          await api.authTelegram(window.Telegram.WebApp.initData);
+          clientLogger.log('✅ Authorization successful');
+        }
       } catch (authError: any) {
         // Не блокируем приложение при ошибке авторизации
         clientLogger.warn('⚠️ Authorization failed, but continuing (non-blocking):', authError?.message);
