@@ -690,6 +690,10 @@ export default function QuizPage() {
             throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
           }
           
+          // КРИТИЧНО: Сохраняем значение в переменную после проверки, чтобы TypeScript правильно вывел тип
+          // ИСПРАВЛЕНО: Используем type assertion, так как мы уже проверили, что questionnaireRef.current не null
+          const currentQuestionnaire = questionnaireRef.current as Questionnaire;
+          
           // КРИТИЧНО: Ждем, пока questionnaire будет установлен в state
           // Это предотвращает завершение init() до того, как questionnaire появится в state
           // ИСПРАВЛЕНО: Ждем максимум 1 секунду (10 попыток по 100ms)
@@ -711,10 +715,8 @@ export default function QuizPage() {
             stateWaitAttempts++;
           }
           
-          // ИСПРАВЛЕНО: Сохраняем значение в переменную с явным типом для правильного вывода типа TypeScript
-          const currentQuestionnaire: Questionnaire | null = questionnaireRef.current;
           clientLogger.log('✅ Questionnaire loaded and set in ref', {
-            questionnaireId: currentQuestionnaire ? currentQuestionnaire.id : undefined,
+            questionnaireId: currentQuestionnaire.id,
             waitedForState: stateWaitAttempts > 0,
           });
         } else if (!loadQuestionnaireRef.current) {
