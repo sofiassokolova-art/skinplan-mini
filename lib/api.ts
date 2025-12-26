@@ -23,9 +23,10 @@ const activeRequests = new Map<string, Promise<any>>();
 const requestCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 2000; // 2 секунды кэш для одинаковых запросов
 // ИСПРАВЛЕНО: Увеличенный кэш для анкеты (не меняется часто)
-// КРИТИЧНО: Увеличено до 5 минут, чтобы предотвратить повторные запросы
+// КРИТИЧНО: Увеличено до 10 минут, чтобы предотвратить повторные запросы
 // Анкета не меняется часто, поэтому можно кэшировать дольше
-const QUESTIONNAIRE_CACHE_TTL = 300000; // 5 минут для /questionnaire/active
+// ИСПРАВЛЕНО: Увеличено с 5 до 10 минут для более надежной защиты от дублирования
+const QUESTIONNAIRE_CACHE_TTL = 600000; // 10 минут для /questionnaire/active
 
 async function request<T>(
   endpoint: string,
@@ -116,14 +117,22 @@ async function request<T>(
   
   // ИСПРАВЛЕНО: Проверяем активные запросы ПЕРЕД любыми async операциями
   // Это предотвращает race conditions, когда два запроса приходят почти одновременно
+  // КРИТИЧНО: Проверяем activeRequests ПОСЛЕ проверки кэша, чтобы использовать кэш если он есть
   if (requestKey && activeRequests.has(requestKey)) {
-    if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
-      console.log('🔄 Reusing active request for:', endpoint);
+    const activeRequest = activeRequests.get(requestKey);
+    if (activeRequest) {
+      if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
+        console.log('🔄 Reusing active request for:', endpoint, {
+          activeRequestsSize: activeRequests.size,
+          requestKey,
+        });
+      }
+      return activeRequest as Promise<T>;
     }
-    return activeRequests.get(requestKey) as Promise<T>;
   }
   
   // ИСПРАВЛЕНО: Проверяем кэш с правильным TTL для анкеты
+  // КРИТИЧНО: Проверяем кэш ПЕРЕД проверкой activeRequests, чтобы использовать кэш вместо активного запроса
   if (requestKey && requestCache.has(requestKey)) {
     const cached = requestCache.get(requestKey)!;
     const isQuestionnaireEndpoint = endpoint.includes('/questionnaire/active');
@@ -132,10 +141,11 @@ async function request<T>(
     
     if (age < cacheTTL) {
       if (process.env.NODE_ENV === 'development' && isQuestionnaireEndpoint) {
-        console.log('💾 Using cached questionnaire data, age:', age, 'ms');
+        console.log('💾 Using cached questionnaire data, age:', age, 'ms, TTL:', cacheTTL, 'ms');
       }
       return Promise.resolve(cached.data) as Promise<T>;
     }
+    // Кэш устарел - удаляем его
     requestCache.delete(requestKey);
   }
   

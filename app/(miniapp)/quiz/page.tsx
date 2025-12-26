@@ -883,6 +883,41 @@ export default function QuizPage() {
     // Не нужно делать дополнительные проверки
   }, [questionnaire, loading, savedProgress]);
 
+  // ИСПРАВЛЕНО: useEffect для загрузки анкеты при перепрохождении
+  // Убрали вызов loadQuestionnaire() из render - это плохая практика
+  // Теперь загрузка происходит в useEffect, что правильно для React
+  useEffect(() => {
+    // Загружаем анкета только при перепрохождении, если она еще не загружена
+    if (!(isRetakingQuiz || showRetakeScreen)) return;
+    if (questionnaire || questionnaireRef.current) return;
+    if (loading) return;
+    if (loadQuestionnaireInProgressRef.current) return;
+    if (loadQuestionnaireAttemptedRef.current) return;
+    if (initInProgressRef.current) return;
+    if (!initCompletedRef.current) return;
+
+    // КРИТИЧНО: Устанавливаем флаги СРАЗУ, чтобы предотвратить повторные вызовы
+    loadQuestionnaireInProgressRef.current = true;
+    loadQuestionnaireAttemptedRef.current = true;
+
+    clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen (useEffect)', {
+      loading,
+      inProgress: loadQuestionnaireInProgressRef.current,
+      attempted: loadQuestionnaireAttemptedRef.current,
+      initInProgress: initInProgressRef.current,
+      initCompleted: initCompletedRef.current,
+    });
+
+    loadQuestionnaire().catch((err) => {
+      clientLogger.error('❌ Failed to load questionnaire during retake', err);
+      // При ошибке загрузки при перепрохождении не показываем ошибку пользователю
+      // Экран выбора тем покажется без анкеты (темы загружаются из quiz-topics.ts)
+      // ИСПРАВЛЕНО: Сбрасываем флаги при ошибке, чтобы можно было повторить
+      loadQuestionnaireInProgressRef.current = false;
+      loadQuestionnaireAttemptedRef.current = false;
+    });
+  }, [isRetakingQuiz, showRetakeScreen, questionnaire, loading, loadQuestionnaire]);
+
   const loadSavedProgressFromServer = async () => {
     // ИСПРАВЛЕНО: Логируем вызов для отладки в Telegram Mini App
     clientLogger.log('🔄 loadSavedProgressFromServer: вызов', {
@@ -7138,57 +7173,8 @@ export default function QuizPage() {
       );
     }
     
-    // ИСПРАВЛЕНО: При перепрохождении, если анкета еще не загружена, загружаем её в фоне
-    // Анкета нужна для экрана выбора тем (чтобы показать доступные темы)
-    // ВАЖНО: При showRetakeScreen = true не показываем лоадер "Подготавливаем анкету"
-    // Экран выбора тем показывается сразу, анкета загружается в фоне
-    // КРИТИЧНО: Этот код выполняется в render, поэтому нужно быть очень осторожным с вызовами
-    // ИСПРАВЛЕНО: Добавлена строгая защита от множественных вызовов loadQuestionnaire()
-    // Проверяем не только guards loadQuestionnaire, но и init() состояние
-    if ((isRetakingQuiz || showRetakeScreen) && !questionnaire && !questionnaireRef.current) {
-      // Анкета еще не загружена при перепрохождении - загружаем в фоне
-      // Экран выбора тем покажется сразу, даже если анкета еще не загружена
-      // КРИТИЧНО: Проверяем ВСЕ guards перед вызовом loadQuestionnaire()
-      // Также проверяем, не вызывается ли уже init(), который тоже может вызвать loadQuestionnaire()
-      if (!loading && 
-          !loadQuestionnaireInProgressRef.current && 
-          !loadQuestionnaireAttemptedRef.current &&
-          !initInProgressRef.current &&
-          initCompletedRef.current) {
-        // Не показываем лоадер при перепрохождении - загружаем в фоне
-        // КРИТИЧНО: Устанавливаем флаги СРАЗУ, чтобы предотвратить повторные вызовы при следующем рендере
-        loadQuestionnaireInProgressRef.current = true;
-        loadQuestionnaireAttemptedRef.current = true;
-        
-        clientLogger.log('ℹ️ Retaking quiz, loading questionnaire in background for retake screen', {
-          loading,
-          inProgress: loadQuestionnaireInProgressRef.current,
-          attempted: loadQuestionnaireAttemptedRef.current,
-          initInProgress: initInProgressRef.current,
-          initCompleted: initCompletedRef.current,
-        });
-        
-        loadQuestionnaire().catch((err) => {
-          clientLogger.error('❌ Failed to load questionnaire during retake', err);
-          // При ошибке загрузки при перепрохождении не показываем ошибку пользователю
-          // Экран выбора тем покажется без анкеты (темы загружаются из quiz-topics.ts)
-          // ИСПРАВЛЕНО: Сбрасываем флаги при ошибке, чтобы можно было повторить
-          loadQuestionnaireInProgressRef.current = false;
-          loadQuestionnaireAttemptedRef.current = false;
-        });
-      } else {
-        // КРИТИЧНО: Логируем только в development, чтобы не засорять логи
-        if (process.env.NODE_ENV === 'development') {
-          clientLogger.log('⛔ Skipping loadQuestionnaire() during retake - already in progress or attempted', {
-            loading,
-            inProgress: loadQuestionnaireInProgressRef.current,
-            attempted: loadQuestionnaireAttemptedRef.current,
-            initInProgress: initInProgressRef.current,
-            initCompleted: initCompletedRef.current,
-          });
-        }
-      }
-    }
+    // ИСПРАВЛЕНО: Убрали вызов loadQuestionnaire() из render - это плохая практика
+    // Загрузка анкеты при перепрохождении теперь происходит в useEffect ниже
 
     // ИСПРАВЛЕНО: Убрали лоадер "Загружаем вопросы..."
     // Если анкета загружена и есть вопросы, но вопрос еще не найден - это временное состояние
