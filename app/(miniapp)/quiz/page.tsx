@@ -4662,13 +4662,17 @@ export default function QuizPage() {
     savedAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
   });
   
-  if (loading && !initCompletedRef.current) {
-      // init() еще не завершен - показываем лоадер
-      clientLogger.log('⏳ Showing loader: loading=true, initCompleted=false', {
+  // ИСПРАВЛЕНО: Показываем лоадер только если анкета действительно не загружена
+  // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, чтобы не блокировать отображение
+  // если анкета загружена в ref, но state еще не обновился
+  if (loading && !initCompletedRef.current && !questionnaire && !questionnaireRef.current) {
+      // init() еще не завершен и анкета не загружена - показываем лоадер
+      clientLogger.log('⏳ Showing loader: loading=true, initCompleted=false, no questionnaire', {
         loading,
         initCompleted: initCompletedRef.current,
         hasQuestionnaire: !!questionnaire,
-        questionnaireId: questionnaire?.id,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        questionnaireId: questionnaire?.id || questionnaireRef.current?.id || null,
         initInProgress: initInProgressRef.current,
       });
       return (
