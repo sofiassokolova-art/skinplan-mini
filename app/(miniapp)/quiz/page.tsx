@@ -252,6 +252,8 @@ export default function QuizPage() {
   const loadQuestionnaireRef = useRef<(() => Promise<any>) | null>(null);
   // ИСПРАВЛЕНО: Ref для отслеживания времени завершения init() для показа второго лоадера
   const initCompletedTimeRef = useRef<number | null>(null);
+  // Ref для отслеживания попыток принудительного сброса loading в рендере
+  const loadingResetAttemptedRef = useRef(false);
 
   // ИСПРАВЛЕНО: Очищаем quiz_just_submitted и isSubmitting при входе на /quiz
   // Это предотвращает показ планового лоадера для нового пользователя из-за "залипшего" флага
@@ -4735,6 +4737,27 @@ export default function QuizPage() {
   // если анкета загружена в ref, но state еще не обновился
   // КРИТИЧНО: НЕ показываем лоадер, если анкета загружена в ref или state - это блокирует рендеринг анкеты
   const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
+  
+  // КРИТИЧНО: Если анкета загружена, но loading все еще true - принудительно сбрасываем loading
+  // Это должно обрабатываться в useEffect, но на всякий случай делаем это и здесь
+  // Используем ref для отслеживания, чтобы не создавать бесконечный цикл
+  if (hasQuestionnaireAnywhere && loading && !loadingResetAttemptedRef.current) {
+    loadingResetAttemptedRef.current = true;
+    // Используем queueMicrotask для обновления state после текущего рендера
+    queueMicrotask(() => {
+      setLoading(false);
+      clientLogger.warn('⚠️ CRITICAL: Questionnaire loaded but loading=true - forcing loading=false in render', {
+        hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+        loading,
+      });
+      // Сбрасываем флаг после небольшой задержки, чтобы можно было повторить при необходимости
+      setTimeout(() => {
+        loadingResetAttemptedRef.current = false;
+      }, 1000);
+    });
+  }
   
   // УПРОЩЕНО: Показываем лоадер только если loading=true И анкета не загружена
   // Убраны сложные проверки initCompletedRef - они не нужны, так как анкета должна загружаться сразу
