@@ -9,6 +9,7 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30000, // 30 секунд для тестов с БД
+    hookTimeout: 30000, // 30 секунд для хуков (beforeAll, afterAll)
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
