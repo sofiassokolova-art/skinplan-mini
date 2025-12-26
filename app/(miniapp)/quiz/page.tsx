@@ -4706,7 +4706,10 @@ export default function QuizPage() {
   // если анкета загружена в ref, но state еще не обновился
   // КРИТИЧНО: НЕ показываем лоадер, если анкета загружена в ref или state - это блокирует рендеринг анкеты
   const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
-  if (loading && !initCompletedRef.current && !hasQuestionnaireAnywhere) {
+  
+  // УПРОЩЕНО: Показываем лоадер только если loading=true И анкета не загружена
+  // Убраны сложные проверки initCompletedRef - они не нужны, так как анкета должна загружаться сразу
+  if (loading && !hasQuestionnaireAnywhere) {
       // init() еще не завершен и анкета не загружена - показываем лоадер
       // ИСПРАВЛЕНО: TypeScript - в этом блоке questionnaire и questionnaireRef.current гарантированно null
       // поэтому не логируем questionnaireId
@@ -5004,13 +5007,10 @@ export default function QuizPage() {
     );
   }
   
-  // ИСПРАВЛЕНО: Если init() еще не завершен, показываем основной лоадер (уже показан выше)
-  // Если init() завершен, но анкета не загружена - продолжаем показывать основной лоадер
-  // Второй лоадер показываем только если init() завершен И прошло достаточно времени (5 секунд)
-  // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, так как state может обновляться асинхронно
-  // КРИТИЧНО: НЕ показываем fallback loader, если анкета загружена в ref или state - это блокирует рендеринг анкеты
-  // ИСПРАВЛЕНО: Используем уже объявленную переменную hasQuestionnaireAnywhere
-  if (!hasQuestionnaireAnywhere && initCompletedRef.current) {
+  // УПРОЩЕНО: Убран fallback лоадер - он не нужен
+  // Пользователь должен видеть только главный лоадер, а затем сразу анкету
+  // Если анкета не загрузилась - это ошибка, показываем экран ошибки
+  // Fallback лоадер убран, так как он создает путаницу и задерживает отображение анкеты
     // КРИТИЧНО: Детальное логирование для диагностики - почему анкета не отображается
     // ИСПРАВЛЕНО: В этом блоке questionnaireRef.current гарантированно null, поэтому не логируем его ID
     clientLogger.warn('⚠️ Questionnaire not loaded but init completed - showing fallback loader', {
