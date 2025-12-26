@@ -4724,204 +4724,230 @@ export default function QuizPage() {
           alignItems: 'center', 
           height: '100vh',
           flexDirection: 'column',
-          gap: '32px',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 50%, #D5FE61 100%)',
-          position: 'relative',
-          overflow: 'hidden'
+          gap: '24px',
+          background: '#FFFFFF'
         }}>
-          {/* Декоративные элементы фона */}
-          <div style={{
-            position: 'absolute',
-            top: '-50%',
-            left: '-50%',
-            width: '200%',
-            height: '200%',
-            background: 'radial-gradient(circle, rgba(213, 254, 97, 0.1) 0%, transparent 70%)',
-            animation: 'pulse-bg 4s ease-in-out infinite',
-          }} />
-          <div style={{
-            position: 'absolute',
-            bottom: '-50%',
-            right: '-50%',
-            width: '200%',
-            height: '200%',
-            background: 'radial-gradient(circle, rgba(10, 95, 89, 0.08) 0%, transparent 70%)',
-            animation: 'pulse-bg 5s ease-in-out infinite reverse',
-          }} />
-          
           <div style={{
             position: 'relative',
-            width: '180px',
-            height: '120px',
+            width: '160px',
+            height: '100px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1
+            justifyContent: 'center'
           }}>
             <div className="loader-shapes">
               <div className="loader-shape loader-shape-1"></div>
               <div className="loader-shape loader-shape-2"></div>
-              <div className="loader-glow"></div>
             </div>
           </div>
-          
           <div style={{ 
-            position: 'relative',
-            zIndex: 1,
-            textAlign: 'center',
-            padding: '0 20px'
-          }}>
-            <div style={{ 
-              color: '#0A5F59', 
-              fontSize: '20px',
+            color: '#000000', 
+            fontSize: '16px',
             fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: '600',
-              marginBottom: '8px',
-              letterSpacing: '-0.02em'
-            }}>Загружаем анкету</div>
-            <div style={{ 
-              color: '#475467', 
-              fontSize: '14px',
-              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontWeight: '400',
-              opacity: 0.8
-            }}>Еще немного...</div>
-          </div>
-          
+            fontWeight: '200' // Inter Extra Light
+          }}>Загружаем анкету, еще немного</div>
           <style>{`
             .loader-shapes {
               position: relative;
-              width: 180px;
-              height: 120px;
+              width: 160px;
+              height: 100px;
             }
             
             .loader-shape {
               position: absolute;
               top: 50%;
               transform: translateY(-50%);
-              filter: drop-shadow(0 4px 12px rgba(213, 254, 97, 0.4));
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              will-change: transform, width, height, border-radius, opacity;
             }
             
             .loader-shape-1 {
-              background: linear-gradient(135deg, #D5FE61 0%, #B8E84F 100%);
-              animation: morph-left 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+              background: #D5FE61;
+              box-shadow: 0 4px 16px rgba(213, 254, 97, 0.4), 
+                          0 2px 8px rgba(213, 254, 97, 0.3),
+                          inset 0 1px 0 rgba(255, 255, 255, 0.2);
+              animation: morph-left 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             }
             
             .loader-shape-2 {
-              background: linear-gradient(135deg, #0A5F59 0%, #0D7A72 100%);
-              animation: morph-right 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-            }
-            
-            .loader-glow {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              width: 120px;
-              height: 80px;
-              background: radial-gradient(ellipse, rgba(213, 254, 97, 0.3) 0%, transparent 70%);
-              animation: pulse-glow 2s ease-in-out infinite;
-              pointer-events: none;
+              background: #0A5F59;
+              box-shadow: 0 4px 16px rgba(10, 95, 89, 0.3), 
+                          0 2px 8px rgba(10, 95, 89, 0.2),
+                          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+              animation: morph-right 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             }
             
             @keyframes morph-left {
               0%, 100% {
                 border-radius: 50%;
-                width: 24px;
-                height: 24px;
+                width: 20px;
+                height: 20px;
                 left: 0;
                 transform: translateY(-50%) scale(1);
+                opacity: 1;
+              }
+              10% {
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                left: 0;
+                transform: translateY(-50%) scale(1.15);
+                opacity: 1;
               }
               20% {
                 border-radius: 50%;
-                width: 24px;
-                height: 24px;
+                width: 20px;
+                height: 20px;
                 left: 0;
-                transform: translateY(-50%) scale(1.1);
+                transform: translateY(-50%) scale(1);
+                opacity: 1;
+              }
+              30% {
+                border-radius: 45%;
+                width: 50px;
+                height: 38px;
+                left: 8px;
+                transform: translateY(-50%) scale(1);
+                opacity: 1;
               }
               40% {
-                border-radius: 24px;
-                width: 100px;
-                height: 40px;
-                left: 20px;
+                border-radius: 30px;
+                width: 96px;
+                height: 38px;
+                left: 12px;
                 transform: translateY(-50%) scale(1);
+                opacity: 1;
+              }
+              50% {
+                border-radius: 30px;
+                width: 96px;
+                height: 38px;
+                left: 12px;
+                transform: translateY(-50%) scale(1.02);
+                opacity: 1;
               }
               60% {
-                border-radius: 20px;
-                width: 64px;
-                height: 40px;
+                border-radius: 25px;
+                width: 60px;
+                height: 38px;
                 left: 0;
                 transform: translateY(-50%) scale(1);
+                opacity: 1;
+              }
+              70% {
+                border-radius: 40%;
+                width: 48px;
+                height: 38px;
+                left: 0;
+                transform: translateY(-50%) scale(1);
+                opacity: 1;
               }
               80% {
                 border-radius: 50%;
-                width: 52px;
-                height: 52px;
+                width: 48px;
+                height: 48px;
                 left: 0;
                 transform: translateY(-50%) scale(1.05);
+                opacity: 1;
+              }
+              90% {
+                border-radius: 50%;
+                width: 48px;
+                height: 48px;
+                left: 0;
+                transform: translateY(-50%) scale(1);
+                opacity: 1;
               }
             }
             
             @keyframes morph-right {
               0%, 100% {
                 border-radius: 50%;
-                width: 52px;
-                height: 52px;
+                width: 48px;
+                height: 48px;
                 right: 0;
                 transform: translateY(-50%) scale(1.05);
+                opacity: 1;
               }
-              20% {
-                border-radius: 20px;
-                width: 64px;
-                height: 40px;
+              10% {
+                border-radius: 50%;
+                width: 48px;
+                height: 48px;
                 right: 0;
                 transform: translateY(-50%) scale(1);
+                opacity: 1;
+              }
+              20% {
+                border-radius: 40%;
+                width: 60px;
+                height: 38px;
+                right: 0;
+                transform: translateY(-50%) scale(1);
+                opacity: 1;
+              }
+              30% {
+                border-radius: 25px;
+                width: 60px;
+                height: 38px;
+                right: 0;
+                transform: translateY(-50%) scale(1);
+                opacity: 1;
+              }
+              35% {
+                border-radius: 30px;
+                width: 80px;
+                height: 38px;
+                right: 8px;
+                transform: translateY(-50%) scale(0.95);
+                opacity: 0.8;
               }
               40% {
-                border-radius: 24px;
+                border-radius: 30px;
                 width: 0;
-                height: 40px;
-                right: 20px;
+                height: 38px;
+                right: 12px;
+                transform: translateY(-50%) scale(0);
+                opacity: 0;
+              }
+              50% {
+                border-radius: 30px;
+                width: 0;
+                height: 38px;
+                right: 12px;
                 transform: translateY(-50%) scale(0);
                 opacity: 0;
               }
               60% {
                 border-radius: 50%;
-                width: 24px;
-                height: 24px;
+                width: 20px;
+                height: 20px;
                 right: 0;
-                transform: translateY(-50%) scale(1.1);
+                transform: translateY(-50%) scale(1.15);
                 opacity: 1;
               }
-              80% {
+              70% {
                 border-radius: 50%;
-                width: 24px;
-                height: 24px;
+                width: 20px;
+                height: 20px;
                 right: 0;
                 transform: translateY(-50%) scale(1);
                 opacity: 1;
               }
-            }
-            
-            @keyframes pulse-glow {
-              0%, 100% {
-                opacity: 0.3;
-                transform: translate(-50%, -50%) scale(1);
+              80% {
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                right: 0;
+                transform: translateY(-50%) scale(1);
+                opacity: 1;
               }
-              50% {
-                opacity: 0.6;
-                transform: translate(-50%, -50%) scale(1.2);
-              }
-            }
-            
-            @keyframes pulse-bg {
-              0%, 100% {
-                opacity: 0.3;
-                transform: scale(1);
-              }
-              50% {
-                opacity: 0.5;
-                transform: scale(1.1);
+              90% {
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                right: 0;
+                transform: translateY(-50%) scale(1);
+                opacity: 1;
               }
             }
           `}</style>
