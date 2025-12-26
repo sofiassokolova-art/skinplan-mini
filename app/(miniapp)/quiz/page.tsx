@@ -4709,16 +4709,18 @@ export default function QuizPage() {
   
   // УПРОЩЕНО: Показываем лоадер только если loading=true И анкета не загружена
   // Убраны сложные проверки initCompletedRef - они не нужны, так как анкета должна загружаться сразу
+  // КРИТИЧНО: Если анкета загружена (в ref или state), НЕ показываем лоадер, даже если loading=true
+  // Это гарантирует, что анкета отобразится сразу после загрузки
   if (loading && !hasQuestionnaireAnywhere) {
       // init() еще не завершен и анкета не загружена - показываем лоадер
       // ИСПРАВЛЕНО: TypeScript - в этом блоке questionnaire и questionnaireRef.current гарантированно null
       // поэтому не логируем questionnaireId
-      clientLogger.log('⏳ Showing loader: loading=true, initCompleted=false, no questionnaire', {
+      clientLogger.log('⏳ Showing main loader: loading=true, no questionnaire', {
         loading,
-        initCompleted: initCompletedRef.current,
         hasQuestionnaire: false, // questionnaire здесь всегда null в этом блоке
         hasQuestionnaireRef: false, // questionnaireRef.current здесь всегда null в этом блоке
         initInProgress: initInProgressRef.current,
+        initCompleted: initCompletedRef.current,
       });
       return (
         <div style={{ 
@@ -7526,8 +7528,9 @@ export default function QuizPage() {
   
   // КРИТИЧНО: Проверяем, почему анкета может не отображаться
   // Если анкета загружена, но loading все еще true - это проблема
+  // Это обрабатывается в useEffect выше, который принудительно сбрасывает loading
   if (questionnaireToRender && loading) {
-    clientLogger.warn('⚠️ CRITICAL: Questionnaire loaded but loading=true - this blocks rendering!', {
+    clientLogger.warn('⚠️ CRITICAL: Questionnaire loaded but loading=true - this should be fixed by useEffect', {
       hasQuestionnaire: !!questionnaire,
       hasQuestionnaireRef: !!questionnaireRef.current,
       questionnaireId: questionnaireToRender?.id,
