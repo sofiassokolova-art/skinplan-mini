@@ -4724,143 +4724,204 @@ export default function QuizPage() {
           alignItems: 'center', 
           height: '100vh',
           flexDirection: 'column',
-          gap: '24px',
-          background: '#FFFFFF'
+          gap: '32px',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 50%, #D5FE61 100%)',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
+          {/* Декоративные элементы фона */}
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            left: '-50%',
+            width: '200%',
+            height: '200%',
+            background: 'radial-gradient(circle, rgba(213, 254, 97, 0.1) 0%, transparent 70%)',
+            animation: 'pulse-bg 4s ease-in-out infinite',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '-50%',
+            right: '-50%',
+            width: '200%',
+            height: '200%',
+            background: 'radial-gradient(circle, rgba(10, 95, 89, 0.08) 0%, transparent 70%)',
+            animation: 'pulse-bg 5s ease-in-out infinite reverse',
+          }} />
+          
           <div style={{
             position: 'relative',
-            width: '160px',
-            height: '100px',
+            width: '180px',
+            height: '120px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            zIndex: 1
           }}>
             <div className="loader-shapes">
               <div className="loader-shape loader-shape-1"></div>
               <div className="loader-shape loader-shape-2"></div>
+              <div className="loader-glow"></div>
             </div>
           </div>
+          
           <div style={{ 
-            color: '#000000', 
-            fontSize: '16px',
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: '200' // Inter Extra Light
-          }}>Загружаем анкету, еще немного</div>
+            position: 'relative',
+            zIndex: 1,
+            textAlign: 'center',
+            padding: '0 20px'
+          }}>
+            <div style={{ 
+              color: '#0A5F59', 
+              fontSize: '20px',
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: '600',
+              marginBottom: '8px',
+              letterSpacing: '-0.02em'
+            }}>Загружаем анкету</div>
+            <div style={{ 
+              color: '#475467', 
+              fontSize: '14px',
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: '400',
+              opacity: 0.8
+            }}>Еще немного...</div>
+          </div>
+          
           <style>{`
             .loader-shapes {
               position: relative;
-              width: 160px;
-              height: 100px;
+              width: 180px;
+              height: 120px;
             }
             
             .loader-shape {
               position: absolute;
-              background: #D5FE61;
               top: 50%;
               transform: translateY(-50%);
+              filter: drop-shadow(0 4px 12px rgba(213, 254, 97, 0.4));
             }
             
             .loader-shape-1 {
-              animation: morph-left 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+              background: linear-gradient(135deg, #D5FE61 0%, #B8E84F 100%);
+              animation: morph-left 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             }
             
             .loader-shape-2 {
-              animation: morph-right 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+              background: linear-gradient(135deg, #0A5F59 0%, #0D7A72 100%);
+              animation: morph-right 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            }
+            
+            .loader-glow {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              width: 120px;
+              height: 80px;
+              background: radial-gradient(ellipse, rgba(213, 254, 97, 0.3) 0%, transparent 70%);
+              animation: pulse-glow 2s ease-in-out infinite;
+              pointer-events: none;
             }
             
             @keyframes morph-left {
-              /* Состояние 1: маленький круг (20x20) слева */
               0%, 100% {
                 border-radius: 50%;
-                width: 20px;
-                height: 20px;
+                width: 24px;
+                height: 24px;
                 left: 0;
-                transform: translateY(-50%);
-                opacity: 1;
+                transform: translateY(-50%) scale(1);
               }
-              /* Состояние 2: маленький круг (20x20) слева */
               20% {
                 border-radius: 50%;
-                width: 20px;
-                height: 20px;
+                width: 24px;
+                height: 24px;
                 left: 0;
-                transform: translateY(-50%);
-                opacity: 1;
+                transform: translateY(-50%) scale(1.1);
               }
-              /* Состояние 3: очень вытянутая форма (96x38) по центру - слияние */
               40% {
-                border-radius: 50%;
-                width: 96px;
-                height: 38px;
-                left: 12px;
-                transform: translateY(-50%);
-                opacity: 1;
+                border-radius: 24px;
+                width: 100px;
+                height: 40px;
+                left: 20px;
+                transform: translateY(-50%) scale(1);
               }
-              /* Состояние 4: вытянутая форма (60x38) слева */
               60% {
-                border-radius: 50%;
-                width: 60px;
-                height: 38px;
+                border-radius: 20px;
+                width: 64px;
+                height: 40px;
                 left: 0;
-                transform: translateY(-50%);
-                opacity: 1;
+                transform: translateY(-50%) scale(1);
               }
-              /* Состояние 5: большой круг (48x48) слева */
               80% {
                 border-radius: 50%;
-                width: 48px;
-                height: 48px;
+                width: 52px;
+                height: 52px;
                 left: 0;
-                transform: translateY(-50%);
-                opacity: 1;
+                transform: translateY(-50%) scale(1.05);
               }
             }
             
             @keyframes morph-right {
-              /* Состояние 1: большой круг (48x48) справа */
               0%, 100% {
                 border-radius: 50%;
-                width: 48px;
-                height: 48px;
+                width: 52px;
+                height: 52px;
                 right: 0;
-                transform: translateY(-50%);
-                opacity: 1;
+                transform: translateY(-50%) scale(1.05);
               }
-              /* Состояние 2: вытянутая форма (60x38) справа */
               20% {
-                border-radius: 50%;
-                width: 60px;
-                height: 38px;
+                border-radius: 20px;
+                width: 64px;
+                height: 40px;
                 right: 0;
-                transform: translateY(-50%);
-                opacity: 1;
+                transform: translateY(-50%) scale(1);
               }
-              /* Состояние 3: очень вытянутая форма (96x38) по центру - слияние, правая форма скрыта */
               40% {
-                border-radius: 50%;
+                border-radius: 24px;
                 width: 0;
-                height: 38px;
-                right: 12px;
-                transform: translateY(-50%);
+                height: 40px;
+                right: 20px;
+                transform: translateY(-50%) scale(0);
                 opacity: 0;
               }
-              /* Состояние 4: маленький круг (20x20) справа */
               60% {
                 border-radius: 50%;
-                width: 20px;
-                height: 20px;
+                width: 24px;
+                height: 24px;
                 right: 0;
-                transform: translateY(-50%);
+                transform: translateY(-50%) scale(1.1);
                 opacity: 1;
               }
-              /* Состояние 5: маленький круг (20x20) справа */
               80% {
                 border-radius: 50%;
-                width: 20px;
-                height: 20px;
+                width: 24px;
+                height: 24px;
                 right: 0;
-                transform: translateY(-50%);
+                transform: translateY(-50%) scale(1);
                 opacity: 1;
+              }
+            }
+            
+            @keyframes pulse-glow {
+              0%, 100% {
+                opacity: 0.3;
+                transform: translate(-50%, -50%) scale(1);
+              }
+              50% {
+                opacity: 0.6;
+                transform: translate(-50%, -50%) scale(1.2);
+              }
+            }
+            
+            @keyframes pulse-bg {
+              0%, 100% {
+                opacity: 0.3;
+                transform: scale(1);
+              }
+              50% {
+                opacity: 0.5;
+                transform: scale(1.1);
               }
             }
           `}</style>
@@ -5011,47 +5072,130 @@ export default function QuizPage() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '20px',
-          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+          background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 50%, #D5FE61 100%)',
+          position: 'relative',
+          overflow: 'hidden'
         }}
       >
-        <div
-          style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            border: '4px solid rgba(10, 95, 89, 0.15)',
-            borderTop: '4px solid #0A5F59',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '24px',
-          }}
-        />
-        <h1
-          style={{
-            fontSize: '22px',
-            fontWeight: 700,
-            color: '#000000',
-            marginBottom: '8px',
-            textAlign: 'center',
-          }}
-        >
-          Загружаем анкету, еще немного
-        </h1>
-        <p
-          style={{
-            fontSize: '14px',
-            color: '#475467',
-            textAlign: 'center',
-            maxWidth: '320px',
-            lineHeight: '1.5',
-          }}
-        >
-          Это может занять несколько секунд при первом запуске.
-          Если экран не пропадает долго, обновите страницу или напишите в поддержку.
-        </p>
+        {/* Декоративные элементы фона */}
+        <div style={{
+          position: 'absolute',
+          top: '-30%',
+          left: '-30%',
+          width: '160%',
+          height: '160%',
+          background: 'radial-gradient(circle, rgba(213, 254, 97, 0.15) 0%, transparent 60%)',
+          animation: 'pulse-bg 4s ease-in-out infinite',
+        }} />
+        
+        <div style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '32px',
+        }}>
+          <div
+            style={{
+              position: 'relative',
+              width: '64px',
+              height: '64px',
+            }}
+          >
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                border: '4px solid rgba(10, 95, 89, 0.2)',
+                borderTop: '4px solid #0A5F59',
+                borderRight: '4px solid #D5FE61',
+                animation: 'spin-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+                boxShadow: '0 4px 16px rgba(10, 95, 89, 0.2)',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(213, 254, 97, 0.4) 0%, transparent 70%)',
+                animation: 'pulse-inner 1.5s ease-in-out infinite',
+              }}
+            />
+          </div>
+          
+          <div style={{ textAlign: 'center' }}>
+            <h1
+              style={{
+                fontSize: '24px',
+                fontWeight: 700,
+                color: '#0A5F59',
+                marginBottom: '12px',
+                textAlign: 'center',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Загружаем анкету
+            </h1>
+            <p
+              style={{
+                fontSize: '16px',
+                color: '#475467',
+                textAlign: 'center',
+                maxWidth: '320px',
+                lineHeight: '1.6',
+                marginBottom: '16px',
+              }}
+            >
+              Еще немного...
+            </p>
+            <p
+              style={{
+                fontSize: '13px',
+                color: '#6B7280',
+                textAlign: 'center',
+                maxWidth: '320px',
+                lineHeight: '1.5',
+                opacity: 0.8,
+              }}
+            >
+              Это может занять несколько секунд при первом запуске.
+            </p>
+          </div>
+        </div>
+        
         <style>{`
-          @keyframes spin {
+          @keyframes spin-smooth {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+          }
+          
+          @keyframes pulse-inner {
+            0%, 100% {
+              opacity: 0.4;
+              transform: translate(-50%, -50%) scale(1);
+            }
+            50% {
+              opacity: 0.8;
+              transform: translate(-50%, -50%) scale(1.2);
+            }
+          }
+          
+          @keyframes pulse-bg {
+            0%, 100% {
+              opacity: 0.3;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.5;
+              transform: scale(1.1);
+            }
           }
         `}</style>
       </div>
@@ -6964,19 +7108,49 @@ export default function QuizPage() {
             textAlign: 'center',
           }}>
             <div style={{
-              width: '64px',
-              height: '64px',
-              border: '4px solid #0A5F59',
-              borderTop: '4px solid transparent',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 24px',
-            }} />
-            <h2 style={{ color: '#000000', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-              Загружаем анкету, еще немного
+              position: 'relative',
+              width: '72px',
+              height: '72px',
+              margin: '0 auto 32px',
+            }}>
+              <div style={{
+                width: '72px',
+                height: '72px',
+                border: '4px solid rgba(10, 95, 89, 0.2)',
+                borderTop: '4px solid #0A5F59',
+                borderRight: '4px solid #D5FE61',
+                borderRadius: '50%',
+                animation: 'spin-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+                boxShadow: '0 4px 20px rgba(10, 95, 89, 0.25)',
+              }} />
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(213, 254, 97, 0.4) 0%, transparent 70%)',
+                animation: 'pulse-inner 1.5s ease-in-out infinite',
+              }} />
+            </div>
+            <h2 style={{ 
+              color: '#0A5F59', 
+              marginBottom: '12px', 
+              fontSize: '22px', 
+              fontWeight: '700',
+              letterSpacing: '-0.02em'
+            }}>
+              Загружаем анкету
             </h2>
-            <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
-              Подготовка вопросов
+            <p style={{ 
+              color: '#475467', 
+              fontSize: '16px', 
+              lineHeight: '1.6',
+              opacity: 0.9
+            }}>
+              Подготовка вопросов...
             </p>
           </div>
         </div>
@@ -7486,19 +7660,49 @@ export default function QuizPage() {
           textAlign: 'center',
         }}>
           <div style={{
-            width: '64px',
-            height: '64px',
-            border: '4px solid #0A5F59',
-            borderTop: '4px solid transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 24px',
-          }} />
-          <h2 style={{ color: '#000000', marginBottom: '12px', fontSize: '20px', fontWeight: 'bold' }}>
-            Загружаем анкету, еще немного
+            position: 'relative',
+            width: '72px',
+            height: '72px',
+            margin: '0 auto 32px',
+          }}>
+            <div style={{
+              width: '72px',
+              height: '72px',
+              border: '4px solid rgba(10, 95, 89, 0.2)',
+              borderTop: '4px solid #0A5F59',
+              borderRight: '4px solid #D5FE61',
+              borderRadius: '50%',
+              animation: 'spin-smooth 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+              boxShadow: '0 4px 20px rgba(10, 95, 89, 0.25)',
+            }} />
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(213, 254, 97, 0.4) 0%, transparent 70%)',
+              animation: 'pulse-inner 1.5s ease-in-out infinite',
+            }} />
+          </div>
+          <h2 style={{ 
+            color: '#0A5F59', 
+            marginBottom: '12px', 
+            fontSize: '22px', 
+            fontWeight: '700',
+            letterSpacing: '-0.02em'
+          }}>
+            Загружаем анкету
           </h2>
-          <p style={{ color: '#475467', fontSize: '16px', lineHeight: '1.5' }}>
-            Подготовка вопросов
+          <p style={{ 
+            color: '#475467', 
+            fontSize: '16px', 
+            lineHeight: '1.6',
+            opacity: 0.9
+          }}>
+            Подготовка вопросов...
           </p>
         </div>
       </div>
