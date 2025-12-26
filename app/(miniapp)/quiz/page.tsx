@@ -1635,6 +1635,10 @@ export default function QuizPage() {
         return questionnaireToSet;
       });
       
+      // КРИТИЧНО: Принудительно сбрасываем loading сразу после установки state
+      // Это гарантирует, что анкета отобразится сразу после загрузки
+      setLoading(false);
+      
       // ИСПРАВЛЕНО: Логируем после установки (в следующем тике, чтобы state обновился)
       setTimeout(() => {
         clientLogger.log('✅ Questionnaire set in state (verified)', {
@@ -1644,6 +1648,7 @@ export default function QuizPage() {
           refQuestionnaireId: questionnaireRef.current?.id,
           stateHasQuestionnaire: !!questionnaire,
           stateQuestionnaireId: questionnaire?.id,
+          loadingAfterSet: loading, // Проверяем, сбросился ли loading
         });
       }, 100); // Увеличено время ожидания для гарантированного обновления state
       
