@@ -636,14 +636,15 @@ export default function QuizPage() {
       ]);
 
       // Проверка initData (только в production)
+      // ИСПРАВЛЕНО: Делаем проверку более мягкой - не бросаем ошибку, а просто логируем предупреждение
+      // initData может быть недоступен сразу после waitForTelegram, но появиться позже
       if (!isDev && typeof window !== 'undefined') {
         const hasInitData = !!window.Telegram?.WebApp?.initData;
         if (!hasInitData) {
-          clientLogger.error('❌ Telegram initData not available after waitForTelegram');
-          setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
-          // ИСПРАВЛЕНО: Не используем return здесь, чтобы блок finally всегда выполнялся
-          // Вместо этого устанавливаем флаги и бросаем ошибку, чтобы finally выполнился
-          throw new Error('Telegram initData not available');
+          clientLogger.warn('⚠️ Telegram initData not available after waitForTelegram, but continuing...');
+          // ИСПРАВЛЕНО: Не бросаем ошибку, а просто логируем предупреждение
+          // initData может появиться позже, или анкета может загрузиться без него (для публичных анкет)
+          // setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
         }
       }
 
