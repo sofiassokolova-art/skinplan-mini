@@ -74,9 +74,15 @@ export default function RootPage() {
         }
         
         // Если в кэше нет - делаем API запрос, но только если мы не редиректим на /quiz
+        // ИСПРАВЛЕНО: Проверяем pathname перед вызовом getHasPlanProgress, чтобы не делать запрос на /quiz
         if (!hasPlanProgress) {
-          const { getHasPlanProgress } = await import('@/lib/user-preferences');
-          hasPlanProgress = await getHasPlanProgress();
+          const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+          const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+          
+          if (!isOnQuizPage) {
+            const { getHasPlanProgress } = await import('@/lib/user-preferences');
+            hasPlanProgress = await getHasPlanProgress();
+          }
         }
       } catch (error) {
         // При ошибке считаем, что пользователь новый
