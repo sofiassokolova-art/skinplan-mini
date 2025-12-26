@@ -613,7 +613,15 @@ export default function QuizPage() {
     });
 
     try {
-      setLoading(true);
+      // КРИТИЧНО: НЕ устанавливаем loading=true, если анкета уже загружена
+      // Это предотвращает перезапись loading=false после загрузки анкеты
+      if (!questionnaireRef.current) {
+        setLoading(true);
+      } else {
+        clientLogger.log('⚠️ init() skipping setLoading(true) - questionnaire already loaded', {
+          questionnaireId: questionnaireRef.current.id,
+        });
+      }
       setError(null);
 
       // 1) telegram init + ожидание (race)
