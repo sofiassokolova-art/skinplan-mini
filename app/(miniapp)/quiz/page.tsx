@@ -4711,6 +4711,7 @@ export default function QuizPage() {
   // Убраны сложные проверки initCompletedRef - они не нужны, так как анкета должна загружаться сразу
   // КРИТИЧНО: Если анкета загружена (в ref или state), НЕ показываем лоадер, даже если loading=true
   // Это гарантирует, что анкета отобразится сразу после загрузки
+  // useEffect выше уже обрабатывает принудительный сброс loading, если анкета загружена
   if (loading && !hasQuestionnaireAnywhere) {
       // init() еще не завершен и анкета не загружена - показываем лоадер
       // ИСПРАВЛЕНО: TypeScript - в этом блоке questionnaire и questionnaireRef.current гарантированно null
