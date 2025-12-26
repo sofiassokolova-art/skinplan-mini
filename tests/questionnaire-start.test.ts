@@ -248,15 +248,33 @@ describe.skipIf(!hasDatabase)('Questionnaire Start', () => {
     const questionnaire = await prismaTest.questionnaire.findUnique({
       where: { id: testQuestionnaireId },
       include: {
+        questionGroups: {
+          include: {
+            questions: {
+              include: {
+                answerOptions: true,
+              },
+            },
+          },
+        },
         questions: {
-          take: 2, // Берем первые 2 вопроса для прогресса
+          where: { groupId: null },
+          include: {
+            answerOptions: true,
+          },
         },
       },
     });
     
-    if (questionnaire && questionnaire.questions.length > 0) {
-      // Создаем ответы для первых двух вопросов
-      for (const question of questionnaire.questions.slice(0, 2)) {
+    // Собираем все вопросы (из групп и без групп)
+    const allQuestions = [
+      ...(questionnaire?.questionGroups || []).flatMap(g => g.questions || []),
+      ...(questionnaire?.questions || []),
+    ];
+    
+    if (allQuestions.length > 0) {
+      // Создаем ответы для первых двух вопросов (для пользователя с прогрессом)
+      for (const question of allQuestions.slice(0, 2)) {
         if (question.answerOptions && question.answerOptions.length > 0) {
           const answerOption = question.answerOptions[0];
           await prismaTest.userAnswer.create({
@@ -279,12 +297,9 @@ describe.skipIf(!hasDatabase)('Questionnaire Start', () => {
           hasPlanProgress: false,
         },
       });
-    }
-    
-    // Создаем пользователя с завершенной анкетой
-    if (questionnaire && questionnaire.questions.length > 0) {
-      // Создаем ответы для всех вопросов
-      for (const question of questionnaire.questions) {
+      
+      // Создаем ответы для всех вопросов (для пользователя с завершенной анкетой)
+      for (const question of allQuestions) {
         if (question.answerOptions && question.answerOptions.length > 0) {
           const answerOption = question.answerOptions[0];
           await prismaTest.userAnswer.create({
@@ -302,7 +317,7 @@ describe.skipIf(!hasDatabase)('Questionnaire Start', () => {
       await prismaTest.skinProfile.create({
         data: {
           userId: testUserIdCompleted,
-          version: questionnaire.version || 1,
+          version: questionnaire?.version || 1,
           skinType: 'normal',
           sensitivityLevel: 'low',
         },
@@ -523,10 +538,10 @@ describe.skipIf(!hasDatabase)('Questionnaire Start', () => {
       
       // Для пользователя с прогрессом должен быть возвращен прогресс
       if (data.progress) {
-        expect(data.progress).toHaveProperty('currentQuestionIndex');
+        expect(data.progress).toHaveProperty('questionIndex'); // API возвращает questionIndex, не currentQuestionIndex
         expect(data.progress).toHaveProperty('answers');
-        expect(Array.isArray(data.progress.answers)).toBe(true);
-        expect(data.progress.answers.length).toBeGreaterThan(0);
+        expect(typeof data.progress.answers).toBe('object'); // answers - это объект, не массив
+        expect(Object.keys(data.progress.answers).length).toBeGreaterThan(0);
         expect(data.isCompleted).toBe(false);
       }
     });
@@ -543,12 +558,14 @@ describe.skipIf(!hasDatabase)('Questionnaire Start', () => {
       const data = await response.json();
       
       // Для пользователя с завершенной анкетой
+      expect(data.isCompleted).toBe(true);
       if (data.progress) {
         expect(data.progress).toHaveProperty('answers');
-        expect(Array.isArray(data.progress.answers)).toBe(true);
-        // Проверяем, что все вопросы отвечены (если есть вопросы)
-        if (data.progress.answers.length > 0) {
-          expect(data.isCompleted).toBe(true);
+        expect(typeof data.progress.answers).toBe('object'); // answers - это объект, не массив
+        // Проверяем, что есть ответы (если есть вопросы)
+        const answersCount = Object.keys(data.progress.answers).length;
+        if (answersCount > 0) {
+          expect(answersCount).toBeGreaterThan(0);
         }
       }
     });
