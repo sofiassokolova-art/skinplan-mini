@@ -1744,20 +1744,29 @@ export default function QuizPage() {
         totalQuestions: totalQuestionsBeforeSet,
       });
       setQuestionnaire((prevQuestionnaire) => {
-        // ИСПРАВЛЕНО: Всегда обновляем, даже если ID совпадает
-        // Это гарантирует, что questionnaire будет установлен в state после загрузки
-        // Проверка на одинаковый ID может блокировать обновление, если анкета уже была установлена ранее
-        clientLogger.log('✅ setQuestionnaire callback EXECUTED', {
-          timestamp: new Date().toISOString(),
-          questionnaireId: questionnaireToSet.id,
-          totalQuestions: totalQuestionsBeforeSet,
-          prevQuestionnaireId: prevQuestionnaire?.id,
-          prevQuestionnaireIsNull: prevQuestionnaire === null,
-          prevQuestionnaireIsUndefined: prevQuestionnaire === undefined,
-          isNewObject: questionnaireToSet !== questionnaireData,
-          sameId: prevQuestionnaire?.id === questionnaireToSet.id,
-          willReturn: true,
-        });
+        // ИСПРАВЛЕНО: Проверяем, действительно ли данные изменились
+        // Если ID совпадает и анкета уже установлена, не создаем новый объект
+        // Это предотвращает лишние пересчеты useMemo
+        if (prevQuestionnaire?.id === questionnaireToSet.id && prevQuestionnaire) {
+          // Данные не изменились - возвращаем предыдущий объект, чтобы не вызывать лишние пересчеты
+          if (isDev) {
+            clientLogger.log('✅ setQuestionnaire: same ID, returning prev (no re-render)', {
+              questionnaireId: questionnaireToSet.id,
+            });
+          }
+          return prevQuestionnaire;
+        }
+        
+        // Данные изменились или анкета еще не установлена - обновляем
+        if (isDev) {
+          clientLogger.log('✅ setQuestionnaire callback EXECUTED', {
+            timestamp: new Date().toISOString(),
+            questionnaireId: questionnaireToSet.id,
+            totalQuestions: totalQuestionsBeforeSet,
+            prevQuestionnaireId: prevQuestionnaire?.id,
+            isNew: !prevQuestionnaire || prevQuestionnaire.id !== questionnaireToSet.id,
+          });
+        }
         
         return questionnaireToSet;
       });
@@ -4045,7 +4054,7 @@ export default function QuizPage() {
       });
       return [];
     }
-  }, [questionnaire]); // ИСПРАВЛЕНО: Зависимость от questionnaire state, но используем ref внутри для актуального значения
+  }, [questionnaire?.id]); // ИСПРАВЛЕНО: Зависимость только от ID, чтобы не пересчитывать при каждом изменении объекта (даже если данные те же)
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
   // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
