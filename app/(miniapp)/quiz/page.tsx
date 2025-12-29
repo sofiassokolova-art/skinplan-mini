@@ -4090,10 +4090,12 @@ export default function QuizPage() {
           refId: questionnaireRef.current.id,
         });
         // КРИТИЧНО: Используем функциональную форму для гарантированного обновления
+        // ИСПРАВЛЕНО: Проверяем, действительно ли данные изменились
         setQuestionnaire((prev) => {
-          if (prev?.id === questionnaireRef.current?.id) {
-            // Если ID совпадает, все равно обновляем для гарантии
-            return questionnaireRef.current;
+          if (prev?.id === questionnaireRef.current?.id && prev) {
+            // Если ID совпадает и анкета уже установлена, не создаем новый объект
+            // Это предотвращает лишние пересчеты useMemo
+            return prev;
           }
           return questionnaireRef.current;
         });
