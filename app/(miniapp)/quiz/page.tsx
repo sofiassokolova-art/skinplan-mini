@@ -694,7 +694,7 @@ export default function QuizPage() {
             loadResult: loadResult ? 'questionnaire object' : 'null',
             questionnaireId: loadResult?.id || null,
             hasQuestionnaireRef: !!questionnaireRef.current,
-            questionnaireRefId: questionnaireRef.current?.id || null,
+            questionnaireRefId: (questionnaireRef.current as Questionnaire | null)?.id || null,
             loading,
           });
           
@@ -728,7 +728,7 @@ export default function QuizPage() {
           
           clientLogger.log('✅ init() questionnaireRef.current is set after loadQuestionnaire', {
             timestamp: new Date().toISOString(),
-            questionnaireId: questionnaireRef.current.id,
+            questionnaireId: (questionnaireRef.current as Questionnaire).id,
           });
           
           // КРИТИЧНО: Сохраняем значение в переменную после проверки, чтобы TypeScript правильно вывел тип
@@ -7755,8 +7755,6 @@ export default function QuizPage() {
     willShowQuestionnaire: !!questionnaireToRender && !loading && !error,
     isRetakingQuiz,
     hasResumed,
-    initCompleted: initCompletedRef.current,
-    initInProgress: initInProgressRef.current,
   });
 
   return (
