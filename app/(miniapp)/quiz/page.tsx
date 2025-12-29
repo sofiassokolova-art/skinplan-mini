@@ -4749,7 +4749,7 @@ export default function QuizPage() {
     });
     
     return shouldShow;
-  }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
+  }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length, allQuestions.length]);
   
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f
   // ВАЖНО: Проверяем границы массива, чтобы избежать undefined
