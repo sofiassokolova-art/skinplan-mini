@@ -4525,7 +4525,12 @@ export default function QuizPage() {
     return shouldShow;
   }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length, loading]);
   
-  const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
+  // КРИТИЧНО: Проверяем, что индекс в пределах массива, чтобы избежать undefined
+  const currentInitialInfoScreen = isShowingInitialInfoScreen && 
+                                    currentInfoScreenIndex >= 0 && 
+                                    currentInfoScreenIndex < initialInfoScreens.length
+                                    ? initialInfoScreens[currentInfoScreenIndex] 
+                                    : null;
   
   // КРИТИЧНО: Логируем состояние начальных экранов для диагностики
   useEffect(() => {
