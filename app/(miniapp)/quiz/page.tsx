@@ -789,35 +789,25 @@ export default function QuizPage() {
       }
 
       // 3) прогресс/резюм
-      // ИСПРАВЛЕНО: Для нового пользователя не загружаем прогресс - это лишний запрос
-      // Проверяем hasPlanProgress перед загрузкой прогресса
+      // ВОССТАНОВЛЕНО: Загружаем прогресс для всех пользователей (включая новых)
+      // Для новых пользователей прогресс загружается из KV кеша
       // ИСПРАВЛЕНО: Используем только refs для проверки, чтобы не зависеть от state в зависимостях useCallback
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && 
           !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
         try {
-          // ИСПРАВЛЕНО: Используем hasPlanProgress из метаданных анкеты
-          // Если preferences еще не загружены, просто используем false (не делаем API вызов)
-          // Preferences будут загружены вместе с анкетой в loadQuestionnaire
-          const hasPlanProgress = userPreferencesData?.hasPlanProgress ?? false;
-          
-          if (!hasPlanProgress) {
-            // Новый пользователь - не загружаем прогресс
-            clientLogger.log('ℹ️ Новый пользователь (нет hasPlanProgress) - пропускаем загрузку прогресса анкеты');
-          } else {
-            // Пользователь не новый - загружаем прогресс
-            await Promise.race([
-              loadSavedProgressFromServer(),
-              new Promise<void>((resolve) => {
-                setTimeout(() => {
-                  clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
-                  resolve();
-                }, 5000);
-              }),
-            ]);
-          }
+          // Загружаем прогресс для всех пользователей (новые пользователи получат прогресс из KV)
+          await Promise.race([
+            loadSavedProgressFromServer(),
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
+                resolve();
+              }, 5000);
+            }),
+          ]);
         } catch (err) {
-          // При ошибке проверки hasPlanProgress загружаем прогресс на всякий случай
+          // При ошибке загрузки прогресса продолжаем без него
           clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, загружаем прогресс:', err);
           await Promise.race([
             loadSavedProgressFromServer(),

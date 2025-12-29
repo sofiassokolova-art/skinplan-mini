@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logApiRequest, logApiError } from '@/lib/logger';
 import { requireTelegramAuth } from '@/lib/auth/telegram-auth';
+import { getRedis } from '@/lib/redis';
 
 // GET - загрузка прогресса
 export async function GET(request: NextRequest) {
@@ -90,6 +91,38 @@ export async function GET(request: NextRequest) {
     const activeQuestionnaire = await prisma.questionnaire.findFirst({
       where: { isActive: true },
     });
+    
+    // ВОССТАНОВЛЕНО: Проверяем кеш в KV для новых пользователей
+    // Это позволяет новым пользователям вернуться к анкете после выхода
+    const redis = getRedis();
+    const kvProgressKey = activeQuestionnaire ? `questionnaire:progress:${userId}:${activeQuestionnaire.id}` : null;
+    let kvProgress: any = null;
+    
+    if (redis && !existingProfile && kvProgressKey) {
+      try {
+        const cached = await redis.get(kvProgressKey);
+        if (cached) {
+          try {
+            kvProgress = typeof cached === 'string' ? JSON.parse(cached) : cached;
+            if (process.env.NODE_ENV === 'development') {
+              console.log('✅ Questionnaire progress loaded from KV cache for new user', {
+                userId,
+                questionnaireId: activeQuestionnaire.id,
+                hasAnswers: !!kvProgress?.answers && Object.keys(kvProgress.answers).length > 0,
+                questionIndex: kvProgress?.questionIndex,
+              });
+            }
+          } catch (parseError) {
+            console.warn('⚠️ Failed to parse KV progress cache:', parseError);
+          }
+        }
+      } catch (kvError) {
+        // Ошибка KV не критична - продолжаем с загрузкой из БД
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Failed to load progress from KV:', kvError);
+        }
+      }
+    }
 
     if (!activeQuestionnaire) {
       const duration = Date.now() - startTime;
@@ -113,7 +146,22 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // ВОССТАНОВЛЕНО: Если ответов в БД нет, но есть прогресс в KV - используем его
     if (userAnswers.length === 0) {
+      if (kvProgress && kvProgress.answers && Object.keys(kvProgress.answers).length > 0) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return NextResponse.json({
+          progress: {
+            answers: kvProgress.answers,
+            questionIndex: kvProgress.questionIndex ?? 0,
+            infoScreenIndex: kvProgress.infoScreenIndex ?? 0,
+            timestamp: kvProgress.timestamp ?? Date.now(),
+          },
+          isCompleted: false,
+        });
+      }
+      
       const duration = Date.now() - startTime;
       logApiRequest(method, path, 200, duration, userId);
       return NextResponse.json({
@@ -207,8 +255,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Используем сохраненные метаданные, если они есть, иначе вычисляем на основе последнего отвеченного вопроса
-    const finalQuestionIndex = savedProgress?.questionIndex ?? (lastAnsweredIndex + 1);
-    const finalInfoScreenIndex = savedProgress?.infoScreenIndex ?? 0;
+    // ВОССТАНОВЛЕНО: Приоритет: KV кеш > БД метаданные > вычисленный индекс
+    const finalQuestionIndex = kvProgress?.questionIndex ?? savedProgress?.questionIndex ?? (lastAnsweredIndex + 1);
+    const finalInfoScreenIndex = kvProgress?.infoScreenIndex ?? savedProgress?.infoScreenIndex ?? 0;
 
     // Проверяем, все ли вопросы анкеты отвечены
     const totalQuestions = allQuestions.filter(q => q.id !== -1).length;
@@ -484,6 +533,65 @@ export async function POST(request: NextRequest) {
         answerValues: answerValues ? (answerValues as any) : null,
       },
     });
+
+    // ВОССТАНОВЛЕНО: Сохраняем прогресс в KV для новых пользователей (когда нет профиля)
+    // Это позволяет новым пользователям вернуться к анкете после выхода
+    const existingProfile = await prisma.skinProfile.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    if (!existingProfile) {
+      const redis = getRedis();
+      const kvProgressKey = `questionnaire:progress:${userId}:${questionnaireId}`;
+      
+      if (redis) {
+        try {
+          // Получаем текущий прогресс из KV или создаем новый
+          let currentProgress: any = null;
+          try {
+            const cached = await redis.get(kvProgressKey);
+            if (cached) {
+              currentProgress = typeof cached === 'string' ? JSON.parse(cached) : cached;
+            }
+          } catch (parseError) {
+            // Игнорируем ошибки парсинга
+          }
+          
+          // Обновляем ответы в прогрессе
+          const updatedAnswers = currentProgress?.answers || {};
+          if (answerValue) {
+            updatedAnswers[questionIdNum] = answerValue;
+          } else if (answerValues) {
+            updatedAnswers[questionIdNum] = answerValues;
+          }
+          
+          // Сохраняем обновленный прогресс в KV (TTL 7 дней)
+          const progressData = {
+            answers: updatedAnswers,
+            questionIndex: questionIndex ?? currentProgress?.questionIndex ?? 0,
+            infoScreenIndex: infoScreenIndex ?? currentProgress?.infoScreenIndex ?? 0,
+            timestamp: Date.now(),
+          };
+          
+          await redis.set(kvProgressKey, JSON.stringify(progressData), { ex: 7 * 24 * 60 * 60 });
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Questionnaire progress saved to KV cache for new user', {
+              userId,
+              questionnaireId,
+              questionId: questionIdNum,
+              answersCount: Object.keys(updatedAnswers).length,
+            });
+          }
+        } catch (kvError) {
+          // Ошибка KV не критична - продолжаем работу
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Failed to save progress to KV:', kvError);
+          }
+        }
+      }
+    }
 
     // Метаданные позиции (questionIndex, infoScreenIndex) больше не сохраняются в БД
     // Они хранятся только локально на клиенте в localStorage
