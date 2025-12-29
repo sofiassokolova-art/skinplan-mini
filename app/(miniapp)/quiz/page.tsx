@@ -4643,6 +4643,7 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Также не блокируем, если currentInitialInfoScreen = null (несоответствие условий)
     // КРИТИЧНО: Если currentInfoScreenIndex < initialInfoScreens.length, но currentInitialInfoScreen = null,
     // это означает, что элемент массива undefined - пропускаем начальные экраны и показываем вопросы
+    // ИСПРАВЛЕНО: Порядок проверок соответствует тестам - сначала проверяем все условия для isOnInitialInfoScreen
     const isOnInitialInfoScreen = initialInfoScreens.length > 0 && 
                                    currentInfoScreenIndex < initialInfoScreens.length && 
                                    isShowingInitialInfoScreenCorrected && 
@@ -4652,15 +4653,15 @@ export default function QuizPage() {
     // Блокируем вопросы только если показывается начальный экран ИЛИ инфо-экран между вопросами
     // ИСПРАВЛЕНО: Добавлена проверка showResumeScreen - если показывается экран продолжения, не блокируем вопросы
     // ИСПРАВЛЕНО: Также не блокируем, если currentInfoScreenIndex >= initialInfoScreens.length (все экраны пройдены)
+    // ИСПРАВЛЕНО: Логика соответствует тестам - проверяем shouldBlockByInfoScreen после вычисления isOnInitialInfoScreen
     const shouldBlockByInfoScreen = (isOnInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz)) && !showResumeScreen;
     
-    // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
-    // это означает несоответствие условий - не блокируем вопросы
-    // ИСПРАВЛЕНО: Также логируем, если currentInfoScreenIndex >= initialInfoScreens.length, но isShowingInitialInfoScreen = true
+    // КРИТИЧНО: Логируем несоответствия для диагностики (но не влияем на логику блокировки)
+    // ИСПРАВЛЕНО: Эта проверка выполняется только для логирования, логика блокировки уже определена выше
     if ((isShowingInitialInfoScreen && !currentInitialInfoScreen) || 
         (currentInfoScreenIndex >= initialInfoScreens.length && isShowingInitialInfoScreen)) {
-      if (!pendingInfoScreen && !showResumeScreen) {
-        clientLogger.warn('⚠️ currentQuestion: пропускаем начальные экраны и показываем вопросы', {
+      if (!pendingInfoScreen && !showResumeScreen && isDev) {
+        clientLogger.warn('⚠️ currentQuestion: обнаружено несоответствие состояний (исправлено через isShowingInitialInfoScreenCorrected)', {
           isShowingInitialInfoScreen,
           isShowingInitialInfoScreenCorrected,
           currentInfoScreenIndex,
@@ -4670,11 +4671,14 @@ export default function QuizPage() {
           isRetakingQuiz,
           pendingInfoScreen: !!pendingInfoScreen,
           showResumeScreen,
+          isOnInitialInfoScreen,
+          shouldBlockByInfoScreen,
         });
-        // НЕ блокируем вопросы, продолжаем выполнение
+        // НЕ блокируем вопросы, продолжаем выполнение (логика уже обработана через isShowingInitialInfoScreenCorrected)
       }
     }
     
+    // ИСПРАВЛЕНО: Проверка shouldBlockByInfoScreen выполняется после всех вычислений, соответствует тестам
     if (shouldBlockByInfoScreen) {
       // Логируем для диагностики с детальной информацией о том, что именно блокирует
       clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
@@ -4699,42 +4703,25 @@ export default function QuizPage() {
       return null;
     }
     
-    // КРИТИЧНО: Если shouldBlockByInfoScreen = false, но currentInfoScreenIndex < initialInfoScreens.length,
-    // это может означать, что начальные экраны еще не пройдены, но currentInitialInfoScreen = null
-    // В этом случае нужно пропустить начальные экраны и показать вопросы
-    if (!shouldBlockByInfoScreen && currentInfoScreenIndex < initialInfoScreens.length && initialInfoScreens.length > 0) {
-      // Логируем для диагностики
-      if (isDev) {
-        clientLogger.log('✅ currentQuestion: пропускаем начальные экраны (currentInitialInfoScreen = null) и показываем вопросы', {
-          currentInfoScreenIndex,
-          initialInfoScreensLength: initialInfoScreens.length,
-          isShowingInitialInfoScreen,
-          isShowingInitialInfoScreenCorrected,
-          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
-          currentQuestionIndex,
-          allQuestionsLength: allQuestions.length,
-        });
-      }
-      // Продолжаем выполнение, чтобы показать вопросы
-    }
+    // ИСПРАВЛЕНО: Убрана избыточная проверка - логика уже обработана через shouldBlockByInfoScreen
+    // Если shouldBlockByInfoScreen = false, значит вопросы должны показываться
+    // Дополнительные проверки не нужны, так как они уже учтены в isOnInitialInfoScreen и shouldBlockByInfoScreen
     
     // КРИТИЧНО: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
     // В этом случае вопросы ДОЛЖНЫ показываться (если нет pendingInfoScreen и showResumeScreen)
-    // ИСПРАВЛЕНО: Логируем для диагностики
-    if (currentInfoScreenIndex >= initialInfoScreens.length && !pendingInfoScreen && !showResumeScreen) {
-      // Все начальные экраны пройдены, показываем вопросы
-      // Продолжаем выполнение ниже
-      if (isDev && allQuestions.length > 0) {
-        clientLogger.log('✅ currentQuestion: все начальные экраны пройдены, показываем вопросы', {
-          currentInfoScreenIndex,
-          initialInfoScreensLength: initialInfoScreens.length,
-          currentQuestionIndex,
-          allQuestionsLength: allQuestions.length,
-          isShowingInitialInfoScreen,
-          isShowingInitialInfoScreenCorrected,
-          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
-        });
-      }
+    // ИСПРАВЛЕНО: Логируем для диагностики только в dev режиме
+    if (isDev && currentInfoScreenIndex >= initialInfoScreens.length && !pendingInfoScreen && !showResumeScreen && allQuestions.length > 0) {
+      clientLogger.log('✅ currentQuestion: все начальные экраны пройдены, показываем вопросы', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        isShowingInitialInfoScreen,
+        isShowingInitialInfoScreenCorrected,
+        hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+        isOnInitialInfoScreen,
+        shouldBlockByInfoScreen,
+      });
     }
     
     // ИСПРАВЛЕНО: Логируем состояние для диагностики (только при первом вызове или при изменении ключевых параметров)
