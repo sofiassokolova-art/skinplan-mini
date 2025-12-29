@@ -611,6 +611,12 @@ export default function QuizPage() {
   const init = useCallback(async () => {
     // ИСПРАВЛЕНО: Добавлена проверка initCalledRef для предотвращения множественных вызовов
     // ИСПРАВЛЕНО: Также проверяем наличие анкеты в ref, чтобы не загружать повторно
+    // ВАЖНО: Не вызываем init() после resumeQuiz, чтобы не сбросить состояние
+    if (resumeCompletedRef.current) {
+      clientLogger.log('⛔ init() skipped: resumeQuiz already completed, not resetting state');
+      return;
+    }
+    
     if (initCalledRef.current && initCompletedRef.current && !isStartingOverRef.current) {
       // Если анкета уже загружена, не нужно вызывать init() повторно
       if (questionnaireRef.current) {
