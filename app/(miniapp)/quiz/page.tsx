@@ -4494,6 +4494,7 @@ export default function QuizPage() {
       return false;
     }
     // Если currentInfoScreenIndex уже прошел все начальные экраны - не показываем их
+    // КРИТИЧНО: Эта проверка должна быть ПЕРЕД финальным вычислением shouldShow
     if (currentInfoScreenIndex >= initialInfoScreens.length) {
       return false;
     }
@@ -4501,8 +4502,12 @@ export default function QuizPage() {
     if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
       return false;
     }
-    // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
-    const shouldShow = currentInfoScreenIndex < initialInfoScreens.length;
+    // КРИТИЧНО: Проверяем, что индекс в пределах массива И что массив не пустой
+    // Это гарантирует, что currentInitialInfoScreen не будет null
+    const shouldShow = currentInfoScreenIndex >= 0 && 
+                       currentInfoScreenIndex < initialInfoScreens.length &&
+                       initialInfoScreens.length > 0 &&
+                       !!initialInfoScreens[currentInfoScreenIndex];
     
     // Логирование только если shouldShow = true (чтобы не засорять логи)
     if (shouldShow) {
@@ -4510,6 +4515,7 @@ export default function QuizPage() {
       clientLogger.log('📺 isShowingInitialInfoScreen: true', {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
+        hasCurrentScreen: !!initialInfoScreens[currentInfoScreenIndex],
         showResumeScreen,
         showRetakeScreen,
         hasSavedProgress: !!savedProgress,
@@ -4519,6 +4525,24 @@ export default function QuizPage() {
         answersCount: Object.keys(answers).length,
         loading,
       });
+      }
+    } else {
+      // Логируем, если shouldShow = false, но isShowingInitialInfoScreen могло бы быть true
+      // Это помогает диагностировать проблемы
+      if (isDev && currentInfoScreenIndex < initialInfoScreens.length && initialInfoScreens.length > 0) {
+        clientLogger.log('🔍 isShowingInitialInfoScreen: false (проверка границ)', {
+          currentInfoScreenIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+          hasCurrentScreen: !!initialInfoScreens[currentInfoScreenIndex],
+          showResumeScreen,
+          showRetakeScreen,
+          hasSavedProgress: !!savedProgress,
+          hasResumed,
+          isRetakingQuiz,
+          currentQuestionIndex,
+          answersCount: Object.keys(answers).length,
+          loading,
+        });
       }
     }
     
