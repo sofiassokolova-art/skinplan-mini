@@ -4849,11 +4849,13 @@ export default function QuizPage() {
   
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f
   // ВАЖНО: Проверяем границы массива, чтобы избежать undefined
+  // ФИКС: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
+  // и currentInitialInfoScreen должен быть null, чтобы не блокировать показ вопросов
   const currentInitialInfoScreen = isShowingInitialInfoScreen && 
-                                    currentInfoScreenIndex >= 0 && 
+                                   currentInfoScreenIndex >= 0 && 
                                    currentInfoScreenIndex < initialInfoScreens.length
-                                    ? initialInfoScreens[currentInfoScreenIndex] 
-                                    : null;
+    ? initialInfoScreens[currentInfoScreenIndex] 
+    : null;
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
