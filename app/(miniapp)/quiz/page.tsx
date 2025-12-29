@@ -4328,6 +4328,19 @@ export default function QuizPage() {
     }
   }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire, extractQuestionsFromQuestionnaire]);
   
+  // КРИТИЧНО: Логируем состояние allQuestions после каждого вычисления
+  useEffect(() => {
+    clientLogger.log('📊 allQuestions state updated', {
+      allQuestionsRawLength: allQuestionsRaw.length,
+      allQuestionsLength: allQuestions.length,
+      allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
+      hasQuestionnaire: !!questionnaire,
+      hasQuestionnaireRef: !!questionnaireRef.current,
+      questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+      questionIds: allQuestions.length > 0 ? allQuestions.map((q: Question) => q?.id).slice(0, 10) : [],
+    });
+  }, [allQuestions, allQuestionsRaw, questionnaire]);
+  
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
     // Логируем всегда для отладки
