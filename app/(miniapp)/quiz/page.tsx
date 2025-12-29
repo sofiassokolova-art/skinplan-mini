@@ -835,7 +835,7 @@ export default function QuizPage() {
         const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
         const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz;
         
-        if (isNewUser) {
+          if (isNewUser) {
           const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
           // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
           if (currentInfoScreenIndex < initialInfoScreens.length) {
@@ -848,6 +848,16 @@ export default function QuizPage() {
             setCurrentInfoScreenIndex(initialInfoScreens.length);
             setPendingInfoScreen(null);
             setCurrentQuestionIndex(0);
+            // ФИКС: Детальное логирование установки вопросов для диагностики
+            clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в init() для нового пользователя', {
+              currentInfoScreenIndex: initialInfoScreens.length,
+              initialInfoScreensLength: initialInfoScreens.length,
+              allQuestionsLength: allQuestions.length,
+              currentQuestionIndex: 0,
+              isNewUser: true,
+              hasNoSavedProgress: true,
+              location: 'init()',
+            });
           }
         }
       }
@@ -4758,28 +4768,38 @@ export default function QuizPage() {
     // ВАЖНО: Блокируем только если действительно есть начальный экран для показа
     const shouldBlock = (isShowingInitialInfoScreen && currentInitialInfoScreen) || (pendingInfoScreen && !isRetakingQuiz);
     if (shouldBlock && !showResumeScreen) {
-      if (isDev) {
-        clientLogger.warn('⏸️ currentQuestion: null (blocked)', {
-          isShowingInitialInfoScreen,
-          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
-          pendingInfoScreen: !!pendingInfoScreen,
-          isRetakingQuiz,
-          showResumeScreen,
-          currentInfoScreenIndex,
-          initialInfoScreensLength: initialInfoScreens.length,
-        });
-      }
+      // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
+      clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
+        isShowingInitialInfoScreen,
+        hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+        currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
+        pendingInfoScreen: !!pendingInfoScreen,
+        pendingInfoScreenId: pendingInfoScreen?.id || null,
+        isRetakingQuiz,
+        showResumeScreen,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        hasResumed,
+        savedProgressExists: !!savedProgress,
+        answersCount: Object.keys(answers).length,
+      });
       return null;
     }
     
     // ФИКС: Защита от некорректного индекса или undefined
     if (currentQuestionIndex < 0 || currentQuestionIndex >= allQuestions.length) {
-      if (isDev) {
-        clientLogger.warn('⏸️ currentQuestion: null (индекс вне границ)', {
-          currentQuestionIndex,
-          allQuestionsLength: allQuestions.length,
-        });
-      }
+      // ФИКС: Всегда логируем проблемы с индексом (warn уровень сохраняется в БД)
+      clientLogger.warn('⏸️ currentQuestion: null (индекс вне границ)', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        isShowingInitialInfoScreen,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        hasResumed,
+        savedProgressExists: !!savedProgress,
+      });
       return null;
     }
     
@@ -4798,13 +4818,15 @@ export default function QuizPage() {
       return null;
     }
     
-    if (isDev) {
-      clientLogger.log('✅ currentQuestion: показываем вопрос', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        questionId: question.id,
-      });
-    }
+    // ФИКС: Логируем успешное отображение вопроса (info уровень для диагностики)
+    clientLogger.log('✅ currentQuestion: показываем вопрос', {
+      currentQuestionIndex,
+      allQuestionsLength: allQuestions.length,
+      questionId: question.id,
+      isShowingInitialInfoScreen,
+      currentInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+    });
     return question;
   }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions, initialInfoScreens.length]);
 
