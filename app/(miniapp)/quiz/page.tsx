@@ -328,6 +328,8 @@ export default function QuizPage() {
   const redirectInProgressRef = useRef(false);
   const historyUpdateInProgressRef = useRef(false);
   const lastHistoryUpdateTimeRef = useRef<number>(0);
+  // ФИКС: Ref для предотвращения повторных сбросов на первый экран
+  const firstScreenResetRef = useRef(false);
   
   useEffect(() => {
     // ИСПРАВЛЕНО: Проверяем, не была ли анкета только что отправлена
@@ -828,7 +830,8 @@ export default function QuizPage() {
 
       // ФИКС: Принудительно стартуем с вопросов для нового пользователя
       // Это гарантирует, что после загрузки анкеты новый пользователь увидит вопросы
-      if (questionnaireRef.current && allQuestions.length > 0) {
+      // ВАЖНО: Защита от повторных сбросов
+      if (questionnaireRef.current && allQuestions.length > 0 && !firstScreenResetRef.current) {
         const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
         const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz;
         
@@ -836,6 +839,7 @@ export default function QuizPage() {
           const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
           // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
           if (currentInfoScreenIndex < initialInfoScreens.length) {
+            firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
             clientLogger.log('🔧 ФИКС: Новый пользователь - пропускаем инфо-скрины, стартуем с вопросов', {
               currentInfoScreenIndex,
               initialInfoScreensLength: initialInfoScreens.length,
@@ -1197,12 +1201,16 @@ export default function QuizPage() {
             setCurrentQuestionIndex(0);
           }
           // Пропускаем начальные инфо-скрины, если индекс уже прошел их
+          // ФИКС: НЕ сбрасываем на первый экран при KV ошибке - это вызывает повторные редиректы
+          // Вместо этого пропускаем начальные экраны и переходим к вопросам
           const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
           if (currentInfoScreenIndex >= initialInfoScreens.length && allQuestions.length > 0) {
             // Уже на вопросах - ничего не делаем
-          } else if (currentInfoScreenIndex < initialInfoScreens.length) {
-            // Начальные экраны еще не пройдены - начинаем с первого
-            setCurrentInfoScreenIndex(0);
+          } else if (currentInfoScreenIndex < initialInfoScreens.length && allQuestions.length > 0) {
+            // Начальные экраны еще не пройдены - пропускаем их и переходим к вопросам
+            // НЕ сбрасываем на 0, чтобы не вызвать редирект на первый экран
+            setCurrentInfoScreenIndex(initialInfoScreens.length);
+            setCurrentQuestionIndex(0);
           }
           return;
         }
@@ -1428,6 +1436,10 @@ export default function QuizPage() {
           setLoading(false);
           if (typeof window !== 'undefined') {
             window.location.replace('/plan');
+            // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+            setTimeout(() => {
+              redirectInProgressRef.current = false;
+            }, 1000);
           }
           return null;
         }
@@ -1479,6 +1491,10 @@ export default function QuizPage() {
           setLoading(false);
           if (typeof window !== 'undefined') {
             window.location.replace('/plan');
+            // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+            setTimeout(() => {
+              redirectInProgressRef.current = false;
+            }, 1000);
           }
           return null;
         }
@@ -3527,6 +3543,10 @@ export default function QuizPage() {
           });
           if (typeof window !== 'undefined') {
             window.location.replace(planUrl);
+            // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+            setTimeout(() => {
+              redirectInProgressRef.current = false;
+            }, 1000);
           }
           // После редиректа код не должен выполняться, но на всякий случай выходим
           return;
@@ -3622,8 +3642,13 @@ export default function QuizPage() {
           setTimeout(() => {
             try {
               window.location.replace('/plan');
+              // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+              setTimeout(() => {
+                redirectInProgressRef.current = false;
+              }, 1000);
             } catch (e) {
               // Игнорируем ошибки редиректа
+              redirectInProgressRef.current = false; // Сбрасываем при ошибке
             }
           }, 500);
         }
@@ -3691,12 +3716,20 @@ export default function QuizPage() {
               // Используем replace вместо href для предотвращения React Error #300
               clientLogger.log('🔄 Редирект на /plan после ошибки');
               window.location.replace('/plan');
+              // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+              setTimeout(() => {
+                redirectInProgressRef.current = false;
+              }, 1000);
             } catch (redirectError) {
               // Если replace не сработал, пробуем href
               try {
                 window.location.href = '/plan';
+                setTimeout(() => {
+                  redirectInProgressRef.current = false;
+                }, 1000);
               } catch (hrefError) {
                 console.error('❌ Все методы редиректа не сработали:', hrefError);
+                redirectInProgressRef.current = false; // Сбрасываем при ошибке
               }
             }
           }, 1500); // Небольшая задержка, чтобы пользователь увидел лоадер
@@ -4588,14 +4621,16 @@ export default function QuizPage() {
     
     // ФИКС: Для нового пользователя принудительно пропускаем инфо-скрины после загрузки анкеты
     // Это гарантирует, что новый пользователь увидит вопросы
-    if (questionnaire && allQuestions.length > 0 && !loading && !hasResumed && !showResumeScreen && !isRetakingQuiz) {
+    // ВАЖНО: Защита от повторных сбросов
+    if (questionnaire && allQuestions.length > 0 && !loading && !hasResumed && !showResumeScreen && !isRetakingQuiz && !firstScreenResetRef.current) {
       const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
       const isNewUser = hasNoSavedProgress && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex === 0;
       
       if (isNewUser) {
         // Небольшая задержка, чтобы дать время другим useEffect выполниться
         const timeoutId = setTimeout(() => {
-          if (currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex === 0 && allQuestions.length > 0) {
+          if (currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex === 0 && allQuestions.length > 0 && !firstScreenResetRef.current) {
+            firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
             if (isDev) {
               clientLogger.log('🔧 ФИКС: Новый пользователь - принудительно пропускаем инфо-скрины', {
                 currentInfoScreenIndex,
