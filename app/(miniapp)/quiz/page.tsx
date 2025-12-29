@@ -2259,6 +2259,18 @@ export default function QuizPage() {
 
   const handleNext = async () => {
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    
+    // ФИКС: Всегда логируем handleNext (warn уровень для сохранения в БД)
+    clientLogger.warn('🔄 handleNext: вызов', {
+      currentInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+      currentQuestionIndex,
+      allQuestionsLength: allQuestions.length,
+      isRetakingQuiz,
+      showRetakeScreen,
+      hasResumed,
+      pendingInfoScreen: !!pendingInfoScreen,
+    });
 
     // ВАЖНО: При повторном прохождении (isRetakingQuiz && !showRetakeScreen) пропускаем все начальные info screens
     // showRetakeScreen = true означает, что показывается экран выбора тем, и мы еще не начали перепрохождение
@@ -2277,6 +2289,12 @@ export default function QuizPage() {
     // Если мы на начальных информационных экранах, переходим к следующему или к вопросам
     if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
+      // ФИКС: Логируем переход на следующий экран
+      clientLogger.warn('🔄 handleNext: переход на следующий инфо-экран', {
+        currentInfoScreenIndex,
+        newIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+      });
       setCurrentInfoScreenIndex(newIndex);
       // ФИКС: Если после инкремента мы прошли все начальные экраны, очищаем pendingInfoScreen
       if (newIndex >= initialInfoScreens.length) {
@@ -2293,6 +2311,13 @@ export default function QuizPage() {
     if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
       if (!questionnaire) return;
       const newInfoIndex = initialInfoScreens.length;
+      // ФИКС: Логируем переход к вопросам после последнего инфо-экрана
+      clientLogger.warn('🔄 handleNext: переход к вопросам после последнего инфо-экрана', {
+        currentInfoScreenIndex,
+        newInfoIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        allQuestionsLength: allQuestions.length,
+      });
       setCurrentInfoScreenIndex(newInfoIndex);
       // КРИТИЧНО: Для нового пользователя всегда начинаем с первого вопроса (индекс 0)
       // Это гарантирует, что после прохождения всех инфо-экранов вопросы начнут отображаться
