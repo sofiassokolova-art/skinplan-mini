@@ -334,11 +334,14 @@ function LayoutFallback() {
   // ТЗ: Скрываем навигацию на /quiz для чистого UX
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : pathname;
   const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
+  const isOnRootPage = pathname === '/' || currentPath === '/';
   
   // Определяем, нужно ли скрывать навигацию (та же логика, что и в LayoutContent)
+  // КРИТИЧНО: Скрываем навигацию на главной странице ВСЕГДА, так как это только редирект
   const hideNav = isOnQuizPage ||
                  pathname === '/loading' ||
-                 pathname.startsWith('/loading/');
+                 pathname.startsWith('/loading/') ||
+                 isOnRootPage; // Скрываем навигацию на главной странице всегда
   
   return (
     <>
