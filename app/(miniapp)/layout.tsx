@@ -240,12 +240,16 @@ function LayoutContent({
   // КРИТИЧНО: Скрываем навигацию на главной странице ВСЕГДА, так как это только редирект
   // Главная страница редиректит: новый пользователь → /quiz, пользователь с планом → /home
   // Это предотвращает вызов useCart() и показ навигации на странице-редиректе
+  // ИСПРАВЛЕНО: Проверяем оба pathname и currentPath для надежности
+  const isOnRootPage = pathname === '/' || currentPath === '/';
   const hideNav = isOnQuizPage || 
                   pathname === '/loading' ||
                   pathname.startsWith('/loading/') ||
+                  currentPath === '/loading' ||
+                  currentPath.startsWith('/loading/') ||
                   isResumeScreen ||
                   isPlanGenerating ||
-                  pathname === '/'; // Скрываем навигацию на главной странице всегда (это только редирект)
+                  isOnRootPage; // Скрываем навигацию на главной странице всегда (это только редирект)
   
   // Скрываем логотип на главной странице, на странице незавершенной анкеты, на странице анкеты (там логотип на фоне), и на страницах плана, избранного и профиля (там логотип встроен в страницу)
   const showLogo = pathname !== '/' && 
