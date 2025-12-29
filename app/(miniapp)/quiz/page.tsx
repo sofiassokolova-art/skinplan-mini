@@ -1136,6 +1136,20 @@ export default function QuizPage() {
       const shouldShowProgressScreen = answersCount >= 5 || questionIndex >= 5;
       
       if (response?.progress && response.progress.answers && answersCount > 0 && shouldShowProgressScreen) {
+        // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+        const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+        
+        // ФИКС: Не загружаем прогресс, если пользователь уже перешел к вопросам (currentInfoScreenIndex >= initialInfoScreens.length)
+        // Это предотвращает сброс currentInfoScreenIndex на 0 после перехода к вопросам
+        if (currentInfoScreenIndex >= initialInfoScreens.length) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах', {
+            currentInfoScreenIndex,
+            initialInfoScreensLength: initialInfoScreens.length,
+            progressInfoScreenIndex: response.progress.infoScreenIndex,
+          });
+          return;
+        }
+        
         clientLogger.log('✅ Найдены сохраненные ответы, показываем экран продолжения', {
           answersCount: Object.keys(response.progress.answers).length,
           questionIndex: response.progress.questionIndex,
