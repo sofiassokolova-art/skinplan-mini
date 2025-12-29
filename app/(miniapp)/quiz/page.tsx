@@ -4518,17 +4518,18 @@ export default function QuizPage() {
     if (shouldShow) {
       if (isDev) {
         clientLogger.log('📺 isShowingInitialInfoScreen: true', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        showResumeScreen,
-        showRetakeScreen,
-        hasSavedProgress: !!savedProgress,
-        hasResumed,
-        isRetakingQuiz,
-        currentQuestionIndex,
-        answersCount: Object.keys(answers).length,
-        loading,
-      });
+          currentInfoScreenIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+          showResumeScreen,
+          showRetakeScreen,
+          hasSavedProgress: !!savedProgress,
+          hasResumed,
+          isRetakingQuiz,
+          currentQuestionIndex,
+          answersCount: Object.keys(answers).length,
+          loading,
+        });
+      }
     }
     
     return shouldShow;
