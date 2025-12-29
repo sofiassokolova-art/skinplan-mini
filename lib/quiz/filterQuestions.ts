@@ -217,9 +217,17 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   // Если ответов нет (новый пользователь), показываем все вопросы без фильтрации
   const hasAnyAnswers = Object.keys(effectiveAnswers).length > 0;
   
-  // ДИАГНОСТИКА: Логируем входные данные
-  // КРИТИЧНО: Логируем в начале для диагностики
-  log('🔍 filterQuestions: Starting filter', {
+  // КРИТИЧНО: Логируем короткие ключевые данные отдельно для видимости в обрезанных логах
+  log(`🔍 filterQuestions: START ${questions.length} questions, ${Object.keys(effectiveAnswers).length} answers`, {
+    questions: questions.length,
+    answers: Object.keys(effectiveAnswers).length,
+    hasAnyAnswers,
+    isRetakingQuiz,
+    showRetakeScreen,
+  });
+  
+  // ДИАГНОСТИКА: Логируем полные входные данные
+  log('🔍 filterQuestions: Starting filter (full)', {
     questionsCount: questions.length,
     answersCount: Object.keys(answers || {}).length,
     savedProgressAnswersCount: Object.keys(savedProgressAnswers || {}).length,
@@ -366,8 +374,15 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       effectiveAnswers: effectiveAnswers,
     });
   } else {
-    // УСПЕШНАЯ ФИЛЬТРАЦИЯ: Логируем результат
-    log('✅ filterQuestions: Filter completed', {
+    // КРИТИЧНО: Логируем короткие ключевые данные отдельно для видимости в обрезанных логах
+    log(`✅ filterQuestions: ${questions.length}→${filteredQuestions.length} (excluded: ${excludedCount})`, {
+      original: questions.length,
+      filtered: filteredQuestions.length,
+      excluded: excludedCount,
+    });
+    
+    // УСПЕШНАЯ ФИЛЬТРАЦИЯ: Логируем полный результат
+    log('✅ filterQuestions: Filter completed (full)', {
       originalCount: questions.length,
       filteredCount: filteredQuestions.length,
       excludedCount,
@@ -381,7 +396,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     
     // ДОПОЛНИТЕЛЬНО: Если отфильтровано много вопросов, логируем предупреждение
     if (filteredQuestions.length < questions.length && filteredQuestions.length > 0) {
-      warn('⚠️ filterQuestions: Некоторые вопросы отфильтрованы', {
+      warn(`⚠️ filterQuestions: ${excludedCount} вопросов отфильтровано`, {
         originalCount: questions.length,
         filteredCount: filteredQuestions.length,
         excludedCount,

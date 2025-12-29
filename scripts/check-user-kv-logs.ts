@@ -91,6 +91,7 @@ async function checkUserKVLogs() {
           const importantMessages = [
             'currentQuestion',
             'allQuestions',
+            'filterQuestions',
             'isShowingInitialInfoScreen',
             'init',
             'loading',
@@ -100,6 +101,9 @@ async function checkUserKVLogs() {
             'timeout',
             'error',
             'warn',
+            'filter',
+            'ВСЕ ВОПРОСЫ',
+            'ОТФИЛЬТРОВАНЫ',
           ];
           
           const message = log.message || '';
