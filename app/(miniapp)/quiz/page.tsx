@@ -4498,11 +4498,31 @@ export default function QuizPage() {
     // ВОССТАНОВЛЕНО: Простая проверка из рабочего коммита
     const shouldShow = currentInfoScreenIndex < initialInfoScreens.length;
     
+    // Логирование для диагностики
+    if (isDev && shouldShow) {
+      clientLogger.log('📺 isShowingInitialInfoScreen: true', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        showResumeScreen,
+        showRetakeScreen,
+        hasSavedProgress: !!savedProgress,
+        hasResumed,
+        isRetakingQuiz,
+        currentQuestionIndex,
+        answersCount: Object.keys(answers).length,
+      });
+    }
+    
     return shouldShow;
   }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
   
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f
-  const currentInitialInfoScreen = isShowingInitialInfoScreen ? initialInfoScreens[currentInfoScreenIndex] : null;
+  // ВАЖНО: Проверяем границы массива, чтобы избежать undefined
+  const currentInitialInfoScreen = isShowingInitialInfoScreen && 
+                                   currentInfoScreenIndex >= 0 && 
+                                   currentInfoScreenIndex < initialInfoScreens.length
+    ? initialInfoScreens[currentInfoScreenIndex] 
+    : null;
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
@@ -4511,14 +4531,41 @@ export default function QuizPage() {
     // ВАЖНО: При перепрохождении (retake) мы пропускаем info screens,
     // поэтому pendingInfoScreen не должен блокировать отображение вопросов при retake
     // ВАЖНО: Если показывается экран продолжения (showResumeScreen), не блокируем вопросы
-    if ((isShowingInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz)) && !showResumeScreen) {
+    // ВАЖНО: Блокируем только если действительно есть начальный экран для показа
+    const shouldBlock = (isShowingInitialInfoScreen && currentInitialInfoScreen) || (pendingInfoScreen && !isRetakingQuiz);
+    if (shouldBlock && !showResumeScreen) {
+      if (isDev) {
+        clientLogger.warn('⏸️ currentQuestion: null (blocked)', {
+          isShowingInitialInfoScreen,
+          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+          pendingInfoScreen: !!pendingInfoScreen,
+          isRetakingQuiz,
+          showResumeScreen,
+          currentInfoScreenIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+        });
+      }
       return null;
     }
     if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
-      return allQuestions[currentQuestionIndex];
+      const question = allQuestions[currentQuestionIndex];
+      if (isDev) {
+        clientLogger.log('✅ currentQuestion: показываем вопрос', {
+          currentQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+          questionId: question?.id,
+        });
+      }
+      return question;
+    }
+    if (isDev) {
+      clientLogger.warn('⏸️ currentQuestion: null (индекс вне границ)', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+      });
     }
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions]);
+  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions, initialInfoScreens.length]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
   useEffect(() => {
