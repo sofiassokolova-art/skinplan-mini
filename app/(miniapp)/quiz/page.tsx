@@ -844,7 +844,8 @@ export default function QuizPage() {
         const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz;
         
           if (isNewUser) {
-          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+          // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
           // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
           if (currentInfoScreenIndex < initialInfoScreens.length) {
             firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
@@ -1227,7 +1228,8 @@ export default function QuizPage() {
           // Пропускаем начальные инфо-скрины, если индекс уже прошел их
           // ФИКС: НЕ сбрасываем на первый экран при KV ошибке - это вызывает повторные редиректы
           // Вместо этого пропускаем начальные экраны и переходим к вопросам
-          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+          // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
           if (currentInfoScreenIndex >= initialInfoScreens.length && allQuestions.length > 0) {
             // Уже на вопросах - ничего не делаем
           } else if (currentInfoScreenIndex < initialInfoScreens.length && allQuestions.length > 0) {
@@ -2258,7 +2260,9 @@ export default function QuizPage() {
   };
 
   const handleNext = async () => {
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+    // Экраны с showAfterInfoScreenId показываются после других экранов или вопросов, а не в начале
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
     
     // ФИКС: Всегда логируем handleNext (warn уровень для сохранения в БД)
     clientLogger.warn('🔄 handleNext: вызов', {
@@ -2514,7 +2518,8 @@ export default function QuizPage() {
   const handleBack = () => {
     if (!questionnaire) return;
 
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
 
     // Если показывается инфо-экран между вопросами, просто закрываем его
     if (pendingInfoScreen) {
@@ -3853,7 +3858,8 @@ export default function QuizPage() {
       return;
     }
     
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
     
     // ФИКС: Всегда логируем resumeQuiz (warn уровень для сохранения в БД)
     clientLogger.warn('🔄 resumeQuiz: Восстанавливаем прогресс', {
@@ -4606,7 +4612,8 @@ export default function QuizPage() {
     }
     
     // Также убеждаемся, что мы не на начальных экранах после восстановления
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
     if (hasResumed && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex > 0) {
       clientLogger.log('✅ Корректируем infoScreenIndex после восстановления');
       setCurrentInfoScreenIndex(initialInfoScreens.length);
@@ -4619,7 +4626,8 @@ export default function QuizPage() {
   // ВАЖНО: Этот useEffect должен быть ВСЕГДА вызван, даже если есть ранние return'ы, чтобы соблюдать порядок хуков
   useEffect(() => {
     // Определяем initialInfoScreens внутри useEffect
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+    // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
     
     // Пропускаем, если пользователь продолжает анкету (не повторное прохождение)
     // savedProgress или hasResumed означает, что пользователь нажал "Продолжить" и мы не должны сбрасывать состояние
@@ -4662,7 +4670,8 @@ export default function QuizPage() {
     // Это включает как начальные инфо-экраны, так и инфо-экраны между вопросами
     if (allQuestions.length > 0 && isRetakingQuiz && !showRetakeScreen) {
       // Переходим сразу к первому вопросу, пропуская все начальные инфо-экраны
-      const initialInfoScreensCount = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode).length;
+      // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+      const initialInfoScreensCount = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId).length;
       // ВАЖНО: Всегда устанавливаем currentInfoScreenIndex в initialInfoScreensCount при перепрохождении
       // Это гарантирует, что начальные инфо-экраны не будут показаны
       // ИСПРАВЛЕНО: Используем функциональное обновление, чтобы избежать stale closure
@@ -4683,7 +4692,12 @@ export default function QuizPage() {
   }, [isRetakingQuiz, questionnaire, currentQuestionIndex, showResumeScreen, savedProgress, hasResumed, answers, showRetakeScreen]); // ИСПРАВЛЕНО: Убрали currentInfoScreenIndex из зависимостей, чтобы избежать бесконечного цикла
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
-  const initialInfoScreens = useMemo(() => INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode), []);
+  // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+  // Экраны с showAfterInfoScreenId показываются после других экранов или вопросов, а не в начале
+  const initialInfoScreens = useMemo(() => 
+    INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId), 
+    []
+  );
 
   // ФИКС: Принудительная проверка после завершения всех начальных экранов
   // Это предотвращает застревание на info screens
@@ -4852,10 +4866,10 @@ export default function QuizPage() {
   // ФИКС: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
   // и currentInitialInfoScreen должен быть null, чтобы не блокировать показ вопросов
   const currentInitialInfoScreen = isShowingInitialInfoScreen && 
-                                   currentInfoScreenIndex >= 0 && 
+                                    currentInfoScreenIndex >= 0 && 
                                    currentInfoScreenIndex < initialInfoScreens.length
-    ? initialInfoScreens[currentInfoScreenIndex] 
-    : null;
+                                    ? initialInfoScreens[currentInfoScreenIndex] 
+                                    : null;
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
@@ -5510,7 +5524,8 @@ export default function QuizPage() {
               setIsRetakingQuiz(true);
               // Пропускаем все начальные info screens - переходим сразу к вопросам
               if (questionnaire) {
-                const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+                // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+                const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
                 setCurrentInfoScreenIndex(initialInfoScreens.length);
                 setCurrentQuestionIndex(0);
                 setPendingInfoScreen(null);
