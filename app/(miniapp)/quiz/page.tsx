@@ -339,6 +339,10 @@ export default function QuizPage() {
   const firstScreenResetRef = useRef(false);
   // ФИКС: Ref для отслеживания завершения resumeQuiz
   const resumeCompletedRef = useRef(false);
+  // ФИКС: Ref для предотвращения множественных кликов по кнопке "Продолжить"
+  const handleNextInProgressRef = useRef(false);
+  // ФИКС: State для визуального обновления кнопки "Продолжить"
+  const [isHandlingNext, setIsHandlingNext] = useState(false);
   
   useEffect(() => {
     // ИСПРАВЛЕНО: Проверяем, не была ли анкета только что отправлена
@@ -2296,21 +2300,48 @@ export default function QuizPage() {
   };
 
   const handleNext = async () => {
-    // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
-    // Экраны с showAfterInfoScreenId показываются после других экранов или вопросов, а не в начале
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+    // ФИКС: Защита от множественных кликов
+    if (handleNextInProgressRef.current) {
+      clientLogger.warn('⏸️ handleNext: уже выполняется, пропускаем повторный вызов', {
+        isHandlingNext,
+      });
+      return;
+    }
     
-    // ФИКС: Всегда логируем handleNext (warn уровень для сохранения в БД)
-    clientLogger.warn('🔄 handleNext: вызов', {
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-      currentQuestionIndex,
-      allQuestionsLength: allQuestions.length,
-      isRetakingQuiz,
-      showRetakeScreen,
-      hasResumed,
-      pendingInfoScreen: !!pendingInfoScreen,
-    });
+    // ФИКС: Проверяем, что анкета загружена перед выполнением handleNext
+    // ИСПРАВЛЕНО: Проверяем questionnaireRef.current в первую очередь, так как он устанавливается раньше
+    const hasQuestionnaire = questionnaire || questionnaireRef.current;
+    if (!hasQuestionnaire) {
+      clientLogger.warn('⏸️ handleNext: анкета еще не загружена, ждем...', {
+        hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        loading,
+        initCompleted: initCompletedRef.current,
+      });
+      return;
+    }
+    
+    handleNextInProgressRef.current = true;
+    setIsHandlingNext(true);
+    
+    try {
+      // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+      // Экраны с showAfterInfoScreenId показываются после других экранов или вопросов, а не в начале
+      const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+      
+      // ФИКС: Всегда логируем handleNext (warn уровень для сохранения в БД)
+      clientLogger.warn('🔄 handleNext: вызов', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        isRetakingQuiz,
+        showRetakeScreen,
+        hasResumed,
+        pendingInfoScreen: !!pendingInfoScreen,
+        hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+      });
 
     // ВАЖНО: При повторном прохождении (isRetakingQuiz && !showRetakeScreen) пропускаем все начальные info screens
     // showRetakeScreen = true означает, что показывается экран выбора тем, и мы еще не начали перепрохождение
@@ -2548,6 +2579,11 @@ export default function QuizPage() {
       const newIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(newIndex);
       await saveProgress(answers, newIndex, currentInfoScreenIndex);
+    }
+    } finally {
+      // ФИКС: Сбрасываем флаг после завершения handleNext
+      handleNextInProgressRef.current = false;
+      setIsHandlingNext(false);
     }
   };
 
@@ -6974,24 +7010,49 @@ export default function QuizPage() {
             justifyContent: 'center',
           }}>
               <button
-                onClick={handleNext}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  clientLogger.warn('🖱️ Кнопка "Продолжить": клик получен', {
+                    handleNextInProgress: handleNextInProgressRef.current,
+                    hasQuestionnaire: !!questionnaire,
+                    hasQuestionnaireRef: !!questionnaireRef.current,
+                    isHandlingNext,
+                    questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+                  });
+                  if (!handleNextInProgressRef.current && (questionnaire || questionnaireRef.current)) {
+                    clientLogger.warn('✅ Кнопка "Продолжить": вызываем handleNext');
+                    handleNext();
+                  } else {
+                    clientLogger.warn('⏸️ Кнопка "Продолжить": пропущен клик', {
+                      handleNextInProgress: handleNextInProgressRef.current,
+                      hasQuestionnaire: !!questionnaire,
+                      hasQuestionnaireRef: !!questionnaireRef.current,
+                      isHandlingNext,
+                    });
+                  }
+                }}
+                disabled={isHandlingNext}
                 style={{
                   width: '100%',
                   maxWidth: 'clamp(224px, 60vw, 320px)',
                   height: 'clamp(56px, 8vh, 64px)',
                   borderRadius: '20px',
-                  background: '#D5FE61',
+                  background: isHandlingNext ? '#CCCCCC' : '#D5FE61',
                   color: '#000000',
                   border: 'none',
                   fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
                   fontSize: 'clamp(14px, 4vw, 16px)',
-                  cursor: 'pointer',
+                  cursor: isHandlingNext ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                   transition: 'transform 0.2s, box-shadow 0.2s',
+                  opacity: isHandlingNext ? 0.6 : 1,
                 }}
               onMouseDown={(e) => {
-                e.currentTarget.style.transform = 'scale(0.98)';
+                if (!isHandlingNext) {
+                  e.currentTarget.style.transform = 'scale(0.98)';
+                }
               }}
               onMouseUp={(e) => {
                 e.currentTarget.style.transform = 'scale(1)';
@@ -7000,7 +7061,7 @@ export default function QuizPage() {
                 e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              {String(screen.ctaText || 'Продолжить')}
+              {isHandlingNext ? 'Загрузка...' : String(screen.ctaText || 'Продолжить')}
             </button>
           </div>
         )}
