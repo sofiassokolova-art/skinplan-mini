@@ -12,6 +12,7 @@ import { PlanPageClient } from './plan-client';
 import type { Plan28, DayPlan } from '@/lib/plan-types';
 import type { GeneratedPlan, ProfileResponse } from '@/lib/api-types';
 import { clientLogger } from '@/lib/client-logger';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface PlanData {
   // Новый формат (plan28)
@@ -1453,38 +1454,28 @@ export default function PlanPage() {
         alignItems: 'center', 
         minHeight: '100vh', 
         flexDirection: 'column', 
-        gap: '24px',
+        gap: '32px',
         padding: '20px',
-        background: 'linear-gradient(135deg, #0A5F59 0%, #0d7a72 100%)',
-        color: 'white'
+        background: '#FFFFFF',
+        color: '#000000'
       }}>
-        <div style={{ fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
-          Загружаем план…
+        <div style={{ width: '200px', height: '200px' }}>
+          <DotLottieReact
+            src="/loader 3.lottie"
+            loop
+            autoplay
+            style={{ width: '100%', height: '100%' }}
+          />
         </div>
         <div style={{ 
-          width: '280px', 
-          height: '8px', 
-          backgroundColor: 'rgba(255,255,255,0.2)', 
-          borderRadius: '4px',
-          overflow: 'hidden'
+          fontSize: '32px', 
+          fontWeight: 400, 
+          textAlign: 'center',
+          fontFamily: 'Inter, sans-serif',
+          letterSpacing: '-0.02em'
         }}>
-          <div style={{
-            height: '100%',
-            width: '66%',
-            backgroundColor: 'white',
-            borderRadius: '4px',
-            animation: 'pulse 2s ease-in-out infinite',
-          }} />
+          Интер
         </div>
-        <div style={{ fontSize: '14px', opacity: 0.9, textAlign: 'center', maxWidth: '300px' }}>
-          Анализ кожи → Подбор средств → Формирование плана
-        </div>
-        <style jsx>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-        `}</style>
       </div>
     );
   }
