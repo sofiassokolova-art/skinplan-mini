@@ -127,11 +127,22 @@ export const clientLogger = {
     console.log(...args); // Всегда выводим в консоль
     // ИСПРАВЛЕНО: Отправляем логи на сервер (в development все, в production только важные)
     // Проверяем, является ли это важным логом (содержит эмодзи или ключевые слова)
-    const isImportantLog = message.includes('✅') || message.includes('❌') || 
-                          message.includes('⚠️') || message.includes('🔄') ||
-                          message.includes('🔍') || message.includes('📥') ||
-                          message.includes('Plan') || message.includes('fallback') ||
-                          message.includes('redirect') || message.includes('error');
+    const isImportantLog = 
+      // Эмодзи для важных событий
+      message.includes('✅') || message.includes('❌') || 
+      message.includes('⚠️') || message.includes('🔄') ||
+      message.includes('🔍') || message.includes('📥') ||
+      message.includes('🔵') || message.includes('🟢') ||
+      // Ключевые слова для загрузки анкеты
+      message.includes('questionnaire') || message.includes('анкет') ||
+      message.includes('loadQuestionnaire') || message.includes('init()') ||
+      message.includes('setQuestionnaire') || message.includes('questionnaireRef') ||
+      message.includes('RENDER') || message.includes('loading') ||
+      // Другие важные события
+      message.includes('Plan') || message.includes('fallback') ||
+      message.includes('redirect') || message.includes('error') ||
+      message.includes('CRITICAL') || message.includes('CALLED') ||
+      message.includes('RETURNED') || message.includes('EXECUTED');
     
     if (isDevelopment || isImportantLog) {
       try {
