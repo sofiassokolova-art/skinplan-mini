@@ -348,16 +348,33 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   });
   
   // ДИАГНОСТИКА: Логируем результат фильтрации
-  log('✅ filterQuestions: Filter completed', {
-    originalCount: questions.length,
-    filteredCount: filteredQuestions.length,
-    excludedCount,
-    excludedReasons,
-    hasAnyAnswers,
-    isRetakingQuiz,
-    showRetakeScreen,
-    filteredQuestionCodes: filteredQuestions.map(q => q.code).slice(0, 10),
-  });
+  // КРИТИЧНО: Логируем отдельно для лучшей видимости
+  if (filteredQuestions.length === 0 && questions.length > 0) {
+    error('❌ filterQuestions: ВСЕ ВОПРОСЫ ОТФИЛЬТРОВАНЫ!', {
+      originalCount: questions.length,
+      filteredCount: filteredQuestions.length,
+      excludedCount,
+      excludedReasons,
+      hasAnyAnswers,
+      isRetakingQuiz,
+      showRetakeScreen,
+      allQuestionCodes: questions.map(q => q.code),
+      effectiveAnswersCount: Object.keys(effectiveAnswers).length,
+      effectiveAnswers: effectiveAnswers,
+    });
+  } else {
+    log('✅ filterQuestions: Filter completed', {
+      originalCount: questions.length,
+      filteredCount: filteredQuestions.length,
+      excludedCount,
+      excludedReasons,
+      hasAnyAnswers,
+      isRetakingQuiz,
+      showRetakeScreen,
+      filteredQuestionCodes: filteredQuestions.map(q => q.code).slice(0, 20),
+      effectiveAnswersCount: Object.keys(effectiveAnswers).length,
+    });
+  }
   
   // ИСПРАВЛЕНО: Если после фильтрации не осталось вопросов, возвращаем все вопросы
   // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
