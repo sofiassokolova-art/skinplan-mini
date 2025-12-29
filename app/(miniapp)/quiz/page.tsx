@@ -3869,19 +3869,15 @@ export default function QuizPage() {
       // НО: также проверяем state, чтобы useMemo пересчитывался при изменении state
       const currentQuestionnaire = questionnaireRef.current || questionnaire;
       
-      // ИСПРАВЛЕНО: Детальное логирование для диагностики
-      clientLogger.log('📊 allQuestionsRaw useMemo triggered', {
-        hasQuestionnaire: !!questionnaire,
-        questionnaireId: questionnaire?.id,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireRefId: questionnaireRef.current?.id,
-        usingRef: !!questionnaireRef.current,
-        usingState: !!questionnaire && !questionnaireRef.current,
-        questionnaireGroupsCount: questionnaire?.groups?.length || 0,
-        questionnaireQuestionsCount: questionnaire?.questions?.length || 0,
-        refGroupsCount: questionnaireRef.current?.groups?.length || 0,
-        refQuestionsCount: questionnaireRef.current?.questions?.length || 0,
-      });
+      // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
+      if (isDev) {
+        clientLogger.log('📊 allQuestionsRaw useMemo triggered', {
+          hasQuestionnaire: !!questionnaire,
+          questionnaireId: questionnaire?.id,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          questionnaireRefId: questionnaireRef.current?.id,
+        });
+      }
       
       if (!currentQuestionnaire) {
         clientLogger.log('⚠️ No questionnaire in ref or state, allQuestionsRaw is empty', {
@@ -3904,36 +3900,20 @@ export default function QuizPage() {
       const groupsType = Array.isArray(groups) ? 'array' : typeof groups;
       const questionsType = Array.isArray(questions) ? 'array' : typeof questions;
       
-      // ИСПРАВЛЕНО: Безопасное логирование с проверками
-      try {
-        clientLogger.log('📊 allQuestionsRaw: Starting extraction', {
-          questionnaireId: currentQuestionnaire?.id,
-          groupsCount: groups.length,
-          questionsCount: questions.length,
-          groupsType,
-          questionsType,
-          groupsIsArray: Array.isArray(groups),
-          questionsIsArray: Array.isArray(questions),
-          groupsStructure: groups.map(g => ({
-            id: g?.id,
-            title: g?.title,
-            questionsCount: g?.questions?.length || 0,
-            questionsIsArray: Array.isArray(g?.questions),
-            questionIds: (g?.questions || []).map((q: Question) => q?.id).filter(Boolean),
-          })),
-          rootQuestionIds: questions.map((q: Question) => q?.id).filter(Boolean),
-          // КРИТИЧНО: Полная структура questionnaire для диагностики
-          questionnaireStructure: {
-            hasId: !!currentQuestionnaire.id,
-            hasGroups: 'groups' in currentQuestionnaire,
-            hasQuestions: 'questions' in currentQuestionnaire,
-            groupsValue: groups,
-            questionsValue: questions,
-          },
-        });
-      } catch (logErr) {
-        // Игнорируем ошибки логирования
-        console.warn('Failed to log allQuestionsRaw extraction start:', logErr);
+      // ИСПРАВЛЕНО: Логируем только в development и без больших объектов, чтобы не создавать спам
+      if (isDev) {
+        try {
+          clientLogger.log('📊 allQuestionsRaw: Starting extraction', {
+            questionnaireId: currentQuestionnaire?.id,
+            groupsCount: groups.length,
+            questionsCount: questions.length,
+            groupsIsArray: Array.isArray(groups),
+            questionsIsArray: Array.isArray(questions),
+          });
+        } catch (logErr) {
+          // Игнорируем ошибки логирования
+          console.warn('Failed to log allQuestionsRaw extraction start:', logErr);
+        }
       }
       
       // КРИТИЧНО: Проверяем, что groups и questions - это массивы
@@ -4036,25 +4016,18 @@ export default function QuizPage() {
         rootQuestions: questions,
       });
     } else {
-      // ИСПРАВЛЕНО: Логируем успешное извлечение
-      try {
-        clientLogger.log('✅ allQuestionsRaw loaded successfully', {
-          total: raw.length,
-          fromGroups: questionsFromGroups.length,
-          fromQuestions: questions.length,
-          uniqueQuestionIds: raw.length > 0 ? raw.map((q: Question) => q?.id).filter(Boolean) : [],
-          duplicatesRemoved: (questionsFromGroups.length + questions.length) - raw.length,
-          sampleQuestion: raw[0] ? {
-            id: raw[0]?.id,
-            code: raw[0]?.code,
-            type: raw[0]?.type,
-            hasOptions: !!raw[0]?.options,
-            optionsCount: raw[0]?.options?.length || 0,
-          } : null,
-        });
-      } catch (logErr) {
-        // Игнорируем ошибки логирования
-        console.warn('Failed to log allQuestionsRaw:', logErr);
+      // ИСПРАВЛЕНО: Логируем успешное извлечение только в development, чтобы не создавать спам
+      if (isDev) {
+        try {
+          clientLogger.log('✅ allQuestionsRaw loaded successfully', {
+            total: raw.length,
+            fromGroups: questionsFromGroups.length,
+            fromQuestions: questions.length,
+          });
+        } catch (logErr) {
+          // Игнорируем ошибки логирования
+          console.warn('Failed to log allQuestionsRaw:', logErr);
+        }
       }
     }
     return raw;
@@ -4082,21 +4055,15 @@ export default function QuizPage() {
     const stateId = questionnaire?.id;
     const refId = questionnaireRef.current?.id;
     
-    clientLogger.log('🔄 useEffect: questionnaire state/ref changed', {
-      timestamp: new Date().toISOString(),
-      hasQuestionnaireState,
-      hasQuestionnaireRef,
-      stateId,
-      refId,
-      stateGroupsCount: questionnaire?.groups?.length || 0,
-      stateQuestionsCount: questionnaire?.questions?.length || 0,
-      refGroupsCount: questionnaireRef.current?.groups?.length || 0,
-      refQuestionsCount: questionnaireRef.current?.questions?.length || 0,
-      loading,
-      error: error || null,
-      initCompleted: initCompletedRef.current,
-      initInProgress: initInProgressRef.current,
-    });
+    // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
+    if (isDev) {
+      clientLogger.log('🔄 useEffect: questionnaire state/ref changed', {
+        hasQuestionnaireState,
+        hasQuestionnaireRef,
+        stateId,
+        refId,
+      });
+    }
     
     // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, 
     // принудительно обновляем state и сбрасываем loading
