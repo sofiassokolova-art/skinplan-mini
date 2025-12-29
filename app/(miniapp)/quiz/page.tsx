@@ -3816,12 +3816,15 @@ export default function QuizPage() {
     
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
     
-    clientLogger.log('🔄 resumeQuiz: Восстанавливаем прогресс', {
+    // ФИКС: Всегда логируем resumeQuiz (warn уровень для сохранения в БД)
+    clientLogger.warn('🔄 resumeQuiz: Восстанавливаем прогресс', {
       questionIndex: savedProgress.questionIndex,
       infoScreenIndex: savedProgress.infoScreenIndex,
       answersCount: Object.keys(savedProgress.answers).length,
       initialInfoScreensLength: initialInfoScreens.length,
-      currentHasResumed: hasResumed, // Логируем текущее состояние для отладки
+      currentHasResumed: hasResumed,
+      currentInfoScreenIndex,
+      currentQuestionIndex,
     });
     
     // ВАЖНО: Сначала устанавливаем hasResumed и showResumeScreen СИНХРОННО,
@@ -3893,17 +3896,38 @@ export default function QuizPage() {
       // пропускаем начальные экраны и переходим к вопросам, чтобы не редиректить на первый экран
       // Это предотвращает циклические редиректы после нажатия "Продолжить"
       if (progressToRestore.infoScreenIndex === 0) {
-        clientLogger.log('✅ resumeQuiz: infoScreenIndex = 0, но пользователь уже нажал "Продолжить" - пропускаем начальные экраны');
+        // ФИКС: Всегда логируем (warn уровень для сохранения в БД)
+        clientLogger.warn('✅ resumeQuiz: infoScreenIndex = 0, но пользователь уже нажал "Продолжить" - пропускаем начальные экраны', {
+          infoScreenIndex: progressToRestore.infoScreenIndex,
+          questionIndex: progressToRestore.questionIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+          settingCurrentInfoScreenIndex: initialInfoScreens.length,
+        });
         setCurrentQuestionIndex(0);
         setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
       } else {
-        clientLogger.log('✅ resumeQuiz: Начинаем с начальных экранов', progressToRestore.infoScreenIndex);
+        // ФИКС: Всегда логируем (warn уровень для сохранения в БД)
+        clientLogger.warn('✅ resumeQuiz: Начинаем с начальных экранов', {
+          infoScreenIndex: progressToRestore.infoScreenIndex,
+          questionIndex: progressToRestore.questionIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+        });
         setCurrentQuestionIndex(0);
         setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
       }
     }
     
-    clientLogger.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false, savedProgress = null, localStorage очищен');
+    // ФИКС: Всегда логируем завершение resumeQuiz (warn уровень для сохранения в БД)
+    clientLogger.warn('✅ resumeQuiz: Прогресс восстановлен', {
+      hasResumed: true,
+      showResumeScreen: false,
+      savedProgress: null,
+      currentInfoScreenIndex,
+      currentQuestionIndex,
+      questionIndex: progressToRestore.questionIndex,
+      infoScreenIndex: progressToRestore.infoScreenIndex,
+      answersCount: Object.keys(progressToRestore.answers).length,
+    });
   };
 
   // Начать заново
