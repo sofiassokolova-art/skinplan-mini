@@ -1270,9 +1270,9 @@ export default function QuizPage() {
       });
     
     try {
-        // ИСПРАВЛЕНО: НЕ устанавливаем loading=true здесь, так как init() уже управляет loading
-        // Это предотвращает мигание лоадера из-за множественных изменений состояния
-        setError(null);
+      // ИСПРАВЛЕНО: НЕ устанавливаем loading=true здесь, так как init() уже управляет loading
+      // Это предотвращает мигание лоадера из-за множественных изменений состояния
+      setError(null);
         
         // КРИТИЧНО: Если loading уже false (например, из-за предыдущей ошибки), не устанавливаем его обратно в true
         // Это предотвращает показ лоадера, если анкета уже загружена или была ошибка
@@ -1755,11 +1755,11 @@ export default function QuizPage() {
         if (isDev) {
           clientLogger.log('✅ setQuestionnaire callback EXECUTED', {
             timestamp: new Date().toISOString(),
-            questionnaireId: questionnaireToSet.id,
-            totalQuestions: totalQuestionsBeforeSet,
-            prevQuestionnaireId: prevQuestionnaire?.id,
+          questionnaireId: questionnaireToSet.id,
+          totalQuestions: totalQuestionsBeforeSet,
+          prevQuestionnaireId: prevQuestionnaire?.id,
             isNew: !prevQuestionnaire || prevQuestionnaire.id !== questionnaireToSet.id,
-          });
+        });
         }
         
         return questionnaireToSet;
@@ -3876,11 +3876,11 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
       if (isDev) {
-        clientLogger.log('📊 allQuestionsRaw useMemo triggered', {
-          hasQuestionnaire: !!questionnaire,
-          questionnaireId: questionnaire?.id,
-          hasQuestionnaireRef: !!questionnaireRef.current,
-          questionnaireRefId: questionnaireRef.current?.id,
+      clientLogger.log('📊 allQuestionsRaw useMemo triggered', {
+        hasQuestionnaire: !!questionnaire,
+        questionnaireId: questionnaire?.id,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        questionnaireRefId: questionnaireRef.current?.id,
         });
       }
       
@@ -3907,17 +3907,17 @@ export default function QuizPage() {
       
       // ИСПРАВЛЕНО: Логируем только в development и без больших объектов, чтобы не создавать спам
       if (isDev) {
-        try {
-          clientLogger.log('📊 allQuestionsRaw: Starting extraction', {
-            questionnaireId: currentQuestionnaire?.id,
-            groupsCount: groups.length,
-            questionsCount: questions.length,
-            groupsIsArray: Array.isArray(groups),
-            questionsIsArray: Array.isArray(questions),
-          });
-        } catch (logErr) {
-          // Игнорируем ошибки логирования
-          console.warn('Failed to log allQuestionsRaw extraction start:', logErr);
+      try {
+        clientLogger.log('📊 allQuestionsRaw: Starting extraction', {
+          questionnaireId: currentQuestionnaire?.id,
+          groupsCount: groups.length,
+          questionsCount: questions.length,
+          groupsIsArray: Array.isArray(groups),
+          questionsIsArray: Array.isArray(questions),
+        });
+      } catch (logErr) {
+        // Игнорируем ошибки логирования
+        console.warn('Failed to log allQuestionsRaw extraction start:', logErr);
         }
       }
       
@@ -4023,15 +4023,15 @@ export default function QuizPage() {
     } else {
       // ИСПРАВЛЕНО: Логируем успешное извлечение только в development, чтобы не создавать спам
       if (isDev) {
-        try {
-          clientLogger.log('✅ allQuestionsRaw loaded successfully', {
-            total: raw.length,
-            fromGroups: questionsFromGroups.length,
-            fromQuestions: questions.length,
-          });
-        } catch (logErr) {
-          // Игнорируем ошибки логирования
-          console.warn('Failed to log allQuestionsRaw:', logErr);
+      try {
+        clientLogger.log('✅ allQuestionsRaw loaded successfully', {
+          total: raw.length,
+          fromGroups: questionsFromGroups.length,
+          fromQuestions: questions.length,
+        });
+      } catch (logErr) {
+        // Игнорируем ошибки логирования
+        console.warn('Failed to log allQuestionsRaw:', logErr);
         }
       }
     }
@@ -4063,11 +4063,11 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
     if (isDev) {
       clientLogger.log('🔄 useEffect: questionnaire state/ref changed', {
-        hasQuestionnaireState,
-        hasQuestionnaireRef,
-        stateId,
-        refId,
-      });
+      hasQuestionnaireState,
+      hasQuestionnaireRef,
+      stateId,
+      refId,
+    });
     }
     
     // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, 
@@ -4179,20 +4179,20 @@ export default function QuizPage() {
         isRetakingQuiz,
         showRetakeScreen,
       });
-      
+    
       // ДИАГНОСТИКА: Если filtered пустой, логируем детальную информацию
-      if (filtered.length === 0 && allQuestionsRaw.length > 0) {
+    if (filtered.length === 0 && allQuestionsRaw.length > 0) {
         clientLogger.error('❌ CRITICAL: filtered is empty but allQuestionsRaw has questions', {
           allQuestionsRawCount: allQuestionsRaw.length,
           filteredCount: filtered.length,
           allQuestionsRawIds: allQuestionsRaw.map((q: Question) => q.id).slice(0, 10),
           allQuestionsRawCodes: allQuestionsRaw.map((q: Question) => q.code).slice(0, 10),
-          answersCount: Object.keys(answers).length,
-          savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        answersCount: Object.keys(answers).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
           effectiveAnswers: getEffectiveAnswers(answers, savedProgress?.answers),
-          isRetakingQuiz,
-          showRetakeScreen,
-        });
+        isRetakingQuiz,
+        showRetakeScreen,
+      });
       }
     } catch (logErr) {
       // Игнорируем ошибки логирования
@@ -4422,6 +4422,7 @@ export default function QuizPage() {
       savedProgressAnswers: undefined, // В этом контексте savedProgress всегда null (проверено выше)
       isRetakingQuiz,
       showRetakeScreen,
+      logger: clientLogger, // Передаем clientLogger для логирования
     });
     
     // ВАЖНО: При полном перепрохождении (isRetakingQuiz && !showRetakeScreen) пропускаем все инфо-экраны
@@ -4501,18 +4502,18 @@ export default function QuizPage() {
     // Логирование только если shouldShow = true (чтобы не засорять логи)
     if (shouldShow) {
       if (isDev) {
-        clientLogger.log('📺 isShowingInitialInfoScreen: true', {
-          currentInfoScreenIndex,
-          initialInfoScreensLength: initialInfoScreens.length,
-          showResumeScreen,
-          showRetakeScreen,
-          hasSavedProgress: !!savedProgress,
-          hasResumed,
-          isRetakingQuiz,
-          currentQuestionIndex,
-          answersCount: Object.keys(answers).length,
-          loading,
-        });
+      clientLogger.log('📺 isShowingInitialInfoScreen: true', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        showResumeScreen,
+        showRetakeScreen,
+        hasSavedProgress: !!savedProgress,
+        hasResumed,
+        isRetakingQuiz,
+        currentQuestionIndex,
+        answersCount: Object.keys(answers).length,
+        loading,
+      });
       }
     }
     
@@ -5314,6 +5315,7 @@ export default function QuizPage() {
       savedProgressAnswers: savedProgress?.answers,
       isRetakingQuiz,
       showRetakeScreen,
+      logger: clientLogger, // Передаем clientLogger для логирования
     });
     
     // ИСПРАВЛЕНО: Считаем только ответы на вопросы, которые остались в allQuestions после фильтрации
