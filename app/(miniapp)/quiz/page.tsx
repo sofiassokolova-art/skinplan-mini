@@ -67,6 +67,11 @@ export default function QuizPage() {
     isSubmittingRef.current = isSubmitting;
   }, [isSubmitting]);
   
+  // ФИКС: Синхронизируем currentInfoScreenIndexRef с currentInfoScreenIndex
+  useEffect(() => {
+    currentInfoScreenIndexRef.current = currentInfoScreenIndex;
+  }, [currentInfoScreenIndex]);
+  
   // ИСПРАВЛЕНО: Синхронизируем questionnaireRef с state для предотвращения рассинхронизации
   // Это гарантирует, что ref всегда актуален, даже если state обновляется асинхронно
   useEffect(() => {
