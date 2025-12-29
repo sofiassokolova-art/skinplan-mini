@@ -330,6 +330,8 @@ export default function QuizPage() {
   const lastHistoryUpdateTimeRef = useRef<number>(0);
   // ФИКС: Ref для предотвращения повторных сбросов на первый экран
   const firstScreenResetRef = useRef(false);
+  // ФИКС: Ref для отслеживания завершения resumeQuiz
+  const resumeCompletedRef = useRef(false);
   
   useEffect(() => {
     // ИСПРАВЛЕНО: Проверяем, не была ли анкета только что отправлена
