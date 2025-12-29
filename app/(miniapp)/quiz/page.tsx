@@ -7153,7 +7153,8 @@ export default function QuizPage() {
 
   // ИСПРАВЛЕНО: Заменяем бесконечный лоадер на явную обработку ошибок
   // Различаем два случая: анкета не загрузилась vs все вопросы отфильтрованы
-  if ((!currentQuestion || allQuestions.length === 0) && !loading && !showResumeScreen && !showRetakeScreen) {
+  // ИСПРАВЛЕНО: Не показываем ошибку если идет загрузка или если allQuestionsRaw еще не пересчитан
+  if ((!currentQuestion || allQuestions.length === 0) && !loading && !showResumeScreen && !showRetakeScreen && questionnaireRef.current) {
     // Случай 1: Анкета не загрузилась (questionnaire === null)
     if (!questionnaire) {
       clientLogger.error('❌ Questionnaire not loaded - showing error to user', {
