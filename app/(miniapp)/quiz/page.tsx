@@ -4333,6 +4333,18 @@ export default function QuizPage() {
     }
   }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire, extractQuestionsFromQuestionnaire]);
   
+  // КРИТИЧНО: Синхронизируем allQuestionsPrevRef с allQuestions после каждого вычисления
+  // Это гарантирует, что ref всегда содержит актуальное значение для fallback
+  useEffect(() => {
+    if (allQuestions.length > 0) {
+      allQuestionsPrevRef.current = allQuestions;
+      clientLogger.log('💾 allQuestionsPrevRef synced with allQuestions', {
+        length: allQuestions.length,
+        questionIds: allQuestions.map((q: Question) => q?.id).slice(0, 10),
+      });
+    }
+  }, [allQuestions]);
+  
   // КРИТИЧНО: Логируем состояние allQuestions после каждого вычисления
   useEffect(() => {
     clientLogger.log('📊 allQuestions state updated', {
