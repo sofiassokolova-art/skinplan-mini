@@ -7570,6 +7570,24 @@ export default function QuizPage() {
         {/* Проверка на существование вопроса */}
         {!currentQuestion ? (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            {isDev && (
+              <div style={{ marginBottom: '20px', padding: '10px', background: '#fff3cd', borderRadius: '8px', fontSize: '12px', textAlign: 'left' }}>
+                <strong>🔍 Диагностика:</strong>
+                <pre style={{ marginTop: '8px', fontSize: '11px', overflow: 'auto' }}>
+                  {JSON.stringify({
+                    currentQuestion: currentQuestion ? 'exists' : 'null',
+                    currentQuestionIndex,
+                    allQuestionsLength: allQuestions.length,
+                    isShowingInitialInfoScreen,
+                    pendingInfoScreen: pendingInfoScreen ? pendingInfoScreen.id : null,
+                    showResumeScreen,
+                    hasResumed,
+                    currentInfoScreenIndex,
+                    initialInfoScreensLength: initialInfoScreens.length,
+                  }, null, 2)}
+                </pre>
+              </div>
+            )}
             <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '12px' }}>
               Вопрос не найден
             </div>
