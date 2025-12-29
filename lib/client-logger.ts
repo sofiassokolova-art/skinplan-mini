@@ -146,7 +146,9 @@ export const clientLogger = {
     
     if (isDevelopment || isImportantLog) {
       try {
-        sendLogToServer('log', message, args.length > 1 ? args.slice(1) : null);
+        // ИСПРАВЛЕНО: В production отправляем важные log как 'info', чтобы они прошли проверку в sendLogToServer
+        const levelToSend = (!isDevelopment && isImportantLog) ? 'info' : 'log';
+        sendLogToServer(levelToSend, message, args.length > 1 ? args.slice(1) : null);
       } catch (err) {
         // Игнорируем ошибки отправки
       }
