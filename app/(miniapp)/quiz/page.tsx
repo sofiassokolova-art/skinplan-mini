@@ -3915,6 +3915,8 @@ export default function QuizPage() {
     setPendingInfoScreen(null); // ВАЖНО: очищаем pendingInfoScreen
     setIsRetakingQuiz(false); // Сбрасываем флаг перепрохождения
     setShowRetakeScreen(false); // Сбрасываем экран выбора тем
+    // ФИКС: Сбрасываем firstScreenResetRef, чтобы можно было начать заново
+    firstScreenResetRef.current = false;
     
     // ВАЖНО: Убеждаемся, что loading = false, чтобы показать контент анкеты
     // и error = null, чтобы не показывать ошибку
