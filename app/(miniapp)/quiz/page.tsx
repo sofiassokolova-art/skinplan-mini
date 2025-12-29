@@ -4577,15 +4577,22 @@ export default function QuizPage() {
   const currentQuestion = useMemo(() => {
     // ВАЖНО: При перепрохождении (retake) мы пропускаем info screens,
     // поэтому pendingInfoScreen не должен блокировать отображение вопросов.
-    // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
-    // это означает, что начальные экраны не могут быть отображены - пропускаем их и показываем вопросы
-    const shouldBlockByInfoScreen = isShowingInitialInfoScreen && currentInitialInfoScreen;
-    if (shouldBlockByInfoScreen || (pendingInfoScreen && !isRetakingQuiz)) {
+    // КРИТИЧНО: Блокируем вопросы ТОЛЬКО если действительно показывается начальный инфо-экран
+    // Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
+    const isOnInitialInfoScreen = currentInfoScreenIndex < initialInfoScreens.length && 
+                                   isShowingInitialInfoScreen && 
+                                   currentInitialInfoScreen;
+    const shouldBlockByInfoScreen = isOnInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz);
+    
+    if (shouldBlockByInfoScreen) {
       // Логируем только если это неожиданное состояние (для отладки)
       if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
         clientLogger.log('⏸️ currentQuestion: null (blocked by info screen)', {
           isShowingInitialInfoScreen,
           hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+          currentInfoScreenIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+          isOnInitialInfoScreen,
           pendingInfoScreen: !!pendingInfoScreen,
           isRetakingQuiz,
           currentQuestionIndex,
@@ -4596,9 +4603,9 @@ export default function QuizPage() {
     }
     
     // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
-    // логируем это для диагностики
+    // это означает, что все начальные экраны пройдены - не блокируем вопросы
     if (isShowingInitialInfoScreen && !currentInitialInfoScreen) {
-      clientLogger.warn('⚠️ currentQuestion: isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - пропускаем начальные экраны', {
+      clientLogger.log('ℹ️ currentQuestion: isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - все начальные экраны пройдены, показываем вопросы', {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
         isShowingInitialInfoScreen,
