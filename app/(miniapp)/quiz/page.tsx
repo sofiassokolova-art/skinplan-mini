@@ -3889,9 +3889,18 @@ export default function QuizPage() {
         return;
       }
       
-      clientLogger.log('✅ resumeQuiz: Начинаем с начальных экранов');
-      setCurrentQuestionIndex(0);
-      setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
+      // ФИКС: Если infoScreenIndex = 0, но пользователь уже нажал "Продолжить",
+      // пропускаем начальные экраны и переходим к вопросам, чтобы не редиректить на первый экран
+      // Это предотвращает циклические редиректы после нажатия "Продолжить"
+      if (progressToRestore.infoScreenIndex === 0) {
+        clientLogger.log('✅ resumeQuiz: infoScreenIndex = 0, но пользователь уже нажал "Продолжить" - пропускаем начальные экраны');
+        setCurrentQuestionIndex(0);
+        setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
+      } else {
+        clientLogger.log('✅ resumeQuiz: Начинаем с начальных экранов', progressToRestore.infoScreenIndex);
+        setCurrentQuestionIndex(0);
+        setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
+      }
     }
     
     clientLogger.log('✅ resumeQuiz: Прогресс восстановлен, hasResumed = true, showResumeScreen = false, savedProgress = null, localStorage очищен');
