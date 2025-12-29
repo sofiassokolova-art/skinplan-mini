@@ -7285,7 +7285,7 @@ export default function QuizPage() {
     if (questionnaire && allQuestionsRaw.length === 0 && !loading && questionnaireRef.current) {
       // Дополнительная проверка: если в questionnaire есть вопросы, но allQuestionsRaw пустой - это временное состояние
       const hasQuestionsInQuestionnaire = (questionnaire.groups?.some((g: any) => g?.questions?.length > 0) || 
-                                           questionnaire.questions?.length > 0);
+                                           (questionnaire.questions && questionnaire.questions.length > 0));
       if (hasQuestionsInQuestionnaire) {
         // Есть вопросы в анкете, но allQuestionsRaw еще не пересчитан - не показываем ошибку
         // Это временное состояние, useMemo пересчитается в следующем рендере
