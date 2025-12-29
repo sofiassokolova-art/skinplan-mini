@@ -4166,21 +4166,8 @@ export default function QuizPage() {
       showRetakeScreen,
     });
     
-    // ИСПРАВЛЕНО: Безопасное логирование с проверками
-    try {
-      clientLogger.log('✅ allQuestions: Filter completed', {
-        originalCount: allQuestionsRaw.length,
-        filteredCount: filtered.length,
-        filteredQuestionIds: filtered.length > 0 ? filtered.map((q: Question) => q?.id).filter(Boolean) : [],
-        removedCount: allQuestionsRaw.length - filtered.length,
-      });
-    } catch (logErr) {
-      // Игнорируем ошибки логирования
-      console.warn('Failed to log allQuestions filter result:', logErr);
-    }
-    
     // КРИТИЧНО: Если filtered пустой, но allQuestionsRaw не пустой - это ошибка фильтрации
-    // Возвращаем allQuestionsRaw как fallback
+    // Возвращаем allQuestionsRaw как fallback (ПЕРЕД логированием, чтобы fallback точно сработал)
     if (filtered.length === 0 && allQuestionsRaw.length > 0) {
       clientLogger.error('❌ CRITICAL: filtered is empty but allQuestionsRaw has questions - returning allQuestionsRaw as fallback', {
         allQuestionsRawCount: allQuestionsRaw.length,
@@ -4193,6 +4180,19 @@ export default function QuizPage() {
         effectiveAnswers: getEffectiveAnswers(answers, savedProgress?.answers),
       });
       return allQuestionsRaw;
+    }
+    
+    // ИСПРАВЛЕНО: Безопасное логирование с проверками
+    try {
+      clientLogger.log('✅ allQuestions: Filter completed', {
+        originalCount: allQuestionsRaw.length,
+        filteredCount: filtered.length,
+        filteredQuestionIds: filtered.length > 0 ? filtered.map((q: Question) => q?.id).filter(Boolean).slice(0, 10) : [],
+        removedCount: allQuestionsRaw.length - filtered.length,
+      });
+    } catch (logErr) {
+      // Игнорируем ошибки логирования
+      console.warn('Failed to log allQuestions filter result:', logErr);
     }
     
     return filtered;
