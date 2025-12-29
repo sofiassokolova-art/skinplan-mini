@@ -350,6 +350,11 @@ export default function QuizPage() {
         setLoading(false);
         // Редиректим на /plan?state=generating СРАЗУ, без задержек
         window.location.replace('/plan?state=generating');
+        // ФИКС: Сбрасываем redirectInProgressRef через небольшую задержку после редиректа
+        // Это предотвращает застревание флага, если компонент перерендерится
+        setTimeout(() => {
+          redirectInProgressRef.current = false;
+        }, 1000);
         return;
       }
       

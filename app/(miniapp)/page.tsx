@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { clientLogger } from '@/lib/client-logger';
@@ -12,12 +12,20 @@ export default function RootPage() {
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // ФИКС: Ref для предотвращения множественных редиректов
+  const redirectInProgressRef = useRef(false);
 
   useEffect(() => {
+    // ФИКС: Защита от множественных редиректов
+    if (redirectInProgressRef.current) {
+      return; // Редирект уже в процессе
+    }
+    
     // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД ВСЕМ
     // Это предотвращает редирект на /quiz сразу после отправки анкеты
     const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
     if (justSubmitted) {
+      redirectInProgressRef.current = true; // Помечаем, что редирект начат
       clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
       // ИСПРАВЛЕНО: Оборачиваем async операции в отдельную функцию, так как useEffect не может быть async
       (async () => {
@@ -31,6 +39,10 @@ export default function RootPage() {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('quiz_just_submitted');
         window.location.replace('/plan?state=generating');
+        // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+        setTimeout(() => {
+          redirectInProgressRef.current = false;
+        }, 1000);
       }
       return;
     }
@@ -103,24 +115,39 @@ export default function RootPage() {
         hasPlanProgress = false;
       }
       
+      // ФИКС: Проверяем, не идет ли уже редирект
+      if (redirectInProgressRef.current) {
+        return; // Редирект уже в процессе
+      }
+      
       if (!hasPlanProgress) {
         // Нет plan_progress - значит пользователь новый
         // ИСПРАВЛЕНО: Сразу редиректим на /quiz БЕЗ показа контента, лоадера или ошибок
+        redirectInProgressRef.current = true; // Помечаем, что редирект начат
         clientLogger.log('ℹ️ No plan_progress - redirecting to /quiz (new user, no content shown)');
         setIsRedirecting(true);
         setIsLoading(false);
         if (typeof window !== 'undefined') {
           window.location.replace('/quiz');
+          // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+          setTimeout(() => {
+            redirectInProgressRef.current = false;
+          }, 1000);
         }
         return;
       }
 
       // plan_progress есть - пользователь не новый, редиректим на /home
+      redirectInProgressRef.current = true; // Помечаем, что редирект начат
       clientLogger.log('ℹ️ Has plan_progress - redirecting to /home');
       setIsRedirecting(true);
       setIsLoading(false);
       if (typeof window !== 'undefined') {
         window.location.replace('/home');
+        // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+        setTimeout(() => {
+          redirectInProgressRef.current = false;
+        }, 1000);
       }
     };
 
