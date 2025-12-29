@@ -229,7 +229,6 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     showRetakeScreen,
     questionCodes: questions.map(q => q.code).slice(0, 10),
     hasLogger: !!logger,
-    loggerType: logger ? (logger.log ? 'custom' : 'console') : 'console',
   });
   
   let filteredCount = 0;
