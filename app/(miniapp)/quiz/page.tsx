@@ -4539,7 +4539,26 @@ export default function QuizPage() {
         setCurrentQuestionIndex(0);
       }
     }
-  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, answers, isDev]);
+    
+    // ФИКС: Если savedProgress не загрузился (null), но currentQuestionIndex > 0 - сбрасываем на 0
+    // Это предотвращает застревание, когда прогресс не загрузился из-за KV ошибки
+    if (!savedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && !loading && questionnaire) {
+      if (currentQuestionIndex > 0 && currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
+        if (isDev) {
+          clientLogger.warn('🔧 ФИКС: savedProgress = null, но currentQuestionIndex выходит за пределы - сбрасываем на 0', {
+            currentQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+            savedProgress: null,
+          });
+        }
+        setCurrentQuestionIndex(0);
+        // Если мы на начальных экранах, но индекс уже прошел их - пропускаем начальные экраны
+        if (currentInfoScreenIndex < initialInfoScreens.length) {
+          setCurrentInfoScreenIndex(initialInfoScreens.length);
+        }
+      }
+    }
+  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, answers, isDev, savedProgress, loading, questionnaire]);
 
   // Определяем, показываем ли мы начальный инфо-экран
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
