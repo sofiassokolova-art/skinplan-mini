@@ -218,6 +218,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   const hasAnyAnswers = Object.keys(effectiveAnswers).length > 0;
   
   // ДИАГНОСТИКА: Логируем входные данные
+  // КРИТИЧНО: Логируем в начале для диагностики
   log('🔍 filterQuestions: Starting filter', {
     questionsCount: questions.length,
     answersCount: Object.keys(answers || {}).length,
@@ -227,6 +228,8 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     isRetakingQuiz,
     showRetakeScreen,
     questionCodes: questions.map(q => q.code).slice(0, 10),
+    hasLogger: !!logger,
+    loggerType: logger ? (logger.log ? 'custom' : 'console') : 'console',
   });
   
   let filteredCount = 0;
@@ -350,6 +353,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   // ДИАГНОСТИКА: Логируем результат фильтрации
   // КРИТИЧНО: Логируем отдельно для лучшей видимости
   if (filteredQuestions.length === 0 && questions.length > 0) {
+    // КРИТИЧЕСКАЯ ОШИБКА: Все вопросы отфильтрованы
     error('❌ filterQuestions: ВСЕ ВОПРОСЫ ОТФИЛЬТРОВАНЫ!', {
       originalCount: questions.length,
       filteredCount: filteredQuestions.length,
@@ -363,6 +367,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       effectiveAnswers: effectiveAnswers,
     });
   } else {
+    // УСПЕШНАЯ ФИЛЬТРАЦИЯ: Логируем результат
     log('✅ filterQuestions: Filter completed', {
       originalCount: questions.length,
       filteredCount: filteredQuestions.length,
@@ -374,6 +379,16 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       filteredQuestionCodes: filteredQuestions.map(q => q.code).slice(0, 20),
       effectiveAnswersCount: Object.keys(effectiveAnswers).length,
     });
+    
+    // ДОПОЛНИТЕЛЬНО: Если отфильтровано много вопросов, логируем предупреждение
+    if (filteredQuestions.length < questions.length && filteredQuestions.length > 0) {
+      warn('⚠️ filterQuestions: Некоторые вопросы отфильтрованы', {
+        originalCount: questions.length,
+        filteredCount: filteredQuestions.length,
+        excludedCount,
+        excludedReasons,
+      });
+    }
   }
   
   // ИСПРАВЛЕНО: Если после фильтрации не осталось вопросов, возвращаем все вопросы

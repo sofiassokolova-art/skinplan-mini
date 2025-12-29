@@ -159,7 +159,9 @@ export const clientLogger = {
       message.includes('Plan') || message.includes('fallback') ||
       message.includes('redirect') || message.includes('error') ||
       message.includes('CRITICAL') || message.includes('CALLED') ||
-      message.includes('RETURNED') || message.includes('EXECUTED');
+      message.includes('RETURNED') || message.includes('EXECUTED') ||
+      message.includes('filterQuestions') || message.includes('filter') ||
+      message.includes('ВСЕ ВОПРОСЫ') || message.includes('ОТФИЛЬТРОВАНЫ');
     
     if (isDevelopment || isImportantLog) {
       try {
