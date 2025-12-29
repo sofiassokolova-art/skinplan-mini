@@ -924,6 +924,12 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Проверяем, не был ли уже вызван init() при монтировании
     // Это предотвращает множественные вызовы даже при перерендере компонента
     // КРИТИЧНО: Проверяем ПЕРЕД установкой флага, чтобы избежать race condition
+    // ВАЖНО: Не вызываем init() после resumeQuiz, чтобы не сбросить состояние
+    if (resumeCompletedRef.current) {
+      clientLogger.log('⛔ useEffect: init() skipped: resumeQuiz already completed, not resetting state');
+      return;
+    }
+    
     if (initCalledRef.current || initInProgressRef.current) {
       clientLogger.log('⛔ useEffect: init() already called or in progress, skipping', {
         initCalled: initCalledRef.current,
