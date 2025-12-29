@@ -4658,7 +4658,7 @@ export default function QuizPage() {
     
     if (shouldBlockByInfoScreen) {
       // Логируем для диагностики
-      clientLogger.log('⏸️ currentQuestion: null (blocked by info screen)', {
+      clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
         isShowingInitialInfoScreen,
         isShowingInitialInfoScreenCorrected,
         hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
@@ -4670,8 +4670,28 @@ export default function QuizPage() {
         showResumeScreen,
         currentQuestionIndex,
         answersCount: Object.keys(answers).length,
+        allQuestionsLength: allQuestions.length,
       });
       return null;
+    }
+    
+    // КРИТИЧНО: Если shouldBlockByInfoScreen = false, но currentInfoScreenIndex < initialInfoScreens.length,
+    // это может означать, что начальные экраны еще не пройдены, но currentInitialInfoScreen = null
+    // В этом случае нужно пропустить начальные экраны и показать вопросы
+    if (!shouldBlockByInfoScreen && currentInfoScreenIndex < initialInfoScreens.length && initialInfoScreens.length > 0) {
+      // Логируем для диагностики
+      if (isDev) {
+        clientLogger.log('✅ currentQuestion: пропускаем начальные экраны (currentInitialInfoScreen = null) и показываем вопросы', {
+          currentInfoScreenIndex,
+          initialInfoScreensLength: initialInfoScreens.length,
+          isShowingInitialInfoScreen,
+          isShowingInitialInfoScreenCorrected,
+          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+          currentQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+        });
+      }
+      // Продолжаем выполнение, чтобы показать вопросы
     }
     
     // КРИТИЧНО: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
@@ -4735,6 +4755,23 @@ export default function QuizPage() {
     // НО: если индекс >= allQuestions.length и есть ответы - это нормальное состояние (анкета завершена)
     const answersCount = Object.keys(answers).length;
     const isQuizCompleted = currentQuestionIndex >= allQuestions.length && answersCount > 0;
+    
+    // КРИТИЧНО: Логируем состояние перед возвратом вопроса
+    if (isDev && allQuestions.length > 0 && currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
+      clientLogger.log('✅ currentQuestion: возвращаем вопрос', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        questionId: allQuestions[currentQuestionIndex]?.id,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        isShowingInitialInfoScreen,
+        isShowingInitialInfoScreenCorrected,
+        hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+        shouldBlockByInfoScreen,
+        pendingInfoScreen: !!pendingInfoScreen,
+        showResumeScreen,
+      });
+    }
     
     if (currentQuestionIndex < 0) {
       clientLogger.warn('⚠️ currentQuestion: null (index < 0) - корректируем на 0', {
@@ -4816,7 +4853,7 @@ export default function QuizPage() {
     }
     
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions, allQuestionsRaw.length, questionnaire, loading, hasResumed, showResumeScreen, answers, savedProgress, currentInitialInfoScreen, initialInfoScreens.length, currentInfoScreenIndex]);
+  }, [isShowingInitialInfoScreen, isShowingInitialInfoScreenCorrected, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions, allQuestionsRaw.length, questionnaire, loading, hasResumed, showResumeScreen, answers, savedProgress, currentInitialInfoScreen, initialInfoScreens.length, currentInfoScreenIndex]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
   useEffect(() => {
@@ -6895,13 +6932,49 @@ export default function QuizPage() {
   // это означает несоответствие условий - пропускаем начальные экраны и переходим к вопросам
   // ИСПРАВЛЕНО: Не блокируем, если показывается resume screen или pendingInfoScreen
   // ИСПРАВЛЕНО: Используем isShowingInitialInfoScreenCorrected вместо isShowingInitialInfoScreen
-  if (isShowingInitialInfoScreenCorrected && currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !pendingInfoScreen) {
+  // КРИТИЧНО: Также проверяем, что currentInfoScreenIndex < initialInfoScreens.length
+  // Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
+  if (isShowingInitialInfoScreenCorrected && 
+      currentInitialInfoScreen && 
+      currentInfoScreenIndex < initialInfoScreens.length &&
+      !isRetakingQuiz && 
+      !showResumeScreen && 
+      !pendingInfoScreen) {
+    // Логируем для диагностики
+    if (isDev) {
+      clientLogger.log('📺 Рендерим начальный инфо-экран', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        currentInitialInfoScreenId: currentInitialInfoScreen?.id,
+        isShowingInitialInfoScreen,
+        isShowingInitialInfoScreenCorrected,
+      });
+    }
     return renderInfoScreen(currentInitialInfoScreen);
   }
   
-  // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
-  // это означает несоответствие условий - НЕ показываем начальный экран, переходим к вопросам
-  // (useEffect ниже исправит состояние, но мы не должны блокировать рендер вопросов)
+  // КРИТИЧНО: Если isShowingInitialInfoScreenCorrected = true, но currentInitialInfoScreen = null,
+  // или currentInfoScreenIndex >= initialInfoScreens.length, значит начальные экраны не должны показываться
+  // В этом случае пропускаем их и переходим к вопросам
+  if (isShowingInitialInfoScreenCorrected && 
+      (!currentInitialInfoScreen || currentInfoScreenIndex >= initialInfoScreens.length) &&
+      !isRetakingQuiz && 
+      !showResumeScreen && 
+      !pendingInfoScreen) {
+    // Логируем для диагностики
+    if (isDev) {
+      clientLogger.warn('⚠️ Пропускаем начальные экраны и переходим к вопросам', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+        isShowingInitialInfoScreen,
+        isShowingInitialInfoScreenCorrected,
+        currentQuestionIndex,
+        hasCurrentQuestion: !!currentQuestion,
+      });
+    }
+    // Продолжаем выполнение, чтобы показать вопросы
+  }
   
   // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
   // это означает несоответствие условий (например, элемент массива undefined)
