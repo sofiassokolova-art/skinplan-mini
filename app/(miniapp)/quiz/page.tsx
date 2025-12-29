@@ -49,9 +49,9 @@ export default function QuizPage() {
   // ВАЖНО: хуки должны вызываться всегда в одном порядке, нельзя оборачивать в try-catch
   const { initialize, initData } = useTelegram();
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
-  // ИСПРАВЛЕНО: Начинаем с loading = true, чтобы сразу показывать лоадер анкеты
-  // Проверка того, новый ли пользователь, делается на бэкенде
-  const [loading, setLoading] = useState(true);
+  // ИСПРАВЛЕНО: Начинаем с loading = false, так как лоадер анкеты убран
+  // Лоадер показывается только на главной странице (/)
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -638,15 +638,9 @@ export default function QuizPage() {
     });
 
     try {
-      // КРИТИЧНО: НЕ устанавливаем loading=true, если анкета уже загружена
-      // Это предотвращает перезапись loading=false после загрузки анкеты
-      if (!questionnaireRef.current) {
-        setLoading(true);
-      } else {
-        clientLogger.log('⚠️ init() skipping setLoading(true) - questionnaire already loaded', {
-          questionnaireId: questionnaireRef.current.id,
-        });
-      }
+      // ИСПРАВЛЕНО: НЕ устанавливаем loading=true, так как лоадер анкеты убран
+      // Лоадер показывается только на главной странице (/)
+      // Анкета загружается в фоне без показа лоадера
       setError(null);
 
       // 1) telegram init + ожидание (race)
