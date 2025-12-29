@@ -2276,6 +2276,14 @@ export default function QuizPage() {
       // ФИКС: Принудительно очищаем pendingInfoScreen при переходе к вопросам
       // Это предотвращает застревание на info screens
       setPendingInfoScreen(null);
+      // ФИКС: Детальное логирование установки вопросов для диагностики
+      clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в handleNext после инфо-скринов', {
+        newInfoIndex,
+        allQuestionsLength: allQuestions.length,
+        currentQuestionIndex: 0,
+        isRetakingQuiz,
+        showRetakeScreen,
+      });
       clientLogger.log('✅ Завершены все начальные инфо-экраны, переходим к вопросам', {
         newInfoIndex,
         allQuestionsLength: allQuestions.length,
