@@ -2178,6 +2178,14 @@ export default function QuizPage() {
     if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
       const newIndex = currentInfoScreenIndex + 1;
       setCurrentInfoScreenIndex(newIndex);
+      // ФИКС: Если после инкремента мы прошли все начальные экраны, очищаем pendingInfoScreen
+      if (newIndex >= initialInfoScreens.length) {
+        setPendingInfoScreen(null);
+        // Если мы прошли все начальные экраны, переходим к первому вопросу
+        if (currentQuestionIndex === 0 && allQuestions.length > 0) {
+          setCurrentQuestionIndex(0);
+        }
+      }
       await saveProgress(answers, currentQuestionIndex, newIndex);
       return;
     }
@@ -2189,12 +2197,16 @@ export default function QuizPage() {
       // КРИТИЧНО: Для нового пользователя всегда начинаем с первого вопроса (индекс 0)
       // Это гарантирует, что после прохождения всех инфо-экранов вопросы начнут отображаться
       setCurrentQuestionIndex(0);
+      // ФИКС: Принудительно очищаем pendingInfoScreen при переходе к вопросам
+      // Это предотвращает застревание на info screens
+      setPendingInfoScreen(null);
       clientLogger.log('✅ Завершены все начальные инфо-экраны, переходим к вопросам', {
         newInfoIndex,
         allQuestionsLength: allQuestions.length,
         currentQuestionIndex: 0,
         isRetakingQuiz,
         showRetakeScreen,
+        pendingInfoScreenCleared: true,
       });
       await saveProgress(answers, 0, newInfoIndex);
       return;
@@ -2304,17 +2316,28 @@ export default function QuizPage() {
     const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
     
     if (currentQuestion && !isRetakingQuiz) {
-      const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
-      if (infoScreen) {
-        setPendingInfoScreen(infoScreen);
-        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-        clientLogger.log('✅ Показан инфо-экран после вопроса:', {
-          questionCode: currentQuestion.code,
-          questionIndex: currentQuestionIndex,
-          infoScreenId: infoScreen.id,
-          isLastQuestion,
-        });
-        return;
+      // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
+      // Это предотвращает возврат info screen для вопросов без кода
+      if (!currentQuestion.code) {
+        if (isDev) {
+          clientLogger.warn('⚠️ Вопрос без кода, пропускаем проверку info screen', {
+            questionId: currentQuestion.id,
+            questionIndex: currentQuestionIndex,
+          });
+        }
+      } else {
+        const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+        if (infoScreen) {
+          setPendingInfoScreen(infoScreen);
+          await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+          clientLogger.log('✅ Показан инфо-экран после вопроса:', {
+            questionCode: currentQuestion.code,
+            questionIndex: currentQuestionIndex,
+            infoScreenId: infoScreen.id,
+            isLastQuestion,
+          });
+          return;
+        }
       }
     }
 
@@ -4456,6 +4479,34 @@ export default function QuizPage() {
 
   // Разделяем инфо-экраны на начальные (без showAfterQuestionCode) и те, что между вопросами
   const initialInfoScreens = useMemo(() => INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode), []);
+
+  // ФИКС: Принудительная проверка после завершения всех начальных экранов
+  // Это предотвращает застревание на info screens
+  useEffect(() => {
+    if (currentInfoScreenIndex >= initialInfoScreens.length && !isRetakingQuiz && !showResumeScreen && !hasResumed) {
+      // Если мы прошли все начальные экраны, но pendingInfoScreen все еще установлен - очищаем его
+      if (pendingInfoScreen) {
+        if (isDev) {
+          clientLogger.warn('🔧 ФИКС: Очищаем pendingInfoScreen после завершения всех начальных экранов', {
+            currentInfoScreenIndex,
+            initialInfoScreensLength: initialInfoScreens.length,
+            pendingInfoScreenId: pendingInfoScreen.id,
+          });
+        }
+        setPendingInfoScreen(null);
+      }
+      // Если currentQuestionIndex не установлен, но есть вопросы - устанавливаем на 0
+      if (currentQuestionIndex === 0 && allQuestions.length > 0 && Object.keys(answers).length === 0) {
+        if (isDev) {
+          clientLogger.log('🔧 ФИКС: Убеждаемся, что currentQuestionIndex = 0 для нового пользователя', {
+            currentQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+          });
+        }
+        setCurrentQuestionIndex(0);
+      }
+    }
+  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, answers, isDev]);
 
   // Определяем, показываем ли мы начальный инфо-экран
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
