@@ -4552,7 +4552,8 @@ export default function QuizPage() {
   // КРИТИЧНО: Проверяем, что индекс в пределах массива, чтобы избежать undefined
   // ВАЖНО: Используем те же условия, что и в isShowingInitialInfoScreen, чтобы гарантировать согласованность
   // ИСПРАВЛЕНО: Вычисляем currentInitialInfoScreen как useMemo, чтобы он пересчитывался при изменении зависимостей
-  const currentInitialInfoScreen = useMemo(() => {
+  // ИСПРАВЛЕНО: Явно указываем тип возвращаемого значения для TypeScript
+  const currentInitialInfoScreen = useMemo<InfoScreen | null>(() => {
     if (!isShowingInitialInfoScreen) {
       return null;
     }
@@ -4579,20 +4580,24 @@ export default function QuizPage() {
   // КРИТИЧНО: Логируем состояние начальных экранов для диагностики
   useEffect(() => {
     if (isShowingInitialInfoScreen && !currentInitialInfoScreen) {
+      // В этом блоке currentInitialInfoScreen гарантированно null, поэтому не логируем его id
+      const screenAtIndex = currentInfoScreenIndex >= 0 && currentInfoScreenIndex < initialInfoScreens.length 
+        ? initialInfoScreens[currentInfoScreenIndex] 
+        : null;
       clientLogger.warn('🔍 DEBUG: isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - исправляем несоответствие', {
         isShowingInitialInfoScreen,
         isShowingInitialInfoScreenCorrected,
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
         hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
-        currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
+        screenAtIndexId: screenAtIndex?.id || null,
         showResumeScreen,
         isRetakingQuiz,
         loading,
         hasResumed,
       });
     }
-  }, [isShowingInitialInfoScreen, isShowingInitialInfoScreenCorrected, currentInitialInfoScreen, currentInfoScreenIndex, initialInfoScreens.length, showResumeScreen, isRetakingQuiz, loading, hasResumed]);
+  }, [isShowingInitialInfoScreen, isShowingInitialInfoScreenCorrected, currentInitialInfoScreen, currentInfoScreenIndex, initialInfoScreens, showResumeScreen, isRetakingQuiz, loading, hasResumed]);
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   const currentQuestion = useMemo(() => {
