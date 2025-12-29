@@ -4732,20 +4732,21 @@ export default function QuizPage() {
     // ВОССТАНОВЛЕНО: Простая проверка из рабочего коммита
     const shouldShow = currentInfoScreenIndex < initialInfoScreens.length;
     
-    // Логирование для диагностики
-    if (isDev) {
-      clientLogger.log(`📺 isShowingInitialInfoScreen: ${shouldShow}`, {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        showResumeScreen,
-        showRetakeScreen,
-        hasSavedProgress: !!savedProgress,
-        hasResumed,
-        isRetakingQuiz,
-        currentQuestionIndex,
-        answersCount: Object.keys(answers).length,
-      });
-    }
+    // ФИКС: Всегда логируем результат (warn уровень для диагностики в БД)
+    // Это поможет понять, почему isShowingInitialInfoScreen остается true
+    clientLogger.warn(`📺 isShowingInitialInfoScreen: ${shouldShow}`, {
+      currentInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+      isLastInfoScreen: currentInfoScreenIndex === initialInfoScreens.length - 1,
+      showResumeScreen,
+      showRetakeScreen,
+      hasSavedProgress: !!savedProgress,
+      hasResumed,
+      isRetakingQuiz,
+      currentQuestionIndex,
+      answersCount: Object.keys(answers).length,
+      allQuestionsLength: allQuestions.length,
+    });
     
     return shouldShow;
   }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length]);
