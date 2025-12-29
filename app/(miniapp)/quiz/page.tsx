@@ -4166,22 +4166,6 @@ export default function QuizPage() {
       showRetakeScreen,
     });
     
-    // КРИТИЧНО: Если filtered пустой, но allQuestionsRaw не пустой - это ошибка фильтрации
-    // Возвращаем allQuestionsRaw как fallback (ПЕРЕД логированием, чтобы fallback точно сработал)
-    if (filtered.length === 0 && allQuestionsRaw.length > 0) {
-      clientLogger.error('❌ CRITICAL: filtered is empty but allQuestionsRaw has questions - returning allQuestionsRaw as fallback', {
-        allQuestionsRawCount: allQuestionsRaw.length,
-        filteredCount: filtered.length,
-        allQuestionsRawIds: allQuestionsRaw.map((q: Question) => q.id).slice(0, 10), // Первые 10 ID для диагностики
-        answersCount: Object.keys(answers).length,
-        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
-        isRetakingQuiz,
-        showRetakeScreen,
-        effectiveAnswers: getEffectiveAnswers(answers, savedProgress?.answers),
-      });
-      return allQuestionsRaw;
-    }
-    
     // ИСПРАВЛЕНО: Безопасное логирование с проверками
     try {
       clientLogger.log('✅ allQuestions: Filter completed', {
@@ -4189,12 +4173,32 @@ export default function QuizPage() {
         filteredCount: filtered.length,
         filteredQuestionIds: filtered.length > 0 ? filtered.map((q: Question) => q?.id).filter(Boolean).slice(0, 10) : [],
         removedCount: allQuestionsRaw.length - filtered.length,
+        answersCount: Object.keys(answers).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        isRetakingQuiz,
+        showRetakeScreen,
       });
+      
+      // ДИАГНОСТИКА: Если filtered пустой, логируем детальную информацию
+      if (filtered.length === 0 && allQuestionsRaw.length > 0) {
+        clientLogger.error('❌ CRITICAL: filtered is empty but allQuestionsRaw has questions', {
+          allQuestionsRawCount: allQuestionsRaw.length,
+          filteredCount: filtered.length,
+          allQuestionsRawIds: allQuestionsRaw.map((q: Question) => q.id).slice(0, 10),
+          allQuestionsRawCodes: allQuestionsRaw.map((q: Question) => q.code).slice(0, 10),
+          answersCount: Object.keys(answers).length,
+          savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+          effectiveAnswers: getEffectiveAnswers(answers, savedProgress?.answers),
+          isRetakingQuiz,
+          showRetakeScreen,
+        });
+      }
     } catch (logErr) {
       // Игнорируем ошибки логирования
       console.warn('Failed to log allQuestions filter result:', logErr);
     }
     
+    // ВАЖНО: Возвращаем результат фильтрации БЕЗ fallback - основная логика должна работать правильно
     return filtered;
     } catch (err) {
       console.error('❌ Error computing allQuestions:', err, {

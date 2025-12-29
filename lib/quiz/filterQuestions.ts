@@ -195,6 +195,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   } = options;
 
   if (!questions || questions.length === 0) {
+    console.warn('⚠️ filterQuestions: questions is empty', { questions });
     return [];
   }
 
@@ -205,6 +206,22 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   // Если ответов нет (новый пользователь), показываем все вопросы без фильтрации
   const hasAnyAnswers = Object.keys(effectiveAnswers).length > 0;
   
+  // ДИАГНОСТИКА: Логируем входные данные
+  console.log('🔍 filterQuestions: Starting filter', {
+    questionsCount: questions.length,
+    answersCount: Object.keys(answers || {}).length,
+    savedProgressAnswersCount: Object.keys(savedProgressAnswers || {}).length,
+    effectiveAnswersCount: Object.keys(effectiveAnswers).length,
+    hasAnyAnswers,
+    isRetakingQuiz,
+    showRetakeScreen,
+    questionCodes: questions.map(q => q.code).slice(0, 10),
+  });
+  
+  let filteredCount = 0;
+  let excludedCount = 0;
+  const excludedReasons: Record<string, number> = {};
+  
   const filteredQuestions = questions.filter((question) => {
     try {
       // ИСПРАВЛЕНО: Если нет ответов, показываем все вопросы (кроме исключений для retake)
@@ -214,10 +231,13 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
         if (isRetakingQuiz && !showRetakeScreen) {
           const normalizedCode = question.code?.toLowerCase();
           if (normalizedCode === 'gender' || normalizedCode === 'age') {
+            excludedCount++;
+            excludedReasons['retake_gender_age'] = (excludedReasons['retake_gender_age'] || 0) + 1;
             return false;
           }
         }
         // Для нового пользователя показываем все остальные вопросы
+        filteredCount++;
         return true;
       }
       
@@ -250,7 +270,14 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
         );
 
         // Показываем только если ответили "yes" (да)
-        return normalizedValue === 'yes';
+        const shouldShow = normalizedValue === 'yes';
+        if (!shouldShow) {
+          excludedCount++;
+          excludedReasons['retinoid_reaction_no'] = (excludedReasons['retinoid_reaction_no'] || 0) + 1;
+        } else {
+          filteredCount++;
+        }
+        return shouldShow;
       }
 
       // 3. Фильтрация вопросов про макияж (только для женщин)
@@ -265,7 +292,14 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
         }
 
         const isMale = isMaleGender(gender.value, gender.option, gender.question, effectiveAnswers);
-        return !isMale; // Показываем только если не мужчина
+        const shouldShow = !isMale; // Показываем только если не мужчина
+        if (!shouldShow) {
+          excludedCount++;
+          excludedReasons['makeup_male'] = (excludedReasons['makeup_male'] || 0) + 1;
+        } else {
+          filteredCount++;
+        }
+        return shouldShow;
       }
 
       // 4. Фильтрация вопросов про беременность (только для женщин)
@@ -277,14 +311,23 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
         const gender = getAnswerByCode('gender', questions, effectiveAnswers);
         if (!gender.question || !gender.value) {
           // Пол еще не выбран - показываем вопрос (он будет скрыт позже)
+          filteredCount++;
           return true;
         }
 
         const isMale = isMaleGender(gender.value, gender.option, gender.question, effectiveAnswers);
-        return !isMale; // Показываем только если не мужчина
+        const shouldShow = !isMale; // Показываем только если не мужчина
+        if (!shouldShow) {
+          excludedCount++;
+          excludedReasons['pregnancy_male'] = (excludedReasons['pregnancy_male'] || 0) + 1;
+        } else {
+          filteredCount++;
+        }
+        return shouldShow;
       }
 
       // Все остальные вопросы показываем
+      filteredCount++;
       return true;
     } catch (err) {
       console.error('❌ Error filtering question:', err, question);
@@ -293,17 +336,31 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     }
   });
   
+  // ДИАГНОСТИКА: Логируем результат фильтрации
+  console.log('✅ filterQuestions: Filter completed', {
+    originalCount: questions.length,
+    filteredCount: filteredQuestions.length,
+    excludedCount,
+    excludedReasons,
+    hasAnyAnswers,
+    isRetakingQuiz,
+    showRetakeScreen,
+    filteredQuestionCodes: filteredQuestions.map(q => q.code).slice(0, 10),
+  });
+  
   // ИСПРАВЛЕНО: Если после фильтрации не осталось вопросов, возвращаем все вопросы
   // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
   if (filteredQuestions.length === 0 && questions.length > 0) {
-    console.warn('⚠️ All questions filtered out, returning all questions as fallback', {
+    console.error('❌ CRITICAL: All questions filtered out!', {
       originalCount: questions.length,
       hasAnyAnswers,
       isRetakingQuiz,
       showRetakeScreen,
+      excludedReasons,
+      questionCodes: questions.map(q => q.code),
     });
     // Возвращаем все вопросы, кроме исключений для retake
-    return questions.filter((question) => {
+    const fallbackQuestions = questions.filter((question) => {
       if (isRetakingQuiz && !showRetakeScreen) {
         const normalizedCode = question.code?.toLowerCase();
         if (normalizedCode === 'gender' || normalizedCode === 'age') {
@@ -312,6 +369,11 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       }
       return true;
     });
+    console.log('🔄 filterQuestions: Returning fallback questions', {
+      fallbackCount: fallbackQuestions.length,
+      fallbackQuestionCodes: fallbackQuestions.map(q => q.code).slice(0, 10),
+    });
+    return fallbackQuestions;
   }
 
   return filteredQuestions;
