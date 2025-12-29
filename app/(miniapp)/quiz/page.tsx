@@ -846,24 +846,36 @@ export default function QuizPage() {
       // ФИКС: Принудительно стартуем с вопросов для нового пользователя
       // Это гарантирует, что после загрузки анкеты новый пользователь увидит вопросы
       // ВАЖНО: Защита от повторных сбросов
+      // ВАЖНО: Не выполняем, если пользователь уже на вопросах (currentInfoScreenIndex >= initialInfoScreens.length)
+      // Это предотвращает сброс currentInfoScreenIndex на 0 после перехода к вопросам
       if (questionnaireRef.current && allQuestions.length > 0 && !firstScreenResetRef.current) {
-        const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
-        const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz;
+        // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+        const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
         
+        // ФИКС: Не выполняем, если пользователь уже на вопросах
+        // Используем ref для синхронной проверки, так как state обновляется асинхронно
+        if (currentInfoScreenIndexRef.current >= initialInfoScreens.length || currentInfoScreenIndex >= initialInfoScreens.length) {
+          clientLogger.log('⏸️ init(): пропущено, так как пользователь уже на вопросах', {
+            currentInfoScreenIndex,
+            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+            initialInfoScreensLength: initialInfoScreens.length,
+          });
+        } else {
+          const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
+          const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz;
+          
           if (isNewUser) {
-          // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
-          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
-          // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
-          if (currentInfoScreenIndex < initialInfoScreens.length) {
-            firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
-            clientLogger.log('🔧 ФИКС: Новый пользователь - пропускаем инфо-скрины, стартуем с вопросов', {
-              currentInfoScreenIndex,
-              initialInfoScreensLength: initialInfoScreens.length,
-              allQuestionsLength: allQuestions.length,
-            });
-            setCurrentInfoScreenIndex(initialInfoScreens.length);
-            setPendingInfoScreen(null);
-            setCurrentQuestionIndex(0);
+            // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
+            if (currentInfoScreenIndex < initialInfoScreens.length) {
+              firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
+              clientLogger.log('🔧 ФИКС: Новый пользователь - пропускаем инфо-скрины, стартуем с вопросов', {
+                currentInfoScreenIndex,
+                initialInfoScreensLength: initialInfoScreens.length,
+                allQuestionsLength: allQuestions.length,
+              });
+              setCurrentInfoScreenIndex(initialInfoScreens.length);
+              setPendingInfoScreen(null);
+              setCurrentQuestionIndex(0);
             // ФИКС: Детальное логирование установки вопросов для диагностики
             clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в init() для нового пользователя', {
               currentInfoScreenIndex: initialInfoScreens.length,
