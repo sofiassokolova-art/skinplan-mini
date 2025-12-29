@@ -21,6 +21,11 @@ export interface FilterQuestionsOptions {
   savedProgressAnswers?: Record<number, string | string[]>;
   isRetakingQuiz?: boolean;
   showRetakeScreen?: boolean;
+  logger?: {
+    log: (...args: any[]) => void;
+    warn: (...args: any[]) => void;
+    error: (...args: any[]) => void;
+  };
 }
 
 /**
@@ -192,10 +197,16 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
     savedProgressAnswers,
     isRetakingQuiz = false,
     showRetakeScreen = false,
+    logger,
   } = options;
+  
+  // Используем переданный logger или console по умолчанию
+  const log = logger?.log || console.log.bind(console);
+  const warn = logger?.warn || console.warn.bind(console);
+  const error = logger?.error || console.error.bind(console);
 
   if (!questions || questions.length === 0) {
-    console.warn('⚠️ filterQuestions: questions is empty', { questions });
+    warn('⚠️ filterQuestions: questions is empty', { questions });
     return [];
   }
 
@@ -207,7 +218,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   const hasAnyAnswers = Object.keys(effectiveAnswers).length > 0;
   
   // ДИАГНОСТИКА: Логируем входные данные
-  console.log('🔍 filterQuestions: Starting filter', {
+  log('🔍 filterQuestions: Starting filter', {
     questionsCount: questions.length,
     answersCount: Object.keys(answers || {}).length,
     savedProgressAnswersCount: Object.keys(savedProgressAnswers || {}).length,
@@ -330,14 +341,14 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       filteredCount++;
       return true;
     } catch (err) {
-      console.error('❌ Error filtering question:', err, question);
+      error('❌ Error filtering question:', err, question);
       // В случае ошибки показываем вопрос (безопасный вариант)
       return true;
     }
   });
   
   // ДИАГНОСТИКА: Логируем результат фильтрации
-  console.log('✅ filterQuestions: Filter completed', {
+  log('✅ filterQuestions: Filter completed', {
     originalCount: questions.length,
     filteredCount: filteredQuestions.length,
     excludedCount,
@@ -351,7 +362,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
   // ИСПРАВЛЕНО: Если после фильтрации не осталось вопросов, возвращаем все вопросы
   // Это предотвращает ситуацию, когда все вопросы отфильтрованы при первой загрузке
   if (filteredQuestions.length === 0 && questions.length > 0) {
-    console.error('❌ CRITICAL: All questions filtered out!', {
+    error('❌ CRITICAL: All questions filtered out!', {
       originalCount: questions.length,
       hasAnyAnswers,
       isRetakingQuiz,
@@ -369,7 +380,7 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
       }
       return true;
     });
-    console.log('🔄 filterQuestions: Returning fallback questions', {
+    log('🔄 filterQuestions: Returning fallback questions', {
       fallbackCount: fallbackQuestions.length,
       fallbackQuestionCodes: fallbackQuestions.map(q => q.code).slice(0, 10),
     });

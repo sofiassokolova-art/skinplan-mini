@@ -4164,6 +4164,7 @@ export default function QuizPage() {
       savedProgressAnswers: savedProgress?.answers,
       isRetakingQuiz,
       showRetakeScreen,
+      logger: clientLogger, // Передаем clientLogger для логирования
     });
     
     // ИСПРАВЛЕНО: Безопасное логирование с проверками
