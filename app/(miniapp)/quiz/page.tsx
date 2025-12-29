@@ -1138,19 +1138,52 @@ export default function QuizPage() {
         setShowResumeScreen(false);
         // Не вызываем loadSavedProgress(), так как прогресс должен быть синхронизирован с сервером
       }
-    } catch (err: any) {
-      // Если ошибка 401 - это нормально, просто не используем серверный прогресс
-      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
-        // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
+      } catch (err: any) {
+        // Если ошибка 401 - это нормально, просто не используем серверный прогресс
+        if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
+          // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
+          // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
+          setSavedProgress(null);
+          setShowResumeScreen(false);
+          return;
+        }
+        
+        // ФИКС: Обработка KV ошибок (max requests limit exceeded)
+        const errorMessage = err?.message || String(err);
+        const isKVError = errorMessage.includes('max requests limit exceeded') || 
+                         errorMessage.includes('Upstash') || 
+                         errorMessage.includes('KV') ||
+                         errorMessage.includes('rate limit');
+        
+        if (isKVError) {
+          // Если это ошибка KV (лимит запросов), явно устанавливаем savedProgress = null
+          // и пропускаем resume-экран, чтобы не застревать на начальных инфо-скринах
+          clientLogger.warn('⚠️ Ошибка KV при загрузке прогресса - продолжаем как новый пользователь', {
+            error: errorMessage,
+            hasResumedRef: hasResumedRef.current,
+            hasResumed,
+          });
+          setSavedProgress(null);
+          setShowResumeScreen(false);
+          // Сбрасываем currentQuestionIndex на 0 для нового пользователя, если он выходит за пределы
+          if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
+            setCurrentQuestionIndex(0);
+          }
+          // Пропускаем начальные инфо-скрины, если индекс уже прошел их
+          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+          if (currentInfoScreenIndex >= initialInfoScreens.length && allQuestions.length > 0) {
+            // Уже на вопросах - ничего не делаем
+          } else if (currentInfoScreenIndex < initialInfoScreens.length) {
+            // Начальные экраны еще не пройдены - начинаем с первого
+            setCurrentInfoScreenIndex(0);
+          }
+          return;
+        }
+        
+        clientLogger.warn('Ошибка загрузки прогресса с сервера:', err);
         // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
         setSavedProgress(null);
         setShowResumeScreen(false);
-        return;
-      }
-      clientLogger.warn('Ошибка загрузки прогресса с сервера:', err);
-      // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
-      setSavedProgress(null);
-      setShowResumeScreen(false);
     } finally {
       // ИСПРАВЛЕНО: Не сбрасываем флаги, если пользователь уже продолжил анкету
       // Это предотвращает повторные вызовы loadSavedProgressFromServer в Telegram Mini App
@@ -4620,24 +4653,41 @@ export default function QuizPage() {
       }
       return null;
     }
-    if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
-      const question = allQuestions[currentQuestionIndex];
+    
+    // ФИКС: Защита от некорректного индекса или undefined
+    if (currentQuestionIndex < 0 || currentQuestionIndex >= allQuestions.length) {
       if (isDev) {
-        clientLogger.log('✅ currentQuestion: показываем вопрос', {
+        clientLogger.warn('⏸️ currentQuestion: null (индекс вне границ)', {
           currentQuestionIndex,
           allQuestionsLength: allQuestions.length,
+        });
+      }
+      return null;
+    }
+    
+    const question = allQuestions[currentQuestionIndex];
+    
+    // ФИКС: Проверка на undefined и валидность вопроса
+    if (!question || !question.id) {
+      if (isDev) {
+        clientLogger.warn('⏸️ currentQuestion: null (вопрос не найден или невалидный)', {
+          currentQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+          questionExists: !!question,
           questionId: question?.id,
         });
       }
-      return question;
+      return null;
     }
+    
     if (isDev) {
-      clientLogger.warn('⏸️ currentQuestion: null (индекс вне границ)', {
+      clientLogger.log('✅ currentQuestion: показываем вопрос', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
+        questionId: question.id,
       });
     }
-    return null;
+    return question;
   }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions, initialInfoScreens.length]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
