@@ -3874,9 +3874,10 @@ export default function QuizPage() {
   // КРИТИЧНО: Добавляем questionnaire в зависимости, чтобы useMemo пересчитывался при изменении state
   const allQuestionsRaw = useMemo(() => {
     try {
-      // ИСПРАВЛЕНО: Используем ref вместо state для получения актуального значения
-      // НО: также проверяем state, чтобы useMemo пересчитывался при изменении state
-      const currentQuestionnaire = questionnaireRef.current || questionnaire;
+      // ИСПРАВЛЕНО: Используем state в первую очередь, так как он триггерит пересчет useMemo
+      // Ref используется как fallback, если state еще не обновился
+      // Это гарантирует, что allQuestionsRaw обновится, когда questionnaire изменится
+      const currentQuestionnaire = questionnaire || questionnaireRef.current;
       
       // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
       if (isDev) {
@@ -4054,7 +4055,7 @@ export default function QuizPage() {
       });
       return [];
     }
-  }, [questionnaire?.id]); // ИСПРАВЛЕНО: Зависимость только от ID, чтобы не пересчитывать при каждом изменении объекта (даже если данные те же)
+  }, [questionnaire?.id]); // ИСПРАВЛЕНО: Зависимость только от ID, чтобы не пересчитывать при каждом изменении объекта
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
   // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
@@ -4192,6 +4193,13 @@ export default function QuizPage() {
         isRetakingQuiz,
         showRetakeScreen,
       });
+      // КРИТИЧНО: Если все вопросы отфильтрованы, но есть вопросы в allQuestionsRaw,
+      // возвращаем все вопросы как fallback (filterQuestions уже должен это делать, но на всякий случай)
+      // Это предотвращает ситуацию, когда пользователь видит пустую анкету
+      if (allQuestionsRaw.length > 0) {
+        clientLogger.warn('⚠️ Returning allQuestionsRaw as fallback because all questions were filtered');
+        return allQuestionsRaw;
+      }
     }
     
     return filtered;
@@ -4203,7 +4211,7 @@ export default function QuizPage() {
       // В случае ошибки возвращаем все вопросы из allQuestionsRaw (уже отсортированные)
       return allQuestionsRaw || [];
     }
-  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire]);
+  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen]);
   
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
