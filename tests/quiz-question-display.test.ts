@@ -18,27 +18,31 @@ interface QuizDisplayState {
   answers: Record<number, string | string[]>;
 }
 
-// Функция для вычисления isShowingInitialInfoScreenCorrected
-function calculateIsShowingInitialInfoScreenCorrected(
+// Функция для вычисления currentInitialInfoScreen (новая логика с проверкой границ)
+function calculateCurrentInitialInfoScreen(
   isShowingInitialInfoScreen: boolean,
-  currentInitialInfoScreen: InfoScreen | null
-): boolean {
-  if (isShowingInitialInfoScreen && !currentInitialInfoScreen) {
-    return false;
-  }
-  return isShowingInitialInfoScreen;
+  currentInfoScreenIndex: number,
+  initialInfoScreens: InfoScreen[]
+): InfoScreen | null {
+  return isShowingInitialInfoScreen && 
+         currentInfoScreenIndex >= 0 && 
+         currentInfoScreenIndex < initialInfoScreens.length
+    ? initialInfoScreens[currentInfoScreenIndex] 
+    : null;
 }
 
-// Функция для вычисления isOnInitialInfoScreen
+// Функция для вычисления isOnInitialInfoScreen (обновленная логика)
 function calculateIsOnInitialInfoScreen(
   state: QuizDisplayState
 ): boolean {
-  const { initialInfoScreens, currentInfoScreenIndex, isShowingInitialInfoScreenCorrected, currentInitialInfoScreen } = state;
+  const { initialInfoScreens, currentInfoScreenIndex, isShowingInitialInfoScreen, currentInitialInfoScreen } = state;
   
-  return initialInfoScreens.length > 0 && 
-         currentInfoScreenIndex < initialInfoScreens.length && 
-         isShowingInitialInfoScreenCorrected && 
+  // Новая логика: проверяем, что есть реальный экран для показа
+  return isShowingInitialInfoScreen && 
          !!currentInitialInfoScreen &&
+         initialInfoScreens.length > 0 && 
+         currentInfoScreenIndex >= 0 &&
+         currentInfoScreenIndex < initialInfoScreens.length &&
          !!initialInfoScreens[currentInfoScreenIndex];
 }
 
@@ -52,31 +56,23 @@ function calculateShouldBlockByInfoScreen(
   return (isOnInitialInfoScreen || (!!pendingInfoScreen && !isRetakingQuiz)) && !showResumeScreen;
 }
 
-// Функция для вычисления currentQuestion (упрощенная версия)
+// Функция для вычисления currentQuestion (обновленная логика)
 function calculateCurrentQuestion(
   state: QuizDisplayState
 ): { shouldShow: boolean; reason: string } {
-  const { initialInfoScreens, pendingInfoScreen, isRetakingQuiz, showResumeScreen, allQuestions, currentQuestionIndex } = state;
+  const { isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, allQuestions, currentQuestionIndex } = state;
   
   // Если нет вопросов, не показываем
   if (allQuestions.length === 0) {
     return { shouldShow: false, reason: 'no_questions' };
   }
   
-  // Если initialInfoScreens пустой, показываем вопросы (если нет pendingInfoScreen)
-  if (initialInfoScreens.length === 0) {
-    if (pendingInfoScreen && !isRetakingQuiz && !showResumeScreen) {
-      return { shouldShow: false, reason: 'pending_info_screen' };
-    }
-    // Продолжаем - показываем вопросы
-  }
+  // НОВАЯ ЛОГИКА: Блокируем только если действительно есть начальный экран для показа
+  // Блокируем если: (isShowingInitialInfoScreen && currentInitialInfoScreen) || (pendingInfoScreen && !isRetakingQuiz)
+  const shouldBlock = (isShowingInitialInfoScreen && currentInitialInfoScreen) || (pendingInfoScreen && !isRetakingQuiz);
   
-  // Вычисляем блокировку
-  const shouldBlock = calculateShouldBlockByInfoScreen(state);
-  
-  if (shouldBlock) {
-    const isOnInitialInfoScreen = calculateIsOnInitialInfoScreen(state);
-    const reason = isOnInitialInfoScreen ? 'initial_info_screen' : 'pending_info_screen';
+  if (shouldBlock && !showResumeScreen) {
+    const reason = (isShowingInitialInfoScreen && currentInitialInfoScreen) ? 'initial_info_screen' : 'pending_info_screen';
     return { shouldShow: false, reason };
   }
   
@@ -92,21 +88,30 @@ function calculateCurrentQuestion(
 const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
 
 describe('Quiz Question Display Logic', () => {
-  describe('calculateIsShowingInitialInfoScreenCorrected', () => {
-    it('должен возвращать false, если isShowingInitialInfoScreen=true, но currentInitialInfoScreen=null', () => {
-      const result = calculateIsShowingInitialInfoScreenCorrected(true, null);
-      expect(result).toBe(false);
+  describe('calculateCurrentInitialInfoScreen', () => {
+    it('должен возвращать null, если isShowingInitialInfoScreen=false', () => {
+      const result = calculateCurrentInitialInfoScreen(false, 0, initialInfoScreens);
+      expect(result).toBe(null);
     });
 
-    it('должен возвращать true, если isShowingInitialInfoScreen=true и currentInitialInfoScreen существует', () => {
-      const screen = initialInfoScreens[0];
-      const result = calculateIsShowingInitialInfoScreenCorrected(true, screen);
-      expect(result).toBe(true);
+    it('должен возвращать null, если currentInfoScreenIndex < 0', () => {
+      const result = calculateCurrentInitialInfoScreen(true, -1, initialInfoScreens);
+      expect(result).toBe(null);
     });
 
-    it('должен возвращать false, если isShowingInitialInfoScreen=false', () => {
-      const result = calculateIsShowingInitialInfoScreenCorrected(false, null);
-      expect(result).toBe(false);
+    it('должен возвращать null, если currentInfoScreenIndex >= initialInfoScreens.length', () => {
+      const result = calculateCurrentInitialInfoScreen(true, initialInfoScreens.length, initialInfoScreens);
+      expect(result).toBe(null);
+    });
+
+    it('должен возвращать экран, если все условия выполнены', () => {
+      const result = calculateCurrentInitialInfoScreen(true, 0, initialInfoScreens);
+      expect(result).toBe(initialInfoScreens[0]);
+    });
+
+    it('должен возвращать null, если initialInfoScreens пустой', () => {
+      const result = calculateCurrentInitialInfoScreen(true, 0, []);
+      expect(result).toBe(null);
     });
   });
 
@@ -116,8 +121,7 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: initialInfoScreens.length,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
-        currentInitialInfoScreen: initialInfoScreens[0],
+        currentInitialInfoScreen: null, // null из-за проверки границ
         pendingInfoScreen: null,
         isRetakingQuiz: false,
         showResumeScreen: false,
@@ -134,7 +138,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
         currentInitialInfoScreen: null,
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -147,12 +150,11 @@ describe('Quiz Question Display Logic', () => {
       expect(result).toBe(false);
     });
 
-    it('должен возвращать false, если isShowingInitialInfoScreenCorrected=false', () => {
+    it('должен возвращать false, если isShowingInitialInfoScreen=false', () => {
       const state: QuizDisplayState = {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
-        isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: false,
+        isShowingInitialInfoScreen: false,
         currentInitialInfoScreen: initialInfoScreens[0],
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -170,7 +172,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
         currentInitialInfoScreen: initialInfoScreens[0],
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -188,7 +189,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens: [],
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
         currentInitialInfoScreen: null,
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -207,7 +207,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 999, // Индекс вне массива
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
         currentInitialInfoScreen: null, // null, потому что элемент не существует
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -227,7 +226,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
         currentInitialInfoScreen: initialInfoScreens[0],
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -245,7 +243,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
         currentInitialInfoScreen: initialInfoScreens[0],
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -264,7 +261,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: initialInfoScreens.length, // Все начальные экраны пройдены
         initialInfoScreens,
         isShowingInitialInfoScreen: false,
-        isShowingInitialInfoScreenCorrected: false,
         currentInitialInfoScreen: null,
         pendingInfoScreen: pendingScreen,
         isRetakingQuiz: false,
@@ -283,7 +279,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: initialInfoScreens.length,
         initialInfoScreens,
         isShowingInitialInfoScreen: false,
-        isShowingInitialInfoScreenCorrected: false,
         currentInitialInfoScreen: null,
         pendingInfoScreen: pendingScreen,
         isRetakingQuiz: true, // Ключевое условие
@@ -303,7 +298,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: initialInfoScreens.length, // Все экраны пройдены
         initialInfoScreens,
         isShowingInitialInfoScreen: false,
-        isShowingInitialInfoScreenCorrected: false,
         currentInitialInfoScreen: null,
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -317,12 +311,11 @@ describe('Quiz Question Display Logic', () => {
       expect(result.reason).toBe('ok');
     });
 
-    it('НЕ должен показывать вопросы, если isOnInitialInfoScreen=true', () => {
+    it('НЕ должен показывать вопросы, если isShowingInitialInfoScreen=true и currentInitialInfoScreen существует', () => {
       const state: QuizDisplayState = {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
         currentInitialInfoScreen: initialInfoScreens[0],
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -343,8 +336,7 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: initialInfoScreens.length, // Все экраны пройдены
         initialInfoScreens,
         isShowingInitialInfoScreen: true, // Может быть true из-за задержки обновления состояния
-        isShowingInitialInfoScreenCorrected: false, // Но corrected должен быть false
-        currentInitialInfoScreen: null,
+        currentInitialInfoScreen: null, // null из-за проверки границ
         pendingInfoScreen: null,
         isRetakingQuiz: false,
         showResumeScreen: false,
@@ -363,7 +355,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: false, // Исправлено на false
         currentInitialInfoScreen: null, // null из-за несоответствия
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -382,7 +373,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens: [],
         isShowingInitialInfoScreen: false,
-        isShowingInitialInfoScreenCorrected: false,
         currentInitialInfoScreen: null,
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -402,7 +392,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: initialInfoScreens.length,
         initialInfoScreens,
         isShowingInitialInfoScreen: false,
-        isShowingInitialInfoScreenCorrected: false,
         currentInitialInfoScreen: null,
         pendingInfoScreen: pendingScreen,
         isRetakingQuiz: false,
@@ -421,7 +410,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true,
         currentInitialInfoScreen: initialInfoScreens[0],
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -443,7 +431,6 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: 0,
         initialInfoScreens: [initialInfoScreens[0]!, initialInfoScreens[1]!], // Только 2 элемента
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: false, // Исправлено, потому что currentInitialInfoScreen=null
         currentInitialInfoScreen: null, // null, потому что элемент undefined
         pendingInfoScreen: null,
         isRetakingQuiz: false,
@@ -464,8 +451,7 @@ describe('Quiz Question Display Logic', () => {
         currentInfoScreenIndex: initialInfoScreens.length, // Все экраны пройдены
         initialInfoScreens,
         isShowingInitialInfoScreen: true, // Задержка обновления
-        isShowingInitialInfoScreenCorrected: false, // Но corrected должен быть false
-        currentInitialInfoScreen: null,
+        currentInitialInfoScreen: null, // null из-за проверки границ
         pendingInfoScreen: null,
         isRetakingQuiz: false,
         showResumeScreen: false,
@@ -479,14 +465,13 @@ describe('Quiz Question Display Logic', () => {
       expect(result.reason).toBe('ok');
     });
 
-    it('Сценарий 3: isShowingInitialInfoScreen=true, isShowingInitialInfoScreenCorrected=true, но currentInitialInfoScreen=null', () => {
+    it('Сценарий 3: isShowingInitialInfoScreen=true, но currentInitialInfoScreen=null', () => {
       // Симулируем ситуацию несоответствия (не должно происходить, но проверяем)
       const state: QuizDisplayState = {
         currentInfoScreenIndex: 0,
         initialInfoScreens,
         isShowingInitialInfoScreen: true,
-        isShowingInitialInfoScreenCorrected: true, // Не должно быть true, если currentInitialInfoScreen=null
-        currentInitialInfoScreen: null,
+        currentInitialInfoScreen: null, // null из-за несоответствия
         pendingInfoScreen: null,
         isRetakingQuiz: false,
         showResumeScreen: false,
