@@ -111,7 +111,9 @@ async function checkFilterQuestionsLogs() {
             message.includes('allQuestions') ||
             message.includes('allQuestionsRaw') ||
             message.includes('ВСЕ ВОПРОСЫ') ||
-            message.includes('ОТФИЛЬТРОВАНЫ')
+            message.includes('ОТФИЛЬТРОВАНЫ') ||
+            message.includes('currentQuestion') ||
+            message.includes('allQuestions is empty')
           ) {
             filterLogs.push({
               timestamp: log.timestamp,

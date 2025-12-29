@@ -4124,18 +4124,29 @@ export default function QuizPage() {
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
   // При повторном прохождении исключаем вопросы про пол и возраст (они уже записаны в профиле)
+  // КРИТИЧНО: Используем ref для хранения предыдущего значения allQuestions
+  // Это предотвращает сброс allQuestions, если allQuestionsRaw временно пустой
+  const allQuestionsPrevRef = useRef<Question[]>([]);
+  
   const allQuestions = useMemo<Question[]>(() => {
     try {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) {
       // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой (используем log вместо warn для диагностики)
       if (questionnaire) {
-        clientLogger.log('⚠️ allQuestionsRaw is empty but questionnaire exists', {
+        clientLogger.log('⚠️ allQuestionsRaw is empty but questionnaire exists - using previous allQuestions', {
           questionnaireId: questionnaire?.id,
           hasGroups: !!questionnaire.groups,
           groupsCount: questionnaire.groups?.length || 0,
           hasQuestions: !!questionnaire.questions,
           questionsCount: questionnaire.questions?.length || 0,
+          previousAllQuestionsLength: allQuestionsPrevRef.current.length,
         });
+        // КРИТИЧНО: Если questionnaire существует, но allQuestionsRaw пустой,
+        // это временное состояние (например, при пересчете useMemo).
+        // Возвращаем предыдущее значение, чтобы не сбрасывать allQuestions
+        if (allQuestionsPrevRef.current.length > 0) {
+          return allQuestionsPrevRef.current;
+        }
       } else {
         clientLogger.log('⚠️ allQuestionsRaw is empty and questionnaire is null');
       }
@@ -4200,6 +4211,8 @@ export default function QuizPage() {
     }
     
     // ВАЖНО: Возвращаем результат фильтрации БЕЗ fallback - основная логика должна работать правильно
+    // КРИТИЧНО: Сохраняем результат в ref для использования при временном пустом allQuestionsRaw
+    allQuestionsPrevRef.current = filtered;
     return filtered;
     } catch (err) {
       console.error('❌ Error computing allQuestions:', err, {
@@ -4207,9 +4220,11 @@ export default function QuizPage() {
         answersKeys: Object.keys(answers || {}),
       });
       // В случае ошибки возвращаем все вопросы из allQuestionsRaw (уже отсортированные)
-      return allQuestionsRaw || [];
+      const fallback = allQuestionsRaw || [];
+      allQuestionsPrevRef.current = fallback;
+      return fallback;
     }
-  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen]);
+  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire]);
   
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
