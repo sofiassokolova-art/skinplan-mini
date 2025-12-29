@@ -821,6 +821,28 @@ export default function QuizPage() {
         }
       }
 
+      // ФИКС: Принудительно стартуем с вопросов для нового пользователя
+      // Это гарантирует, что после загрузки анкеты новый пользователь увидит вопросы
+      if (questionnaireRef.current && allQuestions.length > 0) {
+        const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
+        const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz;
+        
+        if (isNewUser) {
+          const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode);
+          // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
+          if (currentInfoScreenIndex < initialInfoScreens.length) {
+            clientLogger.log('🔧 ФИКС: Новый пользователь - пропускаем инфо-скрины, стартуем с вопросов', {
+              currentInfoScreenIndex,
+              initialInfoScreensLength: initialInfoScreens.length,
+              allQuestionsLength: allQuestions.length,
+            });
+            setCurrentInfoScreenIndex(initialInfoScreens.length);
+            setPendingInfoScreen(null);
+            setCurrentQuestionIndex(0);
+          }
+        }
+      }
+
       clientLogger.log('✅ init() DONE - all steps completed', { 
         timestamp: new Date().toISOString(),
         totalElapsed: Date.now() - initStartTime,
@@ -6879,8 +6901,9 @@ export default function QuizPage() {
         // Продолжаем выполнение, чтобы показать лоадер ниже
       } else if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
         // Индекс в пределах массива, но вопрос не найден - это временное состояние
-        // useEffect должен исправить это, поэтому не показываем ошибку
-        clientLogger.warn('⚠️ currentQuestion null: индекс валидный, но вопрос не найден - ждем следующего рендера', {
+        // ФИКС: Показываем fallback "Загрузка вопросов..." вместо продолжения выполнения
+        // Это предотвращает показ "Вопрос не найден" слишком рано
+        clientLogger.warn('⚠️ currentQuestion null: индекс валидный, но вопрос не найден - показываем fallback', {
           currentQuestionIndex,
           allQuestionsLength: allQuestions.length,
           hasResumed,
@@ -6889,7 +6912,22 @@ export default function QuizPage() {
           isShowingInitialInfoScreen,
           pendingInfoScreen: !!pendingInfoScreen,
         });
-        // НЕ возвращаем ошибку - продолжаем выполнение
+        // Показываем fallback для временного состояния
+        return (
+          <div style={{ 
+            padding: '20px',
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
+          }}>
+            <div style={{ color: '#0A5F59', fontSize: '18px' }}>
+              Загрузка вопросов...
+            </div>
+          </div>
+        );
       }
     }
     
