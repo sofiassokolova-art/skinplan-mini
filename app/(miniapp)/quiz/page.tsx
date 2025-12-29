@@ -4187,14 +4187,28 @@ export default function QuizPage() {
         savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
         isRetakingQuiz,
         showRetakeScreen,
+        effectiveAnswers: getEffectiveAnswers(answers, savedProgress?.answers),
       });
       // КРИТИЧНО: Если все вопросы отфильтрованы, но есть вопросы в allQuestionsRaw,
       // возвращаем все вопросы как fallback (filterQuestions уже должен это делать, но на всякий случай)
       // Это предотвращает ситуацию, когда пользователь видит пустую анкету
       if (allQuestionsRaw.length > 0) {
-        clientLogger.warn('⚠️ Returning allQuestionsRaw as fallback because all questions were filtered');
+        clientLogger.warn('⚠️ Returning allQuestionsRaw as fallback because all questions were filtered', {
+          allQuestionsRawCount: allQuestionsRaw.length,
+          allQuestionsRawIds: allQuestionsRaw.map((q: Question) => q.id),
+        });
         return allQuestionsRaw;
       }
+    }
+    
+    // КРИТИЧНО: Если filtered пустой, но allQuestionsRaw не пустой - это ошибка фильтрации
+    // Возвращаем allQuestionsRaw как fallback
+    if (filtered.length === 0 && allQuestionsRaw.length > 0) {
+      clientLogger.error('❌ CRITICAL: filtered is empty but allQuestionsRaw has questions - returning allQuestionsRaw', {
+        allQuestionsRawCount: allQuestionsRaw.length,
+        filteredCount: filtered.length,
+      });
+      return allQuestionsRaw;
     }
     
     return filtered;
