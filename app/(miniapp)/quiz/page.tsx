@@ -1181,15 +1181,15 @@ export default function QuizPage() {
         setShowResumeScreen(false);
         // Не вызываем loadSavedProgress(), так как прогресс должен быть синхронизирован с сервером
       }
-      } catch (err: any) {
-        // Если ошибка 401 - это нормально, просто не используем серверный прогресс
-        if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
-          // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
-          // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
-          setSavedProgress(null);
-          setShowResumeScreen(false);
-          return;
-        }
+    } catch (err: any) {
+      // Если ошибка 401 - это нормально, просто не используем серверный прогресс
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
+        // Не логируем 401 ошибки, так как это нормально, если пользователь не авторизован
+        // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
+        setSavedProgress(null);
+        setShowResumeScreen(false);
+        return;
+      }
         
         // ФИКС: Обработка KV ошибок (max requests limit exceeded)
         const errorMessage = err?.message || String(err);
@@ -1227,10 +1227,10 @@ export default function QuizPage() {
           return;
         }
         
-        clientLogger.warn('Ошибка загрузки прогресса с сервера:', err);
-        // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
-        setSavedProgress(null);
-        setShowResumeScreen(false);
+      clientLogger.warn('Ошибка загрузки прогресса с сервера:', err);
+      // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
+      setSavedProgress(null);
+      setShowResumeScreen(false);
     } finally {
       // ИСПРАВЛЕНО: Не сбрасываем флаги, если пользователь уже продолжил анкету
       // Это предотвращает повторные вызовы loadSavedProgressFromServer в Telegram Mini App
@@ -2422,17 +2422,17 @@ export default function QuizPage() {
           });
         }
       } else {
-        const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
-        if (infoScreen) {
-          setPendingInfoScreen(infoScreen);
-          await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-          clientLogger.log('✅ Показан инфо-экран после вопроса:', {
-            questionCode: currentQuestion.code,
-            questionIndex: currentQuestionIndex,
-            infoScreenId: infoScreen.id,
-            isLastQuestion,
-          });
-          return;
+      const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
+      if (infoScreen) {
+        setPendingInfoScreen(infoScreen);
+        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        clientLogger.log('✅ Показан инфо-экран после вопроса:', {
+          questionCode: currentQuestion.code,
+          questionIndex: currentQuestionIndex,
+          infoScreenId: infoScreen.id,
+          isLastQuestion,
+        });
+        return;
         }
       }
     }
@@ -3914,8 +3914,8 @@ export default function QuizPage() {
           questionIndex: progressToRestore.questionIndex,
           initialInfoScreensLength: initialInfoScreens.length,
         });
-        setCurrentQuestionIndex(0);
-        setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
+      setCurrentQuestionIndex(0);
+      setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
       }
     }
     
@@ -4652,7 +4652,7 @@ export default function QuizPage() {
   // Это предотвращает застревание на info screens
   // ВАЖНО: Не выполняем, если hasResumed = true, чтобы не сбрасывать состояние после resumeQuiz
   useEffect(() => {
-    if (currentInfoScreenIndex >= initialInfoScreens.length && !isRetakingQuiz && !showResumeScreen && !hasResumed) {
+    if (currentInfoScreenIndex >= initialInfoScreens.length && !isRetakingQuiz && !showResumeScreen && !hasResumed && !resumeCompletedRef.current) {
       // Если мы прошли все начальные экраны, но pendingInfoScreen все еще установлен - очищаем его
       if (pendingInfoScreen) {
         if (isDev) {
@@ -4678,7 +4678,8 @@ export default function QuizPage() {
     
     // ФИКС: Если savedProgress не загрузился (null), но currentQuestionIndex > 0 - сбрасываем на 0
     // Это предотвращает застревание, когда прогресс не загрузился из-за KV ошибки
-    if (!savedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && !loading && questionnaire) {
+    // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
+    if (!savedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && !loading && questionnaire && !resumeCompletedRef.current) {
       if (currentQuestionIndex > 0 && currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
         if (isDev) {
           clientLogger.warn('🔧 ФИКС: savedProgress = null, но currentQuestionIndex выходит за пределы - сбрасываем на 0', {
@@ -4698,7 +4699,8 @@ export default function QuizPage() {
     // ФИКС: Для нового пользователя принудительно пропускаем инфо-скрины после загрузки анкеты
     // Это гарантирует, что новый пользователь увидит вопросы
     // ВАЖНО: Защита от повторных сбросов
-    if (questionnaire && allQuestions.length > 0 && !loading && !hasResumed && !showResumeScreen && !isRetakingQuiz && !firstScreenResetRef.current) {
+    // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
+    if (questionnaire && allQuestions.length > 0 && !loading && !hasResumed && !showResumeScreen && !isRetakingQuiz && !firstScreenResetRef.current && !resumeCompletedRef.current) {
       const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
       const isNewUser = hasNoSavedProgress && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex === 0;
       
@@ -4791,16 +4793,16 @@ export default function QuizPage() {
     // ФИКС: Всегда логируем результат (warn уровень для диагностики в БД)
     // Это поможет понять, почему isShowingInitialInfoScreen остается true
     clientLogger.warn(`📺 isShowingInitialInfoScreen: ${shouldShow}`, {
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
       isLastInfoScreen: currentInfoScreenIndex === initialInfoScreens.length - 1,
-      showResumeScreen,
-      showRetakeScreen,
-      hasSavedProgress: !!savedProgress,
-      hasResumed,
-      isRetakingQuiz,
-      currentQuestionIndex,
-      answersCount: Object.keys(answers).length,
+        showResumeScreen,
+        showRetakeScreen,
+        hasSavedProgress: !!savedProgress,
+        hasResumed,
+        isRetakingQuiz,
+        currentQuestionIndex,
+        answersCount: Object.keys(answers).length,
       allQuestionsLength: allQuestions.length,
     });
     
@@ -4810,10 +4812,10 @@ export default function QuizPage() {
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f
   // ВАЖНО: Проверяем границы массива, чтобы избежать undefined
   const currentInitialInfoScreen = isShowingInitialInfoScreen && 
-                                   currentInfoScreenIndex >= 0 && 
+                                    currentInfoScreenIndex >= 0 && 
                                    currentInfoScreenIndex < initialInfoScreens.length
-    ? initialInfoScreens[currentInfoScreenIndex] 
-    : null;
+                                    ? initialInfoScreens[currentInfoScreenIndex] 
+                                    : null;
   
   // Текущий вопрос (показывается после начальных инфо-экранов)
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
@@ -4827,16 +4829,16 @@ export default function QuizPage() {
     if (shouldBlock && !showResumeScreen) {
       // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
       clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
-        isShowingInitialInfoScreen,
-        hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
+          isShowingInitialInfoScreen,
+          hasCurrentInitialInfoScreen: !!currentInitialInfoScreen,
         currentInitialInfoScreenId: currentInitialInfoScreen?.id || null,
-        pendingInfoScreen: !!pendingInfoScreen,
+          pendingInfoScreen: !!pendingInfoScreen,
         pendingInfoScreenId: pendingInfoScreen?.id || null,
-        isRetakingQuiz,
+          isRetakingQuiz,
         showResumeScreen,
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
-        currentQuestionIndex,
+          currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
         hasResumed,
         savedProgressExists: !!savedProgress,
@@ -4867,7 +4869,7 @@ export default function QuizPage() {
       if (isDev) {
         clientLogger.warn('⏸️ currentQuestion: null (вопрос не найден или невалидный)', {
           currentQuestionIndex,
-          allQuestionsLength: allQuestions.length,
+            allQuestionsLength: allQuestions.length,
           questionExists: !!question,
           questionId: question?.id,
         });
@@ -4877,14 +4879,14 @@ export default function QuizPage() {
     
     // ФИКС: Логируем успешное отображение вопроса (info уровень для диагностики)
     clientLogger.log('✅ currentQuestion: показываем вопрос', {
-      currentQuestionIndex,
-      allQuestionsLength: allQuestions.length,
+          currentQuestionIndex,
+          allQuestionsLength: allQuestions.length,
       questionId: question.id,
       isShowingInitialInfoScreen,
       currentInfoScreenIndex,
       initialInfoScreensLength: initialInfoScreens.length,
-    });
-    return question;
+        });
+      return question;
   }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions, initialInfoScreens.length]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
@@ -7013,7 +7015,8 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Теперь используем isShowingInitialInfoScreen, который уже исправляет несоответствие
   // Но все равно добавляем useEffect для исправления currentInfoScreenIndex, если нужно
   useEffect(() => {
-    if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !loading) {
+    // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
+    if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !loading && !resumeCompletedRef.current) {
       clientLogger.warn('⚠️ isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - исправляем несоответствие и пропускаем начальные экраны', {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
