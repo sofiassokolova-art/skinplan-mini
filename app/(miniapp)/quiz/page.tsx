@@ -4128,6 +4128,46 @@ export default function QuizPage() {
   // Это предотвращает сброс allQuestions, если allQuestionsRaw временно пустой
   const allQuestionsPrevRef = useRef<Question[]>([]);
   
+  // КРИТИЧНО: Функция для извлечения вопросов напрямую из questionnaire (для fallback)
+  const extractQuestionsFromQuestionnaire = useCallback((q: Questionnaire | null): Question[] => {
+    if (!q) return [];
+    
+    const groups = q.groups || [];
+    const questions = q.questions || [];
+    
+    if (!Array.isArray(groups) || !Array.isArray(questions)) {
+      return [];
+    }
+    
+    const questionsFromGroups: Question[] = [];
+    const seenIds = new Set<number>();
+    
+    groups.forEach((g) => {
+      const groupQuestions = g?.questions || [];
+      groupQuestions.forEach((q: Question) => {
+        if (q && q.id && !seenIds.has(q.id)) {
+          questionsFromGroups.push(q);
+          seenIds.add(q.id);
+        }
+      });
+    });
+    
+    const questionsMap = new Map<number, Question>();
+    questionsFromGroups.forEach((q: Question) => {
+      if (q && q.id && !questionsMap.has(q.id)) {
+        questionsMap.set(q.id, q);
+      }
+    });
+    
+    questions.forEach((q: Question) => {
+      if (q && q.id && !questionsMap.has(q.id)) {
+        questionsMap.set(q.id, q);
+      }
+    });
+    
+    return Array.from(questionsMap.values());
+  }, []);
+  
   const allQuestions = useMemo<Question[]>(() => {
     try {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) {
@@ -4136,7 +4176,7 @@ export default function QuizPage() {
       const hasQuestionnaireRef = !!questionnaireRef.current;
       
       if (hasQuestionnaireState || hasQuestionnaireRef) {
-        clientLogger.log('⚠️ allQuestionsRaw is empty but questionnaire exists - using previous allQuestions', {
+        clientLogger.log('⚠️ allQuestionsRaw is empty but questionnaire exists - trying fallback', {
           questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
           hasQuestionnaireState,
           hasQuestionnaireRef,
@@ -4146,11 +4186,62 @@ export default function QuizPage() {
           questionsCount: (questionnaire?.questions?.length || questionnaireRef.current?.questions?.length || 0),
           previousAllQuestionsLength: allQuestionsPrevRef.current.length,
         });
+        
         // КРИТИЧНО: Если questionnaire существует (в state или ref), но allQuestionsRaw пустой,
         // это временное состояние (например, при пересчете useMemo).
-        // Возвращаем предыдущее значение, чтобы не сбрасывать allQuestions
+        // Пробуем несколько fallback стратегий:
+        // 1. Используем предыдущее значение из ref
         if (allQuestionsPrevRef.current.length > 0) {
+          clientLogger.log('✅ Using previous allQuestions from ref', {
+            previousLength: allQuestionsPrevRef.current.length,
+          });
           return allQuestionsPrevRef.current;
+        }
+        
+        // 2. Извлекаем вопросы напрямую из questionnaireRef.current
+        if (hasQuestionnaireRef) {
+          const extracted = extractQuestionsFromQuestionnaire(questionnaireRef.current);
+          if (extracted.length > 0) {
+            clientLogger.log('✅ Extracted questions directly from questionnaireRef', {
+              extractedLength: extracted.length,
+            });
+            // Фильтруем извлеченные вопросы
+            const filtered = filterQuestions({
+              questions: extracted,
+              answers,
+              savedProgressAnswers: savedProgress?.answers,
+              isRetakingQuiz,
+              showRetakeScreen,
+              logger: clientLogger,
+            });
+            if (filtered.length > 0) {
+              allQuestionsPrevRef.current = filtered;
+              return filtered;
+            }
+          }
+        }
+        
+        // 3. Извлекаем вопросы напрямую из questionnaire state
+        if (hasQuestionnaireState) {
+          const extracted = extractQuestionsFromQuestionnaire(questionnaire);
+          if (extracted.length > 0) {
+            clientLogger.log('✅ Extracted questions directly from questionnaire state', {
+              extractedLength: extracted.length,
+            });
+            // Фильтруем извлеченные вопросы
+            const filtered = filterQuestions({
+              questions: extracted,
+              answers,
+              savedProgressAnswers: savedProgress?.answers,
+              isRetakingQuiz,
+              showRetakeScreen,
+              logger: clientLogger,
+            });
+            if (filtered.length > 0) {
+              allQuestionsPrevRef.current = filtered;
+              return filtered;
+            }
+          }
         }
       } else {
         clientLogger.log('⚠️ allQuestionsRaw is empty and questionnaire is null');
@@ -4235,7 +4326,7 @@ export default function QuizPage() {
       }
       return fallback;
     }
-  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire]);
+  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire, extractQuestionsFromQuestionnaire]);
   
   // Логируем результат фильтрации после вычисления
   useEffect(() => {
