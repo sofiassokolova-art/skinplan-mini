@@ -4604,6 +4604,7 @@ export default function QuizPage() {
 
   // ФИКС: Принудительная проверка после завершения всех начальных экранов
   // Это предотвращает застревание на info screens
+  // ВАЖНО: Не выполняем, если hasResumed = true, чтобы не сбрасывать состояние после resumeQuiz
   useEffect(() => {
     if (currentInfoScreenIndex >= initialInfoScreens.length && !isRetakingQuiz && !showResumeScreen && !hasResumed) {
       // Если мы прошли все начальные экраны, но pendingInfoScreen все еще установлен - очищаем его
