@@ -4577,11 +4577,17 @@ export default function QuizPage() {
   const currentQuestion = useMemo(() => {
     // ВАЖНО: При перепрохождении (retake) мы пропускаем info screens,
     // поэтому pendingInfoScreen не должен блокировать отображение вопросов.
-    // КРИТИЧНО: Блокируем вопросы ТОЛЬКО если действительно показывается начальный инфо-экран
-    // Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
+    
+    // КРИТИЧНО: Блокируем вопросы ТОЛЬКО если:
+    // 1. Показывается начальный инфо-экран (currentInfoScreenIndex < initialInfoScreens.length И есть currentInitialInfoScreen)
+    // 2. ИЛИ показывается инфо-экран между вопросами (pendingInfoScreen)
+    // НО НЕ блокируем, если currentInfoScreenIndex >= initialInfoScreens.length (все начальные экраны пройдены)
+    
     const isOnInitialInfoScreen = currentInfoScreenIndex < initialInfoScreens.length && 
                                    isShowingInitialInfoScreen && 
-                                   currentInitialInfoScreen;
+                                   !!currentInitialInfoScreen;
+    
+    // Блокируем вопросы только если показывается начальный экран ИЛИ инфо-экран между вопросами
     const shouldBlockByInfoScreen = isOnInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz);
     
     if (shouldBlockByInfoScreen) {
@@ -4602,17 +4608,11 @@ export default function QuizPage() {
       return null;
     }
     
-    // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
-    // это означает, что все начальные экраны пройдены - не блокируем вопросы
-    if (isShowingInitialInfoScreen && !currentInitialInfoScreen) {
-      clientLogger.log('ℹ️ currentQuestion: isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - все начальные экраны пройдены, показываем вопросы', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        isShowingInitialInfoScreen,
-        hasResumed,
-        loading,
-      });
-      // Не блокируем вопросы, продолжаем выполнение
+    // КРИТИЧНО: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
+    // В этом случае вопросы ДОЛЖНЫ показываться (если нет pendingInfoScreen)
+    if (currentInfoScreenIndex >= initialInfoScreens.length && !pendingInfoScreen) {
+      // Все начальные экраны пройдены, показываем вопросы
+      // Продолжаем выполнение ниже
     }
     
     // ИСПРАВЛЕНО: Если allQuestions пустой, логируем и возвращаем null (используем log вместо warn для диагностики)
