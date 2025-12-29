@@ -6787,9 +6787,17 @@ export default function QuizPage() {
   if (!currentQuestion) {
     // ИСПРАВЛЕНО: Если allQuestions пустой, показываем лоадер или сообщение
     // Проверяем независимо от состояния loading, чтобы предотвратить ошибки рендеринга
-    if (allQuestions.length === 0) {
+    // ИСПРАВЛЕНО: Не показываем ошибку если идет загрузка или если allQuestionsRaw еще не пересчитан
+    if (allQuestions.length === 0 && !loading && questionnaireRef.current) {
       // Это может произойти во время фильтрации или если все вопросы были отфильтрованы
       // Показываем лоадер, так как это временное состояние
+      // ИСПРАВЛЕНО: Проверяем, есть ли вопросы в questionnaire перед показом ошибки
+      const hasQuestionsInQuestionnaire = (questionnaire?.groups?.some((g: any) => g?.questions?.length > 0) || 
+                                           questionnaire?.questions?.length > 0);
+      if (allQuestionsRaw.length === 0 && hasQuestionsInQuestionnaire) {
+        // allQuestionsRaw еще не пересчитан, но вопросы есть - это временное состояние
+        return null;
+      }
       if (allQuestionsRaw.length === 0) {
         // Если даже allQuestionsRaw пустой, значит анкета не содержит вопросов
         return (
@@ -7271,7 +7279,18 @@ export default function QuizPage() {
     }
     
     // Случай 3: Анкета загрузилась, но allQuestionsRaw пустой (анкета без вопросов)
-    if (questionnaire && allQuestionsRaw.length === 0) {
+    // ИСПРАВЛЕНО: Не показываем экран "нет вопросов" если идет загрузка или если allQuestionsRaw еще не пересчитан
+    // Проверяем questionnaireRef.current, чтобы убедиться, что анкета действительно загружена
+    if (questionnaire && allQuestionsRaw.length === 0 && !loading && questionnaireRef.current) {
+      // Дополнительная проверка: если в questionnaire есть вопросы, но allQuestionsRaw пустой - это временное состояние
+      const hasQuestionsInQuestionnaire = (questionnaire.groups?.some((g: any) => g?.questions?.length > 0) || 
+                                           questionnaire.questions?.length > 0);
+      if (hasQuestionsInQuestionnaire) {
+        // Есть вопросы в анкете, но allQuestionsRaw еще не пересчитан - не показываем ошибку
+        // Это временное состояние, useMemo пересчитается в следующем рендере
+        return null;
+      }
+      
       clientLogger.error('❌ Questionnaire loaded but has no questions - showing error to user', {
         questionnaireId: questionnaire.id,
         hasGroups: !!questionnaire.groups,
