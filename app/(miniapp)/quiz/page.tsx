@@ -4464,34 +4464,56 @@ export default function QuizPage() {
   // Также пропускаем, если пользователь уже начал отвечать (currentQuestionIndex > 0 или есть ответы)
   // ВАЖНО: Если есть savedProgress, значит пользователь должен продолжить, и мы не должны показывать начальные экраны
   const isShowingInitialInfoScreen = useMemo(() => {
+    // Логирование для диагностики (всегда, чтобы понять, почему возвращается true/false)
+    if (isDev) {
+      clientLogger.log('🔍 isShowingInitialInfoScreen: вычисление', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        showResumeScreen,
+        showRetakeScreen,
+        hasSavedProgress: !!savedProgress,
+        hasResumed,
+        isRetakingQuiz,
+        currentQuestionIndex,
+        answersCount: Object.keys(answers).length,
+      });
+    }
+    
     // Если показывается экран выбора тем при перепрохождении - не показываем начальные экраны
     if (showRetakeScreen && isRetakingQuiz) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showRetakeScreen && isRetakingQuiz)');
       return false;
     }
     // Если показывается экран продолжения - не показываем начальные экраны
     if (showResumeScreen) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (showResumeScreen)');
       return false;
     }
     // Если есть сохраненный прогресс (даже если еще не нажали "Продолжить") - не показываем начальные экраны
     // Это предотвращает показ начальных экранов на промежуточных рендерах после resumeQuiz
     if (savedProgress && savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (savedProgress with answers)');
       return false;
     }
     // Если пользователь восстановил прогресс - не показываем начальные экраны
     if (hasResumed) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (hasResumed)');
       return false;
     }
     // ВАЖНО: Если повторное прохождение БЕЗ экрана выбора тем - не показываем начальные экраны
     // Это означает, что пользователь уже выбрал "Пройти всю анкету заново" и оплатил
     if (isRetakingQuiz && !showRetakeScreen) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (isRetakingQuiz && !showRetakeScreen)');
       return false;
     }
     // Если currentInfoScreenIndex уже прошел все начальные экраны - не показываем их
     if (currentInfoScreenIndex >= initialInfoScreens.length) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (index >= length)');
       return false;
     }
     // Если пользователь уже начал отвечать - не показываем начальные экраны
     if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) {
+      if (isDev) clientLogger.log('🔍 isShowingInitialInfoScreen: false (user started answering)');
       return false;
     }
     // Иначе показываем, если currentInfoScreenIndex < initialInfoScreens.length
@@ -4499,8 +4521,8 @@ export default function QuizPage() {
     const shouldShow = currentInfoScreenIndex < initialInfoScreens.length;
     
     // Логирование для диагностики
-    if (isDev && shouldShow) {
-      clientLogger.log('📺 isShowingInitialInfoScreen: true', {
+    if (isDev) {
+      clientLogger.log(`📺 isShowingInitialInfoScreen: ${shouldShow}`, {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
         showResumeScreen,
