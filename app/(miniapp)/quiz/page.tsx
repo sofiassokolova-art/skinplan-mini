@@ -680,7 +680,23 @@ export default function QuizPage() {
         }
         
         if (loadQuestionnaireRef.current && !questionnaireRef.current) {
-          await loadQuestionnaireRef.current();
+          clientLogger.log('🟢 init() CALLING loadQuestionnaire()', {
+            timestamp: new Date().toISOString(),
+            hasLoadQuestionnaireRef: !!loadQuestionnaireRef.current,
+            hasQuestionnaireRef: !!questionnaireRef.current,
+            loading,
+          });
+          
+          const loadResult = await loadQuestionnaireRef.current();
+          
+          clientLogger.log('🟢 init() loadQuestionnaire() RETURNED', {
+            timestamp: new Date().toISOString(),
+            loadResult: loadResult ? 'questionnaire object' : 'null',
+            questionnaireId: loadResult?.id || null,
+            hasQuestionnaireRef: !!questionnaireRef.current,
+            questionnaireRefId: questionnaireRef.current?.id || null,
+            loading,
+          });
           
           // КРИТИЧНО: Ждем, пока questionnaire будет установлен в state
           // Это предотвращает завершение init() до того, как questionnaire появится в state
@@ -691,15 +707,29 @@ export default function QuizPage() {
             clientLogger.log('⏳ Waiting for questionnaire to be set in ref after loadQuestionnaire...', {
               attempt: waitAttempts + 1,
               maxAttempts: maxWaitAttempts,
+              loadResult: loadResult ? 'has result' : 'null',
             });
             await new Promise(resolve => setTimeout(resolve, 100));
             waitAttempts++;
           }
           
           if (!questionnaireRef.current) {
-            clientLogger.error('❌ questionnaireRef.current not set after loadQuestionnaire, even after waiting');
+            clientLogger.error('❌ questionnaireRef.current not set after loadQuestionnaire, even after waiting', {
+              timestamp: new Date().toISOString(),
+              loadResult: loadResult ? 'had result' : 'was null',
+              waitAttempts,
+              maxWaitAttempts,
+            });
+            // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
+            setLoading(false);
+            setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
             throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
           }
+          
+          clientLogger.log('✅ init() questionnaireRef.current is set after loadQuestionnaire', {
+            timestamp: new Date().toISOString(),
+            questionnaireId: questionnaireRef.current.id,
+          });
           
           // КРИТИЧНО: Сохраняем значение в переменную после проверки, чтобы TypeScript правильно вывел тип
           // ИСПРАВЛЕНО: Используем type assertion, так как мы уже проверили, что questionnaireRef.current не null
@@ -732,6 +762,9 @@ export default function QuizPage() {
           });
         } else if (!loadQuestionnaireRef.current) {
           clientLogger.error('❌ loadQuestionnaireRef.current not set after waiting, cannot load questionnaire');
+          // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
+          setLoading(false);
+          setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
           throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
         }
       }
@@ -779,10 +812,26 @@ export default function QuizPage() {
         }
       }
 
-      clientLogger.log('✅ init done', { totalElapsed: Date.now() - initStartTime });
+      clientLogger.log('✅ init() DONE - all steps completed', { 
+        timestamp: new Date().toISOString(),
+        totalElapsed: Date.now() - initStartTime,
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+        loading,
+        error: error || null,
+      });
     } catch (e: any) {
-      clientLogger.error('❌ init failed', { e });
+      clientLogger.error('❌ init() FAILED - exception caught', { 
+        timestamp: new Date().toISOString(),
+        error: e?.message,
+        stack: e?.stack?.substring(0, 500),
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+        loading,
+      });
       setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
+      // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы не зависнуть на лоадере
+      setLoading(false);
     } finally {
       const totalElapsed = Date.now() - initStartTime;
       initCompletedRef.current = true;
@@ -795,11 +844,15 @@ export default function QuizPage() {
           timestamp: initCompletedTimeRef.current,
         });
       }
+      const loadingBeforeFinally = loading;
       setLoading(false);
-      clientLogger.log('🏁 init finally - setting initCompletedRef=true and loading=false', { 
+      clientLogger.log('🏁 init() FINALLY - setting initCompletedRef=true and loading=false', { 
+        timestamp: new Date().toISOString(),
         totalElapsed,
         hasQuestionnaire: !!questionnaireRef.current,
         questionnaireId: questionnaireRef.current?.id,
+        loadingBeforeFinally,
+        loadingAfterSet: false,
       });
     }
   }, [waitForTelegram, isDev]); // ИСПРАВЛЕНО: initialize убран из зависимостей, так как это стабильная функция, которая не меняет логику
@@ -1148,6 +1201,19 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Обернуто в useCallback для предотвращения пересоздания функции
   // Это критично, чтобы предотвратить множественные вызовы из разных мест
   const loadQuestionnaire = useCallback(async () => {
+    // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ: Логируем начало функции
+    clientLogger.log('🔵 loadQuestionnaire() CALLED', {
+      timestamp: new Date().toISOString(),
+      loadQuestionnaireInProgress: loadQuestionnaireInProgressRef.current,
+      loadQuestionnaireAttempted: loadQuestionnaireAttemptedRef.current,
+      hasRef: !!questionnaireRef.current,
+      hasState: !!questionnaire,
+      questionnaireId: questionnaireRef.current?.id || questionnaire?.id || null,
+      loading,
+      error: error || null,
+      stackTrace: new Error().stack?.substring(0, 500),
+    });
+    
     // ИСПРАВЛЕНО: Guard против множественных вызовов loadQuestionnaire
     // КРИТИЧНО: Проверяем и устанавливаем флаги атомарно, чтобы предотвратить race conditions
     // Используем двойную проверку для надежности
@@ -1185,9 +1251,16 @@ export default function QuizPage() {
       });
     
     try {
-      // ИСПРАВЛЕНО: НЕ устанавливаем loading=true здесь, так как init() уже управляет loading
-      // Это предотвращает мигание лоадера из-за множественных изменений состояния
-      setError(null);
+        // ИСПРАВЛЕНО: НЕ устанавливаем loading=true здесь, так как init() уже управляет loading
+        // Это предотвращает мигание лоадера из-за множественных изменений состояния
+        setError(null);
+        
+        // КРИТИЧНО: Если loading уже false (например, из-за предыдущей ошибки), не устанавливаем его обратно в true
+        // Это предотвращает показ лоадера, если анкета уже загружена или была ошибка
+        if (!questionnaireRef.current && !loading) {
+          // Только если анкета не загружена и loading еще не установлен, устанавливаем его
+          // Но init() уже установил loading=true, так что это не должно сработать
+        }
       
       // ИСПРАВЛЕНО: Проверяем Telegram initData перед загрузкой анкеты
       // ИСПРАВЛЕНО: Делаем проверку более мягкой - не блокируем загрузку, а только логируем предупреждение
@@ -1620,17 +1693,37 @@ export default function QuizPage() {
       };
       
       // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД установкой state, чтобы guards работали корректно
+      clientLogger.log('🟢 SETTING questionnaireRef.current', {
+        timestamp: new Date().toISOString(),
+        questionnaireId: questionnaireToSet.id,
+        questionnaireName: questionnaireToSet.name,
+        totalQuestions: totalQuestionsBeforeSet,
+        groupsCount: questionnaireToSet.groups?.length || 0,
+        questionsCount: questionnaireToSet.questions?.length || 0,
+        previousRefId: questionnaireRef.current?.id || null,
+      });
       questionnaireRef.current = questionnaireToSet;
+      clientLogger.log('✅ questionnaireRef.current SET', {
+        timestamp: new Date().toISOString(),
+        questionnaireId: questionnaireRef.current?.id,
+        verified: questionnaireRef.current === questionnaireToSet,
+      });
       
       // КРИТИЧНО: Устанавливаем state
       // ИСПРАВЛЕНО: Используем функциональную форму setQuestionnaire для гарантированного обновления
       // ИСПРАВЛЕНО: Убрали проверку на одинаковый ID - всегда обновляем, чтобы гарантировать установку в state
       // Это предотвращает зависание лоадера, если анкета не установлена в state из-за проверки на ID
+      clientLogger.log('🟢 CALLING setQuestionnaire (functional form)', {
+        timestamp: new Date().toISOString(),
+        questionnaireId: questionnaireToSet.id,
+        totalQuestions: totalQuestionsBeforeSet,
+      });
       setQuestionnaire((prevQuestionnaire) => {
         // ИСПРАВЛЕНО: Всегда обновляем, даже если ID совпадает
         // Это гарантирует, что questionnaire будет установлен в state после загрузки
         // Проверка на одинаковый ID может блокировать обновление, если анкета уже была установлена ранее
-        clientLogger.log('✅ setQuestionnaire called (functional form)', {
+        clientLogger.log('✅ setQuestionnaire callback EXECUTED', {
+          timestamp: new Date().toISOString(),
           questionnaireId: questionnaireToSet.id,
           totalQuestions: totalQuestionsBeforeSet,
           prevQuestionnaireId: prevQuestionnaire?.id,
@@ -1638,9 +1731,14 @@ export default function QuizPage() {
           prevQuestionnaireIsUndefined: prevQuestionnaire === undefined,
           isNewObject: questionnaireToSet !== questionnaireData,
           sameId: prevQuestionnaire?.id === questionnaireToSet.id,
+          willReturn: true,
         });
         
         return questionnaireToSet;
+      });
+      clientLogger.log('✅ setQuestionnaire CALLED (state update queued)', {
+        timestamp: new Date().toISOString(),
+        questionnaireId: questionnaireToSet.id,
       });
       
       // КРИТИЧНО: Принудительно сбрасываем loading сразу после установки state
@@ -1719,22 +1817,38 @@ export default function QuizPage() {
       // КРИТИЧНО: Устанавливаем loading=false СРАЗУ после установки state
       // НЕ используем setTimeout - это задерживает отображение анкеты
       // State обновится в следующем рендере, но loading должен быть false СРАЗУ
+      const loadingBeforeSet = loading;
       setLoading(false);
       clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false IMMEDIATELY', {
+        timestamp: new Date().toISOString(),
         questionnaireId: questionnaireData.id,
+        questionnaireName: questionnaireData.name,
+        questionnaireVersion: questionnaireData.version,
         hasQuestionnaireState: !!questionnaire,
         hasQuestionnaireRef: !!questionnaireRef.current,
+        loadingBeforeSet,
+        loadingAfterSet: false,
+        totalQuestions: totalQuestionsBeforeSet,
+        groupsCount: questionnaireData.groups?.length || 0,
+        questionsCount: questionnaireData.questions?.length || 0,
+        stateUpdated: true,
+        refUpdated: true,
       });
       
       // ИСПРАВЛЕНО: Логируем успешное завершение загрузки
-      clientLogger.log('✅ loadQuestionnaire completed successfully', {
+      clientLogger.log('✅ loadQuestionnaire completed successfully - RETURNING questionnaire', {
+        timestamp: new Date().toISOString(),
         questionnaireId: questionnaireData.id,
+        questionnaireName: questionnaireData.name,
         totalQuestions: totalQuestionsBeforeSet,
         hasQuestionnaireState: !!questionnaireToSet,
         hasRef: !!questionnaireRef.current,
         refId: questionnaireRef.current?.id,
+        stateId: questionnaireToSet?.id,
         initCompleted: initCompletedRef.current,
         initInProgress: initInProgressRef.current,
+        loading: false, // Должно быть false после setLoading(false)
+        willReturn: true,
       });
       
       // ИСПРАВЛЕНО: Гарантируем, что ref установлен перед возвратом
@@ -1755,15 +1869,19 @@ export default function QuizPage() {
     } catch (err: any) {
       // ИСПРАВЛЕНО: Улучшено логирование ошибок для диагностики
       const errorDetails = {
+        timestamp: new Date().toISOString(),
         message: err?.message,
         stack: err?.stack?.substring(0, 500),
         name: err?.name,
         status: err?.status,
         response: err?.response,
+        loadingBeforeError: loading,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        hasQuestionnaireState: !!questionnaire,
       };
       
       addDebugLog('❌ Error loading questionnaire', errorDetails);
-      clientLogger.error('❌ Error loading questionnaire', errorDetails);
+      clientLogger.error('❌ loadQuestionnaire() ERROR CAUGHT', errorDetails);
       console.error('Ошибка загрузки анкеты:', err);
       
       // ИСПРАВЛЕНО: Специальная обработка для пустой анкеты (500 от бэкенда)
@@ -1780,7 +1898,8 @@ export default function QuizPage() {
           fullError: err,
         });
         setError('Анкета временно недоступна. Пожалуйста, попробуйте позже или обратитесь в поддержку.');
-        // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
+        // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы не зависать на лоадере
+        setLoading(false);
         questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке пустой анкеты
         loadQuestionnaireAttemptedRef.current = false; // ИСПРАВЛЕНО: Сбрасываем attemptedRef, чтобы можно было повторить
         return null;
@@ -1812,7 +1931,10 @@ export default function QuizPage() {
           hasQuestionnaire: !!questionnaire,
         });
         // Не устанавливаем ошибку при перепрохождении или если анкета уже есть - пользователь может продолжить
-        // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
+        // КРИТИЧНО: Если анкета уже есть, сбрасываем loading, чтобы она отобразилась
+        if (questionnaire) {
+          setLoading(false);
+        }
         return null;
       }
       
@@ -1842,6 +1964,8 @@ export default function QuizPage() {
         // Пользователь может попробовать обновить страницу
         clientLogger.warn('⚠️ Temporary error loading questionnaire, user can retry', { error: errorMessage });
         setError('Не удалось загрузить анкету. Проверьте подключение к интернету и обновите страницу.');
+        // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы показать сообщение об ошибке
+        setLoading(false);
         // КРИТИЧНО: Сбрасываем attemptedRef при временных ошибках, чтобы можно было повторить
         loadQuestionnaireAttemptedRef.current = false;
         questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
@@ -1850,23 +1974,33 @@ export default function QuizPage() {
         const errorData = err?.response?.data || err?.response || {};
         const serverMessage = errorData.message || errorData.error || 'Анкета временно недоступна';
         setError(serverMessage);
+        // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы показать сообщение об ошибке
+        setLoading(false);
         loadQuestionnaireAttemptedRef.current = false;
         questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
       } else {
         setError(errorMessage);
+        // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы показать сообщение об ошибке
+        setLoading(false);
         // Для других ошибок тоже сбрасываем, чтобы можно было повторить
         loadQuestionnaireAttemptedRef.current = false;
         questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
       }
       
-      // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
       return null;
     } finally {
       // ИСПРАВЛЕНО: Сбрасываем флаг загрузки анкеты
       loadQuestionnaireInProgressRef.current = false;
-      // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, так как init() управляет loading
-      // Это предотвращает мигание лоадера из-за множественных изменений состояния
-      // init() установит loading=false в своем finally блоке
+      // КРИТИЧНО: loading=false уже установлен в catch блоке при ошибках или в успешном случае
+      // init() также установит loading=false в своем finally блоке для гарантии
+      clientLogger.log('🔵 loadQuestionnaire() FINALLY - function completed', {
+        timestamp: new Date().toISOString(),
+        loadQuestionnaireInProgress: false,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id || null,
+        loading,
+        error: error || null,
+      });
     }
   }, [isDev, isRetakingQuiz, showRetakeScreen]); // ИСПРАВЛЕНО: Добавлены зависимости для useCallback
   
@@ -3923,7 +4057,8 @@ export default function QuizPage() {
     const stateId = questionnaire?.id;
     const refId = questionnaireRef.current?.id;
     
-    clientLogger.log('🔄 questionnaire state/ref changed', {
+    clientLogger.log('🔄 useEffect: questionnaire state/ref changed', {
+      timestamp: new Date().toISOString(),
       hasQuestionnaireState,
       hasQuestionnaireRef,
       stateId,
@@ -3933,6 +4068,9 @@ export default function QuizPage() {
       refGroupsCount: questionnaireRef.current?.groups?.length || 0,
       refQuestionsCount: questionnaireRef.current?.questions?.length || 0,
       loading,
+      error: error || null,
+      initCompleted: initCompletedRef.current,
+      initInProgress: initInProgressRef.current,
     });
     
     // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, 
@@ -4735,11 +4873,32 @@ export default function QuizPage() {
     savedAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
   });
   
+  // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ: Логируем состояние перед проверкой лоадера
+  clientLogger.log('🔍 RENDER - checking questionnaire state', {
+    timestamp: new Date().toISOString(),
+    hasQuestionnaireState: !!questionnaire,
+    questionnaireStateId: questionnaire?.id || null,
+    hasQuestionnaireRef: !!questionnaireRef.current,
+    questionnaireRefId: questionnaireRef.current?.id || null,
+    loading,
+    error: error || null,
+    initCompleted: initCompletedRef.current,
+    initInProgress: initInProgressRef.current,
+  });
+  
   // ИСПРАВЛЕНО: Показываем лоадер только если анкета действительно не загружена
   // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, чтобы не блокировать отображение
   // если анкета загружена в ref, но state еще не обновился
   // КРИТИЧНО: НЕ показываем лоадер, если анкета загружена в ref или state - это блокирует рендеринг анкеты
   const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
+  
+  clientLogger.log('🔍 RENDER - hasQuestionnaireAnywhere check', {
+    timestamp: new Date().toISOString(),
+    hasQuestionnaireAnywhere,
+    hasQuestionnaireState: !!questionnaire,
+    hasQuestionnaireRef: !!questionnaireRef.current,
+    loading,
+  });
   
   // КРИТИЧНО: Если анкета загружена, но loading все еще true - принудительно сбрасываем loading СРАЗУ
   // Это должно обрабатываться в useEffect, но на всякий случай делаем это и здесь
@@ -4772,16 +4931,30 @@ export default function QuizPage() {
   // useEffect выше уже обрабатывает принудительный сброс loading, если анкета загружена
   // КРИТИЧНО: Проверяем hasQuestionnaireAnywhere еще раз, так как мы могли обновить state выше
   const hasQuestionnaireAnywhereAfterUpdate = !!questionnaire || !!questionnaireRef.current;
+  
+  clientLogger.log('🔍 RENDER - final check before showing loader', {
+    timestamp: new Date().toISOString(),
+    loading,
+    hasQuestionnaireAnywhereAfterUpdate,
+    hasQuestionnaireState: !!questionnaire,
+    hasQuestionnaireRef: !!questionnaireRef.current,
+    initInProgress: initInProgressRef.current,
+    initCompleted: initCompletedRef.current,
+    willShowLoader: loading && !hasQuestionnaireAnywhereAfterUpdate,
+  });
+  
   if (loading && !hasQuestionnaireAnywhereAfterUpdate) {
       // init() еще не завершен и анкета не загружена - показываем лоадер
       // ИСПРАВЛЕНО: TypeScript - в этом блоке questionnaire и questionnaireRef.current гарантированно null
       // поэтому не логируем questionnaireId
-      clientLogger.log('⏳ Showing main loader: loading=true, no questionnaire', {
+      clientLogger.log('⏳ RENDER - Showing main loader: loading=true, no questionnaire', {
+        timestamp: new Date().toISOString(),
         loading,
         hasQuestionnaire: false, // questionnaire здесь всегда null в этом блоке
         hasQuestionnaireRef: false, // questionnaireRef.current здесь всегда null в этом блоке
         initInProgress: initInProgressRef.current,
         initCompleted: initCompletedRef.current,
+        willReturnLoader: true,
       });
       return (
         <div style={{ 
@@ -7559,6 +7732,7 @@ export default function QuizPage() {
   
   // КРИТИЧНО: Логируем состояние перед рендерингом анкеты
   clientLogger.log('🔍 Final render check - what will be displayed?', {
+    timestamp: new Date().toISOString(),
     hasQuestionnaire: !!questionnaire,
     hasQuestionnaireRef: !!questionnaireRef.current,
     hasQuestionnaireToRender: !!questionnaireToRender,
@@ -7574,6 +7748,11 @@ export default function QuizPage() {
     showRetakeScreen,
     isShowingInitialInfoScreen,
     pendingInfoScreen: !!pendingInfoScreen,
+    initCompleted: initCompletedRef.current,
+    initInProgress: initInProgressRef.current,
+    willShowLoader: loading && !questionnaireToRender,
+    willShowError: !!error && !loading,
+    willShowQuestionnaire: !!questionnaireToRender && !loading && !error,
     isRetakingQuiz,
     hasResumed,
     initCompleted: initCompletedRef.current,
