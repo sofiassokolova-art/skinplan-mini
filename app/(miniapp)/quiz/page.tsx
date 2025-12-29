@@ -4865,7 +4865,9 @@ export default function QuizPage() {
     // поэтому pendingInfoScreen не должен блокировать отображение вопросов при retake
     // ВАЖНО: Если показывается экран продолжения (showResumeScreen), не блокируем вопросы
     // ВАЖНО: Блокируем только если действительно есть начальный экран для показа
-    const shouldBlock = (isShowingInitialInfoScreen && currentInitialInfoScreen) || (pendingInfoScreen && !isRetakingQuiz);
+    // ФИКС: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
+    // и мы не должны блокировать показ вопросов, даже если isShowingInitialInfoScreen = true
+    const shouldBlock = (isShowingInitialInfoScreen && currentInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) || (pendingInfoScreen && !isRetakingQuiz);
     if (shouldBlock && !showResumeScreen) {
       // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
       clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
