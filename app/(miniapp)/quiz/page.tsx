@@ -54,6 +54,8 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(0);
+  // ФИКС: Ref для синхронной проверки currentInfoScreenIndex в асинхронных функциях
+  const currentInfoScreenIndexRef = useRef(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [showResumeScreen, setShowResumeScreen] = useState(false);
@@ -1141,9 +1143,11 @@ export default function QuizPage() {
         
         // ФИКС: Не загружаем прогресс, если пользователь уже перешел к вопросам (currentInfoScreenIndex >= initialInfoScreens.length)
         // Это предотвращает сброс currentInfoScreenIndex на 0 после перехода к вопросам
-        if (currentInfoScreenIndex >= initialInfoScreens.length) {
+        // ИСПРАВЛЕНО: Используем ref для синхронной проверки, так как state обновляется асинхронно
+        if (currentInfoScreenIndexRef.current >= initialInfoScreens.length || currentInfoScreenIndex >= initialInfoScreens.length) {
           clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах', {
             currentInfoScreenIndex,
+            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
             initialInfoScreensLength: initialInfoScreens.length,
             progressInfoScreenIndex: response.progress.infoScreenIndex,
           });
