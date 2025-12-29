@@ -92,6 +92,7 @@ export default function QuizPage() {
   
   // КРИТИЧНО: Сбрасываем loading когда анкета загружена (в ref или state)
   // Это должно быть в useEffect, а не в рендере, чтобы избежать бесконечных ре-рендеров
+  // ИСПРАВЛЕНО: Проверяем и questionnaire (state), и questionnaireRef.current
   useEffect(() => {
     const hasQuestionnaire = !!questionnaire || !!questionnaireRef.current;
     if (hasQuestionnaire && loading) {
@@ -101,6 +102,8 @@ export default function QuizPage() {
           refId: questionnaireRef.current.id,
         });
         setQuestionnaire(questionnaireRef.current);
+        // После установки state, loading будет сброшен в следующем эффекте
+        return;
       }
       // Сбрасываем loading
       clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
@@ -110,7 +113,7 @@ export default function QuizPage() {
       });
       setLoading(false);
     }
-  }, [questionnaire]); // НЕ включаем loading в зависимости, чтобы избежать бесконечного цикла
+  }, [questionnaire, loading]); // Включаем loading, но проверяем его значение внутри, чтобы избежать бесконечного цикла
   
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
