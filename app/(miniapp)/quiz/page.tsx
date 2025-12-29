@@ -4132,16 +4132,21 @@ export default function QuizPage() {
     try {
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) {
       // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой (используем log вместо warn для диагностики)
-      if (questionnaire) {
+      const hasQuestionnaireState = !!questionnaire;
+      const hasQuestionnaireRef = !!questionnaireRef.current;
+      
+      if (hasQuestionnaireState || hasQuestionnaireRef) {
         clientLogger.log('⚠️ allQuestionsRaw is empty but questionnaire exists - using previous allQuestions', {
-          questionnaireId: questionnaire?.id,
-          hasGroups: !!questionnaire.groups,
-          groupsCount: questionnaire.groups?.length || 0,
-          hasQuestions: !!questionnaire.questions,
-          questionsCount: questionnaire.questions?.length || 0,
+          questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+          hasQuestionnaireState,
+          hasQuestionnaireRef,
+          hasGroups: !!(questionnaire?.groups || questionnaireRef.current?.groups),
+          groupsCount: (questionnaire?.groups?.length || questionnaireRef.current?.groups?.length || 0),
+          hasQuestions: !!(questionnaire?.questions || questionnaireRef.current?.questions),
+          questionsCount: (questionnaire?.questions?.length || questionnaireRef.current?.questions?.length || 0),
           previousAllQuestionsLength: allQuestionsPrevRef.current.length,
         });
-        // КРИТИЧНО: Если questionnaire существует, но allQuestionsRaw пустой,
+        // КРИТИЧНО: Если questionnaire существует (в state или ref), но allQuestionsRaw пустой,
         // это временное состояние (например, при пересчете useMemo).
         // Возвращаем предыдущее значение, чтобы не сбрасывать allQuestions
         if (allQuestionsPrevRef.current.length > 0) {
@@ -4212,7 +4217,10 @@ export default function QuizPage() {
     
     // ВАЖНО: Возвращаем результат фильтрации БЕЗ fallback - основная логика должна работать правильно
     // КРИТИЧНО: Сохраняем результат в ref для использования при временном пустом allQuestionsRaw
-    allQuestionsPrevRef.current = filtered;
+    // ВАЖНО: Сохраняем ТОЛЬКО если filtered не пустой, чтобы не перезаписывать валидные данные пустым массивом
+    if (filtered.length > 0) {
+      allQuestionsPrevRef.current = filtered;
+    }
     return filtered;
     } catch (err) {
       console.error('❌ Error computing allQuestions:', err, {
@@ -4221,7 +4229,10 @@ export default function QuizPage() {
       });
       // В случае ошибки возвращаем все вопросы из allQuestionsRaw (уже отсортированные)
       const fallback = allQuestionsRaw || [];
-      allQuestionsPrevRef.current = fallback;
+      // ВАЖНО: Сохраняем в ref ТОЛЬКО если fallback не пустой
+      if (fallback.length > 0) {
+        allQuestionsPrevRef.current = fallback;
+      }
       return fallback;
     }
   }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire]);
