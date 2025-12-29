@@ -6793,7 +6793,7 @@ export default function QuizPage() {
       // Показываем лоадер, так как это временное состояние
       // ИСПРАВЛЕНО: Проверяем, есть ли вопросы в questionnaire перед показом ошибки
       const hasQuestionsInQuestionnaire = (questionnaire?.groups?.some((g: any) => g?.questions?.length > 0) || 
-                                           questionnaire?.questions?.length > 0);
+                                           (questionnaire?.questions && questionnaire.questions.length > 0));
       if (allQuestionsRaw.length === 0 && hasQuestionsInQuestionnaire) {
         // allQuestionsRaw еще не пересчитан, но вопросы есть - это временное состояние
         return null;
