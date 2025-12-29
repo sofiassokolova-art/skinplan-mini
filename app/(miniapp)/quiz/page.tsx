@@ -876,16 +876,17 @@ export default function QuizPage() {
               setCurrentInfoScreenIndex(initialInfoScreens.length);
               setPendingInfoScreen(null);
               setCurrentQuestionIndex(0);
-            // ФИКС: Детальное логирование установки вопросов для диагностики
-            clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в init() для нового пользователя', {
-              currentInfoScreenIndex: initialInfoScreens.length,
-              initialInfoScreensLength: initialInfoScreens.length,
-              allQuestionsLength: allQuestions.length,
-              currentQuestionIndex: 0,
-              isNewUser: true,
-              hasNoSavedProgress: true,
-              location: 'init()',
-            });
+              // ФИКС: Детальное логирование установки вопросов для диагностики
+              clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в init() для нового пользователя', {
+                currentInfoScreenIndex: initialInfoScreens.length,
+                initialInfoScreensLength: initialInfoScreens.length,
+                allQuestionsLength: allQuestions.length,
+                currentQuestionIndex: 0,
+                isNewUser: true,
+                hasNoSavedProgress: true,
+                location: 'init()',
+              });
+            }
           }
         }
       }
