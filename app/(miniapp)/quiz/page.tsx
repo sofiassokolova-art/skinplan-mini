@@ -4580,6 +4580,33 @@ export default function QuizPage() {
         }
       }
     }
+    
+    // ФИКС: Для нового пользователя принудительно пропускаем инфо-скрины после загрузки анкеты
+    // Это гарантирует, что новый пользователь увидит вопросы
+    if (questionnaire && allQuestions.length > 0 && !loading && !hasResumed && !showResumeScreen && !isRetakingQuiz) {
+      const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
+      const isNewUser = hasNoSavedProgress && currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex === 0;
+      
+      if (isNewUser) {
+        // Небольшая задержка, чтобы дать время другим useEffect выполниться
+        const timeoutId = setTimeout(() => {
+          if (currentInfoScreenIndex < initialInfoScreens.length && currentQuestionIndex === 0 && allQuestions.length > 0) {
+            if (isDev) {
+              clientLogger.log('🔧 ФИКС: Новый пользователь - принудительно пропускаем инфо-скрины', {
+                currentInfoScreenIndex,
+                initialInfoScreensLength: initialInfoScreens.length,
+                allQuestionsLength: allQuestions.length,
+              });
+            }
+            setCurrentInfoScreenIndex(initialInfoScreens.length);
+            setPendingInfoScreen(null);
+            setCurrentQuestionIndex(0);
+          }
+        }, 100);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    }
   }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, answers, isDev, savedProgress, loading, questionnaire]);
 
   // Определяем, показываем ли мы начальный инфо-экран
