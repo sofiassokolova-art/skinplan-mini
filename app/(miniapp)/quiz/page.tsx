@@ -3927,7 +3927,27 @@ export default function QuizPage() {
       questionIndex: progressToRestore.questionIndex,
       infoScreenIndex: progressToRestore.infoScreenIndex,
       answersCount: Object.keys(progressToRestore.answers).length,
+      settingCurrentInfoScreenIndex: progressToRestore.infoScreenIndex === 0 ? initialInfoScreens.length : progressToRestore.infoScreenIndex,
     });
+    
+    // ФИКС: Защита от сброса currentInfoScreenIndex после resumeQuiz
+    // Устанавливаем ref, чтобы другие useEffect знали, что resumeQuiz уже выполнен
+    // и не должны сбрасывать currentInfoScreenIndex на 0
+    resumeCompletedRef.current = true;
+    
+    // ФИКС: Небольшая задержка для проверки, что состояние установлено правильно
+    setTimeout(() => {
+      if (resumeCompletedRef.current && currentInfoScreenIndex === 0 && progressToRestore.infoScreenIndex === 0) {
+        // Если после resumeQuiz currentInfoScreenIndex все еще 0, значит что-то сбросило его
+        // Восстанавливаем правильное значение
+        clientLogger.warn('🔧 ФИКС: currentInfoScreenIndex сброшен на 0 после resumeQuiz, восстанавливаем', {
+          currentInfoScreenIndex,
+          progressToRestoreInfoScreenIndex: progressToRestore.infoScreenIndex,
+          settingTo: initialInfoScreens.length,
+        });
+        setCurrentInfoScreenIndex(initialInfoScreens.length);
+      }
+    }, 200);
   };
 
   // Начать заново
