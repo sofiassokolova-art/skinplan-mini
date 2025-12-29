@@ -4594,11 +4594,12 @@ export default function QuizPage() {
                                    !!currentInitialInfoScreen; // КРИТИЧНО: проверяем, что экран действительно существует
     
     // Блокируем вопросы только если показывается начальный экран ИЛИ инфо-экран между вопросами
-    const shouldBlockByInfoScreen = isOnInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz);
+    // ИСПРАВЛЕНО: Добавлена проверка showResumeScreen - если показывается экран продолжения, не блокируем вопросы
+    const shouldBlockByInfoScreen = (isOnInitialInfoScreen || (pendingInfoScreen && !isRetakingQuiz)) && !showResumeScreen;
     
     // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
     // это означает несоответствие условий - не блокируем вопросы
-    if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !pendingInfoScreen) {
+    if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !pendingInfoScreen && !showResumeScreen) {
       clientLogger.warn('⚠️ currentQuestion: isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - пропускаем начальные экраны и показываем вопросы', {
         isShowingInitialInfoScreen,
         currentInfoScreenIndex,
@@ -4606,6 +4607,7 @@ export default function QuizPage() {
         hasCurrentScreen: !!initialInfoScreens[currentInfoScreenIndex],
         isRetakingQuiz,
         pendingInfoScreen: !!pendingInfoScreen,
+        showResumeScreen,
       });
       // НЕ блокируем вопросы, продолжаем выполнение
     }
@@ -4621,6 +4623,7 @@ export default function QuizPage() {
           isOnInitialInfoScreen,
           pendingInfoScreen: !!pendingInfoScreen,
           isRetakingQuiz,
+          showResumeScreen,
           currentQuestionIndex,
           answersCount: Object.keys(answers).length,
         });
@@ -4629,8 +4632,8 @@ export default function QuizPage() {
     }
     
     // КРИТИЧНО: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
-    // В этом случае вопросы ДОЛЖНЫ показываться (если нет pendingInfoScreen)
-    if (currentInfoScreenIndex >= initialInfoScreens.length && !pendingInfoScreen) {
+    // В этом случае вопросы ДОЛЖНЫ показываться (если нет pendingInfoScreen и showResumeScreen)
+    if (currentInfoScreenIndex >= initialInfoScreens.length && !pendingInfoScreen && !showResumeScreen) {
       // Все начальные экраны пройдены, показываем вопросы
       // Продолжаем выполнение ниже
     }
@@ -4651,45 +4654,78 @@ export default function QuizPage() {
         savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
         isRetakingQuiz,
         showRetakeScreen,
+        showResumeScreen,
       });
       return null;
     }
     
     // ИСПРАВЛЕНО: Если индекс выходит за пределы, корректируем его СРАЗУ
-    if (currentQuestionIndex < 0 || currentQuestionIndex >= allQuestions.length) {
-      clientLogger.warn('⚠️ currentQuestion: null (index out of bounds) - корректируем', {
+    // НО: если индекс >= allQuestions.length и есть ответы - это нормальное состояние (анкета завершена)
+    const answersCount = Object.keys(answers).length;
+    const isQuizCompleted = currentQuestionIndex >= allQuestions.length && answersCount > 0;
+    
+    if (currentQuestionIndex < 0) {
+      clientLogger.warn('⚠️ currentQuestion: null (index < 0) - корректируем на 0', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
-        allQuestionsRawLength: allQuestionsRaw.length,
         isShowingInitialInfoScreen,
         currentInfoScreenIndex,
         hasResumed,
         showResumeScreen,
-        answersCount: Object.keys(answers).length,
-        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
       });
       
-      // КРИТИЧНО: Если индекс невалидный, устанавливаем валидный индекс
-      // Используем setTimeout, чтобы избежать обновления state во время рендера
+      // КРИТИЧНО: Если индекс < 0, устанавливаем 0
       setTimeout(() => {
-        const correctedIndex = currentQuestionIndex < 0 
-          ? 0 
-          : Math.max(0, Math.min(currentQuestionIndex, allQuestions.length - 1));
-        if (correctedIndex !== currentQuestionIndex) {
-          clientLogger.log('🔄 Корректируем currentQuestionIndex', {
+        if (currentQuestionIndex < 0) {
+          clientLogger.log('🔄 Корректируем currentQuestionIndex на 0', {
             oldIndex: currentQuestionIndex,
-            newIndex: correctedIndex,
+            newIndex: 0,
             allQuestionsLength: allQuestions.length,
           });
-          setCurrentQuestionIndex(correctedIndex);
+          setCurrentQuestionIndex(0);
         }
       }, 0);
       
-      // Временно возвращаем первый вопрос, если индекс невалидный
-      // Это предотвратит показ "Вопрос не найден" во время корректировки
-      if (allQuestions.length > 0 && currentQuestionIndex >= allQuestions.length) {
+      // Временно возвращаем первый вопрос
+      if (allQuestions.length > 0) {
         return allQuestions[0];
       }
+      return null;
+    }
+    
+    // ИСПРАВЛЕНО: Если индекс >= allQuestions.length, но анкета не завершена - корректируем
+    // Если анкета завершена (есть ответы) - возвращаем null (автоотправка обработает это)
+    if (currentQuestionIndex >= allQuestions.length) {
+      if (!isQuizCompleted) {
+        clientLogger.warn('⚠️ currentQuestion: null (index >= length, но нет ответов) - корректируем', {
+          currentQuestionIndex,
+          allQuestionsLength: allQuestions.length,
+          answersCount,
+          isShowingInitialInfoScreen,
+          currentInfoScreenIndex,
+          hasResumed,
+          showResumeScreen,
+        });
+        
+        // Корректируем на последний валидный вопрос
+        setTimeout(() => {
+          const correctedIndex = Math.max(0, allQuestions.length - 1);
+          if (correctedIndex !== currentQuestionIndex) {
+            clientLogger.log('🔄 Корректируем currentQuestionIndex на последний валидный', {
+              oldIndex: currentQuestionIndex,
+              newIndex: correctedIndex,
+              allQuestionsLength: allQuestions.length,
+            });
+            setCurrentQuestionIndex(correctedIndex);
+          }
+        }, 0);
+        
+        // Временно возвращаем последний вопрос
+        if (allQuestions.length > 0) {
+          return allQuestions[allQuestions.length - 1];
+        }
+      }
+      // Если анкета завершена - возвращаем null (автоотправка обработает это)
       return null;
     }
     
@@ -4708,7 +4744,7 @@ export default function QuizPage() {
     }
     
     return null;
-  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions, allQuestionsRaw.length, questionnaire, loading, hasResumed, showResumeScreen, answers, savedProgress]);
+  }, [isShowingInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, currentQuestionIndex, allQuestions, allQuestionsRaw.length, questionnaire, loading, hasResumed, showResumeScreen, answers, savedProgress, currentInitialInfoScreen, initialInfoScreens.length, currentInfoScreenIndex]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
   useEffect(() => {
@@ -6768,16 +6804,16 @@ export default function QuizPage() {
   // ВАЖНО: showResumeScreen уже проверяется выше в коде (строка 3900), но добавляем дополнительную проверку здесь
   // для гарантии правильного порядка рендеринга
 
+  // ИСПРАВЛЕНО: Проверяем showResumeScreen ПЕРЕД info screens,
+  // чтобы предотвратить показ info screens, если должен показываться экран продолжения
+  // ВАЖНО: showResumeScreen уже обработан выше, поэтому здесь просто пропускаем info screens
+
   // Если показывается информационный экран между вопросами
   // При повторном прохождении пропускаем все info screens
-  if (pendingInfoScreen && !isRetakingQuiz) {
+  // ИСПРАВЛЕНО: Не блокируем, если показывается resume screen
+  if (pendingInfoScreen && !isRetakingQuiz && !showResumeScreen) {
     return renderInfoScreen(pendingInfoScreen);
   }
-
-  // ИСПРАВЛЕНО: Проверяем showResumeScreen перед isShowingInitialInfoScreen,
-  // чтобы предотвратить показ начальных экранов, если должен показываться экран продолжения
-  // ВАЖНО: НЕ возвращаем null здесь, так как экран прогресса уже отрендерен выше (строка 3903)
-  // Просто пропускаем показ начальных экранов, если showResumeScreen = true
 
   // Если мы на начальном информационном экране
   // При повторном прохождении пропускаем все info screens
@@ -6785,7 +6821,8 @@ export default function QuizPage() {
   // КРИТИЧНО: Показываем начальный экран ТОЛЬКО если currentInitialInfoScreen существует
   // Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
   // это означает несоответствие условий - пропускаем начальные экраны и переходим к вопросам
-  if (isShowingInitialInfoScreen && currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen) {
+  // ИСПРАВЛЕНО: Не блокируем, если показывается resume screen или pendingInfoScreen
+  if (isShowingInitialInfoScreen && currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !pendingInfoScreen) {
     return renderInfoScreen(currentInitialInfoScreen);
   }
   
@@ -6815,10 +6852,11 @@ export default function QuizPage() {
     }
   }, [isShowingInitialInfoScreen, currentInitialInfoScreen, currentInfoScreenIndex, initialInfoScreens.length, isRetakingQuiz, showResumeScreen, loading, hasResumed]);
 
-  // Если вопрос не найден, но пользователь восстановил прогресс - это может быть временное состояние
-  // Даем время на обновление состояния после resumeQuiz
-  // ИСПРАВЛЕНО: Не проверяем это условие, если показывается pendingInfoScreen
-  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen) {
+  // ИСПРАВЛЕНО: Не блокируем отображение вопросов, если они должны показываться
+  // Проверяем только критические ошибки, которые действительно требуют вмешательства
+  // Если currentQuestion null, но анкета загружена и есть вопросы - это временное состояние,
+  // которое исправится в следующем рендере (useEffect корректирует индекс)
+  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen && !isShowingInitialInfoScreen) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
       // ИСПРАВЛЕНО: Если индекс выходит за пределы и нет ответов - показываем сообщение "Начать заново"
@@ -6826,59 +6864,22 @@ export default function QuizPage() {
       if (currentQuestionIndex >= allQuestions.length) {
         const answersCount = Object.keys(answers || {}).length;
         if (answersCount === 0) {
-          return (
-            <div style={{ 
-              padding: '20px',
-              minHeight: '100vh',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)'
-            }}>
-              <div style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.56)',
-                backdropFilter: 'blur(28px)',
-                borderRadius: '24px',
-                padding: '24px',
-                maxWidth: '460px',
-                textAlign: 'center',
-              }}>
-                <h2 style={{ color: '#0A5F59', marginBottom: '12px', fontSize: '18px', fontWeight: 'bold' }}>
-                  Не удалось загрузить вопросы
-                </h2>
-                <p style={{ color: '#475467', fontSize: '14px', lineHeight: '1.6', marginBottom: '16px' }}>
-                  Похоже, прогресс анкеты сохранился некорректно. Нажмите «Начать заново», чтобы увидеть вопросы.
-                </p>
-                <button
-                  onClick={() => {
-                    startOver().catch((err) => {
-                      console.error('startOver failed:', err);
-                      window.location.reload();
-                    });
-                  }}
-                  style={{
-                    padding: '12px 20px',
-                    borderRadius: '12px',
-                    backgroundColor: '#0A5F59',
-                    color: 'white',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  Начать заново
-                </button>
-              </div>
-            </div>
-          );
+          // ИСПРАВЛЕНО: Даем время на корректировку индекса перед показом ошибки
+          // useEffect выше должен исправить индекс, поэтому не показываем ошибку сразу
+          clientLogger.warn('⚠️ currentQuestion null: индекс >= length, но нет ответов - ждем корректировки', {
+            currentQuestionIndex,
+            allQuestionsLength: allQuestions.length,
+            answersCount,
+          });
+          // НЕ возвращаем ошибку сразу - даем время на корректировку
+          // Продолжаем выполнение, чтобы показать основной рендер (который покажет "Вопрос не найден" если нужно)
         }
         // Если индекс вышел за пределы, но есть ответы - это нормальное состояние после завершения анкеты
         // Продолжаем выполнение, чтобы показать лоадер ниже
-      } else if (currentQuestionIndex < allQuestions.length) {
-        // Индекс в пределах массива, но вопрос не найден - это ошибка
-        console.error('❌ currentQuestion is null but should exist', {
+      } else if (currentQuestionIndex >= 0 && currentQuestionIndex < allQuestions.length) {
+        // Индекс в пределах массива, но вопрос не найден - это временное состояние
+        // useEffect должен исправить это, поэтому не показываем ошибку
+        clientLogger.warn('⚠️ currentQuestion null: индекс валидный, но вопрос не найден - ждем следующего рендера', {
           currentQuestionIndex,
           allQuestionsLength: allQuestions.length,
           hasResumed,
@@ -6887,17 +6888,7 @@ export default function QuizPage() {
           isShowingInitialInfoScreen,
           pendingInfoScreen: !!pendingInfoScreen,
         });
-        return (
-          <div style={{ padding: '20px' }}>
-            <h1>Ошибка загрузки вопроса</h1>
-            <p>Попробуйте обновить страницу</p>
-            <button onClick={() => {
-              if (typeof window !== 'undefined') {
-                window.location.reload();
-              }
-            }}>Обновить страницу</button>
-          </div>
-        );
+        // НЕ возвращаем ошибку - продолжаем выполнение
       }
     }
     
@@ -6914,9 +6905,12 @@ export default function QuizPage() {
     );
   }
   
-  // Если вопрос все еще не найден после всех проверок
-  // ВАЖНО: Проверяем, есть ли ошибка - если есть, показываем её, а не экран "Анкета завершена"
-  if (!currentQuestion) {
+  // ИСПРАВЛЕНО: Не блокируем отображение вопросов, если они должны показываться
+  // Проверяем только критические ошибки, которые действительно требуют вмешательства
+  // Если currentQuestion null, но анкета загружена и есть вопросы - это временное состояние,
+  // которое исправится в следующем рендере (useEffect корректирует индекс)
+  // ВАЖНО: Не проверяем это условие, если показываются info screens или resume screen
+  if (!currentQuestion && !isShowingInitialInfoScreen && !pendingInfoScreen && !showResumeScreen && !hasResumed) {
     // ИСПРАВЛЕНО: Если allQuestions пустой, показываем лоадер или сообщение
     // Проверяем независимо от состояния loading, чтобы предотвратить ошибки рендеринга
     // ИСПРАВЛЕНО: Не показываем ошибку если идет загрузка или если allQuestionsRaw еще не пересчитан
@@ -7286,7 +7280,8 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Заменяем бесконечный лоадер на явную обработку ошибок
   // Различаем два случая: анкета не загрузилась vs все вопросы отфильтрованы
   // ИСПРАВЛЕНО: Не показываем ошибку если идет загрузка или если allQuestionsRaw еще не пересчитан
-  if ((!currentQuestion || allQuestions.length === 0) && !loading && !showResumeScreen && !showRetakeScreen && questionnaireRef.current) {
+  // ИСПРАВЛЕНО: Не блокируем отображение, если показываются info screens или resume screen
+  if ((!currentQuestion || allQuestions.length === 0) && !loading && !showResumeScreen && !showRetakeScreen && !isShowingInitialInfoScreen && !pendingInfoScreen && !hasResumed && questionnaireRef.current) {
     // Случай 1: Анкета не загрузилась (questionnaire === null)
     if (!questionnaire) {
       clientLogger.error('❌ Questionnaire not loaded - showing error to user', {
