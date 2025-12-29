@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         if (cached) {
           try {
             kvProgress = typeof cached === 'string' ? JSON.parse(cached) : cached;
-            if (process.env.NODE_ENV === 'development') {
+            if (process.env.NODE_ENV === 'development' && activeQuestionnaire) {
               console.log('✅ Questionnaire progress loaded from KV cache for new user', {
                 userId,
                 questionnaireId: activeQuestionnaire.id,
