@@ -3868,12 +3868,56 @@ export default function QuizPage() {
   // КРИТИЧНО: Добавляем questionnaire в зависимости, чтобы useMemo пересчитывался при изменении state
   // ВОССТАНОВЛЕНО: Простая логика из рабочей версии (коммит 5fd9c54)
   // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
+  // Сохранены: логирование, защита от ошибок, обработка пустых массивов
   const allQuestionsRaw = useMemo(() => {
-    if (!questionnaire) return [];
-    return [
-      ...questionnaire.groups.flatMap((g) => g.questions || []),
-      ...(questionnaire.questions || []),
-    ];
+    try {
+      if (!questionnaire) {
+        if (isDev) {
+          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null');
+        }
+        return [];
+      }
+      
+      const groups = questionnaire.groups || [];
+      const questions = questionnaire.questions || [];
+      
+      // Логируем только в development, чтобы не создавать спам
+      if (isDev) {
+        clientLogger.log('📊 allQuestionsRaw: extracting questions', {
+          questionnaireId: questionnaire.id,
+          groupsCount: groups.length,
+          questionsCount: questions.length,
+        });
+      }
+      
+      const result = [
+        ...groups.flatMap((g) => g.questions || []),
+        ...questions,
+      ];
+      
+      if (result.length === 0) {
+        clientLogger.warn('⚠️ allQuestionsRaw: No questions extracted', {
+          questionnaireId: questionnaire.id,
+          groupsCount: groups.length,
+          questionsCount: questions.length,
+        });
+      } else if (isDev) {
+        clientLogger.log('✅ allQuestionsRaw: extracted successfully', {
+          total: result.length,
+          fromGroups: groups.flatMap((g) => g.questions || []).length,
+          fromQuestions: questions.length,
+        });
+      }
+      
+      return result;
+    } catch (err) {
+      clientLogger.error('❌ Error computing allQuestionsRaw:', {
+        err,
+        hasQuestionnaire: !!questionnaire,
+        questionnaireId: questionnaire?.id,
+      });
+      return [];
+    }
   }, [questionnaire]);
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
