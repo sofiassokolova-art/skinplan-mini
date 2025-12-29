@@ -90,6 +90,28 @@ export default function QuizPage() {
     }
   }, [questionnaire]);
   
+  // КРИТИЧНО: Сбрасываем loading когда анкета загружена (в ref или state)
+  // Это должно быть в useEffect, а не в рендере, чтобы избежать бесконечных ре-рендеров
+  useEffect(() => {
+    const hasQuestionnaire = !!questionnaire || !!questionnaireRef.current;
+    if (hasQuestionnaire && loading) {
+      // Если анкета в ref, но не в state - синхронизируем state
+      if (questionnaireRef.current && !questionnaire) {
+        clientLogger.warn('⚠️ Questionnaire in ref but not in state - syncing state', {
+          refId: questionnaireRef.current.id,
+        });
+        setQuestionnaire(questionnaireRef.current);
+      }
+      // Сбрасываем loading
+      clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
+        hasQuestionnaireState: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+      });
+      setLoading(false);
+    }
+  }, [questionnaire]); // НЕ включаем loading в зависимости, чтобы избежать бесконечного цикла
+  
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
   const [finalizingStep, setFinalizingStep] = useState<'answers' | 'plan' | 'done'>('answers');
@@ -4491,7 +4513,8 @@ export default function QuizPage() {
     
     // Логирование только если shouldShow = true (чтобы не засорять логи)
     if (shouldShow) {
-      clientLogger.log('📺 isShowingInitialInfoScreen: true', {
+      if (isDev) {
+        clientLogger.log('📺 isShowingInitialInfoScreen: true', {
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
         showResumeScreen,
@@ -4873,89 +4896,42 @@ export default function QuizPage() {
     savedAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
   });
   
-  // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ: Логируем состояние перед проверкой лоадера
-  clientLogger.log('🔍 RENDER - checking questionnaire state', {
-    timestamp: new Date().toISOString(),
-    hasQuestionnaireState: !!questionnaire,
-    questionnaireStateId: questionnaire?.id || null,
-    hasQuestionnaireRef: !!questionnaireRef.current,
-    questionnaireRefId: questionnaireRef.current?.id || null,
-    loading,
-    error: error || null,
-    initCompleted: initCompletedRef.current,
-    initInProgress: initInProgressRef.current,
-  });
-  
   // ИСПРАВЛЕНО: Показываем лоадер только если анкета действительно не загружена
   // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, чтобы не блокировать отображение
   // если анкета загружена в ref, но state еще не обновился
   // КРИТИЧНО: НЕ показываем лоадер, если анкета загружена в ref или state - это блокирует рендеринг анкеты
   const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
   
-  clientLogger.log('🔍 RENDER - hasQuestionnaireAnywhere check', {
-    timestamp: new Date().toISOString(),
-    hasQuestionnaireAnywhere,
-    hasQuestionnaireState: !!questionnaire,
-    hasQuestionnaireRef: !!questionnaireRef.current,
-    loading,
-  });
-  
-  // КРИТИЧНО: Если анкета загружена, но loading все еще true - принудительно сбрасываем loading СРАЗУ
-  // Это должно обрабатываться в useEffect, но на всякий случай делаем это и здесь
-  // КРИТИЧНО: НЕ используем queueMicrotask - сбрасываем loading СРАЗУ, чтобы анкета отобразилась
-  if (hasQuestionnaireAnywhere && loading) {
-    // КРИТИЧНО: Если анкета в ref, но не в state - принудительно обновляем state
-    if (questionnaireRef.current && !questionnaire) {
-      clientLogger.warn('⚠️ CRITICAL: Questionnaire in ref but not in state - forcing state update IMMEDIATELY', {
-        refId: questionnaireRef.current.id,
-        stateId: null, // questionnaire здесь гарантированно null в этом блоке
-        loading,
-      });
-      // Принудительно обновляем state СРАЗУ
-      setQuestionnaire(questionnaireRef.current);
-    }
-    // КРИТИЧНО: Сбрасываем loading СРАЗУ, без queueMicrotask
-    setLoading(false);
-    clientLogger.warn('⚠️ CRITICAL: Questionnaire loaded but loading=true - forcing loading=false IMMEDIATELY in render', {
-      hasQuestionnaire: !!questionnaire,
+  // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
+  if (isDev) {
+    clientLogger.log('🔍 RENDER - hasQuestionnaireAnywhere check', {
+      timestamp: new Date().toISOString(),
+      hasQuestionnaireAnywhere,
+      hasQuestionnaireState: !!questionnaire,
       hasQuestionnaireRef: !!questionnaireRef.current,
-      questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
       loading,
     });
   }
   
   // УПРОЩЕНО: Показываем лоадер только если loading=true И анкета не загружена
-  // Убраны сложные проверки initCompletedRef - они не нужны, так как анкета должна загружаться сразу
-  // КРИТИЧНО: Если анкета загружена (в ref или state), НЕ показываем лоадер, даже если loading=true
-  // Это гарантирует, что анкета отобразится сразу после загрузки
+  // КРИТИЧНО: Если анкета загружена (в ref или state), НЕ показываем лоадер
   // useEffect выше уже обрабатывает принудительный сброс loading, если анкета загружена
-  // КРИТИЧНО: Проверяем hasQuestionnaireAnywhere еще раз, так как мы могли обновить state выше
   const hasQuestionnaireAnywhereAfterUpdate = !!questionnaire || !!questionnaireRef.current;
   
-  clientLogger.log('🔍 RENDER - final check before showing loader', {
-    timestamp: new Date().toISOString(),
-    loading,
-    hasQuestionnaireAnywhereAfterUpdate,
-    hasQuestionnaireState: !!questionnaire,
-    hasQuestionnaireRef: !!questionnaireRef.current,
-    initInProgress: initInProgressRef.current,
-    initCompleted: initCompletedRef.current,
-    willShowLoader: loading && !hasQuestionnaireAnywhereAfterUpdate,
-  });
+  // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
+  if (isDev && loading && !hasQuestionnaireAnywhereAfterUpdate) {
+    clientLogger.log('⏳ RENDER - Showing main loader: loading=true, no questionnaire', {
+      timestamp: new Date().toISOString(),
+      loading,
+      hasQuestionnaire: false,
+      hasQuestionnaireRef: false,
+      initInProgress: initInProgressRef.current,
+      initCompleted: initCompletedRef.current,
+    });
+  }
   
   if (loading && !hasQuestionnaireAnywhereAfterUpdate) {
       // init() еще не завершен и анкета не загружена - показываем лоадер
-      // ИСПРАВЛЕНО: TypeScript - в этом блоке questionnaire и questionnaireRef.current гарантированно null
-      // поэтому не логируем questionnaireId
-      clientLogger.log('⏳ RENDER - Showing main loader: loading=true, no questionnaire', {
-        timestamp: new Date().toISOString(),
-        loading,
-        hasQuestionnaire: false, // questionnaire здесь всегда null в этом блоке
-        hasQuestionnaireRef: false, // questionnaireRef.current здесь всегда null в этом блоке
-        initInProgress: initInProgressRef.current,
-        initCompleted: initCompletedRef.current,
-        willReturnLoader: true,
-      });
       return (
         <div style={{ 
           display: 'flex', 

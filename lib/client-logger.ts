@@ -4,16 +4,32 @@
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // Внутренний троттлинг для отправки логов на сервер, чтобы избежать спама одинаковыми сообщениями
-const LOG_THROTTLE_MS = 10_000; // 10 секунд для одинаковых сообщений
+const LOG_THROTTLE_MS = 30_000; // 30 секунд для одинаковых сообщений (увеличено для уменьшения спама)
 const lastSentLogMap = new Map<string, number>();
+// Глобальный счетчик для ограничения количества логов в секунду
+let logsInLastSecond = 0;
+let lastSecondReset = Date.now();
+const MAX_LOGS_PER_SECOND = 5; // Максимум 5 логов в секунду
 
 const shouldSendToServer = (
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
   message: string
 ): boolean => {
+  const now = Date.now();
+  
+  // Сбрасываем счетчик каждую секунду
+  if (now - lastSecondReset >= 1000) {
+    logsInLastSecond = 0;
+    lastSecondReset = now;
+  }
+  
+  // Ограничиваем количество логов в секунду
+  if (logsInLastSecond >= MAX_LOGS_PER_SECOND) {
+    return false;
+  }
+  
   // Ключ по уровню и усечённому сообщению
   const key = `${level}:${message.substring(0, 200)}`;
-  const now = Date.now();
   const last = lastSentLogMap.get(key) ?? 0;
 
   if (now - last < LOG_THROTTLE_MS) {
@@ -22,6 +38,7 @@ const shouldSendToServer = (
   }
 
   lastSentLogMap.set(key, now);
+  logsInLastSecond++;
   return true;
 };
 

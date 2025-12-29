@@ -121,12 +121,12 @@ async function request<T>(
   if (requestKey && activeRequests.has(requestKey)) {
     const activeRequest = activeRequests.get(requestKey);
     if (activeRequest) {
-      if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
+    if (process.env.NODE_ENV === 'development' && endpoint.includes('/questionnaire/active')) {
         console.log('🔄 Reusing active request for:', endpoint, {
           activeRequestsSize: activeRequests.size,
           requestKey,
         });
-      }
+    }
       return activeRequest as Promise<T>;
     }
   }
