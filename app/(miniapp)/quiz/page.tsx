@@ -1309,11 +1309,33 @@ export default function QuizPage() {
   const saveProgress = async (newAnswers?: Record<number, string | string[]>, newQuestionIndex?: number, newInfoScreenIndex?: number) => {
     if (typeof window === 'undefined') return;
     
-    
-    
-    // ИСПРАВЛЕНО: Безопасное сохранение с обработкой ошибок
-    // ИСПРАВЛЕНО: Прогресс сохраняется в БД через API, localStorage больше не используется
-    // Метаданные позиции (questionIndex, infoScreenIndex) сохраняются в БД через /api/questionnaire/progress
+    // ИСПРАВЛЕНО: Сохраняем метаданные позиции (questionIndex, infoScreenIndex) в БД через API
+    // Это критично для правильного восстановления прогресса после перезагрузки страницы
+    if (questionnaire && (newQuestionIndex !== undefined || newInfoScreenIndex !== undefined)) {
+      try {
+        const questionIndex = newQuestionIndex !== undefined ? newQuestionIndex : currentQuestionIndex;
+        const infoScreenIndex = newInfoScreenIndex !== undefined ? newInfoScreenIndex : currentInfoScreenIndex;
+        
+        // Сохраняем только метаданные позиции (questionId = -1 означает только метаданные)
+        await api.saveQuizProgress(
+          questionnaire.id,
+          -1, // questionId = -1 означает только метаданные позиции
+          undefined, // answerValue
+          undefined, // answerValues
+          questionIndex,
+          infoScreenIndex
+        );
+        
+        clientLogger.log('✅ Метаданные позиции сохранены', {
+          questionIndex,
+          infoScreenIndex,
+          questionnaireId: questionnaire.id,
+        });
+      } catch (err: any) {
+        // Не критично, если не удалось сохранить - прогресс все равно будет восстановлен из ответов
+        clientLogger.warn('⚠️ Не удалось сохранить метаданные позиции:', err?.message);
+      }
+    }
   };
 
   // Очищаем сохранённый прогресс
