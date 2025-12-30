@@ -8097,7 +8097,9 @@ export default function QuizPage() {
         margin: '0 auto',
       }}>
         {/* Проверка на существование вопроса */}
-        {!currentQuestion ? (
+        {/* КРИТИЧНО: Не показываем "Вопрос не найден", если пользователь уже прошел начальные экраны */}
+        {/* Это может быть временное состояние из-за гонки состояний, которое исправится в следующем рендере */}
+        {!currentQuestion && !isPastInitialScreens ? (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             {isDev && (
               <div style={{ marginBottom: '20px', padding: '10px', background: '#fff3cd', borderRadius: '8px', fontSize: '12px', textAlign: 'left' }}>
@@ -8108,6 +8110,7 @@ export default function QuizPage() {
                     currentQuestionIndex,
                     allQuestionsLength: allQuestions.length,
                     isShowingInitialInfoScreen,
+                    isPastInitialScreens,
                     pendingInfoScreen: pendingInfoScreen ? pendingInfoScreen.id : null,
                     showResumeScreen,
                     hasResumed,
@@ -8122,6 +8125,14 @@ export default function QuizPage() {
             </div>
             <div style={{ color: '#6B7280', fontSize: '14px' }}>
               Попробуйте обновить страницу
+            </div>
+          </div>
+        ) : !currentQuestion && isPastInitialScreens ? (
+          // Если пользователь уже прошел начальные экраны, но currentQuestion временно null,
+          // показываем загрузку вместо ошибки
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '12px' }}>
+              Загрузка вопросов...
             </div>
           </div>
         ) : (
