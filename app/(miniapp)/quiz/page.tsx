@@ -1826,7 +1826,19 @@ export default function QuizPage() {
           pendingProgressRef.current = null;
         } catch (err: any) {
           // Не критично, если не удалось сохранить - прогресс все равно будет восстановлен из ответов
-          clientLogger.warn('⚠️ Не удалось сохранить метаданные позиции:', err?.message);
+          // ФИКС: Не логируем 401 ошибки как предупреждения, если initData действительно недоступен
+          // Это нормальная ситуация при разработке или если пользователь не в Telegram
+          const is401Error = err?.message?.includes('401') || err?.message?.includes('Unauthorized');
+          const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+          
+          if (is401Error && !hasInitData) {
+            // Это ожидаемо, если initData недоступен - не логируем как ошибку
+            if (isDev) {
+              clientLogger.log('ℹ️ Метаданные позиции не сохранены (initData недоступен, это нормально)');
+            }
+          } else {
+            clientLogger.warn('⚠️ Не удалось сохранить метаданные позиции:', err?.message);
+          }
         } finally {
           saveProgressTimeoutRef.current = null;
         }
@@ -3878,14 +3890,20 @@ export default function QuizPage() {
           }
         }
       } else {
-        clientLogger.log('⚠️ allQuestionsRaw is empty and questionnaire is null');
         // ИСПРАВЛЕНО: Если questionnaire null, но есть предыдущие вопросы в ref, используем их
         // Это предотвращает потерю вопросов при временном отсутствии questionnaire
         if (allQuestionsPrevRef.current.length > 0) {
-          clientLogger.log('✅ Using previous allQuestions from ref (questionnaire is null)', {
-            previousLength: allQuestionsPrevRef.current.length,
-          });
+          // ФИКС: Не логируем как ошибку, если fallback работает - это нормальная ситуация при перемонтировании
+          if (isDev) {
+            clientLogger.log('✅ Using previous allQuestions from ref (questionnaire temporarily null)', {
+              previousLength: allQuestionsPrevRef.current.length,
+            });
+          }
           return allQuestionsPrevRef.current;
+        }
+        // Логируем только если действительно нет fallback
+        if (isDev) {
+          clientLogger.warn('⚠️ allQuestionsRaw is empty and questionnaire is null (no fallback available)');
         }
       }
       return [];
