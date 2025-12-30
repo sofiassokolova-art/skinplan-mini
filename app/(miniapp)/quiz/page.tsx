@@ -1088,6 +1088,19 @@ export default function QuizPage() {
   }, [isRetakingQuiz, showRetakeScreen, questionnaire, loading]); // ИСПРАВЛЕНО: Убрали loadQuestionnaire из зависимостей, используем ref
 
   const loadSavedProgressFromServer = async () => {
+    // КРИТИЧНО: Проверяем, что пользователь уже не на вопросах ПЕРЕД любыми другими проверками
+    // Это предотвращает сброс currentInfoScreenIndex после перехода к вопросам
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+    const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+    
+    if (isAlreadyOnQuestions) {
+      clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, пользователь уже на вопросах', {
+        currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+        initialInfoScreensLength: initialInfoScreens.length,
+      });
+      return;
+    }
+    
     // ИСПРАВЛЕНО: Логируем вызов для отладки в Telegram Mini App
     clientLogger.log('🔄 loadSavedProgressFromServer: вызов', {
       loadProgressInProgress: loadProgressInProgressRef.current,
@@ -1095,6 +1108,8 @@ export default function QuizPage() {
       hasResumedRef: hasResumedRef.current,
       hasResumed,
       initCompleted: initCompletedRef.current,
+      currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+      isAlreadyOnQuestions,
       stack: new Error().stack?.split('\n').slice(1, 4).join('\n'),
     });
     
@@ -5030,7 +5045,9 @@ export default function QuizPage() {
     // ВАЖНО: Блокируем только если действительно есть начальный экран для показа
     // ФИКС: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
     // и мы не должны блокировать показ вопросов, даже если isShowingInitialInfoScreen = true
-    const shouldBlock = (isShowingInitialInfoScreen && currentInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) || (pendingInfoScreen && !isRetakingQuiz);
+    // КРИТИЧНО: Также проверяем, что questionnaire загружен, чтобы не блокировать вопросы при загрузке
+    const isPastInitialScreens = currentInfoScreenIndex >= initialInfoScreens.length;
+    const shouldBlock = (!isPastInitialScreens && isShowingInitialInfoScreen && currentInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) || (pendingInfoScreen && !isRetakingQuiz);
     if (shouldBlock && !showResumeScreen) {
       // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
       clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
@@ -7208,15 +7225,15 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Используем isShowingInitialInfoScreen вместо isShowingInitialInfoScreen
   // КРИТИЧНО: Также проверяем, что currentInfoScreenIndex < initialInfoScreens.length
   // Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
-  // КРИТИЧНО: Показываем первый экран ТОЛЬКО после загрузки анкеты (!loading && questionnaire)
-  // Это гарантирует, что кнопка не будет disabled и серой
+  // КРИТИЧНО: Показываем первый экран ТОЛЬКО если анкета загружена (questionnaire)
+  // Проверка !loading убрана, так как она может блокировать показ вопросов после перехода к ним
+  // Кнопка на первом экране уже имеет проверку загрузки анкеты
   if (isShowingInitialInfoScreen && 
       currentInitialInfoScreen && 
       currentInfoScreenIndex < initialInfoScreens.length &&
       !isRetakingQuiz && 
       !showResumeScreen && 
       !pendingInfoScreen &&
-      !loading &&
       questionnaire) {
     // Логируем для диагностики
     if (isDev) {
@@ -7281,8 +7298,10 @@ export default function QuizPage() {
   // Проверяем только критические ошибки, которые действительно требуют вмешательства
   // Если currentQuestion null, но анкета загружена и есть вопросы - это временное состояние,
   // которое исправится в следующем рендере (useEffect корректирует индекс)
-  // ИСПРАВЛЕНО: Используем isShowingInitialInfoScreen вместо isShowingInitialInfoScreen
-  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen && !isShowingInitialInfoScreen) {
+  // КРИТИЧНО: Также проверяем, что currentInfoScreenIndex >= initialInfoScreens.length
+  // Это означает, что пользователь уже прошел все начальные экраны и должен видеть вопросы
+  const isPastInitialScreens = currentInfoScreenIndex >= initialInfoScreens.length;
+  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen && !isShowingInitialInfoScreen && !isPastInitialScreens) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
       // ИСПРАВЛЕНО: Если индекс выходит за пределы и нет ответов - показываем сообщение "Начать заново"

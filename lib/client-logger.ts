@@ -4,12 +4,12 @@
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // Внутренний троттлинг для отправки логов на сервер, чтобы избежать спама одинаковыми сообщениями
-const LOG_THROTTLE_MS = 30_000; // 30 секунд для одинаковых сообщений (увеличено для уменьшения спама)
+const LOG_THROTTLE_MS = 10_000; // 10 секунд для одинаковых сообщений (уменьшено для лучшей диагностики)
 const lastSentLogMap = new Map<string, number>();
 // Глобальный счетчик для ограничения количества логов в секунду
 let logsInLastSecond = 0;
 let lastSecondReset = Date.now();
-const MAX_LOGS_PER_SECOND = 5; // Максимум 5 логов в секунду
+const MAX_LOGS_PER_SECOND = 10; // Максимум 10 логов в секунду (увеличено для диагностики)
 
 const shouldSendToServer = (
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
@@ -163,11 +163,16 @@ export const clientLogger = {
       message.includes('filterQuestions') || message.includes('filter') ||
       message.includes('ВСЕ ВОПРОСЫ') || message.includes('ОТФИЛЬТРОВАНЫ');
     
+    // ИСПРАВЛЕНО: Отправляем все логи с эмодзи или ключевыми словами, а также все логи в development
+    // Это гарантирует, что важные логи будут сохранены в БД
     if (isDevelopment || isImportantLog) {
       try {
         // ИСПРАВЛЕНО: В production отправляем важные log как 'info', чтобы они прошли проверку в sendLogToServer
         const levelToSend = (!isDevelopment && isImportantLog) ? 'info' : 'log';
-        sendLogToServer(levelToSend, message, args.length > 1 ? args.slice(1) : null);
+        // ИСПРАВЛЕНО: Отправляем даже если троттлинг блокирует, для важных логов
+        if (shouldSendToServer(levelToSend, message) || isImportantLog) {
+          sendLogToServer(levelToSend, message, args.length > 1 ? args.slice(1) : null);
+        }
       } catch (err) {
         // Игнорируем ошибки отправки
       }

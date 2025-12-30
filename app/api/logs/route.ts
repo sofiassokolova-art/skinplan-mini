@@ -307,10 +307,11 @@ export async function POST(request: NextRequest) {
             url: url || null,
           },
         });
-        console.log('✅ /api/logs: Log saved to PostgreSQL (fallback)', {
+        console.log('✅ /api/logs: Log saved to PostgreSQL', {
           userId,
           level,
           message: message.substring(0, 50),
+          dbSaved: true,
         });
       } catch (dbError: any) {
         // Если KV уже сохранил, это не критично
@@ -325,6 +326,15 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+    } else {
+      // КРИТИЧНО: Логируем, почему userId null для диагностики
+      console.warn('⚠️ /api/logs: userId is null, log not saved to PostgreSQL', {
+        hasIdentity: identity.ok,
+        telegramId: identity.ok ? identity.telegramId : null,
+        level,
+        message: message.substring(0, 50),
+        kvSaved,
+      });
     }
 
     // Автоматически удаляем логи старше 7 дней (в фоне, не блокируем ответ)
