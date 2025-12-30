@@ -93,20 +93,19 @@ export default function RootPage() {
           }
         }
         
-        // Если в кэше нет - делаем API запрос, но только если мы не редиректим на /quiz
-        // ИСПРАВЛЕНО: Проверяем pathname перед вызовом getHasPlanProgress, чтобы не делать запрос на /quiz
-        // ИСПРАВЛЕНО: Если hasPlanProgress === false (новый пользователь), не делаем API запрос - сразу редиректим
+        // ИСПРАВЛЕНО: Если в кэше нет данных, делаем API запрос для проверки hasPlanProgress
+        // КРИТИЧНО: На корневой странице (currentPath === '/') также нужно делать API запрос,
+        // иначе пользователи с существующими планами будут редиректиться на /quiz вместо /home
         if (!hasPlanProgress) {
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
           const isOnQuizPage = currentPath === '/quiz' || currentPath.startsWith('/quiz/');
           
-          // ИСПРАВЛЕНО: Не делаем API запрос, если мы на главной странице и собираемся редиректить на /quiz
-          // Это предотвращает вызов /api/user/preferences на главной странице перед редиректом
-          // Если hasPlanProgress === false из кэша, значит пользователь новый, и мы все равно редиректим на /quiz
-          // Поэтому нет смысла делать API запрос
-          if (!isOnQuizPage && currentPath !== '/') {
+          // ИСПРАВЛЕНО: Делаем API запрос везде, кроме страницы /quiz
+          // Это включает корневую страницу '/', чтобы правильно определить, есть ли у пользователя план
+          if (!isOnQuizPage) {
             const { getHasPlanProgress } = await import('@/lib/user-preferences');
             hasPlanProgress = await getHasPlanProgress();
+            clientLogger.log('ℹ️ Fetched hasPlanProgress from API:', hasPlanProgress);
           }
         }
       } catch (error) {
