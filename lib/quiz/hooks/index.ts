@@ -8,3 +8,14 @@ export { useQuizAutoSubmit } from './useQuizAutoSubmit';
 export { useQuizRetake } from './useQuizRetake';
 export { useQuizInit } from './useQuizInit';
 export { useResumeLogic } from './useResumeLogic';
+export { useQuizView, type QuizView } from './useQuizView';
+export { 
+  useQuizStateMachine,
+  useQuizStateIsLoading,
+  useQuizStateIsIntro,
+  useQuizStateIsResume,
+  useQuizStateIsQuestions,
+  useQuizStateIsSubmitting,
+  useQuizStateIsDone,
+  type UseQuizStateMachineOptions,
+} from './useQuizStateMachine';

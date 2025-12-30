@@ -15,6 +15,15 @@ import { PaymentGate } from '@/components/PaymentGate';
 import { clientLogger } from '@/lib/client-logger';
 import { filterQuestions, getEffectiveAnswers } from '@/lib/quiz/filterQuestions';
 import * as userPreferences from '@/lib/user-preferences';
+import { loadQuestionnaire as loadQuestionnaireFn, type LoadQuestionnaireParams } from '@/lib/quiz/loadQuestionnaire';
+import { handleNext as handleNextFn, type HandleNextParams } from '@/lib/quiz/handlers/handleNext';
+import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
+import { useQuizView } from '@/lib/quiz/hooks/useQuizView';
+import { useQuizStateMachine } from '@/lib/quiz/hooks/useQuizStateMachine';
+import { WelcomeScreen, HowItWorksScreen, PersonalAnalysisScreen } from '@/components/quiz/screens';
+import { FixedContinueButton, BackButton, TinderButtons } from '@/components/quiz/buttons';
+import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
+import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
 
 interface Question {
   id: number;
@@ -48,6 +57,24 @@ export default function QuizPage() {
   // Инициализация useTelegram (хук сам обрабатывает ошибки внутри)
   // ВАЖНО: хуки должны вызываться всегда в одном порядке, нельзя оборачивать в try-catch
   const { initialize, initData } = useTelegram();
+  
+  // РЕФАКТОРИНГ: State Machine для управления UI состояниями
+  const quizStateMachine = useQuizStateMachine({
+    initialState: 'LOADING',
+    onStateChange: (newState, previousState) => {
+      clientLogger.log('🔄 State Machine transition', { 
+        from: previousState, 
+        to: newState 
+      });
+    },
+    onTransitionError: (event, from) => {
+      clientLogger.warn('⚠️ Invalid State Machine transition', { 
+        event, 
+        from 
+      });
+    },
+  });
+  
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   // ИСПРАВЛЕНО: Начинаем с loading = false, так как лоадер анкеты убран
   // Лоадер показывается только на главной странице (/)
@@ -143,8 +170,21 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Мемоизируем answersCount для стабильности зависимостей
   // Используем effectiveAnswers для точного подсчета
   const answersCount = useMemo(() => Object.keys(effectiveAnswers).length, [effectiveAnswers]);
+  
+  // РЕФАКТОРИНГ: Оставляем старые флаги для обратной совместимости, но синхронизируем с State Machine
   const [isRetakingQuiz, setIsRetakingQuiz] = useState(false); // Флаг: повторное прохождение анкеты (уже есть профиль)
   const [showRetakeScreen, setShowRetakeScreen] = useState(false); // Флаг: показывать экран выбора тем для повторного прохождения
+  
+  // РЕФАКТОРИНГ: Вычисляем состояния из State Machine для обратной совместимости
+  // Постепенно заменим прямые проверки на quizStateMachine.state
+  // ПРИМЕЧАНИЕ: Эти значения можно использовать для постепенной миграции
+  const loadingFromStateMachine = quizStateMachine.isState('LOADING');
+  const showResumeScreenFromStateMachine = quizStateMachine.isState('RESUME');
+  const isSubmittingFromStateMachine = quizStateMachine.isState('SUBMITTING');
+  const isRetakingQuizFromStateMachine = quizStateMachine.isState('RETAKE_SELECT');
+  const showRetakeScreenFromStateMachine = quizStateMachine.isState('RETAKE_SELECT');
+  const isQuestionsFromStateMachine = quizStateMachine.isState('QUESTIONS');
+  const isIntroFromStateMachine = quizStateMachine.isState('INTRO');
   const [hasRetakingPayment, setHasRetakingPayment] = useState(false); // Флаг оплаты перепрохождения темы
   const [hasFullRetakePayment, setHasFullRetakePayment] = useState(false); // Флаг оплаты полного перепрохождения
   const [hasResumed, setHasResumed] = useState(false); // Флаг: пользователь нажал "Продолжить" и восстановил прогресс
@@ -1431,827 +1471,36 @@ export default function QuizPage() {
 
   // ИСПРАВЛЕНО: Обернуто в useCallback для предотвращения пересоздания функции
   // Это критично, чтобы предотвратить множественные вызовы из разных мест
+  // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/loadQuestionnaire.ts
   const loadQuestionnaire = useCallback(async () => {
-    // ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ: Логируем начало функции
-    clientLogger.log('🔵 loadQuestionnaire() CALLED', {
-      timestamp: new Date().toISOString(),
-      loadQuestionnaireInProgress: loadQuestionnaireInProgressRef.current,
-      loadQuestionnaireAttempted: loadQuestionnaireAttemptedRef.current,
-      hasRef: !!questionnaireRef.current,
-      hasState: !!questionnaire,
-      questionnaireId: questionnaireRef.current?.id || questionnaire?.id || null,
+    return loadQuestionnaireFn({
+      questionnaireRef,
+      loadQuestionnaireInProgressRef,
+      loadQuestionnaireAttemptedRef,
+      redirectInProgressRef,
+      initCompletedRef,
+      questionnaire,
       loading,
-      error: error || null,
-      stackTrace: new Error().stack?.substring(0, 500),
+      error,
+      isRetakingQuiz,
+      showRetakeScreen,
+      savedProgress,
+      currentQuestionIndex,
+      hasResumed,
+      setQuestionnaire,
+      setLoading,
+      setError,
+      setCurrentQuestionIndex,
+      setUserPreferencesData,
+      setIsRetakingQuiz,
+      setShowRetakeScreen,
+      setHasRetakingPayment,
+      setHasFullRetakePayment,
+      isDev,
+      userPreferences,
+      addDebugLog,
     });
-    
-    // ИСПРАВЛЕНО: Guard против множественных вызовов loadQuestionnaire
-    // КРИТИЧНО: Проверяем и устанавливаем флаги атомарно, чтобы предотвратить race conditions
-    // Используем двойную проверку для надежности
-    if (loadQuestionnaireInProgressRef.current) {
-      clientLogger.log('⛔ loadQuestionnaire() skipped: already in progress', {
-        attempted: loadQuestionnaireAttemptedRef.current,
-        hasRef: !!questionnaireRef.current,
-        hasState: !!questionnaire,
-        stackTrace: new Error().stack?.substring(0, 300), // Добавляем stack trace для диагностики
-      });
-      return null;
-    }
-    // ИСПРАВЛЕНО: Проверяем ref вместо state, чтобы избежать race conditions
-    // Это предотвращает повторные вызовы даже если state еще не обновился
-    if (loadQuestionnaireAttemptedRef.current && questionnaireRef.current) {
-      clientLogger.log('⛔ loadQuestionnaire() skipped: already attempted and questionnaire exists in ref', {
-        questionnaireId: questionnaireRef.current?.id,
-        hasState: !!questionnaire,
-        stackTrace: new Error().stack?.substring(0, 300), // Добавляем stack trace для диагностики
-      });
-      return null;
-    }
-    
-    // КРИТИЧНО: Устанавливаем флаги СРАЗУ, до любых асинхронных операций
-    // Это предотвращает параллельные вызовы
-    // ВАЖНО: Устанавливаем оба флага одновременно для атомарности
-    loadQuestionnaireInProgressRef.current = true;
-    loadQuestionnaireAttemptedRef.current = true;
-    
-      // ИСПРАВЛЕНО: Логируем с log для диагностики (warn только для реальных проблем)
-      clientLogger.log('🔄 loadQuestionnaire() started', {
-        hasQuestionnaire: !!questionnaireRef.current,
-        questionnaireId: questionnaireRef.current?.id,
-        hasQuestionnaireState: !!questionnaire,
-      });
-    
-    try {
-      // ИСПРАВЛЕНО: НЕ устанавливаем loading=true здесь, так как init() уже управляет loading
-      // Это предотвращает мигание лоадера из-за множественных изменений состояния
-      setError(null);
-        
-        // КРИТИЧНО: Если loading уже false (например, из-за предыдущей ошибки), не устанавливаем его обратно в true
-        // Это предотвращает показ лоадера, если анкета уже загружена или была ошибка
-        if (!questionnaireRef.current && !loading) {
-          // Только если анкета не загружена и loading еще не установлен, устанавливаем его
-          // Но init() уже установил loading=true, так что это не должно сработать
-        }
-      
-      // ИСПРАВЛЕНО: Проверяем Telegram initData перед загрузкой анкеты
-      // ИСПРАВЛЕНО: Делаем проверку более мягкой - не блокируем загрузку, а только логируем предупреждение
-      // Анкета может быть публичной и загружаться без initData
-      if (!isDev && typeof window !== 'undefined') {
-        const hasInitData = !!window.Telegram?.WebApp?.initData;
-        if (!hasInitData) {
-          clientLogger.warn('⚠️ Telegram initData not available, but continuing to load questionnaire...');
-          // ИСПРАВЛЕНО: Не блокируем загрузку анкеты, так как она может быть публичной
-          // setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте приложение через Telegram Mini App.');
-          // setLoading(false);
-          // loadQuestionnaireInProgressRef.current = false;
-          // return null;
-        }
-      }
-      
-      // КРИТИЧНО: Проверяем, не загружается ли анкета уже через activeRequests в api.ts
-      // Это предотвращает двойные вызовы даже если guards не сработали
-      // ИСПРАВЛЕНО: Используем уникальный ключ для проверки активных запросов
-      const questionnaireRequestKey = 'GET:/questionnaire/active';
-      
-      // ВАЖНО: Добавляем таймаут для загрузки анкеты, чтобы не ждать бесконечно
-      // ИСПРАВЛЕНО: api.getActiveQuestionnaire() уже имеет защиту от дублирования через activeRequests
-      // Но для надежности проверяем еще раз перед вызовом
-      const loadPromise = api.getActiveQuestionnaire();
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Таймаут загрузки анкеты (10 секунд)')), 10000);
-      });
-      
-      const data = await Promise.race([loadPromise, timeoutPromise]) as any;
-      
-      // ИСПРАВЛЕНО: Логируем сырой ответ от API для диагностики
-      const groupsCount = data?.groups?.length || 0;
-      const questionsCount = data?.questions?.length || 0;
-      const groupsWithQuestionsCount = data?.groups?.reduce((sum: number, g: any) => sum + (g?.questions?.length || 0), 0) || 0;
-      const totalQuestionsInResponse = groupsWithQuestionsCount + questionsCount;
-      
-      // КРИТИЧНО: Детальное логирование структуры данных
-      clientLogger.log('📥 Raw API response received', {
-        hasData: !!data,
-        dataType: typeof data,
-        dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-        hasId: data?.id !== undefined,
-        hasGroups: data?.groups !== undefined,
-        hasQuestions: data?.questions !== undefined,
-        hasMeta: data?._meta !== undefined,
-        groupsCount,
-        questionsCount,
-        groupsWithQuestionsCount,
-        totalQuestionsInResponse,
-        groupsDetails: data?.groups?.map((g: any) => ({
-          id: g?.id,
-          title: g?.title,
-          questionsCount: g?.questions?.length || 0,
-          questions: (g?.questions || []).map((q: any) => ({
-            id: q?.id,
-            code: q?.code,
-            hasOptions: !!(q?.options && Array.isArray(q.options) && q.options.length > 0),
-          })),
-        })) || [],
-        rootQuestionsDetails: (data?.questions || []).map((q: any) => ({
-          id: q?.id,
-          code: q?.code,
-          hasOptions: !!(q?.options && Array.isArray(q.options) && q.options.length > 0),
-        })),
-        // ИСПРАВЛЕНО: Полный JSON для диагностики (первые 2000 символов)
-        fullDataPreview: data && typeof data === 'object' ? JSON.stringify(data, null, 2).substring(0, 2000) : String(data),
-      });
-      
-      // КРИТИЧНО: Проверяем, что данные действительно содержат вопросы
-      if (totalQuestionsInResponse === 0) {
-        clientLogger.error('❌ API returned questionnaire with ZERO questions!', {
-          data,
-          groupsCount,
-          questionsCount,
-          groupsWithQuestionsCount,
-          fullData: JSON.stringify(data, null, 2),
-        });
-      }
-      
-      // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
-      if (data?._meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
-        // ИСПРАВЛЕНО: Guard против множественных редиректов
-        if (redirectInProgressRef.current) {
-          return null; // Редирект уже в процессе
-        }
-        
-        const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
-        if (!justSubmittedCheck) {
-          redirectInProgressRef.current = true; // Помечаем, что редирект начат
-          clientLogger.log('✅ Бэкенд сообщил, что анкета завершена - редиректим на /plan', {
-            isCompleted: data._meta.isCompleted,
-            hasProfile: data._meta.hasProfile,
-          });
-          initCompletedRef.current = true;
-          setLoading(false);
-          if (typeof window !== 'undefined') {
-            window.location.replace('/plan');
-            // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
-            setTimeout(() => {
-              redirectInProgressRef.current = false;
-            }, 1000);
-          }
-          return null;
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Логируем с log для диагностики (warn только для реальных проблем)
-      clientLogger.log('📥 Questionnaire data received from API', {
-        hasData: !!data,
-        dataType: typeof data,
-        dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-        shouldRedirectToPlan: data?._meta?.shouldRedirectToPlan,
-        isCompleted: data?._meta?.isCompleted,
-        isRetakingQuiz,
-        showRetakeScreen,
-        // ИСПРАВЛЕНО: Добавляем детальную информацию о структуре данных
-        groupsCount: data?.groups?.length || 0,
-        questionsCount: data?.questions?.length || 0,
-        groupsWithQuestionsCount,
-        totalQuestionsInResponse,
-        metaData: data?._meta || null,
-        groupsDetails: data?.groups?.map((g: any) => ({
-          id: g?.id,
-          title: g?.title,
-          questionsCount: g?.questions?.length || 0,
-        })) || [],
-        dataPreview: data && typeof data === 'object' ? JSON.stringify(data).substring(0, 1000) : String(data),
-      });
-      
-      // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
-      // ВАЖНО: Проверяем _meta ДО обработки данных, чтобы не тратить время на парсинг
-      const _meta = (data as any)?._meta;
-      if (_meta?.shouldRedirectToPlan && !isRetakingQuiz && !showRetakeScreen) {
-        // ИСПРАВЛЕНО: Guard против множественных редиректов
-        if (redirectInProgressRef.current) {
-          return null; // Редирект уже в процессе
-        }
-        
-        const justSubmittedCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
-        const retakeCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_retake') === 'true' : false;
-        const fullRetakeCheck = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_full_retake_from_home') === 'true' : false;
-        
-        if (!justSubmittedCheck && !retakeCheck && !fullRetakeCheck) {
-          redirectInProgressRef.current = true; // Помечаем, что редирект начат
-          clientLogger.log('✅ Бэкенд сообщил, что анкета завершена - редиректим на /plan', {
-            isCompleted: _meta.isCompleted,
-            hasProfile: _meta.hasProfile,
-          });
-          initCompletedRef.current = true;
-          setLoading(false);
-          if (typeof window !== 'undefined') {
-            window.location.replace('/plan');
-            // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
-            setTimeout(() => {
-              redirectInProgressRef.current = false;
-            }, 1000);
-          }
-          return null;
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Проверяем, что данные не пустые
-      // При перепрохождении API может вернуть пустой объект - пробуем загрузить еще раз
-      // ВАЖНО: Проверяем не только наличие данных, но и наличие groups/questions
-      const hasGroups = data?.groups && Array.isArray(data.groups) && data.groups.length > 0;
-      const hasQuestions = data?.questions && Array.isArray(data.questions) && data.questions.length > 0;
-      const hasGroupsWithQuestions = hasGroups && data.groups.some((g: any) => g.questions && Array.isArray(g.questions) && g.questions.length > 0);
-      const hasAnyQuestions = hasGroupsWithQuestions || hasQuestions;
-      
-      // ИСПРАВЛЕНО: Обрабатываем "no profile" без ошибки
-      // Для нового пользователя (без профиля) API вернет анкету, но профиля не будет
-      // Это нормально - начинаем анкету с дефолтными info-экранами
-      const hasProfile = data?._meta?.hasProfile ?? false;
-      const isNewUser = !hasProfile;
-      
-      // ИСПРАВЛЕНО: Детальная проверка с логированием
-      if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
-        clientLogger.error('❌ Empty or null data received from API', {
-          data,
-          dataType: typeof data,
-          dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-        });
-        // КРИТИЧНО: Если данные пустые, это ошибка - не делаем retry
-        clientLogger.error('❌ Empty or null data received - this is a backend issue, not retrying');
-        setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
-        // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
-        loadQuestionnaireInProgressRef.current = false;
-        loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
-        return null;
-      }
-      
-      if (!hasAnyQuestions) {
-        // ИСПРАВЛЕНО: Для нового пользователя (no profile) это нормально - начинаем анкету
-        // Не бросаем error, а продолжаем с дефолтными info-экранами
-        if (isNewUser) {
-          clientLogger.log('ℹ️ New user (no profile) - questionnaire has no questions, will start with default info screens', {
-            hasGroups,
-            hasQuestions,
-            hasGroupsWithQuestions,
-            hasAnyQuestions,
-            groupsCount,
-            questionsCount,
-            groupsWithQuestionsCount,
-            totalQuestionsInResponse,
-            hasProfile,
-            isNewUser,
-          });
-          // ИСПРАВЛЕНО: Не устанавливаем error, продолжаем загрузку анкеты
-          // Анкета будет загружена с дефолтными info-экранами
-        } else {
-          clientLogger.error('❌ Questionnaire has no questions in response', {
-            hasGroups,
-            hasQuestions,
-            hasGroupsWithQuestions,
-            hasAnyQuestions,
-            groupsCount,
-            questionsCount,
-            groupsWithQuestionsCount,
-            totalQuestionsInResponse,
-            groupsDetails: data?.groups?.map((g: any) => ({
-              id: g?.id,
-              title: g?.title,
-              questionsCount: g?.questions?.length || 0,
-            })) || [],
-            hasProfile,
-            isNewUser,
-          });
-          
-          // КРИТИЧНО: Если анкета пустая и это не новый пользователь, это ошибка
-          clientLogger.error('❌ Questionnaire has no questions - this is a backend issue, not retrying');
-          setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
-          // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
-          loadQuestionnaireInProgressRef.current = false;
-          loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
-          questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
-          return null;
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Убираем _meta из данных перед обработкой
-      const { _meta: _, ...dataWithoutMeta } = data as any;
-      const cleanData = dataWithoutMeta;
-      
-      // ИСПРАВЛЕНО: Логируем структуру данных перед извлечением
-      clientLogger.log('🔍 Extracting questionnaire data from API response', {
-        hasCleanData: !!cleanData,
-        cleanDataKeys: cleanData && typeof cleanData === 'object' ? Object.keys(cleanData) : [],
-        hasId: 'id' in (cleanData || {}),
-        hasGroups: 'groups' in (cleanData || {}),
-        hasQuestions: 'questions' in (cleanData || {}),
-        hasSuccess: 'success' in (cleanData || {}),
-        hasData: 'data' in (cleanData || {}),
-      });
-      
-      // ИСПРАВЛЕНО: API может возвращать данные в обертке (success/data)
-      // Проверяем, есть ли обертка, и извлекаем данные
-      let questionnaireData: Questionnaire | null = null;
-      
-      if (cleanData && typeof cleanData === 'object') {
-        // Проверяем, есть ли обертка ApiResponse (success/data)
-        if ('success' in cleanData && 'data' in cleanData && (cleanData as any).success === true) {
-          questionnaireData = (cleanData as any).data as Questionnaire;
-          clientLogger.log('✅ Extracted questionnaire from success/data wrapper');
-        } else if ('data' in cleanData && !('success' in cleanData)) {
-          // Только data без success
-          questionnaireData = (cleanData as any).data as Questionnaire;
-          clientLogger.log('✅ Extracted questionnaire from data wrapper');
-        } else if ('id' in cleanData || 'groups' in cleanData || 'questions' in cleanData) {
-          // Данные напрямую (без обертки) - проверяем наличие ключевых полей
-          questionnaireData = cleanData as Questionnaire;
-          clientLogger.log('✅ Using cleanData directly as questionnaire');
-        } else {
-          // Неизвестный формат - логируем для диагностики
-          clientLogger.warn('⚠️ Unknown questionnaire data format', {
-            dataKeys: Object.keys(cleanData),
-            hasId: 'id' in cleanData,
-            hasGroups: 'groups' in cleanData,
-            hasQuestions: 'questions' in cleanData,
-            hasSuccess: 'success' in cleanData,
-            hasData: 'data' in cleanData,
-            dataPreview: JSON.stringify(cleanData).substring(0, 300),
-          });
-        }
-      }
-      
-      // ИСПРАВЛЕНО: Логируем результат извлечения
-      clientLogger.log('🔍 Questionnaire data extraction result', {
-        hasQuestionnaireData: !!questionnaireData,
-        questionnaireDataId: questionnaireData?.id,
-        questionnaireDataKeys: questionnaireData && typeof questionnaireData === 'object' ? Object.keys(questionnaireData) : [],
-      });
-      
-      if (!questionnaireData) {
-        clientLogger.error('❌ Could not extract questionnaire data from API response', { 
-          data,
-          dataType: typeof data,
-          dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
-          dataPreview: typeof data === 'object' ? JSON.stringify(data).substring(0, 500) : String(data),
-        });
-        throw new Error('Invalid questionnaire data: could not extract data from response');
-      }
-      
-      // ИСПРАВЛЕНО: Проверяем, что данные валидны
-      if (!questionnaireData) {
-        clientLogger.error('❌ Questionnaire data is null or undefined', { data });
-        throw new Error('Invalid questionnaire data: received null or undefined');
-      }
-      
-      if (!questionnaireData.id) {
-        clientLogger.error('❌ Questionnaire data missing id', { 
-          data,
-          hasId: !!questionnaireData.id,
-          dataKeys: Object.keys(questionnaireData),
-        });
-        throw new Error('Invalid questionnaire data: missing id field');
-      }
-      
-      // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
-      const groups = questionnaireData.groups || [];
-      const questions = questionnaireData.questions || [];
-      
-      clientLogger.log('📊 Questionnaire structure', {
-        id: questionnaireData.id,
-        groupsCount: groups.length,
-        questionsCount: questions.length,
-        groupsWithQuestions: groups.map(g => ({ id: g.id, questionsCount: g.questions?.length || 0 })),
-      });
-      
-      // ИСПРАВЛЕНО: Проверяем, что есть хотя бы один вопрос
-      const totalQuestions = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
-      if (totalQuestions === 0) {
-        // ИСПРАВЛЕНО: Детальное логирование для диагностики пустой анкеты
-        clientLogger.error('❌ Questionnaire has no questions', {
-          questionnaireId: questionnaireData.id,
-          groupsCount: groups.length,
-          questionsCount: questions.length,
-          groups: groups.map(g => ({
-            id: g.id,
-            title: g.title,
-            questionsCount: g.questions?.length || 0,
-            questions: g.questions?.map((q: any) => ({ id: q.id, code: q.code })) || [],
-          })),
-          plainQuestions: questions.map((q: any) => ({ id: q.id, code: q.code })),
-          rawDataStructure: {
-            hasGroups: !!questionnaireData.groups,
-            hasQuestions: !!questionnaireData.questions,
-            groupsType: Array.isArray(questionnaireData.groups),
-            questionsType: Array.isArray(questionnaireData.questions),
-          },
-        });
-        throw new Error('Questionnaire has no questions');
-      }
-      addDebugLog('📥 Questionnaire loaded', {
-        questionnaireId: questionnaireData.id,
-        name: questionnaireData.name,
-        version: questionnaireData.version,
-        groupsCount: groups.length,
-        questionsCount: questions.length,
-        totalQuestions: groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length,
-        questionIds: (() => {
-          // ВАЖНО: Удаляем дубликаты questionId, так как вопросы могут быть и в groups, и в questions
-          const allIds = [
-            ...groups.flatMap((g: any) => (g.questions || []).map((q: Question) => q.id)),
-            ...questions.map((q: Question) => q.id),
-          ];
-          return Array.from(new Set(allIds));
-        })(),
-      });
-      // ИСПРАВЛЕНО: Логируем структуру анкеты для диагностики
-      clientLogger.log('📦 Questionnaire loaded from API (before validation)', {
-        questionnaireId: questionnaireData?.id,
-        hasGroups: !!questionnaireData?.groups,
-        groupsCount: questionnaireData?.groups?.length || 0,
-        hasQuestions: !!questionnaireData?.questions,
-        questionsCount: questionnaireData?.questions?.length || 0,
-        groupsStructure: questionnaireData?.groups?.map((g: any) => ({
-          id: g?.id,
-          title: g?.title,
-          questionsCount: g?.questions?.length || 0,
-          questionIds: (g?.questions || []).map((q: any) => q?.id).filter(Boolean),
-        })) || [],
-        rootQuestionIds: (questionnaireData?.questions || []).map((q: any) => q?.id).filter(Boolean),
-      });
-      
-      // ИСПРАВЛЕНО: Логируем перед установкой questionnaire в state
-      const totalQuestionsBeforeSet = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
-      // ИСПРАВЛЕНО: Логируем для диагностики
-      clientLogger.log('✅ Setting questionnaire in state (before setQuestionnaire)', {
-        questionnaireId: questionnaireData.id,
-        groupsCount: groups.length,
-        questionsCount: questions.length,
-        totalQuestions: totalQuestionsBeforeSet,
-        hasGroups: !!questionnaireData.groups,
-        hasQuestions: !!questionnaireData.questions,
-        groupsStructure: groups.map(g => ({
-          id: g.id,
-          title: g.title,
-          questionsCount: g.questions?.length || 0,
-          questionIds: (g.questions || []).map((q: any) => q?.id).filter(Boolean),
-        })),
-        rootQuestionIds: questions.map((q: any) => q?.id).filter(Boolean),
-      });
-      
-      // КРИТИЧНО: Проверяем, что данные не пустые перед установкой
-      if (totalQuestionsBeforeSet === 0) {
-        clientLogger.error('❌ Attempting to set questionnaire with ZERO questions in state!', {
-          questionnaireId: questionnaireData.id,
-          groupsCount: groups.length,
-          questionsCount: questions.length,
-          groups: groups.map(g => ({
-            id: g.id,
-            title: g.title,
-            questions: g.questions || [],
-          })),
-          questions,
-        });
-        throw new Error('Cannot set questionnaire with zero questions');
-      }
-      
-      // ИСПРАВЛЕНО: Логируем перед установкой state для диагностики
-      clientLogger.log('🔄 About to call setQuestionnaire', {
-        questionnaireId: questionnaireData.id,
-        totalQuestions: totalQuestionsBeforeSet,
-        hasGroups: !!questionnaireData.groups,
-        groupsCount: questionnaireData.groups?.length || 0,
-        hasQuestions: !!questionnaireData.questions,
-        questionsCount: questionnaireData.questions?.length || 0,
-        questionnaireDataKeys: Object.keys(questionnaireData),
-      });
-      
-      // КРИТИЧНО: Создаем новый объект, чтобы React обновил state (reference equality)
-      // ИСПРАВЛЕНО: Используем spread operator для создания нового объекта
-      const questionnaireToSet = {
-        ...questionnaireData,
-        groups: [...(questionnaireData.groups || [])],
-        questions: [...(questionnaireData.questions || [])],
-      };
-      
-      // ИСПРАВЛЕНО: Обновляем ref ПЕРЕД установкой state, чтобы guards работали корректно
-      clientLogger.log('🟢 SETTING questionnaireRef.current', {
-        timestamp: new Date().toISOString(),
-        questionnaireId: questionnaireToSet.id,
-        questionnaireName: questionnaireToSet.name,
-        totalQuestions: totalQuestionsBeforeSet,
-        groupsCount: questionnaireToSet.groups?.length || 0,
-        questionsCount: questionnaireToSet.questions?.length || 0,
-        previousRefId: questionnaireRef.current?.id || null,
-      });
-      questionnaireRef.current = questionnaireToSet;
-      clientLogger.log('✅ questionnaireRef.current SET', {
-        timestamp: new Date().toISOString(),
-        questionnaireId: questionnaireRef.current?.id,
-        verified: questionnaireRef.current === questionnaireToSet,
-      });
-      
-      // КРИТИЧНО: Устанавливаем state
-      // ИСПРАВЛЕНО: Используем функциональную форму setQuestionnaire для гарантированного обновления
-      // ИСПРАВЛЕНО: Убрали проверку на одинаковый ID - всегда обновляем, чтобы гарантировать установку в state
-      // Это предотвращает зависание лоадера, если анкета не установлена в state из-за проверки на ID
-      clientLogger.log('🟢 CALLING setQuestionnaire (functional form)', {
-        timestamp: new Date().toISOString(),
-        questionnaireId: questionnaireToSet.id,
-        totalQuestions: totalQuestionsBeforeSet,
-      });
-      setQuestionnaire((prevQuestionnaire) => {
-        // ИСПРАВЛЕНО: Проверяем, действительно ли данные изменились
-        // Если ID совпадает и анкета уже установлена, не создаем новый объект
-        // Это предотвращает лишние пересчеты useMemo
-        if (prevQuestionnaire?.id === questionnaireToSet.id && prevQuestionnaire) {
-          // Данные не изменились - возвращаем предыдущий объект, чтобы не вызывать лишние пересчеты
-          if (isDev) {
-            clientLogger.log('✅ setQuestionnaire: same ID, returning prev (no re-render)', {
-              questionnaireId: questionnaireToSet.id,
-            });
-          }
-          return prevQuestionnaire;
-        }
-        
-        // Данные изменились или анкета еще не установлена - обновляем
-        if (isDev) {
-          clientLogger.log('✅ setQuestionnaire callback EXECUTED', {
-            timestamp: new Date().toISOString(),
-          questionnaireId: questionnaireToSet.id,
-          totalQuestions: totalQuestionsBeforeSet,
-          prevQuestionnaireId: prevQuestionnaire?.id,
-            isNew: !prevQuestionnaire || prevQuestionnaire.id !== questionnaireToSet.id,
-        });
-        }
-        
-        return questionnaireToSet;
-      });
-      clientLogger.log('✅ setQuestionnaire CALLED (state update queued)', {
-        timestamp: new Date().toISOString(),
-        questionnaireId: questionnaireToSet.id,
-      });
-      
-      // КРИТИЧНО: Принудительно сбрасываем loading сразу после установки state
-      // Это гарантирует, что анкета отобразится сразу после загрузки
-      setLoading(false);
-      
-      // ИСПРАВЛЕНО: Логируем после установки (в следующем тике, чтобы state обновился)
-      setTimeout(() => {
-        clientLogger.log('✅ Questionnaire set in state (verified)', {
-          questionnaireId: questionnaireData.id,
-          totalQuestions: totalQuestionsBeforeSet,
-          refHasQuestionnaire: !!questionnaireRef.current,
-          refQuestionnaireId: questionnaireRef.current?.id,
-          stateHasQuestionnaire: !!questionnaire,
-          stateQuestionnaireId: questionnaire?.id,
-          loadingAfterSet: loading, // Проверяем, сбросился ли loading
-        });
-      }, 100); // Увеличено время ожидания для гарантированного обновления state
-      
-      // ИСПРАВЛЕНО: Используем preferences из метаданных вместо отдельных вызовов API
-      // ИСПРАВЛЕНО: Обрабатываем preferences в try-catch, чтобы ошибки не прерывали загрузку анкеты
-      try {
-        const prefs = _meta?.preferences;
-        if (prefs) {
-          // Сохраняем preferences в state для использования в других местах
-          setUserPreferencesData(prefs);
-          
-          // Устанавливаем флаги перепрохождения из метаданных
-          if (prefs.isRetakingQuiz !== undefined) {
-            setIsRetakingQuiz(prefs.isRetakingQuiz);
-          }
-          if (prefs.fullRetakeFromHome !== undefined) {
-            if (prefs.fullRetakeFromHome) {
-              setShowRetakeScreen(true);
-              setIsRetakingQuiz(true);
-              // Очищаем флаг после использования
-              // ИСПРАВЛЕНО: Обрабатываем ошибку очистки флага, чтобы она не прерывала загрузку
-              userPreferences.setFullRetakeFromHome(false).catch((err: any) => {
-                clientLogger.warn('⚠️ Failed to clear fullRetakeFromHome flag (non-critical)', err);
-              });
-            }
-          }
-          if (prefs.paymentRetakingCompleted !== undefined) {
-            setHasRetakingPayment(prefs.paymentRetakingCompleted);
-          }
-          if (prefs.paymentFullRetakeCompleted !== undefined) {
-            setHasFullRetakePayment(prefs.paymentFullRetakeCompleted);
-          }
-          
-          clientLogger.log('✅ Preferences loaded from questionnaire metadata', prefs);
-        }
-      } catch (prefsErr: any) {
-        // ИСПРАВЛЕНО: Ошибки при обработке preferences не должны прерывать загрузку анкеты
-        clientLogger.warn('⚠️ Error processing preferences (non-critical, continuing)', {
-          error: prefsErr?.message,
-          errorStack: prefsErr?.stack?.substring(0, 200),
-        });
-      }
-      // ИСПРАВЛЕНО: Очищаем ошибки при успешной загрузке
-      // Это предотвращает показ временных ошибок, которые уже исправлены
-      setError(null);
-      
-      // ИСПРАВЛЕНО: Для нового пользователя без сохраненного прогресса гарантируем, что currentQuestionIndex = 0
-      // Это предотвращает проблему с невалидным индексом после загрузки анкеты
-      const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers).length === 0;
-      if (hasNoSavedProgress && currentQuestionIndex !== 0 && !isRetakingQuiz && !hasResumed) {
-        clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 после загрузки анкеты для нового пользователя', {
-          currentQuestionIndex,
-          hasNoSavedProgress,
-          isRetakingQuiz,
-          hasResumed,
-        });
-        setCurrentQuestionIndex(0);
-      }
-      
-      // КРИТИЧНО: Устанавливаем loading=false СРАЗУ после установки state
-      // НЕ используем setTimeout - это задерживает отображение анкеты
-      // State обновится в следующем рендере, но loading должен быть false СРАЗУ
-      const loadingBeforeSet = loading;
-      setLoading(false);
-      clientLogger.log('✅ Questionnaire loaded successfully, setting loading=false IMMEDIATELY', {
-        timestamp: new Date().toISOString(),
-        questionnaireId: questionnaireData.id,
-        questionnaireName: questionnaireData.name,
-        questionnaireVersion: questionnaireData.version,
-        hasQuestionnaireState: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        loadingBeforeSet,
-        loadingAfterSet: false,
-        totalQuestions: totalQuestionsBeforeSet,
-        groupsCount: questionnaireData.groups?.length || 0,
-        questionsCount: questionnaireData.questions?.length || 0,
-        stateUpdated: true,
-        refUpdated: true,
-      });
-      
-      // ИСПРАВЛЕНО: Логируем успешное завершение загрузки
-      clientLogger.log('✅ loadQuestionnaire completed successfully - RETURNING questionnaire', {
-        timestamp: new Date().toISOString(),
-        questionnaireId: questionnaireData.id,
-        questionnaireName: questionnaireData.name,
-        totalQuestions: totalQuestionsBeforeSet,
-        hasQuestionnaireState: !!questionnaireToSet,
-        hasRef: !!questionnaireRef.current,
-        refId: questionnaireRef.current?.id,
-        stateId: questionnaireToSet?.id,
-        initCompleted: initCompletedRef.current,
-        initInProgress: initInProgressRef.current,
-        loading: false, // Должно быть false после setLoading(false)
-        willReturn: true,
-      });
-      
-      // ИСПРАВЛЕНО: Гарантируем, что ref установлен перед возвратом
-      // Это предотвращает повторные вызовы loadQuestionnaire
-      // КРИТИЧНО: ref уже установлен на строке 1330, но проверяем для надежности
-      if (!questionnaireRef.current) {
-        clientLogger.warn('⚠️ questionnaireRef.current is null after successful load, setting it now', {
-          questionnaireId: questionnaireData.id,
-        });
-        questionnaireRef.current = questionnaireToSet;
-      }
-      
-      // ИСПРАВЛЕНО: НЕ сбрасываем loadQuestionnaireInProgressRef здесь
-      // Это делается в finally блоке, чтобы предотвратить повторные вызовы
-      // КРИТИЧНО: Если сбросить здесь, может произойти повторная загрузка до завершения функции
-      
-      return questionnaireToSet; // ИСПРАВЛЕНО: Возвращаем questionnaireToSet вместо questionnaireData
-    } catch (err: any) {
-      // ИСПРАВЛЕНО: Улучшено логирование ошибок для диагностики
-      const errorDetails = {
-        timestamp: new Date().toISOString(),
-        message: err?.message,
-        stack: err?.stack?.substring(0, 500),
-        name: err?.name,
-        status: err?.status,
-        response: err?.response,
-        loadingBeforeError: loading,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        hasQuestionnaireState: !!questionnaire,
-      };
-      
-      addDebugLog('❌ Error loading questionnaire', errorDetails);
-      clientLogger.error('❌ loadQuestionnaire() ERROR CAUGHT', errorDetails);
-      console.error('Ошибка загрузки анкеты:', err);
-      
-      // ИСПРАВЛЕНО: Специальная обработка для пустой анкеты (500 от бэкенда)
-      // Проверяем разные варианты структуры ошибки (в зависимости от того, как API выбрасывает ошибку)
-      const errorStatus = err?.status || err?.response?.status || (err?.response?.ok === false ? err?.response?.status : null);
-      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || '';
-      const errorData = err?.response?.data || err?.data || {};
-      
-      if (errorStatus === 500 || errorMsg.includes('empty') || errorMsg.includes('no questions') || errorMsg.includes('пуст') || errorMsg.includes('Active questionnaire is empty')) {
-        clientLogger.error('❌ Backend returned empty questionnaire error', {
-          status: errorStatus,
-          message: errorMsg,
-          questionnaireId: errorData?.questionnaireId,
-          fullError: err,
-        });
-        setError('Анкета временно недоступна. Пожалуйста, попробуйте позже или обратитесь в поддержку.');
-        // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы не зависать на лоадере
-        setLoading(false);
-        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке пустой анкеты
-        loadQuestionnaireAttemptedRef.current = false; // ИСПРАВЛЕНО: Сбрасываем attemptedRef, чтобы можно было повторить
-        return null;
-      }
-      
-      // Если ошибка авторизации, не показываем её как критическую
-      if (err?.message?.includes('Unauthorized') || err?.message?.includes('401')) {
-        // Анкета публичная, эта ошибка не должна возникать
-        clientLogger.warn('Неожиданная ошибка авторизации при загрузке анкеты');
-      }
-      // Если таймаут - это критическая ошибка, но не блокируем загрузку
-      if (err?.message?.includes('Таймаут')) {
-        console.error('❌ Таймаут загрузки анкеты - возможно, проблема с сетью или сервером');
-        clientLogger.error('❌ Таймаут загрузки анкеты');
-      }
-      
-      // ИСПРАВЛЕНО: Не устанавливаем ошибку сразу, если это перепрохождение анкеты
-      // При перепрохождении ошибка загрузки не должна блокировать пользователя
-      const errorMessage = String(err?.message || 'Ошибка загрузки анкеты');
-      
-      // ИСПРАВЛЕНО: При перепрохождении не показываем ошибку сразу
-      // Анкета может загрузиться позже, и пользователь сможет продолжить
-      // Также не показываем ошибку, если анкета уже загружена (может быть временная ошибка)
-      if (isRetakingQuiz || showRetakeScreen || questionnaire) {
-        clientLogger.warn('⚠️ Error loading questionnaire during retake or questionnaire already loaded, will not show error to user', { 
-          error: errorMessage,
-          isRetakingQuiz,
-          showRetakeScreen,
-          hasQuestionnaire: !!questionnaire,
-        });
-        // Не устанавливаем ошибку при перепрохождении или если анкета уже есть - пользователь может продолжить
-        // КРИТИЧНО: Если анкета уже есть, сбрасываем loading, чтобы она отобразилась
-        if (questionnaire) {
-          setLoading(false);
-        }
-        return null;
-      }
-      
-      // КРИТИЧНО: Логируем ошибку с детальной информацией
-      clientLogger.error('❌ loadQuestionnaire exception caught', {
-        error: errorMessage,
-        errorStatus: err?.status,
-        errorType: typeof err,
-        errorName: err?.name,
-        errorStack: err?.stack?.substring(0, 500),
-        isRetakingQuiz,
-        showRetakeScreen,
-        errorResponse: err?.response?.data || err?.response || null,
-        // ИСПРАВЛЕНО: Добавляем информацию о том, что могло вызвать ошибку
-        errorMessageIncludes: {
-          timeout: errorMessage.includes('timeout') || errorMessage.includes('Timeout') || errorMessage.includes('Таймаут'),
-          network: errorMessage.includes('network') || errorMessage.includes('Network') || errorMessage.includes('fetch'),
-          loadFailed: errorMessage.includes('Load') && errorMessage.includes('fail'),
-          abort: errorMessage.includes('abort') || errorMessage.includes('Abort'),
-        },
-      });
-      
-      // Только для критических ошибок устанавливаем error state
-      // Для временных ошибок (таймаут, сеть) можно попробовать еще раз
-      if (err?.message?.includes('Таймаут') || err?.message?.includes('network') || err?.message?.includes('Network')) {
-        // Для таймаутов и сетевых ошибок не показываем ошибку сразу
-        // Пользователь может попробовать обновить страницу
-        clientLogger.warn('⚠️ Temporary error loading questionnaire, user can retry', { error: errorMessage });
-        setError('Не удалось загрузить анкету. Проверьте подключение к интернету и обновите страницу.');
-        // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы показать сообщение об ошибке
-        setLoading(false);
-        // КРИТИЧНО: Сбрасываем attemptedRef при временных ошибках, чтобы можно было повторить
-        loadQuestionnaireAttemptedRef.current = false;
-        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
-      } else if (err?.status === 500) {
-        // Для 500 ошибок (пустая анкета) показываем понятное сообщение
-        const errorData = err?.response?.data || err?.response || {};
-        const serverMessage = errorData.message || errorData.error || 'Анкета временно недоступна';
-        setError(serverMessage);
-        // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы показать сообщение об ошибке
-        setLoading(false);
-        loadQuestionnaireAttemptedRef.current = false;
-        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
-      } else {
-        setError(errorMessage);
-        // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы показать сообщение об ошибке
-        setLoading(false);
-        // Для других ошибок тоже сбрасываем, чтобы можно было повторить
-        loadQuestionnaireAttemptedRef.current = false;
-        questionnaireRef.current = null; // ИСПРАВЛЕНО: Сбрасываем ref при ошибке
-      }
-      
-      return null;
-    } finally {
-      // ИСПРАВЛЕНО: Сбрасываем флаг загрузки анкеты
-      loadQuestionnaireInProgressRef.current = false;
-      // КРИТИЧНО: loading=false уже установлен в catch блоке при ошибках или в успешном случае
-      // init() также установит loading=false в своем finally блоке для гарантии
-      clientLogger.log('🔵 loadQuestionnaire() FINALLY - function completed', {
-        timestamp: new Date().toISOString(),
-        loadQuestionnaireInProgress: false,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireId: questionnaireRef.current?.id || null,
-        loading,
-        error: error || null,
-      });
-    }
-  }, [isDev, isRetakingQuiz, showRetakeScreen]); // ИСПРАВЛЕНО: Добавлены зависимости для useCallback
-  
+  }, [isDev, isRetakingQuiz, showRetakeScreen, questionnaire, loading, error, savedProgress, currentQuestionIndex, hasResumed]);
   // ИСПРАВЛЕНО: Сохраняем функцию в ref для использования в init
   // КРИТИЧНО: Устанавливаем ref СИНХРОННО при объявлении функции, чтобы он был доступен в init ДО того, как init() начнет ждать
   // ИСПРАВЛЕНО: Не используем useEffect, так как он может выполниться после того, как init() уже начал ждать
@@ -2387,296 +1636,30 @@ export default function QuizPage() {
     }
   };
 
+  // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/handlers/handleNext.ts
   const handleNext = async () => {
-    // ФИКС: Защита от множественных кликов
-    if (handleNextInProgressRef.current) {
-      clientLogger.warn('⏸️ handleNext: уже выполняется, пропускаем повторный вызов', {
-        isHandlingNext,
-      });
-      return;
-    }
-    
-    // ФИКС: Проверяем, что анкета загружена перед выполнением handleNext
-    // ИСПРАВЛЕНО: Проверяем questionnaireRef.current в первую очередь, так как он устанавливается раньше
-    const hasQuestionnaire = questionnaire || questionnaireRef.current;
-    if (!hasQuestionnaire) {
-      clientLogger.warn('⏸️ handleNext: анкета еще не загружена, ждем...', {
-        hasQuestionnaire: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        loading,
-        initCompleted: initCompletedRef.current,
-      });
-      return;
-    }
-    
-    handleNextInProgressRef.current = true;
-    setIsHandlingNext(true);
-    
-    try {
-      // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
-      // Экраны с showAfterInfoScreenId показываются после других экранов или вопросов, а не в начале
-      const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
-      
-      // ФИКС: Всегда логируем handleNext (warn уровень для сохранения в БД)
-      clientLogger.warn('🔄 handleNext: вызов', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        isRetakingQuiz,
-        showRetakeScreen,
-        hasResumed,
-        pendingInfoScreen: !!pendingInfoScreen,
-        hasQuestionnaire: !!questionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-      });
-
-    // ВАЖНО: При повторном прохождении (isRetakingQuiz && !showRetakeScreen) пропускаем все начальные info screens
-    // showRetakeScreen = true означает, что показывается экран выбора тем, и мы еще не начали перепрохождение
-    if (isRetakingQuiz && !showRetakeScreen && currentInfoScreenIndex < initialInfoScreens.length) {
-      if (!questionnaire) return;
-      const newInfoIndex = initialInfoScreens.length;
-      setCurrentInfoScreenIndex(newInfoIndex);
-      // Если currentQuestionIndex = 0, начинаем с первого вопроса
-      if (currentQuestionIndex === 0) {
-        setCurrentQuestionIndex(0);
-      }
-      await saveProgress(answers, currentQuestionIndex, newInfoIndex);
-      return;
-    }
-
-    // Если мы на начальных информационных экранах, переходим к следующему или к вопросам
-    if (currentInfoScreenIndex < initialInfoScreens.length - 1) {
-      const newIndex = currentInfoScreenIndex + 1;
-      // ФИКС: Логируем переход на следующий экран
-      clientLogger.warn('🔄 handleNext: переход на следующий инфо-экран', {
-        currentInfoScreenIndex,
-        newIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-      });
-      // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state
-      currentInfoScreenIndexRef.current = newIndex;
-      setCurrentInfoScreenIndex(newIndex);
-      // ФИКС: Если после инкремента мы прошли все начальные экраны, очищаем pendingInfoScreen
-      if (newIndex >= initialInfoScreens.length) {
-        setPendingInfoScreen(null);
-        // Если мы прошли все начальные экраны, переходим к первому вопросу
-        if (currentQuestionIndex === 0 && allQuestions.length > 0) {
-          setCurrentQuestionIndex(0);
-        }
-      }
-      await saveProgress(answers, currentQuestionIndex, newIndex);
-      return;
-    }
-
-    if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
-      if (!questionnaire) return;
-      const newInfoIndex = initialInfoScreens.length;
-      // ФИКС: Логируем переход к вопросам после последнего инфо-экрана
-      clientLogger.warn('🔄 handleNext: переход к вопросам после последнего инфо-экрана', {
-        currentInfoScreenIndex,
-        newInfoIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        allQuestionsLength: allQuestions.length,
-      });
-      // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state, чтобы другие функции видели новое значение
-      currentInfoScreenIndexRef.current = newInfoIndex;
-      setCurrentInfoScreenIndex(newInfoIndex);
-      // КРИТИЧНО: Для нового пользователя всегда начинаем с первого вопроса (индекс 0)
-      // Это гарантирует, что после прохождения всех инфо-экранов вопросы начнут отображаться
-      setCurrentQuestionIndex(0);
-      // ФИКС: Принудительно очищаем pendingInfoScreen при переходе к вопросам
-      // Это предотвращает застревание на info screens
-      setPendingInfoScreen(null);
-      // ФИКС: Детальное логирование установки вопросов для диагностики
-      clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в handleNext после инфо-скринов', {
-        newInfoIndex,
-        allQuestionsLength: allQuestions.length,
-        currentQuestionIndex: 0,
-        isRetakingQuiz,
-        showRetakeScreen,
-      });
-      clientLogger.log('✅ Завершены все начальные инфо-экраны, переходим к вопросам', {
-        newInfoIndex,
-        allQuestionsLength: allQuestions.length,
-        currentQuestionIndex: 0,
-        isRetakingQuiz,
-        showRetakeScreen,
-        pendingInfoScreenCleared: true,
-      });
-      await saveProgress(answers, 0, newInfoIndex);
-      return;
-    }
-
-    if (!questionnaire) return;
-
-    // ИСПРАВЛЕНО: Используем мемоизированный allQuestions из компонента вместо локального вычисления
-    // Это гарантирует, что мы используем тот же массив вопросов, что и в остальном компоненте
-    // Локальное вычисление может привести к несоответствию индексов после изменения фильтрации
-    // (например, после ответа на вопрос про бюджет)
-    
-    // ИСПРАВЛЕНО: Проверяем, что currentQuestionIndex валиден для текущего allQuestions
-    // При перепрохождении анкета может загружаться асинхронно, поэтому нужно корректно обрабатывать
-    if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
-      clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы allQuestions, корректируем', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        questionIds: allQuestions.map((q: Question) => q.id),
-        isRetakingQuiz,
-        showRetakeScreen,
-      });
-      // Корректируем индекс на последний валидный вопрос
-      const correctedIndex = Math.max(0, allQuestions.length - 1);
-      setCurrentQuestionIndex(correctedIndex);
-      // ИСПРАВЛЕНО: Не сохраняем прогресс при перепрохождении, если анкета еще не полностью загружена
-      if (!isRetakingQuiz && !showRetakeScreen) {
-        await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
-      }
-      return;
-    }
-        
-    // Проверяем, что текущий вопрос существует в allQuestions
-    const currentQuestionInAllQuestions = allQuestions[currentQuestionIndex];
-    if (!currentQuestionInAllQuestions && allQuestions.length > 0) {
-      clientLogger.warn('⚠️ Текущий вопрос не найден в allQuestions, ищем правильный индекс', {
-        currentQuestionIndex,
-        allQuestionsLength: allQuestions.length,
-        allQuestionIds: allQuestions.map((q: Question) => q.id),
-      });
-      
-      // ИСПРАВЛЕНО: Если вопрос не найден по индексу, корректируем на последний валидный индекс
-      // Это может произойти после изменения фильтрации (например, после ответа на вопрос про бюджет)
-      const correctedIndex = Math.max(0, allQuestions.length - 1);
-      setCurrentQuestionIndex(correctedIndex);
-      await saveProgress(answers, correctedIndex, currentInfoScreenIndex);
-      return;
-      }
-      
-    // ИСПРАВЛЕНО: Больше не вычисляем allQuestions локально - используем мемоизированный из компонента
-    // Это гарантирует консистентность индексов и предотвращает проблемы после изменения фильтрации
-
-    // Если показывается информационный экран между вопросами, проверяем, есть ли следующий инфо-экран в цепочке
-    // При повторном прохождении пропускаем все info screens
-    if (pendingInfoScreen && !isRetakingQuiz) {
-      // ИСПРАВЛЕНО: Используем getNextInfoScreenAfterScreen для цепочки экранов
-      // Это правильно разделяет триггеры: showAfterQuestionCode для вопросов, showAfterInfoScreenId для экранов
-      const nextInfoScreen = getNextInfoScreenAfterScreen(pendingInfoScreen.id);
-      if (nextInfoScreen) {
-        setPendingInfoScreen(nextInfoScreen);
-        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-        return;
-      }
-      
-      // ИСПРАВЛЕНО: Проверяем, не последний ли это вопрос ДО закрытия инфо-экрана
-      const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
-      const isWantImproveScreen = pendingInfoScreen?.id === 'want_improve';
-      
-      // ВАЖНО: Если это последний инфо-экран (want_improve), НЕ закрываем его автоматически
-      // Пользователь должен нажать кнопку "Получить план ухода" для отправки ответов
-      if (isWantImproveScreen && isLastQuestion) {
-        clientLogger.log('ℹ️ Это последний инфо-экран want_improve - ждем нажатия кнопки "Получить план ухода"');
-        // НЕ закрываем экран, НЕ меняем индекс - просто возвращаемся
-        // Кнопка "Получить план ухода" должна вызвать handleGetPlan, который вызовет submitAnswers
-        return;
-      }
-      
-      // Если нет следующего info screen, закрываем pending и переходим к следующему вопросу
-      setPendingInfoScreen(null);
-      
-      if (isLastQuestion) {
-        // ИСПРАВЛЕНО: После закрытия последнего инфо-экрана (но не want_improve) увеличиваем индекс для запуска автоотправки
-        // ВАЖНО: Сначала сохраняем прогресс, потом увеличиваем индекс, чтобы избежать проблем с редиректом
-        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-        // ИСПРАВЛЕНО: Устанавливаем индекс синхронно, но с небольшой задержкой для безопасности
-        // Это гарантирует, что автоотправка сработает после закрытия инфо-экрана
-        setTimeout(() => {
-          clientLogger.log('🔄 Закрыт последний инфо-экран, устанавливаем currentQuestionIndex для автоотправки', {
-            currentIndex: currentQuestionIndex,
-            targetIndex: allQuestions.length,
-          });
-          setCurrentQuestionIndex(allQuestions.length);
-        }, 100); // Небольшая задержка, чтобы состояния успели обновиться
-        return;
-      }
-      
-      // Переходим к следующему вопросу
-      const newIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(newIndex);
-      await saveProgress(answers, newIndex, currentInfoScreenIndex);
-      return;
-    }
-
-    // Проверяем, нужно ли показать информационный экран после текущего вопроса
-    // При повторном прохождении пропускаем все info screens
-    const currentQuestion = allQuestions[currentQuestionIndex];
-    const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
-    
-    if (currentQuestion && !isRetakingQuiz) {
-      // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
-      // Это предотвращает возврат info screen для вопросов без кода
-      if (!currentQuestion.code) {
-        if (isDev) {
-          clientLogger.warn('⚠️ Вопрос без кода, пропускаем проверку info screen', {
-            questionId: currentQuestion.id,
-            questionIndex: currentQuestionIndex,
-          });
-        }
-      } else {
-      const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
-      if (infoScreen) {
-        setPendingInfoScreen(infoScreen);
-        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-        clientLogger.log('✅ Показан инфо-экран после вопроса:', {
-          questionCode: currentQuestion.code,
-          questionIndex: currentQuestionIndex,
-          infoScreenId: infoScreen.id,
-          isLastQuestion,
-        });
-        return;
-        }
-      }
-    }
-
-    // ИСПРАВЛЕНО: Проверяем последний вопрос отдельно, так как логика отличается
-    if (isLastQuestion) {
-      // Это последний вопрос - проверяем, есть ли инфо-экраны после него
-      // При повторном прохождении пропускаем info screens
-      if (!isRetakingQuiz && currentQuestion) {
-        const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
-        if (infoScreen) {
-          setPendingInfoScreen(infoScreen);
-          // ИСПРАВЛЕНО: НЕ увеличиваем currentQuestionIndex, чтобы не запустить автоотправку
-          // Автоотправка запустится только после закрытия инфо-экрана или при нажатии кнопки "Получить план"
-          await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-          clientLogger.log('✅ Показан инфо-экран после последнего вопроса:', {
-            questionCode: currentQuestion.code,
-            infoScreenId: infoScreen.id,
-            currentQuestionIndex,
-            allQuestionsLength: allQuestions.length,
-          });
-          return;
-        }
-      }
-      // ВАЖНО: Если это последний вопрос и нет инфо-экрана, увеличиваем currentQuestionIndex
-      // чтобы сработала автоматическая отправка ответов (проверка currentQuestionIndex >= allQuestions.length)
-      await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
-      clientLogger.log('✅ Последний вопрос отвечен, нет инфо-экранов, увеличиваем индекс для автоотправки');
-      // Увеличиваем индекс, чтобы выйти за пределы массива вопросов и запустить автоматическую отправку
-      setCurrentQuestionIndex(allQuestions.length);
-      return;
-    }
-
-    // Переходим к следующему вопросу
-    if (currentQuestionIndex < allQuestions.length - 1) {
-      const newIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(newIndex);
-      await saveProgress(answers, newIndex, currentInfoScreenIndex);
-    }
-    } finally {
-      // ФИКС: Сбрасываем флаг после завершения handleNext
-      handleNextInProgressRef.current = false;
-      setIsHandlingNext(false);
-    }
+    return handleNextFn({
+      handleNextInProgressRef,
+      currentInfoScreenIndexRef,
+      questionnaireRef,
+      initCompletedRef,
+      questionnaire,
+      loading,
+      currentInfoScreenIndex,
+      currentQuestionIndex,
+      allQuestions,
+      isRetakingQuiz,
+      showRetakeScreen,
+      hasResumed,
+      pendingInfoScreen,
+      answers,
+      setIsHandlingNext,
+      setCurrentInfoScreenIndex,
+      setCurrentQuestionIndex,
+      setPendingInfoScreen,
+      saveProgress,
+      isDev,
+    });
   };
 
   const handleBack = () => {
@@ -4270,26 +3253,26 @@ export default function QuizPage() {
         return [];
       }
       
-      const groups = effectiveQuestionnaire.groups || [];
-      const questions = effectiveQuestionnaire.questions || [];
+      // РЕФАКТОРИНГ: Используем единую функцию для извлечения вопросов
+      const result = extractQuestionsFromQuestionnaire(effectiveQuestionnaire);
       
       // Логируем только в development, чтобы не создавать спам
       if (isDev) {
+        const groups = effectiveQuestionnaire.groups || [];
+        const questions = effectiveQuestionnaire.questions || [];
         clientLogger.log('📊 allQuestionsRaw: extracting questions', {
           questionnaireId: effectiveQuestionnaire.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
+          extractedCount: result.length,
           fromState: !!questionnaire,
           fromRef: !!questionnaireRef.current,
         });
       }
       
-      const result = [
-        ...groups.flatMap((g) => g.questions || []),
-        ...questions,
-      ];
-      
       if (result.length === 0) {
+        const groups = effectiveQuestionnaire.groups || [];
+        const questions = effectiveQuestionnaire.questions || [];
         clientLogger.warn('⚠️ allQuestionsRaw: No questions extracted', {
           questionnaireId: effectiveQuestionnaire.id,
           groupsCount: groups.length,
@@ -4298,9 +3281,11 @@ export default function QuizPage() {
           fromRef: !!questionnaireRef.current,
         });
       } else if (isDev) {
+        const groups = effectiveQuestionnaire.groups || [];
+        const questions = effectiveQuestionnaire.questions || [];
         clientLogger.log('✅ allQuestionsRaw: extracted successfully', {
           total: result.length,
-          fromGroups: groups.flatMap((g) => g.questions || []).length,
+          fromGroups: groups.flatMap((g: any) => g.questions || []).length,
           fromQuestions: questions.length,
           fromState: !!questionnaire,
           fromRef: !!questionnaireRef.current,
@@ -4395,45 +3380,8 @@ export default function QuizPage() {
   // Это предотвращает сброс allQuestions, если allQuestionsRaw временно пустой
   const allQuestionsPrevRef = useRef<Question[]>([]);
   
-  // КРИТИЧНО: Функция для извлечения вопросов напрямую из questionnaire (для fallback)
-  const extractQuestionsFromQuestionnaire = useCallback((q: Questionnaire | null): Question[] => {
-    if (!q) return [];
-    
-    const groups = q.groups || [];
-    const questions = q.questions || [];
-    
-    if (!Array.isArray(groups) || !Array.isArray(questions)) {
-      return [];
-    }
-    
-    const questionsFromGroups: Question[] = [];
-    const seenIds = new Set<number>();
-    
-    groups.forEach((g) => {
-      const groupQuestions = g?.questions || [];
-      groupQuestions.forEach((q: Question) => {
-        if (q && q.id && !seenIds.has(q.id)) {
-          questionsFromGroups.push(q);
-          seenIds.add(q.id);
-        }
-      });
-    });
-    
-    const questionsMap = new Map<number, Question>();
-    questionsFromGroups.forEach((q: Question) => {
-      if (q && q.id && !questionsMap.has(q.id)) {
-        questionsMap.set(q.id, q);
-      }
-    });
-    
-    questions.forEach((q: Question) => {
-      if (q && q.id && !questionsMap.has(q.id)) {
-        questionsMap.set(q.id, q);
-      }
-    });
-    
-    return Array.from(questionsMap.values());
-  }, []);
+  // РЕФАКТОРИНГ: Используем единую функцию из lib/quiz/extractQuestions.ts
+  // Локальная функция extractQuestionsFromQuestionnaire удалена, используется импортированная
   
   const allQuestions = useMemo<Question[]>(() => {
     try {
@@ -4629,22 +3577,6 @@ export default function QuizPage() {
       return fallback;
     }
   }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire, extractQuestionsFromQuestionnaire]);
-  
-  // ИСПРАВЛЕНО: Принудительно пересчитываем allQuestions когда questionnaire загружается в ref
-  // Это гарантирует, что allQuestions обновится даже если state еще не обновился
-  useEffect(() => {
-    if (questionnaireRef.current && !questionnaire && allQuestions.length === 0) {
-      // Анкета есть в ref, но не в state, и allQuestions пустой
-      // Это временное состояние - принудительно пересчитываем allQuestions
-      clientLogger.log('🔄 Forcing allQuestions recalculation: questionnaire in ref but not in state', {
-        questionnaireId: questionnaireRef.current.id,
-        allQuestionsLength: allQuestions.length,
-      });
-      // Пересчет произойдет автоматически, когда questionnaire обновится в state
-      // Но мы можем принудительно вызвать пересчет через изменение зависимостей
-      // Для этого используем флаг, который заставит useMemo пересчитаться
-    }
-  }, [questionnaireRef.current, questionnaire, allQuestions.length]);
   
   // КРИТИЧНО: Синхронизируем allQuestionsPrevRef с allQuestions после каждого вычисления
   // Это гарантирует, что ref всегда содержит актуальное значение для fallback
@@ -6056,141 +4988,18 @@ export default function QuizPage() {
 
     // Разбиваем subtitle на строки для многострочного отображения
 
-    // Специальный рендеринг для welcome экрана
+    // РЕФАКТОРИНГ: Используем компонент WelcomeScreen
     if (isWelcomeScreen) {
       return (
-        <div style={{ 
-          padding: 0,
-          margin: 0,
-          minHeight: '100vh',
-          background: '#FFFFFF',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-          overflow: 'hidden',
-          width: '100%',
-          maxWidth: '100vw',
-        }}>
-          {/* Картинка */}
-          {screen.image && (
-            <div style={{
-              width: 'calc(100% + 6px)',
-              height: '60vh',
-              minHeight: '400px',
-              maxHeight: '500px',
-              position: 'relative',
-              marginLeft: '-3px',
-              marginTop: '-10px',
-              borderBottomRightRadius: '40px',
-              borderBottomLeftRadius: '40px',
-              overflow: 'hidden',
-            }}>
-              <img
-                src={screen.image}
-                alt={screen.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-              />
-            </div>
-          )}
-
-          {/* Контент (текст) */}
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            paddingTop: 'clamp(30px, 8vh, 60px)',
-            paddingBottom: '100px', // Отступ снизу для фиксированной кнопки
-            paddingLeft: '20px',
-            paddingRight: '20px',
-            width: '100%',
-            boxSizing: 'border-box',
-          }}>
-            {/* Текст */}
-            <div style={{
-              width: '100%',
-              maxWidth: '320px',
-              textAlign: 'center',
-            }}>
-              <h1 
-                className="quiz-welcome-title"
-                style={{
-                  fontFamily: "var(--font-unbounded), -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 400,
-                  fontStyle: 'normal',
-                  fontSize: '28px',
-                  lineHeight: '140%',
-                  letterSpacing: '0px',
-                  textAlign: 'center',
-                  color: '#000000',
-                  margin: 0,
-                }}>
-                Подбери уход<br />
-                для своей кожи<br />
-                со <span style={{ fontWeight: 700, fontStyle: 'normal' }}>SkinIQ</span>
-              </h1>
-            </div>
-          </div>
-          
-          {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-          {screen.ctaText && (
-            <div style={{
-              position: 'fixed',
-              bottom: 'clamp(40px, 6vh, 60px)',
-              left: 0,
-              right: 0,
-              padding: '0 clamp(20px, 5vw, 40px)',
-              background: 'transparent',
-              zIndex: 100,
-              display: 'flex',
-              justifyContent: 'center',
-            }}>
-              <button
-                onClick={() => {
-                  // Защита от множественных кликов
-                  if (!handleNextInProgressRef.current && !isHandlingNext) {
-                    handleNext();
-                  }
-                }}
-                disabled={isHandlingNext}
-                style={{
-                  width: '100%',
-                  maxWidth: 'clamp(224px, 60vw, 320px)',
-                  height: 'clamp(56px, 8vh, 64px)',
-                  borderRadius: '20px',
-                  background: isHandlingNext ? '#CCCCCC' : '#D5FE61',
-                  color: '#000000',
-                  border: 'none',
-                  fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 600,
-                  fontSize: 'clamp(14px, 4vw, 16px)',
-                  cursor: isHandlingNext ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  opacity: isHandlingNext ? 0.6 : 1,
-                }}
-                onMouseDown={(e) => {
-                  if (!isHandlingNext) {
-                    e.currentTarget.style.transform = 'scale(0.98)';
-                  }
-                }}
-                onMouseUp={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-              >
-                {isHandlingNext ? 'Загрузка...' : String(screen.ctaText || 'Продолжить')}
-              </button>
-            </div>
-          )}
-        </div>
+        <WelcomeScreen
+          screen={screen}
+          onContinue={() => {
+            if (!handleNextInProgressRef.current && !isHandlingNext) {
+              handleNext();
+            }
+          }}
+          isHandlingNext={isHandlingNext}
+        />
       );
     }
 
@@ -6431,8 +5240,24 @@ export default function QuizPage() {
       );
     }
 
-    // Специальный рендеринг для экрана "SkinIQ — ваш персональный анализ кожи"
+    // РЕФАКТОРИНГ: Используем компонент PersonalAnalysisScreen
     if (isPersonalAnalysisScreen) {
+      return (
+        <PersonalAnalysisScreen
+          screen={screen}
+          currentInfoScreenIndex={currentInfoScreenIndex}
+          onBack={() => {
+            if (currentInfoScreenIndex > 0) {
+              setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
+            }
+          }}
+          onContinue={handleNext}
+        />
+      );
+    }
+
+    // Старый код для personal_analysis (удален после рефакторинга)
+    if (false && isPersonalAnalysisScreen) {
       const features = [
         {
           icon: (
@@ -6838,66 +5663,14 @@ export default function QuizPage() {
                 </div>
               )}
 
-          {/* Отзывы с горизонтальным скроллом */}
+          {/* РЕФАКТОРИНГ: Используем компонент TestimonialsCarousel */}
           {isTestimonialsScreen && screen.content && Array.isArray(screen.content) && (
-            <div style={{ 
-              display: 'flex', 
-              gap: '16px', 
-              overflowX: 'auto',
-              padding: '8px 0',
-              marginBottom: '28px',
-              scrollbarWidth: 'thin',
-              WebkitOverflowScrolling: 'touch',
-              msOverflowStyle: '-ms-autohiding-scrollbar',
-            }}>
-              {screen.content.map((testimonial, idx: number) => (
-                <div key={idx} style={{
-                  minWidth: '280px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                  borderRadius: '20px',
-                  padding: '20px',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                  flexShrink: 0,
-                }}>
-                  <div style={{ fontSize: '18px', marginBottom: '12px' }}>
-                    {'⭐'.repeat(testimonial.stars || 5)}
-                  </div>
-                  <p style={{ fontSize: '14px', color: '#475467', marginBottom: '16px', lineHeight: '1.5' }}>
-                    "{String(testimonial.text || '')}"
-                  </p>
-                  <p style={{ fontSize: '12px', color: '#0A5F59', fontWeight: 600 }}>
-                    — {String(testimonial.author || 'Пользователь')}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <TestimonialsCarousel testimonials={screen.content as any} />
           )}
 
-          {/* Продукты (карточки) */}
+          {/* РЕФАКТОРИНГ: Используем компонент ProductsGrid */}
           {isProductsScreen && screen.content && Array.isArray(screen.content) && (
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
-              {screen.content.map((product, idx: number) => (
-                <div key={idx} style={{
-                  flex: '1 1 100px',
-                  minWidth: '100px',
-                  maxWidth: '120px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                  borderRadius: '16px',
-                  padding: '16px',
-                  textAlign: 'center',
-                }}>
-                  {product.icon && (
-                    <img src={product.icon} alt={product.name} style={{ width: '60px', height: '60px', marginBottom: '8px', objectFit: 'contain' }} />
-                  )}
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#0A5F59', marginBottom: '4px' }}>
-                    {String(product.name || 'Продукт')}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#475467' }}>
-                    {String(product.desc || '')}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ProductsGrid products={screen.content as any} />
           )}
 
           {/* Сравнение (comparison) */}
@@ -6954,207 +5727,25 @@ export default function QuizPage() {
               );
             }
 
-            // Tinder-кнопки
+            // РЕФАКТОРИНГ: Используем компонент TinderButtons
             if (isTinderScreen) {
-              const isWantImproveScreen = screen.id === 'want_improve';
-              
-              // Для экрана "Хотите улучшить состояние кожи?" показываем только одну кнопку "Получить план ухода"
-              if (isWantImproveScreen) {
-                const handleGetPlan = async () => {
-                  clientLogger.log('🔘 handleGetPlan вызван');
-                  
-                  if (isSubmitting) {
-                    clientLogger.warn('⚠️ Уже отправляется');
-                    return;
-                  }
-                  
-                  if (!questionnaire) {
-                    console.error('❌ Анкета не загружена');
-                    setError('Анкета не загружена. Пожалуйста, обновите страницу.');
-                    return;
-                  }
-                  
-                  // Проверяем наличие initData перед отправкой
-                  const initData = typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : null;
-                  const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp;
-                  
-                  clientLogger.log('📱 Проверка Telegram перед отправкой:', {
-                    hasWindow: typeof window !== 'undefined',
-                    hasTelegram: isInTelegram,
-                    hasInitData: !!initData,
-                    initDataLength: initData?.length || 0,
-                  });
-                  
-                  if ((!isInTelegram || !initData) && !isDev) {
-                    console.error('❌ Telegram WebApp или initData недоступен');
-                    setError('Пожалуйста, откройте приложение через Telegram Mini App и обновите страницу.');
-                    return;
-                  }
-                  
-                  clientLogger.log('🚀 Запуск submitAnswers...');
-                  // ИСПРАВЛЕНО: Устанавливаем isSubmitting СИНХРОННО перед вызовом submitAnswers
-                  // Это гарантирует, что лоадер покажется сразу после нажатия кнопки
-                  isSubmittingRef.current = true;
-                  setIsSubmitting(true);
-                  setError(null);
-                  setLoading(false); // Убираем лоадер "Загрузка анкеты..." если он показывался
-                  
-                  try {
-                    await submitAnswers();
-                  } catch (err: any) {
-                    console.error('❌ Ошибка в handleGetPlan:', err);
-                    console.error('   Error message:', err?.message);
-                    console.error('   Error stack:', err?.stack);
-                    
-                    let errorMessage = 'Ошибка отправки ответов. Пожалуйста, попробуйте еще раз.';
-                    
-                    if (err?.message?.includes('Unauthorized') || 
-                        err?.message?.includes('401') || 
-                        err?.message?.includes('initData') ||
-                        err?.message?.includes('авторизации')) {
-                      errorMessage = 'Ошибка авторизации. Пожалуйста, обновите страницу и убедитесь, что приложение открыто через Telegram Mini App.';
-                    } else if (err?.message) {
-                      errorMessage = err.message;
-                    }
-                    
-                    // Убеждаемся, что errorMessage всегда строка
-                    const safeErrorMessage = String(errorMessage || 'Ошибка отправки ответов. Попробуйте еще раз.');
-                    setError(safeErrorMessage);
-                    // ИСПРАВЛЕНО: Устанавливаем state, ref синхронизируется автоматически через useEffect
-                    setIsSubmitting(false);
-                  }
-                };
-                
-                // ИСПРАВЛЕНО: Добавлена fallback кнопка "Пропустить и получить план" для предотвращения застревания
-                // Это страховка на случай, если основная кнопка не работает или initData отсутствует
-                const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
-                
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleGetPlan();
-                      }}
-                      disabled={isSubmitting}
-                      style={{
-                        width: '100%',
-                        height: '64px',
-                        background: '#0A5F59',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '32px',
-                        fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                        fontWeight: 600,
-                        fontSize: '18px',
-                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                        boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                        opacity: isSubmitting ? 0.7 : 1,
-                      }}
-                    >
-                      {isSubmitting ? 'Отправка...' : 'Получить план ухода'}
-                    </button>
-                    {/* ИСПРАВЛЕНО: Fallback кнопка для случаев, когда основная кнопка не работает */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        // Вызываем тот же handleGetPlan, но это fallback на случай проблем
-                        handleGetPlan();
-                      }}
-                      disabled={isSubmitting}
-                      style={{
-                        width: '100%',
-                        padding: '12px 24px',
-                        background: 'transparent',
-                        color: '#0A5F59',
-                        border: '1px solid #0A5F59',
-                        borderRadius: '16px',
-                        fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                        fontWeight: 500,
-                        fontSize: '14px',
-                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                        opacity: isSubmitting ? 0.5 : 1,
-                      }}
-                    >
-                      Пропустить и получить план
-                    </button>
-                    {!hasInitData && !isDev && (
-                      <p style={{
-                        color: '#6B7280',
-                        fontSize: '12px',
-                        textAlign: 'center',
-                        marginTop: '8px',
-                      }}>
-                        Убедитесь, что приложение открыто через Telegram Mini App
-                      </p>
-                    )}
-                  </div>
-                );
-              }
-              
-              // Для других tinder-экранов оставляем старую логику
-              const handleButtonClick = async () => {
-                if (isSubmitting) return;
-                if (!questionnaire) {
-                  setError('Анкета не загружена. Пожалуйста, обновите страницу.');
-                  return;
-                }
-                handleNext();
-              };
-              
+              const isLastInfoScreen = screen.id === 'want_improve';
               return (
-                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleButtonClick();
-                    }}
-                    disabled={isSubmitting}
-                    style={{
-                      flex: 1,
-                      height: '64px',
-                      background: 'rgba(255, 255, 255, 0.8)',
-                      color: '#0A5F59',
-                      border: '2px solid rgba(10, 95, 89, 0.3)',
-                      borderRadius: '32px',
-                      fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 600,
-                      fontSize: '18px',
-                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                      opacity: isSubmitting ? 0.7 : 1,
-                    }}
-                  >
-                    {isSubmitting ? 'Отправка...' : '❌ Нет'}
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleButtonClick();
-                    }}
-                    disabled={isSubmitting}
-                    style={{
-                      flex: 1,
-                      height: '64px',
-                      background: '#0A5F59',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '32px',
-                      fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 600,
-                      fontSize: '18px',
-                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
-                      opacity: isSubmitting ? 0.7 : 1,
-                    }}
-                  >
-                    {isSubmitting ? 'Отправка...' : '✅ Да'}
-                  </button>
-                </div>
+                <TinderButtons
+                  screenId={screen.id}
+                  isLastInfoScreen={isLastInfoScreen}
+                  isTinderScreen={isTinderScreen}
+                  isSubmitting={isSubmitting}
+                  questionnaire={questionnaire}
+                  isDev={isDev}
+                  error={error}
+                  isSubmittingRef={isSubmittingRef}
+                  setIsSubmitting={setIsSubmitting}
+                  setError={setError}
+                  setLoading={setLoading}
+                  submitAnswers={submitAnswers}
+                  handleNext={handleNext}
+                />
               );
             }
 
@@ -7163,75 +5754,32 @@ export default function QuizPage() {
           })()}
         </div>
         
-        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
-        {screen.ctaText && (
-          <div style={{
-            position: 'fixed',
-            bottom: 'clamp(40px, 6vh, 60px)',
-            left: 0,
-            right: 0,
-            padding: '0 clamp(20px, 5vw, 40px)',
-            background: 'transparent',
-            zIndex: 100,
-            display: 'flex',
-            justifyContent: 'center',
-          }}>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  clientLogger.warn('🖱️ Кнопка "Продолжить": клик получен', {
-                    handleNextInProgress: handleNextInProgressRef.current,
-                    hasQuestionnaire: !!questionnaire,
-                    hasQuestionnaireRef: !!questionnaireRef.current,
-                    isHandlingNext,
-                    questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
-                  });
-                  if (!handleNextInProgressRef.current && (questionnaire || questionnaireRef.current)) {
-                    clientLogger.warn('✅ Кнопка "Продолжить": вызываем handleNext');
-                    handleNext();
-                  } else {
-                    clientLogger.warn('⏸️ Кнопка "Продолжить": пропущен клик', {
-                      handleNextInProgress: handleNextInProgressRef.current,
-                      hasQuestionnaire: !!questionnaire,
-                      hasQuestionnaireRef: !!questionnaireRef.current,
-                      isHandlingNext,
-                    });
-                  }
-                }}
-                disabled={isHandlingNext}
-                style={{
-                  width: '100%',
-                  maxWidth: 'clamp(224px, 60vw, 320px)',
-                  height: 'clamp(56px, 8vh, 64px)',
-                  borderRadius: '20px',
-                  background: isHandlingNext ? '#CCCCCC' : '#D5FE61',
-                  color: '#000000',
-                  border: 'none',
-                  fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 600,
-                  fontSize: 'clamp(14px, 4vw, 16px)',
-                  cursor: isHandlingNext ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  opacity: isHandlingNext ? 0.6 : 1,
-                }}
-              onMouseDown={(e) => {
-                if (!isHandlingNext) {
-                  e.currentTarget.style.transform = 'scale(0.98)';
-                }
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              {isHandlingNext ? 'Загрузка...' : String(screen.ctaText || 'Продолжить')}
-            </button>
-          </div>
-        )}
+        {/* РЕФАКТОРИНГ: Используем компонент FixedContinueButton */}
+        <FixedContinueButton
+          ctaText={screen.ctaText}
+          onClick={() => {
+            clientLogger.warn('🖱️ Кнопка "Продолжить": клик получен', {
+              handleNextInProgress: handleNextInProgressRef.current,
+              hasQuestionnaire: !!questionnaire,
+              hasQuestionnaireRef: !!questionnaireRef.current,
+              isHandlingNext,
+              questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+            });
+            if (!handleNextInProgressRef.current && (questionnaire || questionnaireRef.current)) {
+              clientLogger.warn('✅ Кнопка "Продолжить": вызываем handleNext');
+              handleNext();
+            } else {
+              clientLogger.warn('⏸️ Кнопка "Продолжить": пропущен клик', {
+                handleNextInProgress: handleNextInProgressRef.current,
+                hasQuestionnaire: !!questionnaire,
+                hasQuestionnaireRef: !!questionnaireRef.current,
+                isHandlingNext,
+              });
+            }
+          }}
+          disabled={isHandlingNext}
+          loadingText="Загрузка..."
+        />
       </div>
     );
   };
@@ -7271,6 +5819,26 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Проверяем showResumeScreen ПЕРЕД info screens,
   // чтобы предотвратить показ info screens, если должен показываться экран продолжения
   // ВАЖНО: showResumeScreen уже обработан выше, поэтому здесь просто пропускаем info screens
+
+  // РЕФАКТОРИНГ: Используем хук useQuizView для определения текущего экрана
+  // Это упрощает условия рендеринга и делает код более читаемым
+  const quizView = useQuizView({
+    showResumeScreen,
+    showRetakeScreen,
+    isRetakingQuiz,
+    pendingInfoScreen,
+    currentInfoScreenIndex,
+    currentInfoScreenIndexRef,
+    currentQuestionIndex,
+    currentQuestion,
+    questionnaire,
+    loading,
+    hasResumed,
+    savedProgress,
+    answers,
+    allQuestionsLength: allQuestions.length,
+    isDev,
+  });
 
   // Если показывается информационный экран между вопросами
   // При повторном прохождении пропускаем все info screens

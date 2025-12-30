@@ -2,7 +2,7 @@
 // ИСПРАВЛЕНО: Finite State Machine для управления состоянием анкеты
 // Заменяет множественные boolean флаги на единую FSM
 
-import { useEffect, useState, useRef } from 'react';
+// Импорты React удалены - хук useQuizStateMachine вынесен в отдельный файл
 
 export type QuizState =
   | 'LOADING'           // Загрузка анкеты
@@ -128,25 +128,6 @@ export class QuizStateMachine {
   }
 }
 
-/**
- * ИСПРАВЛЕНО: React hook для использования FSM в компонентах
- */
-export function useQuizStateMachine(initialState: QuizState = 'LOADING') {
-  const fsmRef = useRef(new QuizStateMachine(initialState));
-  const [, forceUpdate] = useState({});
-
-  useEffect(() => {
-    const unsubscribe = fsmRef.current.subscribe(() => {
-      forceUpdate({});
-    });
-
-    return unsubscribe;
-  }, []);
-
-  return {
-    state: fsmRef.current.getState(),
-    dispatch: (event: QuizEvent) => fsmRef.current.dispatch(event),
-    canTransition: (event: QuizEvent) => fsmRef.current.canTransition(event),
-  };
-}
+// ИСПРАВЛЕНО: React hook useQuizStateMachine вынесен в lib/quiz/hooks/useQuizStateMachine.ts
+// Используйте импорт: import { useQuizStateMachine } from '@/lib/quiz/hooks';
 
