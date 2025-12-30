@@ -4537,25 +4537,42 @@ export default function QuizPage() {
         filteredCount: filtered.length,
         filteredQuestionIds: filtered.length > 0 ? filtered.map((q: Question) => q?.id).filter(Boolean).slice(0, 10) : [],
         removedCount: allQuestionsRaw.length - filtered.length,
-        answersCount: Object.keys(answers).length,
+        answersCount: Object.keys(answers || {}).length,
         savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
         isRetakingQuiz,
         showRetakeScreen,
+        hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
       });
     
       // ДИАГНОСТИКА: Если filtered пустой, логируем детальную информацию
-    if (filtered.length === 0 && allQuestionsRaw.length > 0) {
+      if (filtered.length === 0 && allQuestionsRaw.length > 0) {
         clientLogger.error('❌ CRITICAL: filtered is empty but allQuestionsRaw has questions', {
           allQuestionsRawCount: allQuestionsRaw.length,
           filteredCount: filtered.length,
           allQuestionsRawIds: allQuestionsRaw.map((q: Question) => q.id).slice(0, 10),
           allQuestionsRawCodes: allQuestionsRaw.map((q: Question) => q.code).slice(0, 10),
-        answersCount: Object.keys(answers).length,
-        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+          answersCount: Object.keys(answers || {}).length,
+          savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
           effectiveAnswers: getEffectiveAnswers(answers, savedProgress?.answers),
-        isRetakingQuiz,
-        showRetakeScreen,
-      });
+          isRetakingQuiz,
+          showRetakeScreen,
+          hasQuestionnaire: !!questionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+        });
+      }
+      
+      // ДИАГНОСТИКА: Если и allQuestionsRaw, и filtered пустые, но questionnaire есть
+      if (filtered.length === 0 && allQuestionsRaw.length === 0 && (questionnaire || questionnaireRef.current)) {
+        clientLogger.error('❌ CRITICAL: allQuestionsRaw and filtered are empty but questionnaire exists', {
+          hasQuestionnaire: !!questionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+          hasGroups: !!(questionnaire?.groups || questionnaireRef.current?.groups),
+          groupsCount: (questionnaire?.groups?.length || questionnaireRef.current?.groups?.length || 0),
+          hasQuestions: !!(questionnaire?.questions || questionnaireRef.current?.questions),
+          questionsCount: (questionnaire?.questions?.length || questionnaireRef.current?.questions?.length || 0),
+        });
       }
     } catch (logErr) {
       // Игнорируем ошибки логирования
