@@ -348,6 +348,10 @@ export default function QuizPage() {
   const submitAnswersRef = useRef<(() => Promise<void>) | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Дебаунсинг для сохранения метаданных позиции
   const lastSavedAnswerRef = useRef<{ questionId: number; answer: string | string[] } | null>(null); // Последний сохраненный ответ для дедупликации
+  // ИСПРАВЛЕНО: Ref для хранения последних метаданных позиции для batch-сохранения
+  const pendingProgressRef = useRef<{ questionIndex?: number; infoScreenIndex?: number } | null>(null);
+  // ИСПРАВЛЕНО: Ref для отслеживания, был ли прогресс уже загружен (кэширование)
+  const progressLoadedRef = useRef(false);
   // ИСПРАВЛЕНО: loadingRefForTimeout объявлен на уровне компонента для синхронизации с loading
   const loadingRefForTimeout = useRef(true);
   // Время начала загрузки для абсолютного таймаута
@@ -363,6 +367,17 @@ export default function QuizPage() {
       loadingStartTimeRef.current = null;
     }
   }, [loading]);
+  
+  // ИСПРАВЛЕНО: Cleanup для saveProgressTimeoutRef при размонтировании компонента
+  // Это предотвращает утечки памяти и выполнение сохранения после размонтирования
+  useEffect(() => {
+    return () => {
+      if (saveProgressTimeoutRef.current) {
+        clearTimeout(saveProgressTimeoutRef.current);
+        saveProgressTimeoutRef.current = null;
+      }
+    };
+  }, []);
   
   // ИСПРАВЛЕНО: Абсолютный таймаут для loading - если loading остается true больше 15 секунд, сбрасываем его
   // ИСПРАВЛЕНО: Один-единственный "сторож" лоадера (absolute timeout)
@@ -1279,6 +1294,16 @@ export default function QuizPage() {
       return;
     }
     
+    // ИСПРАВЛЕНО: Кэширование - не загружаем прогресс повторно, если он уже был загружен
+    // Это оптимизирует обмен данными и предотвращает лишние запросы
+    if (progressLoadedRef.current) {
+      clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, прогресс уже загружен (кэш)', {
+        currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+        hasSavedProgress: !!savedProgress,
+      });
+      return;
+    }
+    
     // ИСПРАВЛЕНО: Логируем вызов для отладки в Telegram Mini App
     clientLogger.log('🔄 loadSavedProgressFromServer: вызов', {
       loadProgressInProgress: loadProgressInProgressRef.current,
@@ -1288,6 +1313,7 @@ export default function QuizPage() {
       initCompleted: initCompletedRef.current,
       currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
       isAlreadyOnQuestions,
+      progressLoaded: progressLoadedRef.current,
       stack: new Error().stack?.split('\n').slice(1, 4).join('\n'),
     });
     
@@ -1578,35 +1604,65 @@ export default function QuizPage() {
   };
 
   // Сохраняем прогресс в localStorage и на сервер
+  // ИСПРАВЛЕНО: Добавлен debouncing для оптимизации - сохраняем не сразу, а через задержку
+  // Это уменьшает количество запросов к серверу при быстрых переходах между экранами
   const saveProgress = async (newAnswers?: Record<number, string | string[]>, newQuestionIndex?: number, newInfoScreenIndex?: number) => {
     if (typeof window === 'undefined') return;
     
     // ИСПРАВЛЕНО: Сохраняем метаданные позиции (questionIndex, infoScreenIndex) в БД через API
     // Это критично для правильного восстановления прогресса после перезагрузки страницы
     if (questionnaire && (newQuestionIndex !== undefined || newInfoScreenIndex !== undefined)) {
-      try {
-        const questionIndex = newQuestionIndex !== undefined ? newQuestionIndex : currentQuestionIndex;
-        const infoScreenIndex = newInfoScreenIndex !== undefined ? newInfoScreenIndex : currentInfoScreenIndex;
-        
-        // Сохраняем только метаданные позиции (questionId = -1 означает только метаданные)
-        await api.saveQuizProgress(
-          questionnaire.id,
-          -1, // questionId = -1 означает только метаданные позиции
-          undefined, // answerValue
-          undefined, // answerValues
-          questionIndex,
-          infoScreenIndex
-        );
-        
-        clientLogger.log('✅ Метаданные позиции сохранены', {
-          questionIndex,
-          infoScreenIndex,
-          questionnaireId: questionnaire.id,
-        });
-      } catch (err: any) {
-        // Не критично, если не удалось сохранить - прогресс все равно будет восстановлен из ответов
-        clientLogger.warn('⚠️ Не удалось сохранить метаданные позиции:', err?.message);
+      // ИСПРАВЛЕНО: Сохраняем метаданные в pendingProgressRef для batch-сохранения
+      const questionIndex = newQuestionIndex !== undefined ? newQuestionIndex : currentQuestionIndex;
+      const infoScreenIndex = newInfoScreenIndex !== undefined ? newInfoScreenIndex : currentInfoScreenIndex;
+      
+      // Обновляем pendingProgressRef с последними значениями
+      pendingProgressRef.current = {
+        questionIndex: pendingProgressRef.current?.questionIndex !== undefined 
+          ? (newQuestionIndex !== undefined ? newQuestionIndex : pendingProgressRef.current.questionIndex)
+          : questionIndex,
+        infoScreenIndex: pendingProgressRef.current?.infoScreenIndex !== undefined
+          ? (newInfoScreenIndex !== undefined ? newInfoScreenIndex : pendingProgressRef.current.infoScreenIndex)
+          : infoScreenIndex,
+      };
+      
+      // ИСПРАВЛЕНО: Очищаем предыдущий таймаут, если он есть
+      if (saveProgressTimeoutRef.current) {
+        clearTimeout(saveProgressTimeoutRef.current);
       }
+      
+      // ИСПРАВЛЕНО: Устанавливаем новый таймаут для debouncing (500ms)
+      // Это позволяет собирать несколько изменений и отправлять их одним запросом
+      saveProgressTimeoutRef.current = setTimeout(async () => {
+        try {
+          const finalQuestionIndex = pendingProgressRef.current?.questionIndex ?? questionIndex;
+          const finalInfoScreenIndex = pendingProgressRef.current?.infoScreenIndex ?? infoScreenIndex;
+          
+          // Сохраняем только метаданные позиции (questionId = -1 означает только метаданные)
+          await api.saveQuizProgress(
+            questionnaire.id,
+            -1, // questionId = -1 означает только метаданные позиции
+            undefined, // answerValue
+            undefined, // answerValues
+            finalQuestionIndex,
+            finalInfoScreenIndex
+          );
+          
+          clientLogger.log('✅ Метаданные позиции сохранены (debounced)', {
+            questionIndex: finalQuestionIndex,
+            infoScreenIndex: finalInfoScreenIndex,
+            questionnaireId: questionnaire.id,
+          });
+          
+          // Очищаем pendingProgressRef после успешного сохранения
+          pendingProgressRef.current = null;
+        } catch (err: any) {
+          // Не критично, если не удалось сохранить - прогресс все равно будет восстановлен из ответов
+          clientLogger.warn('⚠️ Не удалось сохранить метаданные позиции:', err?.message);
+        } finally {
+          saveProgressTimeoutRef.current = null;
+        }
+      }, 500); // 500ms debounce - достаточно для batch-сохранения, но не слишком долго
     }
   };
 
@@ -6149,17 +6205,17 @@ export default function QuizPage() {
       !showResumeScreen && 
       !pendingInfoScreen) {
     // ИСПРАВЛЕНО: Логируем всегда (не только в dev), чтобы видеть в БД, почему инфо-экраны не показываются
-    clientLogger.log('📺 Рендерим начальный инфо-экран', {
-      currentInfoScreenIndex,
-      initialInfoScreensLength: initialInfoScreens.length,
-      currentInitialInfoScreenId: currentInitialInfoScreen?.id,
-      isShowingInitialInfoScreen,
+      clientLogger.log('📺 Рендерим начальный инфо-экран', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        currentInitialInfoScreenId: currentInitialInfoScreen?.id,
+        isShowingInitialInfoScreen,
       hasEffectiveQuestionnaire: !!effectiveQuestionnaire,
       hasQuestionnaireState: !!questionnaire,
       hasQuestionnaireRef: !!questionnaireRef.current,
       hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
       loading,
-    });
+      });
     return renderInfoScreen(currentInitialInfoScreen);
   }
   
