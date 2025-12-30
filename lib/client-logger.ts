@@ -161,7 +161,11 @@ export const clientLogger = {
       message.includes('CRITICAL') || message.includes('CALLED') ||
       message.includes('RETURNED') || message.includes('EXECUTED') ||
       message.includes('filterQuestions') || message.includes('filter') ||
-      message.includes('ВСЕ ВОПРОСЫ') || message.includes('ОТФИЛЬТРОВАНЫ');
+      message.includes('ВСЕ ВОПРОСЫ') || message.includes('ОТФИЛЬТРОВАНЫ') ||
+      // ИСПРАВЛЕНО: Добавляем ключевые слова для debouncing и кэширования
+      message.includes('debounced') || message.includes('кэш') ||
+      message.includes('Метаданные позиции') || message.includes('progressLoaded') ||
+      message.includes('loadSavedProgressFromServer');
     
     // ИСПРАВЛЕНО: Отправляем все логи с эмодзи или ключевыми словами, а также все логи в development
     // Это гарантирует, что важные логи будут сохранены в БД
@@ -170,7 +174,8 @@ export const clientLogger = {
         // ИСПРАВЛЕНО: В production отправляем важные log как 'info', чтобы они прошли проверку в sendLogToServer
         const levelToSend = (!isDevelopment && isImportantLog) ? 'info' : 'log';
         // ИСПРАВЛЕНО: Отправляем даже если троттлинг блокирует, для важных логов
-        if (shouldSendToServer(levelToSend, message) || isImportantLog) {
+        // ИСПРАВЛЕНО: Для важных логов обходим троттлинг полностью
+        if (isImportantLog || shouldSendToServer(levelToSend, message)) {
           sendLogToServer(levelToSend, message, args.length > 1 ? args.slice(1) : null);
         }
       } catch (err) {
