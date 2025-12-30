@@ -1393,6 +1393,19 @@ export default function QuizPage() {
         
         // КРИТИЧНО: Если текущий infoScreenIndex больше, чем в загруженном прогрессе, не загружаем прогресс
         // Это предотвращает откат назад после того, как пользователь прошел больше экранов
+        // ИСПРАВЛЕНО: Также проверяем, что если пользователь уже на вопросах (currentInfoIndex >= initialInfoScreens.length),
+        // то НИКОГДА не загружаем прогресс, даже если progressInfoIndex больше
+        // Это предотвращает редирект на первый экран после перехода к вопросам
+        if (currentInfoIndex >= initialInfoScreens.length) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах (защита от редиректа)', {
+            currentInfoScreenIndex,
+            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+            progressInfoScreenIndex: progressInfoIndex,
+            currentInfoIndex,
+            initialInfoScreensLength: initialInfoScreens.length,
+          });
+          return;
+        }
         if (currentInfoIndex > progressInfoIndex && currentInfoIndex > 0) {
           clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как текущий прогресс больше загруженного', {
             currentInfoScreenIndex,
@@ -1452,6 +1465,21 @@ export default function QuizPage() {
             initialInfoScreensLength: initialInfoScreens.length,
             progressInfoScreenIndex: progressInfoIndex,
             finalCheckInfoIndex,
+          });
+          return;
+        }
+        
+        // ИСПРАВЛЕНО: Финальная проверка ПЕРЕД установкой savedProgress
+        // Если пользователь уже на вопросах (currentInfoScreenIndexRef.current >= initialInfoScreens.length),
+        // НИКОГДА не устанавливаем savedProgress, даже если он найден на сервере
+        // Это предотвращает редирект на первый экран после перехода к вопросам
+        const finalCheckBeforeSet = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+        if (finalCheckBeforeSet) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка перед установкой - пользователь уже на вопросах, не устанавливаем savedProgress', {
+            currentInfoScreenIndex,
+            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+            initialInfoScreensLength: initialInfoScreens.length,
+            progressInfoScreenIndex: progressInfoIndex,
           });
           return;
         }
