@@ -101,6 +101,7 @@ export default function QuizPage() {
   
   // ИСПРАВЛЕНО: Синхронизируем questionnaireRef с state для предотвращения рассинхронизации
   // Это гарантирует, что ref всегда актуален, даже если state обновляется асинхронно
+  // КРИТИЧНО: Также восстанавливаем state из ref, если state стал null, но ref содержит данные
   useEffect(() => {
     if (questionnaire) {
       if (questionnaireRef.current !== questionnaire) {
@@ -117,9 +118,14 @@ export default function QuizPage() {
     } else {
       // ИСПРАВЛЕНО: Логируем, если questionnaire стал null
       if (questionnaireRef.current) {
-        clientLogger.log('⚠️ Questionnaire state became null, but ref still has data', {
+        clientLogger.warn('⚠️ Questionnaire state became null, but ref still has data - RESTORING state from ref', {
           refId: questionnaireRef.current?.id,
+          refHasGroups: !!questionnaireRef.current.groups,
+          refGroupsCount: questionnaireRef.current.groups?.length || 0,
         });
+        // КРИТИЧНО: Восстанавливаем state из ref, если state стал null, но ref содержит данные
+        // Это предотвращает потерю анкеты при случайном сбросе state
+        setQuestionnaire(questionnaireRef.current);
       }
     }
   }, [questionnaire]);
@@ -883,16 +889,16 @@ export default function QuizPage() {
           clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, загружаем прогресс:', err);
           // КРИТИЧНО: Проверяем еще раз перед повторным вызовом
           if (!isAlreadyOnQuestions && currentInfoScreenIndexRef.current < initialInfoScreens.length) {
-            await Promise.race([
-              loadSavedProgressFromServer(),
-              new Promise<void>((resolve) => {
-                setTimeout(() => {
-                  clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
-                  resolve();
-                }, 5000);
-              }),
-            ]);
-          }
+          await Promise.race([
+            loadSavedProgressFromServer(),
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
+                resolve();
+              }, 5000);
+            }),
+          ]);
+        }
         }
       } else if (isAlreadyOnQuestions) {
         clientLogger.log('⏸️ init(): пропущена загрузка прогресса, так как пользователь уже на вопросах', {
@@ -1482,11 +1488,11 @@ export default function QuizPage() {
       questionnaire,
       loading,
       error,
-      isRetakingQuiz,
-      showRetakeScreen,
+        isRetakingQuiz,
+        showRetakeScreen,
       savedProgress,
-      currentQuestionIndex,
-      hasResumed,
+          currentQuestionIndex,
+          hasResumed,
       setQuestionnaire,
       setLoading,
       setError,
@@ -1644,13 +1650,13 @@ export default function QuizPage() {
       questionnaireRef,
       initCompletedRef,
       questionnaire,
-      loading,
-      currentInfoScreenIndex,
-      currentQuestionIndex,
+        loading,
+        currentInfoScreenIndex,
+        currentQuestionIndex,
       allQuestions,
-      isRetakingQuiz,
-      showRetakeScreen,
-      hasResumed,
+        isRetakingQuiz,
+        showRetakeScreen,
+        hasResumed,
       pendingInfoScreen,
       answers,
       setIsHandlingNext,
@@ -3302,7 +3308,7 @@ export default function QuizPage() {
       });
       return [];
     }
-  }, [questionnaire, questionnaireRef.current]); // ИСПРАВЛЕНО: Добавляем questionnaireRef.current в зависимости для пересчета при изменении ref
+  }, [questionnaire]); // ИСПРАВЛЕНО: questionnaireRef.current не может быть в зависимостях useMemo, используем useEffect для синхронизации
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
   // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
@@ -3372,6 +3378,26 @@ export default function QuizPage() {
       setLoading(false);
     }
   }, [questionnaire, loading]); // ИСПРАВЛЕНО: questionnaire и loading в зависимостях
+  
+  // ИСПРАВЛЕНО: Дополнительный useEffect для отслеживания изменений questionnaireRef.current
+  // Это гарантирует, что state обновится, когда ref изменится, даже если state был null
+  useEffect(() => {
+    const refId = questionnaireRef.current?.id;
+    const stateId = questionnaire?.id;
+    
+    // Если ref обновился, но state не соответствует или null - обновляем state
+    if (refId && refId !== stateId) {
+      clientLogger.log('🔄 questionnaireRef.current changed - updating state', {
+        refId,
+        stateId,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        hasQuestionnaireState: !!questionnaire,
+      });
+      if (questionnaireRef.current) {
+        setQuestionnaire(questionnaireRef.current);
+      }
+    }
+  }, [questionnaireRef.current?.id, questionnaire?.id]); // ИСПРАВЛЕНО: Отслеживаем изменения ID в ref и state
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
@@ -3518,17 +3544,17 @@ export default function QuizPage() {
       });
     
       // ДИАГНОСТИКА: Если filtered пустой, логируем детальную информацию
-      if (filtered.length === 0 && allQuestionsRaw.length > 0) {
+    if (filtered.length === 0 && allQuestionsRaw.length > 0) {
         clientLogger.error('❌ CRITICAL: filtered is empty but allQuestionsRaw has questions', {
           allQuestionsRawCount: allQuestionsRaw.length,
           filteredCount: filtered.length,
           allQuestionsRawIds: allQuestionsRaw.map((q: Question) => q.id).slice(0, 10),
           allQuestionsRawCodes: allQuestionsRaw.map((q: Question) => q.code).slice(0, 10),
           answersCount: Object.keys(answers || {}).length,
-          savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+        savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
           effectiveAnswers: getEffectiveAnswers(answers, savedProgress?.answers),
-          isRetakingQuiz,
-          showRetakeScreen,
+        isRetakingQuiz,
+        showRetakeScreen,
           hasQuestionnaire: !!questionnaire,
           hasQuestionnaireRef: !!questionnaireRef.current,
         });
@@ -3544,7 +3570,7 @@ export default function QuizPage() {
           groupsCount: (questionnaire?.groups?.length || questionnaireRef.current?.groups?.length || 0),
           hasQuestions: !!(questionnaire?.questions || questionnaireRef.current?.questions),
           questionsCount: (questionnaire?.questions?.length || questionnaireRef.current?.questions?.length || 0),
-        });
+      });
       }
     } catch (logErr) {
       // Игнорируем ошибки логирования
@@ -5730,7 +5756,7 @@ export default function QuizPage() {
             // РЕФАКТОРИНГ: Используем компонент TinderButtons
             if (isTinderScreen) {
               const isLastInfoScreen = screen.id === 'want_improve';
-              return (
+                return (
                 <TinderButtons
                   screenId={screen.id}
                   isLastInfoScreen={isLastInfoScreen}
@@ -5758,26 +5784,26 @@ export default function QuizPage() {
         <FixedContinueButton
           ctaText={screen.ctaText}
           onClick={() => {
-            clientLogger.warn('🖱️ Кнопка "Продолжить": клик получен', {
-              handleNextInProgress: handleNextInProgressRef.current,
-              hasQuestionnaire: !!questionnaire,
-              hasQuestionnaireRef: !!questionnaireRef.current,
-              isHandlingNext,
-              questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
-            });
-            if (!handleNextInProgressRef.current && (questionnaire || questionnaireRef.current)) {
-              clientLogger.warn('✅ Кнопка "Продолжить": вызываем handleNext');
-              handleNext();
-            } else {
-              clientLogger.warn('⏸️ Кнопка "Продолжить": пропущен клик', {
-                handleNextInProgress: handleNextInProgressRef.current,
-                hasQuestionnaire: !!questionnaire,
-                hasQuestionnaireRef: !!questionnaireRef.current,
-                isHandlingNext,
-              });
-            }
-          }}
-          disabled={isHandlingNext}
+                  clientLogger.warn('🖱️ Кнопка "Продолжить": клик получен', {
+                    handleNextInProgress: handleNextInProgressRef.current,
+                    hasQuestionnaire: !!questionnaire,
+                    hasQuestionnaireRef: !!questionnaireRef.current,
+                    isHandlingNext,
+                    questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+                  });
+                  if (!handleNextInProgressRef.current && (questionnaire || questionnaireRef.current)) {
+                    clientLogger.warn('✅ Кнопка "Продолжить": вызываем handleNext');
+                    handleNext();
+                  } else {
+                    clientLogger.warn('⏸️ Кнопка "Продолжить": пропущен клик', {
+                      handleNextInProgress: handleNextInProgressRef.current,
+                      hasQuestionnaire: !!questionnaire,
+                      hasQuestionnaireRef: !!questionnaireRef.current,
+                      isHandlingNext,
+                    });
+                  }
+                }}
+                disabled={isHandlingNext}
           loadingText="Загрузка..."
         />
       </div>
