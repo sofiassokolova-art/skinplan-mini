@@ -196,7 +196,20 @@ export default function QuizPage() {
   // КРИТИЧНО: ЕДИНЫЙ useEffect для синхронизации questionnaire между state, ref и State Machine
   // Это предотвращает бесконечные циклы от множественных эффектов
   const lastSyncedQuestionnaireIdRef = useRef<string | number | null>(null);
+  const lastSyncedQuestionnaireRef = useRef<Questionnaire | null>(null); // ФИКС: Отслеживаем сам объект, а не только ID
   const isSyncingRef = useRef(false); // Защита от рекурсивных вызовов
+  
+  // ФИКС: Используем ref для отслеживания questionnaire из state, чтобы избежать зависимости от state в useEffect
+  const questionnaireStateRef = useRef<Questionnaire | null>(null);
+  useEffect(() => {
+    questionnaireStateRef.current = questionnaire;
+  }, [questionnaire]);
+  
+  // ФИКС: Используем ref для отслеживания loading из state, чтобы избежать зависимости от state в useEffect
+  const loadingStateRef = useRef<boolean>(false);
+  useEffect(() => {
+    loadingStateRef.current = loading;
+  }, [loading]);
   
   useEffect(() => {
     // Защита от рекурсивных вызовов
@@ -204,29 +217,38 @@ export default function QuizPage() {
       return;
     }
     
-    const stateId = questionnaire?.id;
+    const stateQuestionnaire = questionnaireStateRef.current;
+    const stateId = stateQuestionnaire?.id;
     const refId = questionnaireRef.current?.id;
     const stateMachineId = quizStateMachine.questionnaire?.id;
     const lastSyncedId = lastSyncedQuestionnaireIdRef.current;
+    const lastSyncedQuestionnaire = lastSyncedQuestionnaireRef.current;
     
     // Определяем источник истины (приоритет: State Machine > ref > state)
-    const sourceQuestionnaire = quizStateMachine.questionnaire || questionnaireRef.current || questionnaire;
+    const sourceQuestionnaire = quizStateMachine.questionnaire || questionnaireRef.current || stateQuestionnaire;
     const sourceId = stateMachineId || refId || stateId;
     
-    // Если все источники синхронизированы с одним и тем же ID, просто обновляем ref для отслеживания
-    if (sourceId && sourceId === lastSyncedId && stateId === sourceId && refId === sourceId) {
+    // ФИКС: Проверяем, действительно ли объект изменился, а не только ID
+    // Это предотвращает бесконечные циклы при одинаковых объектах
+    const isSameObject = sourceQuestionnaire === lastSyncedQuestionnaire;
+    if (isSameObject && sourceId === lastSyncedId) {
+      return; // Объект не изменился, синхронизация не нужна
+    }
+    
+    // Если все источники синхронизированы с одним и тем же ID и объектом, просто обновляем ref для отслеживания
+    if (sourceId && sourceId === lastSyncedId && stateId === sourceId && refId === sourceId && isSameObject) {
       return; // Уже синхронизировано
     }
     
     // Синхронизируем ref с state (если state есть)
-    if (questionnaire && questionnaireRef.current !== questionnaire) {
-      questionnaireRef.current = questionnaire;
+    if (stateQuestionnaire && questionnaireRef.current !== stateQuestionnaire) {
+      questionnaireRef.current = stateQuestionnaire;
     }
     
     // Если есть источник истины, но state не синхронизирован - синхронизируем
-    if (sourceQuestionnaire && sourceId && sourceId !== stateId) {
-      // Пропускаем, если уже синхронизировали этот ID
-      if (sourceId === lastSyncedId) {
+    if (sourceQuestionnaire && sourceId && (sourceId !== stateId || sourceQuestionnaire !== stateQuestionnaire)) {
+      // Пропускаем, если уже синхронизировали этот объект
+      if (sourceQuestionnaire === lastSyncedQuestionnaire && sourceId === lastSyncedId) {
         return;
       }
       
@@ -236,46 +258,58 @@ export default function QuizPage() {
         refId,
         stateMachineId,
         source: stateMachineId ? 'State Machine' : refId ? 'ref' : 'state',
+        isSameObject,
       });
       
       isSyncingRef.current = true;
       try {
         lastSyncedQuestionnaireIdRef.current = sourceId;
+        lastSyncedQuestionnaireRef.current = sourceQuestionnaire;
         // ИСПРАВЛЕНО: Используем setQuestionnaire напрямую вместо setQuestionnaireWithStateMachine
         // чтобы избежать бесконечного цикла (setQuestionnaireWithStateMachine уже обновляет State Machine)
         // Используем setQuestionnaire напрямую только для синхронизации state с State Machine
         if (stateMachineId && quizStateMachine.questionnaire) {
           // Если источник - State Machine, обновляем state напрямую (State Machine уже синхронизирован)
           // Это предотвращает бесконечный цикл, так как мы не вызываем setQuestionnaireWithStateMachine
-          setQuestionnaire(quizStateMachine.questionnaire);
-          questionnaireRef.current = quizStateMachine.questionnaire;
+          // ФИКС: Проверяем, действительно ли объект изменился перед обновлением
+          if (stateQuestionnaire !== quizStateMachine.questionnaire) {
+            setQuestionnaire(quizStateMachine.questionnaire);
+            questionnaireRef.current = quizStateMachine.questionnaire;
+          }
         } else if (refId && questionnaireRef.current && !stateMachineId) {
           // Если источник - ref, а State Machine пуст, обновляем state напрямую
           // State Machine должен быть обновлен через setQuestionnaireWithStateMachine в других местах
-          setQuestionnaire(questionnaireRef.current);
+          // ФИКС: Проверяем, действительно ли объект изменился перед обновлением
+          if (stateQuestionnaire !== questionnaireRef.current) {
+            setQuestionnaire(questionnaireRef.current);
+          }
         }
       } finally {
-        // ИСПРАВЛЕНО: Сбрасываем флаг сразу после обновления (синхронно)
-        // React обработает обновление state асинхронно, но мы уже завершили логику синхронизации
-        isSyncingRef.current = false;
+        // ФИКС: Сбрасываем флаг через setTimeout, чтобы React успел обработать обновление state
+        // Это предотвращает повторный вызов useEffect до завершения обновления
+        setTimeout(() => {
+          isSyncingRef.current = false;
+        }, 0);
       }
     } else if (sourceId) {
       // Если все синхронизировано, просто обновляем ref для отслеживания
       lastSyncedQuestionnaireIdRef.current = sourceId;
+      lastSyncedQuestionnaireRef.current = sourceQuestionnaire || null;
     }
     
     // Сбрасываем loading, если анкета загружена
     const hasQuestionnaire = !!sourceQuestionnaire;
-    if (hasQuestionnaire && loading) {
+    const currentLoading = loadingStateRef.current;
+    if (hasQuestionnaire && currentLoading) {
       clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
-        hasQuestionnaireState: !!questionnaire,
+        hasQuestionnaireState: !!stateQuestionnaire,
         hasQuestionnaireRef: !!questionnaireRef.current,
         hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
         sourceId,
       });
       setLoading(false);
     }
-  }, [questionnaire, loading, quizStateMachine.questionnaire]);
+  }, [quizStateMachine]); // ФИКС: Убрали questionnaire и loading из зависимостей, используем refs вместо этого
   
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
@@ -847,9 +881,43 @@ export default function QuizPage() {
     });
 
     try {
-      // ИСПРАВЛЕНО: НЕ устанавливаем loading=true, так как лоадер анкеты убран
-      // Лоадер показывается только на главной странице (/)
-      // Анкета загружается в фоне без показа лоадера
+      // ФИКС: Восстанавливаем currentInfoScreenIndex из sessionStorage при перемонтировании
+      // Это предотвращает сброс индекса в 0 при ошибке React #310
+      if (typeof window !== 'undefined') {
+        try {
+          const savedInfoScreenIndex = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+          if (savedInfoScreenIndex !== null) {
+            const savedIndex = parseInt(savedInfoScreenIndex, 10);
+            if (!isNaN(savedIndex) && savedIndex >= 0) {
+              const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+              // Восстанавливаем только если индекс валиден и не больше максимального
+              if (savedIndex <= initialInfoScreens.length) {
+                clientLogger.log('💾 Восстановлен currentInfoScreenIndex из sessionStorage', {
+                  savedIndex,
+                  currentIndex: currentInfoScreenIndex,
+                  initialInfoScreensLength: initialInfoScreens.length,
+                });
+                currentInfoScreenIndexRef.current = savedIndex;
+                setCurrentInfoScreenIndex(savedIndex);
+              } else {
+                // Если сохраненный индекс больше максимального, очищаем его
+                sessionStorage.removeItem('quiz_currentInfoScreenIndex');
+                clientLogger.log('🧹 Очищен невалидный currentInfoScreenIndex из sessionStorage', {
+                  savedIndex,
+                  initialInfoScreensLength: initialInfoScreens.length,
+                });
+              }
+            }
+          }
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось восстановить currentInfoScreenIndex из sessionStorage', err);
+        }
+      }
+      
+      // ФИКС: Устанавливаем loading=true при загрузке анкеты
+      // Это гарантирует, что лоадер показывается до загрузки анкеты
+      // и инфо-экраны не показываются до завершения загрузки
+      setLoading(true);
       setError(null);
 
       // 1) telegram init + ожидание (race)
@@ -1391,7 +1459,33 @@ export default function QuizPage() {
         // ИСПРАВЛЕНО: Используем ref для синхронной проверки, так как state обновляется асинхронно
         // КРИТИЧНО: Также проверяем, что загруженный прогресс не имеет infoScreenIndex меньше, чем текущий
         // Это предотвращает откат назад после перехода к вопросам
-        const currentInfoIndex = currentInfoScreenIndexRef.current >= initialInfoScreens.length 
+        
+        // ФИКС: Проверяем sessionStorage для восстановления индекса при перемонтировании
+        let restoredIndex: number | null = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const savedInfoScreenIndex = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+            if (savedInfoScreenIndex !== null) {
+              const savedIndex = parseInt(savedInfoScreenIndex, 10);
+              if (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex <= initialInfoScreens.length) {
+                restoredIndex = savedIndex;
+                // Используем восстановленный индекс, если он больше текущего
+                if (restoredIndex > currentInfoScreenIndexRef.current) {
+                  currentInfoScreenIndexRef.current = restoredIndex;
+                  setCurrentInfoScreenIndex(restoredIndex);
+                  clientLogger.log('💾 Использован восстановленный currentInfoScreenIndex из sessionStorage', {
+                    restoredIndex,
+                    currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+                  });
+                }
+              }
+            }
+          } catch (err) {
+            clientLogger.warn('⚠️ Не удалось проверить currentInfoScreenIndex в sessionStorage', err);
+          }
+        }
+        
+        let currentInfoIndex = currentInfoScreenIndexRef.current >= initialInfoScreens.length 
           ? currentInfoScreenIndexRef.current 
           : currentInfoScreenIndex;
         const progressInfoIndex = response.progress.infoScreenIndex || 0;
@@ -1403,6 +1497,7 @@ export default function QuizPage() {
             initialInfoScreensLength: initialInfoScreens.length,
             progressInfoScreenIndex: progressInfoIndex,
             currentInfoIndex,
+            restoredIndex,
           });
           return;
         }
@@ -1418,6 +1513,7 @@ export default function QuizPage() {
             currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
             progressInfoScreenIndex: progressInfoIndex,
             currentInfoIndex,
+            restoredIndex,
             initialInfoScreensLength: initialInfoScreens.length,
           });
           return;
@@ -1428,6 +1524,7 @@ export default function QuizPage() {
             currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
             progressInfoScreenIndex: progressInfoIndex,
             currentInfoIndex,
+            restoredIndex,
             initialInfoScreensLength: initialInfoScreens.length,
           });
           return;
@@ -3383,6 +3480,15 @@ export default function QuizPage() {
     setAnswers({});
     setCurrentQuestionIndex(0);
     setCurrentInfoScreenIndex(0);
+    currentInfoScreenIndexRef.current = 0;
+    // ФИКС: Очищаем sessionStorage при очистке прогресса
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('quiz_currentInfoScreenIndex');
+      } catch (err) {
+        clientLogger.warn('⚠️ Не удалось очистить quiz_currentInfoScreenIndex из sessionStorage', err);
+      }
+    }
     setShowResumeScreen(false);
     // ВАЖНО: Сбрасываем и state, и ref для hasResumed
     hasResumedRef.current = false;

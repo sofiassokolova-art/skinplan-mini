@@ -86,6 +86,13 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
 
     // Проверяем, нужно ли показывать начальные экраны
     const shouldShowInitialInfoScreen = (() => {
+      // КРИТИЧНО: Не показываем инфо-экраны, если анкета еще не загружена
+      // Это предотвращает показ инфо-экранов до загрузки анкеты
+      // Анкета должна загрузиться в init() перед показом первого инфо-экрана
+      if (!effectiveQuestionnaire) {
+        return false;
+      }
+      
       // Не показываем, если показывается resume screen
       if (showResumeScreen) return false;
       
@@ -121,8 +128,8 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
           ? initialInfoScreens[currentInfoScreenIndex]
           : null;
 
-      // ИСПРАВЛЕНО: Используем effectiveQuestionnaire вместо questionnaire
-      // Это гарантирует, что инфо-экраны показываются, даже если questionnaire в state временно null
+      // КРИТИЧНО: Показываем инфо-экран только если анкета загружена
+      // Это гарантирует, что анкета загрузится до показа первого инфо-экрана
       if (currentInitialInfoScreen && effectiveQuestionnaire && !pendingInfoScreen) {
         return { type: 'initialInfo', screen: currentInitialInfoScreen };
       }

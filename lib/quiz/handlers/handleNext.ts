@@ -129,6 +129,16 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state
       currentInfoScreenIndexRef.current = newIndex;
       setCurrentInfoScreenIndex(newIndex);
+      // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
+      // Это предотвращает сброс currentInfoScreenIndex в 0 при ошибке React #310
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_currentInfoScreenIndex', String(newIndex));
+          clientLogger.log('💾 Сохранен currentInfoScreenIndex в sessionStorage', { newIndex });
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
+        }
+      }
       // ФИКС: Если после инкремента мы прошли все начальные экраны, очищаем pendingInfoScreen
       if (newIndex >= initialInfoScreens.length) {
         setPendingInfoScreen(null);
@@ -154,6 +164,16 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // КРИТИЧНО: Обновляем ref СИНХРОННО перед установкой state, чтобы другие функции видели новое значение
       currentInfoScreenIndexRef.current = newInfoIndex;
       setCurrentInfoScreenIndex(newInfoIndex);
+      // ФИКС: Сохраняем newInfoIndex в sessionStorage для восстановления при перемонтировании
+      // Это предотвращает сброс currentInfoScreenIndex в 0 при ошибке React #310
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_currentInfoScreenIndex', String(newInfoIndex));
+          clientLogger.log('💾 Сохранен currentInfoScreenIndex в sessionStorage', { newInfoIndex });
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось сохранить currentInfoScreenIndex в sessionStorage', err);
+        }
+      }
       // КРИТИЧНО: Для нового пользователя всегда начинаем с первого вопроса (индекс 0)
       // Это гарантирует, что после прохождения всех инфо-экранов вопросы начнут отображаться
       setCurrentQuestionIndex(0);
