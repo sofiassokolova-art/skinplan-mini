@@ -818,9 +818,15 @@ export default function QuizPage() {
       // ВОССТАНОВЛЕНО: Загружаем прогресс для всех пользователей (включая новых)
       // Для новых пользователей прогресс загружается из KV кеша
       // ИСПРАВЛЕНО: Используем только refs для проверки, чтобы не зависеть от state в зависимостях useCallback
+      // КРИТИЧНО: Не загружаем прогресс, если пользователь уже на вопросах
+      // Это предотвращает сброс currentInfoScreenIndex после перехода к вопросам
+      const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+      const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+      
       if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
           !hasResumedRef.current && 
-          !loadProgressInProgressRef.current && !progressLoadInProgressRef.current) {
+          !loadProgressInProgressRef.current && !progressLoadInProgressRef.current &&
+          !isAlreadyOnQuestions) {
         try {
           // Загружаем прогресс для всех пользователей (новые пользователи получат прогресс из KV)
           await Promise.race([
@@ -835,16 +841,24 @@ export default function QuizPage() {
         } catch (err) {
           // При ошибке загрузки прогресса продолжаем без него
           clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, загружаем прогресс:', err);
-          await Promise.race([
-            loadSavedProgressFromServer(),
-            new Promise<void>((resolve) => {
-              setTimeout(() => {
-                clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
-                resolve();
-              }, 5000);
-            }),
-          ]);
+          // КРИТИЧНО: Проверяем еще раз перед повторным вызовом
+          if (!isAlreadyOnQuestions && currentInfoScreenIndexRef.current < initialInfoScreens.length) {
+            await Promise.race([
+              loadSavedProgressFromServer(),
+              new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
+                  resolve();
+                }, 5000);
+              }),
+            ]);
+          }
         }
+      } else if (isAlreadyOnQuestions) {
+        clientLogger.log('⏸️ init(): пропущена загрузка прогресса, так как пользователь уже на вопросах', {
+          currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+          initialInfoScreensLength: initialInfoScreens.length,
+        });
       }
 
       // ФИКС: Принудительно стартуем с вопросов для нового пользователя
@@ -1229,6 +1243,22 @@ export default function QuizPage() {
           clientLogger.log('⏸️ loadSavedProgressFromServer: hasResumed = true перед установкой состояний, пропускаем', {
             refValue: hasResumedRef.current,
             stateValue: hasResumed,
+          });
+          return;
+        }
+        
+        // КРИТИЧНО: Финальная проверка перед установкой savedProgress
+        // Если пользователь уже на вопросах, не устанавливаем savedProgress, чтобы не сбросить состояние
+        const finalCheckInfoIndex = currentInfoScreenIndexRef.current >= initialInfoScreens.length 
+          ? currentInfoScreenIndexRef.current 
+          : currentInfoScreenIndex;
+        if (finalCheckInfoIndex >= initialInfoScreens.length) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка - пользователь уже на вопросах, не устанавливаем savedProgress', {
+            currentInfoScreenIndex,
+            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+            initialInfoScreensLength: initialInfoScreens.length,
+            progressInfoScreenIndex: progressInfoIndex,
+            finalCheckInfoIndex,
           });
           return;
         }
@@ -6041,40 +6071,30 @@ export default function QuizPage() {
             }}>
               <button
                 onClick={() => {
-                  // Проверяем, что анкета загружена перед вызовом handleNext
-                  const hasQuestionnaire = questionnaire || questionnaireRef.current;
-                  if (!hasQuestionnaire) {
-                    clientLogger.warn('⏸️ Кнопка "Продолжить" (welcome): анкета еще не загружена', {
-                      hasQuestionnaire: !!questionnaire,
-                      hasQuestionnaireRef: !!questionnaireRef.current,
-                      loading,
-                      isHandlingNext,
-                    });
-                    return;
-                  }
+                  // Защита от множественных кликов
                   if (!handleNextInProgressRef.current && !isHandlingNext) {
                     handleNext();
                   }
                 }}
-                disabled={isHandlingNext || loading || !questionnaire}
+                disabled={isHandlingNext}
                 style={{
                   width: '100%',
                   maxWidth: 'clamp(224px, 60vw, 320px)',
                   height: 'clamp(56px, 8vh, 64px)',
                   borderRadius: '20px',
-                  background: (isHandlingNext || loading || !questionnaire) ? '#CCCCCC' : '#D5FE61',
+                  background: isHandlingNext ? '#CCCCCC' : '#D5FE61',
                   color: '#000000',
                   border: 'none',
                   fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
                   fontWeight: 600,
                   fontSize: 'clamp(14px, 4vw, 16px)',
-                  cursor: (isHandlingNext || loading || !questionnaire) ? 'not-allowed' : 'pointer',
+                  cursor: isHandlingNext ? 'not-allowed' : 'pointer',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                   transition: 'transform 0.2s, box-shadow 0.2s',
-                  opacity: (isHandlingNext || loading || !questionnaire) ? 0.6 : 1,
+                  opacity: isHandlingNext ? 0.6 : 1,
                 }}
                 onMouseDown={(e) => {
-                  if (!isHandlingNext && !loading && questionnaire) {
+                  if (!isHandlingNext) {
                     e.currentTarget.style.transform = 'scale(0.98)';
                   }
                 }}
@@ -6085,7 +6105,7 @@ export default function QuizPage() {
                   e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
-                {isHandlingNext || loading ? 'Загрузка...' : String(screen.ctaText || 'Продолжить')}
+                {isHandlingNext ? 'Загрузка...' : String(screen.ctaText || 'Продолжить')}
               </button>
             </div>
           )}
@@ -7188,12 +7208,16 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Используем isShowingInitialInfoScreen вместо isShowingInitialInfoScreen
   // КРИТИЧНО: Также проверяем, что currentInfoScreenIndex < initialInfoScreens.length
   // Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
+  // КРИТИЧНО: Показываем первый экран ТОЛЬКО после загрузки анкеты (!loading && questionnaire)
+  // Это гарантирует, что кнопка не будет disabled и серой
   if (isShowingInitialInfoScreen && 
       currentInitialInfoScreen && 
       currentInfoScreenIndex < initialInfoScreens.length &&
       !isRetakingQuiz && 
       !showResumeScreen && 
-      !pendingInfoScreen) {
+      !pendingInfoScreen &&
+      !loading &&
+      questionnaire) {
     // Логируем для диагностики
     if (isDev) {
       clientLogger.log('📺 Рендерим начальный инфо-экран', {
