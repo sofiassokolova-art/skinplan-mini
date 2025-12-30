@@ -1189,6 +1189,7 @@ export default function QuizPage() {
           // ФИКС: Проверяем, есть ли сохраненный currentQuestionIndex в sessionStorage
           // Если есть, значит пользователь уже отвечал на вопросы, и не нужно сбрасывать индекс
           let savedQuestionIndex: number | null = null;
+          let savedInfoScreenIndex: number | null = null;
           if (typeof window !== 'undefined') {
             try {
               const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
@@ -1198,12 +1199,25 @@ export default function QuizPage() {
                   savedQuestionIndex = parsed;
                 }
               }
+              // ФИКС: Также проверяем currentInfoScreenIndex - если он больше длины начальных экранов,
+              // значит пользователь уже прошел начальные экраны и отвечал на вопросы
+              const savedInfoScreen = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+              if (savedInfoScreen !== null) {
+                const parsed = parseInt(savedInfoScreen, 10);
+                if (!isNaN(parsed) && parsed >= 0) {
+                  savedInfoScreenIndex = parsed;
+                }
+              }
             } catch (err) {
               // Игнорируем ошибки sessionStorage
             }
           }
           
-          const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && savedQuestionIndex === null;
+          // ФИКС: Проверяем, прошел ли пользователь начальные экраны
+          // Если да, значит он уже отвечал на вопросы, и не нужно сбрасывать индекс
+          const hasPassedInitialScreens = savedInfoScreenIndex !== null && savedInfoScreenIndex >= initialInfoScreens.length;
+          
+          const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && savedQuestionIndex === null && !hasPassedInitialScreens;
           
           if (isNewUser) {
             // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
@@ -4101,6 +4115,7 @@ export default function QuizPage() {
     // ФИКС: Проверяем sessionStorage перед сбросом - если там есть сохраненный индекс, не сбрасываем
     const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers).length === 0;
     let savedQuestionIndexFromStorage: number | null = null;
+    let savedInfoScreenIndexFromStorage: number | null = null;
     if (typeof window !== 'undefined') {
       try {
         const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
@@ -4110,17 +4125,32 @@ export default function QuizPage() {
             savedQuestionIndexFromStorage = parsed;
           }
         }
+        // ФИКС: Также проверяем currentInfoScreenIndex - если он больше длины начальных экранов,
+        // значит пользователь уже прошел начальные экраны и отвечал на вопросы
+        const savedInfoScreen = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+        if (savedInfoScreen !== null) {
+          const parsed = parseInt(savedInfoScreen, 10);
+          if (!isNaN(parsed) && parsed >= 0) {
+            savedInfoScreenIndexFromStorage = parsed;
+          }
+        }
       } catch (err) {
         // Игнорируем ошибки sessionStorage
       }
     }
+    
+    // ФИКС: Проверяем, прошел ли пользователь начальные экраны
+    // Если да, значит он уже отвечал на вопросы, и не нужно сбрасывать индекс
+    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+    const hasPassedInitialScreens = savedInfoScreenIndexFromStorage !== null && savedInfoScreenIndexFromStorage >= initialInfoScreens.length;
     
     const shouldResetToZero = hasNoSavedProgress && 
                                currentQuestionIndex > 0 && 
                                answersCount === 0 && 
                                !isRetakingQuiz && 
                                !hasResumed &&
-                               savedQuestionIndexFromStorage === null; // ФИКС: Не сбрасываем, если есть сохраненный индекс
+                               savedQuestionIndexFromStorage === null && // ФИКС: Не сбрасываем, если есть сохраненный индекс
+                               !hasPassedInitialScreens; // ФИКС: Не сбрасываем, если пользователь уже прошел начальные экраны
     
     if (shouldResetToZero) {
       clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 для нового пользователя', {
