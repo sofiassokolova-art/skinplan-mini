@@ -82,9 +82,16 @@ const transitions: StateTransition[] = [
   { from: 'REBUILDING_PLAN', event: 'RESET', to: 'LOADING' },
 ];
 
+// ИСПРАВЛЕНО: Добавляем хранение questionnaire в State Machine
+// Это гарантирует, что questionnaire не будет случайно сброшен
+type Questionnaire = any; // Используем any, так как тип может отличаться в разных местах
+
 export class QuizStateMachine {
   private state: QuizState = 'LOADING';
   private listeners: Set<(state: QuizState) => void> = new Set();
+  // ИСПРАВЛЕНО: Храним questionnaire в State Machine для защиты от случайного сброса
+  private questionnaire: Questionnaire | null = null;
+  private questionnaireListeners: Set<(questionnaire: Questionnaire | null) => void> = new Set();
 
   constructor(initialState: QuizState = 'LOADING') {
     this.state = initialState;
@@ -125,6 +132,46 @@ export class QuizStateMachine {
     return transitions.some(
       t => t.from === this.state && t.event === event && (!t.guard || t.guard())
     );
+  }
+
+  // ИСПРАВЛЕНО: Методы для управления questionnaire
+  setQuestionnaire(questionnaire: Questionnaire | null): void {
+    // КРИТИЧНО: Если questionnaire уже установлен, не позволяем установить null
+    // Это защищает от случайного сброса после загрузки
+    if (this.questionnaire !== null && questionnaire === null) {
+      console.warn('⚠️ Attempted to set questionnaire to null when it is already loaded. Ignoring.');
+      return;
+    }
+    
+    const oldQuestionnaire = this.questionnaire;
+    this.questionnaire = questionnaire;
+    
+    // Уведомляем слушателей об изменении questionnaire
+    this.questionnaireListeners.forEach(listener => listener(this.questionnaire));
+    
+    if (oldQuestionnaire !== questionnaire) {
+      console.log(`Questionnaire ${questionnaire ? 'set' : 'cleared'}:`, 
+        questionnaire ? `ID ${questionnaire.id}` : 'null');
+    }
+  }
+
+  getQuestionnaire(): Questionnaire | null {
+    return this.questionnaire;
+  }
+
+  subscribeToQuestionnaire(listener: (questionnaire: Questionnaire | null) => void): () => void {
+    this.questionnaireListeners.add(listener);
+    // Вызываем сразу с текущим значением
+    listener(this.questionnaire);
+    return () => {
+      this.questionnaireListeners.delete(listener);
+    };
+  }
+
+  // ИСПРАВЛЕНО: Метод для сброса questionnaire (только при явном сбросе State Machine)
+  resetQuestionnaire(): void {
+    this.questionnaire = null;
+    this.questionnaireListeners.forEach(listener => listener(null));
   }
 }
 

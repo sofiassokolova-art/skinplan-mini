@@ -80,6 +80,9 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     // Создаем новый экземпляр State Machine с новым начальным состоянием
     stateMachineRef.current = new QuizStateMachine(resetState);
     setState(resetState);
+    // ИСПРАВЛЕНО: При сбросе State Machine также сбрасываем questionnaire
+    stateMachineRef.current.resetQuestionnaire();
+    setQuestionnaireState(null);
   }, [initialState]);
   
   // Вспомогательные функции для проверки состояния
@@ -91,6 +94,38 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     return targetStates.includes(state);
   }, [state]);
   
+  // ИСПРАВЛЕНО: Добавляем управление questionnaire через State Machine
+  const [questionnaire, setQuestionnaireState] = useState<any | null>(() => 
+    stateMachineRef.current?.getQuestionnaire() || null
+  );
+
+  // Подписываемся на изменения questionnaire
+  useEffect(() => {
+    const stateMachine = stateMachineRef.current;
+    if (!stateMachine) return;
+
+    const unsubscribe = stateMachine.subscribeToQuestionnaire((newQuestionnaire) => {
+      setQuestionnaireState(newQuestionnaire);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Функция для установки questionnaire через State Machine
+  const setQuestionnaire = useCallback((newQuestionnaire: any | null) => {
+    const stateMachine = stateMachineRef.current;
+    if (!stateMachine) {
+      console.error('State Machine not initialized');
+      return;
+    }
+    stateMachine.setQuestionnaire(newQuestionnaire);
+  }, []);
+
+  // Функция для получения questionnaire
+  const getQuestionnaire = useCallback(() => {
+    return stateMachineRef.current?.getQuestionnaire() || null;
+  }, []);
+
   return {
     state,
     dispatch,
@@ -99,6 +134,10 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     isState,
     isAnyState,
     stateMachine: stateMachineRef.current,
+    // ИСПРАВЛЕНО: Добавляем questionnaire в возвращаемый объект
+    questionnaire,
+    setQuestionnaire,
+    getQuestionnaire,
   };
 }
 

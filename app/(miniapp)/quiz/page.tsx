@@ -75,7 +75,48 @@ export default function QuizPage() {
     },
   });
   
+  // ИСПРАВЛЕНО: Используем questionnaire из State Machine для защиты от случайного сброса
+  // State Machine гарантирует, что questionnaire не станет null после загрузки
+  const questionnaireFromStateMachine = quizStateMachine.questionnaire;
+  const setQuestionnaireInStateMachine = quizStateMachine.setQuestionnaire;
+  
+  // ИСПРАВЛЕНО: Оставляем локальный state для обратной совместимости, но синхронизируем с State Machine
+  // Это позволяет постепенно мигрировать код на использование State Machine
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
+  
+  // ИСПРАВЛЕНО: Синхронизируем локальный state с State Machine
+  useEffect(() => {
+    if (questionnaireFromStateMachine !== questionnaire) {
+      // Если State Machine имеет questionnaire, но локальный state null - обновляем локальный state
+      if (questionnaireFromStateMachine && !questionnaire) {
+        clientLogger.log('🔄 Syncing questionnaire state from State Machine', {
+          questionnaireId: questionnaireFromStateMachine.id,
+        });
+        setQuestionnaire(questionnaireFromStateMachine);
+      }
+      // Если State Machine имеет questionnaire, но отличается от локального - обновляем локальный
+      else if (questionnaireFromStateMachine && questionnaire && 
+               questionnaireFromStateMachine.id !== questionnaire.id) {
+        clientLogger.log('🔄 Syncing questionnaire state from State Machine (different ID)', {
+          stateMachineId: questionnaireFromStateMachine.id,
+          localId: questionnaire.id,
+        });
+        setQuestionnaire(questionnaireFromStateMachine);
+      }
+    }
+  }, [questionnaireFromStateMachine, questionnaire]);
+  
+  // ИСПРАВЛЕНО: Обертка для setQuestionnaire, которая также обновляет State Machine
+  const setQuestionnaireWithStateMachine = useCallback((newQuestionnaire: Questionnaire | null) => {
+    // КРИТИЧНО: Обновляем State Machine ПЕРВЫМ, чтобы защита от null сработала
+    if (newQuestionnaire) {
+      setQuestionnaireInStateMachine(newQuestionnaire);
+    }
+    // Затем обновляем локальный state
+    setQuestionnaire(newQuestionnaire);
+    // Также обновляем ref для обратной совместимости
+    questionnaireRef.current = newQuestionnaire;
+  }, [setQuestionnaireInStateMachine]);
   // ИСПРАВЛЕНО: Начинаем с loading = false, так как лоадер анкеты убран
   // Лоадер показывается только на главной странице (/)
   const [loading, setLoading] = useState(false);
@@ -1480,6 +1521,8 @@ export default function QuizPage() {
   // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/loadQuestionnaire.ts
   const loadQuestionnaire = useCallback(async () => {
     return loadQuestionnaireFn({
+      // ИСПРАВЛЕНО: Используем setQuestionnaireWithStateMachine для защиты от случайного сброса
+      setQuestionnaire: setQuestionnaireWithStateMachine,
       questionnaireRef,
       loadQuestionnaireInProgressRef,
       loadQuestionnaireAttemptedRef,
@@ -1493,7 +1536,6 @@ export default function QuizPage() {
       savedProgress,
           currentQuestionIndex,
           hasResumed,
-      setQuestionnaire,
       setLoading,
       setError,
       setCurrentQuestionIndex,
