@@ -118,22 +118,49 @@ export default function QuizPage() {
       currentRefQuestionnaireId: questionnaireRef.current?.id || null,
     });
     
+    // КРИТИЧНО: Сохраняем текущее значение из State Machine перед обновлением
+    const previousStateMachineQuestionnaire = quizStateMachine.questionnaire;
+    
+    // Обновляем State Machine
     setQuestionnaireInStateMachine(newQuestionnaire);
     
-    // Затем обновляем локальный state (только если State Machine разрешил)
-    // ИСПРАВЛЕНО: Проверяем, что State Machine действительно установил questionnaire
-    const questionnaireFromStateMachine = quizStateMachine.questionnaire;
-    if (questionnaireFromStateMachine !== questionnaire) {
-      clientLogger.log('🔄 Updating local questionnaire state from State Machine', {
-        stateMachineQuestionnaireId: questionnaireFromStateMachine?.id || null,
-        localQuestionnaireId: questionnaire?.id || null,
+    // ИСПРАВЛЕНО: Сразу после обновления State Machine проверяем результат
+    // Если State Machine отклонил установку null (защита сработала),
+    // используем предыдущее значение вместо null
+    // ИСПРАВЛЕНО: Используем getQuestionnaire для получения актуального значения
+    const questionnaireFromStateMachine = quizStateMachine.getQuestionnaire();
+    
+    // КРИТИЧНО: Если State Machine отклонил установку null, используем предыдущее значение
+    const questionnaireToSet = questionnaireFromStateMachine || previousStateMachineQuestionnaire;
+    
+    // КРИТИЧНО: Если newQuestionnaire null, но State Machine сохранил предыдущее значение,
+    // это означает, что защита сработала - используем сохраненное значение
+    if (newQuestionnaire === null && questionnaireFromStateMachine === null && previousStateMachineQuestionnaire !== null) {
+      clientLogger.warn('🛡️ [State Machine] Protection triggered: prevented setting questionnaire to null', {
+        previousQuestionnaireId: previousStateMachineQuestionnaire.id,
       });
-      setQuestionnaire(questionnaireFromStateMachine);
+      // Используем предыдущее значение
+      setQuestionnaire(previousStateMachineQuestionnaire);
+      questionnaireRef.current = previousStateMachineQuestionnaire;
+      return;
     }
     
-    // Также обновляем ref для обратной совместимости
-    questionnaireRef.current = questionnaireFromStateMachine;
-  }, [setQuestionnaireInStateMachine, quizStateMachine.questionnaire, questionnaire]);
+    // Обновляем локальный state и ref
+    if (questionnaireToSet !== questionnaire) {
+      clientLogger.log('🔄 Updating local questionnaire state from State Machine', {
+        stateMachineQuestionnaireId: questionnaireFromStateMachine?.id || null,
+        previousStateMachineQuestionnaireId: previousStateMachineQuestionnaire?.id || null,
+        questionnaireToSetId: questionnaireToSet?.id || null,
+        localQuestionnaireId: questionnaire?.id || null,
+      });
+      
+      setQuestionnaire(questionnaireToSet);
+      questionnaireRef.current = questionnaireToSet;
+    } else if (questionnaireToSet) {
+      // ИСПРАВЛЕНО: Даже если state не изменился, обновляем ref для гарантии
+      questionnaireRef.current = questionnaireToSet;
+    }
+  }, [setQuestionnaireInStateMachine, quizStateMachine, questionnaire]);
   // ИСПРАВЛЕНО: Начинаем с loading = false, так как лоадер анкеты убран
   // Лоадер показывается только на главной странице (/)
   const [loading, setLoading] = useState(false);
