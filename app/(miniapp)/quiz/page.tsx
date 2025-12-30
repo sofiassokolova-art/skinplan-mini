@@ -20,6 +20,8 @@ import { handleNext as handleNextFn, type HandleNextParams } from '@/lib/quiz/ha
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { useQuizView } from '@/lib/quiz/hooks/useQuizView';
 import { useQuizStateMachine } from '@/lib/quiz/hooks/useQuizStateMachine';
+import { useQuizSync } from '@/lib/quiz/utils/quizSync';
+import { useQuestionnaire, useQuizProgress, useSaveQuizProgress } from '@/hooks/useQuiz';
 import { WelcomeScreen, HowItWorksScreen, PersonalAnalysisScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, BackButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
@@ -262,137 +264,6 @@ export default function QuizPage() {
     stateMachineQuestionnaireIdRef.current = quizStateMachine.questionnaire?.id || null;
   }, [quizStateMachine.questionnaire]);
   
-  useEffect(() => {
-    // Защита от рекурсивных вызовов
-    if (isSyncingRef.current) {
-      return;
-    }
-    
-    const stateQuestionnaire = questionnaireStateRef.current;
-    const stateId = stateQuestionnaire?.id;
-    const refId = questionnaireRef.current?.id;
-    const stateMachineQuestionnaire = stateMachineQuestionnaireRef.current;
-    const stateMachineId = stateMachineQuestionnaire?.id;
-    const lastSyncedId = lastSyncedQuestionnaireIdRef.current;
-    const lastSyncedQuestionnaire = lastSyncedQuestionnaireRef.current;
-    
-    // ФИКС: Дополнительная защита - если мы уже синхронизировали этот questionnaire, не делаем это снова
-    // Это предотвращает бесконечные циклы при повторных вызовах useEffect
-    if (stateMachineId && stateMachineId === lastSyncedId && 
-        stateMachineQuestionnaire === lastSyncedQuestionnaire &&
-        stateQuestionnaire === lastSyncedQuestionnaire) {
-      // Уже синхронизировано, не нужно делать это снова
-      return;
-    }
-    
-    // Определяем источник истины (приоритет: State Machine > ref > state)
-    const sourceQuestionnaire = stateMachineQuestionnaire || questionnaireRef.current || stateQuestionnaire;
-    const sourceId = stateMachineId || refId || stateId;
-    
-    // ФИКС: Проверяем, действительно ли объект изменился, а не только ID
-    // Это предотвращает бесконечные циклы при одинаковых объектах
-    const isSameObject = sourceQuestionnaire === lastSyncedQuestionnaire;
-    if (isSameObject && sourceId === lastSyncedId) {
-      return; // Объект не изменился, синхронизация не нужна
-    }
-    
-    // Если все источники синхронизированы с одним и тем же ID и объектом, просто обновляем ref для отслеживания
-    if (sourceId && sourceId === lastSyncedId && stateId === sourceId && refId === sourceId && isSameObject) {
-      return; // Уже синхронизировано
-    }
-    
-    // Синхронизируем ref с state (если state есть)
-    if (stateQuestionnaire && questionnaireRef.current !== stateQuestionnaire) {
-      questionnaireRef.current = stateQuestionnaire;
-    }
-    
-    // Если есть источник истины, но state не синхронизирован - синхронизируем
-    if (sourceQuestionnaire && sourceId && (sourceId !== stateId || sourceQuestionnaire !== stateQuestionnaire)) {
-      // Пропускаем, если уже синхронизировали этот объект
-      if (sourceQuestionnaire === lastSyncedQuestionnaire && sourceId === lastSyncedId) {
-        return;
-      }
-      
-      clientLogger.log('🔄 Syncing questionnaire state from source', {
-        sourceId,
-        stateId,
-        refId,
-        stateMachineId,
-        source: stateMachineId ? 'State Machine' : refId ? 'ref' : 'state',
-        isSameObject,
-      });
-      
-      isSyncingRef.current = true;
-      try {
-        lastSyncedQuestionnaireIdRef.current = sourceId;
-        lastSyncedQuestionnaireRef.current = sourceQuestionnaire;
-        // ИСПРАВЛЕНО: Используем setQuestionnaire напрямую вместо setQuestionnaireWithStateMachine
-        // чтобы избежать бесконечного цикла (setQuestionnaireWithStateMachine уже обновляет State Machine)
-        // Используем setQuestionnaire напрямую только для синхронизации state с State Machine
-        // ФИКС: НЕ обновляем state внутри useEffect, который зависит от этого state
-        // Вместо этого обновляем только ref, а обновление state произойдет через отдельный useEffect
-        if (stateMachineId && stateMachineQuestionnaire) {
-          // Если источник - State Machine, обновляем только ref (State Machine уже синхронизирован)
-          // Обновление state произойдет через отдельный useEffect, который следит за изменениями ref
-          // ФИКС: Проверяем, действительно ли объект изменился перед обновлением ref
-          if (questionnaireRef.current !== stateMachineQuestionnaire) {
-            questionnaireRef.current = stateMachineQuestionnaire;
-          }
-          // ФИКС: НЕ обновляем state здесь - это вызовет бесконечный цикл
-          // State будет обновлен через отдельный useEffect, который следит за questionnaireRef
-        } else if (refId && questionnaireRef.current && !stateMachineId) {
-          // Если источник - ref, а State Machine пуст, обновляем только ref
-          // State Machine должен быть обновлен через setQuestionnaireWithStateMachine в других местах
-          // ФИКС: НЕ обновляем state здесь - это вызовет бесконечный цикл
-          // State будет обновлен через отдельный useEffect, который следит за questionnaireRef
-        }
-      } finally {
-        // ФИКС: Сбрасываем флаг синхронно, так как мы больше не обновляем state здесь
-        isSyncingRef.current = false;
-      }
-    } else if (sourceId) {
-      // Если все синхронизировано, просто обновляем ref для отслеживания
-      lastSyncedQuestionnaireIdRef.current = sourceId;
-      lastSyncedQuestionnaireRef.current = sourceQuestionnaire || null;
-    }
-    
-    // ФИКС: НЕ обновляем loading здесь - это вызовет бесконечный цикл React error #310
-    // Loading будет обновлен через отдельный useEffect, который следит за questionnaire
-  }, [quizStateMachine.questionnaire?.id]); // ФИКС: Зависим только от ID questionnaire из State Machine
-  
-  // ФИКС: Отдельный useEffect для синхронизации state с questionnaireRef из State Machine
-  // Это предотвращает бесконечные циклы React error #310, так как мы не обновляем state внутри useEffect, который зависит от questionnaire
-  useEffect(() => {
-    // ФИКС: Проверяем, что мы не в процессе синхронизации, чтобы избежать бесконечных циклов
-    if (isSyncingRef.current) {
-      return;
-    }
-    
-    const stateMachineQuestionnaire = stateMachineQuestionnaireRef.current;
-    const stateQuestionnaire = questionnaireStateRef.current;
-    
-    // Если State Machine изменился, но state не синхронизирован - обновляем state
-    if (stateMachineQuestionnaire && stateMachineQuestionnaire !== stateQuestionnaire) {
-      // ФИКС: Проверяем, что ID действительно изменился, чтобы избежать ненужных обновлений
-      if (stateMachineQuestionnaire.id !== stateQuestionnaire?.id) {
-        clientLogger.log('🔄 Syncing state from State Machine questionnaire (separate useEffect)', {
-          stateMachineId: stateMachineQuestionnaire.id,
-          stateId: stateQuestionnaire?.id,
-        });
-        isSyncingRef.current = true;
-        try {
-          setQuestionnaire(stateMachineQuestionnaire);
-          questionnaireRef.current = stateMachineQuestionnaire;
-        } finally {
-          // ФИКС: Сбрасываем флаг через setTimeout, чтобы React успел обработать обновление
-          setTimeout(() => {
-            isSyncingRef.current = false;
-          }, 0);
-        }
-      }
-    }
-  }, [quizStateMachine.questionnaire?.id]); // Зависим только от ID из State Machine
-  
   // ФИКС: Отдельный useEffect для сброса loading, когда questionnaire загружен
   // Это предотвращает бесконечные циклы React error #310
   useEffect(() => {
@@ -604,6 +475,16 @@ export default function QuizPage() {
   const initCompletedTimeRef = useRef<number | null>(null);
   // Ref для отслеживания попыток принудительного сброса loading в рендере
   const loadingResetAttemptedRef = useRef(false);
+
+  // ФИКС: Используем упрощенную синхронизацию через useQuizSync
+  // Это предотвращает бесконечные циклы React error #310 и упрощает код
+  // ВАЖНО: Вызываем после объявления всех refs
+  useQuizSync({
+    stateMachineQuestionnaire: quizStateMachine.questionnaire,
+    setQuestionnaire,
+    questionnaireRef,
+    isSyncingRef,
+  });
 
   // ИСПРАВЛЕНО: Очищаем quiz_just_submitted и isSubmitting при входе на /quiz
   // Это предотвращает показ планового лоадера для нового пользователя из-за "залипшего" флага

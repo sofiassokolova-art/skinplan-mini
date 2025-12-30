@@ -1,0 +1,91 @@
+// hooks/useQuiz.ts
+// React Query хуки для работы с анкетой (quiz)
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+
+const QUIZ_QUERY_KEY = 'quiz';
+const QUIZ_PROGRESS_QUERY_KEY = 'quiz-progress';
+
+/**
+ * Хук для получения активной анкеты (с кэшированием)
+ * Анкета редко меняется, поэтому используем длительное кэширование
+ */
+export function useQuestionnaire() {
+  return useQuery({
+    queryKey: [QUIZ_QUERY_KEY, 'active'],
+    queryFn: () => api.getActiveQuestionnaire() as Promise<any>,
+    staleTime: 10 * 60 * 1000, // 10 минут (анкета редко меняется)
+    gcTime: 30 * 60 * 1000, // 30 минут в кэше
+    retry: 2, // Повторяем максимум 2 раза при ошибке
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+}
+
+/**
+ * Хук для получения прогресса анкеты (с кэшированием)
+ * Прогресс может меняться чаще, поэтому используем более короткое кэширование
+ */
+export function useQuizProgress() {
+  return useQuery({
+    queryKey: [QUIZ_PROGRESS_QUERY_KEY],
+    queryFn: () => api.getQuizProgress() as Promise<any>,
+    staleTime: 2 * 60 * 1000, // 2 минуты
+    gcTime: 10 * 60 * 1000, // 10 минут в кэше
+    retry: 1, // Повторяем максимум 1 раз при ошибке
+    retryDelay: 1000,
+  });
+}
+
+/**
+ * Хук для сохранения прогресса анкеты (мутация)
+ */
+export function useSaveQuizProgress() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      questionnaireId: number;
+      questionId: number;
+      answerValue?: string;
+      answerValues?: string[];
+      questionIndex?: number;
+      infoScreenIndex?: number;
+    }) => 
+      api.saveQuizProgress(
+        params.questionnaireId,
+        params.questionId,
+        params.answerValue,
+        params.answerValues,
+        params.questionIndex,
+        params.infoScreenIndex
+      ) as Promise<any>,
+    onSuccess: () => {
+      // Инвалидируем кэш прогресса после сохранения
+      queryClient.invalidateQueries({ queryKey: [QUIZ_PROGRESS_QUERY_KEY] });
+    },
+    retry: 1, // Повторяем максимум 1 раз при ошибке
+    retryDelay: 1000,
+  });
+}
+
+/**
+ * Хук для очистки прогресса анкеты (мутация)
+ */
+export function useClearQuizProgress() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params?: { profileVersion?: number; cleanupId?: string }) =>
+      api.clearQuizProgress(params?.profileVersion, params?.cleanupId) as Promise<any>,
+    onSuccess: () => {
+      // Инвалидируем кэш прогресса после очистки
+      queryClient.invalidateQueries({ queryKey: [QUIZ_PROGRESS_QUERY_KEY] });
+      // Также инвалидируем кэш анкеты, так как очистка может повлиять на состояние
+      queryClient.invalidateQueries({ queryKey: [QUIZ_QUERY_KEY] });
+    },
+    retry: 1,
+    retryDelay: 1000,
+  });
+}
+
