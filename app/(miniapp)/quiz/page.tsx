@@ -5051,7 +5051,10 @@ export default function QuizPage() {
     const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
     // Не блокируем, если хотя бы один из индексов показывает, что пользователь прошел начальные экраны
     const isPastInitialScreensAny = isPastInitialScreens || isPastInitialScreensRef;
-    const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) || (pendingInfoScreen && !isRetakingQuiz);
+    // ИСПРАВЛЕНО: Также проверяем ref в условии currentInfoScreenIndex < initialInfoScreens.length
+    // Если ref показывает, что пользователь уже прошел начальные экраны, не блокируем
+    const isStillOnInitialScreens = currentInfoScreenIndex < initialInfoScreens.length && currentInfoScreenIndexRef.current < initialInfoScreens.length;
+    const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && isStillOnInitialScreens) || (pendingInfoScreen && !isRetakingQuiz);
     if (shouldBlock && !showResumeScreen) {
       // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
       clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
