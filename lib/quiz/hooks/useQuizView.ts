@@ -20,6 +20,7 @@ export interface UseQuizViewParams {
   questionnaireFromStateMachine?: any | null; // ИСПРАВЛЕНО: Добавлен questionnaireFromStateMachine как fallback
   loading: boolean;
   hasResumed: boolean;
+  initCompleted?: boolean; // ФИКС: Добавлен флаг завершения инициализации
   savedProgress: {
     answers: Record<number, string | string[]>;
     questionIndex: number;
@@ -51,6 +52,7 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     questionnaireFromStateMachine,
     loading,
     hasResumed,
+    initCompleted = true, // По умолчанию true для обратной совместимости
     savedProgress,
     answers,
     allQuestionsLength,
@@ -86,6 +88,13 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
 
     // Проверяем, нужно ли показывать начальные экраны
     const shouldShowInitialInfoScreen = (() => {
+      // КРИТИЧНО: Не показываем инфо-экраны, если init() еще не завершен
+      // Это предотвращает показ инфо-экранов до загрузки анкеты
+      // ФИКС: Проверяем initCompleted ПЕРВЫМ, чтобы не показывать экраны до завершения инициализации
+      if (!initCompleted) {
+        return false;
+      }
+      
       // КРИТИЧНО: Не показываем инфо-экраны, если анкета еще не загружена
       // Это предотвращает показ инфо-экранов до загрузки анкеты
       // Анкета должна загрузиться в init() перед показом первого инфо-экрана

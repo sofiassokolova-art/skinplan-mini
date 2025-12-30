@@ -6415,6 +6415,7 @@ export default function QuizPage() {
     questionnaireFromStateMachine: quizStateMachine.questionnaire, // ИСПРАВЛЕНО: Передаем questionnaireFromStateMachine как fallback
     loading,
     hasResumed,
+    initCompleted: initCompletedRef.current, // ФИКС: Передаем флаг завершения инициализации
     savedProgress,
     answers,
     allQuestionsLength: allQuestions.length,
@@ -7265,12 +7266,14 @@ export default function QuizPage() {
   // Это предотвращает показ белого экрана при загрузке приложения
   // ИСПРАВЛЕНО: Проверка перенесена после всех хуков, чтобы не нарушать правила React hooks
   // Лоадер показывается пока: loading=true ИЛИ анкета не загружена
-  // ФИКС: НЕ проверяем initCompletedRef, так как он может обновляться асинхронно после загрузки анкеты
+  // ФИКС: Проверяем initCompletedRef, чтобы лоадер показывался до завершения init()
+  // Это предотвращает показ первого инфо-экрана до загрузки анкеты
   // ФИКС: НЕ проверяем allQuestions.length, так как фильтрация происходит динамически после ответов
   // ФИКС: Проверяем не только наличие объекта, но и что он действительно загружен (имеет id)
   const effectiveQuestionnaireForLoader = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
   const hasValidQuestionnaire = effectiveQuestionnaireForLoader && effectiveQuestionnaireForLoader.id;
-  const shouldShowInitialLoader = loading || !hasValidQuestionnaire;
+  // ФИКС: Показываем лоадер, если loading=true ИЛИ анкета не загружена ИЛИ init() еще не завершен
+  const shouldShowInitialLoader = loading || !hasValidQuestionnaire || !initCompletedRef.current;
   
   // ФИКС: Ранний return для лоадера (после всех хуков)
   if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {
