@@ -27,31 +27,7 @@ import { WelcomeScreen, HowItWorksScreen, PersonalAnalysisScreen } from '@/compo
 import { FixedContinueButton, BackButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
-
-interface Question {
-  id: number;
-  code: string;
-  text: string;
-  type: string;
-  isRequired: boolean;
-  options?: Array<{
-    id: number;
-    value: string;
-    label: string;
-  }>;
-}
-
-interface Questionnaire {
-  id: number;
-  name: string;
-  version: number;
-  groups: Array<{
-    id: number;
-    title: string;
-    questions: Question[];
-  }>;
-  questions: Question[];
-}
+import type { Question, Questionnaire, SavedProgress } from '@/lib/quiz/types';
 
 export default function QuizPage() {
   const isDev = process.env.NODE_ENV === 'development';
