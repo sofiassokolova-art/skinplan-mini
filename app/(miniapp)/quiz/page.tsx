@@ -85,13 +85,27 @@ export default function QuizPage() {
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   
   // ИСПРАВЛЕНО: Синхронизируем локальный state с State Machine
+  // КРИТИЧНО: Используем ref для отслеживания последней синхронизации, чтобы избежать бесконечных циклов
+  const lastSyncedQuestionnaireIdRef = useRef<string | number | null>(null);
+  const lastForcedUpdateRefIdRef = useRef<string | number | null>(null);
+  
   useEffect(() => {
+    const stateMachineId = questionnaireFromStateMachine?.id || null;
+    const localId = questionnaire?.id || null;
+    const lastSyncedId = lastSyncedQuestionnaireIdRef.current;
+    
+    // Пропускаем, если уже синхронизировали этот questionnaire
+    if (stateMachineId === lastSyncedId && localId === lastSyncedId) {
+      return;
+    }
+    
     if (questionnaireFromStateMachine !== questionnaire) {
       // Если State Machine имеет questionnaire, но локальный state null - обновляем локальный state
       if (questionnaireFromStateMachine && !questionnaire) {
         clientLogger.log('🔄 Syncing questionnaire state from State Machine', {
           questionnaireId: questionnaireFromStateMachine.id,
         });
+        lastSyncedQuestionnaireIdRef.current = questionnaireFromStateMachine.id;
         setQuestionnaire(questionnaireFromStateMachine);
       }
       // Если State Machine имеет questionnaire, но отличается от локального - обновляем локальный
@@ -101,8 +115,12 @@ export default function QuizPage() {
           stateMachineId: questionnaireFromStateMachine.id,
           localId: questionnaire.id,
         });
+        lastSyncedQuestionnaireIdRef.current = questionnaireFromStateMachine.id;
         setQuestionnaire(questionnaireFromStateMachine);
       }
+    } else if (stateMachineId) {
+      // Если они равны, обновляем ref для отслеживания
+      lastSyncedQuestionnaireIdRef.current = stateMachineId;
     }
   }, [questionnaireFromStateMachine, questionnaire]);
   
@@ -3454,15 +3472,22 @@ export default function QuizPage() {
       }
       return [];
     }
-  }, [questionnaire, questionnaireRef.current?.id, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Добавляем quizStateMachine.questionnaire?.id для отслеживания изменений State Machine
+  }, [questionnaire, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Убрали questionnaireRef.current?.id, так как ref не реактивен и не триггерит пересчет useMemo
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
   // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
+  // ИСПРАВЛЕНО: Используем ref для отслеживания последнего обновления, чтобы избежать бесконечных циклов
   useEffect(() => {
     const hasQuestionnaireState = !!questionnaire;
     const hasQuestionnaireRef = !!questionnaireRef.current;
     const stateId = questionnaire?.id;
     const refId = questionnaireRef.current?.id;
+    const lastForcedId = lastForcedUpdateRefIdRef.current;
+    
+    // Пропускаем, если уже обновляли этот questionnaire
+    if (refId === lastForcedId && stateId === refId) {
+      return;
+    }
     
     // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
     if (isDev) {
@@ -3477,7 +3502,7 @@ export default function QuizPage() {
     // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, 
     // принудительно обновляем state и сбрасываем loading
     // Это гарантирует, что анкета отобразится сразу после загрузки
-    if (hasQuestionnaireRef && !hasQuestionnaireState && refId) {
+    if (hasQuestionnaireRef && !hasQuestionnaireState && refId && refId !== lastForcedId) {
       clientLogger.warn('⚠️ Questionnaire in ref but not in state - forcing state update and loading=false', {
         refId,
         stateId,
@@ -3497,11 +3522,15 @@ export default function QuizPage() {
             // Это предотвращает лишние пересчеты useMemo
             return prev;
           }
+          lastForcedUpdateRefIdRef.current = questionnaireRef.current?.id || null;
           return questionnaireRef.current;
         });
         // КРИТИЧНО: Сбрасываем loading немедленно, чтобы анкета отобразилась
         setLoading(false);
       }
+    } else if (stateId && stateId === refId) {
+      // Если state и ref синхронизированы, обновляем ref для отслеживания
+      lastForcedUpdateRefIdRef.current = stateId;
     }
     
     // КРИТИЧНО: Если анкета загружена в state, но loading все еще true - сбрасываем loading
@@ -3543,7 +3572,7 @@ export default function QuizPage() {
         setQuestionnaire(questionnaireRef.current);
       }
     }
-  }, [questionnaireRef.current?.id, questionnaire?.id]); // ИСПРАВЛЕНО: Отслеживаем изменения ID в ref и state
+  }, [questionnaire?.id]); // ИСПРАВЛЕНО: Убрали questionnaireRef.current?.id из зависимостей, так как ref не реактивен. Используем только questionnaire?.id
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
