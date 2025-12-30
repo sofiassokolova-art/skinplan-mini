@@ -275,12 +275,28 @@ export function filterQuestions(options: FilterQuestionsOptions): Question[] {
 
       // 2. Фильтрация retinoid_reaction на основе retinoid_usage
       // ИСПРАВЛЕНО: Используем только question.code для стабильности
+      // ФИКС: Вопрос retinoid_reaction должен показываться до ответа на retinoid_usage
       const isRetinoidReactionQuestion = normalizedCode === 'retinoid_reaction';
       
       if (isRetinoidReactionQuestion) {
+        // ФИКС: Если нет ответов вообще, показываем вопрос (он будет отфильтрован после ответа на retinoid_usage)
+        if (!hasAnyAnswers) {
+          filteredCount++;
+          return true;
+        }
+        
         const retinoidUsage = getAnswerByCode('retinoid_usage', questions, effectiveAnswers);
         if (!retinoidUsage.question) {
           // Вопрос о ретиноле еще не найден - показываем вопрос (он будет скрыт позже)
+          filteredCount++;
+          return true;
+        }
+
+        // ФИКС: Проверяем, есть ли ответ на retinoid_usage
+        const hasRetinoidUsageAnswer = retinoidUsage.question.id in effectiveAnswers;
+        if (!hasRetinoidUsageAnswer) {
+          // Ответа еще нет - показываем вопрос
+          filteredCount++;
           return true;
         }
 
