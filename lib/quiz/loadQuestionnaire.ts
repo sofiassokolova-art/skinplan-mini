@@ -398,6 +398,13 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     
     // КРИТИЧНО: Устанавливаем state
     // ИСПРАВЛЕНО: Используем функциональную форму setQuestionnaire для гарантированного обновления
+    // ИСПРАВЛЕНО: Логируем перед вызовом setQuestionnaire для диагностики
+    clientLogger.log('🔄 [loadQuestionnaire] About to call setQuestionnaire (via State Machine wrapper)', {
+      questionnaireId: questionnaireToSet.id,
+      previousQuestionnaireId: questionnaire?.id || null,
+      hasQuestionnaireRef: !!questionnaireRef.current,
+      questionnaireRefId: questionnaireRef.current?.id || null,
+    });
     setQuestionnaire((prevQuestionnaire: Questionnaire | null) => {
       // ИСПРАВЛЕНО: Проверяем, действительно ли данные изменились
       // Если ID совпадает и анкета уже установлена, не создаем новый объект
