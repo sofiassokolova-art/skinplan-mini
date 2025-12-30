@@ -1474,7 +1474,7 @@ export default function PlanPage() {
           fontFamily: 'Inter, sans-serif',
           letterSpacing: '-0.02em'
         }}>
-          Интер
+          Подбираем уход под вашу кожу…
         </div>
       </div>
     );
