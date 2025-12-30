@@ -139,7 +139,17 @@ export class QuizStateMachine {
     // КРИТИЧНО: Если questionnaire уже установлен, не позволяем установить null
     // Это защищает от случайного сброса после загрузки
     if (this.questionnaire !== null && questionnaire === null) {
-      console.warn('⚠️ Attempted to set questionnaire to null when it is already loaded. Ignoring.');
+      const currentId = this.questionnaire?.id;
+      console.warn('⚠️ [State Machine] Attempted to set questionnaire to null when it is already loaded. Ignoring.', {
+        currentQuestionnaireId: currentId,
+        stackTrace: new Error().stack,
+      });
+      // ИСПРАВЛЕНО: Логируем в clientLogger для отправки в БД
+      if (typeof window !== 'undefined' && (window as any).clientLogger) {
+        (window as any).clientLogger.warn('⚠️ [State Machine] Attempted to set questionnaire to null when it is already loaded', {
+          currentQuestionnaireId: currentId,
+        });
+      }
       return;
     }
     
@@ -150,8 +160,18 @@ export class QuizStateMachine {
     this.questionnaireListeners.forEach(listener => listener(this.questionnaire));
     
     if (oldQuestionnaire !== questionnaire) {
-      console.log(`Questionnaire ${questionnaire ? 'set' : 'cleared'}:`, 
-        questionnaire ? `ID ${questionnaire.id}` : 'null');
+      const logMessage = questionnaire 
+        ? `[State Machine] Questionnaire set: ID ${questionnaire.id}` 
+        : `[State Machine] Questionnaire cleared: null`;
+      console.log(logMessage);
+      
+      // ИСПРАВЛЕНО: Логируем в clientLogger для отправки в БД
+      if (typeof window !== 'undefined' && (window as any).clientLogger) {
+        (window as any).clientLogger.log(logMessage, {
+          questionnaireId: questionnaire?.id || null,
+          previousQuestionnaireId: oldQuestionnaire?.id || null,
+        });
+      }
     }
   }
 

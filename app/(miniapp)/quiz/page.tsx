@@ -109,14 +109,31 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Обертка для setQuestionnaire, которая также обновляет State Machine
   const setQuestionnaireWithStateMachine = useCallback((newQuestionnaire: Questionnaire | null) => {
     // КРИТИЧНО: Обновляем State Machine ПЕРВЫМ, чтобы защита от null сработала
-    if (newQuestionnaire) {
-      setQuestionnaireInStateMachine(newQuestionnaire);
+    // ИСПРАВЛЕНО: Всегда вызываем setQuestionnaireInStateMachine, даже если newQuestionnaire null
+    // State Machine сам решит, разрешить ли установку null
+    clientLogger.log('🔄 setQuestionnaireWithStateMachine called', {
+      newQuestionnaireId: newQuestionnaire?.id || null,
+      currentStateMachineQuestionnaireId: quizStateMachine.questionnaire?.id || null,
+      currentLocalQuestionnaireId: questionnaire?.id || null,
+      currentRefQuestionnaireId: questionnaireRef.current?.id || null,
+    });
+    
+    setQuestionnaireInStateMachine(newQuestionnaire);
+    
+    // Затем обновляем локальный state (только если State Machine разрешил)
+    // ИСПРАВЛЕНО: Проверяем, что State Machine действительно установил questionnaire
+    const questionnaireFromStateMachine = quizStateMachine.questionnaire;
+    if (questionnaireFromStateMachine !== questionnaire) {
+      clientLogger.log('🔄 Updating local questionnaire state from State Machine', {
+        stateMachineQuestionnaireId: questionnaireFromStateMachine?.id || null,
+        localQuestionnaireId: questionnaire?.id || null,
+      });
+      setQuestionnaire(questionnaireFromStateMachine);
     }
-    // Затем обновляем локальный state
-    setQuestionnaire(newQuestionnaire);
+    
     // Также обновляем ref для обратной совместимости
-    questionnaireRef.current = newQuestionnaire;
-  }, [setQuestionnaireInStateMachine]);
+    questionnaireRef.current = questionnaireFromStateMachine;
+  }, [setQuestionnaireInStateMachine, quizStateMachine.questionnaire, questionnaire]);
   // ИСПРАВЛЕНО: Начинаем с loading = false, так как лоадер анкеты убран
   // Лоадер показывается только на главной странице (/)
   const [loading, setLoading] = useState(false);
