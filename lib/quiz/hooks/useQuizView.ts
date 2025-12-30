@@ -113,8 +113,9 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       if (isRetakingQuiz && !showRetakeScreen) return false;
       
       // Не показываем, если уже прошли все начальные экраны
+      // ФИКС: Используем только currentInfoScreenIndex, так как ref не триггерит рендер
+      // и может привести к React error #300
       if (currentInfoScreenIndex >= initialInfoScreens.length) return false;
-      if (currentInfoScreenIndexRef.current >= initialInfoScreens.length) return false;
       
       // Не показываем, если пользователь уже начал отвечать
       if (currentQuestionIndex > 0 || Object.keys(answers).length > 0) return false;
@@ -161,12 +162,15 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     isRetakingQuiz,
     pendingInfoScreen,
     currentInfoScreenIndex,
-    currentInfoScreenIndexRef,
+    // ФИКС: НЕ включаем currentInfoScreenIndexRef в зависимости, так как ref не триггерит рендер
+    // Используем currentInfoScreenIndex вместо этого
     currentQuestionIndex,
     currentQuestion,
     questionnaire,
-    questionnaireRef?.current, // ИСПРАВЛЕНО: Добавляем questionnaireRef.current в зависимости
-    questionnaireFromStateMachine, // ИСПРАВЛЕНО: Добавляем questionnaireFromStateMachine в зависимости
+    // ФИКС: Используем questionnaireRef?.current?.id вместо всего объекта, чтобы избежать лишних пересчетов
+    // Это предотвращает React error #300 и #310
+    questionnaireRef?.current?.id,
+    questionnaireFromStateMachine?.id, // ФИКС: Используем только ID вместо всего объекта
     loading,
     hasResumed,
     savedProgress,

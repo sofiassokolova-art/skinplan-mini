@@ -240,6 +240,7 @@ export default function QuizPage() {
   const lastSyncedQuestionnaireIdRef = useRef<string | number | null>(null);
   const lastSyncedQuestionnaireRef = useRef<Questionnaire | null>(null); // ФИКС: Отслеживаем сам объект, а не только ID
   const isSyncingRef = useRef(false); // Защита от рекурсивных вызовов
+  const lastLoadingResetIdRef = useRef<string | number | null>(null); // ФИКС: Отслеживаем, для какого questionnaire мы уже сбросили loading
   
   // ФИКС: Используем ref для отслеживания questionnaire из state, чтобы избежать зависимости от state в useEffect
   const questionnaireStateRef = useRef<Questionnaire | null>(null);
@@ -319,20 +320,29 @@ export default function QuizPage() {
         // ИСПРАВЛЕНО: Используем setQuestionnaire напрямую вместо setQuestionnaireWithStateMachine
         // чтобы избежать бесконечного цикла (setQuestionnaireWithStateMachine уже обновляет State Machine)
         // Используем setQuestionnaire напрямую только для синхронизации state с State Machine
+        // ФИКС: Используем setTimeout для обновления state, чтобы избежать React error #310
         if (stateMachineId && stateMachineQuestionnaire) {
           // Если источник - State Machine, обновляем state напрямую (State Machine уже синхронизирован)
           // Это предотвращает бесконечный цикл, так как мы не вызываем setQuestionnaireWithStateMachine
           // ФИКС: Проверяем, действительно ли объект изменился перед обновлением
           if (stateQuestionnaire !== stateMachineQuestionnaire) {
-            setQuestionnaire(stateMachineQuestionnaire);
-            questionnaireRef.current = stateMachineQuestionnaire;
+            // ФИКС: Используем setTimeout, чтобы избежать обновления state во время рендера
+            // Это предотвращает React error #310 (Maximum update depth exceeded)
+            setTimeout(() => {
+              setQuestionnaire(stateMachineQuestionnaire);
+              questionnaireRef.current = stateMachineQuestionnaire;
+            }, 0);
           }
         } else if (refId && questionnaireRef.current && !stateMachineId) {
           // Если источник - ref, а State Machine пуст, обновляем state напрямую
           // State Machine должен быть обновлен через setQuestionnaireWithStateMachine в других местах
           // ФИКС: Проверяем, действительно ли объект изменился перед обновлением
           if (stateQuestionnaire !== questionnaireRef.current) {
-            setQuestionnaire(questionnaireRef.current);
+            // ФИКС: Используем setTimeout, чтобы избежать обновления state во время рендера
+            // Это предотвращает React error #310 (Maximum update depth exceeded)
+            setTimeout(() => {
+              setQuestionnaire(questionnaireRef.current);
+            }, 0);
           }
         }
       } finally {
@@ -348,17 +358,27 @@ export default function QuizPage() {
       lastSyncedQuestionnaireRef.current = sourceQuestionnaire || null;
     }
     
-    // Сбрасываем loading, если анкета загружена
+    // ФИКС: Сбрасываем loading, если анкета загружена, но только один раз
+    // Используем ref для отслеживания, чтобы избежать повторных вызовов
     const hasQuestionnaire = !!sourceQuestionnaire;
     const currentLoading = loadingStateRef.current;
-    if (hasQuestionnaire && currentLoading) {
-      clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
-        hasQuestionnaireState: !!stateQuestionnaire,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        hasQuestionnaireStateMachine: !!stateMachineQuestionnaire,
-        sourceId,
-      });
-      setLoading(false);
+    if (hasQuestionnaire && currentLoading && sourceId) {
+      // ФИКС: Проверяем, что мы еще не сбросили loading для этого questionnaire
+      // Это предотвращает повторные вызовы setLoading и бесконечные циклы
+      if (lastLoadingResetIdRef.current !== sourceId) {
+        lastLoadingResetIdRef.current = sourceId;
+        clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
+          hasQuestionnaireState: !!stateQuestionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          hasQuestionnaireStateMachine: !!stateMachineQuestionnaire,
+          sourceId,
+        });
+        // ФИКС: Используем setTimeout, чтобы избежать обновления state во время рендера
+        // Это предотвращает React error #310 (Maximum update depth exceeded)
+        setTimeout(() => {
+          setLoading(false);
+        }, 0);
+      }
     }
   }, [quizStateMachine.questionnaire?.id]); // ФИКС: Зависим только от ID questionnaire из State Machine
   
