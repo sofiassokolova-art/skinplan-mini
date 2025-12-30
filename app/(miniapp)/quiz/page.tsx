@@ -1182,7 +1182,24 @@ export default function QuizPage() {
           });
         } else {
           const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
-          const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz;
+          // ФИКС: Проверяем, есть ли сохраненный currentQuestionIndex в sessionStorage
+          // Если есть, значит пользователь уже отвечал на вопросы, и не нужно сбрасывать индекс
+          let savedQuestionIndex: number | null = null;
+          if (typeof window !== 'undefined') {
+            try {
+              const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
+              if (saved !== null) {
+                const parsed = parseInt(saved, 10);
+                if (!isNaN(parsed) && parsed >= 0) {
+                  savedQuestionIndex = parsed;
+                }
+              }
+            } catch (err) {
+              // Игнорируем ошибки sessionStorage
+            }
+          }
+          
+          const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && savedQuestionIndex === null;
           
           if (isNewUser) {
             // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
@@ -1206,6 +1223,19 @@ export default function QuizPage() {
                 hasNoSavedProgress: true,
                 location: 'init()',
               });
+            }
+          } else if (savedQuestionIndex !== null && savedQuestionIndex > 0) {
+            // ФИКС: Восстанавливаем currentQuestionIndex из sessionStorage после перемонтирования
+            // Это предотвращает сброс на 0 после ошибки React
+            clientLogger.log('🔄 Восстановление currentQuestionIndex из sessionStorage после перемонтирования', {
+              savedQuestionIndex,
+              currentQuestionIndex,
+              hasNoSavedProgress,
+            });
+            setCurrentQuestionIndex(savedQuestionIndex);
+            // Также пропускаем начальные экраны, если пользователь уже на вопросах
+            if (currentInfoScreenIndex < initialInfoScreens.length) {
+              setCurrentInfoScreenIndex(initialInfoScreens.length);
             }
           }
         }
@@ -4046,8 +4076,29 @@ export default function QuizPage() {
     // КРИТИЧНО: Для нового пользователя без сохраненного прогресса всегда начинаем с 0
     // Это предотвращает ситуацию, когда currentQuestionIndex установлен из старого прогресса,
     // но после фильтрации вопросов он выходит за границы
+    // ФИКС: Проверяем sessionStorage перед сбросом - если там есть сохраненный индекс, не сбрасываем
     const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers).length === 0;
-    const shouldResetToZero = hasNoSavedProgress && currentQuestionIndex > 0 && answersCount === 0 && !isRetakingQuiz && !hasResumed;
+    let savedQuestionIndexFromStorage: number | null = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
+        if (saved !== null) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed >= 0) {
+            savedQuestionIndexFromStorage = parsed;
+          }
+        }
+      } catch (err) {
+        // Игнорируем ошибки sessionStorage
+      }
+    }
+    
+    const shouldResetToZero = hasNoSavedProgress && 
+                               currentQuestionIndex > 0 && 
+                               answersCount === 0 && 
+                               !isRetakingQuiz && 
+                               !hasResumed &&
+                               savedQuestionIndexFromStorage === null; // ФИКС: Не сбрасываем, если есть сохраненный индекс
     
     if (shouldResetToZero) {
       clientLogger.log('🔄 Сбрасываем currentQuestionIndex на 0 для нового пользователя', {
@@ -4057,8 +4108,22 @@ export default function QuizPage() {
         answersCount,
         isRetakingQuiz,
         hasResumed,
+        savedQuestionIndexFromStorage,
       });
       setCurrentQuestionIndex(0);
+      return;
+    }
+    
+    // ФИКС: Если есть сохраненный индекс в sessionStorage, но currentQuestionIndex не совпадает - восстанавливаем
+    if (savedQuestionIndexFromStorage !== null && 
+        savedQuestionIndexFromStorage !== currentQuestionIndex && 
+        savedQuestionIndexFromStorage < allQuestions.length) {
+      clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {
+        savedQuestionIndex: savedQuestionIndexFromStorage,
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+      });
+      setCurrentQuestionIndex(savedQuestionIndexFromStorage);
       return;
     }
     
