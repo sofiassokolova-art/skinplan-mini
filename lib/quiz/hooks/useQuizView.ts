@@ -56,14 +56,14 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     allQuestionsLength,
     isDev,
   } = params;
-  
-  // ИСПРАВЛЕНО: Используем questionnaireRef или questionnaireFromStateMachine как fallback
-  // Это гарантирует, что инфо-экраны и вопросы показываются, даже если questionnaire в state временно null
-  const effectiveQuestionnaire = questionnaire || 
-                                  questionnaireRef?.current || 
-                                  questionnaireFromStateMachine;
 
   return useMemo(() => {
+    // ИСПРАВЛЕНО: Используем questionnaireRef или questionnaireFromStateMachine как fallback
+    // Это гарантирует, что инфо-экраны и вопросы показываются, даже если questionnaire в state временно null
+    // Вычисляем внутри useMemo, чтобы избежать проблем с зависимостями
+    const effectiveQuestionnaire = questionnaire || 
+                                    questionnaireRef?.current || 
+                                    questionnaireFromStateMachine;
     // 1. Экран продолжения (resume)
     if (showResumeScreen) {
       return { type: 'resume' };
@@ -156,7 +156,6 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     questionnaire,
     questionnaireRef?.current, // ИСПРАВЛЕНО: Добавляем questionnaireRef.current в зависимости
     questionnaireFromStateMachine, // ИСПРАВЛЕНО: Добавляем questionnaireFromStateMachine в зависимости
-    effectiveQuestionnaire, // ИСПРАВЛЕНО: Добавляем effectiveQuestionnaire в зависимости
     loading,
     hasResumed,
     savedProgress,
