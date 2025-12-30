@@ -276,6 +276,15 @@ export default function QuizPage() {
     const lastSyncedId = lastSyncedQuestionnaireIdRef.current;
     const lastSyncedQuestionnaire = lastSyncedQuestionnaireRef.current;
     
+    // ФИКС: Дополнительная защита - если мы уже синхронизировали этот questionnaire, не делаем это снова
+    // Это предотвращает бесконечные циклы при повторных вызовах useEffect
+    if (stateMachineId && stateMachineId === lastSyncedId && 
+        stateMachineQuestionnaire === lastSyncedQuestionnaire &&
+        stateQuestionnaire === lastSyncedQuestionnaire) {
+      // Уже синхронизировано, не нужно делать это снова
+      return;
+    }
+    
     // Определяем источник истины (приоритет: State Machine > ref > state)
     const sourceQuestionnaire = stateMachineQuestionnaire || questionnaireRef.current || stateQuestionnaire;
     const sourceId = stateMachineId || refId || stateId;
@@ -320,37 +329,45 @@ export default function QuizPage() {
         // ИСПРАВЛЕНО: Используем setQuestionnaire напрямую вместо setQuestionnaireWithStateMachine
         // чтобы избежать бесконечного цикла (setQuestionnaireWithStateMachine уже обновляет State Machine)
         // Используем setQuestionnaire напрямую только для синхронизации state с State Machine
-        // ФИКС: Используем setTimeout для обновления state, чтобы избежать React error #310
+        // ФИКС: НЕ обновляем state внутри useEffect, который зависит от этого state
+        // Вместо этого обновляем только ref, а обновление state произойдет через другой механизм
         if (stateMachineId && stateMachineQuestionnaire) {
-          // Если источник - State Machine, обновляем state напрямую (State Machine уже синхронизирован)
-          // Это предотвращает бесконечный цикл, так как мы не вызываем setQuestionnaireWithStateMachine
-          // ФИКС: Проверяем, действительно ли объект изменился перед обновлением
+          // Если источник - State Machine, обновляем только ref (State Machine уже синхронизирован)
+          // Обновление state произойдет через другой useEffect или через setQuestionnaireWithStateMachine
+          // ФИКС: Проверяем, действительно ли объект изменился перед обновлением ref
+          if (questionnaireRef.current !== stateMachineQuestionnaire) {
+            questionnaireRef.current = stateMachineQuestionnaire;
+          }
+          // ФИКС: Обновляем state только если он действительно отличается
+          // Используем queueMicrotask для отложенного обновления, чтобы избежать бесконечных циклов
           if (stateQuestionnaire !== stateMachineQuestionnaire) {
-            // ФИКС: Используем setTimeout, чтобы избежать обновления state во время рендера
-            // Это предотвращает React error #310 (Maximum update depth exceeded)
-            setTimeout(() => {
-              setQuestionnaire(stateMachineQuestionnaire);
-              questionnaireRef.current = stateMachineQuestionnaire;
-            }, 0);
+            queueMicrotask(() => {
+              // ФИКС: Дополнительная проверка перед обновлением, чтобы избежать повторных обновлений
+              if (questionnaireStateRef.current !== stateMachineQuestionnaire && !isSyncingRef.current) {
+                setQuestionnaire(stateMachineQuestionnaire);
+              }
+            });
           }
         } else if (refId && questionnaireRef.current && !stateMachineId) {
           // Если источник - ref, а State Machine пуст, обновляем state напрямую
           // State Machine должен быть обновлен через setQuestionnaireWithStateMachine в других местах
           // ФИКС: Проверяем, действительно ли объект изменился перед обновлением
           if (stateQuestionnaire !== questionnaireRef.current) {
-            // ФИКС: Используем setTimeout, чтобы избежать обновления state во время рендера
-            // Это предотвращает React error #310 (Maximum update depth exceeded)
-            setTimeout(() => {
-              setQuestionnaire(questionnaireRef.current);
-            }, 0);
+            // ФИКС: Используем queueMicrotask для отложенного обновления, чтобы избежать бесконечных циклов
+            queueMicrotask(() => {
+              // ФИКС: Дополнительная проверка перед обновлением, чтобы избежать повторных обновлений
+              if (questionnaireStateRef.current !== questionnaireRef.current && !isSyncingRef.current) {
+                setQuestionnaire(questionnaireRef.current);
+              }
+            });
           }
         }
       } finally {
-        // ФИКС: Сбрасываем флаг через setTimeout, чтобы React успел обработать обновление state
+        // ФИКС: Сбрасываем флаг через queueMicrotask, чтобы React успел обработать обновление state
         // Это предотвращает повторный вызов useEffect до завершения обновления
-        setTimeout(() => {
+        queueMicrotask(() => {
           isSyncingRef.current = false;
-        }, 0);
+        });
       }
     } else if (sourceId) {
       // Если все синхронизировано, просто обновляем ref для отслеживания
@@ -373,11 +390,14 @@ export default function QuizPage() {
           hasQuestionnaireStateMachine: !!stateMachineQuestionnaire,
           sourceId,
         });
-        // ФИКС: Используем setTimeout, чтобы избежать обновления state во время рендера
+        // ФИКС: Используем queueMicrotask для отложенного обновления, чтобы избежать бесконечных циклов
         // Это предотвращает React error #310 (Maximum update depth exceeded)
-        setTimeout(() => {
-          setLoading(false);
-        }, 0);
+        queueMicrotask(() => {
+          // ФИКС: Дополнительная проверка перед обновлением, чтобы избежать повторных обновлений
+          if (loadingStateRef.current && !isSyncingRef.current) {
+            setLoading(false);
+          }
+        });
       }
     }
   }, [quizStateMachine.questionnaire?.id]); // ФИКС: Зависим только от ID questionnaire из State Machine
@@ -942,6 +962,15 @@ export default function QuizPage() {
     initInProgressRef.current = true;
     const initStartTime = Date.now();
     initStartTimeRef.current = initStartTime;
+    
+    // ФИКС: Сохраняем флаг в sessionStorage для предотвращения повторных вызовов при перемонтировании
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('quiz_initCalled', 'true');
+      } catch (err) {
+        // Игнорируем ошибки sessionStorage
+      }
+    }
 
     // ИСПРАВЛЕНО: Логируем начало init() для диагностики
     clientLogger.log('🚀 init() started', {
@@ -1896,6 +1925,15 @@ export default function QuizPage() {
     setHasResumed(false);
     // Сбрасываем кэш последнего сохраненного ответа
     lastSavedAnswerRef.current = null;
+    
+    // ФИКС: Очищаем флаг quiz_initCalled из sessionStorage при очистке прогресса
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('quiz_initCalled');
+      } catch (err) {
+        // Игнорируем ошибки sessionStorage
+      }
+    }
     
     // Также очищаем прогресс на сервере
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
@@ -3617,6 +3655,16 @@ export default function QuizPage() {
     // но с правильными флагами (isStartingOverRef = true), чтобы не загружать прогресс
     initCompletedRef.current = false;
     initCalledRef.current = false; // ИСПРАВЛЕНО: Сбрасываем initCalledRef для повторной инициализации
+    
+    // ФИКС: Очищаем флаг quiz_initCalled из sessionStorage при startOver
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('quiz_initCalled');
+      } catch (err) {
+        // Игнорируем ошибки sessionStorage
+      }
+    }
+    
     clientLogger.log('🔄 initCompletedRef и initCalledRef сброшены для повторной инициализации');
     
     // Очищаем весь прогресс (локальный и серверный)
