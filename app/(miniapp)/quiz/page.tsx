@@ -6109,6 +6109,9 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Используем effectiveQuestionnaire (ref или state или State Machine) вместо только questionnaire
   // Это гарантирует, что инфо-экраны показываются, даже если questionnaire в state временно null
   const effectiveQuestionnaire = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
+  // ИСПРАВЛЕНО: Ослабляем условие для инфо-экранов - показываем их даже если effectiveQuestionnaire временно null
+  // Это предотвращает блокировку инфо-экранов из-за временных состояний questionnaire
+  // КРИТИЧНО: Инфо-экраны должны показываться на первом рендере, даже если анкета еще загружается
   // Проверка !loading убрана, так как она может блокировать показ вопросов после перехода к ним
   // Кнопка на первом экране уже имеет проверку загрузки анкеты
   if (isShowingInitialInfoScreen && 
@@ -6116,18 +6119,37 @@ export default function QuizPage() {
       currentInfoScreenIndex < initialInfoScreens.length &&
       !isRetakingQuiz && 
       !showResumeScreen && 
-      !pendingInfoScreen &&
-      effectiveQuestionnaire) {
-    // Логируем для диагностики
-    if (isDev) {
-      clientLogger.log('📺 Рендерим начальный инфо-экран', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        currentInitialInfoScreenId: currentInitialInfoScreen?.id,
-        isShowingInitialInfoScreen,
-      });
-    }
+      !pendingInfoScreen) {
+    // ИСПРАВЛЕНО: Логируем всегда (не только в dev), чтобы видеть в БД, почему инфо-экраны не показываются
+    clientLogger.log('📺 Рендерим начальный инфо-экран', {
+      currentInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+      currentInitialInfoScreenId: currentInitialInfoScreen?.id,
+      isShowingInitialInfoScreen,
+      hasEffectiveQuestionnaire: !!effectiveQuestionnaire,
+      hasQuestionnaireState: !!questionnaire,
+      hasQuestionnaireRef: !!questionnaireRef.current,
+      hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+      loading,
+    });
     return renderInfoScreen(currentInitialInfoScreen);
+  }
+  
+  // ИСПРАВЛЕНО: Логируем, если инфо-экраны должны показываться, но не показываются
+  if (isShowingInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) {
+    clientLogger.warn('⚠️ Инфо-экраны должны показываться, но не показываются', {
+      currentInfoScreenIndex,
+      initialInfoScreensLength: initialInfoScreens.length,
+      currentInitialInfoScreen: !!currentInitialInfoScreen,
+      isRetakingQuiz,
+      showResumeScreen,
+      pendingInfoScreen: !!pendingInfoScreen,
+      hasEffectiveQuestionnaire: !!effectiveQuestionnaire,
+      hasQuestionnaireState: !!questionnaire,
+      hasQuestionnaireRef: !!questionnaireRef.current,
+      hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+      loading,
+    });
   }
   
   // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
@@ -6992,7 +7014,10 @@ export default function QuizPage() {
           // ИСПРАВЛЕНО: Не показываем ошибку, если анкета не загружена или вопросы еще не готовы
           // Также не показываем ошибку, если пользователь еще на начальных экранах
           const hasQuestions = allQuestions.length > 0;
-          const hasQuestionnaireData = !!questionnaire || !!questionnaireRef.current;
+          // ИСПРАВЛЕНО: Используем effectiveQuestionnaire для проверки наличия анкеты
+          // Это гарантирует, что проверка использует все доступные источники
+          const effectiveQuestionnaire = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
+          const hasQuestionnaireData = !!effectiveQuestionnaire;
           const shouldShowError = !currentQuestion && !isPastInitialScreens && !isPastInitialScreensRef && hasQuestions && hasQuestionnaireData;
           // ИСПРАВЛЕНО: Показываем загрузку если:
           // 1. currentQuestion null И
@@ -7000,8 +7025,11 @@ export default function QuizPage() {
           // 3. НО НЕ показываем загрузку, если показываются начальные экраны
           // Это гарантирует, что загрузка показывается во всех случаях, когда данные еще не готовы
           // КРИТИЧНО: Не показываем загрузку, если isShowingInitialInfoScreen = true, чтобы не блокировать инфо-экраны
+          // ИСПРАВЛЕНО: Также не показываем загрузку, если currentInfoScreenIndex < initialInfoScreens.length
+          // Это дополнительная защита от блокировки инфо-экранов
           const shouldShowLoading = !currentQuestion && 
             !isShowingInitialInfoScreen && // ИСПРАВЛЕНО: Не показываем загрузку, если показываются инфо-экраны
+            currentInfoScreenIndex >= initialInfoScreens.length && // ИСПРАВЛЕНО: Не показываем загрузку, если еще на начальных экранах
             (
               (isPastInitialScreens || isPastInitialScreensRef) || 
               !hasQuestions || 
@@ -7026,6 +7054,8 @@ export default function QuizPage() {
               hasQuestionnaireData,
               hasQuestionnaireState: !!questionnaire,
               hasQuestionnaireRef: !!questionnaireRef.current,
+              hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+              effectiveQuestionnaire: !!(questionnaireRef.current || questionnaire || quizStateMachine.questionnaire),
               isShowingInitialInfoScreen,
             });
           }
