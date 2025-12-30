@@ -8109,8 +8109,12 @@ export default function QuizPage() {
         {/* ИСПРАВЛЕНО: Используем ref для более точной проверки, так как state может быть устаревшим */}
         {(() => {
           const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
-          const shouldShowError = !currentQuestion && !isPastInitialScreens && !isPastInitialScreensRef;
-          const shouldShowLoading = !currentQuestion && (isPastInitialScreens || isPastInitialScreensRef);
+          // ИСПРАВЛЕНО: Не показываем ошибку, если анкета не загружена или вопросы еще не готовы
+          // Также не показываем ошибку, если пользователь еще на начальных экранах
+          const hasQuestions = allQuestions.length > 0;
+          const hasQuestionnaireData = !!questionnaire || !!questionnaireRef.current;
+          const shouldShowError = !currentQuestion && !isPastInitialScreens && !isPastInitialScreensRef && hasQuestions && hasQuestionnaireData;
+          const shouldShowLoading = !currentQuestion && ((isPastInitialScreens || isPastInitialScreensRef) || !hasQuestions || !hasQuestionnaireData);
           
           // Логируем состояние для диагностики
           if (!currentQuestion) {
@@ -8125,6 +8129,10 @@ export default function QuizPage() {
               shouldShowLoading,
               initialInfoScreensLength: initialInfoScreens.length,
               allQuestionsLength: allQuestions.length,
+              hasQuestions,
+              hasQuestionnaireData,
+              hasQuestionnaireState: !!questionnaire,
+              hasQuestionnaireRef: !!questionnaireRef.current,
               isShowingInitialInfoScreen,
             });
           }
