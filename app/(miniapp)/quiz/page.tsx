@@ -330,44 +330,25 @@ export default function QuizPage() {
         // чтобы избежать бесконечного цикла (setQuestionnaireWithStateMachine уже обновляет State Machine)
         // Используем setQuestionnaire напрямую только для синхронизации state с State Machine
         // ФИКС: НЕ обновляем state внутри useEffect, который зависит от этого state
-        // Вместо этого обновляем только ref, а обновление state произойдет через другой механизм
+        // Вместо этого обновляем только ref, а обновление state произойдет через отдельный useEffect
         if (stateMachineId && stateMachineQuestionnaire) {
           // Если источник - State Machine, обновляем только ref (State Machine уже синхронизирован)
-          // Обновление state произойдет через другой useEffect или через setQuestionnaireWithStateMachine
+          // Обновление state произойдет через отдельный useEffect, который следит за изменениями ref
           // ФИКС: Проверяем, действительно ли объект изменился перед обновлением ref
           if (questionnaireRef.current !== stateMachineQuestionnaire) {
             questionnaireRef.current = stateMachineQuestionnaire;
           }
-          // ФИКС: Обновляем state только если он действительно отличается
-          // Используем queueMicrotask для отложенного обновления, чтобы избежать бесконечных циклов
-          if (stateQuestionnaire !== stateMachineQuestionnaire) {
-            queueMicrotask(() => {
-              // ФИКС: Дополнительная проверка перед обновлением, чтобы избежать повторных обновлений
-              if (questionnaireStateRef.current !== stateMachineQuestionnaire && !isSyncingRef.current) {
-                setQuestionnaire(stateMachineQuestionnaire);
-              }
-            });
-          }
+          // ФИКС: НЕ обновляем state здесь - это вызовет бесконечный цикл
+          // State будет обновлен через отдельный useEffect, который следит за questionnaireRef
         } else if (refId && questionnaireRef.current && !stateMachineId) {
-          // Если источник - ref, а State Machine пуст, обновляем state напрямую
+          // Если источник - ref, а State Machine пуст, обновляем только ref
           // State Machine должен быть обновлен через setQuestionnaireWithStateMachine в других местах
-          // ФИКС: Проверяем, действительно ли объект изменился перед обновлением
-          if (stateQuestionnaire !== questionnaireRef.current) {
-            // ФИКС: Используем queueMicrotask для отложенного обновления, чтобы избежать бесконечных циклов
-            queueMicrotask(() => {
-              // ФИКС: Дополнительная проверка перед обновлением, чтобы избежать повторных обновлений
-              if (questionnaireStateRef.current !== questionnaireRef.current && !isSyncingRef.current) {
-                setQuestionnaire(questionnaireRef.current);
-              }
-            });
-          }
+          // ФИКС: НЕ обновляем state здесь - это вызовет бесконечный цикл
+          // State будет обновлен через отдельный useEffect, который следит за questionnaireRef
         }
       } finally {
-        // ФИКС: Сбрасываем флаг через queueMicrotask, чтобы React успел обработать обновление state
-        // Это предотвращает повторный вызов useEffect до завершения обновления
-        queueMicrotask(() => {
-          isSyncingRef.current = false;
-        });
+        // ФИКС: Сбрасываем флаг синхронно, так как мы больше не обновляем state здесь
+        isSyncingRef.current = false;
       }
     } else if (sourceId) {
       // Если все синхронизировано, просто обновляем ref для отслеживания
@@ -375,32 +356,61 @@ export default function QuizPage() {
       lastSyncedQuestionnaireRef.current = sourceQuestionnaire || null;
     }
     
-    // ФИКС: Сбрасываем loading, если анкета загружена, но только один раз
-    // Используем ref для отслеживания, чтобы избежать повторных вызовов
-    const hasQuestionnaire = !!sourceQuestionnaire;
-    const currentLoading = loadingStateRef.current;
-    if (hasQuestionnaire && currentLoading && sourceId) {
-      // ФИКС: Проверяем, что мы еще не сбросили loading для этого questionnaire
-      // Это предотвращает повторные вызовы setLoading и бесконечные циклы
-      if (lastLoadingResetIdRef.current !== sourceId) {
-        lastLoadingResetIdRef.current = sourceId;
-        clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
-          hasQuestionnaireState: !!stateQuestionnaire,
-          hasQuestionnaireRef: !!questionnaireRef.current,
-          hasQuestionnaireStateMachine: !!stateMachineQuestionnaire,
-          sourceId,
+    // ФИКС: НЕ обновляем loading здесь - это вызовет бесконечный цикл React error #310
+    // Loading будет обновлен через отдельный useEffect, который следит за questionnaire
+  }, [quizStateMachine.questionnaire?.id]); // ФИКС: Зависим только от ID questionnaire из State Machine
+  
+  // ФИКС: Отдельный useEffect для синхронизации state с questionnaireRef из State Machine
+  // Это предотвращает бесконечные циклы React error #310, так как мы не обновляем state внутри useEffect, который зависит от questionnaire
+  useEffect(() => {
+    // ФИКС: Проверяем, что мы не в процессе синхронизации, чтобы избежать бесконечных циклов
+    if (isSyncingRef.current) {
+      return;
+    }
+    
+    const stateMachineQuestionnaire = stateMachineQuestionnaireRef.current;
+    const stateQuestionnaire = questionnaireStateRef.current;
+    
+    // Если State Machine изменился, но state не синхронизирован - обновляем state
+    if (stateMachineQuestionnaire && stateMachineQuestionnaire !== stateQuestionnaire) {
+      // ФИКС: Проверяем, что ID действительно изменился, чтобы избежать ненужных обновлений
+      if (stateMachineQuestionnaire.id !== stateQuestionnaire?.id) {
+        clientLogger.log('🔄 Syncing state from State Machine questionnaire (separate useEffect)', {
+          stateMachineId: stateMachineQuestionnaire.id,
+          stateId: stateQuestionnaire?.id,
         });
-        // ФИКС: Используем queueMicrotask для отложенного обновления, чтобы избежать бесконечных циклов
-        // Это предотвращает React error #310 (Maximum update depth exceeded)
-        queueMicrotask(() => {
-          // ФИКС: Дополнительная проверка перед обновлением, чтобы избежать повторных обновлений
-          if (loadingStateRef.current && !isSyncingRef.current) {
-            setLoading(false);
-          }
-        });
+        isSyncingRef.current = true;
+        try {
+          setQuestionnaire(stateMachineQuestionnaire);
+          questionnaireRef.current = stateMachineQuestionnaire;
+        } finally {
+          // ФИКС: Сбрасываем флаг через setTimeout, чтобы React успел обработать обновление
+          setTimeout(() => {
+            isSyncingRef.current = false;
+          }, 0);
+        }
       }
     }
-  }, [quizStateMachine.questionnaire?.id]); // ФИКС: Зависим только от ID questionnaire из State Machine
+  }, [quizStateMachine.questionnaire?.id]); // Зависим только от ID из State Machine
+  
+  // ФИКС: Отдельный useEffect для сброса loading, когда questionnaire загружен
+  // Это предотвращает бесконечные циклы React error #310
+  useEffect(() => {
+    const hasQuestionnaire = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
+    const currentLoading = loadingStateRef.current;
+    const questionnaireId = questionnaire?.id || questionnaireRef.current?.id || quizStateMachine.questionnaire?.id;
+    
+    if (hasQuestionnaire && currentLoading && questionnaireId) {
+      // ФИКС: Проверяем, что мы еще не сбросили loading для этого questionnaire
+      if (lastLoadingResetIdRef.current !== questionnaireId) {
+        lastLoadingResetIdRef.current = questionnaireId;
+        clientLogger.log('✅ Questionnaire loaded - setting loading=false (separate useEffect)', {
+          questionnaireId,
+        });
+        setLoading(false);
+      }
+    }
+  }, [questionnaire?.id, quizStateMachine.questionnaire?.id]); // Зависим только от ID questionnaire
   
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
