@@ -205,6 +205,9 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Синхронизируем questionnaireRef с state для предотвращения рассинхронизации
   // Это гарантирует, что ref всегда актуален, даже если state обновляется асинхронно
   // КРИТИЧНО: Также восстанавливаем state из ref, если state стал null, но ref содержит данные
+  // ИСПРАВЛЕНО: Используем ref для отслеживания последнего восстановления, чтобы избежать бесконечных циклов
+  const lastRestoredQuestionnaireIdRef = useRef<string | number | null>(null);
+  
   useEffect(() => {
     if (questionnaire) {
       if (questionnaireRef.current !== questionnaire) {
@@ -217,17 +220,31 @@ export default function QuizPage() {
           questionsCount: questionnaire.questions?.length || 0,
         });
         questionnaireRef.current = questionnaire;
+        // Обновляем ref для отслеживания
+        lastRestoredQuestionnaireIdRef.current = questionnaire.id;
+      } else if (questionnaire.id) {
+        // Если они равны, обновляем ref для отслеживания
+        lastRestoredQuestionnaireIdRef.current = questionnaire.id;
       }
     } else {
       // ИСПРАВЛЕНО: Логируем, если questionnaire стал null
       if (questionnaireRef.current) {
+        const refId = questionnaireRef.current.id;
+        const lastRestoredId = lastRestoredQuestionnaireIdRef.current;
+        
+        // Пропускаем, если уже восстанавливали этот questionnaire
+        if (refId === lastRestoredId) {
+          return;
+        }
+        
         clientLogger.warn('⚠️ Questionnaire state became null, but ref still has data - RESTORING state from ref', {
-          refId: questionnaireRef.current?.id,
+          refId,
           refHasGroups: !!questionnaireRef.current.groups,
           refGroupsCount: questionnaireRef.current.groups?.length || 0,
         });
         // КРИТИЧНО: Восстанавливаем state из ref, если state стал null, но ref содержит данные
         // Это предотвращает потерю анкеты при случайном сбросе state
+        lastRestoredQuestionnaireIdRef.current = refId;
         setQuestionnaire(questionnaireRef.current);
       }
     }
@@ -3556,12 +3573,21 @@ export default function QuizPage() {
   
   // ИСПРАВЛЕНО: Дополнительный useEffect для отслеживания изменений questionnaireRef.current
   // Это гарантирует, что state обновится, когда ref изменится, даже если state был null
+  // ИСПРАВЛЕНО: Используем ref для отслеживания последнего обновления, чтобы избежать бесконечных циклов
+  const lastRefUpdateIdRef = useRef<string | number | null>(null);
+  
   useEffect(() => {
     const refId = questionnaireRef.current?.id;
     const stateId = questionnaire?.id;
+    const lastRefUpdateId = lastRefUpdateIdRef.current;
+    
+    // Пропускаем, если уже обновляли этот questionnaire
+    if (refId === lastRefUpdateId && stateId === refId) {
+      return;
+    }
     
     // Если ref обновился, но state не соответствует или null - обновляем state
-    if (refId && refId !== stateId) {
+    if (refId && refId !== stateId && refId !== lastRefUpdateId) {
       clientLogger.log('🔄 questionnaireRef.current changed - updating state', {
         refId,
         stateId,
@@ -3569,8 +3595,12 @@ export default function QuizPage() {
         hasQuestionnaireState: !!questionnaire,
       });
       if (questionnaireRef.current) {
+        lastRefUpdateIdRef.current = refId;
         setQuestionnaire(questionnaireRef.current);
       }
+    } else if (stateId && stateId === refId) {
+      // Если state и ref синхронизированы, обновляем ref для отслеживания
+      lastRefUpdateIdRef.current = stateId;
     }
   }, [questionnaire?.id]); // ИСПРАВЛЕНО: Убрали questionnaireRef.current?.id из зависимостей, так как ref не реактивен. Используем только questionnaire?.id
   
