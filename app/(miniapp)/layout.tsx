@@ -387,29 +387,34 @@ export default function MiniappLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // ИСПРАВЛЕНО: Проверяем pathname на /quiz ДО монтирования QueryProvider
-  // Это предотвращает инициализацию любых глобальных запросов на /quiz
-  // ВАЖНО: Проверяем синхронно через window.location для надежности
-  // ИСПРАВЛЕНО: Используем useState для SSR-совместимости
-  const [isOnQuizPage, setIsOnQuizPage] = useState(false);
+  // ИСПРАВЛЕНО: Используем usePathname() для SSR-совместимости
+  // Это предотвращает hydration mismatch, так как usePathname() работает одинаково на сервере и клиенте
+  const pathname = usePathname();
+  
+  // ИСПРАВЛЕНО: Инициализируем state на основе pathname для SSR-совместимости
+  // На сервере pathname будет доступен, что гарантирует одинаковое дерево рендеринга
+  const [isOnQuizPage, setIsOnQuizPage] = useState(() => {
+    // ИСПРАВЛЕНО: Используем pathname из usePathname() для инициализации
+    // Это гарантирует, что на сервере и клиенте будет одинаковое начальное значение
+    return pathname === '/quiz' || pathname.startsWith('/quiz/');
+  });
   
   useEffect(() => {
-    // ИСПРАВЛЕНО: Проверяем pathname на клиенте после монтирования
+    // ИСПРАВЛЕНО: Обновляем state при изменении pathname на клиенте
     // Это предотвращает проблемы с SSR и гарантирует правильную проверку
-    if (typeof window !== 'undefined') {
-      const pathname = window.location.pathname;
-      setIsOnQuizPage(pathname === '/quiz' || pathname.startsWith('/quiz/'));
-    }
-  }, []);
+    setIsOnQuizPage(pathname === '/quiz' || pathname.startsWith('/quiz/'));
+  }, [pathname]);
   
   // ИСПРАВЛЕНО: На /quiz монтируем только минимальную структуру без QueryProvider
   // QueryProvider может инициализировать запросы через React Query, поэтому на /quiz не монтируем его
   // ВАЖНО: Это критично для предотвращения любых глобальных запросов на /quiz
-  // ИСПРАВЛЕНО: Для SSR используем проверку через window.location синхронно
-  const isOnQuizPageSync = typeof window !== 'undefined' && 
-                           (window.location.pathname === '/quiz' || window.location.pathname.startsWith('/quiz/'));
+  // ИСПРАВЛЕНО: Используем только pathname из usePathname() для SSR-совместимости
+  // Это предотвращает hydration mismatch, так как usePathname() работает одинаково на сервере и клиенте
+  const isOnQuizPageFromPathname = pathname === '/quiz' || pathname.startsWith('/quiz/');
   
-  if (isOnQuizPageSync || isOnQuizPage) {
+  // ИСПРАВЛЕНО: Используем pathname для серверного рендеринга и state для клиентского
+  // Это гарантирует одинаковое дерево на сервере и клиенте
+  if (isOnQuizPageFromPathname || isOnQuizPage) {
     return (
       <Suspense fallback={<LayoutFallback />}>
         <LayoutContent>{children}</LayoutContent>

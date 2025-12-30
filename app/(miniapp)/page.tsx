@@ -27,7 +27,9 @@ export default function RootPage() {
     if (justSubmitted) {
       redirectInProgressRef.current = true; // Помечаем, что редирект начат
       clientLogger.log('✅ Флаг quiz_just_submitted установлен на главной - редиректим на /plan?state=generating');
-      // ИСПРАВЛЕНО: Оборачиваем async операции в отдельную функцию, так как useEffect не может быть async
+      // ИСПРАВЛЕНО: Оборачиваем async операции в отдельную функцию и ОЖИДАЕМ её выполнение
+      // Это предотвращает race condition, когда редирект происходит до завершения записи в БД
+      // Сравните с правильной реализацией в home/page.tsx:76-86
       (async () => {
         try {
           const { setHasPlanProgress } = await import('@/lib/user-preferences');
@@ -35,15 +37,17 @@ export default function RootPage() {
         } catch (error) {
           clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
         }
+        // ИСПРАВЛЕНО: Редирект выполняется ПОСЛЕ завершения async операции
+        // Это гарантирует, что hasPlanProgress будет сохранен в БД до редиректа
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('quiz_just_submitted');
+          window.location.replace('/plan?state=generating');
+          // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
+          setTimeout(() => {
+            redirectInProgressRef.current = false;
+          }, 1000);
+        }
       })();
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('quiz_just_submitted');
-        window.location.replace('/plan?state=generating');
-        // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
-        setTimeout(() => {
-          redirectInProgressRef.current = false;
-        }, 1000);
-      }
       return;
     }
 
