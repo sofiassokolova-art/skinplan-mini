@@ -250,12 +250,23 @@ export default function QuizPage() {
     }
   }, [questionnaire]);
   
-  // КРИТИЧНО: Сбрасываем loading когда анкета загружена (в ref или state)
+  // КРИТИЧНО: Сбрасываем loading когда анкета загружена (в ref, state или State Machine)
   // Это должно быть в useEffect, а не в рендере, чтобы избежать бесконечных ре-рендеров
-  // ИСПРАВЛЕНО: Проверяем и questionnaire (state), и questionnaireRef.current
+  // ИСПРАВЛЕНО: Проверяем questionnaire (state), questionnaireRef.current и quizStateMachine.questionnaire
   useEffect(() => {
-    const hasQuestionnaire = !!questionnaire || !!questionnaireRef.current;
+    const hasQuestionnaire = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
     if (hasQuestionnaire && loading) {
+      // ИСПРАВЛЕНО: Приоритет восстановления: State Machine > ref > state
+      // Если анкета в State Machine, но не в state - синхронизируем state
+      if (quizStateMachine.questionnaire && !questionnaire) {
+        clientLogger.warn('⚠️ Questionnaire in State Machine but not in state - syncing state', {
+          stateMachineId: quizStateMachine.questionnaire.id,
+        });
+        setQuestionnaire(quizStateMachine.questionnaire);
+        questionnaireRef.current = quizStateMachine.questionnaire;
+        setLoading(false);
+        return;
+      }
       // Если анкета в ref, но не в state - синхронизируем state
       if (questionnaireRef.current && !questionnaire) {
         clientLogger.warn('⚠️ Questionnaire in ref but not in state - syncing state', {
@@ -269,11 +280,12 @@ export default function QuizPage() {
       clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
         hasQuestionnaireState: !!questionnaire,
         hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+        hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+        questionnaireId: questionnaire?.id || questionnaireRef.current?.id || quizStateMachine.questionnaire?.id,
       });
       setLoading(false);
     }
-  }, [questionnaire, loading]); // Включаем loading, но проверяем его значение внутри, чтобы избежать бесконечного цикла
+  }, [questionnaire, loading, quizStateMachine.questionnaire]); // ИСПРАВЛЕНО: Добавлен quizStateMachine.questionnaire в зависимости
   
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
