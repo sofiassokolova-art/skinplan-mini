@@ -79,7 +79,7 @@ export function calculateNextStep(params: NextStepParams): NextStepResult {
   }
 
   // Проверяем, есть ли инфо-экран после текущего вопроса
-  const infoScreenAfterQuestion = getInfoScreenAfterQuestion(currentQuestion.code, answers);
+  const infoScreenAfterQuestion = getInfoScreenAfterQuestion(currentQuestion.code);
   
   if (infoScreenAfterQuestion) {
     return {
