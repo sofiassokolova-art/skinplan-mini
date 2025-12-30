@@ -1107,6 +1107,10 @@ export default function QuizPage() {
             questionnaireId: currentQuestionnaire.id,
             waitedForState: stateWaitAttempts > 0,
           });
+          
+          // ФИКС: Устанавливаем loading=false после успешной загрузки анкеты
+          // Это гарантирует, что лоадер скроется сразу после загрузки, а не ждет useEffect
+          setLoading(false);
         } else if (!loadQuestionnaireRef.current) {
           clientLogger.error('❌ loadQuestionnaireRef.current not set after waiting, cannot load questionnaire');
           // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
@@ -7155,8 +7159,10 @@ export default function QuizPage() {
   // Лоадер показывается пока: loading=true ИЛИ анкета не загружена
   // ФИКС: НЕ проверяем initCompletedRef, так как он может обновляться асинхронно после загрузки анкеты
   // ФИКС: НЕ проверяем allQuestions.length, так как фильтрация происходит динамически после ответов
+  // ФИКС: Проверяем не только наличие объекта, но и что он действительно загружен (имеет id)
   const effectiveQuestionnaireForLoader = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
-  const shouldShowInitialLoader = loading || !effectiveQuestionnaireForLoader;
+  const hasValidQuestionnaire = effectiveQuestionnaireForLoader && effectiveQuestionnaireForLoader.id;
+  const shouldShowInitialLoader = loading || !hasValidQuestionnaire;
   
   // ФИКС: Ранний return для лоадера (после всех хуков)
   if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {

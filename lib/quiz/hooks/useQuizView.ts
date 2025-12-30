@@ -90,7 +90,8 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       // Это предотвращает показ инфо-экранов до загрузки анкеты
       // Анкета должна загрузиться в init() перед показом первого инфо-экрана
       // ФИКС: НЕ проверяем allQuestionsLength, так как фильтрация происходит динамически после ответов
-      if (!effectiveQuestionnaire) {
+      // ФИКС: Проверяем не только наличие объекта, но и что он действительно загружен (имеет id)
+      if (!effectiveQuestionnaire || !effectiveQuestionnaire.id) {
         return false;
       }
       
@@ -132,7 +133,8 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
       // КРИТИЧНО: Показываем инфо-экран только если анкета загружена
       // Это гарантирует, что анкета загрузится до показа первого инфо-экрана
       // ФИКС: НЕ проверяем allQuestionsLength, так как фильтрация происходит динамически после ответов
-      if (currentInitialInfoScreen && effectiveQuestionnaire && !pendingInfoScreen) {
+      // ФИКС: Проверяем не только наличие объекта, но и что он действительно загружен (имеет id)
+      if (currentInitialInfoScreen && effectiveQuestionnaire && effectiveQuestionnaire.id && !pendingInfoScreen) {
         return { type: 'initialInfo', screen: currentInitialInfoScreen };
       }
     }
