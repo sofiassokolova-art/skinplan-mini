@@ -8105,6 +8105,23 @@ export default function QuizPage() {
           const shouldShowError = !currentQuestion && !isPastInitialScreens && !isPastInitialScreensRef;
           const shouldShowLoading = !currentQuestion && (isPastInitialScreens || isPastInitialScreensRef);
           
+          // Логируем состояние для диагностики
+          if (!currentQuestion) {
+            clientLogger.warn('⚠️ Рендер: currentQuestion null, проверяем условия', {
+              hasCurrentQuestion: !!currentQuestion,
+              currentQuestionIndex,
+              currentInfoScreenIndex,
+              currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+              isPastInitialScreens,
+              isPastInitialScreensRef,
+              shouldShowError,
+              shouldShowLoading,
+              initialInfoScreensLength: initialInfoScreens.length,
+              allQuestionsLength: allQuestions.length,
+              isShowingInitialInfoScreen,
+            });
+          }
+          
           if (shouldShowError) {
             return (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
