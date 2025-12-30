@@ -3341,20 +3341,44 @@ export default function QuizPage() {
       // КРИТИЧНО: Используем questionnaireRef.current как ОСНОВНОЙ источник, а не fallback
       // Это гарантирует, что вопросы всегда извлекаются, даже если state временно null
       // ИСПРАВЛЕНО: Приоритет ref над state, так как ref обновляется синхронно
-      const effectiveQuestionnaire = questionnaireRef.current || questionnaire;
+      // ИСПРАВЛЕНО: Также проверяем State Machine как дополнительный источник
+      const effectiveQuestionnaire = questionnaireRef.current || 
+                                      questionnaire || 
+                                      quizStateMachine.questionnaire;
       
       if (!effectiveQuestionnaire) {
-        // ИСПРАВЛЕНО: Если оба null, используем предыдущее значение из ref
+        // ИСПРАВЛЕНО: Если все источники null, используем предыдущее значение из ref
         if (allQuestionsRawPrevRef.current.length > 0) {
-          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null, using previous value from ref', {
+          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null (all sources), using previous value from ref', {
             previousLength: allQuestionsRawPrevRef.current.length,
+            hasQuestionnaireRef: !!questionnaireRef.current,
+            hasQuestionnaireState: !!questionnaire,
+            hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
           });
           return allQuestionsRawPrevRef.current;
         }
         if (isDev) {
-          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null (both state and ref), returning empty');
+          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null (all sources), returning empty', {
+            hasQuestionnaireRef: !!questionnaireRef.current,
+            hasQuestionnaireState: !!questionnaire,
+            hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+          });
         }
         return [];
+      }
+      
+      // ИСПРАВЛЕНО: Логируем источник questionnaire для диагностики
+      const source = effectiveQuestionnaire === questionnaireRef.current ? 'ref' :
+                     effectiveQuestionnaire === questionnaire ? 'state' :
+                     effectiveQuestionnaire === quizStateMachine.questionnaire ? 'stateMachine' : 'unknown';
+      
+      if (isDev && source !== 'ref') {
+        clientLogger.log('📊 allQuestionsRaw: using questionnaire from ' + source, {
+          questionnaireId: effectiveQuestionnaire.id,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          hasQuestionnaireState: !!questionnaire,
+          hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+        });
       }
       
       // РЕФАКТОРИНГ: Используем единую функцию для извлечения вопросов
