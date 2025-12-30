@@ -175,7 +175,8 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // ФИКС: Восстанавливаем currentInfoScreenIndex из sessionStorage при инициализации
-  const getInitialInfoScreenIndex = () => {
+  // ИСПРАВЛЕНО: Используем useMemo для стабильности инициализации, чтобы избежать ошибки React #300
+  const initialInfoScreenIndex = useMemo(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = sessionStorage.getItem('quiz_currentInfoScreenIndex');
@@ -193,13 +194,15 @@ export default function QuizPage() {
       }
     }
     return 0;
-  };
+  }, []); // Пустой массив зависимостей - вычисляется только один раз
   
-  const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(getInitialInfoScreenIndex);
+  const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(initialInfoScreenIndex);
   // ФИКС: Ref для синхронной проверки currentInfoScreenIndex в асинхронных функциях
-  const currentInfoScreenIndexRef = useRef(getInitialInfoScreenIndex());
+  const currentInfoScreenIndexRef = useRef(initialInfoScreenIndex);
+  
   // ФИКС: Восстанавливаем currentQuestionIndex из sessionStorage при инициализации
-  const getInitialQuestionIndex = () => {
+  // ИСПРАВЛЕНО: Используем useMemo для стабильности инициализации, чтобы избежать ошибки React #300
+  const initialQuestionIndex = useMemo(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
@@ -214,9 +217,9 @@ export default function QuizPage() {
       }
     }
     return 0;
-  };
+  }, []); // Пустой массив зависимостей - вычисляется только один раз
   
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getInitialQuestionIndex);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [showResumeScreen, setShowResumeScreen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
