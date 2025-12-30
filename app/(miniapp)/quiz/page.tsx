@@ -5046,8 +5046,12 @@ export default function QuizPage() {
     // ФИКС: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
     // и мы не должны блокировать показ вопросов, даже если isShowingInitialInfoScreen = true
     // КРИТИЧНО: Также проверяем, что questionnaire загружен, чтобы не блокировать вопросы при загрузке
+    // ИСПРАВЛЕНО: Используем ref для более точной проверки, так как state может быть устаревшим
     const isPastInitialScreens = currentInfoScreenIndex >= initialInfoScreens.length;
-    const shouldBlock = (!isPastInitialScreens && isShowingInitialInfoScreen && currentInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) || (pendingInfoScreen && !isRetakingQuiz);
+    const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+    // Не блокируем, если хотя бы один из индексов показывает, что пользователь прошел начальные экраны
+    const isPastInitialScreensAny = isPastInitialScreens || isPastInitialScreensRef;
+    const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && currentInfoScreenIndex < initialInfoScreens.length) || (pendingInfoScreen && !isRetakingQuiz);
     if (shouldBlock && !showResumeScreen) {
       // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
       clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
