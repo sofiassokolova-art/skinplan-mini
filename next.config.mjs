@@ -50,7 +50,7 @@ const nextConfig = {
               "font-src 'self' data: https://fonts.gstatic.com",
               "img-src 'self' data: https: blob:",
               "connect-src 'self' https://api.telegram.org https://*.telegram.org",
-              "frame-src https://telegram.org https://*.telegram.org",
+              "frame-src https://telegram.org https://*.telegram.org https://vercel.live",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

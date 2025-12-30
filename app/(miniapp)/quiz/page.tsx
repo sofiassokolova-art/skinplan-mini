@@ -170,9 +170,9 @@ export default function QuizPage() {
       questionnaireRef.current = questionnaireToSet;
     }
   }, [setQuestionnaireInStateMachine, quizStateMachine]);
-  // ИСПРАВЛЕНО: Начинаем с loading = false, так как лоадер анкеты убран
-  // Лоадер показывается только на главной странице (/)
-  const [loading, setLoading] = useState(false);
+  // ФИКС: Начинаем с loading = true, чтобы показать лоадер при первой загрузке
+  // Лоадер будет скрыт после завершения инициализации (initCompletedRef.current = true)
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // ФИКС: Восстанавливаем currentInfoScreenIndex из sessionStorage при инициализации
   // ИСПРАВЛЕНО: Используем useMemo для стабильности инициализации, чтобы избежать ошибки React #300
@@ -7065,6 +7065,50 @@ export default function QuizPage() {
     isRetakingQuiz,
     hasResumed,
   });
+
+  // ФИКС: Показываем лоадер в самом начале, если анкета еще не загружена или инициализация не завершена
+  // Это предотвращает показ белого экрана при загрузке приложения
+  // ИСПРАВЛЕНО: Проверка перенесена после всех хуков, чтобы не нарушать правила React hooks
+  // Лоадер показывается пока: loading=true ИЛИ анкета не загружена ИЛИ инициализация не завершена
+  const effectiveQuestionnaireForLoader = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
+  const shouldShowInitialLoader = loading || (!effectiveQuestionnaireForLoader && !initCompletedRef.current) || !initCompletedRef.current;
+  
+  // ФИКС: Ранний return для лоадера (после всех хуков)
+  if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {
+    return (
+      <div style={{ 
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        padding: '40px 20px',
+      }}>
+        <div style={{
+          width: '64px',
+          height: '64px',
+          border: '5px solid rgba(10, 95, 89, 0.2)',
+          borderTop: '5px solid #0A5F59',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '32px',
+        }}></div>
+        <div style={{ color: '#0A5F59', fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>
+          Загрузка анкеты...
+        </div>
+        <div style={{ color: '#6B7280', fontSize: '14px', textAlign: 'center' }}>
+          Подождите, мы готовим анкету для вас
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{ 
