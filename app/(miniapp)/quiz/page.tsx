@@ -6145,6 +6145,13 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Теперь используем isShowingInitialInfoScreen, который уже исправляет несоответствие
   // Но все равно добавляем useEffect для исправления currentInfoScreenIndex, если нужно
   useEffect(() => {
+    // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - НЕ сбрасываем currentInfoScreenIndex, если пользователь уже перешел к вопросам
+    // Это предотвращает редирект на первый экран после 4-го инфо-экрана
+    if (currentInfoScreenIndexRef.current >= initialInfoScreens.length) {
+      // Пользователь уже на вопросах - НИКОГДА не сбрасываем обратно на начальные экраны
+      return;
+    }
+    
     // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
     if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !loading && !resumeCompletedRef.current) {
       clientLogger.warn('⚠️ isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - исправляем несоответствие и пропускаем начальные экраны', {
@@ -7060,10 +7067,33 @@ export default function QuizPage() {
             // Если пользователь уже прошел начальные экраны, но currentQuestion временно null,
             // показываем загрузку вместо ошибки
             return (
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '12px' }}>
+              <div style={{ 
+                minHeight: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#FFFFFF',
+                padding: '40px 20px',
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  border: '4px solid rgba(10, 95, 89, 0.2)',
+                  borderTop: '4px solid #0A5F59',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  marginBottom: '24px',
+                }}></div>
+                <div style={{ color: '#0A5F59', fontSize: '18px', fontWeight: 600 }}>
                   Загрузка вопросов...
                 </div>
+                <style>{`
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                `}</style>
               </div>
             );
           }
