@@ -20,6 +20,15 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
   const questions = questionnaire.questions || [];
 
   if (!Array.isArray(groups) || !Array.isArray(questions)) {
+    // ДИАГНОСТИКА: Логируем, если groups или questions не массивы
+    console.warn('⚠️ extractQuestionsFromQuestionnaire: groups or questions is not an array', {
+      hasQuestionnaire: !!questionnaire,
+      questionnaireId: questionnaire?.id,
+      groupsType: Array.isArray(groups) ? 'array' : typeof groups,
+      questionsType: Array.isArray(questions) ? 'array' : typeof questions,
+      groupsValue: groups,
+      questionsValue: questions,
+    });
     return [];
   }
 
@@ -28,7 +37,10 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
   const questionsMap = new Map<number, Question>();
 
   // Сначала добавляем вопросы из groups (они имеют приоритет при дубликатах)
-  const questionsFromGroups = groups.flatMap((g: any) => (g.questions || []).filter((q: any) => q && q.id));
+  const questionsFromGroups = groups.flatMap((g: any) => {
+    if (!g || !g.questions) return [];
+    return Array.isArray(g.questions) ? g.questions.filter((q: any) => q && q.id) : [];
+  });
   questionsFromGroups.forEach((q: Question) => {
     if (q && q.id && !questionsMap.has(q.id)) {
       questionsMap.set(q.id, q);
@@ -43,7 +55,27 @@ export function extractQuestionsFromQuestionnaire(questionnaire: Questionnaire |
     }
   });
 
-  return Array.from(questionsMap.values());
+  const result = Array.from(questionsMap.values());
+  
+  // ДИАГНОСТИКА: Логируем, если результат пустой, но данные есть
+  if (result.length === 0 && (groups.length > 0 || questions.length > 0)) {
+    console.warn('⚠️ extractQuestionsFromQuestionnaire: No questions extracted but data exists', {
+      questionnaireId: questionnaire?.id,
+      groupsCount: groups.length,
+      questionsCount: questions.length,
+      questionsFromGroupsCount: questionsFromGroups.length,
+      questionsFromRootCount: questionsFromRoot.length,
+      groupsSample: groups.slice(0, 2).map((g: any) => ({
+        id: g?.id,
+        hasQuestions: !!g?.questions,
+        questionsCount: Array.isArray(g?.questions) ? g.questions.length : 0,
+        questionsSample: Array.isArray(g?.questions) ? g.questions.slice(0, 2).map((q: any) => ({ id: q?.id, code: q?.code })) : [],
+      })),
+      questionsSample: questions.slice(0, 2).map((q: any) => ({ id: q?.id, code: q?.code })),
+    });
+  }
+  
+  return result;
 }
 
 /**

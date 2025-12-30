@@ -3302,7 +3302,7 @@ export default function QuizPage() {
       });
       return [];
     }
-  }, [questionnaire]);
+  }, [questionnaire, questionnaireRef.current]); // ИСПРАВЛЕНО: Добавляем questionnaireRef.current в зависимости для пересчета при изменении ref
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
   // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
