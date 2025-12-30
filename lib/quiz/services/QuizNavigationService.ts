@@ -2,8 +2,8 @@
 // Чистые функции для навигации по анкете
 // Легко тестировать (unit tests)
 
-import type { Question, InfoScreen } from '@/lib/quiz/types';
-import { INFO_SCREENS, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen } from '@/app/(miniapp)/quiz/info-screens';
+import type { Question } from '@/lib/quiz/types';
+import { INFO_SCREENS, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 /**
  * Параметры для вычисления следующего шага
