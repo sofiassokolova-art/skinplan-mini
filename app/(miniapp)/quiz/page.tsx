@@ -8114,7 +8114,16 @@ export default function QuizPage() {
           const hasQuestions = allQuestions.length > 0;
           const hasQuestionnaireData = !!questionnaire || !!questionnaireRef.current;
           const shouldShowError = !currentQuestion && !isPastInitialScreens && !isPastInitialScreensRef && hasQuestions && hasQuestionnaireData;
-          const shouldShowLoading = !currentQuestion && ((isPastInitialScreens || isPastInitialScreensRef) || !hasQuestions || !hasQuestionnaireData);
+          // ИСПРАВЛЕНО: Показываем загрузку если:
+          // 1. currentQuestion null И
+          // 2. (пользователь прошел начальные экраны ИЛИ нет вопросов ИЛИ анкета не загружена)
+          // Это гарантирует, что загрузка показывается во всех случаях, когда данные еще не готовы
+          const shouldShowLoading = !currentQuestion && (
+            (isPastInitialScreens || isPastInitialScreensRef) || 
+            !hasQuestions || 
+            !hasQuestionnaireData ||
+            loading // Также показываем загрузку, если идет загрузка
+          );
           
           // Логируем состояние для диагностики
           if (!currentQuestion) {
