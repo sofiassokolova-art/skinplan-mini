@@ -4276,9 +4276,11 @@ export default function QuizPage() {
       // Логируем только в development, чтобы не создавать спам
       if (isDev) {
         clientLogger.log('📊 allQuestionsRaw: extracting questions', {
-          questionnaireId: questionnaire.id,
+          questionnaireId: effectiveQuestionnaire.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
+          fromState: !!questionnaire,
+          fromRef: !!questionnaireRef.current,
         });
       }
       
