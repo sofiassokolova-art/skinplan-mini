@@ -20,17 +20,23 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
   }
   
   // State для React (синхронизируется с State Machine)
-  const [state, setState] = useState<QuizState>(() => 
-    stateMachineRef.current?.getState() || initialState
-  );
+  const initialStateValue = stateMachineRef.current?.getState() || initialState;
+  const [state, setState] = useState<QuizState>(initialStateValue);
+  
+  // ИСПРАВЛЕНО: Инициализируем ref начальным состоянием напрямую
+  // Используем ref для хранения предыдущего состояния в listener, чтобы избежать бесконечных циклов
+  const previousStateRef = useRef<QuizState>(initialStateValue);
   
   // Подписываемся на изменения состояния
+  // ИСПРАВЛЕНО: Убрали state из зависимостей, чтобы избежать бесконечных циклов
+  
   useEffect(() => {
     const stateMachine = stateMachineRef.current;
     if (!stateMachine) return;
     
     const listener = (newState: QuizState) => {
-      const previousState = state;
+      const previousState = previousStateRef.current;
+      previousStateRef.current = newState;
       setState(newState);
       
       if (onStateChange) {
@@ -41,14 +47,16 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
     // subscribe возвращает функцию для отписки
     const unsubscribe = stateMachine.subscribe(listener);
     
-    // Инициализируем state, если он еще не установлен
+    // Инициализируем state только один раз при монтировании
+    // ИСПРАВЛЕНО: Убрали проверку currentState !== state, чтобы избежать циклов
     const currentState = stateMachine.getState();
-    if (currentState !== state) {
+    if (previousStateRef.current !== currentState) {
+      previousStateRef.current = currentState;
       setState(currentState);
     }
     
     return unsubscribe;
-  }, [state, onStateChange]);
+  }, [onStateChange]); // ИСПРАВЛЕНО: Убрали state из зависимостей
   
   // Функция для отправки событий
   const dispatch = useCallback((event: QuizEvent) => {
