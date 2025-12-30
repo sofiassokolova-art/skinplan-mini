@@ -1276,43 +1276,49 @@ export default function QuizPage() {
           // Если да, значит он уже отвечал на вопросы, и не нужно сбрасывать индекс
           const hasPassedInitialScreens = savedInfoScreenIndex !== null && savedInfoScreenIndex >= initialInfoScreens.length;
           
-          const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && savedQuestionIndex === null && !hasPassedInitialScreens;
-          
-          if (isNewUser) {
-            // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
-            if (currentInfoScreenIndex < initialInfoScreens.length) {
-              firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
-              clientLogger.log('🔧 ФИКС: Новый пользователь - пропускаем инфо-скрины, стартуем с вопросов', {
-                currentInfoScreenIndex,
-                initialInfoScreensLength: initialInfoScreens.length,
-                allQuestionsLength: allQuestions.length,
-              });
-              setCurrentInfoScreenIndex(initialInfoScreens.length);
-              setPendingInfoScreen(null);
-              setCurrentQuestionIndex(0);
-              // ФИКС: Детальное логирование установки вопросов для диагностики
-              clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в init() для нового пользователя', {
-                currentInfoScreenIndex: initialInfoScreens.length,
-                initialInfoScreensLength: initialInfoScreens.length,
-                allQuestionsLength: allQuestions.length,
-                currentQuestionIndex: 0,
-                isNewUser: true,
-                hasNoSavedProgress: true,
-                location: 'init()',
-              });
-            }
-          } else if (savedQuestionIndex !== null && savedQuestionIndex > 0) {
+          // ФИКС: ПРИОРИТЕТ - сначала восстанавливаем из sessionStorage, если есть сохраненный индекс
+          // Это предотвращает сброс на 0 после ошибки React или перемонтирования
+          if (savedQuestionIndex !== null && savedQuestionIndex >= 0) {
             // ФИКС: Восстанавливаем currentQuestionIndex из sessionStorage после перемонтирования
             // Это предотвращает сброс на 0 после ошибки React
-            clientLogger.log('🔄 Восстановление currentQuestionIndex из sessionStorage после перемонтирования', {
+            clientLogger.log('🔄 Восстановление currentQuestionIndex из sessionStorage после перемонтирования (ПРИОРИТЕТ)', {
               savedQuestionIndex,
               currentQuestionIndex,
               hasNoSavedProgress,
+              hasPassedInitialScreens,
             });
             setCurrentQuestionIndex(savedQuestionIndex);
             // Также пропускаем начальные экраны, если пользователь уже на вопросах
-            if (currentInfoScreenIndex < initialInfoScreens.length) {
+            if (currentInfoScreenIndex < initialInfoScreens.length && hasPassedInitialScreens) {
               setCurrentInfoScreenIndex(initialInfoScreens.length);
+            }
+          } else {
+            // Только если НЕТ сохраненного индекса - проверяем, новый ли это пользователь
+            const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && !hasPassedInitialScreens;
+            
+            if (isNewUser) {
+              // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
+              if (currentInfoScreenIndex < initialInfoScreens.length) {
+                firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
+                clientLogger.log('🔧 ФИКС: Новый пользователь - пропускаем инфо-скрины, стартуем с вопросов', {
+                  currentInfoScreenIndex,
+                  initialInfoScreensLength: initialInfoScreens.length,
+                  allQuestionsLength: allQuestions.length,
+                });
+                setCurrentInfoScreenIndex(initialInfoScreens.length);
+                setPendingInfoScreen(null);
+                setCurrentQuestionIndex(0);
+                // ФИКС: Детальное логирование установки вопросов для диагностики
+                clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в init() для нового пользователя', {
+                  currentInfoScreenIndex: initialInfoScreens.length,
+                  initialInfoScreensLength: initialInfoScreens.length,
+                  allQuestionsLength: allQuestions.length,
+                  currentQuestionIndex: 0,
+                  isNewUser: true,
+                  hasNoSavedProgress: true,
+                  location: 'init()',
+                });
+              }
             }
           }
         }
