@@ -38,7 +38,8 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
       }
     };
     
-    stateMachine.subscribe(listener);
+    // subscribe возвращает функцию для отписки
+    const unsubscribe = stateMachine.subscribe(listener);
     
     // Инициализируем state, если он еще не установлен
     const currentState = stateMachine.getState();
@@ -46,9 +47,7 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
       setState(currentState);
     }
     
-    return () => {
-      stateMachine.unsubscribe(listener);
-    };
+    return unsubscribe;
   }, [state, onStateChange]);
   
   // Функция для отправки событий
@@ -75,12 +74,11 @@ export function useQuizStateMachine(options: UseQuizStateMachineOptions = {}) {
   }, [initialState]);
   
   // Функция для сброса State Machine
+  // ИСПРАВЛЕНО: QuizStateMachine не имеет метода reset, создаем новый экземпляр
   const reset = useCallback((newInitialState?: QuizState) => {
-    const stateMachine = stateMachineRef.current;
-    if (!stateMachine) return;
-    
     const resetState = newInitialState || initialState;
-    stateMachine.reset(resetState);
+    // Создаем новый экземпляр State Machine с новым начальным состоянием
+    stateMachineRef.current = new QuizStateMachine(resetState);
     setState(resetState);
   }, [initialState]);
   

@@ -344,7 +344,7 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     const questions = questionnaireData.questions || [];
     
     // ИСПРАВЛЕНО: Проверяем, что есть хотя бы один вопрос
-    const totalQuestions = groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0) + questions.length;
+    const totalQuestions = groups.reduce((sum: number, g: any) => sum + (g.questions?.length || 0), 0) + questions.length;
     if (totalQuestions === 0) {
       clientLogger.error('❌ Questionnaire has no questions', {
         questionnaireId: questionnaireData.id,
@@ -398,7 +398,7 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     
     // КРИТИЧНО: Устанавливаем state
     // ИСПРАВЛЕНО: Используем функциональную форму setQuestionnaire для гарантированного обновления
-    setQuestionnaire((prevQuestionnaire) => {
+    setQuestionnaire((prevQuestionnaire: Questionnaire | null) => {
       // ИСПРАВЛЕНО: Проверяем, действительно ли данные изменились
       // Если ID совпадает и анкета уже установлена, не создаем новый объект
       // Это предотвращает лишние пересчеты useMemo
