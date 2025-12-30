@@ -8099,7 +8099,14 @@ export default function QuizPage() {
         {/* Проверка на существование вопроса */}
         {/* КРИТИЧНО: Не показываем "Вопрос не найден", если пользователь уже прошел начальные экраны */}
         {/* Это может быть временное состояние из-за гонки состояний, которое исправится в следующем рендере */}
-        {!currentQuestion && !isPastInitialScreens ? (
+        {/* ИСПРАВЛЕНО: Используем ref для более точной проверки, так как state может быть устаревшим */}
+        {(() => {
+          const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+          const shouldShowError = !currentQuestion && !isPastInitialScreens && !isPastInitialScreensRef;
+          const shouldShowLoading = !currentQuestion && (isPastInitialScreens || isPastInitialScreensRef);
+          
+          if (shouldShowError) {
+            return (
           <div style={{ textAlign: 'center', padding: '40px 20px' }}>
             {isDev && (
               <div style={{ marginBottom: '20px', padding: '10px', background: '#fff3cd', borderRadius: '8px', fontSize: '12px', textAlign: 'left' }}>
@@ -8127,15 +8134,25 @@ export default function QuizPage() {
               Попробуйте обновить страницу
             </div>
           </div>
-        ) : !currentQuestion && isPastInitialScreens ? (
-          // Если пользователь уже прошел начальные экраны, но currentQuestion временно null,
-          // показываем загрузку вместо ошибки
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '12px' }}>
-              Загрузка вопросов...
-            </div>
-          </div>
-        ) : (
+            );
+          }
+          
+          if (shouldShowLoading) {
+            // Если пользователь уже прошел начальные экраны, но currentQuestion временно null,
+            // показываем загрузку вместо ошибки
+            return (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ color: '#0A5F59', fontSize: '18px', marginBottom: '12px' }}>
+                  Загрузка вопросов...
+                </div>
+              </div>
+            );
+          }
+          
+          // Если currentQuestion существует, показываем его
+          return null;
+        })()}
+        {currentQuestion && (
           <>
         {/* Кнопка "Назад" - скрыта на первом вопросе, фиксирована вверху */}
         {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
