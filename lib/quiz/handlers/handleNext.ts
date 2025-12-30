@@ -177,6 +177,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // КРИТИЧНО: Для нового пользователя всегда начинаем с первого вопроса (индекс 0)
       // Это гарантирует, что после прохождения всех инфо-экранов вопросы начнут отображаться
       setCurrentQuestionIndex(0);
+      // ФИКС: Сохраняем 0 в sessionStorage для восстановления при перемонтировании
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_currentQuestionIndex', '0');
+          clientLogger.log('💾 Сохранен currentQuestionIndex=0 в sessionStorage при переходе к вопросам');
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+        }
+      }
       // ФИКС: Принудительно очищаем pendingInfoScreen при переходе к вопросам
       // Это предотвращает застревание на info screens
       setPendingInfoScreen(null);
@@ -286,6 +295,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // Переходим к следующему вопросу
       const newIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(newIndex);
+      // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_currentQuestionIndex', String(newIndex));
+          clientLogger.log('💾 Сохранен currentQuestionIndex в sessionStorage', { newIndex });
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+        }
+      }
       await saveProgress(answers, newIndex, currentInfoScreenIndex);
       return;
     }
@@ -354,6 +372,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(newIndex);
+      // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_currentQuestionIndex', String(newIndex));
+          clientLogger.log('💾 Сохранен currentQuestionIndex в sessionStorage', { newIndex });
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+        }
+      }
       await saveProgress(answers, newIndex, currentInfoScreenIndex);
     }
   } finally {

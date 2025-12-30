@@ -198,7 +198,25 @@ export default function QuizPage() {
   const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(getInitialInfoScreenIndex);
   // ФИКС: Ref для синхронной проверки currentInfoScreenIndex в асинхронных функциях
   const currentInfoScreenIndexRef = useRef(getInitialInfoScreenIndex());
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  // ФИКС: Восстанавливаем currentQuestionIndex из sessionStorage при инициализации
+  const getInitialQuestionIndex = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
+        if (saved !== null) {
+          const savedIndex = parseInt(saved, 10);
+          if (!isNaN(savedIndex) && savedIndex >= 0) {
+            return savedIndex;
+          }
+        }
+      } catch (err) {
+        // Игнорируем ошибки sessionStorage
+      }
+    }
+    return 0;
+  };
+  
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(getInitialQuestionIndex);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [showResumeScreen, setShowResumeScreen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -3399,12 +3417,28 @@ export default function QuizPage() {
       // Начальные экраны пройдены, переходим к вопросам
       clientLogger.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к вопросу', progressToRestore.questionIndex);
       setCurrentQuestionIndex(progressToRestore.questionIndex);
+      // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_currentQuestionIndex', String(progressToRestore.questionIndex));
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+        }
+      }
       setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
     } else if (progressToRestore.questionIndex > 0 || Object.keys(progressToRestore.answers).length > 0) {
       // Пользователь уже начал отвечать, но infoScreenIndex еще на начальных экранах
       // Пропускаем все начальные экраны и переходим к сохранённому вопросу
       clientLogger.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к вопросу', progressToRestore.questionIndex);
       setCurrentQuestionIndex(progressToRestore.questionIndex);
+      // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_currentQuestionIndex', String(progressToRestore.questionIndex));
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+        }
+      }
       setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
     } else {
       // Пользователь еще не начал отвечать, начинаем с начальных экранов
@@ -3515,8 +3549,9 @@ export default function QuizPage() {
     if (typeof window !== 'undefined') {
       try {
         sessionStorage.removeItem('quiz_currentInfoScreenIndex');
+        sessionStorage.removeItem('quiz_currentQuestionIndex');
       } catch (err) {
-        clientLogger.warn('⚠️ Не удалось очистить quiz_currentInfoScreenIndex из sessionStorage', err);
+        clientLogger.warn('⚠️ Не удалось очистить quiz индексы из sessionStorage', err);
       }
     }
     setShowResumeScreen(false);
