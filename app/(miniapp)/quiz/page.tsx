@@ -4501,6 +4501,14 @@ export default function QuizPage() {
         }
       } else {
         clientLogger.log('⚠️ allQuestionsRaw is empty and questionnaire is null');
+        // ИСПРАВЛЕНО: Если questionnaire null, но есть предыдущие вопросы в ref, используем их
+        // Это предотвращает потерю вопросов при временном отсутствии questionnaire
+        if (allQuestionsPrevRef.current.length > 0) {
+          clientLogger.log('✅ Using previous allQuestions from ref (questionnaire is null)', {
+            previousLength: allQuestionsPrevRef.current.length,
+          });
+          return allQuestionsPrevRef.current;
+        }
       }
       return [];
     }
