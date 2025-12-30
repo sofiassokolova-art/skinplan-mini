@@ -4259,15 +4259,19 @@ export default function QuizPage() {
   // Сохранены: логирование, защита от ошибок, обработка пустых массивов
   const allQuestionsRaw = useMemo(() => {
     try {
-      if (!questionnaire) {
+      // ИСПРАВЛЕНО: Используем questionnaireRef.current как fallback, если questionnaire в state null
+      // Это предотвращает потерю вопросов, когда questionnaire временно становится null в state
+      const effectiveQuestionnaire = questionnaire || questionnaireRef.current;
+      
+      if (!effectiveQuestionnaire) {
         if (isDev) {
-          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null');
+          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null (both state and ref)');
         }
         return [];
       }
       
-      const groups = questionnaire.groups || [];
-      const questions = questionnaire.questions || [];
+      const groups = effectiveQuestionnaire.groups || [];
+      const questions = effectiveQuestionnaire.questions || [];
       
       // Логируем только в development, чтобы не создавать спам
       if (isDev) {
@@ -4285,15 +4289,19 @@ export default function QuizPage() {
       
       if (result.length === 0) {
         clientLogger.warn('⚠️ allQuestionsRaw: No questions extracted', {
-          questionnaireId: questionnaire.id,
+          questionnaireId: effectiveQuestionnaire.id,
           groupsCount: groups.length,
           questionsCount: questions.length,
+          fromState: !!questionnaire,
+          fromRef: !!questionnaireRef.current,
         });
       } else if (isDev) {
         clientLogger.log('✅ allQuestionsRaw: extracted successfully', {
           total: result.length,
           fromGroups: groups.flatMap((g) => g.questions || []).length,
           fromQuestions: questions.length,
+          fromState: !!questionnaire,
+          fromRef: !!questionnaireRef.current,
         });
       }
       
@@ -4302,7 +4310,8 @@ export default function QuizPage() {
       clientLogger.error('❌ Error computing allQuestionsRaw:', {
         err,
         hasQuestionnaire: !!questionnaire,
-        questionnaireId: questionnaire?.id,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
       });
       return [];
     }
@@ -4426,10 +4435,15 @@ export default function QuizPage() {
   
   const allQuestions = useMemo<Question[]>(() => {
     try {
+    // ИСПРАВЛЕНО: Используем questionnaireRef.current как fallback, если questionnaire в state null
+    // Это предотвращает потерю вопросов, когда questionnaire временно становится null в state
+    const effectiveQuestionnaire = questionnaire || questionnaireRef.current;
+    
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) {
       // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой (используем log вместо warn для диагностики)
       const hasQuestionnaireState = !!questionnaire;
       const hasQuestionnaireRef = !!questionnaireRef.current;
+      const hasEffectiveQuestionnaire = !!effectiveQuestionnaire;
       
       if (hasQuestionnaireState || hasQuestionnaireRef) {
         clientLogger.log('⚠️ allQuestionsRaw is empty but questionnaire exists - trying fallback', {
