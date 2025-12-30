@@ -84,56 +84,46 @@ export default function QuizPage() {
   // Это позволяет постепенно мигрировать код на использование State Machine
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   
-  // ИСПРАВЛЕНО: Синхронизируем локальный state с State Machine
-  // КРИТИЧНО: Используем ref для отслеживания последней синхронизации, чтобы избежать бесконечных циклов
-  const lastSyncedQuestionnaireIdRef = useRef<string | number | null>(null);
-  const lastForcedUpdateRefIdRef = useRef<string | number | null>(null);
-  
-  useEffect(() => {
-    const stateMachineId = questionnaireFromStateMachine?.id || null;
-    const localId = questionnaire?.id || null;
-    const lastSyncedId = lastSyncedQuestionnaireIdRef.current;
-    
-    // Пропускаем, если уже синхронизировали этот questionnaire
-    if (stateMachineId === lastSyncedId && localId === lastSyncedId) {
-      return;
-    }
-    
-    if (questionnaireFromStateMachine !== questionnaire) {
-      // Если State Machine имеет questionnaire, но локальный state null - обновляем локальный state
-      if (questionnaireFromStateMachine && !questionnaire) {
-        clientLogger.log('🔄 Syncing questionnaire state from State Machine', {
-          questionnaireId: questionnaireFromStateMachine.id,
-        });
-        lastSyncedQuestionnaireIdRef.current = questionnaireFromStateMachine.id;
-        setQuestionnaire(questionnaireFromStateMachine);
-      }
-      // Если State Machine имеет questionnaire, но отличается от локального - обновляем локальный
-      else if (questionnaireFromStateMachine && questionnaire && 
-               questionnaireFromStateMachine.id !== questionnaire.id) {
-        clientLogger.log('🔄 Syncing questionnaire state from State Machine (different ID)', {
-          stateMachineId: questionnaireFromStateMachine.id,
-          localId: questionnaire.id,
-        });
-        lastSyncedQuestionnaireIdRef.current = questionnaireFromStateMachine.id;
-        setQuestionnaire(questionnaireFromStateMachine);
-      }
-    } else if (stateMachineId) {
-      // Если они равны, обновляем ref для отслеживания
-      lastSyncedQuestionnaireIdRef.current = stateMachineId;
-    }
-  }, [questionnaireFromStateMachine, questionnaire]);
+  // УДАЛЕНО: Избыточный useEffect для синхронизации с State Machine
+  // Вся синхронизация теперь выполняется в едином useEffect ниже (строки 212-251)
   
   // ИСПРАВЛЕНО: Обертка для setQuestionnaire, которая также обновляет State Machine
-  const setQuestionnaireWithStateMachine = useCallback((newQuestionnaire: Questionnaire | null) => {
+  // КРИТИЧНО: Используем ref для questionnaire вместо state в зависимостях, чтобы избежать пересоздания функции
+  const questionnaireForCallbackRef = useRef<Questionnaire | null>(null);
+  useEffect(() => {
+    questionnaireForCallbackRef.current = questionnaire;
+  }, [questionnaire]);
+  
+  const setQuestionnaireWithStateMachine = useCallback((newQuestionnaireOrUpdater: Questionnaire | null | ((prev: Questionnaire | null) => Questionnaire | null)) => {
+    // ИСПРАВЛЕНО: Поддерживаем функциональную форму setState((prev) => ...)
+    let newQuestionnaire: Questionnaire | null;
+    if (typeof newQuestionnaireOrUpdater === 'function') {
+      // Функциональная форма - вызываем функцию с текущим значением
+      const currentQuestionnaire = questionnaireForCallbackRef.current;
+      clientLogger.log('🔄 setQuestionnaireWithStateMachine: calling function updater', {
+        currentQuestionnaireId: currentQuestionnaire?.id || null,
+        hasCurrentQuestionnaire: !!currentQuestionnaire,
+      });
+      newQuestionnaire = newQuestionnaireOrUpdater(currentQuestionnaire);
+      clientLogger.log('🔄 setQuestionnaireWithStateMachine: function updater returned', {
+        returnedQuestionnaireId: newQuestionnaire?.id || null,
+        hasReturnedQuestionnaire: !!newQuestionnaire,
+        returnedType: typeof newQuestionnaire,
+      });
+    } else {
+      // Обычная форма - используем значение напрямую
+      newQuestionnaire = newQuestionnaireOrUpdater;
+    }
+    
     // КРИТИЧНО: Обновляем State Machine ПЕРВЫМ, чтобы защита от null сработала
     // ИСПРАВЛЕНО: Всегда вызываем setQuestionnaireInStateMachine, даже если newQuestionnaire null
     // State Machine сам решит, разрешить ли установку null
     clientLogger.log('🔄 setQuestionnaireWithStateMachine called', {
       newQuestionnaireId: newQuestionnaire?.id || null,
       currentStateMachineQuestionnaireId: quizStateMachine.questionnaire?.id || null,
-      currentLocalQuestionnaireId: questionnaire?.id || null,
+      currentLocalQuestionnaireId: questionnaireForCallbackRef.current?.id || null,
       currentRefQuestionnaireId: questionnaireRef.current?.id || null,
+      isFunctionalForm: typeof newQuestionnaireOrUpdater === 'function',
     });
     
     // КРИТИЧНО: Сохраняем текущее значение из State Machine перед обновлением
@@ -164,12 +154,13 @@ export default function QuizPage() {
     }
     
     // Обновляем локальный state и ref
-    if (questionnaireToSet !== questionnaire) {
+    const currentQuestionnaire = questionnaireForCallbackRef.current;
+    if (questionnaireToSet !== currentQuestionnaire) {
       clientLogger.log('🔄 Updating local questionnaire state from State Machine', {
         stateMachineQuestionnaireId: questionnaireFromStateMachine?.id || null,
         previousStateMachineQuestionnaireId: previousStateMachineQuestionnaire?.id || null,
         questionnaireToSetId: questionnaireToSet?.id || null,
-        localQuestionnaireId: questionnaire?.id || null,
+        localQuestionnaireId: currentQuestionnaire?.id || null,
       });
       
       setQuestionnaire(questionnaireToSet);
@@ -178,7 +169,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Даже если state не изменился, обновляем ref для гарантии
       questionnaireRef.current = questionnaireToSet;
     }
-  }, [setQuestionnaireInStateMachine, quizStateMachine, questionnaire]);
+  }, [setQuestionnaireInStateMachine, quizStateMachine]);
   // ИСПРАВЛЕНО: Начинаем с loading = false, так как лоадер анкеты убран
   // Лоадер показывается только на главной странице (/)
   const [loading, setLoading] = useState(false);
@@ -202,90 +193,89 @@ export default function QuizPage() {
     currentInfoScreenIndexRef.current = currentInfoScreenIndex;
   }, [currentInfoScreenIndex]);
   
-  // ИСПРАВЛЕНО: Синхронизируем questionnaireRef с state для предотвращения рассинхронизации
-  // Это гарантирует, что ref всегда актуален, даже если state обновляется асинхронно
-  // КРИТИЧНО: Также восстанавливаем state из ref, если state стал null, но ref содержит данные
-  // ИСПРАВЛЕНО: Используем ref для отслеживания последнего восстановления, чтобы избежать бесконечных циклов
-  const lastRestoredQuestionnaireIdRef = useRef<string | number | null>(null);
+  // КРИТИЧНО: ЕДИНЫЙ useEffect для синхронизации questionnaire между state, ref и State Machine
+  // Это предотвращает бесконечные циклы от множественных эффектов
+  const lastSyncedQuestionnaireIdRef = useRef<string | number | null>(null);
+  const isSyncingRef = useRef(false); // Защита от рекурсивных вызовов
   
   useEffect(() => {
-    if (questionnaire) {
-      if (questionnaireRef.current !== questionnaire) {
-        clientLogger.log('🔄 Syncing questionnaireRef with state', {
-          questionnaireId: questionnaire.id,
-          refId: questionnaireRef.current?.id,
-          hasGroups: !!questionnaire.groups,
-          groupsCount: questionnaire.groups?.length || 0,
-          hasQuestions: !!questionnaire.questions,
-          questionsCount: questionnaire.questions?.length || 0,
-        });
-        questionnaireRef.current = questionnaire;
-        // Обновляем ref для отслеживания
-        lastRestoredQuestionnaireIdRef.current = questionnaire.id;
-      } else if (questionnaire.id) {
-        // Если они равны, обновляем ref для отслеживания
-        lastRestoredQuestionnaireIdRef.current = questionnaire.id;
-      }
-    } else {
-      // ИСПРАВЛЕНО: Логируем, если questionnaire стал null
-      if (questionnaireRef.current) {
-        const refId = questionnaireRef.current.id;
-        const lastRestoredId = lastRestoredQuestionnaireIdRef.current;
-        
-        // Пропускаем, если уже восстанавливали этот questionnaire
-        if (refId === lastRestoredId) {
-          return;
-        }
-        
-        clientLogger.warn('⚠️ Questionnaire state became null, but ref still has data - RESTORING state from ref', {
-          refId,
-          refHasGroups: !!questionnaireRef.current.groups,
-          refGroupsCount: questionnaireRef.current.groups?.length || 0,
-        });
-        // КРИТИЧНО: Восстанавливаем state из ref, если state стал null, но ref содержит данные
-        // Это предотвращает потерю анкеты при случайном сбросе state
-        lastRestoredQuestionnaireIdRef.current = refId;
-        setQuestionnaire(questionnaireRef.current);
-      }
+    // Защита от рекурсивных вызовов
+    if (isSyncingRef.current) {
+      return;
     }
-  }, [questionnaire]);
-  
-  // КРИТИЧНО: Сбрасываем loading когда анкета загружена (в ref, state или State Machine)
-  // Это должно быть в useEffect, а не в рендере, чтобы избежать бесконечных ре-рендеров
-  // ИСПРАВЛЕНО: Проверяем questionnaire (state), questionnaireRef.current и quizStateMachine.questionnaire
-  useEffect(() => {
-    const hasQuestionnaire = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
+    
+    const stateId = questionnaire?.id;
+    const refId = questionnaireRef.current?.id;
+    const stateMachineId = quizStateMachine.questionnaire?.id;
+    const lastSyncedId = lastSyncedQuestionnaireIdRef.current;
+    
+    // Определяем источник истины (приоритет: State Machine > ref > state)
+    const sourceQuestionnaire = quizStateMachine.questionnaire || questionnaireRef.current || questionnaire;
+    const sourceId = stateMachineId || refId || stateId;
+    
+    // Если все источники синхронизированы с одним и тем же ID, просто обновляем ref для отслеживания
+    if (sourceId && sourceId === lastSyncedId && stateId === sourceId && refId === sourceId) {
+      return; // Уже синхронизировано
+    }
+    
+    // Синхронизируем ref с state (если state есть)
+    if (questionnaire && questionnaireRef.current !== questionnaire) {
+      questionnaireRef.current = questionnaire;
+    }
+    
+    // Если есть источник истины, но state не синхронизирован - синхронизируем
+    if (sourceQuestionnaire && sourceId && sourceId !== stateId) {
+      // Пропускаем, если уже синхронизировали этот ID
+      if (sourceId === lastSyncedId) {
+        return;
+      }
+      
+      clientLogger.log('🔄 Syncing questionnaire state from source', {
+        sourceId,
+        stateId,
+        refId,
+        stateMachineId,
+        source: stateMachineId ? 'State Machine' : refId ? 'ref' : 'state',
+      });
+      
+      isSyncingRef.current = true;
+      try {
+        lastSyncedQuestionnaireIdRef.current = sourceId;
+        // ИСПРАВЛЕНО: Используем setQuestionnaire напрямую вместо setQuestionnaireWithStateMachine
+        // чтобы избежать бесконечного цикла (setQuestionnaireWithStateMachine уже обновляет State Machine)
+        // Используем setQuestionnaire напрямую только для синхронизации state с State Machine
+        if (stateMachineId && quizStateMachine.questionnaire) {
+          // Если источник - State Machine, обновляем state напрямую (State Machine уже синхронизирован)
+          // Это предотвращает бесконечный цикл, так как мы не вызываем setQuestionnaireWithStateMachine
+          setQuestionnaire(quizStateMachine.questionnaire);
+          questionnaireRef.current = quizStateMachine.questionnaire;
+        } else if (refId && questionnaireRef.current && !stateMachineId) {
+          // Если источник - ref, а State Machine пуст, обновляем state напрямую
+          // State Machine должен быть обновлен через setQuestionnaireWithStateMachine в других местах
+          setQuestionnaire(questionnaireRef.current);
+        }
+      } finally {
+        // ИСПРАВЛЕНО: Сбрасываем флаг сразу после обновления (синхронно)
+        // React обработает обновление state асинхронно, но мы уже завершили логику синхронизации
+        isSyncingRef.current = false;
+      }
+    } else if (sourceId) {
+      // Если все синхронизировано, просто обновляем ref для отслеживания
+      lastSyncedQuestionnaireIdRef.current = sourceId;
+    }
+    
+    // Сбрасываем loading, если анкета загружена
+    const hasQuestionnaire = !!sourceQuestionnaire;
     if (hasQuestionnaire && loading) {
-      // ИСПРАВЛЕНО: Приоритет восстановления: State Machine > ref > state
-      // Если анкета в State Machine, но не в state - синхронизируем state
-      if (quizStateMachine.questionnaire && !questionnaire) {
-        clientLogger.warn('⚠️ Questionnaire in State Machine but not in state - syncing state', {
-          stateMachineId: quizStateMachine.questionnaire.id,
-        });
-        setQuestionnaire(quizStateMachine.questionnaire);
-        questionnaireRef.current = quizStateMachine.questionnaire;
-        setLoading(false);
-        return;
-      }
-      // Если анкета в ref, но не в state - синхронизируем state
-      if (questionnaireRef.current && !questionnaire) {
-        clientLogger.warn('⚠️ Questionnaire in ref but not in state - syncing state', {
-          refId: questionnaireRef.current.id,
-        });
-        setQuestionnaire(questionnaireRef.current);
-        // После установки state, loading будет сброшен в следующем эффекте
-        return;
-      }
-      // Сбрасываем loading
       clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
         hasQuestionnaireState: !!questionnaire,
         hasQuestionnaireRef: !!questionnaireRef.current,
         hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
-        questionnaireId: questionnaire?.id || questionnaireRef.current?.id || quizStateMachine.questionnaire?.id,
+        sourceId,
       });
       setLoading(false);
     }
-  }, [questionnaire, loading, quizStateMachine.questionnaire]); // ИСПРАВЛЕНО: Добавлен quizStateMachine.questionnaire в зависимости
+  }, [questionnaire, loading, quizStateMachine.questionnaire]);
   
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
@@ -3587,118 +3577,8 @@ export default function QuizPage() {
     }
   }, [questionnaire, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Убрали questionnaireRef.current?.id, так как ref не реактивен и не триггерит пересчет useMemo
   
-  // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
-  // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
-  // ИСПРАВЛЕНО: Используем ref для отслеживания последнего обновления, чтобы избежать бесконечных циклов
-  useEffect(() => {
-    const hasQuestionnaireState = !!questionnaire;
-    const hasQuestionnaireRef = !!questionnaireRef.current;
-    const stateId = questionnaire?.id;
-    const refId = questionnaireRef.current?.id;
-    const lastForcedId = lastForcedUpdateRefIdRef.current;
-    
-    // Пропускаем, если уже обновляли этот questionnaire
-    if (refId === lastForcedId && stateId === refId) {
-      return;
-    }
-    
-    // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
-    if (isDev) {
-      clientLogger.log('🔄 useEffect: questionnaire state/ref changed', {
-      hasQuestionnaireState,
-      hasQuestionnaireRef,
-      stateId,
-      refId,
-    });
-    }
-    
-    // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, 
-    // принудительно обновляем state и сбрасываем loading
-    // Это гарантирует, что анкета отобразится сразу после загрузки
-    if (hasQuestionnaireRef && !hasQuestionnaireState && refId && refId !== lastForcedId) {
-      clientLogger.warn('⚠️ Questionnaire in ref but not in state - forcing state update and loading=false', {
-        refId,
-        stateId,
-        loading,
-      });
-      // Принудительно обновляем state, чтобы useMemo пересчитался
-      // Но только если ref действительно содержит анкету
-      if (questionnaireRef.current) {
-        clientLogger.log('🔄 Forcing questionnaire state update from ref', {
-          refId: questionnaireRef.current.id,
-        });
-        // КРИТИЧНО: Используем функциональную форму для гарантированного обновления
-        // ИСПРАВЛЕНО: Проверяем, действительно ли данные изменились
-        setQuestionnaire((prev) => {
-          if (prev?.id === questionnaireRef.current?.id && prev) {
-            // Если ID совпадает и анкета уже установлена, не создаем новый объект
-            // Это предотвращает лишние пересчеты useMemo
-            return prev;
-          }
-          lastForcedUpdateRefIdRef.current = questionnaireRef.current?.id || null;
-          return questionnaireRef.current;
-        });
-        // КРИТИЧНО: Сбрасываем loading немедленно, чтобы анкета отобразилась
-        setLoading(false);
-      }
-    } else if (stateId && stateId === refId) {
-      // Если state и ref синхронизированы, обновляем ref для отслеживания
-      lastForcedUpdateRefIdRef.current = stateId;
-    }
-    
-    // КРИТИЧНО: Если анкета загружена в state, но loading все еще true - сбрасываем loading
-    if (hasQuestionnaireState && loading && stateId) {
-      clientLogger.warn('⚠️ Questionnaire in state but loading=true - forcing loading=false', {
-        stateId,
-        loading,
-      });
-      setLoading(false);
-    }
-    
-    // КРИТИЧНО: Если анкета загружена в ref, но loading все еще true - сбрасываем loading
-    // Это дополнительная защита на случай, если state еще не обновился
-    if (hasQuestionnaireRef && loading && refId && !hasQuestionnaireState) {
-      clientLogger.warn('⚠️ Questionnaire in ref but loading=true (state not updated yet) - forcing loading=false', {
-        refId,
-        stateId,
-        loading,
-      });
-      setLoading(false);
-    }
-  }, [questionnaire, loading]); // ИСПРАВЛЕНО: questionnaire и loading в зависимостях
-  
-  // ИСПРАВЛЕНО: Дополнительный useEffect для отслеживания изменений questionnaireRef.current
-  // Это гарантирует, что state обновится, когда ref изменится, даже если state был null
-  // ИСПРАВЛЕНО: Используем ref для отслеживания последнего обновления, чтобы избежать бесконечных циклов
-  const lastRefUpdateIdRef = useRef<string | number | null>(null);
-  
-  useEffect(() => {
-    const refId = questionnaireRef.current?.id;
-    const stateId = questionnaire?.id;
-    const lastRefUpdateId = lastRefUpdateIdRef.current;
-    
-    // Пропускаем, если уже обновляли этот questionnaire
-    if (refId === lastRefUpdateId && stateId === refId) {
-      return;
-    }
-    
-    // Если ref обновился, но state не соответствует или null - обновляем state
-    if (refId && refId !== stateId && refId !== lastRefUpdateId) {
-      clientLogger.log('🔄 questionnaireRef.current changed - updating state', {
-        refId,
-        stateId,
-        hasQuestionnaireRef: !!questionnaireRef.current,
-        hasQuestionnaireState: !!questionnaire,
-      });
-      if (questionnaireRef.current) {
-        lastRefUpdateIdRef.current = refId;
-        setQuestionnaire(questionnaireRef.current);
-      }
-    } else if (stateId && stateId === refId) {
-      // Если state и ref синхронизированы, обновляем ref для отслеживания
-      lastRefUpdateIdRef.current = stateId;
-    }
-  }, [questionnaire?.id]); // ИСПРАВЛЕНО: Убрали questionnaireRef.current?.id из зависимостей, так как ref не реактивен. Используем только questionnaire?.id
+  // УДАЛЕНО: Избыточные useEffect для синхронизации questionnaire
+  // Вся синхронизация теперь выполняется в едином useEffect выше (строки 211-251)
   
   // Фильтруем вопросы на основе ответов (мемоизируем)
   // Если пользователь выбрал пол "мужчина", пропускаем вопрос про беременность/кормление
