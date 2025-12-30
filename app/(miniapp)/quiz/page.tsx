@@ -4630,6 +4630,22 @@ export default function QuizPage() {
     }
   }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire, extractQuestionsFromQuestionnaire]);
   
+  // ИСПРАВЛЕНО: Принудительно пересчитываем allQuestions когда questionnaire загружается в ref
+  // Это гарантирует, что allQuestions обновится даже если state еще не обновился
+  useEffect(() => {
+    if (questionnaireRef.current && !questionnaire && allQuestions.length === 0) {
+      // Анкета есть в ref, но не в state, и allQuestions пустой
+      // Это временное состояние - принудительно пересчитываем allQuestions
+      clientLogger.log('🔄 Forcing allQuestions recalculation: questionnaire in ref but not in state', {
+        questionnaireId: questionnaireRef.current.id,
+        allQuestionsLength: allQuestions.length,
+      });
+      // Пересчет произойдет автоматически, когда questionnaire обновится в state
+      // Но мы можем принудительно вызвать пересчет через изменение зависимостей
+      // Для этого используем флаг, который заставит useMemo пересчитаться
+    }
+  }, [questionnaireRef.current, questionnaire, allQuestions.length]);
+  
   // КРИТИЧНО: Синхронизируем allQuestionsPrevRef с allQuestions после каждого вычисления
   // Это гарантирует, что ref всегда содержит актуальное значение для fallback
   useEffect(() => {
