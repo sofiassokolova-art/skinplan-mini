@@ -12,7 +12,7 @@ export interface WelcomeScreenProps {
   isHandlingNext: boolean;
 }
 
-export function WelcomeScreen({ screen, onContinue, isHandlingNext }: WelcomeScreenProps) {
+function WelcomeScreenComponent({ screen, onContinue, isHandlingNext }: WelcomeScreenProps) {
   return (
     <div style={{ 
       padding: 0,
@@ -102,4 +102,7 @@ export function WelcomeScreen({ screen, onContinue, isHandlingNext }: WelcomeScr
     </div>
   );
 }
+
+// ФИКС: Оптимизация рендеринга - мемоизируем компонент для предотвращения лишних перерендеров
+export const WelcomeScreen = React.memo(WelcomeScreenComponent);
 

@@ -14,7 +14,7 @@ export interface HowItWorksScreenProps {
   onContinue: () => void;
 }
 
-export function HowItWorksScreen({ 
+function HowItWorksScreenComponent({ 
   screen, 
   currentInfoScreenIndex, 
   onBack, 
@@ -157,4 +157,7 @@ export function HowItWorksScreen({
     </div>
   );
 }
+
+// ФИКС: Оптимизация рендеринга - мемоизируем компонент для предотвращения лишних перерендеров
+export const HowItWorksScreen = React.memo(HowItWorksScreenComponent);
 

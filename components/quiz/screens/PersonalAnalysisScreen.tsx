@@ -14,7 +14,7 @@ export interface PersonalAnalysisScreenProps {
   onContinue: () => void;
 }
 
-export function PersonalAnalysisScreen({ 
+function PersonalAnalysisScreenComponent({ 
   screen, 
   currentInfoScreenIndex, 
   onBack, 
