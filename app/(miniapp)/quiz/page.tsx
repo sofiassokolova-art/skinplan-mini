@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTelegram } from '@/lib/telegram-client';
@@ -174,9 +174,30 @@ export default function QuizPage() {
   // Лоадер показывается только на главной странице (/)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(0);
+  // ФИКС: Восстанавливаем currentInfoScreenIndex из sessionStorage при инициализации
+  const getInitialInfoScreenIndex = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+        if (saved !== null) {
+          const savedIndex = parseInt(saved, 10);
+          if (!isNaN(savedIndex) && savedIndex >= 0) {
+            const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+            if (savedIndex <= initialInfoScreens.length) {
+              return savedIndex;
+            }
+          }
+        }
+      } catch (err) {
+        // Игнорируем ошибки sessionStorage
+      }
+    }
+    return 0;
+  };
+  
+  const [currentInfoScreenIndex, setCurrentInfoScreenIndex] = useState(getInitialInfoScreenIndex);
   // ФИКС: Ref для синхронной проверки currentInfoScreenIndex в асинхронных функциях
-  const currentInfoScreenIndexRef = useRef(0);
+  const currentInfoScreenIndexRef = useRef(getInitialInfoScreenIndex());
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [showResumeScreen, setShowResumeScreen] = useState(false);
@@ -211,6 +232,14 @@ export default function QuizPage() {
     loadingStateRef.current = loading;
   }, [loading]);
   
+  // ФИКС: Используем ref для отслеживания questionnaire из State Machine, чтобы избежать зависимости от объекта
+  const stateMachineQuestionnaireRef = useRef<Questionnaire | null>(null);
+  const stateMachineQuestionnaireIdRef = useRef<string | number | null>(null);
+  useEffect(() => {
+    stateMachineQuestionnaireRef.current = quizStateMachine.questionnaire;
+    stateMachineQuestionnaireIdRef.current = quizStateMachine.questionnaire?.id || null;
+  }, [quizStateMachine.questionnaire]);
+  
   useEffect(() => {
     // Защита от рекурсивных вызовов
     if (isSyncingRef.current) {
@@ -220,12 +249,13 @@ export default function QuizPage() {
     const stateQuestionnaire = questionnaireStateRef.current;
     const stateId = stateQuestionnaire?.id;
     const refId = questionnaireRef.current?.id;
-    const stateMachineId = quizStateMachine.questionnaire?.id;
+    const stateMachineQuestionnaire = stateMachineQuestionnaireRef.current;
+    const stateMachineId = stateMachineQuestionnaire?.id;
     const lastSyncedId = lastSyncedQuestionnaireIdRef.current;
     const lastSyncedQuestionnaire = lastSyncedQuestionnaireRef.current;
     
     // Определяем источник истины (приоритет: State Machine > ref > state)
-    const sourceQuestionnaire = quizStateMachine.questionnaire || questionnaireRef.current || stateQuestionnaire;
+    const sourceQuestionnaire = stateMachineQuestionnaire || questionnaireRef.current || stateQuestionnaire;
     const sourceId = stateMachineId || refId || stateId;
     
     // ФИКС: Проверяем, действительно ли объект изменился, а не только ID
@@ -268,13 +298,13 @@ export default function QuizPage() {
         // ИСПРАВЛЕНО: Используем setQuestionnaire напрямую вместо setQuestionnaireWithStateMachine
         // чтобы избежать бесконечного цикла (setQuestionnaireWithStateMachine уже обновляет State Machine)
         // Используем setQuestionnaire напрямую только для синхронизации state с State Machine
-        if (stateMachineId && quizStateMachine.questionnaire) {
+        if (stateMachineId && stateMachineQuestionnaire) {
           // Если источник - State Machine, обновляем state напрямую (State Machine уже синхронизирован)
           // Это предотвращает бесконечный цикл, так как мы не вызываем setQuestionnaireWithStateMachine
           // ФИКС: Проверяем, действительно ли объект изменился перед обновлением
-          if (stateQuestionnaire !== quizStateMachine.questionnaire) {
-            setQuestionnaire(quizStateMachine.questionnaire);
-            questionnaireRef.current = quizStateMachine.questionnaire;
+          if (stateQuestionnaire !== stateMachineQuestionnaire) {
+            setQuestionnaire(stateMachineQuestionnaire);
+            questionnaireRef.current = stateMachineQuestionnaire;
           }
         } else if (refId && questionnaireRef.current && !stateMachineId) {
           // Если источник - ref, а State Machine пуст, обновляем state напрямую
@@ -304,12 +334,12 @@ export default function QuizPage() {
       clientLogger.log('✅ Questionnaire loaded - setting loading=false', {
         hasQuestionnaireState: !!stateQuestionnaire,
         hasQuestionnaireRef: !!questionnaireRef.current,
-        hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+        hasQuestionnaireStateMachine: !!stateMachineQuestionnaire,
         sourceId,
       });
       setLoading(false);
     }
-  }, [quizStateMachine]); // ФИКС: Убрали questionnaire и loading из зависимостей, используем refs вместо этого
+  }, [quizStateMachine.questionnaire?.id]); // ФИКС: Зависим только от ID questionnaire из State Machine
   
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
