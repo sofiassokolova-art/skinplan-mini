@@ -6004,6 +6004,8 @@ export default function QuizPage() {
     currentQuestionIndex,
     currentQuestion,
     questionnaire,
+    questionnaireRef, // ИСПРАВЛЕНО: Передаем questionnaireRef как fallback
+    questionnaireFromStateMachine: quizStateMachine.questionnaire, // ИСПРАВЛЕНО: Передаем questionnaireFromStateMachine как fallback
     loading,
     hasResumed,
     savedProgress,
@@ -6029,7 +6031,10 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Используем isShowingInitialInfoScreen вместо isShowingInitialInfoScreen
   // КРИТИЧНО: Также проверяем, что currentInfoScreenIndex < initialInfoScreens.length
   // Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
-  // КРИТИЧНО: Показываем первый экран ТОЛЬКО если анкета загружена (questionnaire)
+  // КРИТИЧНО: Показываем первый экран ТОЛЬКО если анкета загружена
+  // ИСПРАВЛЕНО: Используем effectiveQuestionnaire (ref или state или State Machine) вместо только questionnaire
+  // Это гарантирует, что инфо-экраны показываются, даже если questionnaire в state временно null
+  const effectiveQuestionnaire = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
   // Проверка !loading убрана, так как она может блокировать показ вопросов после перехода к ним
   // Кнопка на первом экране уже имеет проверку загрузки анкеты
   if (isShowingInitialInfoScreen && 
@@ -6038,7 +6043,7 @@ export default function QuizPage() {
       !isRetakingQuiz && 
       !showResumeScreen && 
       !pendingInfoScreen &&
-      questionnaire) {
+      effectiveQuestionnaire) {
     // Логируем для диагностики
     if (isDev) {
       clientLogger.log('📺 Рендерим начальный инфо-экран', {

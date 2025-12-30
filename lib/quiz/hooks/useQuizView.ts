@@ -16,6 +16,8 @@ export interface UseQuizViewParams {
   currentQuestionIndex: number;
   currentQuestion: any | null;
   questionnaire: any | null;
+  questionnaireRef?: React.MutableRefObject<any | null>; // ИСПРАВЛЕНО: Добавлен questionnaireRef как fallback
+  questionnaireFromStateMachine?: any | null; // ИСПРАВЛЕНО: Добавлен questionnaireFromStateMachine как fallback
   loading: boolean;
   hasResumed: boolean;
   savedProgress: {
@@ -45,6 +47,8 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     currentQuestionIndex,
     currentQuestion,
     questionnaire,
+    questionnaireRef,
+    questionnaireFromStateMachine,
     loading,
     hasResumed,
     savedProgress,
@@ -52,6 +56,12 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     allQuestionsLength,
     isDev,
   } = params;
+  
+  // ИСПРАВЛЕНО: Используем questionnaireRef или questionnaireFromStateMachine как fallback
+  // Это гарантирует, что инфо-экраны и вопросы показываются, даже если questionnaire в state временно null
+  const effectiveQuestionnaire = questionnaire || 
+                                  questionnaireRef?.current || 
+                                  questionnaireFromStateMachine;
 
   return useMemo(() => {
     // 1. Экран продолжения (resume)
@@ -111,18 +121,24 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
           ? initialInfoScreens[currentInfoScreenIndex]
           : null;
 
-      if (currentInitialInfoScreen && questionnaire && !pendingInfoScreen) {
+      // ИСПРАВЛЕНО: Используем effectiveQuestionnaire вместо questionnaire
+      // Это гарантирует, что инфо-экраны показываются, даже если questionnaire в state временно null
+      if (currentInitialInfoScreen && effectiveQuestionnaire && !pendingInfoScreen) {
         return { type: 'initialInfo', screen: currentInitialInfoScreen };
       }
     }
 
     // 5. Вопрос
-    if (currentQuestion && !loading && questionnaire) {
+    // ИСПРАВЛЕНО: Используем effectiveQuestionnaire вместо questionnaire
+    // Это гарантирует, что вопросы показываются, даже если questionnaire в state временно null
+    if (currentQuestion && !loading && effectiveQuestionnaire) {
       return { type: 'question', question: currentQuestion };
     }
 
     // 6. Загрузка
-    if (loading || !questionnaire) {
+    // ИСПРАВЛЕНО: Используем effectiveQuestionnaire вместо questionnaire
+    // Показываем загрузку только если действительно нет questionnaire ни в одном источнике
+    if (loading || !effectiveQuestionnaire) {
       return { type: 'loading' };
     }
 
@@ -138,6 +154,9 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     currentQuestionIndex,
     currentQuestion,
     questionnaire,
+    questionnaireRef?.current, // ИСПРАВЛЕНО: Добавляем questionnaireRef.current в зависимости
+    questionnaireFromStateMachine, // ИСПРАВЛЕНО: Добавляем questionnaireFromStateMachine в зависимости
+    effectiveQuestionnaire, // ИСПРАВЛЕНО: Добавляем effectiveQuestionnaire в зависимости
     loading,
     hasResumed,
     savedProgress,
