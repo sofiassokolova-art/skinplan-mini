@@ -3246,21 +3246,38 @@ export default function QuizPage() {
   // ВОССТАНОВЛЕНО: Простая логика из рабочей версии (коммит 5fd9c54)
   // Получаем все вопросы с фильтрацией (мемоизируем для оптимизации)
   // Сохранены: логирование, защита от ошибок, обработка пустых массивов
+  // ИСПРАВЛЕНО: Используем ref для хранения предыдущего значения allQuestionsRaw
+  // Это предотвращает потерю вопросов, когда questionnaire временно становится null в state
+  const allQuestionsRawPrevRef = useRef<Question[]>([]);
+  
   const allQuestionsRaw = useMemo(() => {
     try {
-      // ИСПРАВЛЕНО: Используем questionnaireRef.current как fallback, если questionnaire в state null
-      // Это предотвращает потерю вопросов, когда questionnaire временно становится null в state
-      const effectiveQuestionnaire = questionnaire || questionnaireRef.current;
+      // КРИТИЧНО: Используем questionnaireRef.current как ОСНОВНОЙ источник, а не fallback
+      // Это гарантирует, что вопросы всегда извлекаются, даже если state временно null
+      // ИСПРАВЛЕНО: Приоритет ref над state, так как ref обновляется синхронно
+      const effectiveQuestionnaire = questionnaireRef.current || questionnaire;
       
       if (!effectiveQuestionnaire) {
+        // ИСПРАВЛЕНО: Если оба null, используем предыдущее значение из ref
+        if (allQuestionsRawPrevRef.current.length > 0) {
+          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null, using previous value from ref', {
+            previousLength: allQuestionsRawPrevRef.current.length,
+          });
+          return allQuestionsRawPrevRef.current;
+        }
         if (isDev) {
-          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null (both state and ref)');
+          clientLogger.log('⚠️ allQuestionsRaw: questionnaire is null (both state and ref), returning empty');
         }
         return [];
       }
       
       // РЕФАКТОРИНГ: Используем единую функцию для извлечения вопросов
       const result = extractQuestionsFromQuestionnaire(effectiveQuestionnaire);
+      
+      // КРИТИЧНО: Сохраняем результат в ref для использования при следующем пересчете
+      if (result.length > 0) {
+        allQuestionsRawPrevRef.current = result;
+      }
       
       // Логируем только в development, чтобы не создавать спам
       if (isDev) {
@@ -3273,6 +3290,7 @@ export default function QuizPage() {
           extractedCount: result.length,
           fromState: !!questionnaire,
           fromRef: !!questionnaireRef.current,
+          usingRef: effectiveQuestionnaire === questionnaireRef.current,
         });
       }
       
@@ -3285,7 +3303,15 @@ export default function QuizPage() {
           questionsCount: questions.length,
           fromState: !!questionnaire,
           fromRef: !!questionnaireRef.current,
+          previousLength: allQuestionsRawPrevRef.current.length,
         });
+        // ИСПРАВЛЕНО: Если результат пустой, но есть предыдущее значение - используем его
+        if (allQuestionsRawPrevRef.current.length > 0) {
+          clientLogger.log('✅ allQuestionsRaw: using previous value from ref', {
+            previousLength: allQuestionsRawPrevRef.current.length,
+          });
+          return allQuestionsRawPrevRef.current;
+        }
       } else if (isDev) {
         const groups = effectiveQuestionnaire.groups || [];
         const questions = effectiveQuestionnaire.questions || [];
@@ -3295,6 +3321,7 @@ export default function QuizPage() {
           fromQuestions: questions.length,
           fromState: !!questionnaire,
           fromRef: !!questionnaireRef.current,
+          usingRef: effectiveQuestionnaire === questionnaireRef.current,
         });
       }
       
@@ -3305,10 +3332,18 @@ export default function QuizPage() {
         hasQuestionnaire: !!questionnaire,
         hasQuestionnaireRef: !!questionnaireRef.current,
         questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+        previousLength: allQuestionsRawPrevRef.current.length,
       });
+      // ИСПРАВЛЕНО: При ошибке используем предыдущее значение, если оно есть
+      if (allQuestionsRawPrevRef.current.length > 0) {
+        clientLogger.log('✅ allQuestionsRaw: using previous value from ref after error', {
+          previousLength: allQuestionsRawPrevRef.current.length,
+        });
+        return allQuestionsRawPrevRef.current;
+      }
       return [];
     }
-  }, [questionnaire]); // ИСПРАВЛЕНО: questionnaireRef.current не может быть в зависимостях useMemo, используем useEffect для синхронизации
+  }, [questionnaire, questionnaireRef.current?.id]); // ИСПРАВЛЕНО: Добавляем questionnaireRef.current?.id для отслеживания изменений ref
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
   // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
