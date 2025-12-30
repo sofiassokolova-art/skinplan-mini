@@ -204,3 +204,6 @@ function PersonalAnalysisScreenComponent({
   );
 }
 
+// ФИКС: Оптимизация рендеринга - мемоизируем компонент для предотвращения лишних перерендеров
+export const PersonalAnalysisScreen = React.memo(PersonalAnalysisScreenComponent);
+
