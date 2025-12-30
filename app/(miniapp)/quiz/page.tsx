@@ -3441,7 +3441,8 @@ export default function QuizPage() {
         err,
         hasQuestionnaire: !!questionnaire,
         hasQuestionnaireRef: !!questionnaireRef.current,
-        questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+        hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
+        questionnaireId: questionnaire?.id || questionnaireRef.current?.id || quizStateMachine.questionnaire?.id,
         previousLength: allQuestionsRawPrevRef.current.length,
       });
       // ИСПРАВЛЕНО: При ошибке используем предыдущее значение, если оно есть
@@ -3453,7 +3454,7 @@ export default function QuizPage() {
       }
       return [];
     }
-  }, [questionnaire, questionnaireRef.current?.id]); // ИСПРАВЛЕНО: Добавляем questionnaireRef.current?.id для отслеживания изменений ref
+  }, [questionnaire, questionnaireRef.current?.id, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Добавляем quizStateMachine.questionnaire?.id для отслеживания изменений State Machine
   
   // ИСПРАВЛЕНО: Отслеживаем изменения questionnaire state и ref для диагностики
   // КРИТИЧНО: Если анкета загружена в ref, но state еще не обновился, принудительно пересчитываем allQuestionsRaw
