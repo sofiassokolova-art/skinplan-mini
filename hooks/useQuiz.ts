@@ -3,6 +3,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 
 const QUIZ_QUERY_KEY = 'quiz';
 const QUIZ_PROGRESS_QUERY_KEY = 'quiz-progress';
@@ -15,9 +16,9 @@ export function useQuestionnaire() {
   return useQuery({
     queryKey: [QUIZ_QUERY_KEY, 'active'],
     queryFn: () => api.getActiveQuestionnaire() as Promise<any>,
-    staleTime: 10 * 60 * 1000, // 10 минут (анкета редко меняется)
-    gcTime: 30 * 60 * 1000, // 30 минут в кэше
-    retry: 2, // Повторяем максимум 2 раза при ошибке
+    staleTime: QUIZ_CONFIG.REACT_QUERY.QUESTIONNAIRE_STALE_TIME,
+    gcTime: QUIZ_CONFIG.REACT_QUERY.QUESTIONNAIRE_GC_TIME,
+    retry: QUIZ_CONFIG.RETRY.QUESTIONNAIRE_MAX_ATTEMPTS,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 }
@@ -30,9 +31,9 @@ export function useQuizProgress() {
   return useQuery({
     queryKey: [QUIZ_PROGRESS_QUERY_KEY],
     queryFn: () => api.getQuizProgress() as Promise<any>,
-    staleTime: 2 * 60 * 1000, // 2 минуты
-    gcTime: 10 * 60 * 1000, // 10 минут в кэше
-    retry: 1, // Повторяем максимум 1 раз при ошибке
+    staleTime: QUIZ_CONFIG.REACT_QUERY.PROGRESS_STALE_TIME,
+    gcTime: QUIZ_CONFIG.REACT_QUERY.PROGRESS_GC_TIME,
+    retry: QUIZ_CONFIG.RETRY.PROGRESS_MAX_ATTEMPTS,
     retryDelay: 1000,
   });
 }
@@ -64,7 +65,7 @@ export function useSaveQuizProgress() {
       // Инвалидируем кэш прогресса после сохранения
       queryClient.invalidateQueries({ queryKey: [QUIZ_PROGRESS_QUERY_KEY] });
     },
-    retry: 1, // Повторяем максимум 1 раз при ошибке
+    retry: QUIZ_CONFIG.RETRY.SAVE_PROGRESS_MAX_ATTEMPTS,
     retryDelay: 1000,
   });
 }

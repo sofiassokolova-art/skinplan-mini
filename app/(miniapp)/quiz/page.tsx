@@ -22,6 +22,7 @@ import { useQuizView } from '@/lib/quiz/hooks/useQuizView';
 import { useQuizStateMachine } from '@/lib/quiz/hooks/useQuizStateMachine';
 import { useQuizSync } from '@/lib/quiz/utils/quizSync';
 import { useQuestionnaire, useQuizProgress, useSaveQuizProgress } from '@/hooks/useQuiz';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { WelcomeScreen, HowItWorksScreen, PersonalAnalysisScreen } from '@/components/quiz/screens';
 import { FixedContinueButton, BackButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
@@ -92,6 +93,13 @@ export default function QuizPage() {
   
   // ФИКС: Используем React Query для сохранения прогресса (автоматическая инвалидация кэша)
   const saveQuizProgressMutation = useSaveQuizProgress();
+  
+  // ФИКС: Используем React Query для загрузки прогресса (автоматическое кэширование)
+  const { 
+    data: quizProgressFromQuery, 
+    isLoading: isLoadingProgress,
+    error: progressError 
+  } = useQuizProgress();
   
   // ИСПРАВЛЕНО: Оставляем локальный state для обратной совместимости, но синхронизируем с State Machine
   // Это позволяет постепенно мигрировать код на использование State Machine
@@ -224,7 +232,7 @@ export default function QuizPage() {
   const initialInfoScreenIndex = useMemo(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+        const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
         if (saved !== null) {
           const savedIndex = parseInt(saved, 10);
           if (!isNaN(savedIndex) && savedIndex >= 0) {
@@ -250,7 +258,7 @@ export default function QuizPage() {
   const initialQuestionIndex = useMemo(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
+        const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
         if (saved !== null) {
           const savedIndex = parseInt(saved, 10);
           if (!isNaN(savedIndex) && savedIndex >= 0) {
@@ -538,10 +546,10 @@ export default function QuizPage() {
       // Если мы просто открыли /quiz (особенно новый пользователь),
       // эти флаги должны быть сняты, иначе увидим лоадер плана
       if (typeof window !== 'undefined') {
-        const justSubmitted = sessionStorage.getItem('quiz_just_submitted');
+        const justSubmitted = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         if (justSubmitted === 'true') {
           clientLogger.log('🧹 Очищаем залипший флаг quiz_just_submitted при входе на /quiz');
-          sessionStorage.removeItem('quiz_just_submitted');
+          sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         }
         
         // ИСПРАВЛЕНО: ВСЕГДА сбрасываем isSubmitting при монтировании для нового пользователя
@@ -596,12 +604,12 @@ export default function QuizPage() {
     }
     
     if (typeof window !== 'undefined') {
-      const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
+      const justSubmitted = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true';
       if (justSubmitted) {
         redirectInProgressRef.current = true; // Помечаем, что редирект начат
         clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
         // Очищаем флаг
-        sessionStorage.removeItem('quiz_just_submitted');
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
         initCompletedRef.current = true;
         setLoading(false);
@@ -627,12 +635,12 @@ export default function QuizPage() {
     
     // ИСПРАВЛЕНО: Проверяем флаг quiz_just_submitted ПЕРЕД проверкой профиля
     // Это критично, чтобы предотвратить редирект на первый экран после отправки ответов
-    const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+    const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true' : false;
     if (justSubmitted) {
       clientLogger.log('✅ Флаг quiz_just_submitted установлен - пропускаем проверку профиля и редиректим на /plan?state=generating');
       // Очищаем флаг
       if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('quiz_just_submitted');
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
       }
       // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
       initCompletedRef.current = true;
@@ -900,7 +908,7 @@ export default function QuizPage() {
     // ФИКС: Сохраняем флаг в sessionStorage для предотвращения повторных вызовов при перемонтировании
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.setItem('quiz_initCalled', 'true');
+        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED, 'true');
       } catch (err) {
         // Игнорируем ошибки sessionStorage
       }
@@ -919,7 +927,7 @@ export default function QuizPage() {
       // Это предотвращает сброс индекса в 0 при ошибке React #310
       if (typeof window !== 'undefined') {
         try {
-          const savedInfoScreenIndex = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+          const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
           if (savedInfoScreenIndex !== null) {
             const savedIndex = parseInt(savedInfoScreenIndex, 10);
             if (!isNaN(savedIndex) && savedIndex >= 0) {
@@ -935,7 +943,7 @@ export default function QuizPage() {
                 setCurrentInfoScreenIndex(savedIndex);
               } else {
                 // Если сохраненный индекс больше максимального, очищаем его
-                sessionStorage.removeItem('quiz_currentInfoScreenIndex');
+                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
                 clientLogger.log('🧹 Очищен невалидный currentInfoScreenIndex из sessionStorage', {
                   savedIndex,
                   initialInfoScreensLength: initialInfoScreens.length,
@@ -1175,7 +1183,7 @@ export default function QuizPage() {
           let savedInfoScreenIndex: number | null = null;
           if (typeof window !== 'undefined') {
             try {
-              const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
+              const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
               if (saved !== null) {
                 const parsed = parseInt(saved, 10);
                 if (!isNaN(parsed) && parsed >= 0) {
@@ -1184,7 +1192,7 @@ export default function QuizPage() {
               }
               // ФИКС: Также проверяем currentInfoScreenIndex - если он больше длины начальных экранов,
               // значит пользователь уже прошел начальные экраны и отвечал на вопросы
-              const savedInfoScreen = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+              const savedInfoScreen = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
               if (savedInfoScreen !== null) {
                 const parsed = parseInt(savedInfoScreen, 10);
                 if (!isNaN(parsed) && parsed >= 0) {
@@ -1503,14 +1511,64 @@ export default function QuizPage() {
       if (typeof window === 'undefined' || !window.Telegram?.WebApp?.initData) {
         return;
       }
-      const response = await api.getQuizProgress() as {
+      
+      // ФИКС: Используем React Query для загрузки прогресса (приоритет)
+      // Это обеспечивает автоматическое кэширование и уменьшает количество запросов
+      let response: {
         progress?: {
           answers: Record<number, string | string[]>;
           questionIndex: number;
           infoScreenIndex: number;
           timestamp: number;
         } | null;
-      };
+      } | null = null;
+      
+      if (quizProgressFromQuery) {
+        // Используем данные из React Query кэша
+        clientLogger.log('✅ Используем прогресс из React Query кэша', {
+          hasProgress: !!(quizProgressFromQuery as any)?.progress,
+        });
+        response = quizProgressFromQuery as any;
+      } else if (!isLoadingProgress) {
+        // Если React Query не загружает и данных нет, используем прямой вызов API как fallback
+        clientLogger.log('🔄 Загружаем прогресс через прямой API вызов (fallback)');
+        response = await api.getQuizProgress() as {
+          progress?: {
+            answers: Record<number, string | string[]>;
+            questionIndex: number;
+            infoScreenIndex: number;
+            timestamp: number;
+          } | null;
+        };
+      } else {
+        // Если React Query загружает, ждем завершения
+        clientLogger.log('⏳ Ожидаем загрузку прогресса через React Query...');
+        // Ждем максимум 3 секунды
+        let waitAttempts = 0;
+        const maxWaitAttempts = 30; // 30 * 100ms = 3 секунды максимум
+        while (isLoadingProgress && !quizProgressFromQuery && waitAttempts < maxWaitAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          waitAttempts++;
+        }
+        
+        if (quizProgressFromQuery) {
+          response = quizProgressFromQuery as any;
+        } else {
+          // Если React Query не загрузил, используем прямой вызов API
+          response = await api.getQuizProgress() as {
+            progress?: {
+              answers: Record<number, string | string[]>;
+              questionIndex: number;
+              infoScreenIndex: number;
+              timestamp: number;
+            } | null;
+          };
+        }
+      }
+      
+      if (!response) {
+        return;
+      }
       
       // ИСПРАВЛЕНО: Проверяем наличие профиля перед показом экрана "Вы не завершили анкету"
       // Если профиля нет, но есть ответы - это может быть старые данные, которые нужно очистить
@@ -1536,7 +1594,9 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Показываем экран прогресса только если есть минимум 5 ответов или questionIndex >= 5
       const answersCount = response?.progress?.answers ? Object.keys(response.progress.answers).length : 0;
       const questionIndex = response?.progress?.questionIndex ?? -1;
-      const shouldShowProgressScreen = answersCount >= 5 || questionIndex >= 5;
+      const shouldShowProgressScreen = 
+        answersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
+        questionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN;
       
       if (response?.progress && response.progress.answers && answersCount > 0 && shouldShowProgressScreen) {
         // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
@@ -1552,7 +1612,7 @@ export default function QuizPage() {
         let restoredIndex: number | null = null;
         if (typeof window !== 'undefined') {
           try {
-            const savedInfoScreenIndex = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+            const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
             if (savedInfoScreenIndex !== null) {
               const savedIndex = parseInt(savedInfoScreenIndex, 10);
               if (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex <= initialInfoScreens.length) {
@@ -1870,7 +1930,7 @@ export default function QuizPage() {
     // ФИКС: Очищаем флаг quiz_initCalled из sessionStorage при очистке прогресса
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.removeItem('quiz_initCalled');
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED);
       } catch (err) {
         // Игнорируем ошибки sessionStorage
       }
@@ -2723,7 +2783,7 @@ export default function QuizPage() {
           // Это предотвратит редирект на первый экран при следующей загрузке страницы
           if (typeof window !== 'undefined') {
             try {
-              sessionStorage.removeItem('quiz_just_submitted');
+              sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
               clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не был создан');
             } catch (storageError) {
               clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
@@ -2823,7 +2883,7 @@ export default function QuizPage() {
               // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
               if (typeof window !== 'undefined') {
                 try {
-                  sessionStorage.removeItem('quiz_just_submitted');
+                  sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
                   clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не найден при дубликате');
                 } catch (storageError) {
                   clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
@@ -2860,7 +2920,7 @@ export default function QuizPage() {
               // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
               if (typeof window !== 'undefined') {
                 try {
-                  sessionStorage.removeItem('quiz_just_submitted');
+                  sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
                   clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не был создан после ошибки сети');
                 } catch (storageError) {
                   clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
@@ -2909,7 +2969,7 @@ export default function QuizPage() {
                 // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
                 if (typeof window !== 'undefined') {
                   try {
-                    sessionStorage.removeItem('quiz_just_submitted');
+                    sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
                     clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не был создан после ошибки 500');
                   } catch (storageError) {
                     clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
@@ -2955,7 +3015,7 @@ export default function QuizPage() {
                 // ВАЖНО: Очищаем флаг quiz_just_submitted, чтобы не происходил редирект на /plan без профиля
                 if (typeof window !== 'undefined') {
                   try {
-                    sessionStorage.removeItem('quiz_just_submitted');
+                    sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
                     clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не был создан после ошибки');
                   } catch (storageError) {
                     clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
@@ -3252,7 +3312,7 @@ export default function QuizPage() {
         // Профиль не существует - очищаем флаг, если он был установлен ранее
         if (typeof window !== 'undefined') {
           try {
-            sessionStorage.removeItem('quiz_just_submitted');
+            sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
             clientLogger.log('✅ Флаг quiz_just_submitted очищен, так как профиль не существует после ошибки');
           } catch (storageError) {
             clientLogger.warn('⚠️ Не удалось очистить флаг quiz_just_submitted:', storageError);
@@ -3405,7 +3465,7 @@ export default function QuizPage() {
   const resumeQuiz = () => {
     // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД восстановлением прогресса
     // Это предотвращает редирект на первый экран после отправки ответов
-    const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+    const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true' : false;
     if (justSubmitted) {
       // ИСПРАВЛЕНО: Guard против множественных редиректов
       if (redirectInProgressRef.current) {
@@ -3414,7 +3474,7 @@ export default function QuizPage() {
       redirectInProgressRef.current = true;
       clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
       if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('quiz_just_submitted');
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
         initCompletedRef.current = true;
         setLoading(false);
         window.location.replace('/plan');
@@ -3484,7 +3544,7 @@ export default function QuizPage() {
       // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
       if (typeof window !== 'undefined') {
         try {
-          sessionStorage.setItem('quiz_currentQuestionIndex', String(progressToRestore.questionIndex));
+          sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(progressToRestore.questionIndex));
         } catch (err) {
           clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
         }
@@ -3498,7 +3558,7 @@ export default function QuizPage() {
       // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
       if (typeof window !== 'undefined') {
         try {
-          sessionStorage.setItem('quiz_currentQuestionIndex', String(progressToRestore.questionIndex));
+          sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(progressToRestore.questionIndex));
         } catch (err) {
           clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
         }
@@ -3507,7 +3567,7 @@ export default function QuizPage() {
     } else {
       // Пользователь еще не начал отвечать, начинаем с начальных экранов
       // ВАЖНО: Проверяем флаг quiz_just_submitted перед сбросом currentQuestionIndex
-      const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem('quiz_just_submitted') === 'true' : false;
+      const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true' : false;
       if (justSubmitted) {
         // ИСПРАВЛЕНО: Guard против множественных редиректов
         if (redirectInProgressRef.current) {
@@ -3516,7 +3576,7 @@ export default function QuizPage() {
         redirectInProgressRef.current = true;
         clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
         if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('quiz_just_submitted');
+          sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
           window.location.replace('/plan');
         }
         return;
@@ -3602,7 +3662,7 @@ export default function QuizPage() {
     // ФИКС: Очищаем флаг quiz_initCalled из sessionStorage при startOver
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.removeItem('quiz_initCalled');
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED);
       } catch (err) {
         // Игнорируем ошибки sessionStorage
       }
@@ -3622,8 +3682,8 @@ export default function QuizPage() {
     // ФИКС: Очищаем sessionStorage при очистке прогресса
     if (typeof window !== 'undefined') {
       try {
-        sessionStorage.removeItem('quiz_currentInfoScreenIndex');
-        sessionStorage.removeItem('quiz_currentQuestionIndex');
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
       } catch (err) {
         clientLogger.warn('⚠️ Не удалось очистить quiz индексы из sessionStorage', err);
       }
@@ -4129,7 +4189,7 @@ export default function QuizPage() {
     let savedInfoScreenIndexFromStorage: number | null = null;
     if (typeof window !== 'undefined') {
       try {
-        const saved = sessionStorage.getItem('quiz_currentQuestionIndex');
+        const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
         if (saved !== null) {
           const parsed = parseInt(saved, 10);
           if (!isNaN(parsed) && parsed >= 0) {
@@ -4138,7 +4198,7 @@ export default function QuizPage() {
         }
         // ФИКС: Также проверяем currentInfoScreenIndex - если он больше длины начальных экранов,
         // значит пользователь уже прошел начальные экраны и отвечал на вопросы
-        const savedInfoScreen = sessionStorage.getItem('quiz_currentInfoScreenIndex');
+        const savedInfoScreen = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
         if (savedInfoScreen !== null) {
           const parsed = parseInt(savedInfoScreen, 10);
           if (!isNaN(parsed) && parsed >= 0) {
@@ -4763,7 +4823,7 @@ export default function QuizPage() {
     // Редиректим на /plan, где будет показан правильный лоадер
     // ТОЛЬКО если init() завершен И questionnaire загружен - это гарантирует, что это реальная отправка
     if (typeof window !== 'undefined') {
-      const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
+      const justSubmitted = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true';
       if (!justSubmitted) {
         // Устанавливаем флаг только если его еще нет (защита от дублирования)
         try {
@@ -4817,10 +4877,10 @@ export default function QuizPage() {
   // и предотвращает показ планового лоадера на 2 секунды
   // ИСПРАВЛЕНО: Проверяем синхронно, до всех условных рендеров
   if (typeof window !== 'undefined') {
-    const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
+    const justSubmitted = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true';
     if (justSubmitted) {
       // Очищаем флаг сразу, чтобы не проверять его снова
-      sessionStorage.removeItem('quiz_just_submitted');
+      sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
       // ИСПРАВЛЕНО: Guard против множественных редиректов
       if (redirectInProgressRef.current) {
         return null; // Редирект уже в процессе
