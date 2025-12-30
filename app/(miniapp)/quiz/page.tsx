@@ -82,9 +82,34 @@ export default function QuizPage() {
   const questionnaireFromStateMachine = quizStateMachine.questionnaire;
   const setQuestionnaireInStateMachine = quizStateMachine.setQuestionnaire;
   
+  // ФИКС: Используем React Query для загрузки анкеты (автоматическое кэширование)
+  // Это заменяет ручное управление loading/error состояниями
+  const { 
+    data: questionnaireFromQuery, 
+    isLoading: isLoadingQuestionnaire, 
+    error: questionnaireError 
+  } = useQuestionnaire();
+  
+  // ФИКС: Используем React Query для сохранения прогресса (автоматическая инвалидация кэша)
+  const saveQuizProgressMutation = useSaveQuizProgress();
+  
   // ИСПРАВЛЕНО: Оставляем локальный state для обратной совместимости, но синхронизируем с State Machine
   // Это позволяет постепенно мигрировать код на использование State Machine
+  // ФИКС: Используем данные из React Query, если они доступны
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
+  
+  // ФИКС: Синхронизируем questionnaire из React Query с локальным state
+  useEffect(() => {
+    if (questionnaireFromQuery && questionnaireFromQuery !== questionnaire) {
+      clientLogger.log('🔄 Syncing questionnaire from React Query', {
+        questionnaireId: questionnaireFromQuery.id,
+        currentQuestionnaireId: questionnaire?.id,
+      });
+      setQuestionnaire(questionnaireFromQuery);
+      // Также обновляем State Machine
+      setQuestionnaireInStateMachine(questionnaireFromQuery);
+    }
+  }, [questionnaireFromQuery]);
   
   // УДАЛЕНО: Избыточный useEffect для синхронизации с State Machine
   // Вся синхронизация теперь выполняется в едином useEffect ниже (строки 212-251)
@@ -173,9 +198,27 @@ export default function QuizPage() {
     }
   }, [setQuestionnaireInStateMachine, quizStateMachine]);
   // ФИКС: Начинаем с loading = true, чтобы показать лоадер при первой загрузке
-  // Лоадер будет скрыт после завершения инициализации (initCompletedRef.current = true)
+  // ФИКС: Используем loading из React Query, если анкета загружается через React Query
+  // Иначе используем локальный state для обратной совместимости
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // ФИКС: Синхронизируем loading из React Query
+  useEffect(() => {
+    if (isLoadingQuestionnaire) {
+      setLoading(true);
+    } else if (questionnaireFromQuery && !questionnaire) {
+      // Если React Query загрузил анкету, но локальный state еще не обновлен
+      setLoading(false);
+    }
+  }, [isLoadingQuestionnaire, questionnaireFromQuery, questionnaire]);
+  
+  // ФИКС: Синхронизируем error из React Query
+  useEffect(() => {
+    if (questionnaireError) {
+      setError('Ошибка загрузки анкеты. Пожалуйста, обновите страницу.');
+    }
+  }, [questionnaireError]);
   // ФИКС: Восстанавливаем currentInfoScreenIndex из sessionStorage при инициализации
   // ИСПРАВЛЕНО: Используем useMemo для стабильности инициализации, чтобы избежать ошибки React #300
   const initialInfoScreenIndex = useMemo(() => {
@@ -1771,14 +1814,15 @@ export default function QuizPage() {
           const finalInfoScreenIndex = pendingProgressRef.current?.infoScreenIndex ?? infoScreenIndex;
           
           // Сохраняем только метаданные позиции (questionId = -1 означает только метаданные)
-          await api.saveQuizProgress(
-            questionnaire.id,
-            -1, // questionId = -1 означает только метаданные позиции
-            undefined, // answerValue
-            undefined, // answerValues
-            finalQuestionIndex,
-            finalInfoScreenIndex
-          );
+          // ФИКС: Используем React Query мутацию вместо прямого вызова API
+          await saveQuizProgressMutation.mutateAsync({
+            questionnaireId: questionnaire.id,
+            questionId: -1, // questionId = -1 означает только метаданные позиции
+            answerValue: undefined,
+            answerValues: undefined,
+            questionIndex: finalQuestionIndex,
+            infoScreenIndex: finalInfoScreenIndex,
+          });
           
           clientLogger.log('✅ Метаданные позиции сохранены (debounced)', {
             questionIndex: finalQuestionIndex,
@@ -1977,27 +2021,29 @@ export default function QuizPage() {
     }
     
     // Сохраняем в БД для синхронизации между устройствами (только если Telegram WebApp доступен)
+    // ФИКС: Используем React Query мутацию вместо прямого вызова API
     if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
       try {
         const isArray = Array.isArray(value);
-        addDebugLog('📤 Saving to server', {
+        addDebugLog('📤 Saving to server (React Query)', {
           questionnaireId: questionnaire?.id,
           questionId,
           questionIdType: typeof questionId,
           hasValue: !!value,
           isArray,
         });
-        await api.saveQuizProgress(
-          questionnaire?.id!,
+        // ФИКС: Используем React Query мутацию для сохранения прогресса
+        await saveQuizProgressMutation.mutateAsync({
+          questionnaireId: questionnaire.id,
           questionId,
-          isArray ? undefined : (value as string),
-          isArray ? (value as string[]) : undefined,
-          currentQuestionIndex,
-          currentInfoScreenIndex
-        );
+          answerValue: isArray ? undefined : (value as string),
+          answerValues: isArray ? (value as string[]) : undefined,
+          questionIndex: currentQuestionIndex,
+          infoScreenIndex: currentInfoScreenIndex,
+        });
         // Сохраняем информацию о последнем сохраненном ответе для дедупликации
         lastSavedAnswerRef.current = { questionId, answer: value };
-        clientLogger.log('✅ Successfully saved to server');
+        clientLogger.log('✅ Successfully saved to server (React Query)');
       } catch (err: any) {
         // Если ошибка 401 - это нормально, прогресс сохранен локально
         if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
