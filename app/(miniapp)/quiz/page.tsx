@@ -7152,9 +7152,13 @@ export default function QuizPage() {
   // ФИКС: Показываем лоадер в самом начале, если анкета еще не загружена или инициализация не завершена
   // Это предотвращает показ белого экрана при загрузке приложения
   // ИСПРАВЛЕНО: Проверка перенесена после всех хуков, чтобы не нарушать правила React hooks
-  // Лоадер показывается пока: loading=true ИЛИ анкета не загружена ИЛИ инициализация не завершена
+  // Лоадер показывается пока: loading=true ИЛИ анкета не загружена ИЛИ инициализация не завершена ИЛИ вопросы не отфильтрованы
   const effectiveQuestionnaireForLoader = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
-  const shouldShowInitialLoader = loading || (!effectiveQuestionnaireForLoader && !initCompletedRef.current) || !initCompletedRef.current;
+  const hasQuestionsReady = allQuestions.length > 0 || allQuestionsRaw.length > 0;
+  const shouldShowInitialLoader = loading || 
+                                  !initCompletedRef.current || 
+                                  !effectiveQuestionnaireForLoader || 
+                                  !hasQuestionsReady;
   
   // ФИКС: Ранний return для лоадера (после всех хуков)
   if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {
