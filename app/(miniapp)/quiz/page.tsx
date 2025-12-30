@@ -3616,9 +3616,12 @@ export default function QuizPage() {
   
   const allQuestions = useMemo<Question[]>(() => {
     try {
-    // ИСПРАВЛЕНО: Используем questionnaireRef.current как fallback, если questionnaire в state null
+    // ИСПРАВЛЕНО: Используем questionnaireRef.current и quizStateMachine.questionnaire как fallback
     // Это предотвращает потерю вопросов, когда questionnaire временно становится null в state
-    const effectiveQuestionnaire = questionnaire || questionnaireRef.current;
+    // КРИТИЧНО: Приоритет ref и State Machine над state, так как они обновляются синхронно
+    const effectiveQuestionnaire = questionnaireRef.current || 
+                                    questionnaire || 
+                                    quizStateMachine.questionnaire;
     
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) {
       // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой (используем log вместо warn для диагностики)
@@ -6168,8 +6171,12 @@ export default function QuizPage() {
   // которое исправится в следующем рендере (useEffect корректирует индекс)
   // КРИТИЧНО: Также проверяем, что currentInfoScreenIndex >= initialInfoScreens.length
   // Это означает, что пользователь уже прошел все начальные экраны и должен видеть вопросы
+  // ИСПРАВЛЕНО: Используем ref для более точной проверки, так как state может быть устаревшим
   const isPastInitialScreens = currentInfoScreenIndex >= initialInfoScreens.length;
-  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen && !isShowingInitialInfoScreen && !isPastInitialScreens) {
+  const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+  // ИСПРАВЛЕНО: Не проверяем currentQuestion, если показываются начальные экраны
+  // Это предотвращает блокировку инфо-экранов из-за null currentQuestion
+  if (!currentQuestion && !hasResumed && !showResumeScreen && !pendingInfoScreen && !isShowingInitialInfoScreen && !isPastInitialScreens && !isPastInitialScreensRef) {
     // Если анкета загружена и есть вопросы, но currentQuestionIndex выходит за пределы
     if (questionnaire && allQuestions.length > 0) {
       // ИСПРАВЛЕНО: Если индекс выходит за пределы и нет ответов - показываем сообщение "Начать заново"
@@ -6978,13 +6985,17 @@ export default function QuizPage() {
           // ИСПРАВЛЕНО: Показываем загрузку если:
           // 1. currentQuestion null И
           // 2. (пользователь прошел начальные экраны ИЛИ нет вопросов ИЛИ анкета не загружена)
+          // 3. НО НЕ показываем загрузку, если показываются начальные экраны
           // Это гарантирует, что загрузка показывается во всех случаях, когда данные еще не готовы
-          const shouldShowLoading = !currentQuestion && (
-            (isPastInitialScreens || isPastInitialScreensRef) || 
-            !hasQuestions || 
-            !hasQuestionnaireData ||
-            loading // Также показываем загрузку, если идет загрузка
-          );
+          // КРИТИЧНО: Не показываем загрузку, если isShowingInitialInfoScreen = true, чтобы не блокировать инфо-экраны
+          const shouldShowLoading = !currentQuestion && 
+            !isShowingInitialInfoScreen && // ИСПРАВЛЕНО: Не показываем загрузку, если показываются инфо-экраны
+            (
+              (isPastInitialScreens || isPastInitialScreensRef) || 
+              !hasQuestions || 
+              !hasQuestionnaireData ||
+              loading // Также показываем загрузку, если идет загрузка
+            );
           
           // Логируем состояние для диагностики
           if (!currentQuestion) {
