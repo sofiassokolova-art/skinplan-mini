@@ -101,10 +101,10 @@ export default function QuizPage() {
       questionnaireRef.current = questionnaireFromQuery;
       // Также обновляем State Machine
       setQuestionnaireInStateMachine(questionnaireFromQuery);
-      // ИСПРАВЛЕНО: Сбрасываем loading, если анкета загружена из React Query
-      setLoading(false);
+      // ИСПРАВЛЕНО: НЕ вызываем setLoading здесь - это делает отдельный useEffect (строка 203)
+      // Это предотвращает бесконечные циклы между useEffect
     }
-  }, [questionnaireFromQuery?.id, questionnaire?.id]); // ИСПРАВЛЕНО: Зависем только от ID, а не от объектов
+  }, [questionnaireFromQuery?.id, questionnaire?.id, setQuestionnaireInStateMachine]); // ИСПРАВЛЕНО: Зависем только от ID, а не от объектов
   
   // УДАЛЕНО: Избыточный useEffect для синхронизации с State Machine
   // Вся синхронизация теперь выполняется в едином useEffect ниже (строки 212-251)
@@ -200,6 +200,8 @@ export default function QuizPage() {
   
   // ФИКС: Синхронизируем loading из React Query
   // ИСПРАВЛЕНО: Не устанавливаем loading=true при рефетче, если анкета уже загружена
+  // ИСПРАВЛЕНО: Оптимизирован useEffect для управления loading
+  // Зависим только от ID, чтобы избежать бесконечных циклов
   useEffect(() => {
     // Если анкета уже загружена (в state, ref или State Machine), не показываем лоадер при рефетче
     const hasQuestionnaireAlready = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
@@ -207,12 +209,12 @@ export default function QuizPage() {
     if (isLoadingQuestionnaire && !hasQuestionnaireAlready) {
       // Только устанавливаем loading=true при первой загрузке
       setLoading(true);
-    } else if (questionnaireFromQuery) {
+    } else if (questionnaireFromQuery?.id) {
       // ИСПРАВЛЕНО: Если React Query загрузил анкету, сбрасываем loading
       // Не ждем синхронизации с локальным state, так как она происходит в другом useEffect
       setLoading(false);
     }
-  }, [isLoadingQuestionnaire, questionnaireFromQuery, questionnaire, quizStateMachine.questionnaire]);
+  }, [isLoadingQuestionnaire, questionnaireFromQuery?.id, questionnaire?.id, quizStateMachine.questionnaire?.id]);
   
   // ФИКС: Синхронизируем error из React Query
   useEffect(() => {
@@ -308,24 +310,9 @@ export default function QuizPage() {
     stateMachineQuestionnaireIdRef.current = quizStateMachine.questionnaire?.id || null;
   }, [quizStateMachine.questionnaire]);
   
-  // ФИКС: Отдельный useEffect для сброса loading, когда questionnaire загружен
-  // Это предотвращает бесконечные циклы React error #310
-  useEffect(() => {
-    const hasQuestionnaire = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
-    const currentLoading = loadingStateRef.current;
-    const questionnaireId = questionnaire?.id || questionnaireRef.current?.id || quizStateMachine.questionnaire?.id;
-    
-    if (hasQuestionnaire && currentLoading && questionnaireId) {
-      // ФИКС: Проверяем, что мы еще не сбросили loading для этого questionnaire
-      if (lastLoadingResetIdRef.current !== questionnaireId) {
-        lastLoadingResetIdRef.current = questionnaireId;
-        clientLogger.log('✅ Questionnaire loaded - setting loading=false (separate useEffect)', {
-          questionnaireId,
-        });
-        setLoading(false);
-      }
-    }
-  }, [questionnaire?.id, quizStateMachine.questionnaire?.id]); // Зависим только от ID questionnaire
+  // ИСПРАВЛЕНО: Объединен с основным useEffect для управления loading
+  // Удален дублирующий useEffect, чтобы избежать конфликтов и бесконечных циклов
+  // Логика сброса loading теперь в основном useEffect выше (строка 203)
   
   // Состояния для финализации с лоадером
   const [finalizing, setFinalizing] = useState(false);
@@ -4554,7 +4541,7 @@ export default function QuizPage() {
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, loading, questionnaire?.id]);
+  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, loading, questionnaire?.id, setCurrentQuestionIndex, setCurrentInfoScreenIndex, setPendingInfoScreen]);
 
   // Определяем, показываем ли мы начальный инфо-экран
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
