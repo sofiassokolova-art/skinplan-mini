@@ -1343,7 +1343,7 @@ export default function QuizPage() {
         clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
         
         // ИСПРАВЛЕНО: Восстанавливаем только индексы из sessionStorage после ремоунта
-        // Ответы восстанавливаются через API (savedProgress), а не из localStorage
+        // Ответы восстанавливаются через API (loadSavedProgressFromServer), а не из localStorage
         // sessionStorage используется только для временных данных текущей сессии
         try {
           // Восстанавливаем currentQuestionIndex из sessionStorage
@@ -1367,8 +1367,14 @@ export default function QuizPage() {
             }
           }
           
-          // ИСПРАВЛЕНО: Ответы восстанавливаются через API (loadSavedProgressFromServer), а не из localStorage
-          // Это гарантирует синхронизацию между устройствами и актуальность данных
+          // ИСПРАВЛЕНО: Загружаем ответы из API после ремоунта
+          // Это критично, так как после ремоунта состояние теряется, но данные остаются на сервере
+          if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+            // Загружаем прогресс асинхронно, не блокируя рендер
+            loadSavedProgressFromServer().catch((err) => {
+              clientLogger.warn('⚠️ Ошибка при загрузке прогресса из API после ремоунта:', err);
+            });
+          }
         } catch (restoreError) {
           clientLogger.warn('⚠️ Ошибка при восстановлении индексов из sessionStorage:', restoreError);
         }
@@ -4548,7 +4554,7 @@ export default function QuizPage() {
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress, loading, questionnaire?.id]);
+  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, loading, questionnaire?.id]);
 
   // Определяем, показываем ли мы начальный инфо-экран
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
