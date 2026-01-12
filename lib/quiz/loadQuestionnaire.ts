@@ -141,12 +141,35 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     }
     
     // ВАЖНО: Добавляем таймаут для загрузки анкеты, чтобы не ждать бесконечно
-    const loadPromise = api.getActiveQuestionnaire();
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Таймаут загрузки анкеты (10 секунд)')), 10000);
-    });
-    
-    const data = await Promise.race([loadPromise, timeoutPromise]) as any;
+    // ИСПРАВЛЕНО: Оборачиваем в try-catch для правильной обработки ошибок
+    let data: any;
+    try {
+      const loadPromise = api.getActiveQuestionnaire();
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Таймаут загрузки анкеты (10 секунд)')), 10000);
+      });
+      
+      data = await Promise.race([loadPromise, timeoutPromise]) as any;
+    } catch (apiError: any) {
+      // ИСПРАВЛЕНО: Если это 500 ошибка от API, обрабатываем её отдельно
+      if (apiError?.status === 500 || apiError?.response?.status === 500) {
+        const errorData = apiError?.response?.data || apiError?.data || {};
+        const errorMessage = errorData.message || errorData.error || 'Анкета временно недоступна';
+        clientLogger.error('❌ Backend returned 500 error (empty questionnaire)', {
+          status: apiError?.status || apiError?.response?.status,
+          message: errorMessage,
+          questionnaireId: errorData?.questionnaireId,
+        });
+        setError(errorMessage || 'Анкета временно недоступна. Пожалуйста, попробуйте позже.');
+        setLoading(false);
+        questionnaireRef.current = null;
+        loadQuestionnaireAttemptedRef.current = false;
+        loadQuestionnaireInProgressRef.current = false;
+        return null;
+      }
+      // Для других ошибок пробрасываем дальше в основной catch блок
+      throw apiError;
+    }
     
     // ИСПРАВЛЕНО: Логируем сырой ответ от API для диагностики
     const groupsCount = data?.groups?.length || 0;

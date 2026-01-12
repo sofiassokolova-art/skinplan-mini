@@ -83,8 +83,15 @@ export default function QuizPage() {
   const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
   
   // ФИКС: Синхронизируем questionnaire из React Query с локальным state
+  // ИСПРАВЛЕНО: Добавляем guard для предотвращения бесконечных циклов
+  const lastSyncedFromQueryIdRef = useRef<string | number | null>(null);
   useEffect(() => {
-    if (questionnaireFromQuery && questionnaireFromQuery !== questionnaire) {
+    // ИСПРАВЛЕНО: Проверяем ID вместо объекта, чтобы избежать лишних обновлений
+    const queryId = questionnaireFromQuery?.id;
+    const currentId = questionnaire?.id;
+    
+    if (questionnaireFromQuery && queryId && queryId !== currentId && queryId !== lastSyncedFromQueryIdRef.current) {
+      lastSyncedFromQueryIdRef.current = queryId;
       clientLogger.log('🔄 Syncing questionnaire from React Query', {
         questionnaireId: questionnaireFromQuery.id,
         currentQuestionnaireId: questionnaire?.id,
@@ -93,7 +100,7 @@ export default function QuizPage() {
       // Также обновляем State Machine
       setQuestionnaireInStateMachine(questionnaireFromQuery);
     }
-  }, [questionnaireFromQuery]);
+  }, [questionnaireFromQuery?.id, questionnaire?.id]); // ИСПРАВЛЕНО: Зависем только от ID, а не от объектов
   
   // УДАЛЕНО: Избыточный useEffect для синхронизации с State Machine
   // Вся синхронизация теперь выполняется в едином useEffect ниже (строки 212-251)

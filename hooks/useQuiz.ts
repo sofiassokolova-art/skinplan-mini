@@ -26,14 +26,32 @@ export function useQuestionnaire() {
 /**
  * Хук для получения прогресса анкеты (с кэшированием)
  * Прогресс может меняться чаще, поэтому используем более короткое кэширование
+ * ИСПРАВЛЕНО: Обрабатываем 401 ошибки gracefully - если initData недоступен, возвращаем null
  */
 export function useQuizProgress() {
   return useQuery({
     queryKey: [QUIZ_PROGRESS_QUERY_KEY],
-    queryFn: () => api.getQuizProgress() as Promise<any>,
+    queryFn: async () => {
+      try {
+        return await api.getQuizProgress() as Promise<any>;
+      } catch (error: any) {
+        // Если initData недоступен (401), возвращаем null вместо ошибки
+        // Это нормально для новых пользователей или при тестировании вне Telegram
+        if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
+          return { progress: null, isCompleted: false };
+        }
+        throw error;
+      }
+    },
     staleTime: QUIZ_CONFIG.REACT_QUERY.PROGRESS_STALE_TIME,
     gcTime: QUIZ_CONFIG.REACT_QUERY.PROGRESS_GC_TIME,
-    retry: QUIZ_CONFIG.RETRY.PROGRESS_MAX_ATTEMPTS,
+    retry: (failureCount, error: any) => {
+      // Не повторяем запрос при 401 (unauthorized) - это нормально, если initData недоступен
+      if (error?.status === 401 || error?.message?.includes('Unauthorized')) {
+        return false;
+      }
+      return failureCount < QUIZ_CONFIG.RETRY.PROGRESS_MAX_ATTEMPTS;
+    },
     retryDelay: 1000,
   });
 }
