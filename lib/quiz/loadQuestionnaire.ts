@@ -280,8 +280,23 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
           hasProfile,
           isNewUser,
         });
-        // ИСПРАВЛЕНО: Не устанавливаем error, продолжаем загрузку анкеты
-        // Анкета будет загружена с дефолтными info-экранами
+        // ИСПРАВЛЕНО: Создаем минимальный объект анкеты для нового пользователя
+        // Это гарантирует, что questionnaireRef.current будет установлен
+        const minimalQuestionnaire = {
+          id: data?.id || 0,
+          name: data?.name || 'Questionnaire',
+          version: data?.version || '1.0',
+          groups: [],
+          questions: [],
+        };
+        questionnaireRef.current = minimalQuestionnaire;
+        setQuestionnaire(minimalQuestionnaire);
+        setLoading(false);
+        loadQuestionnaireInProgressRef.current = false;
+        clientLogger.log('✅ Created minimal questionnaire for new user', {
+          questionnaireId: minimalQuestionnaire.id,
+        });
+        return minimalQuestionnaire;
       } else {
         clientLogger.error('❌ Questionnaire has no questions in response', {
           hasGroups,

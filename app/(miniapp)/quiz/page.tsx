@@ -1019,32 +1019,47 @@ export default function QuizPage() {
             loading,
           });
           
-          // КРИТИЧНО: Ждем, пока questionnaire будет установлен в state
-          // Это предотвращает завершение init() до того, как questionnaire появится в state
-          // ИСПРАВЛЕНО: Ждем максимум 2 секунды (20 попыток по 100ms)
-          let waitAttempts = 0;
-          const maxWaitAttempts = 20; // 20 * 100ms = 2 секунды максимум
-          while (!questionnaireRef.current && waitAttempts < maxWaitAttempts) {
-            clientLogger.log('⏳ Waiting for questionnaire to be set in ref after loadQuestionnaire...', {
-              attempt: waitAttempts + 1,
-              maxAttempts: maxWaitAttempts,
-              loadResult: loadResult ? 'has result' : 'null',
-            });
-            await new Promise(resolve => setTimeout(resolve, 100));
-            waitAttempts++;
-          }
-          
-          if (!questionnaireRef.current) {
-            clientLogger.error('❌ questionnaireRef.current not set after loadQuestionnaire, even after waiting', {
+          // ИСПРАВЛЕНО: Если loadResult null, это означает ошибку загрузки
+          // В этом случае не ждем установки ref, так как он уже установлен в null в loadQuestionnaire
+          if (!loadResult && !questionnaireRef.current) {
+            clientLogger.error('❌ loadQuestionnaire returned null - questionnaire failed to load', {
               timestamp: new Date().toISOString(),
-              loadResult: loadResult ? 'had result' : 'was null',
-              waitAttempts,
-              maxWaitAttempts,
             });
             // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
             setLoading(false);
-            setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+            // Ошибка уже установлена в loadQuestionnaire, не устанавливаем её снова
             throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+          }
+          
+          // КРИТИЧНО: Ждем, пока questionnaire будет установлен в ref
+          // Это предотвращает завершение init() до того, как questionnaire появится в ref
+          // ИСПРАВЛЕНО: Ждем максимум 2 секунды (20 попыток по 100ms)
+          // ИСПРАВЛЕНО: Не ждем, если loadResult null (ошибка уже обработана выше)
+          if (loadResult && !questionnaireRef.current) {
+            let waitAttempts = 0;
+            const maxWaitAttempts = 20; // 20 * 100ms = 2 секунды максимум
+            while (!questionnaireRef.current && waitAttempts < maxWaitAttempts) {
+              clientLogger.log('⏳ Waiting for questionnaire to be set in ref after loadQuestionnaire...', {
+                attempt: waitAttempts + 1,
+                maxAttempts: maxWaitAttempts,
+                loadResult: loadResult ? 'has result' : 'null',
+              });
+              await new Promise(resolve => setTimeout(resolve, 100));
+              waitAttempts++;
+            }
+            
+            if (!questionnaireRef.current) {
+              clientLogger.error('❌ questionnaireRef.current not set after loadQuestionnaire, even after waiting', {
+                timestamp: new Date().toISOString(),
+                loadResult: loadResult ? 'had result' : 'was null',
+                waitAttempts,
+                maxWaitAttempts,
+              });
+              // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
+              setLoading(false);
+              setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+              throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+            }
           }
           
           clientLogger.log('✅ init() questionnaireRef.current is set after loadQuestionnaire', {
