@@ -1341,6 +1341,47 @@ export default function QuizPage() {
       const alreadyInit = sessionStorage.getItem('quiz_init_done') === 'true';
       if (alreadyInit) {
         clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
+        
+        // ИСПРАВЛЕНО: Восстанавливаем состояние из localStorage/sessionStorage после ремоунта
+        // Это критично, так как после ремоунта состояние теряется, но данные остаются в storage
+        try {
+          // Восстанавливаем ответы из localStorage
+          const savedProgressStr = localStorage.getItem('quiz_progress');
+          if (savedProgressStr) {
+            const savedProgress = JSON.parse(savedProgressStr);
+            if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+              clientLogger.log('🔄 Восстанавливаем ответы из localStorage после ремоунта', {
+                answersCount: Object.keys(savedProgress.answers).length,
+              });
+              setAnswers(savedProgress.answers);
+              setSavedProgress(savedProgress);
+            }
+          }
+          
+          // Восстанавливаем currentQuestionIndex из sessionStorage
+          const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+          if (savedQuestionIndex !== null) {
+            const questionIndex = parseInt(savedQuestionIndex, 10);
+            if (!isNaN(questionIndex) && questionIndex >= 0) {
+              clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', { questionIndex });
+              setCurrentQuestionIndex(questionIndex);
+            }
+          }
+          
+          // Восстанавливаем currentInfoScreenIndex из sessionStorage
+          const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+          if (savedInfoScreenIndex !== null) {
+            const infoScreenIndex = parseInt(savedInfoScreenIndex, 10);
+            if (!isNaN(infoScreenIndex) && infoScreenIndex >= 0) {
+              clientLogger.log('🔄 Восстанавливаем currentInfoScreenIndex из sessionStorage', { infoScreenIndex });
+              setCurrentInfoScreenIndex(infoScreenIndex);
+              currentInfoScreenIndexRef.current = infoScreenIndex;
+            }
+          }
+        } catch (restoreError) {
+          clientLogger.warn('⚠️ Ошибка при восстановлении состояния из storage:', restoreError);
+        }
+        
         return;
       }
       sessionStorage.setItem('quiz_init_done', 'true');
@@ -2078,6 +2119,23 @@ export default function QuizPage() {
     // Всегда обновляем состояние и localStorage (даже если не изменилось, для консистентности)
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
+    
+    // ИСПРАВЛЕНО: Сохраняем ответы в localStorage для восстановления после ремоунта
+    // Это критично, так как после ремоунта из-за ErrorBoundary состояние теряется
+    if (typeof window !== 'undefined') {
+      try {
+        const progressData = {
+          answers: newAnswers,
+          questionIndex: currentQuestionIndex,
+          infoScreenIndex: currentInfoScreenIndex,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem('quiz_progress', JSON.stringify(progressData));
+      } catch (storageError) {
+        clientLogger.warn('⚠️ Не удалось сохранить ответы в localStorage:', storageError);
+      }
+    }
+    
     await saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
     
     // Пропускаем сохранение на сервер, если это дубликат
