@@ -4946,13 +4946,13 @@ export default function QuizPage() {
   // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, чтобы не блокировать отображение
   // если анкета загружена в ref, но state еще не обновился
   // КРИТИЧНО: НЕ показываем лоадер, если анкета загружена в ref или state - это блокирует рендеринг анкеты
-  const hasQuestionnaireAnywhere = !!questionnaire || !!questionnaireRef.current;
+  const hasQuestionnaireAnywhereBasic = !!questionnaire || !!questionnaireRef.current;
   
   // ИСПРАВЛЕНО: Логируем только в development, чтобы не создавать спам в production
   if (isDev) {
-    clientLogger.log('🔍 RENDER - hasQuestionnaireAnywhere check', {
+    clientLogger.log('🔍 RENDER - hasQuestionnaireAnywhereBasic check', {
       timestamp: new Date().toISOString(),
-      hasQuestionnaireAnywhere,
+      hasQuestionnaireAnywhereBasic,
       hasQuestionnaireState: !!questionnaire,
       hasQuestionnaireRef: !!questionnaireRef.current,
       loading,
@@ -4962,7 +4962,7 @@ export default function QuizPage() {
   // УПРОЩЕНО: Показываем лоадер только если loading=true И анкета не загружена
   // КРИТИЧНО: Если анкета загружена (в ref или state), НЕ показываем лоадер
   // useEffect выше уже обрабатывает принудительный сброс loading, если анкета загружена
-  const hasQuestionnaireAnywhereAfterUpdate = !!questionnaire || !!questionnaireRef.current;
+  const hasQuestionnaireAnywhereBasicAfterUpdate = !!questionnaire || !!questionnaireRef.current;
   
   // ИСПРАВЛЕНО: Лоадер анкеты убран - его не должно быть на /quiz
   // Лоадер показывается только на главной странице (/)
