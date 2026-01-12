@@ -5006,7 +5006,8 @@ export default function QuizPage() {
     isShowingInitialInfoScreen: isShowingInitialInfoScreen,
     savedProgressExists: !!savedProgress,
     savedAnswersCount: savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0,
-  });
+    });
+  }
   
   // ИСПРАВЛЕНО: Показываем лоадер только если анкета действительно не загружена
   // КРИТИЧНО: Проверяем и questionnaire (state), и questionnaireRef.current, чтобы не блокировать отображение
