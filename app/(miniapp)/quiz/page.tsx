@@ -199,15 +199,20 @@ export default function QuizPage() {
   const [error, setError] = useState<string | null>(null);
   
   // ФИКС: Синхронизируем loading из React Query
+  // ИСПРАВЛЕНО: Не устанавливаем loading=true при рефетче, если анкета уже загружена
   useEffect(() => {
-    if (isLoadingQuestionnaire) {
+    // Если анкета уже загружена (в state, ref или State Machine), не показываем лоадер при рефетче
+    const hasQuestionnaireAlready = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
+    
+    if (isLoadingQuestionnaire && !hasQuestionnaireAlready) {
+      // Только устанавливаем loading=true при первой загрузке
       setLoading(true);
     } else if (questionnaireFromQuery) {
       // ИСПРАВЛЕНО: Если React Query загрузил анкету, сбрасываем loading
       // Не ждем синхронизации с локальным state, так как она происходит в другом useEffect
       setLoading(false);
     }
-  }, [isLoadingQuestionnaire, questionnaireFromQuery]);
+  }, [isLoadingQuestionnaire, questionnaireFromQuery, questionnaire, quizStateMachine.questionnaire]);
   
   // ФИКС: Синхронизируем error из React Query
   useEffect(() => {
@@ -7254,9 +7259,11 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Также проверяем questionnaireFromQuery из React Query
   const effectiveQuestionnaireForLoader = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire || questionnaireFromQuery;
   const hasValidQuestionnaire = effectiveQuestionnaireForLoader && effectiveQuestionnaireForLoader.id;
-  // ФИКС: Показываем лоадер, если loading=true ИЛИ анкета не загружена ИЛИ init() еще не завершен
-  // ИСПРАВЛЕНО: Не показываем лоадер, если React Query загрузил анкету (даже если init() еще не завершен)
-  const shouldShowInitialLoader = (loading || !hasValidQuestionnaire) && (!questionnaireFromQuery || !initCompletedRef.current);
+  // ФИКС: Показываем лоадер только при первой загрузке
+  // ИСПРАВЛЕНО: Не показываем лоадер, если анкета уже была загружена (даже если идет рефетч)
+  // Проверяем, что анкета действительно отсутствует во всех источниках
+  const hasQuestionnaireAnywhere = !!questionnaireRef.current || !!questionnaire || !!quizStateMachine.questionnaire || !!questionnaireFromQuery;
+  const shouldShowInitialLoader = !hasQuestionnaireAnywhere && (loading || !initCompletedRef.current);
   
   // ФИКС: Ранний return для лоадера (после всех хуков)
   if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {
