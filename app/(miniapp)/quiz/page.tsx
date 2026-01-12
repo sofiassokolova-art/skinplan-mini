@@ -7953,6 +7953,8 @@ export default function QuizPage() {
             )}
           </div>
         )}
+          </>
+        )}
       </div>
       
       {/* Full-screen overlay лоадер для финализации */}
