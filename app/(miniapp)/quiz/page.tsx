@@ -97,8 +97,12 @@ export default function QuizPage() {
         currentQuestionnaireId: questionnaire?.id,
       });
       setQuestionnaire(questionnaireFromQuery);
+      // ИСПРАВЛЕНО: Также обновляем questionnaireRef.current для проверки в shouldShowInitialLoader
+      questionnaireRef.current = questionnaireFromQuery;
       // Также обновляем State Machine
       setQuestionnaireInStateMachine(questionnaireFromQuery);
+      // ИСПРАВЛЕНО: Сбрасываем loading, если анкета загружена из React Query
+      setLoading(false);
     }
   }, [questionnaireFromQuery?.id, questionnaire?.id]); // ИСПРАВЛЕНО: Зависем только от ID, а не от объектов
   
@@ -198,11 +202,12 @@ export default function QuizPage() {
   useEffect(() => {
     if (isLoadingQuestionnaire) {
       setLoading(true);
-    } else if (questionnaireFromQuery && !questionnaire) {
-      // Если React Query загрузил анкету, но локальный state еще не обновлен
+    } else if (questionnaireFromQuery) {
+      // ИСПРАВЛЕНО: Если React Query загрузил анкету, сбрасываем loading
+      // Не ждем синхронизации с локальным state, так как она происходит в другом useEffect
       setLoading(false);
     }
-  }, [isLoadingQuestionnaire, questionnaireFromQuery, questionnaire]);
+  }, [isLoadingQuestionnaire, questionnaireFromQuery]);
   
   // ФИКС: Синхронизируем error из React Query
   useEffect(() => {
@@ -7246,10 +7251,12 @@ export default function QuizPage() {
   // Это предотвращает показ первого инфо-экрана до загрузки анкеты
   // ФИКС: НЕ проверяем allQuestions.length, так как фильтрация происходит динамически после ответов
   // ФИКС: Проверяем не только наличие объекта, но и что он действительно загружен (имеет id)
-  const effectiveQuestionnaireForLoader = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire;
+  // ИСПРАВЛЕНО: Также проверяем questionnaireFromQuery из React Query
+  const effectiveQuestionnaireForLoader = questionnaireRef.current || questionnaire || quizStateMachine.questionnaire || questionnaireFromQuery;
   const hasValidQuestionnaire = effectiveQuestionnaireForLoader && effectiveQuestionnaireForLoader.id;
   // ФИКС: Показываем лоадер, если loading=true ИЛИ анкета не загружена ИЛИ init() еще не завершен
-  const shouldShowInitialLoader = loading || !hasValidQuestionnaire || !initCompletedRef.current;
+  // ИСПРАВЛЕНО: Не показываем лоадер, если React Query загрузил анкету (даже если init() еще не завершен)
+  const shouldShowInitialLoader = (loading || !hasValidQuestionnaire) && (!questionnaireFromQuery || !initCompletedRef.current);
   
   // ФИКС: Ранний return для лоадера (после всех хуков)
   if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {

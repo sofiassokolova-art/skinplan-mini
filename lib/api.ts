@@ -152,6 +152,7 @@ async function request<T>(
   // Получаем initData из Telegram WebApp
   // Ждем готовности initData, если он еще не доступен
   let initData: string | null = null;
+  const isQuestionnaireProgressEndpoint = endpoint.includes('/questionnaire/progress');
   
   if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
     initData = window.Telegram.WebApp.initData || null;
@@ -171,6 +172,19 @@ async function request<T>(
         }, 100);
       });
     }
+  }
+
+  // ИСПРАВЛЕНО: Не дергаем /questionnaire/progress, если initData недоступен
+  // Это обычная ситуация при открытии приложения не через Telegram Mini App (разработка в браузере)
+  if (isQuestionnaireProgressEndpoint && !initData) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ Skipping request to /questionnaire/progress: Telegram initData not available, returning empty progress');
+    }
+    // Возвращаем пустой прогресс; тип приведем к обобщенному T
+    return {
+      progress: null,
+      isCompleted: false,
+    } as T;
   }
 
   const headers: Record<string, string> = {
