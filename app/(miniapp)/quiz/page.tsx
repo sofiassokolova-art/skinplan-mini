@@ -1351,12 +1351,26 @@ export default function QuizPage() {
           }
           
           // Восстанавливаем currentQuestionIndex из sessionStorage
+          // ИСПРАВЛЕНО: Проверяем, что индекс не выходит за границы allQuestions
           const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
           if (savedQuestionIndex !== null) {
             const questionIndex = parseInt(savedQuestionIndex, 10);
             if (!isNaN(questionIndex) && questionIndex >= 0) {
+              // ИСПРАВЛЕНО: Проверяем границы после восстановления allQuestions
+              // Используем setTimeout, чтобы проверить после того, как allQuestions пересчитается
+              setTimeout(() => {
+                const currentAllQuestionsLength = allQuestions.length || allQuestionsPrevRef.current.length;
+                const validIndex = questionIndex < currentAllQuestionsLength ? questionIndex : Math.max(0, currentAllQuestionsLength - 1);
+                if (validIndex !== questionIndex) {
+                  clientLogger.warn('⚠️ Исправляем currentQuestionIndex после восстановления - индекс вне границ', {
+                    savedIndex: questionIndex,
+                    correctedIndex: validIndex,
+                    allQuestionsLength: currentAllQuestionsLength,
+                  });
+                }
+                setCurrentQuestionIndex(validIndex);
+              }, 100);
               clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', { questionIndex });
-              setCurrentQuestionIndex(questionIndex);
             }
           }
           
@@ -1371,13 +1385,53 @@ export default function QuizPage() {
             }
           }
           
-          // ИСПРАВЛЕНО: Загружаем ответы из API после ремоунта
+          // ИСПРАВЛЕНО: Загружаем ответы из API после ремоунта синхронно
           // Это критично, так как после ремоунта состояние теряется, но данные остаются на сервере
+          // ВАЖНО: Загружаем ответы сразу, чтобы allQuestions использовал их при пересчете
           if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-            // Загружаем прогресс асинхронно, не блокируя рендер
-            loadSavedProgressFromServer().catch((err) => {
-              clientLogger.warn('⚠️ Ошибка при загрузке прогресса из API после ремоунта:', err);
-            });
+            // ИСПРАВЛЕНО: Загружаем прогресс синхронно через React Query или прямой API вызов
+            // Это предотвращает потерю ответов при пересчете allQuestions
+            (async () => {
+              try {
+                // Используем React Query кэш, если он доступен
+                if (quizProgressFromQuery?.progress?.answers) {
+                  const progressAnswers = quizProgressFromQuery.progress.answers;
+                  if (Object.keys(progressAnswers).length > 0) {
+                    clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
+                      answersCount: Object.keys(progressAnswers).length,
+                    });
+                    setAnswers(progressAnswers);
+                    setSavedProgress({
+                      answers: progressAnswers,
+                      questionIndex: quizProgressFromQuery.progress.questionIndex || 0,
+                      infoScreenIndex: quizProgressFromQuery.progress.infoScreenIndex || 0,
+                    });
+                  }
+                } else {
+                  // Если React Query не загрузил, используем прямой API вызов
+                  const response = await api.getQuizProgress() as {
+                    progress?: {
+                      answers: Record<number, string | string[]>;
+                      questionIndex: number;
+                      infoScreenIndex: number;
+                    } | null;
+                  };
+                  if (response?.progress?.answers && Object.keys(response.progress.answers).length > 0) {
+                    clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта', {
+                      answersCount: Object.keys(response.progress.answers).length,
+                    });
+                    setAnswers(response.progress.answers);
+                    setSavedProgress({
+                      answers: response.progress.answers,
+                      questionIndex: response.progress.questionIndex || 0,
+                      infoScreenIndex: response.progress.infoScreenIndex || 0,
+                    });
+                  }
+                }
+              } catch (err) {
+                clientLogger.warn('⚠️ Ошибка при загрузке прогресса из API после ремоунта:', err);
+              }
+            })();
           }
         } catch (restoreError) {
           clientLogger.warn('⚠️ Ошибка при восстановлении состояния из sessionStorage:', restoreError);
