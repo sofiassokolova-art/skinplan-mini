@@ -311,13 +311,56 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ИСПРАВЛЕНО: Если pendingInfoScreen установлен, это означает, что пользователь закрывает инфо-экран
     // В этом случае нужно перейти к следующему вопросу, а не показывать новый инфо-экран
     if (pendingInfoScreen) {
-      // Закрываем инфо-экран и переходим к следующему вопросу
+      // Закрываем инфо-экран
       setPendingInfoScreen(null);
       clientLogger.log('🔄 Закрываем инфо-экран после вопроса, переходим к следующему', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
       });
-      // Продолжаем выполнение, чтобы перейти к следующему вопросу (код ниже)
+      
+      // ИСПРАВЛЕНО: После закрытия инфо-экрана сразу переходим к следующему вопросу
+      // Не проверяем инфо-экран для текущего вопроса, так как он уже был показан
+      const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
+      
+      if (isLastQuestion) {
+        // Это последний вопрос - увеличиваем индекс для автоотправки
+        await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        setCurrentQuestionIndex(allQuestions.length);
+        return;
+      }
+      
+      // Переходим к следующему вопросу
+      const newIndex = currentQuestionIndex + 1;
+      setCurrentQuestionIndex(newIndex);
+      
+      // Сохраняем newIndex в sessionStorage
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_currentQuestionIndex', String(newIndex));
+          clientLogger.log('💾 Сохранен currentQuestionIndex в sessionStorage', { newIndex });
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+        }
+      }
+      
+      // ИСПРАВЛЕНО: Проверяем, нужно ли показать инфо-экран для СЛЕДУЮЩЕГО вопроса
+      const nextQuestion = allQuestions[newIndex];
+      if (nextQuestion && !isRetakingQuiz && nextQuestion.code) {
+        const infoScreen = getInfoScreenAfterQuestion(nextQuestion.code);
+        if (infoScreen) {
+          setPendingInfoScreen(infoScreen);
+          await saveProgress(answers, newIndex, currentInfoScreenIndex);
+          clientLogger.log('✅ Показан инфо-экран для следующего вопроса:', {
+            questionCode: nextQuestion.code,
+            questionIndex: newIndex,
+            infoScreenId: infoScreen.id,
+          });
+          return;
+        }
+      }
+      
+      await saveProgress(answers, newIndex, currentInfoScreenIndex);
+      return;
     }
     
     // Проверяем, нужно ли показать информационный экран после текущего вопроса
