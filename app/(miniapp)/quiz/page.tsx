@@ -3663,7 +3663,11 @@ export default function QuizPage() {
 
   // ВАЖНО: ранние return'ы должны быть ПОСЛЕ всех хуков
   // Проверяем состояние загрузки, ошибку и наличие анкеты после вызова всех хуков
-  if (loading) {
+  // ИСПРАВЛЕНО: не показываем лоадер, если анкета уже доступна
+  const hasQuestionnaireAnywhere = Boolean(questionnaire);
+  const shouldShowInitialLoader = !hasQuestionnaireAnywhere && (loading || !initCompletedRef.current);
+
+  if (shouldShowInitialLoader) {
     return (
       <div style={{ 
         display: 'flex', 
