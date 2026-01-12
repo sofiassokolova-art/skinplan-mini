@@ -4038,7 +4038,8 @@ export default function QuizPage() {
     // ИСПРАВЛЕНО: Если allQuestionsRaw пустой после ремоунта, но questionnaire существует, пересчитываем
     // Это критично, так как после ремоунта allQuestionsRaw может быть пустым, но questionnaire есть в ref/State Machine
     // КРИТИЧНО: Это происходит ДО проверки allQuestionsRaw, чтобы восстановить вопросы сразу после ремоунта
-    if ((!allQuestionsRaw || allQuestionsRaw.length === 0) && effectiveQuestionnaire) {
+    // ИСПРАВЛЕНО: Проверяем также, что allQuestionsPrevRef пустой, чтобы не перезаписывать валидные данные
+    if ((!allQuestionsRaw || allQuestionsRaw.length === 0) && effectiveQuestionnaire && allQuestionsPrevRef.current.length === 0) {
       // Пытаемся пересчитать allQuestionsRaw из questionnaire
       try {
         const extracted = extractQuestionsFromQuestionnaire(effectiveQuestionnaire);
@@ -4049,18 +4050,25 @@ export default function QuizPage() {
             fromStateMachine: effectiveQuestionnaire === quizStateMachine.questionnaire,
             hasAnswers,
             hasSavedProgressAnswers,
+            allQuestionsRawLength: allQuestionsRaw?.length || 0,
+            allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
           });
           // Используем пересчитанные вопросы для фильтрации
+          // ИСПРАВЛЕНО: Даже если ответы еще не загружены, фильтруем с пустыми ответами
+          // Это предотвратит потерю вопросов при пересчете
           const filtered = filterQuestions({
             questions: extracted,
-            answers,
-            savedProgressAnswers: savedProgress?.answers,
+            answers: answers || {},
+            savedProgressAnswers: savedProgress?.answers || {},
             isRetakingQuiz,
             showRetakeScreen,
             logger: clientLogger,
           });
           if (filtered.length > 0) {
             allQuestionsPrevRef.current = filtered;
+            clientLogger.log('✅ Восстановлены вопросы после ремоунта (отфильтрованные)', {
+              filteredLength: filtered.length,
+            });
             return filtered;
           } else if (extracted.length > 0) {
             // Если после фильтрации пусто, но extracted есть, возвращаем extracted
