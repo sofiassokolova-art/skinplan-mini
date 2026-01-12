@@ -266,7 +266,24 @@ export default function QuizPage() {
   }, []); // Пустой массив зависимостей - вычисляется только один раз
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
-  const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
+  // ИСПРАВЛЕНО: Инициализируем answers из localStorage, если они есть (для восстановления после ремоунта)
+  // Это предотвращает пересчет allQuestions с пустыми ответами до восстановления состояния
+  const [answers, setAnswers] = useState<Record<number, string | string[]>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedProgressStr = localStorage.getItem('quiz_progress');
+        if (savedProgressStr) {
+          const savedProgress = JSON.parse(savedProgressStr);
+          if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+            return savedProgress.answers;
+          }
+        }
+      } catch (err) {
+        // Игнорируем ошибки парсинга
+      }
+    }
+    return {};
+  });
   const [showResumeScreen, setShowResumeScreen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false); // Ref для синхронной проверки в асинхронных функциях
@@ -1344,17 +1361,24 @@ export default function QuizPage() {
         
         // ИСПРАВЛЕНО: Восстанавливаем состояние из localStorage/sessionStorage после ремоунта
         // Это критично, так как после ремоунта состояние теряется, но данные остаются в storage
+        // ВАЖНО: Восстанавливаем синхронно, чтобы allQuestions использовал восстановленные ответы
         try {
           // Восстанавливаем ответы из localStorage
           const savedProgressStr = localStorage.getItem('quiz_progress');
+          let restoredAnswers: Record<number, string | string[]> = {};
+          let restoredSavedProgress: any = null;
+          
           if (savedProgressStr) {
-            const savedProgress = JSON.parse(savedProgressStr);
-            if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
+            const parsed = JSON.parse(savedProgressStr);
+            if (parsed.answers && Object.keys(parsed.answers).length > 0) {
+              restoredAnswers = parsed.answers;
+              restoredSavedProgress = parsed;
               clientLogger.log('🔄 Восстанавливаем ответы из localStorage после ремоунта', {
-                answersCount: Object.keys(savedProgress.answers).length,
+                answersCount: Object.keys(restoredAnswers).length,
               });
-              setAnswers(savedProgress.answers);
-              setSavedProgress(savedProgress);
+              // ИСПРАВЛЕНО: Устанавливаем состояние синхронно, чтобы allQuestions использовал восстановленные ответы
+              setAnswers(restoredAnswers);
+              setSavedProgress(restoredSavedProgress);
             }
           }
           
