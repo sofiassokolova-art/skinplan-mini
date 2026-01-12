@@ -4548,7 +4548,7 @@ export default function QuizPage() {
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, answers, isDev, savedProgress, loading, questionnaire]);
+  }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress, loading, questionnaire?.id]);
 
   // Определяем, показываем ли мы начальный инфо-экран
   // ВОССТАНОВЛЕНО: Простая логика из рабочего коммита d59450f (связанного с планом)
