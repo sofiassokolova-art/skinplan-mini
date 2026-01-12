@@ -603,6 +603,8 @@ export default function QuizPage() {
         clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
         // Очищаем флаг
         sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
+        // ИСПРАВЛЕНО: Удаляем флаг quiz_init_done перед редиректом, чтобы init() мог запуститься при возврате на /quiz
+        sessionStorage.removeItem('quiz_init_done');
         // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
         initCompletedRef.current = true;
         setLoading(false);
@@ -638,8 +640,9 @@ export default function QuizPage() {
       // Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
       initCompletedRef.current = true;
       setLoading(false);
-      // Редиректим на /plan?state=generating
+      // ИСПРАВЛЕНО: Удаляем флаг quiz_init_done перед редиректом
       if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('quiz_init_done');
         window.location.replace('/plan?state=generating');
       }
       return;
@@ -1330,6 +1333,18 @@ export default function QuizPage() {
     // КРИТИЧНО: Устанавливаем initCalledRef ПЕРЕД вызовом init(), чтобы другие useEffect не вызвали init() повторно
     // НЕ устанавливаем initInProgressRef здесь - это делает сам init() для правильной логики
     initCalledRef.current = true;
+    
+    // ✅ Persist init across remounts (ErrorBoundary)
+    // ИСПРАВЛЕНО: Используем sessionStorage для предотвращения повторного вызова init() после ремоунта
+    // Это критично, так как ErrorBoundary может размонтировать и заново смонтировать компонент
+    if (typeof window !== 'undefined') {
+      const alreadyInit = sessionStorage.getItem('quiz_init_done') === 'true';
+      if (alreadyInit) {
+        clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
+        return;
+      }
+      sessionStorage.setItem('quiz_init_done', 'true');
+    }
     
     clientLogger.log('🚀 useEffect: calling init()', {
       initCalled: initCalledRef.current,
@@ -3226,6 +3241,7 @@ export default function QuizPage() {
             planUrl,
           });
           if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('quiz_init_done');
             window.location.replace(planUrl);
             // ФИКС: Сбрасываем redirectInProgressRef через задержку после редиректа
             setTimeout(() => {
@@ -3323,6 +3339,7 @@ export default function QuizPage() {
         redirectInProgressRef.current = true;
         // Все равно пытаемся редиректить, даже если компонент размонтирован
         if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('quiz_init_done');
           setTimeout(() => {
             try {
               window.location.replace('/plan');
@@ -3468,6 +3485,7 @@ export default function QuizPage() {
       clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
+        sessionStorage.removeItem('quiz_init_done');
         initCompletedRef.current = true;
         setLoading(false);
         window.location.replace('/plan');
@@ -3783,7 +3801,7 @@ export default function QuizPage() {
             hasQuestionnaireStateMachine: !!quizStateMachine.questionnaire,
           });
         }
-        return [];
+        return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
       }
       
       // ИСПРАВЛЕНО: Логируем источник questionnaire для диагностики
@@ -3871,7 +3889,7 @@ export default function QuizPage() {
         });
         return allQuestionsRawPrevRef.current;
       }
-      return [];
+      return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
   }, [questionnaire, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Убрали questionnaireRef.current?.id, так как ref не реактивен и не триггерит пересчет useMemo
   
@@ -3988,7 +4006,7 @@ export default function QuizPage() {
           clientLogger.warn('⚠️ allQuestionsRaw is empty and questionnaire is null (no fallback available)');
         }
       }
-      return [];
+      return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
     
     // ИСПРАВЛЕНО: Безопасное логирование с проверками
@@ -4832,6 +4850,7 @@ export default function QuizPage() {
       redirectInProgressRef.current = true;
       // Редиректим на /plan?state=generating, где будет показан лоадер
       if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('quiz_init_done');
         window.location.replace('/plan?state=generating');
       }
       // Показываем минимальный лоадер во время редиректа (не плановый!)
@@ -4884,6 +4903,7 @@ export default function QuizPage() {
       // Редиректим на /plan?state=generating СРАЗУ, без задержек
       // Используем window.location.replace для немедленного редиректа
       if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('quiz_init_done');
         window.location.replace('/plan?state=generating');
       }
       // Возвращаем минимальный лоадер "Перенаправление..." во время редиректа
@@ -7262,8 +7282,9 @@ export default function QuizPage() {
   // ФИКС: Показываем лоадер только при первой загрузке
   // ИСПРАВЛЕНО: Не показываем лоадер, если анкета уже была загружена (даже если идет рефетч)
   // Проверяем, что анкета действительно отсутствует во всех источниках
+  // ИСПРАВЛЕНО: Не показываем лоадер, если показывается pendingInfoScreen (предотвращает каскад ремоунтов)
   const hasQuestionnaireAnywhere = !!questionnaireRef.current || !!questionnaire || !!quizStateMachine.questionnaire || !!questionnaireFromQuery;
-  const shouldShowInitialLoader = !hasQuestionnaireAnywhere && (loading || !initCompletedRef.current);
+  const shouldShowInitialLoader = !pendingInfoScreen && !hasQuestionnaireAnywhere && (loading || !initCompletedRef.current);
   
   // ФИКС: Ранний return для лоадера (после всех хуков)
   if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {
