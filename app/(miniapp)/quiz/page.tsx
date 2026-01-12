@@ -4014,6 +4014,23 @@ export default function QuizPage() {
                                     questionnaire || 
                                     quizStateMachine.questionnaire;
     
+    // ИСПРАВЛЕНО: Если answers пустые после ремоунта, но есть предыдущее значение в ref, используем его
+    // Это предотвращает потерю вопросов, когда ответы еще не загружены из API
+    const hasAnswers = answers && Object.keys(answers).length > 0;
+    const hasSavedProgressAnswers = savedProgress?.answers && Object.keys(savedProgress.answers).length > 0;
+    const hasAnyAnswers = hasAnswers || hasSavedProgressAnswers;
+    
+    // ИСПРАВЛЕНО: Если ответы еще не загружены после ремоунта, используем предыдущее значение allQuestions
+    // Это предотвращает потерю вопросов при пересчете allQuestions с пустыми ответами
+    if (!hasAnyAnswers && allQuestionsPrevRef.current.length > 0) {
+      clientLogger.log('✅ Используем предыдущее значение allQuestions, так как ответы еще не загружены после ремоунта', {
+        previousLength: allQuestionsPrevRef.current.length,
+        hasAnswers,
+        hasSavedProgressAnswers,
+      });
+      return allQuestionsPrevRef.current;
+    }
+    
     if (!allQuestionsRaw || allQuestionsRaw.length === 0) {
       // ИСПРАВЛЕНО: Логируем, если allQuestionsRaw пустой (используем log вместо warn для диагностики)
       const hasQuestionnaireState = !!questionnaire;
