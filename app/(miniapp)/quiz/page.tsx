@@ -1062,14 +1062,21 @@ export default function QuizPage() {
             }
           }
           
+          // ИСПРАВЛЕНО: Проверяем, что questionnaireRef.current не null перед использованием
+          if (!questionnaireRef.current) {
+            clientLogger.error('❌ questionnaireRef.current is null after loadQuestionnaire, even after waiting');
+            setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+            throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+          }
+          
+          // ИСПРАВЛЕНО: Сохраняем значение в переменную после проверки на null
+          // TypeScript теперь знает, что currentQuestionnaire не null
+          const currentQuestionnaire: Questionnaire = questionnaireRef.current;
+          
           clientLogger.log('✅ init() questionnaireRef.current is set after loadQuestionnaire', {
             timestamp: new Date().toISOString(),
-            questionnaireId: (questionnaireRef.current as Questionnaire).id,
+            questionnaireId: currentQuestionnaire.id,
           });
-          
-          // КРИТИЧНО: Сохраняем значение в переменную после проверки, чтобы TypeScript правильно вывел тип
-          // ИСПРАВЛЕНО: Используем type assertion, так как мы уже проверили, что questionnaireRef.current не null
-          const currentQuestionnaire = questionnaireRef.current as Questionnaire;
           
           // КРИТИЧНО: Ждем, пока questionnaire будет установлен в state
           // Это предотвращает завершение init() до того, как questionnaire появится в state
@@ -1371,21 +1378,43 @@ export default function QuizPage() {
           if (savedQuestionIndex !== null) {
             const questionIndex = parseInt(savedQuestionIndex, 10);
             if (!isNaN(questionIndex) && questionIndex >= 0) {
-              // ИСПРАВЛЕНО: Проверяем границы после восстановления allQuestions
-              // Используем setTimeout, чтобы проверить после того, как allQuestions пересчитается
-              setTimeout(() => {
-                const currentAllQuestionsLength = allQuestions.length || allQuestionsPrevRef.current.length;
-                const validIndex = questionIndex < currentAllQuestionsLength ? questionIndex : Math.max(0, currentAllQuestionsLength - 1);
-                if (validIndex !== questionIndex) {
-                  clientLogger.warn('⚠️ Исправляем currentQuestionIndex после восстановления - индекс вне границ', {
-                    savedIndex: questionIndex,
-                    correctedIndex: validIndex,
-                    allQuestionsLength: currentAllQuestionsLength,
-                  });
-                }
+              // ИСПРАВЛЕНО: Используем ref для получения актуальной длины allQuestions
+              // Это более надежно, чем setTimeout, так как ref обновляется синхронно
+              const currentAllQuestionsLength = allQuestionsPrevRef.current.length || allQuestions.length;
+              const validIndex = currentAllQuestionsLength > 0 
+                ? (questionIndex < currentAllQuestionsLength ? questionIndex : Math.max(0, currentAllQuestionsLength - 1))
+                : 0;
+              
+              if (validIndex !== questionIndex && currentAllQuestionsLength > 0) {
+                clientLogger.warn('⚠️ Исправляем currentQuestionIndex после восстановления - индекс вне границ', {
+                  savedIndex: questionIndex,
+                  correctedIndex: validIndex,
+                  allQuestionsLength: currentAllQuestionsLength,
+                });
+              }
+              
+              // ИСПРАВЛЕНО: Устанавливаем индекс сразу, если allQuestions уже загружен
+              // Иначе используем setTimeout для проверки после пересчета
+              if (currentAllQuestionsLength > 0) {
                 setCurrentQuestionIndex(validIndex);
-              }, 100);
-              clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', { questionIndex });
+                clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', { 
+                  questionIndex: validIndex,
+                  allQuestionsLength: currentAllQuestionsLength,
+                });
+              } else {
+                // Если allQuestions еще не загружен, используем setTimeout
+                setTimeout(() => {
+                  const finalLength = allQuestions.length || allQuestionsPrevRef.current.length;
+                  const finalValidIndex = finalLength > 0 
+                    ? (questionIndex < finalLength ? questionIndex : Math.max(0, finalLength - 1))
+                    : 0;
+                  setCurrentQuestionIndex(finalValidIndex);
+                  clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (асинхронно)', { 
+                    questionIndex: finalValidIndex,
+                    allQuestionsLength: finalLength,
+                  });
+                }, 100);
+              }
             }
           }
           
@@ -1400,30 +1429,27 @@ export default function QuizPage() {
             }
           }
           
-          // ИСПРАВЛЕНО: Загружаем ответы из API после ремоунта синхронно
+          // ИСПРАВЛЕНО: Загружаем ответы из API после ремоунта
           // Это критично, так как после ремоунта состояние теряется, но данные остаются на сервере
-          // ВАЖНО: Загружаем ответы сразу, чтобы allQuestions использовал их при пересчете
+          // ВАЖНО: Сначала проверяем React Query кэш (синхронно), затем загружаем через API если нужно
           if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-            // ИСПРАВЛЕНО: Загружаем прогресс синхронно через React Query или прямой API вызов
-            // Это предотвращает потерю ответов при пересчете allQuestions
-            (async () => {
-              try {
-                // Используем React Query кэш, если он доступен
-                if (quizProgressFromQuery?.progress?.answers) {
-                  const progressAnswers = quizProgressFromQuery.progress.answers;
-                  if (Object.keys(progressAnswers).length > 0) {
-                    clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
-                      answersCount: Object.keys(progressAnswers).length,
-                    });
-                    setAnswers(progressAnswers);
-                    setSavedProgress({
-                      answers: progressAnswers,
-                      questionIndex: quizProgressFromQuery.progress.questionIndex || 0,
-                      infoScreenIndex: quizProgressFromQuery.progress.infoScreenIndex || 0,
-                    });
-                  }
-                } else {
-                  // Если React Query не загрузил, используем прямой API вызов
+            // ИСПРАВЛЕНО: Сначала проверяем React Query кэш (это синхронно, если кэш уже загружен)
+            if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
+              const progressAnswers = quizProgressFromQuery.progress.answers;
+              clientLogger.log('🔄 Восстанавливаем ответы из React Query кэша после ремоунта', {
+                answersCount: Object.keys(progressAnswers).length,
+              });
+              setAnswers(progressAnswers);
+              setSavedProgress({
+                answers: progressAnswers,
+                questionIndex: quizProgressFromQuery.progress.questionIndex || 0,
+                infoScreenIndex: quizProgressFromQuery.progress.infoScreenIndex || 0,
+              });
+            } else if (!isLoadingProgress) {
+              // Если React Query не загружает и данных нет, используем прямой API вызов
+              // ИСПРАВЛЕНО: Загружаем асинхронно, но это нормально - allQuestions использует savedProgress?.answers
+              (async () => {
+                try {
                   const response = await api.getQuizProgress() as {
                     progress?: {
                       answers: Record<number, string | string[]>;
@@ -1432,7 +1458,7 @@ export default function QuizPage() {
                     } | null;
                   };
                   if (response?.progress?.answers && Object.keys(response.progress.answers).length > 0) {
-                    clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта', {
+                    clientLogger.log('🔄 Восстанавливаем ответы из API после ремоунта (fallback)', {
                       answersCount: Object.keys(response.progress.answers).length,
                     });
                     setAnswers(response.progress.answers);
@@ -1442,11 +1468,11 @@ export default function QuizPage() {
                       infoScreenIndex: response.progress.infoScreenIndex || 0,
                     });
                   }
+                } catch (err) {
+                  clientLogger.warn('⚠️ Ошибка при загрузке прогресса из API после ремоунта:', err);
                 }
-              } catch (err) {
-                clientLogger.warn('⚠️ Ошибка при загрузке прогресса из API после ремоунта:', err);
-              }
-            })();
+              })();
+            }
           }
         } catch (restoreError) {
           clientLogger.warn('⚠️ Ошибка при восстановлении состояния из sessionStorage:', restoreError);
@@ -4308,6 +4334,7 @@ export default function QuizPage() {
   }, [allQuestions]);
   
   // КРИТИЧНО: Логируем состояние allQuestions после каждого вычисления
+  // ИСПРАВЛЕНО: Используем примитивные значения в зависимостях, чтобы избежать React Error #310
   useEffect(() => {
     clientLogger.log('📊 allQuestions state updated', {
       allQuestionsRawLength: allQuestionsRaw.length,
@@ -4318,9 +4345,10 @@ export default function QuizPage() {
       questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
       questionIds: allQuestions.length > 0 ? allQuestions.map((q: Question) => q?.id).slice(0, 10) : [],
     });
-  }, [allQuestions, allQuestionsRaw, questionnaire]);
+  }, [allQuestions.length, allQuestionsRaw.length, questionnaire?.id]);
   
   // Логируем результат фильтрации после вычисления
+  // ИСПРАВЛЕНО: Используем примитивные значения в зависимостях, чтобы избежать React Error #310
   useEffect(() => {
     // Логируем всегда для отладки
     clientLogger.log('📊 allQuestions state', {
@@ -4333,7 +4361,7 @@ export default function QuizPage() {
       questionIds: allQuestions.map((q: Question) => q.id),
       questionCodes: allQuestions.map((q: Question) => q.code),
     });
-  }, [allQuestions, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, answers, savedProgress]);
+  }, [allQuestions.length, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, Object.keys(savedProgress?.answers || {}).length]);
 
   // ИСПРАВЛЕНО: Обработка edge case - когда allQuestions.length === 0
   // Показываем явное сообщение вместо поломанного UI
@@ -4873,7 +4901,7 @@ export default function QuizPage() {
       initialInfoScreensLength: initialInfoScreens.length,
         });
       return question;
-  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions, initialInfoScreens.length]);
+  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions.length, initialInfoScreens.length]);
 
   // ВАЖНО: Обновляем ref для submitAnswers, чтобы она была доступна в setTimeout
   useEffect(() => {
