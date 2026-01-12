@@ -4035,13 +4035,59 @@ export default function QuizPage() {
     const hasSavedProgressAnswers = savedProgress?.answers && Object.keys(savedProgress.answers).length > 0;
     const hasAnyAnswers = hasAnswers || hasSavedProgressAnswers;
     
+    // ИСПРАВЛЕНО: Если allQuestionsRaw пустой после ремоунта, но questionnaire существует, пересчитываем
+    // Это критично, так как после ремоунта allQuestionsRaw может быть пустым, но questionnaire есть в ref/State Machine
+    // КРИТИЧНО: Это происходит ДО проверки allQuestionsRaw, чтобы восстановить вопросы сразу после ремоунта
+    if ((!allQuestionsRaw || allQuestionsRaw.length === 0) && effectiveQuestionnaire) {
+      // Пытаемся пересчитать allQuestionsRaw из questionnaire
+      try {
+        const extracted = extractQuestionsFromQuestionnaire(effectiveQuestionnaire);
+        if (extracted.length > 0) {
+          clientLogger.log('✅ Пересчитываем allQuestions из questionnaire после ремоунта', {
+            extractedLength: extracted.length,
+            fromRef: effectiveQuestionnaire === questionnaireRef.current,
+            fromStateMachine: effectiveQuestionnaire === quizStateMachine.questionnaire,
+            hasAnswers,
+            hasSavedProgressAnswers,
+          });
+          // Используем пересчитанные вопросы для фильтрации
+          const filtered = filterQuestions({
+            questions: extracted,
+            answers,
+            savedProgressAnswers: savedProgress?.answers,
+            isRetakingQuiz,
+            showRetakeScreen,
+            logger: clientLogger,
+          });
+          if (filtered.length > 0) {
+            allQuestionsPrevRef.current = filtered;
+            return filtered;
+          } else if (extracted.length > 0) {
+            // Если после фильтрации пусто, но extracted есть, возвращаем extracted
+            // Это может произойти, если ответы еще не загружены, но вопросы нужны для рендера
+            clientLogger.log('✅ Возвращаем extracted вопросы без фильтрации (ответы еще не загружены)', {
+              extractedLength: extracted.length,
+            });
+            allQuestionsPrevRef.current = extracted;
+            return extracted;
+          }
+        }
+      } catch (recalcErr) {
+        clientLogger.warn('⚠️ Ошибка при пересчете allQuestions из questionnaire', recalcErr);
+      }
+    }
+    
     // ИСПРАВЛЕНО: Если ответы еще не загружены после ремоунта, используем предыдущее значение allQuestions
     // Это предотвращает потерю вопросов при пересчете allQuestions с пустыми ответами
-    if (!hasAnyAnswers && allQuestionsPrevRef.current.length > 0) {
+    // КРИТИЧНО: Проверяем, что questionnaire существует, чтобы не использовать устаревшие данные
+    // ИСПРАВЛЕНО: Также проверяем, что allQuestionsRaw не пустой, иначе пересчитываем выше
+    if (!hasAnyAnswers && allQuestionsPrevRef.current.length > 0 && effectiveQuestionnaire && allQuestionsRaw && allQuestionsRaw.length > 0) {
       clientLogger.log('✅ Используем предыдущее значение allQuestions, так как ответы еще не загружены после ремоунта', {
         previousLength: allQuestionsPrevRef.current.length,
         hasAnswers,
         hasSavedProgressAnswers,
+        hasQuestionnaire: !!effectiveQuestionnaire,
+        allQuestionsRawLength: allQuestionsRaw.length,
       });
       return allQuestionsPrevRef.current;
     }
