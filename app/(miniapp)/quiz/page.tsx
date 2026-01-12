@@ -4984,9 +4984,10 @@ export default function QuizPage() {
 
   // ИСПРАВЛЕНО: Убрали setLoading(false) из рендера - это вызывает повторные рендеры
   // Абсолютные таймауты уже реализованы в useEffect
-  // ИСПРАВЛЕНО: Детальное логирование для диагностики проблемы с отображением анкеты
-  // Логируем состояние перед каждым условием рендеринга
-  clientLogger.log('🔍 Quiz page render - checking what to display', {
+  // ИСПРАВЛЕНО: Логирование перенесено в useEffect для предотвращения спама в логах
+  // Логируем только в development или при необходимости диагностики
+  if (isDev) {
+    clientLogger.log('🔍 Quiz page render - checking what to display', {
         loading,
         initCompleted: initCompletedRef.current,
         hasQuestionnaire: !!questionnaire,
@@ -6438,7 +6439,7 @@ export default function QuizPage() {
         error: error || null,
       });
     }
-  }, [loading, questionnaire, allQuestions.length, currentQuestionIndex, currentQuestion, isShowingInitialInfoScreen, pendingInfoScreen, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, answers, savedProgress, currentInfoScreenIndex, error, allQuestionsRaw.length]);
+  }, [loading, questionnaire?.id, allQuestions.length, currentQuestionIndex, currentQuestion?.id, isShowingInitialInfoScreen, pendingInfoScreen?.id, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, currentInfoScreenIndex, error, allQuestionsRaw.length]);
 
   // ИСПРАВЛЕНО: Проверяем showResumeScreen ПЕРЕД isShowingInitialInfoScreen,
   // чтобы предотвратить мигание начальных экранов перед показом экрана продолжения
@@ -7266,7 +7267,8 @@ export default function QuizPage() {
   }
   
   // КРИТИЧНО: Если анкета загружена, но не отображается - логируем все условия
-  if (questionnaireToRender && !loading && !error) {
+  // ИСПРАВЛЕНО: Логируем только в development для предотвращения спама
+  if (isDev && questionnaireToRender && !loading && !error) {
     clientLogger.log('✅ Questionnaire should be visible - all conditions met', {
       hasQuestionnaire: !!questionnaire,
       hasQuestionnaireRef: !!questionnaireRef.current,
@@ -7287,7 +7289,9 @@ export default function QuizPage() {
   }
   
   // КРИТИЧНО: Логируем состояние перед рендерингом анкеты
-  clientLogger.log('🔍 Final render check - what will be displayed?', {
+  // ИСПРАВЛЕНО: Логируем только в development для предотвращения спама
+  if (isDev) {
+    clientLogger.log('🔍 Final render check - what will be displayed?', {
     timestamp: new Date().toISOString(),
     hasQuestionnaire: !!questionnaire,
     hasQuestionnaireRef: !!questionnaireRef.current,
