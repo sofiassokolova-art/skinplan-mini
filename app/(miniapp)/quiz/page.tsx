@@ -7316,7 +7316,8 @@ export default function QuizPage() {
     willShowQuestionnaire: !!questionnaireToRender && !loading && !error,
     isRetakingQuiz,
     hasResumed,
-  });
+    });
+  }
 
   // ФИКС: Показываем лоадер в самом начале, если анкета еще не загружена или идет загрузка
   // Это предотвращает показ белого экрана при загрузке приложения
