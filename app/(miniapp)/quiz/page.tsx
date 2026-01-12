@@ -1329,10 +1329,27 @@ export default function QuizPage() {
       if (alreadyInit) {
         clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
         
-        // ИСПРАВЛЕНО: Восстанавливаем только индексы из sessionStorage после ремоунта
-        // Ответы восстанавливаются через API (loadSavedProgressFromServer), а не из localStorage
-        // sessionStorage используется только для временных данных текущей сессии
+        // ИСПРАВЛЕНО: Восстанавливаем состояние после ремоунта
+        // Это критично, так как после ремоунта из-за ErrorBoundary состояние теряется
         try {
+          // ИСПРАВЛЕНО: Восстанавливаем questionnaire из ref/State Machine после ремоунта
+          // Это предотвращает потерю allQuestions, когда questionnaire временно становится null
+          if (!questionnaire && (questionnaireRef.current || quizStateMachine.questionnaire)) {
+            const restoredQuestionnaire = questionnaireRef.current || quizStateMachine.questionnaire;
+            if (restoredQuestionnaire) {
+              clientLogger.log('🔄 Восстанавливаем questionnaire из ref/State Machine после ремоунта', {
+                questionnaireId: restoredQuestionnaire.id,
+                fromRef: !!questionnaireRef.current,
+                fromStateMachine: !!quizStateMachine.questionnaire,
+              });
+              setQuestionnaire(restoredQuestionnaire);
+              // Также обновляем State Machine, если questionnaire был только в ref
+              if (!quizStateMachine.questionnaire && questionnaireRef.current) {
+                setQuestionnaireInStateMachine(questionnaireRef.current);
+              }
+            }
+          }
+          
           // Восстанавливаем currentQuestionIndex из sessionStorage
           const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
           if (savedQuestionIndex !== null) {
@@ -1363,7 +1380,7 @@ export default function QuizPage() {
             });
           }
         } catch (restoreError) {
-          clientLogger.warn('⚠️ Ошибка при восстановлении индексов из sessionStorage:', restoreError);
+          clientLogger.warn('⚠️ Ошибка при восстановлении состояния из sessionStorage:', restoreError);
         }
         
         return;
@@ -3919,7 +3936,7 @@ export default function QuizPage() {
       }
       return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
-  }, [questionnaire, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Убрали questionnaireRef.current?.id, так как ref не реактивен и не триггерит пересчет useMemo
+  }, [questionnaire, quizStateMachine.questionnaire?.id, questionnaireRef.current?.id]); // ИСПРАВЛЕНО: Добавлен questionnaireRef.current?.id для пересчета при восстановлении после ремоунта
   
   // УДАЛЕНО: Избыточные useEffect для синхронизации questionnaire
   // Вся синхронизация теперь выполняется в едином useEffect выше (строки 211-251)
@@ -7560,7 +7577,8 @@ export default function QuizPage() {
           // Если currentQuestion существует, показываем его
           return null;
         })()}
-        {currentQuestion && (
+        {/* ИСПРАВЛЕНО: Добавлена проверка на null перед рендерингом currentQuestion для предотвращения React error #300 */}
+        {currentQuestion && currentQuestion.id && (
           <>
         {/* Кнопка "Назад" - скрыта на первом вопросе, фиксирована вверху */}
         {(currentQuestionIndex > 0 || currentInfoScreenIndex > 0) && (
