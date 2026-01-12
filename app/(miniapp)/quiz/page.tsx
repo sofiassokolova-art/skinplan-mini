@@ -266,24 +266,7 @@ export default function QuizPage() {
   }, []); // Пустой массив зависимостей - вычисляется только один раз
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
-  // ИСПРАВЛЕНО: Инициализируем answers из localStorage, если они есть (для восстановления после ремоунта)
-  // Это предотвращает пересчет allQuestions с пустыми ответами до восстановления состояния
-  const [answers, setAnswers] = useState<Record<number, string | string[]>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const savedProgressStr = localStorage.getItem('quiz_progress');
-        if (savedProgressStr) {
-          const savedProgress = JSON.parse(savedProgressStr);
-          if (savedProgress.answers && Object.keys(savedProgress.answers).length > 0) {
-            return savedProgress.answers;
-          }
-        }
-      } catch (err) {
-        // Игнорируем ошибки парсинга
-      }
-    }
-    return {};
-  });
+  const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [showResumeScreen, setShowResumeScreen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false); // Ref для синхронной проверки в асинхронных функциях
@@ -1359,29 +1342,10 @@ export default function QuizPage() {
       if (alreadyInit) {
         clientLogger.log('⛔ useEffect: init() skipped: quiz_init_done in sessionStorage');
         
-        // ИСПРАВЛЕНО: Восстанавливаем состояние из localStorage/sessionStorage после ремоунта
-        // Это критично, так как после ремоунта состояние теряется, но данные остаются в storage
-        // ВАЖНО: Восстанавливаем синхронно, чтобы allQuestions использовал восстановленные ответы
+        // ИСПРАВЛЕНО: Восстанавливаем только индексы из sessionStorage после ремоунта
+        // Ответы восстанавливаются через API (savedProgress), а не из localStorage
+        // sessionStorage используется только для временных данных текущей сессии
         try {
-          // Восстанавливаем ответы из localStorage
-          const savedProgressStr = localStorage.getItem('quiz_progress');
-          let restoredAnswers: Record<number, string | string[]> = {};
-          let restoredSavedProgress: any = null;
-          
-          if (savedProgressStr) {
-            const parsed = JSON.parse(savedProgressStr);
-            if (parsed.answers && Object.keys(parsed.answers).length > 0) {
-              restoredAnswers = parsed.answers;
-              restoredSavedProgress = parsed;
-              clientLogger.log('🔄 Восстанавливаем ответы из localStorage после ремоунта', {
-                answersCount: Object.keys(restoredAnswers).length,
-              });
-              // ИСПРАВЛЕНО: Устанавливаем состояние синхронно, чтобы allQuestions использовал восстановленные ответы
-              setAnswers(restoredAnswers);
-              setSavedProgress(restoredSavedProgress);
-            }
-          }
-          
           // Восстанавливаем currentQuestionIndex из sessionStorage
           const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
           if (savedQuestionIndex !== null) {
@@ -1402,8 +1366,11 @@ export default function QuizPage() {
               currentInfoScreenIndexRef.current = infoScreenIndex;
             }
           }
+          
+          // ИСПРАВЛЕНО: Ответы восстанавливаются через API (loadSavedProgressFromServer), а не из localStorage
+          // Это гарантирует синхронизацию между устройствами и актуальность данных
         } catch (restoreError) {
-          clientLogger.warn('⚠️ Ошибка при восстановлении состояния из storage:', restoreError);
+          clientLogger.warn('⚠️ Ошибка при восстановлении индексов из sessionStorage:', restoreError);
         }
         
         return;
@@ -2140,26 +2107,12 @@ export default function QuizPage() {
       isDuplicateServerSave = false;
     }
     
-    // Всегда обновляем состояние и localStorage (даже если не изменилось, для консистентности)
+    // Всегда обновляем состояние (даже если не изменилось, для консистентности)
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
     
-    // ИСПРАВЛЕНО: Сохраняем ответы в localStorage для восстановления после ремоунта
-    // Это критично, так как после ремоунта из-за ErrorBoundary состояние теряется
-    if (typeof window !== 'undefined') {
-      try {
-        const progressData = {
-          answers: newAnswers,
-          questionIndex: currentQuestionIndex,
-          infoScreenIndex: currentInfoScreenIndex,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem('quiz_progress', JSON.stringify(progressData));
-      } catch (storageError) {
-        clientLogger.warn('⚠️ Не удалось сохранить ответы в localStorage:', storageError);
-      }
-    }
-    
+    // ИСПРАВЛЕНО: Ответы сохраняются только на сервер через API, не в localStorage
+    // Это гарантирует синхронизацию между устройствами и актуальность данных
     await saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
     
     // Пропускаем сохранение на сервер, если это дубликат
