@@ -52,24 +52,34 @@ export function useQuizSync({
           // Обновляем ref
           questionnaireRef.current = stateMachineQuestionnaire;
           stateQuestionnaireRef.current = stateMachineQuestionnaire;
+          lastSyncedIdRef.current = stateMachineId;
 
-          // Обновляем state только если он действительно отличается
-          // Используем setTimeout для отложенного обновления, чтобы избежать бесконечных циклов
-          setTimeout(() => {
-            if (stateQuestionnaireRef.current?.id === stateMachineId) {
-              setQuestionnaire(stateMachineQuestionnaire);
-            }
+          // ИСПРАВЛЕНО: Обновляем state только если он действительно отличается от State Machine
+          // Используем проверку через ref, чтобы избежать лишних обновлений
+          // КРИТИЧНО: Не вызываем setQuestionnaire, если это может вызвать обновление State Machine
+          // Это предотвращает бесконечные циклы
+          const shouldUpdateState = stateQuestionnaireRef.current?.id === stateMachineId;
+          if (shouldUpdateState) {
+            // Используем queueMicrotask для отложенного обновления без бесконечных циклов
+            queueMicrotask(() => {
+              if (isSyncingRef.current && stateQuestionnaireRef.current?.id === stateMachineId) {
+                setQuestionnaire(stateMachineQuestionnaire);
+                isSyncingRef.current = false;
+              }
+            });
+          } else {
             isSyncingRef.current = false;
-          }, 0);
+          }
         } catch (error) {
           isSyncingRef.current = false;
           clientLogger.error('❌ useQuizSync: ошибка синхронизации', error);
         }
-
-        lastSyncedIdRef.current = stateMachineId;
       }
+    } else if (!stateMachineId && lastSyncedIdRef.current !== null) {
+      // Если State Machine стал null, сбрасываем lastSyncedIdRef
+      lastSyncedIdRef.current = null;
     }
-  }, [stateMachineQuestionnaire?.id]); // Зависим только от ID, а не от всего объекта
+  }, [stateMachineQuestionnaire?.id]); // ИСПРАВЛЕНО: Убрали setQuestionnaire из зависимостей, так как это стабильная функция
 }
 
 /**

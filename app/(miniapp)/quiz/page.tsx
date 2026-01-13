@@ -85,6 +85,12 @@ export default function QuizPage() {
   // ФИКС: Синхронизируем questionnaire из React Query с локальным state
   // ИСПРАВЛЕНО: Добавляем guard для предотвращения бесконечных циклов
   const lastSyncedFromQueryIdRef = useRef<string | number | null>(null);
+  // ИСПРАВЛЕНО: Используем ref для setQuestionnaireInStateMachine, чтобы избежать зависимости от функции
+  const setQuestionnaireInStateMachineRef = useRef(setQuestionnaireInStateMachine);
+  useEffect(() => {
+    setQuestionnaireInStateMachineRef.current = setQuestionnaireInStateMachine;
+  }, [setQuestionnaireInStateMachine]);
+  
   useEffect(() => {
     // ИСПРАВЛЕНО: Проверяем ID вместо объекта, чтобы избежать лишних обновлений
     const queryId = questionnaireFromQuery?.id;
@@ -99,12 +105,12 @@ export default function QuizPage() {
       setQuestionnaire(questionnaireFromQuery);
       // ИСПРАВЛЕНО: Также обновляем questionnaireRef.current для проверки в shouldShowInitialLoader
       questionnaireRef.current = questionnaireFromQuery;
-      // Также обновляем State Machine
-      setQuestionnaireInStateMachine(questionnaireFromQuery);
+      // Также обновляем State Machine (используем ref для стабильности)
+      setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
       // ИСПРАВЛЕНО: НЕ вызываем setLoading здесь - это делает отдельный useEffect (строка 203)
       // Это предотвращает бесконечные циклы между useEffect
     }
-  }, [questionnaireFromQuery?.id, questionnaire?.id, setQuestionnaireInStateMachine]); // ИСПРАВЛЕНО: Зависем только от ID, а не от объектов
+  }, [questionnaireFromQuery?.id, questionnaire?.id]); // ИСПРАВЛЕНО: Убрали setQuestionnaireInStateMachine из зависимостей
   
   // УДАЛЕНО: Избыточный useEffect для синхронизации с State Machine
   // Вся синхронизация теперь выполняется в едином useEffect ниже (строки 212-251)
@@ -191,7 +197,7 @@ export default function QuizPage() {
       // ИСПРАВЛЕНО: Даже если state не изменился, обновляем ref для гарантии
       questionnaireRef.current = questionnaireToSet;
     }
-  }, [setQuestionnaireInStateMachine, quizStateMachine]);
+  }, [setQuestionnaireInStateMachine, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Зависем только от ID, а не от всего объекта
   // ФИКС: Начинаем с loading = true, чтобы показать лоадер при первой загрузке
   // ФИКС: Используем loading из React Query, если анкета загружается через React Query
   // Иначе используем локальный state для обратной совместимости
@@ -1521,6 +1527,42 @@ export default function QuizPage() {
       }
     }
   }, [questionnaire]);
+
+  // КРИТИЧНО: Отдельный useEffect для восстановления answers из React Query после ремоунта
+  // Это гарантирует, что answers восстановятся даже если компонент ремоунтится из-за ошибки
+  // ИСПРАВЛЕНО: Зависим от quizProgressFromQuery, чтобы восстанавливать answers при каждом обновлении кэша
+  const lastRestoredAnswersIdRef = useRef<string | null>(null);
+  const answersRef = useRef<Record<number, string | string[]>>({});
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+  
+  useEffect(() => {
+    // Восстанавливаем answers только если они есть в React Query кэше и еще не были восстановлены
+    if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
+      const progressAnswers = quizProgressFromQuery.progress.answers;
+      const answersId = JSON.stringify(progressAnswers);
+      
+      // Проверяем, не восстанавливали ли мы уже эти answers
+      if (answersId !== lastRestoredAnswersIdRef.current) {
+        // Проверяем, действительно ли answers изменились (используем ref для стабильности)
+        const currentAnswersId = JSON.stringify(answersRef.current);
+        if (answersId !== currentAnswersId) {
+          clientLogger.log('🔄 Восстанавливаем answers из React Query кэша (после ремоунта или обновления)', {
+            answersCount: Object.keys(progressAnswers).length,
+            previousAnswersCount: Object.keys(answersRef.current).length,
+          });
+          setAnswers(progressAnswers);
+          setSavedProgress({
+            answers: progressAnswers,
+            questionIndex: quizProgressFromQuery.progress.questionIndex || 0,
+            infoScreenIndex: quizProgressFromQuery.progress.infoScreenIndex || 0,
+          });
+          lastRestoredAnswersIdRef.current = answersId;
+        }
+      }
+    }
+  }, [quizProgressFromQuery?.progress?.answers]); // ИСПРАВЛЕНО: Убрали answers из зависимостей, используем ref
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init
