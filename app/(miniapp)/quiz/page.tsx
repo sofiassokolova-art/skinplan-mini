@@ -31,6 +31,8 @@ import { handleGetPlan } from '@/lib/quiz/handlers/handleGetPlan';
 import type { Question, Questionnaire, SavedProgress } from '@/lib/quiz/types';
 import { QuizQuestion } from './components/QuizQuestion';
 import { QuizInfoScreen } from './components/QuizInfoScreen';
+import { QuizErrorDisplay } from './components/QuizErrorDisplay';
+import { QuizFinalizingLoader } from './components/QuizFinalizingLoader';
 
 export default function QuizPage() {
   const isDev = process.env.NODE_ENV === 'development';
