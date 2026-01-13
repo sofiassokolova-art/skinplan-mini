@@ -25,6 +25,16 @@ export async function GET(request: NextRequest) {
     let paymentRetakingCompleted = false;
     let paymentFullRetakeCompleted = false;
     
+    // ДИАГНОСТИКА: Логируем результат авторизации
+    if (!auth.ok) {
+      logger.warn('⚠️ Telegram auth failed, but continuing to load questionnaire (public access)', {
+        authStatus: auth.response?.status,
+        authCode: (auth.response as any)?.body?.code,
+        authMessage: (auth.response as any)?.body?.message,
+        hasInitData: !!request.headers.get('X-Telegram-Init-Data') || !!request.headers.get('x-telegram-init-data'),
+      });
+    }
+    
     if (auth.ok) {
       userId = auth.ctx.userId;
       
@@ -87,7 +97,51 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    logger.info('Fetching active questionnaire', { userId, shouldRedirectToPlan, isCompleted });
+    logger.info('Fetching active questionnaire', { userId, shouldRedirectToPlan, isCompleted, authOk: auth.ok });
+    
+    // ДИАГНОСТИКА: Сначала проверяем, есть ли активная анкета вообще
+    const activeQuestionnaireCheck = await prisma.questionnaire.findFirst({
+      where: { isActive: true },
+      select: { id: true, name: true, version: true },
+    });
+    
+    logger.info('🔍 Active questionnaire check', {
+      found: !!activeQuestionnaireCheck,
+      questionnaireId: activeQuestionnaireCheck?.id,
+      name: activeQuestionnaireCheck?.name,
+      version: activeQuestionnaireCheck?.version,
+    });
+    
+    // ДИАГНОСТИКА: Проверяем количество вопросов напрямую в БД
+    if (activeQuestionnaireCheck) {
+      const directQuestionsCount = await prisma.question.count({
+        where: { questionnaireId: activeQuestionnaireCheck.id },
+      });
+      const directGroupsCount = await prisma.questionGroup.count({
+        where: { questionnaireId: activeQuestionnaireCheck.id },
+      });
+      const directQuestionsInGroupsCount = await prisma.question.count({
+        where: {
+          questionnaireId: activeQuestionnaireCheck.id,
+          groupId: { not: null },
+        },
+      });
+      const directQuestionsWithoutGroupCount = await prisma.question.count({
+        where: {
+          questionnaireId: activeQuestionnaireCheck.id,
+          groupId: null,
+        },
+      });
+      
+      logger.info('🔍 Direct DB query for questions count', {
+        totalQuestions: directQuestionsCount,
+        groupsCount: directGroupsCount,
+        questionsInGroups: directQuestionsInGroupsCount,
+        questionsWithoutGroup: directQuestionsWithoutGroupCount,
+      });
+    }
+    
+    // ДИАГНОСТИКА: Логируем запрос к базе данных
     const questionnaire = await prisma.questionnaire.findFirst({
       where: { isActive: true },
       include: {
@@ -117,6 +171,24 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+    
+    // ДИАГНОСТИКА: Логируем результат запроса к базе данных
+    if (questionnaire) {
+      logger.info('✅ Questionnaire found in DB', {
+        questionnaireId: questionnaire.id,
+        hasQuestionGroups: !!questionnaire.questionGroups,
+        hasQuestions: !!questionnaire.questions,
+        questionGroupsCount: questionnaire.questionGroups?.length || 0,
+        questionsCount: questionnaire.questions?.length || 0,
+        questionGroupsWithQuestions: questionnaire.questionGroups?.map(g => ({
+          id: g.id,
+          title: g.title,
+          questionsCount: g.questions?.length || 0,
+        })) || [],
+      });
+    } else {
+      logger.error('❌ No active questionnaire found in DB');
+    }
 
     if (!questionnaire) {
       logger.warn('No active questionnaire found');
@@ -126,13 +198,53 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // ДИАГНОСТИКА: Проверяем структуру данных из Prisma
+    logger.info('🔍 Raw Prisma response structure', {
+      hasQuestionGroups: !!questionnaire.questionGroups,
+      hasQuestions: !!questionnaire.questions,
+      questionGroupsType: typeof questionnaire.questionGroups,
+      questionsType: typeof questionnaire.questions,
+      questionGroupsIsArray: Array.isArray(questionnaire.questionGroups),
+      questionsIsArray: Array.isArray(questionnaire.questions),
+      questionGroupsLength: Array.isArray(questionnaire.questionGroups) ? questionnaire.questionGroups.length : 'not array',
+      questionsLength: Array.isArray(questionnaire.questions) ? questionnaire.questions.length : 'not array',
+    });
+    
     const groups = questionnaire.questionGroups || [];
     const plainQuestions = questionnaire.questions || [];
+    
+    // ДИАГНОСТИКА: Проверяем каждую группу отдельно
+    logger.info('🔍 Groups details', {
+      groupsCount: groups.length,
+      groupsWithQuestions: groups.map(g => ({
+        id: g.id,
+        title: g.title,
+        hasQuestions: !!g.questions,
+        questionsType: typeof g.questions,
+        questionsIsArray: Array.isArray(g.questions),
+        questionsCount: Array.isArray(g.questions) ? g.questions.length : 'not array',
+        questions: Array.isArray(g.questions) ? g.questions.map((q: any) => ({
+          id: q.id,
+          code: q.code,
+        })) : 'not array',
+      })),
+    });
+    
     const groupsQuestionsCount = groups.reduce(
-      (sum, g) => sum + (g.questions?.length || 0),
+      (sum, g) => {
+        const qCount = Array.isArray(g.questions) ? g.questions.length : 0;
+        logger.info(`🔍 Group ${g.id} (${g.title}): ${qCount} questions`);
+        return sum + qCount;
+      },
       0
     );
     const totalQuestionsCount = groupsQuestionsCount + plainQuestions.length;
+    
+    logger.info('🔍 Questions count calculation', {
+      groupsQuestionsCount,
+      plainQuestionsCount: plainQuestions.length,
+      totalQuestionsCount,
+    });
 
     // ИСПРАВЛЕНО: Детальное логирование сырых данных из базы для диагностики
     logger.info('Active questionnaire found (raw data from DB)', {
@@ -143,11 +255,17 @@ export async function GET(request: NextRequest) {
       plainQuestionsCount: plainQuestions.length,
       groupsQuestionsCount,
       totalQuestionsCount,
+      hasQuestionGroups: !!questionnaire.questionGroups,
+      hasQuestions: !!questionnaire.questions,
+      questionGroupsType: Array.isArray(questionnaire.questionGroups),
+      questionsType: Array.isArray(questionnaire.questions),
       groupsDetails: groups.map(g => ({
         id: g.id,
         title: g.title,
         position: g.position,
         questionsCount: g.questions?.length || 0,
+        hasQuestions: !!g.questions,
+        questionsType: Array.isArray(g.questions),
         questions: g.questions?.map((q: any) => ({
           id: q.id,
           code: q.code,
@@ -162,9 +280,20 @@ export async function GET(request: NextRequest) {
       })),
     });
     
+    // ДИАГНОСТИКА: Проверяем структуру данных перед проверкой количества
+    logger.info('🔍 Checking questionnaire structure', {
+      totalQuestionsCount,
+      groupsQuestionsCount,
+      plainQuestionsCount: plainQuestions.length,
+      groupsLength: groups.length,
+      plainQuestionsLength: plainQuestions.length,
+      willReturn500: totalQuestionsCount === 0,
+    });
+    
     // ИСПРАВЛЕНО: Проверяем, что анкета содержит вопросы
     // Если вопросов нет - это критическая ошибка, возвращаем 500
     if (totalQuestionsCount === 0) {
+      logger.error('❌ CRITICAL: totalQuestionsCount === 0, returning 500 error');
       logger.error('❌ Active questionnaire has no questions!', {
         questionnaireId: questionnaire.id,
         name: questionnaire.name,

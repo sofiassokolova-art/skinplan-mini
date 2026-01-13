@@ -68,19 +68,6 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     return;
   }
   
-  // ФИКС: Проверяем, что анкета загружена перед выполнением handleNext
-  // ИСПРАВЛЕНО: Проверяем questionnaireRef.current в первую очередь, так как он устанавливается раньше
-  const hasQuestionnaire = questionnaire || questionnaireRef.current;
-  if (!hasQuestionnaire) {
-    clientLogger.warn('⏸️ handleNext: анкета еще не загружена, ждем...', {
-      hasQuestionnaire: !!questionnaire,
-      hasQuestionnaireRef: !!questionnaireRef.current,
-      loading,
-      initCompleted: initCompletedRef.current,
-    });
-    return;
-  }
-  
   handleNextInProgressRef.current = true;
   setIsHandlingNext(true);
   
@@ -88,6 +75,24 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
     // Экраны с showAfterInfoScreenId показываются после других экранов или вопросов, а не в начале
     const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+    
+    // ИСПРАВЛЕНО: Проверяем анкету только если мы НЕ на начальных инфо-экранах
+    // Для начальных инфо-экранов анкета не нужна - они должны показываться независимо от загрузки анкеты
+    const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreens.length;
+    const hasQuestionnaire = questionnaire || questionnaireRef.current;
+    
+    // Если мы не на начальных инфо-экранах и анкета не загружена - блокируем
+    if (!isOnInitialInfoScreens && !hasQuestionnaire) {
+      clientLogger.warn('⏸️ handleNext: анкета еще не загружена, ждем...', {
+        hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        loading,
+        initCompleted: initCompletedRef.current,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+      });
+      return;
+    }
     
     // ФИКС: Всегда логируем handleNext (warn уровень для сохранения в БД)
     clientLogger.warn('🔄 handleNext: вызов', {
@@ -105,8 +110,18 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
 
     // ВАЖНО: При повторном прохождении (isRetakingQuiz && !showRetakeScreen) пропускаем все начальные info screens
     // showRetakeScreen = true означает, что показывается экран выбора тем, и мы еще не начали перепрохождение
+    // ИСПРАВЛЕНО: Разрешаем пропуск начальных инфо-экранов даже без анкеты (она может загрузиться позже)
     if (isRetakingQuiz && !showRetakeScreen && currentInfoScreenIndex < initialInfoScreens.length) {
-      if (!questionnaire) return;
+      // Не блокируем переход, даже если анкета еще не загружена
+      // Анкета должна загрузиться в фоне
+      if (!hasQuestionnaire) {
+        clientLogger.warn('⚠️ Повторное прохождение: анкета еще не загружена, но разрешаем переход', {
+          hasQuestionnaire: !!questionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          loading,
+          initCompleted: initCompletedRef.current,
+        });
+      }
       const newInfoIndex = initialInfoScreens.length;
       setCurrentInfoScreenIndex(newInfoIndex);
       // Если currentQuestionIndex = 0, начинаем с первого вопроса
@@ -152,7 +167,19 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     }
 
     if (currentInfoScreenIndex === initialInfoScreens.length - 1) {
-      if (!questionnaire) return;
+      // ИСПРАВЛЕНО: Проверяем анкету только при переходе к вопросам
+      // Если анкета не загружена, все равно переходим к вопросам (они могут загрузиться позже)
+      // Но логируем предупреждение для диагностики
+      if (!hasQuestionnaire) {
+        clientLogger.warn('⚠️ Переход к вопросам без анкеты - анкета может загрузиться позже', {
+          hasQuestionnaire: !!questionnaire,
+          hasQuestionnaireRef: !!questionnaireRef.current,
+          loading,
+          initCompleted: initCompletedRef.current,
+        });
+        // НЕ блокируем переход - разрешаем переход к вопросам, даже если анкета еще не загружена
+        // Это позволит пользователю видеть инфо-экраны, даже если API вернул пустую анкету
+      }
       const newInfoIndex = initialInfoScreens.length;
       // ФИКС: Логируем переход к вопросам после последнего инфо-экрана
       clientLogger.warn('🔄 handleNext: переход к вопросам после последнего инфо-экрана', {
