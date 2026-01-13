@@ -17,6 +17,8 @@ import { filterQuestions, getEffectiveAnswers } from '@/lib/quiz/filterQuestions
 import * as userPreferences from '@/lib/user-preferences';
 import { loadQuestionnaire as loadQuestionnaireFn, type LoadQuestionnaireParams } from '@/lib/quiz/loadQuestionnaire';
 import { handleNext as handleNextFn, type HandleNextParams } from '@/lib/quiz/handlers/handleNext';
+import { handleAnswer as handleAnswerFn } from '@/lib/quiz/handlers/handleAnswer';
+import { handleBack as handleBackFn } from '@/lib/quiz/handlers/handleBack';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { useQuizView } from '@/lib/quiz/hooks/useQuizView';
 import { useQuizStateMachine } from '@/lib/quiz/hooks/useQuizStateMachine';
