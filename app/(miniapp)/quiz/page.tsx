@@ -4086,7 +4086,7 @@ export default function QuizPage() {
       }
       return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
-  }, [questionnaire, quizStateMachine.questionnaire?.id, questionnaireRef.current?.id]); // ИСПРАВЛЕНО: Добавлен questionnaireRef.current?.id для пересчета при восстановлении после ремоунта
+  }, [questionnaire?.id, quizStateMachine.questionnaire?.id]); // ИСПРАВЛЕНО: Используем только ID, а не объекты, чтобы избежать лишних пересчетов
   
   // УДАЛЕНО: Избыточные useEffect для синхронизации questionnaire
   // Вся синхронизация теперь выполняется в едином useEffect выше (строки 211-251)
@@ -4374,7 +4374,7 @@ export default function QuizPage() {
       }
       return fallback;
     }
-  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire, extractQuestionsFromQuestionnaire]);
+  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire?.id]); // ИСПРАВЛЕНО: Убрали extractQuestionsFromQuestionnaire (стабильная функция) и используем questionnaire?.id вместо объекта
   
   // КРИТИЧНО: Синхронизируем allQuestionsPrevRef с allQuestions после каждого вычисления
   // Это гарантирует, что ref всегда содержит актуальное значение для fallback
