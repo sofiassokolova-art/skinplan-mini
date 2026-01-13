@@ -2,7 +2,7 @@
 // Вынесена функция handleNext из quiz/page.tsx для улучшения читаемости и поддержки
 
 import { clientLogger } from '@/lib/client-logger';
-import { INFO_SCREENS, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { INFO_SCREENS, getInitialInfoScreens, getInfoScreenAfterQuestion, getNextInfoScreenAfterScreen, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 // Используем any для типов, так как в page.tsx используются локальные интерфейсы
 type Questionnaire = any;
@@ -72,9 +72,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
   setIsHandlingNext(true);
   
   try {
-    // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
-    // Экраны с showAfterInfoScreenId показываются после других экранов или вопросов, а не в начале
-    const initialInfoScreens = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+    // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
+    const initialInfoScreens = getInitialInfoScreens();
     
     // ИСПРАВЛЕНО: Проверяем анкету только если мы НЕ на начальных инфо-экранах
     // Для начальных инфо-экранов анкета не нужна - они должны показываться независимо от загрузки анкеты

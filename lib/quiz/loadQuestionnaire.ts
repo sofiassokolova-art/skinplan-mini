@@ -160,6 +160,34 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
           message: errorMessage,
           questionnaireId: errorData?.questionnaireId,
         });
+        
+        // ИСПРАВЛЕНО: Для нового пользователя создаем минимальную анкету даже при 500 ошибке
+        // Это позволяет показать инфо-экраны и дать пользователю понять, что происходит
+        // Проверяем, является ли это новым пользователем (нет initData)
+        const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+        const isNewUser = !hasInitData;
+        if (isNewUser) {
+          clientLogger.log('ℹ️ New user (no initData) - creating minimal questionnaire despite 500 error to allow info screens', {
+            hasInitData: false,
+          });
+          const minimalQuestionnaire = {
+            id: errorData?.questionnaireId || 0,
+            name: 'Questionnaire',
+            version: '1.0',
+            groups: [],
+            questions: [],
+          };
+          questionnaireRef.current = minimalQuestionnaire;
+          setQuestionnaire(minimalQuestionnaire);
+          setLoading(false);
+          loadQuestionnaireInProgressRef.current = false;
+          clientLogger.log('✅ Created minimal questionnaire for new user despite 500 error', {
+            questionnaireId: minimalQuestionnaire.id,
+          });
+          return minimalQuestionnaire;
+        }
+        
+        // Для существующих пользователей показываем ошибку
         setError(errorMessage || 'Анкета временно недоступна. Пожалуйста, попробуйте позже.');
         setLoading(false);
         questionnaireRef.current = null;

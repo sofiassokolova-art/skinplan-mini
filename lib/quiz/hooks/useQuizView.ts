@@ -3,7 +3,7 @@
 // Упрощает условия рендеринга в quiz/page.tsx
 
 import { useMemo } from 'react';
-import { INFO_SCREENS, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
+import { INFO_SCREENS, getInitialInfoScreens, type InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface UseQuizViewParams {
   // State
@@ -82,9 +82,8 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     }
 
     // 4. Начальные информационные экраны
-    const initialInfoScreens = INFO_SCREENS.filter(
-      screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId
-    );
+    // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
+    const initialInfoScreens = getInitialInfoScreens();
 
     // Проверяем, нужно ли показывать начальные экраны
     const shouldShowInitialInfoScreen = (() => {

@@ -26,6 +26,12 @@ export interface InfoScreen {
   content?: Testimonial[] | InfoScreenProduct[] | any; // Дополнительные данные для кастомного рендеринга
 }
 
+// ИСПРАВЛЕНО: Единая функция для получения начальных инфо-экранов
+// Начальные экраны - это те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+export function getInitialInfoScreens(): InfoScreen[] {
+  return INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId);
+}
+
 export const INFO_SCREENS: InfoScreen[] = [
   // 1) Подбери уход для своей кожи со SkinIQ - начальный экран
   {
