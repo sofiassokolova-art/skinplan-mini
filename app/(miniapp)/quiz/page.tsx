@@ -4702,7 +4702,7 @@ export default function QuizPage() {
     if (allQuestions.length > 0 && isRetakingQuiz && !showRetakeScreen) {
       // Переходим сразу к первому вопросу, пропуская все начальные инфо-экраны
       // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
-      const initialInfoScreensCount = INFO_SCREENS.filter(screen => !screen.showAfterQuestionCode && !screen.showAfterInfoScreenId).length;
+      const initialInfoScreensCount = getInitialInfoScreens().length;
       // ВАЖНО: Всегда устанавливаем currentInfoScreenIndex в initialInfoScreensCount при перепрохождении
       // Это гарантирует, что начальные инфо-экраны не будут показаны
       // ИСПРАВЛЕНО: Используем функциональное обновление, чтобы избежать stale closure
