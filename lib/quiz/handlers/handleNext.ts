@@ -236,7 +236,31 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       return;
     }
 
-    if (!questionnaire) return;
+    // ИСПРАВЛЕНО: Не блокируем обработку вопросов, если анкета еще не загружена
+    // Анкета может загружаться в фоне, а вопросы уже могут быть доступны через questionnaireRef или allQuestions
+    // Проверяем только если мы действительно на вопросах (не на инфо-экранах) И нет вопросов в allQuestions
+    const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
+    if (isOnQuestions && !questionnaire && !questionnaireRef.current && allQuestions.length === 0) {
+      clientLogger.warn('⏸️ handleNext: анкета не загружена и нет вопросов - ждем...', {
+        hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        allQuestionsLength: allQuestions.length,
+      });
+      return;
+    }
+    
+    // ДИАГНОСТИКА: Логируем состояние при обработке вопросов
+    if (isOnQuestions) {
+      clientLogger.log('🔍 handleNext: обработка вопросов', {
+        hasQuestionnaire: !!questionnaire,
+        hasQuestionnaireRef: !!questionnaireRef.current,
+        allQuestionsLength: allQuestions.length,
+        currentQuestionIndex,
+        isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
+      });
+    }
 
     // ИСПРАВЛЕНО: Проверяем, что currentQuestionIndex валиден для текущего allQuestions
     // При перепрохождении анкета может загружаться асинхронно, поэтому нужно корректно обрабатывать
