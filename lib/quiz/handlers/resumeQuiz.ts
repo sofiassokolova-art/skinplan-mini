@@ -1,0 +1,208 @@
+// lib/quiz/handlers/resumeQuiz.ts
+// Функция для восстановления прогресса анкеты
+
+import { clientLogger } from '@/lib/client-logger';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
+import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import type { SavedProgress, Questionnaire } from '@/lib/quiz/types';
+
+export interface ResumeQuizParams {
+  savedProgress: SavedProgress | null;
+  questionnaire: Questionnaire | null;
+  redirectInProgressRef: React.MutableRefObject<boolean>;
+  initCompletedRef: React.MutableRefObject<boolean>;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  hasResumed: boolean;
+  currentInfoScreenIndex: number;
+  currentQuestionIndex: number;
+  hasResumedRef: React.MutableRefObject<boolean>;
+  setHasResumed: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowResumeScreen: React.Dispatch<React.SetStateAction<boolean>>;
+  setSavedProgress: React.Dispatch<React.SetStateAction<SavedProgress | null>>;
+  loadProgressInProgressRef: React.MutableRefObject<boolean>;
+  progressLoadInProgressRef: React.MutableRefObject<boolean>;
+  setAnswers: React.Dispatch<React.SetStateAction<Record<number, string | string[]>>>;
+  setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
+  setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
+  resumeCompletedRef: React.MutableRefObject<boolean>;
+}
+
+export function resumeQuiz(params: ResumeQuizParams): void {
+  // КРИТИЧНО: Проверяем флаг quiz_just_submitted ПЕРЕД восстановлением прогресса
+  // Это предотвращает редирект на первый экран после отправки ответов
+  const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true' : false;
+  if (justSubmitted) {
+    // ИСПРАВЛЕНО: Guard против множественных редиректов
+    if (params.redirectInProgressRef.current) {
+      return; // Редирект уже в процессе
+    }
+    params.redirectInProgressRef.current = true;
+    clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
+      sessionStorage.removeItem('quiz_init_done');
+      params.initCompletedRef.current = true;
+      params.setLoading(false);
+      window.location.replace('/plan');
+    }
+    return;
+  }
+  
+  if (!params.savedProgress || !params.questionnaire) {
+    console.error('❌ resumeQuiz: savedProgress or questionnaire is missing', { savedProgress: !!params.savedProgress, questionnaire: !!params.questionnaire });
+    return;
+  }
+  
+  // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+  const initialInfoScreens = getInitialInfoScreens();
+  
+  // ФИКС: Всегда логируем resumeQuiz (warn уровень для сохранения в БД)
+  clientLogger.warn('🔄 resumeQuiz: Восстанавливаем прогресс', {
+    questionIndex: params.savedProgress.questionIndex,
+    infoScreenIndex: params.savedProgress.infoScreenIndex,
+    answersCount: Object.keys(params.savedProgress.answers).length,
+    initialInfoScreensLength: initialInfoScreens.length,
+    currentHasResumed: params.hasResumed,
+    currentInfoScreenIndex: params.currentInfoScreenIndex,
+    currentQuestionIndex: params.currentQuestionIndex,
+  });
+  
+  // ВАЖНО: Сначала устанавливаем hasResumed и showResumeScreen СИНХРОННО,
+  // чтобы предотвратить повторную загрузку прогресса и показ экрана "Вы не завершили анкету"
+  // Используем ref для синхронной установки, чтобы асинхронные функции сразу видели новое значение
+  params.hasResumedRef.current = true;
+  params.setHasResumed(true);
+  params.setShowResumeScreen(false); // Устанавливаем сразу, чтобы предотвратить повторное появление экрана
+  
+  // ВАЖНО: Устанавливаем initCompletedRef, чтобы предотвратить повторную инициализацию
+  // после того, как пользователь продолжил анкету
+  if (!params.initCompletedRef.current) {
+    params.initCompletedRef.current = true;
+    clientLogger.log('✅ initCompletedRef установлен в resumeQuiz для предотвращения повторной инициализации');
+  }
+  
+  // ВАЖНО: Очищаем localStorage СРАЗУ, чтобы предотвратить повторную загрузку прогресса
+  // ИСПРАВЛЕНО: Прогресс хранится в БД, localStorage больше не используется
+  clientLogger.log('✅ Прогресс хранится в БД');
+  
+  // ВАЖНО: Сохраняем копию savedProgress перед очисткой, так как мы будем использовать его данные
+  const progressToRestore = { ...params.savedProgress };
+  
+  // ВАЖНО: Очищаем savedProgress СРАЗУ, чтобы предотвратить показ экрана "Вы не завершили анкету"
+  // даже если loadSavedProgressFromServer установит setShowResumeScreen(true) позже
+  params.setSavedProgress(null);
+  
+  // ИСПРАВЛЕНО: Устанавливаем флаги, чтобы предотвратить повторные вызовы loadSavedProgressFromServer
+  // Это критично для Telegram Mini App, где могут быть особенности с рендерингом
+  params.loadProgressInProgressRef.current = true;
+  params.progressLoadInProgressRef.current = true;
+  clientLogger.log('🔒 Установлены флаги для предотвращения повторных загрузок прогресса');
+  
+  // Восстанавливаем прогресс из сохраненной копии
+  params.setAnswers(progressToRestore.answers);
+  
+  // ВАЖНО: Всегда пропускаем начальные экраны, если пользователь уже начал отвечать на вопросы
+  // Если infoScreenIndex указывает на начальный экран, но вопрос уже начался - пропускаем начальные экраны
+  if (progressToRestore.infoScreenIndex >= initialInfoScreens.length) {
+    // Начальные экраны пройдены, переходим к вопросам
+    clientLogger.log('✅ resumeQuiz: Начальные экраны пройдены, переходим к вопросу', progressToRestore.questionIndex);
+    params.setCurrentQuestionIndex(progressToRestore.questionIndex);
+    // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(progressToRestore.questionIndex));
+      } catch (err) {
+        clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+      }
+    }
+    params.setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
+  } else if (progressToRestore.questionIndex > 0 || Object.keys(progressToRestore.answers).length > 0) {
+    // Пользователь уже начал отвечать, но infoScreenIndex еще на начальных экранах
+    // Пропускаем все начальные экраны и переходим к сохранённому вопросу
+    clientLogger.log('✅ resumeQuiz: Пропускаем начальные экраны, переходим к вопросу', progressToRestore.questionIndex);
+    params.setCurrentQuestionIndex(progressToRestore.questionIndex);
+    // ФИКС: Сохраняем currentQuestionIndex в sessionStorage при восстановлении прогресса
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION, String(progressToRestore.questionIndex));
+      } catch (err) {
+        clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
+      }
+    }
+    params.setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
+  } else {
+    // Пользователь еще не начал отвечать, начинаем с начальных экранов
+    // ВАЖНО: Проверяем флаг quiz_just_submitted перед сбросом currentQuestionIndex
+    const justSubmitted = typeof window !== 'undefined' ? sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED) === 'true' : false;
+    if (justSubmitted) {
+      // ИСПРАВЛЕНО: Guard против множественных редиректов
+      if (params.redirectInProgressRef.current) {
+        return; // Редирект уже в процессе
+      }
+      params.redirectInProgressRef.current = true;
+      clientLogger.log('⚠️ resumeQuiz: Флаг quiz_just_submitted установлен, пропускаем восстановление прогресса и редиректим на /plan');
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.JUST_SUBMITTED);
+        window.location.replace('/plan');
+      }
+      return;
+    }
+    
+    // ФИКС: Если infoScreenIndex = 0, но пользователь уже нажал "Продолжить",
+    // пропускаем начальные экраны и переходим к вопросам, чтобы не редиректить на первый экран
+    // Это предотвращает циклические редиректы после нажатия "Продолжить"
+    if (progressToRestore.infoScreenIndex === 0) {
+      // ФИКС: Всегда логируем (warn уровень для сохранения в БД)
+      clientLogger.warn('✅ resumeQuiz: infoScreenIndex = 0, но пользователь уже нажал "Продолжить" - пропускаем начальные экраны', {
+        infoScreenIndex: progressToRestore.infoScreenIndex,
+        questionIndex: progressToRestore.questionIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        settingCurrentInfoScreenIndex: initialInfoScreens.length,
+      });
+      params.setCurrentQuestionIndex(0);
+      params.setCurrentInfoScreenIndex(initialInfoScreens.length); // Пропускаем все начальные экраны
+    } else {
+      // ФИКС: Всегда логируем (warn уровень для сохранения в БД)
+      clientLogger.warn('✅ resumeQuiz: Начинаем с начальных экранов', {
+        infoScreenIndex: progressToRestore.infoScreenIndex,
+        questionIndex: progressToRestore.questionIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+      });
+      params.setCurrentQuestionIndex(0);
+      params.setCurrentInfoScreenIndex(progressToRestore.infoScreenIndex);
+    }
+  }
+  
+  // ФИКС: Всегда логируем завершение resumeQuiz (warn уровень для сохранения в БД)
+  clientLogger.warn('✅ resumeQuiz: Прогресс восстановлен', {
+    hasResumed: true,
+    showResumeScreen: false,
+    savedProgress: null,
+    currentInfoScreenIndex: params.currentInfoScreenIndex,
+    currentQuestionIndex: params.currentQuestionIndex,
+    questionIndex: progressToRestore.questionIndex,
+    infoScreenIndex: progressToRestore.infoScreenIndex,
+    answersCount: Object.keys(progressToRestore.answers).length,
+    settingCurrentInfoScreenIndex: progressToRestore.infoScreenIndex === 0 ? initialInfoScreens.length : progressToRestore.infoScreenIndex,
+  });
+  
+  // ФИКС: Защита от сброса currentInfoScreenIndex после resumeQuiz
+  // Устанавливаем ref, чтобы другие useEffect знали, что resumeQuiz уже выполнен
+  // и не должны сбрасывать currentInfoScreenIndex на 0
+  params.resumeCompletedRef.current = true;
+  
+  // ФИКС: Небольшая задержка для проверки, что состояние установлено правильно
+  setTimeout(() => {
+    if (params.resumeCompletedRef.current && params.currentInfoScreenIndex === 0 && progressToRestore.infoScreenIndex === 0) {
+      // Если после resumeQuiz currentInfoScreenIndex все еще 0, значит что-то сбросило его
+      // Восстанавливаем правильное значение
+      clientLogger.warn('🔧 ФИКС: currentInfoScreenIndex сброшен на 0 после resumeQuiz, восстанавливаем', {
+        currentInfoScreenIndex: params.currentInfoScreenIndex,
+        progressToRestoreInfoScreenIndex: progressToRestore.infoScreenIndex,
+        settingTo: initialInfoScreens.length,
+      });
+      params.setCurrentInfoScreenIndex(initialInfoScreens.length);
+    }
+  }, 200);
+}
+
