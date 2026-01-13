@@ -12,6 +12,7 @@ import { FixedContinueButton, TinderButtons } from '@/components/quiz/buttons';
 import { TestimonialsCarousel, ProductsGrid } from '@/components/quiz/content';
 import { clientLogger } from '@/lib/client-logger';
 import { getInitialInfoScreens } from '../info-screens';
+import { QuizErrorDisplay } from './QuizErrorDisplay';
 
 interface QuizInfoScreenProps {
   screen: InfoScreen;
@@ -423,33 +424,8 @@ export function QuizInfoScreen({
           </div>
         )}
 
-        {/* Отображение ошибок */}
-        {error && (
-          <div style={{
-            backgroundColor: '#FEE2E2',
-            border: '1px solid #FCA5A5',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '20px',
-            textAlign: 'center',
-          }}>
-            <div style={{
-              color: '#DC2626',
-              fontWeight: '600',
-              marginBottom: '4px',
-              fontSize: '14px',
-            }}>
-              ❌ Ошибка
-            </div>
-            <div style={{ 
-              color: '#991B1B', 
-              fontSize: '14px',
-              lineHeight: '1.4',
-            }}>
-              {error || 'Произошла ошибка'}
-            </div>
-          </div>
-        )}
+        {/* РЕФАКТОРИНГ: Используем компонент QuizErrorDisplay */}
+        <QuizErrorDisplay error={error} />
 
         {/* РЕФАКТОРИНГ: Используем компонент TestimonialsCarousel */}
         {isTestimonialsScreen && screen.content && Array.isArray(screen.content) && (
