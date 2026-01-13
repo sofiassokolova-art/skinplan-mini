@@ -6615,15 +6615,31 @@ export default function QuizPage() {
         <FixedContinueButton
           ctaText={screen.ctaText}
           onClick={() => {
+                  // ИСПРАВЛЕНО: Определяем, на каком инфо-экране мы находимся
+                  const initialInfoScreens = INFO_SCREENS.filter(s => !s.showAfterQuestionCode && !s.showAfterInfoScreenId);
+                  const isOnInitialInfoScreen = currentInfoScreenIndex < initialInfoScreens.length;
+                  
                   clientLogger.warn('🖱️ Кнопка "Продолжить": клик получен', {
                     handleNextInProgress: handleNextInProgressRef.current,
                     hasQuestionnaire: !!questionnaire,
                     hasQuestionnaireRef: !!questionnaireRef.current,
                     isHandlingNext,
                     questionnaireId: questionnaire?.id || questionnaireRef.current?.id,
+                    currentInfoScreenIndex,
+                    initialInfoScreensLength: initialInfoScreens.length,
+                    isOnInitialInfoScreen,
                   });
-                  if (!handleNextInProgressRef.current && (questionnaire || questionnaireRef.current)) {
-                    clientLogger.warn('✅ Кнопка "Продолжить": вызываем handleNext');
+                  
+                  // ИСПРАВЛЕНО: Для начальных инфо-экранов разрешаем переход без анкеты
+                  // Анкета загружается в фоне, пока пользователь просматривает инфо-экраны
+                  const canProceed = !handleNextInProgressRef.current && 
+                                     (isOnInitialInfoScreen || (questionnaire || questionnaireRef.current));
+                  
+                  if (canProceed) {
+                    clientLogger.warn('✅ Кнопка "Продолжить": вызываем handleNext', {
+                      isOnInitialInfoScreen,
+                      hasQuestionnaire: !!questionnaire || !!questionnaireRef.current,
+                    });
                     handleNext();
                   } else {
                     clientLogger.warn('⏸️ Кнопка "Продолжить": пропущен клик', {
@@ -6631,6 +6647,7 @@ export default function QuizPage() {
                       hasQuestionnaire: !!questionnaire,
                       hasQuestionnaireRef: !!questionnaireRef.current,
                       isHandlingNext,
+                      isOnInitialInfoScreen,
                     });
                   }
                 }}
