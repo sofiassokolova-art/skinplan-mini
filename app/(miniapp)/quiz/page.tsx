@@ -2192,139 +2192,23 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Не используем useEffect, так как он может выполниться после того, как init() уже начал ждать
   loadQuestionnaireRef.current = loadQuestionnaire;
 
+  // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/handlers/handleAnswer.ts
   const handleAnswer = async (questionId: number, value: string | string[]) => {
-    addDebugLog('💾 handleAnswer called', { 
-      questionId, 
-      questionIdType: typeof questionId,
+    return handleAnswerFn({
+      questionId,
       value,
-      currentQuestion: currentQuestion?.id,
-      currentQuestionCode: currentQuestion?.code,
-      questionnaireId: questionnaire?.id,
-      allQuestionsLength: allQuestions.length,
+      currentQuestion,
+      answers,
+      allQuestions,
+      questionnaire,
+      setAnswers,
+      saveProgress,
       currentQuestionIndex,
+      currentInfoScreenIndex,
+      saveQuizProgressMutation,
+      lastSavedAnswerRef,
+      addDebugLog,
     });
-
-    // Валидация: проверяем, что questionId соответствует текущему вопросу
-    if (currentQuestion && currentQuestion.id !== questionId) {
-      console.error('⚠️ Question ID mismatch:', {
-        currentQuestionId: currentQuestion.id,
-        providedQuestionId: questionId,
-        currentQuestionCode: currentQuestion.code,
-      });
-      // Используем ID текущего вопроса вместо переданного
-      questionId = currentQuestion.id;
-    }
-
-    // ИСПРАВЛЕНО: Проверяем, что вопрос существует в анкете (не только в allQuestions)
-    // allQuestions может быть отфильтрован (например, при повторном прохождении исключаются пол и возраст)
-    // Но ответы на эти вопросы все равно должны сохраняться на сервер
-    const questionExistsInAllQuestions = allQuestions.some((q: Question) => q.id === questionId);
-    const questionExistsInQuestionnaire = questionnaire?.questions?.some((q: Question) => q.id === questionId) ||
-                                         questionnaire?.groups?.some((g: any) => 
-                                           g?.questions?.some((q: Question) => q.id === questionId)
-                                         );
-    
-    // ВАЖНО: Если вопрос не найден в анкете, все равно сохраняем ответ в state и localStorage
-    // Это важно, чтобы ответ не потерялся, даже если есть проблема с загрузкой анкеты
-    // При отправке ответов на сервер сервер проверит валидность questionId
-    if (!questionExistsInAllQuestions && !questionExistsInQuestionnaire && allQuestions.length > 0) {
-      console.warn('⚠️ Question ID not found in questionnaire, but saving to state anyway:', {
-        questionId,
-        allQuestionIds: allQuestions.map((q: Question) => q.id),
-        currentQuestionId: currentQuestion?.id,
-        questionnaireId: questionnaire?.id,
-      });
-      // НЕ возвращаемся - продолжаем сохранение в state и localStorage
-      // Сервер проверит валидность questionId при финальной отправке
-    }
-    
-    // ВАЖНО: Если вопрос существует в анкете, но отфильтрован из allQuestions - все равно сохраняем
-    // Это важно для вопросов про пол и возраст, которые фильтруются при повторном прохождении
-    if (!questionExistsInAllQuestions && questionExistsInQuestionnaire) {
-      clientLogger.log('⚠️ Question exists in questionnaire but filtered from allQuestions, saving anyway', {
-        questionId,
-        currentQuestionCode: currentQuestion?.code,
-      });
-    }
-
-    // ОПТИМИЗАЦИЯ: Проверяем, изменился ли ответ
-    // ИСПРАВЛЕНО: Безопасное сравнение с обработкой ошибок
-    const currentAnswer = answers[questionId];
-    let answerChanged = false;
-    try {
-      answerChanged = JSON.stringify(currentAnswer) !== JSON.stringify(value);
-    } catch (compareError) {
-      // Если сравнение не удалось, считаем что ответ изменился для безопасности
-      console.warn('Error comparing answers, assuming changed:', compareError);
-      answerChanged = true;
-    }
-    
-    // ОПТИМИЗАЦИЯ: Дедупликация - проверяем, не сохраняли ли мы уже этот ответ на сервер
-    // ИСПРАВЛЕНО: Безопасное сравнение с обработкой ошибок
-    const lastSaved = lastSavedAnswerRef.current;
-    let isDuplicateServerSave: boolean = false;
-    try {
-      if (lastSaved && lastSaved.questionId === questionId) {
-        isDuplicateServerSave = JSON.stringify(lastSaved.answer) === JSON.stringify(value);
-      }
-    } catch (compareError) {
-      // Если сравнение не удалось, считаем что это не дубликат для безопасности
-      console.warn('Error checking duplicate save, assuming not duplicate:', compareError);
-      isDuplicateServerSave = false;
-    }
-    
-    // Всегда обновляем состояние (даже если не изменилось, для консистентности)
-    const newAnswers = { ...answers, [questionId]: value };
-    setAnswers(newAnswers);
-    
-    // ИСПРАВЛЕНО: Ответы сохраняются только на сервер через API, не в localStorage
-    // Это гарантирует синхронизацию между устройствами и актуальность данных
-    await saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
-    
-    // Пропускаем сохранение на сервер, если это дубликат
-    if (isDuplicateServerSave) {
-      if (process.env.NODE_ENV === 'development') {
-        clientLogger.log('⏭️ Skipping duplicate server save for question', questionId);
-      }
-      return;
-    }
-    
-    // Сохраняем в БД для синхронизации между устройствами (только если Telegram WebApp доступен)
-    // ФИКС: Используем React Query мутацию вместо прямого вызова API
-    if (questionnaire && typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
-      try {
-        const isArray = Array.isArray(value);
-        addDebugLog('📤 Saving to server (React Query)', {
-          questionnaireId: questionnaire?.id,
-          questionId,
-          questionIdType: typeof questionId,
-          hasValue: !!value,
-          isArray,
-        });
-        // ФИКС: Используем React Query мутацию для сохранения прогресса
-        await saveQuizProgressMutation.mutateAsync({
-          questionnaireId: questionnaire.id,
-          questionId,
-          answerValue: isArray ? undefined : (value as string),
-          answerValues: isArray ? (value as string[]) : undefined,
-          questionIndex: currentQuestionIndex,
-          infoScreenIndex: currentInfoScreenIndex,
-        });
-        // Сохраняем информацию о последнем сохраненном ответе для дедупликации
-        lastSavedAnswerRef.current = { questionId, answer: value };
-        clientLogger.log('✅ Successfully saved to server (React Query)');
-      } catch (err: any) {
-        // Если ошибка 401 - это нормально, прогресс сохранен локально
-        if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
-          console.error('❌ Ошибка сохранения прогресса на сервер:', {
-            error: err.message,
-            questionId,
-            questionnaireId: questionnaire?.id,
-            errorDetails: err,
-          });
-        }
-      }
-    }
   };
 
   // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/handlers/handleNext.ts
@@ -2353,51 +2237,20 @@ export default function QuizPage() {
     });
   };
 
+  // РЕФАКТОРИНГ: Функция вынесена в lib/quiz/handlers/handleBack.ts
   const handleBack = () => {
-    // ИСПРАВЛЕНО: Используем единую функцию для получения начальных инфо-экранов
-    const initialInfoScreens = getInitialInfoScreens();
-    
-    // ИСПРАВЛЕНО: Для начальных инфо-экранов анкета не нужна
-    // Проверяем анкету только если мы на вопросах
-    const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length;
-    if (isOnQuestions && !questionnaire && !questionnaireRef.current) {
-      clientLogger.warn('⏸️ handleBack: анкета не загружена, но мы на вопросах - блокируем');
-      return;
-    }
-
-    // Если показывается инфо-экран между вопросами, просто закрываем его
-    if (pendingInfoScreen) {
-      setPendingInfoScreen(null);
-      return;
-    }
-
-    // ИСПРАВЛЕНО: Если мы на первом начальном информационном экране, НЕ возвращаемся на главную
-    // Пользователь может нажать "Назад" в браузере или закрыть анкету вручную
-    // Если пользователь явно зашел на /quiz, он должен видеть анкету, а не быть редиректнутым
-    if (currentInfoScreenIndex === 0) {
-      // Вместо редиректа на главную, просто ничего не делаем или показываем предупреждение
-      // Пользователь может закрыть анкету вручную, если хочет
-      clientLogger.log('ℹ️ Пользователь на первом экране анкеты, но нажал "Назад" - остаемся на странице анкеты');
-      // НЕ делаем редирект - пользователь уже на /quiz и должен видеть анкету
-      return;
-    }
-
-    // Если мы на первом вопросе, возвращаемся к последнему начальному инфо-экрану
-    if (currentInfoScreenIndex === initialInfoScreens.length && currentQuestionIndex === 0) {
-      setCurrentInfoScreenIndex(initialInfoScreens.length - 1);
-      return;
-    }
-
-    // Если мы на начальных информационных экранах, переходим к предыдущему
-    if (currentInfoScreenIndex > 0 && currentInfoScreenIndex < initialInfoScreens.length) {
-      setCurrentInfoScreenIndex(currentInfoScreenIndex - 1);
-      return;
-    }
-
-    // Если мы на вопросах, переходим к предыдущему
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
+    return handleBackFn({
+      currentInfoScreenIndex,
+      currentQuestionIndex,
+      questionnaire,
+      questionnaireRef,
+      pendingInfoScreen,
+      setCurrentInfoScreenIndex,
+      setCurrentQuestionIndex,
+      setPendingInfoScreen,
+      saveProgress,
+      answers,
+    });
   };
 
   useEffect(() => {
