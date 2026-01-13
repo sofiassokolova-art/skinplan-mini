@@ -1575,7 +1575,7 @@ export default function QuizPage() {
         }
       }
     }
-  }, [quizProgressFromQuery?.progress?.answers, isLoadingProgress]); // ИСПРАВЛЕНО: Добавили isLoadingProgress в зависимости
+  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null]); // ИСПРАВЛЕНО: Используем JSON.stringify для стабильности зависимостей
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init
@@ -4404,6 +4404,8 @@ export default function QuizPage() {
   
   // Логируем результат фильтрации после вычисления
   // ИСПРАВЛЕНО: Используем примитивные значения в зависимостях, чтобы избежать React Error #310
+  // ФИКС: Используем мемоизированные значения для answersCount и savedProgressAnswersCount
+  const savedProgressAnswersCount = useMemo(() => Object.keys(savedProgress?.answers || {}).length, [savedProgress?.answers]);
   useEffect(() => {
     // Логируем всегда для отладки
     clientLogger.log('📊 allQuestions state', {
@@ -4411,12 +4413,12 @@ export default function QuizPage() {
       allQuestionsLength: allQuestions.length,
       isRetakingQuiz,
       showRetakeScreen,
-      answersCount: Object.keys(answers).length,
-      savedProgressAnswersCount: Object.keys(savedProgress?.answers || {}).length,
+      answersCount,
+      savedProgressAnswersCount,
       questionIds: allQuestions.map((q: Question) => q.id),
       questionCodes: allQuestions.map((q: Question) => q.code),
     });
-  }, [allQuestions.length, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, Object.keys(savedProgress?.answers || {}).length]);
+  }, [allQuestions.length, allQuestionsRaw.length, isRetakingQuiz, showRetakeScreen, answersCount, savedProgressAnswersCount]);
 
   // ИСПРАВЛЕНО: Обработка edge case - когда allQuestions.length === 0
   // Показываем явное сообщение вместо поломанного UI
