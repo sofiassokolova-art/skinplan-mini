@@ -20,7 +20,8 @@ import { handleNext as handleNextFn, type HandleNextParams } from '@/lib/quiz/ha
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { useQuizView } from '@/lib/quiz/hooks/useQuizView';
 import { useQuizStateMachine } from '@/lib/quiz/hooks/useQuizStateMachine';
-import { useQuizSync } from '@/lib/quiz/utils/quizSync';
+// ОТКЛЮЧЕНО: useQuizSync вызывает бесконечные циклы React Error #310
+// import { useQuizSync } from '@/lib/quiz/utils/quizSync';
 import { useQuestionnaire, useQuizProgress, useSaveQuizProgress } from '@/hooks/useQuiz';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { WelcomeScreen, HowItWorksScreen, PersonalAnalysisScreen } from '@/components/quiz/screens';
@@ -513,15 +514,17 @@ export default function QuizPage() {
   // Ref для отслеживания попыток принудительного сброса loading в рендере
   const loadingResetAttemptedRef = useRef(false);
 
-  // ФИКС: Используем упрощенную синхронизацию через useQuizSync
-  // Это предотвращает бесконечные циклы React error #310 и упрощает код
-  // ВАЖНО: Вызываем после объявления всех refs
-  useQuizSync({
-    stateMachineQuestionnaire: quizStateMachine.questionnaire,
-    setQuestionnaire,
-    questionnaireRef,
-    isSyncingRef,
-  });
+  // ОТКЛЮЧЕНО: useQuizSync вызывает бесконечные циклы React Error #310
+  // Синхронизация questionnaire уже происходит в других местах:
+  // 1. useEffect для синхронизации из React Query (строка 88)
+  // 2. setQuestionnaireWithStateMachine (строка 119)
+  // 3. useEffect для синхронизации questionnaireRef с state (строка 1508)
+  // useQuizSync({
+  //   stateMachineQuestionnaire: quizStateMachine.questionnaire,
+  //   setQuestionnaire,
+  //   questionnaireRef,
+  //   isSyncingRef,
+  // });
 
   // ИСПРАВЛЕНО: Очищаем quiz_just_submitted и isSubmitting при входе на /quiz
   // Это предотвращает показ планового лоадера для нового пользователя из-за "залипшего" флага
@@ -1533,24 +1536,34 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Зависим от quizProgressFromQuery, чтобы восстанавливать answers при каждом обновлении кэша
   const lastRestoredAnswersIdRef = useRef<string | null>(null);
   const answersRef = useRef<Record<number, string | string[]>>({});
+  const answersCountRef = useRef<number>(0);
   useEffect(() => {
     answersRef.current = answers;
+    answersCountRef.current = Object.keys(answers).length;
   }, [answers]);
   
   useEffect(() => {
+    // Не восстанавливаем, если React Query еще загружает
+    if (isLoadingProgress) {
+      return;
+    }
+    
     // Восстанавливаем answers только если они есть в React Query кэше и еще не были восстановлены
-    if (quizProgressFromQuery?.progress?.answers && Object.keys(quizProgressFromQuery.progress.answers).length > 0) {
-      const progressAnswers = quizProgressFromQuery.progress.answers;
+    const progressAnswers = quizProgressFromQuery?.progress?.answers;
+    if (progressAnswers && Object.keys(progressAnswers).length > 0) {
       const answersId = JSON.stringify(progressAnswers);
+      const progressAnswersCount = Object.keys(progressAnswers).length;
       
       // Проверяем, не восстанавливали ли мы уже эти answers
-      if (answersId !== lastRestoredAnswersIdRef.current) {
+      // ИСПРАВЛЕНО: Также проверяем количество answers, чтобы не пропустить восстановление
+      if (answersId !== lastRestoredAnswersIdRef.current || progressAnswersCount > answersCountRef.current) {
         // Проверяем, действительно ли answers изменились (используем ref для стабильности)
         const currentAnswersId = JSON.stringify(answersRef.current);
         if (answersId !== currentAnswersId) {
           clientLogger.log('🔄 Восстанавливаем answers из React Query кэша (после ремоунта или обновления)', {
-            answersCount: Object.keys(progressAnswers).length,
-            previousAnswersCount: Object.keys(answersRef.current).length,
+            answersCount: progressAnswersCount,
+            previousAnswersCount: answersCountRef.current,
+            wasEmpty: answersCountRef.current === 0,
           });
           setAnswers(progressAnswers);
           setSavedProgress({
@@ -1562,7 +1575,7 @@ export default function QuizPage() {
         }
       }
     }
-  }, [quizProgressFromQuery?.progress?.answers]); // ИСПРАВЛЕНО: Убрали answers из зависимостей, используем ref
+  }, [quizProgressFromQuery?.progress?.answers, isLoadingProgress]); // ИСПРАВЛЕНО: Добавили isLoadingProgress в зависимости
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init
