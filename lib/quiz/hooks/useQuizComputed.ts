@@ -93,6 +93,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ГРУППА 2: Вычисление answersCount
   // ============================================
   
+  // ИСПРАВЛЕНО: Используем стабильную зависимость для answersCount
+  // effectiveAnswers может меняться между рендерами, даже если количество ключей не изменилось
+  const effectiveAnswersKeysCount = Object.keys(effectiveAnswers).length;
   const answersCount = useMemo(() => {
     const count = Object.keys(effectiveAnswers).length;
     if (isDev) {
@@ -102,7 +105,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       });
     }
     return count;
-  }, [effectiveAnswers, isDev]);
+  }, [effectiveAnswersKeysCount, isDev]);
 
   // ============================================
   // ГРУППА 3: Вычисление allQuestionsRaw
