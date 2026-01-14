@@ -3270,6 +3270,35 @@ export default function QuizPage() {
     }
   }, [loading, questionnaire?.id, allQuestions.length, currentQuestionIndex, currentQuestion?.id, isShowingInitialInfoScreen, pendingInfoScreen?.id, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, currentInfoScreenIndex, error, allQuestionsRaw.length]);
 
+  // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - НЕ сбрасываем currentInfoScreenIndex, если пользователь уже перешел к вопросам
+  // Это предотвращает редирект на первый экран после 4-го инфо-экрана
+  // КРИТИЧНО: useEffect должен быть вызван ДО любых ранних return (правило хуков React)
+  useEffect(() => {
+    // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - НЕ сбрасываем currentInfoScreenIndex, если пользователь уже перешел к вопросам
+    // Это предотвращает редирект на первый экран после 4-го инфо-экрана
+    if (currentInfoScreenIndexRef.current >= initialInfoScreens.length) {
+      // Пользователь уже на вопросах - НИКОГДА не сбрасываем обратно на начальные экраны
+      return;
+    }
+    
+    // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
+    if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !loading && !resumeCompletedRef.current) {
+      clientLogger.warn('⚠️ isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - исправляем несоответствие и пропускаем начальные экраны', {
+        currentInfoScreenIndex,
+        initialInfoScreensLength: initialInfoScreens.length,
+        hasCurrentScreen: !!initialInfoScreens[currentInfoScreenIndex],
+        isShowingInitialInfoScreen,
+        hasResumed,
+        loading,
+      });
+      // Пропускаем начальные экраны и переходим к вопросам
+      // Устанавливаем currentInfoScreenIndex в initialInfoScreens.length, чтобы пропустить все начальные экраны
+      if (currentInfoScreenIndex < initialInfoScreens.length) {
+        setCurrentInfoScreenIndex(initialInfoScreens.length);
+      }
+    }
+  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, currentInfoScreenIndex, initialInfoScreens.length, isRetakingQuiz, showResumeScreen, loading, hasResumed]);
+
   // РЕФАКТОРИНГ: Используем хук useQuizView для определения текущего экрана
   // Это упрощает условия рендеринга и делает код более читаемым
   // КРИТИЧНО: Хук должен быть вызван ДО любых ранних return
