@@ -512,6 +512,7 @@ export async function POST(request: NextRequest) {
     }
 
     // КРИТИЧНО: Логируем перед сохранением в БД для диагностики
+    // ВАЖНО: Указываем saveToDb: true, чтобы логи сохранялись в PostgreSQL
     logger.info('💾 Сохранение ответа в БД (Prisma upsert)', {
       userId,
       questionnaireId,
@@ -523,6 +524,9 @@ export async function POST(request: NextRequest) {
       answerValues: answerValues || null,
       questionIndex,
       infoScreenIndex,
+    }, {
+      userId: userId || undefined,
+      saveToDb: true, // КРИТИЧНО: Сохраняем в БД для диагностики
     });
 
     // ИСПРАВЛЕНО: Используем upsert вместо delete + create для предотвращения race condition
@@ -549,6 +553,7 @@ export async function POST(request: NextRequest) {
     });
 
     // КРИТИЧНО: Логируем после успешного сохранения
+    // ВАЖНО: Указываем saveToDb: true, чтобы логи сохранялись в PostgreSQL
     logger.info('✅ Ответ успешно сохранен в БД', {
       userId,
       questionnaireId,
@@ -556,6 +561,9 @@ export async function POST(request: NextRequest) {
       savedAnswerId: savedAnswer.id,
       answerValue: savedAnswer.answerValue,
       answerValues: savedAnswer.answerValues,
+    }, {
+      userId: userId || undefined,
+      saveToDb: true, // КРИТИЧНО: Сохраняем в БД для диагностики
     });
 
     // ВОССТАНОВЛЕНО: Сохраняем прогресс в KV для новых пользователей (когда нет профиля)
@@ -637,7 +645,8 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     
     // КРИТИЧНО: Логируем все ошибки сохранения для диагностики
-    logger.error('❌ Ошибка сохранения ответа в БД', {
+    // ВАЖНО: error логи сохраняются в БД по умолчанию, но явно указываем saveToDb: true
+    logger.error('❌ Ошибка сохранения ответа в БД', error, {
       userId,
       questionnaireId,
       questionId,
@@ -648,6 +657,9 @@ export async function POST(request: NextRequest) {
       errorMessage: error?.message,
       errorMeta: error?.meta,
       errorStack: error?.stack?.substring(0, 500),
+    }, {
+      userId: userId || undefined,
+      saveToDb: true, // КРИТИЧНО: Сохраняем в БД для диагностики
     });
     
     // ИСПРАВЛЕНО: Обрабатываем ошибку уникального ограничения отдельно
