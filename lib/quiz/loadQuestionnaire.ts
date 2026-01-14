@@ -287,7 +287,12 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     const isEmptyObject = !data || (typeof data === 'object' && Object.keys(data).length === 0);
     const hasNoKeyFields = !hasId && !hasMeta;
     
-    if (isEmptyObject || hasNoKeyFields) {
+    // ИСПРАВЛЕНО: Если есть _meta, но нет вопросов, это может быть нормально для нового пользователя
+    // Проверяем _meta.hasProfile для определения нового пользователя
+    const hasProfileFromMeta = data?._meta?.hasProfile ?? false;
+    const isNewUserFromMeta = !hasProfileFromMeta;
+    
+    if (isEmptyObject || (hasNoKeyFields && !hasMeta)) {
       // ИСПРАВЛЕНО: Логируем детали для диагностики
       clientLogger.error('❌ Empty or null data received from API', {
         data,
@@ -313,6 +318,31 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
       loadQuestionnaireInProgressRef.current = false;
       loadQuestionnaireAttemptedRef.current = false; // Сбрасываем, чтобы можно было попробовать снова
       return null;
+    }
+    
+    // ИСПРАВЛЕНО: Если есть _meta, но нет id и нет вопросов, создаем минимальную анкету для нового пользователя
+    if (hasMeta && !hasId && totalQuestionsInResponse === 0 && isNewUserFromMeta) {
+      clientLogger.log('ℹ️ API returned data with _meta but no id/questions - creating minimal questionnaire for new user', {
+        hasMeta,
+        hasId,
+        totalQuestionsInResponse,
+        isNewUserFromMeta,
+      });
+      const minimalQuestionnaire = {
+        id: 0,
+        name: 'Questionnaire',
+        version: '1.0',
+        groups: [],
+        questions: [],
+      };
+      questionnaireRef.current = minimalQuestionnaire;
+      setQuestionnaire(minimalQuestionnaire);
+      setLoading(false);
+      loadQuestionnaireInProgressRef.current = false;
+      clientLogger.log('✅ Created minimal questionnaire for new user (from _meta)', {
+        questionnaireId: minimalQuestionnaire.id,
+      });
+      return minimalQuestionnaire;
     }
     
     if (!hasAnyQuestions) {
