@@ -68,6 +68,17 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     return;
   }
   
+  // ФИКС: Логирование состояния pendingInfoScreen при входе в handleNext
+  if (isDev || true) { // Всегда логируем для диагностики
+    clientLogger.warn('🔍 handleNext: вход в функцию', {
+      pendingInfoScreen: pendingInfoScreen ? pendingInfoScreen.id : null,
+      hasPendingInfoScreen: !!pendingInfoScreen,
+      currentQuestionIndex,
+      currentInfoScreenIndex,
+      isRetakingQuiz,
+    });
+  }
+  
   handleNextInProgressRef.current = true;
   setIsHandlingNext(true);
   
