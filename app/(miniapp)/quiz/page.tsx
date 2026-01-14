@@ -1042,8 +1042,11 @@ export default function QuizPage() {
   // КРИТИЧНО: Выполняем восстановление в useLayoutEffect для синхронного выполнения ДО рендера
   // КРИТИЧНО: НЕ используем answers в зависимостях, чтобы избежать React error #300
   // Используем answersCountRef для проверки пустоты вместо answers
+  // КРИТИЧНО: useLayoutEffect должен вызываться всегда, независимо от условий
+  // Это предотвращает React error #300 (разное количество хуков между рендерами)
   useLayoutEffect(() => {
     // КРИТИЧНО: Сначала пытаемся восстановить из sessionStorage (быстро и синхронно)
+    // Используем answersCountRef вместо answers для проверки пустоты
     if (typeof window !== 'undefined' && answersCountRef.current === 0) {
       try {
         const savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
