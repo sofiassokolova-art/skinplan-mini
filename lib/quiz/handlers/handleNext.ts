@@ -414,10 +414,44 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // ФИКС: Проверяем, что мы НЕ только что закрыли инфо-экран и перешли к этому вопросу
     // Это предотвращает повторное показ инфо-экрана сразу после перехода к вопросу
     // Проверяем это через sessionStorage - если мы только что закрыли инфо-экран, не показываем его снова
+    // ИСПРАВЛЕНО: Флаг блокирует показ инфо-экрана только если пользователь еще НЕ ответил на вопрос
+    // Если пользователь уже ответил на вопрос и нажимает "Далее", инфо-экран должен показываться
     const justClosedInfoScreen = typeof window !== 'undefined' && 
       sessionStorage.getItem('quiz_justClosedInfoScreen') === 'true';
     
-    if (currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion && !justClosedInfoScreen) {
+    // ИСПРАВЛЕНО: Флаг блокирует показ инфо-экрана только если пользователь еще НЕ ответил на вопрос
+    // Если пользователь уже ответил на вопрос и нажимает "Далее", инфо-экран должен показываться
+    // Это исправляет проблему, когда после ответа на второй вопрос инфо-экран не показывается
+    const shouldBlockInfoScreen = justClosedInfoScreen && !hasAnsweredCurrentQuestion;
+    
+    // ФИКС: Логирование для диагностики проблемы с застреванием на втором вопросе
+    if (isDev && currentQuestion && hasAnsweredCurrentQuestion) {
+      clientLogger.warn('🔍 Проверка инфо-экрана для вопроса:', {
+        questionIndex: currentQuestionIndex,
+        questionCode: currentQuestion.code,
+        questionId: currentQuestion.id,
+        hasAnswered: hasAnsweredCurrentQuestion,
+        justClosedInfoScreen,
+        shouldBlockInfoScreen,
+        pendingInfoScreen: !!pendingInfoScreen,
+        isRetakingQuiz,
+      });
+    }
+    
+    // ФИКС: Логирование, если условие не выполняется
+    if (isDev && currentQuestion && hasAnsweredCurrentQuestion && (!currentQuestion || isRetakingQuiz || pendingInfoScreen || !hasAnsweredCurrentQuestion || shouldBlockInfoScreen)) {
+      clientLogger.warn('⚠️ Условие для проверки инфо-экрана не выполняется:', {
+        questionIndex: currentQuestionIndex,
+        questionCode: currentQuestion?.code,
+        hasCurrentQuestion: !!currentQuestion,
+        isRetakingQuiz,
+        hasPendingInfoScreen: !!pendingInfoScreen,
+        hasAnswered: hasAnsweredCurrentQuestion,
+        shouldBlock: shouldBlockInfoScreen,
+      });
+    }
+    
+    if (currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion && !shouldBlockInfoScreen) {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
       if (!currentQuestion.code) {
@@ -446,6 +480,15 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             hasAnswered: true,
           });
           return;
+        } else {
+          // ФИКС: Логирование, если инфо-экран не найден для вопроса
+          if (isDev) {
+            clientLogger.warn('⚠️ Инфо-экран не найден для вопроса:', {
+              questionCode: currentQuestion.code,
+              questionIndex: currentQuestionIndex,
+              questionId: currentQuestion.id,
+            });
+          }
         }
       }
     }

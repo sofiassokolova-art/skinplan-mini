@@ -2333,36 +2333,10 @@ export default function QuizPage() {
       }
     }
     
-    // ФИКС: Для нового пользователя принудительно пропускаем инфо-скрины после загрузки анкеты
-    // Это гарантирует, что новый пользователь увидит вопросы
-    // ВАЖНО: Защита от повторных сбросов
-    // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
-    // ВАЖНО: Не выполняем, если пользователь уже проходит инфо-экраны (currentInfoScreenIndex > 0), чтобы не сбрасывать на первый экран
-    if (questionnaire && allQuestions.length > 0 && !loading && !hasResumed && !showResumeScreen && !isRetakingQuiz && !firstScreenResetRef.current && !resumeCompletedRef.current && currentInfoScreenIndex === 0) {
-      const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
-      const isNewUser = hasNoSavedProgress && currentInfoScreenIndex === 0 && currentQuestionIndex === 0;
-      
-      if (isNewUser) {
-        // Небольшая задержка, чтобы дать время другим useEffect выполниться
-        const timeoutId = setTimeout(() => {
-          if (currentInfoScreenIndex === 0 && currentQuestionIndex === 0 && allQuestions.length > 0 && !firstScreenResetRef.current) {
-            firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
-            if (isDev) {
-              clientLogger.log('🔧 ФИКС: Новый пользователь - принудительно пропускаем инфо-скрины', {
-                currentInfoScreenIndex,
-                initialInfoScreensLength: initialInfoScreens.length,
-                allQuestionsLength: allQuestions.length,
-              });
-            }
-            setCurrentInfoScreenIndex(initialInfoScreens.length);
-            setPendingInfoScreen(null);
-            setCurrentQuestionIndex(0);
-          }
-        }, 100);
-        
-        return () => clearTimeout(timeoutId);
-      }
-    }
+    // ИСПРАВЛЕНО: Убрана логика автоматического пропуска начальных инфо-экранов для нового пользователя
+    // Теперь начальные инфо-экраны всегда показываются для нового пользователя
+    // Пользователь должен пройти все начальные инфо-экраны, нажимая "Продолжить"
+    // Это обеспечивает правильный UX - пользователь видит все начальные экраны перед началом вопросов
   }, [currentInfoScreenIndex, initialInfoScreens.length, pendingInfoScreen, isRetakingQuiz, showResumeScreen, hasResumed, currentQuestionIndex, allQuestions.length, Object.keys(answers).length, isDev, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, loading, questionnaire?.id, setCurrentQuestionIndex, setCurrentInfoScreenIndex, setPendingInfoScreen]);
 
   // РЕФАКТОРИНГ: isShowingInitialInfoScreen, currentInitialInfoScreen, currentQuestion теперь в useQuizComputed

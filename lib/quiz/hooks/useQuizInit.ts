@@ -517,6 +517,22 @@ export function useQuizInit(params: UseQuizInitParams) {
                   savedInfoScreenIndex = parsed;
                 }
               }
+              
+              // ИСПРАВЛЕНО: Для нового пользователя очищаем sessionStorage, если там сохранен индекс, пропускающий инфо-экраны
+              // Это гарантирует, что новый пользователь увидит все начальные инфо-экраны
+              if (hasNoSavedProgress && savedInfoScreenIndex !== null && savedInfoScreenIndex >= initialInfoScreensForReset.length) {
+                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+                if (savedQuestionIndex !== null && savedQuestionIndex > 0) {
+                  sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+                }
+                clientLogger.log('🧹 Очищен sessionStorage для нового пользователя, чтобы показать все начальные инфо-экраны', {
+                  savedInfoScreenIndex,
+                  savedQuestionIndex,
+                  initialInfoScreensLength: initialInfoScreensForReset.length,
+                });
+                savedInfoScreenIndex = null;
+                savedQuestionIndex = null;
+              }
             } catch (err) {
               // Игнорируем ошибки sessionStorage
             }
@@ -543,33 +559,17 @@ export function useQuizInit(params: UseQuizInitParams) {
               setCurrentInfoScreenIndex(initialInfoScreensForReset.length);
             }
           } else {
-            // Только если НЕТ сохраненного индекса - проверяем, новый ли это пользователь
-            const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && !hasPassedInitialScreens;
-            
-            if (isNewUser) {
-              // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
-              if (currentInfoScreenIndex < initialInfoScreensForReset.length) {
-                firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
-                clientLogger.log('🔧 ФИКС: Новый пользователь - пропускаем инфо-скрины, стартуем с вопросов', {
-                  currentInfoScreenIndex,
-                  initialInfoScreensLength: initialInfoScreensForReset.length,
-                  allQuestionsLength: allQuestions.length,
-                });
-                setCurrentInfoScreenIndex(initialInfoScreensForReset.length);
-                setPendingInfoScreen(null);
-                setCurrentQuestionIndex(0);
-                // ФИКС: Детальное логирование установки вопросов для диагностики
-                clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в init() для нового пользователя', {
-                  currentInfoScreenIndex: initialInfoScreensForReset.length,
-                  initialInfoScreensLength: initialInfoScreensForReset.length,
-                  allQuestionsLength: allQuestions.length,
-                  currentQuestionIndex: 0,
-                  isNewUser: true,
-                  hasNoSavedProgress: true,
-                  location: 'init()',
-                });
-              }
-            }
+            // ИСПРАВЛЕНО: Убрана логика автоматического пропуска начальных инфо-экранов для нового пользователя
+            // Теперь начальные инфо-экраны всегда показываются для нового пользователя
+            // Пользователь должен пройти все начальные инфо-экраны, нажимая "Продолжить"
+            clientLogger.log('ℹ️ Новый пользователь - показываем начальные инфо-экраны', {
+              currentInfoScreenIndex,
+              initialInfoScreensLength: initialInfoScreensForReset.length,
+              hasNoSavedProgress,
+              hasResumed,
+              showResumeScreen,
+              isRetakingQuiz,
+            });
           }
         }
       }
