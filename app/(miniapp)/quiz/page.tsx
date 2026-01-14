@@ -1037,10 +1037,38 @@ export default function QuizPage() {
     answersCountRef.current = Object.keys(answers).length;
   }, [answers]);
   
-  // ИСПРАВЛЕНО: Синхронное восстановление answers из React Query кэша при монтировании
+  // ИСПРАВЛЕНО: Синхронное восстановление answers из React Query кэша и sessionStorage при монтировании
   // Это критично для предотвращения пересчета allQuestions с пустыми ответами после перемонтирования
   // КРИТИЧНО: Выполняем восстановление в useLayoutEffect для синхронного выполнения ДО рендера
   useLayoutEffect(() => {
+    // КРИТИЧНО: Сначала пытаемся восстановить из sessionStorage (быстро и синхронно)
+    if (typeof window !== 'undefined' && Object.keys(answers).length === 0) {
+      try {
+        const savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
+        if (savedAnswersStr) {
+          const savedAnswers = JSON.parse(savedAnswersStr);
+          if (savedAnswers && Object.keys(savedAnswers).length > 0) {
+            const savedAnswersId = JSON.stringify(savedAnswers);
+            const savedAnswersCount = Object.keys(savedAnswers).length;
+            
+            // Восстанавливаем только если answers действительно пустые
+            if (answersCountRef.current === 0 || savedAnswersCount > answersCountRef.current) {
+              clientLogger.log('🔄 Восстанавливаем answers из sessionStorage (после перемонтирования)', {
+                answersCount: savedAnswersCount,
+                previousAnswersCount: answersCountRef.current,
+              });
+              setAnswers(savedAnswers);
+              answersRef.current = savedAnswers;
+              answersCountRef.current = savedAnswersCount;
+            }
+          }
+        }
+      } catch (err) {
+        clientLogger.warn('⚠️ Ошибка при восстановлении answers из sessionStorage', err);
+      }
+    }
+    
+    // Затем пытаемся восстановить из React Query кэша (если есть)
     // Не восстанавливаем, если React Query еще загружает
     if (isLoadingProgress) {
       return;
@@ -1087,7 +1115,7 @@ export default function QuizPage() {
         }
       }
     }
-  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress]); // ИСПРАВЛЕНО: Используем JSON.stringify для стабильности зависимостей
+  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress, answers]); // ИСПРАВЛЕНО: Добавлен answers в зависимости для проверки пустоты
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init

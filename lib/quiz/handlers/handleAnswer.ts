@@ -110,6 +110,20 @@ export async function handleAnswer({
   const newAnswers = { ...answers, [actualQuestionId]: value };
   setAnswers(newAnswers);
   
+  // КРИТИЧНО: Сохраняем answers в sessionStorage для восстановления после перемонтирования
+  // Это необходимо, так как без initData ответы не сохраняются в БД и не попадают в React Query кэш
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem('quiz_answers_backup', JSON.stringify(newAnswers));
+      clientLogger.log('💾 Сохранены answers в sessionStorage для восстановления', {
+        questionId: actualQuestionId,
+        answersCount: Object.keys(newAnswers).length,
+      });
+    } catch (err) {
+      clientLogger.warn('⚠️ Не удалось сохранить answers в sessionStorage', err);
+    }
+  }
+  
   // ИСПРАВЛЕНО: Ответы сохраняются только на сервер через API, не в localStorage
   await saveProgress(newAnswers, currentQuestionIndex, currentInfoScreenIndex);
   
