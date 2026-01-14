@@ -3270,18 +3270,9 @@ export default function QuizPage() {
     }
   }, [loading, questionnaire?.id, allQuestions.length, currentQuestionIndex, currentQuestion?.id, isShowingInitialInfoScreen, pendingInfoScreen?.id, showResumeScreen, hasResumed, isRetakingQuiz, showRetakeScreen, Object.keys(answers).length, savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0, currentInfoScreenIndex, error, allQuestionsRaw.length]);
 
-  // ИСПРАВЛЕНО: Проверяем showResumeScreen ПЕРЕД isShowingInitialInfoScreen,
-  // чтобы предотвратить мигание начальных экранов перед показом экрана продолжения
-  // Это критично, так как showResumeScreen устанавливается асинхронно после загрузки прогресса
-  // ВАЖНО: showResumeScreen уже проверяется выше в коде (строка 3900), но добавляем дополнительную проверку здесь
-  // для гарантии правильного порядка рендеринга
-
-  // ИСПРАВЛЕНО: Проверяем showResumeScreen ПЕРЕД info screens,
-  // чтобы предотвратить показ info screens, если должен показываться экран продолжения
-  // ВАЖНО: showResumeScreen уже обработан выше, поэтому здесь просто пропускаем info screens
-
   // РЕФАКТОРИНГ: Используем хук useQuizView для определения текущего экрана
   // Это упрощает условия рендеринга и делает код более читаемым
+  // КРИТИЧНО: Хук должен быть вызван ДО любых ранних return
   const quizView = useQuizView({
     showResumeScreen,
     showRetakeScreen,
