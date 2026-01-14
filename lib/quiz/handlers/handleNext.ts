@@ -66,7 +66,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
   
   // ФИКС: Используем ref для получения актуального значения pendingInfoScreen
   // Это предотвращает проблему с устаревшим значением из замыкания
-  const currentPendingInfoScreen = pendingInfoScreenRef?.current ?? pendingInfoScreen;
+  // ИСПРАВЛЕНО: Сначала проверяем ref, потом state, чтобы получить самое актуальное значение
+  const currentPendingInfoScreen = (pendingInfoScreenRef?.current !== undefined && pendingInfoScreenRef?.current !== null) 
+    ? pendingInfoScreenRef.current 
+    : pendingInfoScreen;
 
   // ФИКС: Защита от множественных кликов
   if (handleNextInProgressRef.current) {
@@ -81,6 +84,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       pendingInfoScreenFromRef: currentPendingInfoScreen ? currentPendingInfoScreen.id : null,
       hasPendingInfoScreen: !!pendingInfoScreen,
       hasPendingInfoScreenFromRef: !!currentPendingInfoScreen,
+      pendingInfoScreenRefExists: !!pendingInfoScreenRef,
+      pendingInfoScreenRefCurrent: pendingInfoScreenRef?.current ? pendingInfoScreenRef.current.id : null,
       currentQuestionIndex,
       currentInfoScreenIndex,
       isRetakingQuiz,

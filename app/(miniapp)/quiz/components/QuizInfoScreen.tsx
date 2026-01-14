@@ -527,6 +527,8 @@ export function QuizInfoScreen({
             currentInfoScreenIndex,
             initialInfoScreensLength: initialInfoScreens.length,
             isOnInitialInfoScreen,
+            currentScreenId: screen.id,
+            currentScreenType: screen.type,
           });
           
           const canProceed = !handleNextInProgressRef.current && 
