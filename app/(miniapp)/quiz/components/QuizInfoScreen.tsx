@@ -31,6 +31,7 @@ interface QuizInfoScreenProps {
   setLoading: (loading: boolean | ((prev: boolean) => boolean)) => void;
   handleNext: () => Promise<void>;
   submitAnswers: () => Promise<void>;
+  pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
 }
 
 export function QuizInfoScreen({
@@ -50,6 +51,7 @@ export function QuizInfoScreen({
   setLoading,
   handleNext,
   submitAnswers,
+  pendingInfoScreenRef,
 }: QuizInfoScreenProps) {
   const isTinderScreen = screen.type === 'tinder';
   const isTestimonialsScreen = screen.type === 'testimonials';
@@ -518,6 +520,9 @@ export function QuizInfoScreen({
           const initialInfoScreens = getInitialInfoScreens();
           const isOnInitialInfoScreen = currentInfoScreenIndex < initialInfoScreens.length;
           
+          // ФИКС: Получаем актуальное значение pendingInfoScreen из ref
+          const currentPendingInfoScreen = pendingInfoScreenRef?.current;
+          
           clientLogger.warn('🖱️ Кнопка "Продолжить": клик получен', {
             handleNextInProgress: handleNextInProgressRef.current,
             hasQuestionnaire: !!questionnaire,
@@ -529,6 +534,8 @@ export function QuizInfoScreen({
             isOnInitialInfoScreen,
             currentScreenId: screen.id,
             currentScreenType: screen.type,
+            pendingInfoScreenFromRef: currentPendingInfoScreen ? currentPendingInfoScreen.id : null,
+            hasPendingInfoScreenRef: !!pendingInfoScreenRef,
           });
           
           const canProceed = !handleNextInProgressRef.current && 

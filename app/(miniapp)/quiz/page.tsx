@@ -3321,6 +3321,7 @@ export default function QuizPage() {
         setLoading={setLoading}
         handleNext={handleNext}
         submitAnswers={submitAnswers}
+        pendingInfoScreenRef={quizState.pendingInfoScreenRef}
       />
     );
   }
