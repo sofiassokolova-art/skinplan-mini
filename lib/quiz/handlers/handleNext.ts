@@ -355,26 +355,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         }
       }
       
-      // ИСПРАВЛЕНО: После перехода к следующему вопросу проверяем, нужно ли показать инфо-экран для СЛЕДУЮЩЕГО вопроса
-      // КРИТИЧНО: Не устанавливаем pendingInfoScreen, если мы еще на начальных экранах
-      // pendingInfoScreen должен устанавливаться только после перехода к вопросам
-      const nextQuestion = allQuestions[newIndex];
-      if (nextQuestion && !isRetakingQuiz && nextQuestion.code && currentInfoScreenIndex >= initialInfoScreens.length) {
-        const infoScreen = getInfoScreenAfterQuestion(nextQuestion.code);
-        if (infoScreen) {
-          setPendingInfoScreen(infoScreen);
-          await saveProgress(answers, newIndex, currentInfoScreenIndex);
-          clientLogger.log('✅ Показан инфо-экран для следующего вопроса:', {
-            questionCode: nextQuestion.code,
-            questionIndex: newIndex,
-            infoScreenId: infoScreen.id,
-            currentInfoScreenIndex,
-            initialInfoScreensLength: initialInfoScreens.length,
-          });
-          return;
-        }
-      }
-      
+      // ИСПРАВЛЕНО: После закрытия инфо-экрана просто переходим к следующему вопросу
+      // Инфо-экран для следующего вопроса будет проверен ПОСЛЕ того, как пользователь ответит на этот вопрос
       await saveProgress(answers, newIndex, currentInfoScreenIndex);
       return;
     }
