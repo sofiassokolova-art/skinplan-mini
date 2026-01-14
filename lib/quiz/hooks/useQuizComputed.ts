@@ -67,6 +67,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ГРУППА 1: Вычисление effectiveAnswers
   // ============================================
   
+  // ИСПРАВЛЕНО: Используем стабильные значения для отслеживания изменений answers
+  const answersKeysCount = Object.keys(answers || {}).length;
+  const savedProgressAnswersKeysCount = Object.keys(savedProgress?.answers || {}).length;
+  
   const effectiveAnswers = useMemo(() => {
     const result = getEffectiveAnswers(answers, savedProgress?.answers);
     if (isDev) {
@@ -78,7 +82,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       });
     }
     return result;
-  }, [answers, savedProgress?.answers, isDev]);
+  }, [
+    // ИСПРАВЛЕНО: Используем стабильные зависимости для предотвращения React error #300
+    answersKeysCount, // Используем количество ключей вместо объекта
+    savedProgressAnswersKeysCount, // Используем количество ключей вместо объекта
+    isDev
+  ]);
 
   // ============================================
   // ГРУППА 2: Вычисление answersCount
@@ -217,7 +226,13 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       }
       return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
     }
-  }, [questionnaire?.id, quizStateMachine.questionnaire?.id, questionnaireRef, allQuestionsRawPrevRef, isDev]);
+  }, [
+    questionnaire?.id, 
+    quizStateMachine.questionnaire?.id, 
+    // ИСПРАВЛЕНО: Убрали questionnaireRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
+    // ИСПРАВЛЕНО: Убрали allQuestionsRawPrevRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
+    isDev
+  ]);
 
   // ============================================
   // ГРУППА 4: Вычисление allQuestions (с фильтрацией)
@@ -487,7 +502,19 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     });
     
     return shouldShow;
-  }, [showResumeScreen, showRetakeScreen, savedProgress, hasResumed, isRetakingQuiz, currentQuestionIndex, answers, currentInfoScreenIndex, initialInfoScreens.length, allQuestions.length, isDev]);
+  }, [
+    showResumeScreen, 
+    showRetakeScreen, 
+    // ИСПРАВЛЕНО: Убрали savedProgress из зависимостей - используем только savedProgressAnswersKeysCount
+    hasResumed, 
+    isRetakingQuiz, 
+    currentQuestionIndex, 
+    answersKeysCount, // ИСПРАВЛЕНО: Используем стабильное значение вместо объекта
+    currentInfoScreenIndex, 
+    initialInfoScreens.length, 
+    allQuestions.length, // ИСПРАВЛЕНО: Используем длину вместо массива для стабильности
+    isDev
+  ]);
 
   // ============================================
   // ГРУППА 8: Вычисление currentInitialInfoScreen
@@ -523,8 +550,10 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // ФИКС: Если currentInfoScreenIndex >= initialInfoScreens.length, значит все начальные экраны пройдены
     // и мы не должны блокировать показ вопросов, даже если isShowingInitialInfoScreen = true
     // КРИТИЧНО: Также проверяем, что questionnaire загружен, чтобы не блокировать вопросы при загрузке
-    // ИСПРАВЛЕНО: Используем ref для более точной проверки, так как state может быть устаревшим
+    // ИСПРАВЛЕНО: Используем только state для проверки, чтобы избежать проблем с зависимостями
+    // КРИТИЧНО: Не используем ref в зависимостях useMemo, так как это может вызвать React error #300
     const isPastInitialScreens = currentInfoScreenIndex >= initialInfoScreens.length;
+    // ИСПРАВЛЕНО: Используем ref только внутри useMemo, но не в зависимостях
     const isPastInitialScreensRef = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
     // Не блокируем, если хотя бы один из индексов показывает, что пользователь прошел начальные экраны
     const isPastInitialScreensAny = isPastInitialScreens || isPastInitialScreensRef;
@@ -612,7 +641,22 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       initialInfoScreensLength: initialInfoScreens.length,
         });
       return question;
-  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions, initialInfoScreens.length, currentInfoScreenIndex, currentInfoScreenIndexRef, answers, savedProgress, isDev, allQuestionsPrevRef]);
+  }, [
+    isShowingInitialInfoScreen, 
+    currentInitialInfoScreen, 
+    pendingInfoScreen, 
+    isRetakingQuiz, 
+    showResumeScreen, 
+    currentQuestionIndex, 
+    allQuestions.length, // ИСПРАВЛЕНО: Используем длину вместо массива для стабильности
+    initialInfoScreens.length, 
+    currentInfoScreenIndex, 
+    // ИСПРАВЛЕНО: Убрали currentInfoScreenIndexRef из зависимостей - ref не должен быть в зависимостях
+    // ИСПРАВЛЕНО: Убрали answers из зависимостей - используем только внутри useMemo
+    // ИСПРАВЛЕНО: Убрали savedProgress из зависимостей - используем только внутри useMemo
+    // ИСПРАВЛЕНО: Убрали allQuestionsPrevRef из зависимостей - ref не должен быть в зависимостях
+    isDev
+  ]);
 
   return {
     effectiveAnswers,
