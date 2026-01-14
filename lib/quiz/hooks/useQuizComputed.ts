@@ -572,11 +572,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // ИСПРАВЛЕНО: Также проверяем ref в условии currentInfoScreenIndex < initialInfoScreens.length
     // Если ref показывает, что пользователь уже прошел начальные экраны, не блокируем
     const isStillOnInitialScreens = currentInfoScreenIndex < initialInfoScreens.length && currentInfoScreenIndexRef.current < initialInfoScreens.length;
-    // ИСПРАВЛЕНО: Не блокируем вопросы, если мы уже на вопросах (currentInfoScreenIndex >= initialInfoScreens.length)
-    // pendingInfoScreen должен блокировать только если мы еще на начальных экранах
-    // КРИТИЧНО: Если мы уже на вопросах (прошли начальные экраны), pendingInfoScreen не должен блокировать
+    // ИСПРАВЛЕНО: pendingInfoScreen должен блокировать вопросы ТОЛЬКО если мы уже на вопросах (прошли начальные экраны)
+    // pendingInfoScreen - это инфо-экраны МЕЖДУ вопросами, они не должны блокировать вопросы на начальных экранах
+    // КРИТИЧНО: pendingInfoScreen блокирует вопросы только если мы УЖЕ на вопросах (isOnQuestions = true)
     const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length;
-    const shouldBlockPendingInfoScreen = pendingInfoScreen && !isRetakingQuiz && !isOnQuestions && isStillOnInitialScreens;
+    // ИСПРАВЛЕНО: pendingInfoScreen блокирует вопросы только если мы УЖЕ на вопросах (не на начальных экранах)
+    const shouldBlockPendingInfoScreen = pendingInfoScreen && !isRetakingQuiz && isOnQuestions;
     const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && isStillOnInitialScreens) || shouldBlockPendingInfoScreen;
     if (shouldBlock && !showResumeScreen) {
       // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
