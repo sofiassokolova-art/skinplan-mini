@@ -4000,14 +4000,21 @@ export default function QuizPage() {
     // Случай 3: Анкета загрузилась, но allQuestionsRaw пустой (анкета без вопросов)
     // ИСПРАВЛЕНО: Не показываем экран "нет вопросов" если идет загрузка или если allQuestionsRaw еще не пересчитан
     // Проверяем questionnaireRef.current, чтобы убедиться, что анкета действительно загружена
-    if (questionnaire && allQuestionsRaw.length === 0 && !loading && questionnaireRef.current) {
+    // КРИТИЧНО: Не используем ранний return здесь, так как это может вызвать React error #300
+    // Вместо этого проверяем условие в JSX ниже
+    const shouldShowEmptyQuestionnaireError = questionnaire && 
+                                               allQuestionsRaw.length === 0 && 
+                                               !loading && 
+                                               questionnaireRef.current;
+    if (shouldShowEmptyQuestionnaireError) {
       // Дополнительная проверка: если в questionnaire есть вопросы, но allQuestionsRaw пустой - это временное состояние
       const hasQuestionsInQuestionnaire = (questionnaire.groups?.some((g: any) => g?.questions?.length > 0) || 
                                            (questionnaire.questions && questionnaire.questions.length > 0));
       if (hasQuestionsInQuestionnaire) {
         // Есть вопросы в анкете, но allQuestionsRaw еще не пересчитан - не показываем ошибку
         // Это временное состояние, useMemo пересчитается в следующем рендере
-        return null;
+        // КРИТИЧНО: Не используем return null здесь, так как это может вызвать React error #300
+        // Вместо этого проверяем условие в JSX ниже
       }
       
       clientLogger.error('❌ Questionnaire loaded but has no questions - showing error to user', {
