@@ -323,7 +323,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     if (currentPendingInfoScreen && !isRetakingQuiz) {
       // ИСПРАВЛЕНО: Используем getNextInfoScreenAfterScreen для цепочки экранов
       // Это правильно разделяет триггеры: showAfterQuestionCode для вопросов, showAfterInfoScreenId для экранов
-      const nextInfoScreen = getNextInfoScreenAfterScreen(pendingInfoScreen.id);
+      const nextInfoScreen = getNextInfoScreenAfterScreen(currentPendingInfoScreen.id);
       
       // ФИКС: Логирование для диагностики проблемы с цепочкой инфо-экранов
       if (isDev || true) { // Всегда логируем для диагностики
