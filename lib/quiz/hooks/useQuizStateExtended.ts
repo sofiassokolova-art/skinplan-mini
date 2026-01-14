@@ -5,7 +5,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
-import type { Questionnaire, InfoScreen } from '@/lib/quiz/types';
+import type { Questionnaire } from '@/lib/quiz/types';
+import type { InfoScreen } from '@/app/(miniapp)/quiz/info-screens';
 
 export interface UseQuizStateExtendedReturn {
   // Основные состояния
