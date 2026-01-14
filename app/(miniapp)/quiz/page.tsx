@@ -126,7 +126,7 @@ export default function QuizPage() {
       questionnaireRef.current = questionnaireFromQuery;
       // Также обновляем State Machine (используем ref для стабильности)
       if (setQuestionnaireInStateMachineRef.current) {
-        setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
+      setQuestionnaireInStateMachineRef.current(questionnaireFromQuery);
       }
       // ИСПРАВЛЕНО: НЕ вызываем setLoading здесь - это делает отдельный useEffect (строка 203)
       // Это предотвращает бесконечные циклы между useEffect
@@ -376,7 +376,7 @@ export default function QuizPage() {
     quizStateMachine,
     isDev,
   });
-
+  
   // ИСПРАВЛЕНО: Cleanup для saveProgressTimeoutRef при размонтировании компонента
   // Это предотвращает утечки памяти и выполнение сохранения после размонтирования
   useEffect(() => {
@@ -1600,7 +1600,7 @@ export default function QuizPage() {
       }
     }
   };
-  
+
   // КОНЕЦ старой реализации (удалить после проверки)
 
   // РЕФАКТОРИНГ: Функции вынесены в lib/quiz/handlers/saveProgress.ts и lib/quiz/handlers/clearProgress.ts
@@ -4006,17 +4006,13 @@ export default function QuizPage() {
                                                allQuestionsRaw.length === 0 && 
                                                !loading && 
                                                questionnaireRef.current;
-    if (shouldShowEmptyQuestionnaireError) {
-      // Дополнительная проверка: если в questionnaire есть вопросы, но allQuestionsRaw пустой - это временное состояние
-      const hasQuestionsInQuestionnaire = (questionnaire.groups?.some((g: any) => g?.questions?.length > 0) || 
+    // КРИТИЧНО: Проверяем условие для показа ошибки, но не используем ранний return
+    // Все ранние return должны быть после вызова всех хуков
+    const hasQuestionsInQuestionnaire = shouldShowEmptyQuestionnaireError && questionnaire && 
+                                        (questionnaire.groups?.some((g: any) => g?.questions?.length > 0) || 
                                            (questionnaire.questions && questionnaire.questions.length > 0));
-      if (hasQuestionsInQuestionnaire) {
-        // Есть вопросы в анкете, но allQuestionsRaw еще не пересчитан - не показываем ошибку
-        // Это временное состояние, useMemo пересчитается в следующем рендере
-        // КРИТИЧНО: Не используем return null здесь, так как это может вызвать React error #300
-        // Вместо этого проверяем условие в JSX ниже
-      }
       
+    if (shouldShowEmptyQuestionnaireError && !hasQuestionsInQuestionnaire) {
       clientLogger.error('❌ Questionnaire loaded but has no questions - showing error to user', {
         questionnaireId: questionnaire.id,
         hasGroups: !!questionnaire.groups,
