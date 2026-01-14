@@ -324,13 +324,24 @@ export function useQuizInit(params: UseQuizInitParams) {
           // ИСПРАВЛЕНО: Если loadResult null, это означает ошибку загрузки
           // В этом случае не ждем установки ref, так как он уже установлен в null в loadQuestionnaire
           if (!loadResult && !questionnaireRef.current) {
+            // ИСПРАВЛЕНО: Детальное логирование для диагностики
             clientLogger.error('❌ loadQuestionnaire returned null - questionnaire failed to load', {
               timestamp: new Date().toISOString(),
+              hasQuestionnaireRef: !!questionnaireRef.current,
+              questionnaireRefId: (questionnaireRef.current as Questionnaire | null)?.id || null,
+              // Проверяем, может ли это быть пустая анкета (500 ошибка)
+              possibleReasons: [
+                'API returned 500 error (empty questionnaire)',
+                'API returned empty/null data',
+                'API returned questionnaire with zero questions',
+                'Network error or timeout',
+              ],
             });
             // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
             setLoading(false);
             // Ошибка уже установлена в loadQuestionnaire, не устанавливаем её снова
-            throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+            // ИСПРАВЛЕНО: Бросаем более информативную ошибку
+            throw new Error('Не удалось загрузить анкету. Возможно, анкета временно недоступна. Пожалуйста, обновите страницу.');
           }
           
           // КРИТИЧНО: Ждем, пока questionnaire будет установлен в ref

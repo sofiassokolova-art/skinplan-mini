@@ -221,13 +221,17 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     });
     
     // КРИТИЧНО: Проверяем, что данные действительно содержат вопросы
+    // ИСПРАВЛЕНО: Логируем как предупреждение, а не ошибку, так как это может быть нормально для нового пользователя
     if (totalQuestionsInResponse === 0) {
-      clientLogger.error('❌ API returned questionnaire with ZERO questions!', {
+      clientLogger.warn('⚠️ API returned questionnaire with ZERO questions', {
         data,
         groupsCount,
         questionsCount,
         groupsWithQuestionsCount,
-        fullData: JSON.stringify(data, null, 2),
+        hasMeta: !!data?._meta,
+        hasProfile: data?._meta?.hasProfile ?? false,
+        isNewUser: !(data?._meta?.hasProfile ?? false),
+        fullData: JSON.stringify(data, null, 2).substring(0, 1000), // Ограничиваем размер для производительности
       });
     }
     
@@ -277,14 +281,33 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     const isNewUser = !hasProfile;
     
     // ИСПРАВЛЕНО: Детальная проверка с логированием
-    if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+    // КРИТИЧНО: Проверяем не только пустоту объекта, но и наличие ключевых полей
+    const hasId = data?.id !== undefined && data?.id !== null;
+    const hasMeta = data?._meta !== undefined;
+    const isEmptyObject = !data || (typeof data === 'object' && Object.keys(data).length === 0);
+    const hasNoKeyFields = !hasId && !hasMeta;
+    
+    if (isEmptyObject || hasNoKeyFields) {
+      // ИСПРАВЛЕНО: Логируем детали для диагностики
       clientLogger.error('❌ Empty or null data received from API', {
         data,
         dataType: typeof data,
         dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
+        hasId,
+        hasMeta,
+        isEmptyObject,
+        hasNoKeyFields,
+        // Проверяем, может ли это быть ошибка 500, которая уже обработана выше
+        is500Error: false, // Эта проверка происходит до обработки 500 ошибок
       });
-      // КРИТИЧНО: Если данные пустые, это ошибка - не делаем retry
-      clientLogger.error('❌ Empty or null data received - this is a backend issue, not retrying');
+      
+      // КРИТИЧНО: Если данные пустые, это ошибка бэкенда
+      // Но не логируем как критическую ошибку, если это может быть нормально для нового пользователя
+      clientLogger.warn('⚠️ Empty or null data received - this is a backend issue, not retrying', {
+        hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
+        isNewUser: !(typeof window !== 'undefined' && window.Telegram?.WebApp?.initData),
+      });
+      
       setError('Анкета временно недоступна. Пожалуйста, попробуйте позже.');
       // ИСПРАВЛЕНО: НЕ устанавливаем loading=false здесь, init() управляет loading
       loadQuestionnaireInProgressRef.current = false;
