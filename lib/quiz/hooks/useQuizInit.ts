@@ -209,9 +209,42 @@ export function useQuizInit(params: UseQuizInitParams) {
     });
 
     try {
+      // ИСПРАВЛЕНО: Сначала проверяем, новый ли это пользователь, и очищаем sessionStorage ДО восстановления
+      // Это гарантирует, что новый пользователь увидит все начальные инфо-экраны
+      const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
+      const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz;
+      
+      if (typeof window !== 'undefined' && isNewUser) {
+        try {
+          const initialInfoScreens = getInitialInfoScreens();
+          const savedInfoScreen = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+          const savedQuestion = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+          
+          if (savedInfoScreen !== null || savedQuestion !== null) {
+            const savedInfoScreenIndex = savedInfoScreen !== null ? parseInt(savedInfoScreen, 10) : null;
+            const savedQuestionIndex = savedQuestion !== null ? parseInt(savedQuestion, 10) : null;
+            
+            // Очищаем sessionStorage для нового пользователя, если там сохранен индекс, пропускающий инфо-экраны
+            if ((savedInfoScreenIndex !== null && !isNaN(savedInfoScreenIndex) && savedInfoScreenIndex >= initialInfoScreens.length) ||
+                (savedQuestionIndex !== null && !isNaN(savedQuestionIndex) && savedQuestionIndex > 0)) {
+              sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+              sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+              clientLogger.log('🧹 Очищен sessionStorage для нового пользователя, чтобы показать все начальные инфо-экраны', {
+                savedInfoScreenIndex,
+                savedQuestionIndex,
+                initialInfoScreensLength: initialInfoScreens.length,
+              });
+            }
+          }
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось очистить sessionStorage для нового пользователя', err);
+        }
+      }
+      
       // ФИКС: Восстанавливаем currentInfoScreenIndex из sessionStorage при перемонтировании
       // Это предотвращает сброс индекса в 0 при ошибке React #310
-      if (typeof window !== 'undefined') {
+      // ИСПРАВЛЕНО: Восстанавливаем только если это НЕ новый пользователь
+      if (typeof window !== 'undefined' && !isNewUser) {
         try {
           const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
           if (savedInfoScreenIndex !== null) {
@@ -518,21 +551,8 @@ export function useQuizInit(params: UseQuizInitParams) {
                 }
               }
               
-              // ИСПРАВЛЕНО: Для нового пользователя очищаем sessionStorage, если там сохранен индекс, пропускающий инфо-экраны
-              // Это гарантирует, что новый пользователь увидит все начальные инфо-экраны
-              if (hasNoSavedProgress && savedInfoScreenIndex !== null && savedInfoScreenIndex >= initialInfoScreensForReset.length) {
-                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-                if (savedQuestionIndex !== null && savedQuestionIndex > 0) {
-                  sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-                }
-                clientLogger.log('🧹 Очищен sessionStorage для нового пользователя, чтобы показать все начальные инфо-экраны', {
-                  savedInfoScreenIndex,
-                  savedQuestionIndex,
-                  initialInfoScreensLength: initialInfoScreensForReset.length,
-                });
-                savedInfoScreenIndex = null;
-                savedQuestionIndex = null;
-              }
+              // ИСПРАВЛЕНО: Очистка sessionStorage для нового пользователя уже выполнена в начале init()
+              // Здесь просто используем очищенные значения
             } catch (err) {
               // Игнорируем ошибки sessionStorage
             }
