@@ -4171,8 +4171,12 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Не показываем лоадер, если анкета уже была загружена (даже если идет рефетч)
   // Проверяем, что анкета действительно отсутствует во всех источниках
   // ИСПРАВЛЕНО: Не показываем лоадер, если показывается pendingInfoScreen (предотвращает каскад ремоунтов)
+  // ИСПРАВЛЕНО: Не показываем лоадер, если пользователь на начальных инфо-экранах
+  // Начальные инфо-экраны должны показываться независимо от загрузки анкеты
+  const initialInfoScreensForLoader = getInitialInfoScreens();
+  const isOnInitialInfoScreens = currentInfoScreenIndex < initialInfoScreensForLoader.length;
   const hasQuestionnaireAnywhere = !!questionnaireRef.current || !!questionnaire || !!quizStateMachine.questionnaire || !!questionnaireFromQuery;
-  const shouldShowInitialLoader = !pendingInfoScreen && !hasQuestionnaireAnywhere && (loading || !initCompletedRef.current);
+  const shouldShowInitialLoader = !pendingInfoScreen && !isOnInitialInfoScreens && !hasQuestionnaireAnywhere && (loading || !initCompletedRef.current);
   
   // ФИКС: Ранний return для лоадера (после всех хуков)
   if (shouldShowInitialLoader && !showResumeScreen && !showRetakeScreen) {
