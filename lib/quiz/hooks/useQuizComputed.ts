@@ -529,21 +529,32 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     }
     
     // ФИКС: Защита от некорректного индекса или undefined
-    if (currentQuestionIndex < 0 || currentQuestionIndex >= allQuestions.length) {
+    // ИСПРАВЛЕНО: Используем allQuestionsPrevRef как fallback, если allQuestions пустой после перемонтирования
+    const questionsToUse = allQuestions.length > 0 
+      ? allQuestions 
+      : (allQuestionsPrevRef.current.length > 0 ? allQuestionsPrevRef.current : []);
+    const hasQuestionnaire = !!questionnaire || !!questionnaireRef.current || !!quizStateMachine.questionnaire;
+    const isValidIndex = currentQuestionIndex >= 0 && currentQuestionIndex < questionsToUse.length;
+    
+    if (!isValidIndex) {
       // ФИКС: Всегда логируем проблемы с индексом (warn уровень сохраняется в БД)
       clientLogger.warn('⏸️ currentQuestion: null (индекс вне границ)', {
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
+        allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
+        questionsToUseLength: questionsToUse.length,
         isShowingInitialInfoScreen,
         currentInfoScreenIndex,
         initialInfoScreensLength: initialInfoScreens.length,
+        hasQuestionnaire,
         hasResumed,
         savedProgressExists: !!savedProgress,
+        usingPrevRef: allQuestions.length === 0 && allQuestionsPrevRef.current.length > 0,
       });
       return null;
     }
     
-    const question = allQuestions[currentQuestionIndex];
+    const question = questionsToUse[currentQuestionIndex];
     
     // ФИКС: Проверка на undefined и валидность вопроса
     if (!question || !question.id) {
