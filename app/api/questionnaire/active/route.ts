@@ -133,12 +133,48 @@ export async function GET(request: NextRequest) {
         },
       });
       
+      // КРИТИЧНО: Получаем все вопросы напрямую для диагностики
+      const allQuestionsDirect = await prisma.question.findMany({
+        where: { questionnaireId: activeQuestionnaireCheck.id },
+        select: {
+          id: true,
+          code: true,
+          groupId: true,
+          questionnaireId: true,
+        },
+        take: 20, // Ограничиваем для логов
+      });
+      
       logger.info('🔍 Direct DB query for questions count', {
         totalQuestions: directQuestionsCount,
         groupsCount: directGroupsCount,
         questionsInGroups: directQuestionsInGroupsCount,
         questionsWithoutGroup: directQuestionsWithoutGroupCount,
+        // КРИТИЧНО: Логируем первые вопросы для диагностики
+        sampleQuestions: allQuestionsDirect.map(q => ({
+          id: q.id,
+          code: q.code,
+          groupId: q.groupId,
+          questionnaireId: q.questionnaireId,
+        })),
+        // КРИТИЧНО: Проверяем, есть ли вопросы с неправильным questionnaireId
+        hasQuestionsWithWrongQuestionnaireId: allQuestionsDirect.some(q => q.questionnaireId !== activeQuestionnaireCheck.id),
       });
+      
+      // КРИТИЧНО: Если в БД есть вопросы, но Prisma не возвращает их - это проблема Prisma
+      if (directQuestionsCount > 0) {
+        logger.warn('⚠️ В БД ЕСТЬ вопросы, но Prisma может не возвращать их!', {
+          directQuestionsCount,
+          directQuestionsInGroupsCount,
+          directQuestionsWithoutGroupCount,
+          directGroupsCount,
+        });
+      } else {
+        logger.error('❌ КРИТИЧЕСКАЯ ПРОБЛЕМА: В БД НЕТ вопросов для активной анкеты!', {
+          questionnaireId: activeQuestionnaireCheck.id,
+          totalQuestionsInDB: directQuestionsCount,
+        });
+      }
     }
     
     // ДИАГНОСТИКА: Логируем запрос к базе данных
@@ -233,7 +269,18 @@ export async function GET(request: NextRequest) {
     const groupsQuestionsCount = groups.reduce(
       (sum, g) => {
         const qCount = Array.isArray(g.questions) ? g.questions.length : 0;
-        logger.info(`🔍 Group ${g.id} (${g.title}): ${qCount} questions`);
+        logger.info(`🔍 Group ${g.id} (${g.title}): ${qCount} questions`, {
+          groupId: g.id,
+          groupTitle: g.title,
+          questionsCount: qCount,
+          questionsIsArray: Array.isArray(g.questions),
+          questionsType: typeof g.questions,
+          // КРИТИЧНО: Логируем первые вопросы в группе для диагностики
+          sampleQuestions: Array.isArray(g.questions) ? g.questions.slice(0, 3).map((q: any) => ({
+            id: q?.id,
+            code: q?.code,
+          })) : 'not array',
+        });
         return sum + qCount;
       },
       0
@@ -245,6 +292,32 @@ export async function GET(request: NextRequest) {
       plainQuestionsCount: plainQuestions.length,
       totalQuestionsCount,
     });
+    
+    // КРИТИЧНО: Детальная диагностика, если totalQuestionsCount === 0
+    if (totalQuestionsCount === 0) {
+      logger.error('❌ КРИТИЧЕСКАЯ ПРОБЛЕМА: totalQuestionsCount === 0 после Prisma запроса!', {
+        questionnaireId: questionnaire.id,
+        groupsLength: groups.length,
+        plainQuestionsLength: plainQuestions.length,
+        groupsQuestionsCount,
+        totalQuestionsCount,
+        // КРИТИЧНО: Проверяем, что вернул Prisma
+        groupsStructure: groups.map(g => ({
+          id: g.id,
+          title: g.title,
+          hasQuestions: !!g.questions,
+          questionsType: typeof g.questions,
+          questionsIsArray: Array.isArray(g.questions),
+          questionsLength: Array.isArray(g.questions) ? g.questions.length : 'not array',
+        })),
+        plainQuestionsStructure: {
+          hasQuestions: !!questionnaire.questions,
+          questionsType: typeof questionnaire.questions,
+          questionsIsArray: Array.isArray(questionnaire.questions),
+          questionsLength: Array.isArray(questionnaire.questions) ? questionnaire.questions.length : 'not array',
+        },
+      });
+    }
 
     // ИСПРАВЛЕНО: Детальное логирование сырых данных из базы для диагностики
     logger.info('Active questionnaire found (raw data from DB)', {
@@ -292,8 +365,21 @@ export async function GET(request: NextRequest) {
     
     // ИСПРАВЛЕНО: Проверяем, что анкета содержит вопросы
     // Если вопросов нет - это критическая ошибка, возвращаем 500
+    // КРИТИЧНО: Перед возвратом 500 проверяем, есть ли вопросы в БД напрямую
     if (totalQuestionsCount === 0) {
-      logger.error('❌ CRITICAL: totalQuestionsCount === 0, returning 500 error');
+      // КРИТИЧНО: Проверяем БД напрямую, чтобы понять, проблема в Prisma или в данных
+      const directCheck = await prisma.question.count({
+        where: { questionnaireId: questionnaire.id },
+      });
+      
+      logger.error('❌ CRITICAL: totalQuestionsCount === 0, returning 500 error', {
+        questionnaireId: questionnaire.id,
+        totalQuestionsCountFromPrisma: totalQuestionsCount,
+        directQuestionsCountFromDB: directCheck,
+        isPrismaIssue: directCheck > 0 && totalQuestionsCount === 0,
+        isDataIssue: directCheck === 0,
+      });
+      
       logger.error('❌ Active questionnaire has no questions!', {
         questionnaireId: questionnaire.id,
         name: questionnaire.name,
@@ -313,7 +399,33 @@ export async function GET(request: NextRequest) {
           questionGroupsType: Array.isArray(questionnaire.questionGroups),
           questionsType: Array.isArray(questionnaire.questions),
         },
+        // КРИТИЧНО: Если в БД есть вопросы, но Prisma не вернул их - это проблема Prisma
+        directQuestionsCount: directCheck,
+        prismaIssue: directCheck > 0 ? 'Prisma не вернул вопросы, хотя они есть в БД!' : 'В БД действительно нет вопросов',
       });
+      
+      // ИСПРАВЛЕНО: Если в БД есть вопросы, но Prisma не вернул их - это проблема Prisma
+      // В этом случае НЕ возвращаем 500, а пытаемся перезагрузить данные
+      if (directCheck > 0) {
+        logger.error('❌ КРИТИЧЕСКАЯ ПРОБЛЕМА PRISMA: В БД есть вопросы, но Prisma не вернул их!', {
+          questionnaireId: questionnaire.id,
+          directQuestionsCount: directCheck,
+          totalQuestionsCountFromPrisma: totalQuestionsCount,
+        });
+        // КРИТИЧНО: Возвращаем 500 с особым сообщением для диагностики
+        return NextResponse.json(
+          { 
+            error: 'Prisma query issue',
+            message: 'Анкета временно недоступна из-за проблемы с загрузкой данных. Пожалуйста, попробуйте позже.',
+            questionnaireId: questionnaire.id,
+            _meta: {
+              hasQuestionsInDB: true,
+              prismaIssue: true,
+            },
+          },
+          { status: 500 }
+        );
+      }
       
       // ИСПРАВЛЕНО: Возвращаем ошибку 500, чтобы фронтенд мог показать понятное сообщение
       return NextResponse.json(
@@ -410,6 +522,38 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error: any) {
     const duration = Date.now() - startTime;
+    
+    // КРИТИЧНО: Проверяем, является ли это ошибкой отсутствия таблицы
+    const isTableMissingError = error?.message?.includes('does not exist') || 
+                                error?.message?.includes('table') ||
+                                error?.code === 'P2021' || // Prisma error code for table not found
+                                error?.name === 'PrismaClientKnownRequestError';
+    
+    if (isTableMissingError) {
+      logger.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Таблица не существует в БД (миграции не применены)', error, {
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        errorName: error?.name,
+        tableName: error?.message?.match(/table `([^`]+)`/)?.[1] || 'unknown',
+        suggestion: 'Необходимо применить миграции Prisma: npx prisma migrate deploy',
+      });
+      
+      logApiError(method, path, error, userId);
+      
+      return NextResponse.json(
+        { 
+          error: 'Database schema not initialized',
+          message: 'Анкета временно недоступна. Пожалуйста, попробуйте позже.',
+          // В development показываем детали для диагностики
+          ...(process.env.NODE_ENV === 'development' ? {
+            details: error?.message,
+            suggestion: 'Примените миграции: npx prisma migrate deploy',
+          } : {}),
+        },
+        { status: 500 }
+      );
+    }
+    
     logger.error('Error fetching active questionnaire', error, {
       errorMessage: error?.message,
       errorStack: error?.stack?.substring(0, 500),
