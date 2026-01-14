@@ -233,6 +233,36 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
         isNewUser: !(data?._meta?.hasProfile ?? false),
         fullData: JSON.stringify(data, null, 2).substring(0, 1000), // Ограничиваем размер для производительности
       });
+      
+      // ИСПРАВЛЕНО: Если API вернул анкету с 0 вопросов, но есть _meta, создаем минимальную анкету
+      // Это предотвращает зависание на лоадере для нового пользователя
+      const hasMeta = !!data?._meta;
+      const hasProfileFromMeta = data?._meta?.hasProfile ?? false;
+      const isNewUserFromMeta = !hasProfileFromMeta;
+      
+      if (hasMeta && isNewUserFromMeta) {
+        clientLogger.log('ℹ️ API returned questionnaire with 0 questions but has _meta for new user - creating minimal questionnaire', {
+          hasMeta,
+          hasProfileFromMeta,
+          isNewUserFromMeta,
+          questionnaireId: data?.id || 0,
+        });
+        const minimalQuestionnaire = {
+          id: data?.id || 0,
+          name: data?.name || 'Questionnaire',
+          version: data?.version || '1.0',
+          groups: [],
+          questions: [],
+        };
+        questionnaireRef.current = minimalQuestionnaire;
+        setQuestionnaire(minimalQuestionnaire);
+        setLoading(false);
+        loadQuestionnaireInProgressRef.current = false;
+        clientLogger.log('✅ Created minimal questionnaire for new user (from zero questions response)', {
+          questionnaireId: minimalQuestionnaire.id,
+        });
+        return minimalQuestionnaire;
+      }
     }
     
     // ИСПРАВЛЕНО: Проверяем метаданные от бэкенда - нужно ли редиректить на /plan
