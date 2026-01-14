@@ -363,6 +363,34 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
         is500Error: false, // Эта проверка происходит до обработки 500 ошибок
       });
       
+      // ИСПРАВЛЕНО: Для нового пользователя (без initData) создаем минимальную анкету даже при пустых данных
+      // Это предотвращает зависание на лоадере
+      const hasInitData = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
+      const isNewUser = !hasInitData;
+      
+      if (isNewUser) {
+        clientLogger.log('ℹ️ New user (no initData) - creating minimal questionnaire despite empty data', {
+          hasInitData: false,
+          isEmptyObject,
+          hasNoKeyFields,
+        });
+        const minimalQuestionnaire = {
+          id: 0,
+          name: 'Questionnaire',
+          version: '1.0',
+          groups: [],
+          questions: [],
+        };
+        questionnaireRef.current = minimalQuestionnaire;
+        setQuestionnaire(minimalQuestionnaire);
+        setLoading(false);
+        loadQuestionnaireInProgressRef.current = false;
+        clientLogger.log('✅ Created minimal questionnaire for new user (from empty data)', {
+          questionnaireId: minimalQuestionnaire.id,
+        });
+        return minimalQuestionnaire;
+      }
+      
       // КРИТИЧНО: Если данные пустые, это ошибка бэкенда
       // Но не логируем как критическую ошибку, если это может быть нормально для нового пользователя
       clientLogger.warn('⚠️ Empty or null data received - this is a backend issue, not retrying', {
