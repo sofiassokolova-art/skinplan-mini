@@ -21,6 +21,7 @@ import { handleAnswer as handleAnswerFn } from '@/lib/quiz/handlers/handleAnswer
 import { handleBack as handleBackFn } from '@/lib/quiz/handlers/handleBack';
 import { submitAnswers as submitAnswersFn, type SubmitAnswersParams } from '@/lib/quiz/handlers/submitAnswers';
 import { resumeQuiz as resumeQuizFn, type ResumeQuizParams } from '@/lib/quiz/handlers/resumeQuiz';
+import { startOver as startOverFn, type StartOverParams } from '@/lib/quiz/handlers/startOver';
 import { extractQuestionsFromQuestionnaire } from '@/lib/quiz/extractQuestions';
 import { useQuizView } from '@/lib/quiz/hooks/useQuizView';
 import { useQuizStateMachine } from '@/lib/quiz/hooks/useQuizStateMachine';
@@ -2344,108 +2345,28 @@ export default function QuizPage() {
 
   // Начать заново
   const startOver = async () => {
-    clientLogger.log('🔄 startOver: Начинаем сброс анкеты', {
-      currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
-      initCompleted: initCompletedRef.current,
-      isStartingOverRef: isStartingOverRef.current,
+    await startOverFn({
+      isStartingOverRef,
+      setIsStartingOver,
+      initCompletedRef,
+      initCalledRef,
+      clearProgress,
+      setAnswers,
+      setCurrentQuestionIndex,
+      setCurrentInfoScreenIndex,
+      currentInfoScreenIndexRef,
+      setShowResumeScreen,
+      hasResumedRef,
+      setHasResumed,
+      setSavedProgress,
+      setPendingInfoScreen,
+      setIsRetakingQuiz,
+      setShowRetakeScreen,
+      firstScreenResetRef,
+      setLoading,
+      setError,
+      questionnaire,
     });
-    
-    // ВАЖНО: Устанавливаем флаг ПЕРЕД очисткой прогресса, чтобы предотвратить загрузку прогресса
-    // Используем ref для синхронной установки, чтобы асинхронные функции сразу видели новое значение
-    isStartingOverRef.current = true;
-    setIsStartingOver(true);
-    clientLogger.log('🔒 isStartingOverRef установлен в true');
-    
-    // ВАЖНО: Сбрасываем initCompletedRef и initCalledRef, чтобы позволить повторную инициализацию
-    // но с правильными флагами (isStartingOverRef = true), чтобы не загружать прогресс
-    initCompletedRef.current = false;
-    initCalledRef.current = false; // ИСПРАВЛЕНО: Сбрасываем initCalledRef для повторной инициализации
-    
-    // ФИКС: Очищаем флаг quiz_initCalled из sessionStorage при startOver
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED);
-      } catch (err) {
-        // Игнорируем ошибки sessionStorage
-      }
-    }
-    
-    clientLogger.log('🔄 initCompletedRef и initCalledRef сброшены для повторной инициализации');
-    
-    // Очищаем весь прогресс (локальный и серверный)
-    await clearProgress();
-    clientLogger.log('✅ Прогресс очищен');
-    
-    // Сбрасываем все состояния полностью
-    setAnswers({});
-    setCurrentQuestionIndex(0);
-    setCurrentInfoScreenIndex(0);
-    currentInfoScreenIndexRef.current = 0;
-    // ФИКС: Очищаем sessionStorage при очистке прогресса
-    if (typeof window !== 'undefined') {
-      try {
-        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
-        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-      } catch (err) {
-        clientLogger.warn('⚠️ Не удалось очистить quiz индексы из sessionStorage', err);
-      }
-    }
-    setShowResumeScreen(false);
-    // ВАЖНО: Сбрасываем и state, и ref для hasResumed
-    hasResumedRef.current = false;
-    setHasResumed(false);
-    setSavedProgress(null);
-    setPendingInfoScreen(null); // ВАЖНО: очищаем pendingInfoScreen
-    setIsRetakingQuiz(false); // Сбрасываем флаг перепрохождения
-    setShowRetakeScreen(false); // Сбрасываем экран выбора тем
-    // ФИКС: Сбрасываем firstScreenResetRef, чтобы можно было начать заново
-    firstScreenResetRef.current = false;
-    
-    // ВАЖНО: Убеждаемся, что loading = false, чтобы показать контент анкеты
-    // и error = null, чтобы не показывать ошибку
-    setLoading(false);
-    setError(null);
-    
-    // Если анкета уже загружена, сразу завершаем инициализацию
-    // и сбрасываем флаги, чтобы не вызывать повторную инициализацию
-    if (questionnaire) {
-      clientLogger.log('✅ Анкета уже загружена, завершаем инициализацию без повторной загрузки');
-      initCompletedRef.current = true;
-      isStartingOverRef.current = false;
-      setIsStartingOver(false);
-      clientLogger.log('✅ startOver завершен, анкета уже была загружена');
-      return;
-    }
-    
-    // Проверяем путь после всех изменений состояния
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : 'unknown';
-    clientLogger.log('✅ Анкета начата заново, весь прогресс очищен, возвращаемся на первый экран', {
-      hasResumedRef: hasResumedRef.current,
-      isStartingOverRef: isStartingOverRef.current,
-      loading: false,
-      initCompleted: initCompletedRef.current,
-      currentPath,
-      questionnaireLoaded: !!questionnaire,
-      showResumeScreen: false,
-      showRetakeScreen: false,
-      isRetakingQuiz: false,
-    });
-    
-    // ВАЖНО: Убеждаемся, что мы остаемся на странице анкеты
-    // Если по какой-то причине произошел редирект, возвращаемся на /quiz
-    if (typeof window !== 'undefined' && !currentPath.includes('/quiz')) {
-      clientLogger.warn('⚠️ Обнаружен редирект с /quiz, возвращаемся на страницу анкеты', {
-        currentPath,
-        expectedPath: '/quiz',
-      });
-      window.location.href = '/quiz';
-      return;
-    }
-    
-    // НЕ сбрасываем isStartingOverRef - оставляем его установленным
-    // Это предотвратит повторную загрузку прогресса даже если компонент перерендерится
-    // Флаг будет сброшен только после успешной инициализации анкеты (когда questionnaire загружен)
-    clientLogger.log('✅ startOver завершен, isStartingOverRef остается true до следующей инициализации');
   };
 
   // ИСПРАВЛЕНО: Убран дублирующий лоадер при isSubmitting
