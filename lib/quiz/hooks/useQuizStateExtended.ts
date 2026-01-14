@@ -2,7 +2,7 @@
 // РЕФАКТОРИНГ: Расширенный хук для управления всеми состояниями анкеты
 // Вынесен из quiz/page.tsx для улучшения читаемости и поддержки
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
 import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
 import type { Questionnaire } from '@/lib/quiz/types';
@@ -201,8 +201,35 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const pendingInfoScreenRef = useRef<InfoScreen | null>(null);
   
   // ФИКС: Синхронизируем ref с state для получения актуального значения в замыканиях
+  // ИСПРАВЛЕНО: Добавлено логирование для диагностики проблемы с синхронизацией
   useEffect(() => {
+    const previousValue = pendingInfoScreenRef.current;
     pendingInfoScreenRef.current = pendingInfoScreen;
+    
+    // Логируем изменения для диагностики
+    if (process.env.NODE_ENV === 'development' || true) {
+      if (previousValue?.id !== pendingInfoScreen?.id) {
+        console.log('🔄 pendingInfoScreenRef обновлен:', {
+          previous: previousValue?.id || null,
+          current: pendingInfoScreen?.id || null,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  }, [pendingInfoScreen]);
+  
+  // ФИКС: Обертка для setPendingInfoScreen с логированием
+  const setPendingInfoScreenWithLogging = useCallback((value: InfoScreen | null | ((prev: InfoScreen | null) => InfoScreen | null)) => {
+    const newValue = typeof value === 'function' ? value(pendingInfoScreen) : value;
+    if (process.env.NODE_ENV === 'development' || true) {
+      console.log('🔄 setPendingInfoScreen вызван:', {
+        previous: pendingInfoScreen?.id || null,
+        new: newValue?.id || null,
+        timestamp: new Date().toISOString(),
+        stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n'),
+      });
+    }
+    setPendingInfoScreen(value);
   }, [pendingInfoScreen]);
   
   // Прогресс
@@ -366,7 +393,7 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     setFinalizeError,
     pendingInfoScreen,
     pendingInfoScreenRef,
-    setPendingInfoScreen,
+    setPendingInfoScreen: setPendingInfoScreenWithLogging,
     
     // Прогресс
     savedProgress,
