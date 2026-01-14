@@ -601,7 +601,7 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       initialInfoScreensLength: initialInfoScreens.length,
         });
       return question;
-  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions.length, initialInfoScreens.length, currentInfoScreenIndex, currentInfoScreenIndexRef, answers, savedProgress, isDev]);
+  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, pendingInfoScreen, isRetakingQuiz, showResumeScreen, currentQuestionIndex, allQuestions, initialInfoScreens.length, currentInfoScreenIndex, currentInfoScreenIndexRef, answers, savedProgress, isDev, allQuestionsPrevRef]);
 
   return {
     effectiveAnswers,
