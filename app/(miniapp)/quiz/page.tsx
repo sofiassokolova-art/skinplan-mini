@@ -1738,6 +1738,7 @@ export default function QuizPage() {
         showRetakeScreen,
         hasResumed,
       pendingInfoScreen,
+      pendingInfoScreenRef: quizState.pendingInfoScreenRef,
       answers,
       setIsHandlingNext,
       setCurrentInfoScreenIndex,

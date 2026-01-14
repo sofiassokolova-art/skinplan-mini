@@ -42,6 +42,7 @@ export interface UseQuizStateExtendedReturn {
   finalizeError: string | null;
   setFinalizeError: React.Dispatch<React.SetStateAction<string | null>>;
   pendingInfoScreen: InfoScreen | null;
+  pendingInfoScreenRef: React.MutableRefObject<InfoScreen | null>;
   setPendingInfoScreen: React.Dispatch<React.SetStateAction<InfoScreen | null>>;
   
   // Прогресс
@@ -197,6 +198,12 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
   const [finalizingStep, setFinalizingStep] = useState<'answers' | 'plan' | 'done'>('answers');
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [pendingInfoScreen, setPendingInfoScreen] = useState<InfoScreen | null>(null);
+  const pendingInfoScreenRef = useRef<InfoScreen | null>(null);
+  
+  // ФИКС: Синхронизируем ref с state для получения актуального значения в замыканиях
+  useEffect(() => {
+    pendingInfoScreenRef.current = pendingInfoScreen;
+  }, [pendingInfoScreen]);
   
   // Прогресс
   const [savedProgress, setSavedProgress] = useState<{
@@ -358,6 +365,7 @@ export function useQuizStateExtended(): UseQuizStateExtendedReturn {
     finalizeError,
     setFinalizeError,
     pendingInfoScreen,
+    pendingInfoScreenRef,
     setPendingInfoScreen,
     
     // Прогресс

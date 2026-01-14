@@ -25,6 +25,7 @@ export interface HandleNextParams {
   showRetakeScreen: boolean;
   hasResumed: boolean;
   pendingInfoScreen: InfoScreen | null;
+  pendingInfoScreenRef?: React.MutableRefObject<InfoScreen | null>;
   answers: Record<number, string | string[]>;
   
   // State setters
@@ -53,6 +54,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     showRetakeScreen,
     hasResumed,
     pendingInfoScreen,
+    pendingInfoScreenRef,
     answers,
     setIsHandlingNext,
     setCurrentInfoScreenIndex,
@@ -61,6 +63,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     saveProgress,
     isDev,
   } = params;
+  
+  // ФИКС: Используем ref для получения актуального значения pendingInfoScreen
+  // Это предотвращает проблему с устаревшим значением из замыкания
+  const currentPendingInfoScreen = pendingInfoScreenRef?.current ?? pendingInfoScreen;
 
   // ФИКС: Защита от множественных кликов
   if (handleNextInProgressRef.current) {
@@ -72,7 +78,9 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
   if (isDev || true) { // Всегда логируем для диагностики
     clientLogger.warn('🔍 handleNext: вход в функцию', {
       pendingInfoScreen: pendingInfoScreen ? pendingInfoScreen.id : null,
+      pendingInfoScreenFromRef: currentPendingInfoScreen ? currentPendingInfoScreen.id : null,
       hasPendingInfoScreen: !!pendingInfoScreen,
+      hasPendingInfoScreenFromRef: !!currentPendingInfoScreen,
       currentQuestionIndex,
       currentInfoScreenIndex,
       isRetakingQuiz,
@@ -311,7 +319,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
 
     // Если показывается информационный экран между вопросами, проверяем, есть ли следующий инфо-экран в цепочке
     // При повторном прохождении пропускаем все info screens
-    if (pendingInfoScreen && !isRetakingQuiz) {
+    // ФИКС: Используем currentPendingInfoScreen из ref для получения актуального значения
+    if (currentPendingInfoScreen && !isRetakingQuiz) {
       // ИСПРАВЛЕНО: Используем getNextInfoScreenAfterScreen для цепочки экранов
       // Это правильно разделяет триггеры: showAfterQuestionCode для вопросов, showAfterInfoScreenId для экранов
       const nextInfoScreen = getNextInfoScreenAfterScreen(pendingInfoScreen.id);
@@ -319,7 +328,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ФИКС: Логирование для диагностики проблемы с цепочкой инфо-экранов
       if (isDev || true) { // Всегда логируем для диагностики
         clientLogger.warn('🔍 Проверка следующего инфо-экрана в цепочке:', {
-          currentPendingInfoScreenId: pendingInfoScreen.id,
+          currentPendingInfoScreenId: currentPendingInfoScreen.id,
           nextInfoScreenFound: !!nextInfoScreen,
           nextInfoScreenId: nextInfoScreen?.id || null,
           currentQuestionIndex,
@@ -331,7 +340,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         setPendingInfoScreen(nextInfoScreen);
         await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
         clientLogger.log('✅ Переход к следующему инфо-экрану в цепочке:', {
-          from: pendingInfoScreen.id,
+          from: currentPendingInfoScreen.id,
           to: nextInfoScreen.id,
         });
         return;
@@ -339,7 +348,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       
       // ИСПРАВЛЕНО: Проверяем, не последний ли это вопрос ДО закрытия инфо-экрана
       const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
-      const isWantImproveScreen = pendingInfoScreen?.id === 'want_improve';
+      const isWantImproveScreen = currentPendingInfoScreen?.id === 'want_improve';
       
       // ВАЖНО: Если это последний инфо-экран (want_improve), НЕ закрываем его автоматически
       // Пользователь должен нажать кнопку "Получить план ухода" для отправки ответов
