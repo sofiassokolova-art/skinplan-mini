@@ -135,6 +135,17 @@ export async function handleAnswer({
         });
       }
       // ФИКС: Используем React Query мутацию для сохранения прогресса
+      // КРИТИЧНО: Логируем перед сохранением для диагностики
+      clientLogger.log('💾 Сохранение ответа в БД', {
+        questionnaireId: questionnaire.id,
+        questionId: actualQuestionId,
+        answerValue: isArray ? undefined : (value as string),
+        answerValues: isArray ? (value as string[]) : undefined,
+        questionIndex: currentQuestionIndex,
+        infoScreenIndex: currentInfoScreenIndex,
+        hasInitData: !!window.Telegram?.WebApp?.initData,
+      });
+      
       await saveQuizProgressMutation.mutateAsync({
         questionnaireId: questionnaire.id,
         questionId: actualQuestionId,
@@ -145,18 +156,52 @@ export async function handleAnswer({
       });
       // Сохраняем информацию о последнем сохраненном ответе для дедупликации
       lastSavedAnswerRef.current = { questionId: actualQuestionId, answer: value };
-      clientLogger.log('✅ Successfully saved to server (React Query)');
+      clientLogger.log('✅ Successfully saved to server (React Query)', {
+        questionnaireId: questionnaire.id,
+        questionId: actualQuestionId,
+      });
     } catch (err: any) {
-      // Если ошибка 401 - это нормально, прогресс сохранен локально
-      if (!err?.message?.includes('401') && !err?.message?.includes('Unauthorized')) {
-        console.error('❌ Ошибка сохранения прогресса на сервер:', {
-          error: err.message,
-          questionId: actualQuestionId,
-          questionnaireId: questionnaire?.id,
-          errorDetails: err,
-        });
+      // КРИТИЧНО: Логируем все ошибки сохранения для диагностики
+      const is401Error = err?.message?.includes('401') || err?.message?.includes('Unauthorized');
+      const errorDetails = {
+        error: err?.message || 'Unknown error',
+        questionId: actualQuestionId,
+        questionnaireId: questionnaire?.id,
+        status: err?.status,
+        stack: err?.stack?.substring(0, 200),
+        is401Error,
+        hasInitData: !!window.Telegram?.WebApp?.initData,
+      };
+      
+      if (is401Error) {
+        // Если ошибка 401 - это нормально, прогресс сохранен локально
+        clientLogger.log('ℹ️ Ответ не сохранен в БД (401 Unauthorized - initData недоступен)', errorDetails);
+      } else {
+        // Другие ошибки - критично, логируем как ошибку
+        clientLogger.error('❌ Ошибка сохранения ответа в БД', errorDetails);
+        console.error('❌ Ошибка сохранения прогресса на сервер:', errorDetails);
       }
     }
+  } else {
+    // КРИТИЧНО: Логируем, почему ответ не сохраняется
+    const reason = !questionnaire 
+      ? 'questionnaire is null' 
+      : typeof window === 'undefined' 
+        ? 'window is undefined' 
+        : !window.Telegram?.WebApp?.initData 
+          ? 'initData is not available' 
+          : 'unknown';
+    
+    clientLogger.warn('⚠️ Ответ не сохраняется в БД', {
+      questionId: actualQuestionId,
+      questionnaireId: questionnaire?.id,
+      reason,
+      hasQuestionnaire: !!questionnaire,
+      hasWindow: typeof window !== 'undefined',
+      hasTelegram: typeof window !== 'undefined' && !!window.Telegram,
+      hasWebApp: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
+      hasInitData: typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData,
+    });
   }
 }
 
