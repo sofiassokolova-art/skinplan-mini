@@ -241,13 +241,23 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       // ИСПРАВЛЕНО: Если allQuestionsRaw пустой, но есть предыдущее значение в ref, используем его
       // Это предотвращает потерю вопросов, когда questionnaire временно становится null
       // КРИТИЧНО: Также проверяем, что questionnaire загружен, чтобы не использовать устаревшие данные
+      // ИСПРАВЛЕНО: Используем предыдущее значение, если allQuestionsRaw пустой ИЛИ если questionnaire временно null
+      // Это критично для восстановления после перемонтирования
       const hasQuestionnaire = !!effectiveQuestionnaire;
-      const shouldUsePrevRef = (!hasQuestionnaire || allQuestionsRaw.length === 0) && allQuestionsPrevRef.current.length > 0;
+      const hasAllQuestionsRaw = allQuestionsRaw.length > 0;
+      const hasPrevRef = allQuestionsPrevRef.current.length > 0;
+      
+      // КРИТИЧНО: Используем предыдущее значение, если:
+      // 1. allQuestionsRaw пустой И есть предыдущее значение
+      // 2. questionnaire временно null И есть предыдущее значение
+      // Это предотвращает потерю данных после перемонтирования
+      const shouldUsePrevRef = (!hasAllQuestionsRaw || !hasQuestionnaire) && hasPrevRef;
       
       if (shouldUsePrevRef) {
         clientLogger.log('✅ Using previous allQuestions from ref (questionnaire temporarily null or allQuestionsRaw empty)', {
           previousLength: allQuestionsPrevRef.current.length,
           hasQuestionnaire,
+          hasAllQuestionsRaw,
           allQuestionsRawLength: allQuestionsRaw.length,
           effectiveQuestionnaireId: effectiveQuestionnaire?.id,
         });
@@ -255,10 +265,11 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       }
       
       // Логируем только если действительно нет fallback
-      if ((!hasQuestionnaire || allQuestionsRaw.length === 0) && allQuestionsPrevRef.current.length === 0) {
+      if ((!hasQuestionnaire || !hasAllQuestionsRaw) && !hasPrevRef) {
         if (isDev) {
           clientLogger.warn('⚠️ allQuestionsRaw is empty and questionnaire is null (no fallback available)', {
             hasQuestionnaire,
+            hasAllQuestionsRaw,
             allQuestionsRawLength: allQuestionsRaw.length,
             allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
           });
