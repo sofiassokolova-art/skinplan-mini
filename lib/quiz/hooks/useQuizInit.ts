@@ -273,6 +273,20 @@ export function useQuizInit(params: UseQuizInitParams) {
         } catch (err) {
           clientLogger.warn('⚠️ Не удалось восстановить currentInfoScreenIndex из sessionStorage', err);
         }
+      } else if (isNewUser) {
+        // ИСПРАВЛЕНО: Для нового пользователя принудительно сбрасываем currentInfoScreenIndex на 0
+        // Это гарантирует, что новый пользователь увидит все начальные инфо-экраны
+        // даже если initialInfoScreenIndex был восстановлен из sessionStorage в useQuizStateExtended
+        const initialInfoScreens = getInitialInfoScreens();
+        if (currentInfoScreenIndex >= initialInfoScreens.length) {
+          clientLogger.log('🔄 Сброс currentInfoScreenIndex на 0 для нового пользователя', {
+            currentIndex: currentInfoScreenIndex,
+            initialInfoScreensLength: initialInfoScreens.length,
+            hasNoSavedProgress,
+          });
+          currentInfoScreenIndexRef.current = 0;
+          setCurrentInfoScreenIndex(0);
+        }
       }
       
       // ФИКС: Устанавливаем loading=true при загрузке анкеты
