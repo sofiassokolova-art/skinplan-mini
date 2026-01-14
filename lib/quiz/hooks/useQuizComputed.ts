@@ -401,7 +401,19 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       }
       return fallback;
     }
-  }, [allQuestionsRaw, answers, savedProgress?.answers, isRetakingQuiz, showRetakeScreen, questionnaire?.id, questionnaireRef, allQuestionsPrevRef, quizStateMachine.questionnaire?.id, effectiveAnswers, isDev]);
+  }, [
+    allQuestionsRaw.length, // ИСПРАВЛЕНО: Используем длину вместо массива для стабильности (предотвращает React error #300)
+    answersKeysCount, // ИСПРАВЛЕНО: Используем стабильное значение вместо объекта
+    savedProgressAnswersKeysCount, // ИСПРАВЛЕНО: Используем стабильное значение вместо объекта
+    isRetakingQuiz, 
+    showRetakeScreen, 
+    questionnaire?.id, 
+    // ИСПРАВЛЕНО: Убрали questionnaireRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
+    // ИСПРАВЛЕНО: Убрали allQuestionsPrevRef из зависимостей - ref не должен быть в зависимостях (вызывает React error #300)
+    quizStateMachine.questionnaire?.id, 
+    // ИСПРАВЛЕНО: Убрали effectiveAnswers из зависимостей - это вычисляемое значение, используем answersKeysCount
+    isDev
+  ]);
 
   // ============================================
   // ГРУППА 5: Вычисление savedProgressAnswersCount
