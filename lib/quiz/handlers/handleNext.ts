@@ -304,9 +304,25 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // ИСПРАВЛЕНО: Используем getNextInfoScreenAfterScreen для цепочки экранов
       // Это правильно разделяет триггеры: showAfterQuestionCode для вопросов, showAfterInfoScreenId для экранов
       const nextInfoScreen = getNextInfoScreenAfterScreen(pendingInfoScreen.id);
+      
+      // ФИКС: Логирование для диагностики проблемы с цепочкой инфо-экранов
+      if (isDev || true) { // Всегда логируем для диагностики
+        clientLogger.warn('🔍 Проверка следующего инфо-экрана в цепочке:', {
+          currentPendingInfoScreenId: pendingInfoScreen.id,
+          nextInfoScreenFound: !!nextInfoScreen,
+          nextInfoScreenId: nextInfoScreen?.id || null,
+          currentQuestionIndex,
+          isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
+        });
+      }
+      
       if (nextInfoScreen) {
         setPendingInfoScreen(nextInfoScreen);
         await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
+        clientLogger.log('✅ Переход к следующему инфо-экрану в цепочке:', {
+          from: pendingInfoScreen.id,
+          to: nextInfoScreen.id,
+        });
         return;
       }
       
