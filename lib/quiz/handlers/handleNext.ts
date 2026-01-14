@@ -358,12 +358,34 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       // КРИТИЧНО: После закрытия инфо-экрана просто переходим к следующему вопросу
       // НЕ проверяем инфо-экран для следующего вопроса сразу - он будет проверен ПОСЛЕ того, как пользователь ответит
       // Это предотвращает застревание на инфо-экранах
+      // ФИКС: Сохраняем информацию о том, что мы только что закрыли инфо-экран
+      // Это предотвратит повторную проверку инфо-экрана для следующего вопроса сразу после перехода
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('quiz_justClosedInfoScreen', 'true');
+          // Очищаем флаг через небольшую задержку, чтобы следующий вызов handleNext не видел его
+          setTimeout(() => {
+            try {
+              sessionStorage.removeItem('quiz_justClosedInfoScreen');
+            } catch (err) {
+              // Игнорируем ошибки при очистке
+            }
+          }, 100);
+        } catch (err) {
+          // Игнорируем ошибки при сохранении
+        }
+      }
       await saveProgress(answers, newIndex, currentInfoScreenIndex);
       clientLogger.log('✅ Закрыт инфо-экран, переходим к следующему вопросу', {
         newIndex,
         allQuestionsLength: allQuestions.length,
         pendingInfoScreenCleared: true,
+        nextQuestionCode: allQuestions[newIndex]?.code || null,
+        hasAnsweredNextQuestion: allQuestions[newIndex] && answers[allQuestions[newIndex].id] !== undefined,
       });
+      // КРИТИЧНО: После закрытия инфо-экрана НЕ проверяем инфо-экран для следующего вопроса сразу
+      // даже если пользователь уже ответил на него - это предотвращает застревание
+      // Инфо-экран будет проверен при следующем вызове handleNext после ответа пользователя
       return;
     }
     
@@ -372,12 +394,30 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // 2. Пользователь УЖЕ ответил на текущий вопрос (currentQuestionIndex в answers)
     // 3. Это НЕ повторное прохождение
     // КРИТИЧНО: НЕ проверяем инфо-экран сразу после перехода к вопросу - только после ответа
+    // ФИКС: НЕ проверяем инфо-экран сразу после закрытия предыдущего инфо-экрана
+    // Это предотвращает застревание на инфо-экранах, когда пользователь уже ответил на следующий вопрос
     const currentQuestion = allQuestions[currentQuestionIndex];
     const isLastQuestion = currentQuestionIndex === allQuestions.length - 1;
     const hasAnsweredCurrentQuestion = currentQuestion && answers[currentQuestion.id] !== undefined;
     
-    // КРИТИЧНО: Проверяем инфо-экран только если пользователь УЖЕ ответил на текущий вопрос
-    if (currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion) {
+    // КРИТИЧНО: Проверяем инфо-экран только если:
+    // 1. Пользователь УЖЕ ответил на текущий вопрос
+    // 2. НЕТ pendingInfoScreen (не обрабатывается выше)
+    // 3. Это НЕ повторное прохождение
+    // 4. Вопрос существует и имеет код
+    // ФИКС: Добавляем дополнительную проверку - не показываем инфо-экран, если мы только что закрыли инфо-экран
+    // и перешли к следующему вопросу, даже если пользователь уже ответил на этот вопрос
+    // Это предотвращает застревание на инфо-экранах
+    // КРИТИЧНО: Проверяем инфо-экран ТОЛЬКО если пользователь ответил на вопрос ПОСЛЕ перехода к нему
+    // Если пользователь уже ответил на вопрос ДО перехода к нему (например, из-за быстрых кликов),
+    // то НЕ показываем инфо-экран сразу - он будет показан при следующем вызове handleNext после ответа
+    // ФИКС: Проверяем, что мы НЕ только что закрыли инфо-экран и перешли к этому вопросу
+    // Это предотвращает повторное показ инфо-экрана сразу после перехода к вопросу
+    // Проверяем это через sessionStorage - если мы только что закрыли инфо-экран, не показываем его снова
+    const justClosedInfoScreen = typeof window !== 'undefined' && 
+      sessionStorage.getItem('quiz_justClosedInfoScreen') === 'true';
+    
+    if (currentQuestion && !isRetakingQuiz && !pendingInfoScreen && hasAnsweredCurrentQuestion && !justClosedInfoScreen) {
       // ФИКС: Проверяем, что у вопроса есть код перед вызовом getInfoScreenAfterQuestion
       // Это предотвращает возврат info screen для вопросов без кода
       if (!currentQuestion.code) {
@@ -390,6 +430,12 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       } else {
         const infoScreen = getInfoScreenAfterQuestion(currentQuestion.code);
         if (infoScreen) {
+          // ФИКС: Проверяем, не был ли этот инфо-экран уже показан для этого вопроса
+          // Это предотвращает повторное показ инфо-экрана после закрытия предыдущего
+          // Если мы только что закрыли инфо-экран и перешли к следующему вопросу,
+          // не показываем инфо-экран сразу - он будет показан после того, как пользователь ответит
+          // Но если пользователь уже ответил на этот вопрос ДО перехода к нему (например, из-за быстрых кликов),
+          // то все равно показываем инфо-экран
           setPendingInfoScreen(infoScreen);
           await saveProgress(answers, currentQuestionIndex, currentInfoScreenIndex);
           clientLogger.log('✅ Показан инфо-экран после вопроса:', {
