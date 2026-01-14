@@ -511,6 +511,20 @@ export async function POST(request: NextRequest) {
       questionnaireId = activeQuestionnaire.id;
     }
 
+    // КРИТИЧНО: Логируем перед сохранением в БД для диагностики
+    logger.info('💾 Сохранение ответа в БД (Prisma upsert)', {
+      userId,
+      questionnaireId,
+      questionId: questionIdNum,
+      questionIdType: typeof questionIdNum,
+      hasAnswerValue: answerValue !== undefined && answerValue !== null,
+      hasAnswerValues: answerValues !== undefined && answerValues !== null,
+      answerValue: answerValue || null,
+      answerValues: answerValues || null,
+      questionIndex,
+      infoScreenIndex,
+    });
+
     // ИСПРАВЛЕНО: Используем upsert вместо delete + create для предотвращения race condition
     // Это устраняет ошибку "Unique constraint failed" при одновременных запросах
     savedAnswer = await prisma.userAnswer.upsert({
@@ -532,6 +546,16 @@ export async function POST(request: NextRequest) {
         answerValue: answerValue || null,
         answerValues: answerValues ? (answerValues as any) : null,
       },
+    });
+
+    // КРИТИЧНО: Логируем после успешного сохранения
+    logger.info('✅ Ответ успешно сохранен в БД', {
+      userId,
+      questionnaireId,
+      questionId: questionIdNum,
+      savedAnswerId: savedAnswer.id,
+      answerValue: savedAnswer.answerValue,
+      answerValues: savedAnswer.answerValues,
     });
 
     // ВОССТАНОВЛЕНО: Сохраняем прогресс в KV для новых пользователей (когда нет профиля)
@@ -611,6 +635,20 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     const duration = Date.now() - startTime;
+    
+    // КРИТИЧНО: Логируем все ошибки сохранения для диагностики
+    logger.error('❌ Ошибка сохранения ответа в БД', {
+      userId,
+      questionnaireId,
+      questionId,
+      questionIdType: typeof questionId,
+      answerValue: answerValue || null,
+      answerValues: answerValues || null,
+      errorCode: error?.code,
+      errorMessage: error?.message,
+      errorMeta: error?.meta,
+      errorStack: error?.stack?.substring(0, 500),
+    });
     
     // ИСПРАВЛЕНО: Обрабатываем ошибку уникального ограничения отдельно
     // Это может произойти при race condition, даже с upsert
