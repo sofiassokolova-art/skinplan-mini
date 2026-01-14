@@ -3449,37 +3449,8 @@ export default function QuizPage() {
     // Продолжаем выполнение, чтобы показать вопросы
   }
   
-  // КРИТИЧНО: Если isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null,
-  // это означает несоответствие условий (например, элемент массива undefined)
-  // В этом случае пропускаем начальные экраны и переходим к вопросам
-  // ИСПРАВЛЕНО: Используем useEffect для обновления состояния, чтобы избежать проблем с рендерингом
-  // ИСПРАВЛЕНО: Теперь используем isShowingInitialInfoScreen, который уже исправляет несоответствие
-  // Но все равно добавляем useEffect для исправления currentInfoScreenIndex, если нужно
-  useEffect(() => {
-    // ИСПРАВЛЕНО: КРИТИЧЕСКАЯ ЗАЩИТА - НЕ сбрасываем currentInfoScreenIndex, если пользователь уже перешел к вопросам
-    // Это предотвращает редирект на первый экран после 4-го инфо-экрана
-    if (currentInfoScreenIndexRef.current >= initialInfoScreens.length) {
-      // Пользователь уже на вопросах - НИКОГДА не сбрасываем обратно на начальные экраны
-      return;
-    }
-    
-    // ВАЖНО: Не выполняем, если resumeQuiz уже выполнен, чтобы не сбрасывать состояние после resumeQuiz
-    if (isShowingInitialInfoScreen && !currentInitialInfoScreen && !isRetakingQuiz && !showResumeScreen && !loading && !resumeCompletedRef.current) {
-      clientLogger.warn('⚠️ isShowingInitialInfoScreen = true, но currentInitialInfoScreen = null - исправляем несоответствие и пропускаем начальные экраны', {
-        currentInfoScreenIndex,
-        initialInfoScreensLength: initialInfoScreens.length,
-        hasCurrentScreen: !!initialInfoScreens[currentInfoScreenIndex],
-        isShowingInitialInfoScreen,
-        hasResumed,
-        loading,
-      });
-      // Пропускаем начальные экраны и переходим к вопросам
-      // Устанавливаем currentInfoScreenIndex в initialInfoScreens.length, чтобы пропустить все начальные экраны
-      if (currentInfoScreenIndex < initialInfoScreens.length) {
-        setCurrentInfoScreenIndex(initialInfoScreens.length);
-      }
-    }
-  }, [isShowingInitialInfoScreen, currentInitialInfoScreen, currentInfoScreenIndex, initialInfoScreens.length, isRetakingQuiz, showResumeScreen, loading, hasResumed]);
+  // ИСПРАВЛЕНО: useEffect для исправления currentInfoScreenIndex уже перемещен выше (перед useQuizView)
+  // Это гарантирует, что все хуки вызываются до любых ранних return
 
   // ИСПРАВЛЕНО: Не блокируем отображение вопросов, если они должны показываться
   // Проверяем только критические ошибки, которые действительно требуют вмешательства
