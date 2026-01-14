@@ -168,16 +168,17 @@ export function useQuizView(params: UseQuizViewParams): QuizView {
     // ФИКС: НЕ включаем currentInfoScreenIndexRef в зависимости, так как ref не триггерит рендер
     // Используем currentInfoScreenIndex вместо этого
     currentQuestionIndex,
-    currentQuestion,
-    questionnaire,
+    currentQuestion?.id, // ИСПРАВЛЕНО: Используем только ID вместо всего объекта
+    questionnaire?.id, // ИСПРАВЛЕНО: Используем только ID вместо всего объекта
     // ФИКС: Используем questionnaireRef?.current?.id вместо всего объекта, чтобы избежать лишних пересчетов
     // Это предотвращает React error #300 и #310
     questionnaireRef?.current?.id,
     questionnaireFromStateMachine?.id, // ФИКС: Используем только ID вместо всего объекта
     loading,
     hasResumed,
-    savedProgress,
-    answers,
+    // ИСПРАВЛЕНО: Используем только количество ответов вместо всего объекта
+    savedProgress ? Object.keys(savedProgress.answers || {}).length : 0,
+    Object.keys(answers || {}).length, // ИСПРАВЛЕНО: Используем только количество вместо всего объекта
     allQuestionsLength,
     isDev,
   ]);
