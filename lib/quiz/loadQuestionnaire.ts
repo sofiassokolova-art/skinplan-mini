@@ -292,6 +292,33 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     const hasProfileFromMeta = data?._meta?.hasProfile ?? false;
     const isNewUserFromMeta = !hasProfileFromMeta;
     
+    // ИСПРАВЛЕНО: Если есть _meta, но нет id и нет вопросов, создаем минимальную анкету для нового пользователя
+    // Это обрабатывает случай, когда API вернул данные с _meta, но без вопросов
+    if (hasMeta && !hasId && totalQuestionsInResponse === 0 && isNewUserFromMeta) {
+      clientLogger.log('ℹ️ API returned data with _meta but no id/questions - creating minimal questionnaire for new user', {
+        hasMeta,
+        hasId,
+        totalQuestionsInResponse,
+        isNewUserFromMeta,
+        hasProfileFromMeta,
+      });
+      const minimalQuestionnaire = {
+        id: 0,
+        name: 'Questionnaire',
+        version: '1.0',
+        groups: [],
+        questions: [],
+      };
+      questionnaireRef.current = minimalQuestionnaire;
+      setQuestionnaire(minimalQuestionnaire);
+      setLoading(false);
+      loadQuestionnaireInProgressRef.current = false;
+      clientLogger.log('✅ Created minimal questionnaire for new user (from _meta)', {
+        questionnaireId: minimalQuestionnaire.id,
+      });
+      return minimalQuestionnaire;
+    }
+    
     if (isEmptyObject || (hasNoKeyFields && !hasMeta)) {
       // ИСПРАВЛЕНО: Логируем детали для диагностики
       clientLogger.error('❌ Empty or null data received from API', {
