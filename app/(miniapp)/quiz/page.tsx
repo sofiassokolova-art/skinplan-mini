@@ -2291,13 +2291,16 @@ export default function QuizPage() {
   // ВАЖНО: Не выполняем, если hasResumed = true, чтобы не сбрасывать состояние после resumeQuiz
   useEffect(() => {
     if (currentInfoScreenIndex >= initialInfoScreens.length && !isRetakingQuiz && !showResumeScreen && !hasResumed && !resumeCompletedRef.current) {
-      // Если мы прошли все начальные экраны, но pendingInfoScreen все еще установлен - очищаем его
-      if (pendingInfoScreen) {
+      // ИСПРАВЛЕНО: Очищаем pendingInfoScreen только если currentQuestionIndex = 0 (еще не начали отвечать на вопросы)
+      // Это предотвращает очистку pendingInfoScreen, который показывается между вопросами
+      // pendingInfoScreen между вопросами должен очищаться только в handleNext при переходе к следующему вопросу
+      if (pendingInfoScreen && currentQuestionIndex === 0) {
         if (isDev) {
-          clientLogger.warn('🔧 ФИКС: Очищаем pendingInfoScreen после завершения всех начальных экранов', {
+          clientLogger.warn('🔧 ФИКС: Очищаем pendingInfoScreen после завершения всех начальных экранов (еще не начали отвечать)', {
             currentInfoScreenIndex,
             initialInfoScreensLength: initialInfoScreens.length,
             pendingInfoScreenId: pendingInfoScreen.id,
+            currentQuestionIndex,
           });
         }
         setPendingInfoScreen(null);
