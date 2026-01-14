@@ -240,18 +240,30 @@ export function useQuizComputed(params: UseQuizComputedParams) {
       
       // ИСПРАВЛЕНО: Если allQuestionsRaw пустой, но есть предыдущее значение в ref, используем его
       // Это предотвращает потерю вопросов, когда questionnaire временно становится null
-      if (!effectiveQuestionnaire || allQuestionsRaw.length === 0) {
-        if (allQuestionsPrevRef.current.length > 0) {
-          clientLogger.log('✅ Using previous allQuestions from ref (questionnaire temporarily null)', {
-            previousLength: allQuestionsPrevRef.current.length,
-          });
-          return allQuestionsPrevRef.current;
-        }
-        // Логируем только если действительно нет fallback
+      // КРИТИЧНО: Также проверяем, что questionnaire загружен, чтобы не использовать устаревшие данные
+      const hasQuestionnaire = !!effectiveQuestionnaire;
+      const shouldUsePrevRef = (!hasQuestionnaire || allQuestionsRaw.length === 0) && allQuestionsPrevRef.current.length > 0;
+      
+      if (shouldUsePrevRef) {
+        clientLogger.log('✅ Using previous allQuestions from ref (questionnaire temporarily null or allQuestionsRaw empty)', {
+          previousLength: allQuestionsPrevRef.current.length,
+          hasQuestionnaire,
+          allQuestionsRawLength: allQuestionsRaw.length,
+          effectiveQuestionnaireId: effectiveQuestionnaire?.id,
+        });
+        return allQuestionsPrevRef.current;
+      }
+      
+      // Логируем только если действительно нет fallback
+      if ((!hasQuestionnaire || allQuestionsRaw.length === 0) && allQuestionsPrevRef.current.length === 0) {
         if (isDev) {
-          clientLogger.warn('⚠️ allQuestionsRaw is empty and questionnaire is null (no fallback available)');
+          clientLogger.warn('⚠️ allQuestionsRaw is empty and questionnaire is null (no fallback available)', {
+            hasQuestionnaire,
+            allQuestionsRawLength: allQuestionsRaw.length,
+            allQuestionsPrevRefLength: allQuestionsPrevRef.current.length,
+          });
         }
-        return allQuestionsRawPrevRef.current.length > 0 ? allQuestionsRawPrevRef.current : [];
+        return [];
       }
       
       // ИСПРАВЛЕНО: Безопасное логирование с проверками
