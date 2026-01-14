@@ -354,6 +354,27 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
           clientLogger.warn('⚠️ Не удалось сохранить currentQuestionIndex в sessionStorage', err);
         }
       }
+      
+      // ИСПРАВЛЕНО: После перехода к следующему вопросу проверяем, нужно ли показать инфо-экран для СЛЕДУЮЩЕГО вопроса
+      // КРИТИЧНО: Не устанавливаем pendingInfoScreen, если мы еще на начальных экранах
+      // pendingInfoScreen должен устанавливаться только после перехода к вопросам
+      const nextQuestion = allQuestions[newIndex];
+      if (nextQuestion && !isRetakingQuiz && nextQuestion.code && currentInfoScreenIndex >= initialInfoScreens.length) {
+        const infoScreen = getInfoScreenAfterQuestion(nextQuestion.code);
+        if (infoScreen) {
+          setPendingInfoScreen(infoScreen);
+          await saveProgress(answers, newIndex, currentInfoScreenIndex);
+          clientLogger.log('✅ Показан инфо-экран для следующего вопроса:', {
+            questionCode: nextQuestion.code,
+            questionIndex: newIndex,
+            infoScreenId: infoScreen.id,
+            currentInfoScreenIndex,
+            initialInfoScreensLength: initialInfoScreens.length,
+          });
+          return;
+        }
+      }
+      
       await saveProgress(answers, newIndex, currentInfoScreenIndex);
       return;
     }
