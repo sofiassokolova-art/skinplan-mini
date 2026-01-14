@@ -18,7 +18,7 @@
     "secrets:scan": "node scripts/scan-secrets.js",
     "security:check": "npm run lint:security",
     "preview": "vite preview",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && (if [ \"$VERCEL_ENV\" = \"production\" ] || [ \"$NODE_ENV\" = \"production\" ]; then prisma migrate deploy || true; fi)",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
