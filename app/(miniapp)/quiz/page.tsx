@@ -1039,7 +1039,8 @@ export default function QuizPage() {
   
   // ИСПРАВЛЕНО: Синхронное восстановление answers из React Query кэша при монтировании
   // Это критично для предотвращения пересчета allQuestions с пустыми ответами после перемонтирования
-  useEffect(() => {
+  // КРИТИЧНО: Выполняем восстановление в useLayoutEffect для синхронного выполнения ДО рендера
+  useLayoutEffect(() => {
     // Не восстанавливаем, если React Query еще загружает
     if (isLoadingProgress) {
       return;
@@ -1065,7 +1066,15 @@ export default function QuizPage() {
             answersId: answersId.substring(0, 100), // Первые 100 символов для диагностики
           });
           // КРИТИЧНО: Устанавливаем answers синхронно, чтобы allQuestions пересчитался с правильными ответами
-          setAnswers(progressAnswers);
+          // Используем функциональную форму setState для гарантии обновления
+          setAnswers((prevAnswers) => {
+            // Если текущие answers пустые, заменяем их полностью
+            if (Object.keys(prevAnswers).length === 0) {
+              return progressAnswers;
+            }
+            // Иначе объединяем, отдавая приоритет progressAnswers
+            return { ...prevAnswers, ...progressAnswers };
+          });
           // Также обновляем ref синхронно для немедленного использования
           answersRef.current = progressAnswers;
           answersCountRef.current = progressAnswersCount;
