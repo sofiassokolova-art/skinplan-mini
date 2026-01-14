@@ -1,153 +1,646 @@
 // lib/quiz/hooks/useQuizInit.ts
-// Хук для объединения логики инициализации анкеты
-// Вынесен из quiz/page.tsx для разделения ответственности
+// РЕФАКТОРИНГ: Хук для группировки функций инициализации из quiz/page.tsx
+// Вынесен для улучшения читаемости и поддержки
 
-import { useEffect, useRef } from 'react';
-import { api } from '@/lib/api';
+import { useCallback, useRef } from 'react';
 import { clientLogger } from '@/lib/client-logger';
+import { QUIZ_CONFIG } from '@/lib/quiz/config/quizConfig';
+import { getInitialInfoScreens } from '@/app/(miniapp)/quiz/info-screens';
+import type { Questionnaire } from '@/lib/quiz/types';
 
-interface UseQuizInitOptions {
-  initCompletedRef: React.MutableRefObject<boolean>;
-  setLoading: (loading: boolean) => void;
-  pendingInfoScreen: any;
+export interface UseQuizInitParams {
+  // State
+  loading: boolean;
+  currentInfoScreenIndex: number;
   currentQuestionIndex: number;
+  savedProgress: {
+    answers: Record<number, string | string[]>;
+    questionIndex: number;
+    infoScreenIndex: number;
+  } | null;
+  showResumeScreen: boolean;
+  hasResumed: boolean;
+  isRetakingQuiz: boolean;
   allQuestions: any[];
+  
+  // Setters
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setCurrentInfoScreenIndex: React.Dispatch<React.SetStateAction<number>>;
+  setCurrentQuestionIndex: React.Dispatch<React.SetStateAction<number>>;
+  setPendingInfoScreen: React.Dispatch<React.SetStateAction<any | null>>;
+  
+  // Refs
+  questionnaireRef: React.MutableRefObject<Questionnaire | null>;
+  currentInfoScreenIndexRef: React.MutableRefObject<number>;
+  resumeCompletedRef: React.MutableRefObject<boolean>;
+  initCalledRef: React.MutableRefObject<boolean>;
   initInProgressRef: React.MutableRefObject<boolean>;
+  initCompletedRef: React.MutableRefObject<boolean>;
+  isStartingOverRef: React.MutableRefObject<boolean>;
+  hasResumedRef: React.MutableRefObject<boolean>;
+  loadProgressInProgressRef: React.MutableRefObject<boolean>;
+  progressLoadInProgressRef: React.MutableRefObject<boolean>;
+  loadQuestionnaireRef: React.MutableRefObject<(() => Promise<Questionnaire | null>) | null>;
+  firstScreenResetRef: React.MutableRefObject<boolean>;
   initStartTimeRef: React.MutableRefObject<number | null>;
+  initCompletedTimeRef: React.MutableRefObject<number | null>;
+  
+  // Functions
+  loadSavedProgressFromServer: () => Promise<void>;
+  
+  // Other
+  isDev: boolean;
 }
 
-export function useQuizInit(options: UseQuizInitOptions) {
+/**
+ * Хук для группировки функций инициализации из основного компонента Quiz
+ * Организует функции инициализации для лучшей читаемости и производительности
+ */
+export function useQuizInit(params: UseQuizInitParams) {
   const {
-    initCompletedRef,
-    setLoading,
-    pendingInfoScreen,
+    loading,
+    currentInfoScreenIndex,
     currentQuestionIndex,
+    savedProgress,
+    showResumeScreen,
+    hasResumed,
+    isRetakingQuiz,
     allQuestions,
+    setLoading,
+    setError,
+    setCurrentInfoScreenIndex,
+    setCurrentQuestionIndex,
+    setPendingInfoScreen,
+    questionnaireRef,
+    currentInfoScreenIndexRef,
+    resumeCompletedRef,
+    initCalledRef,
     initInProgressRef,
+    initCompletedRef,
+    isStartingOverRef,
+    hasResumedRef,
+    loadProgressInProgressRef,
+    progressLoadInProgressRef,
+    loadQuestionnaireRef,
+    firstScreenResetRef,
     initStartTimeRef,
-  } = options;
+    initCompletedTimeRef,
+    loadSavedProgressFromServer,
+    isDev,
+  } = params;
 
-  // Очистка залипшего флага quiz_just_submitted при входе на /quiz
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const justSubmitted = sessionStorage.getItem('quiz_just_submitted');
-        if (justSubmitted === 'true') {
-          clientLogger.log('🧹 Очищаем залипший флаг quiz_just_submitted при входе на /quiz');
-          sessionStorage.removeItem('quiz_just_submitted');
-        }
-      }
-    } catch (error) {
-      // Игнорируем ошибки sessionStorage (например, в приватном режиме)
-    }
-  }, []);
-
-  // Проверка флага quiz_just_submitted и редирект на /plan
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const justSubmitted = sessionStorage.getItem('quiz_just_submitted') === 'true';
-      if (justSubmitted) {
-        clientLogger.log('✅ Анкета только что отправлена, редиректим на /plan?state=generating (ранняя проверка)');
-        sessionStorage.removeItem('quiz_just_submitted');
-        initCompletedRef.current = true;
-        setLoading(false);
-        window.location.replace('/plan?state=generating');
+  // ============================================
+  // ГРУППА 1: waitForTelegram
+  // ============================================
+  
+  const waitForTelegram = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined') {
+        resolve();
         return;
       }
 
-      const urlParams = new URLSearchParams(window.location.search);
-      const isResuming = urlParams.get('resume') === 'true';
-      if (isResuming || pendingInfoScreen) {
-        clientLogger.log('ℹ️ Пользователь на инфо-экране или resume экране, пропускаем раннюю проверку профиля');
+      // Если уже доступен
+      if (window.Telegram?.WebApp?.initData) {
+        resolve();
+        return;
       }
-    }
-  }, [pendingInfoScreen, initCompletedRef, setLoading]);
 
-  // Проверка профиля и редирект, если анкета завершена
-  const checkProfileAndRedirect = async () => {
-    const justSubmittedCheck = typeof window !== 'undefined' 
-      ? sessionStorage.getItem('quiz_just_submitted') === 'true' 
-      : false;
+      // Ждем максимум 2 секунды
+      let attempts = 0;
+      const maxAttempts = 20; // 20 * 100ms = 2 секунды
+
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (window.Telegram?.WebApp?.initData || attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+    });
+  }, []);
+
+  // ============================================
+  // ГРУППА 2: getInitData
+  // ============================================
+  
+  const getInitData = useCallback(async (initData?: string | null): Promise<string | null> => {
+    // Сначала пробуем использовать initData из хука
+    if (initData) {
+      return initData;
+    }
     
-    if (justSubmittedCheck) {
-      clientLogger.log('✅ Флаг quiz_just_submitted обнаружен во время проверки профиля - прерываем проверку');
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('quiz_just_submitted');
-        window.location.replace('/plan');
+    // Если не доступен, ждем его готовности
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      await new Promise((resolve) => {
+        let attempts = 0;
+        const maxAttempts = 10; // 10 * 100ms = 1 секунда
+        const checkInterval = setInterval(() => {
+          attempts++;
+          const data = window.Telegram?.WebApp?.initData || null;
+          if (data || attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            resolve(undefined);
+          }
+        }, 100);
+      });
+      return window.Telegram?.WebApp?.initData || null;
+    }
+    
+    return null;
+  }, []);
+
+  // ============================================
+  // ГРУППА 3: init (основная функция инициализации)
+  // ============================================
+  
+  const init = useCallback(async () => {
+    // ИСПРАВЛЕНО: Добавлена проверка initCalledRef для предотвращения множественных вызовов
+    // ИСПРАВЛЕНО: Также проверяем наличие анкеты в ref, чтобы не загружать повторно
+    // ВАЖНО: Не вызываем init() после resumeQuiz, чтобы не сбросить состояние
+    if (resumeCompletedRef.current) {
+      clientLogger.log('⛔ init() skipped: resumeQuiz already completed, not resetting state');
+      return;
+    }
+    
+    if (initCalledRef.current && initCompletedRef.current && !isStartingOverRef.current) {
+      // Если анкета уже загружена, не нужно вызывать init() повторно
+      if (questionnaireRef.current) {
+        clientLogger.log('⛔ init() skipped: already called, completed, and questionnaire loaded', {
+          questionnaireId: questionnaireRef.current.id,
+        });
+        return;
       }
+    }
+    
+    if (initInProgressRef.current) {
+      clientLogger.log('⛔ init() skipped: already in progress');
+      return;
+    }
+    
+    if (initCompletedRef.current && !isStartingOverRef.current && questionnaireRef.current) {
+      // Если init завершен и анкета загружена, не нужно вызывать init() повторно
+      clientLogger.log('⛔ init() skipped: already completed with questionnaire', {
+        questionnaireId: questionnaireRef.current.id,
+      });
       return;
     }
 
-    if (pendingInfoScreen || currentQuestionIndex >= allQuestions.length) {
-      clientLogger.log('⏸️ Пропускаем проверку профиля: пользователь на инфо-экране или анкета завершена');
-      return;
+    initInProgressRef.current = true;
+    const initStartTime = Date.now();
+    initStartTimeRef.current = initStartTime;
+    
+    // ФИКС: Сохраняем флаг в sessionStorage для предотвращения повторных вызовов при перемонтировании
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED, 'true');
+      } catch (err) {
+        // Игнорируем ошибки sessionStorage
+      }
     }
+
+    // ИСПРАВЛЕНО: Логируем начало init() для диагностики
+    clientLogger.log('🚀 init() started', {
+      initCompleted: initCompletedRef.current,
+      isStartingOver: isStartingOverRef.current,
+      hasQuestionnaire: !!questionnaireRef.current,
+      questionnaireId: questionnaireRef.current?.id,
+    });
 
     try {
-      const profile = await api.getCurrentProfile();
-      if (profile && (profile as any).id) {
-        // Профиль существует - проверяем, завершена ли анкета
-        // Если да, редиректим на /plan
-        clientLogger.log('✅ Профиль найден, редиректим на /plan');
-        initCompletedRef.current = true;
-        setLoading(false);
-        if (typeof window !== 'undefined') {
-          window.location.replace('/plan');
+      // ФИКС: Восстанавливаем currentInfoScreenIndex из sessionStorage при перемонтировании
+      // Это предотвращает сброс индекса в 0 при ошибке React #310
+      if (typeof window !== 'undefined') {
+        try {
+          const savedInfoScreenIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+          if (savedInfoScreenIndex !== null) {
+            const savedIndex = parseInt(savedInfoScreenIndex, 10);
+            if (!isNaN(savedIndex) && savedIndex >= 0) {
+              const initialInfoScreens = getInitialInfoScreens();
+              // Восстанавливаем только если индекс валиден и не больше максимального
+              if (savedIndex <= initialInfoScreens.length) {
+                clientLogger.log('💾 Восстановлен currentInfoScreenIndex из sessionStorage', {
+                  savedIndex,
+                  currentIndex: currentInfoScreenIndex,
+                  initialInfoScreensLength: initialInfoScreens.length,
+                });
+                currentInfoScreenIndexRef.current = savedIndex;
+                setCurrentInfoScreenIndex(savedIndex);
+              } else {
+                // Если сохраненный индекс больше максимального, очищаем его
+                sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+                clientLogger.log('🧹 Очищен невалидный currentInfoScreenIndex из sessionStorage', {
+                  savedIndex,
+                  initialInfoScreensLength: initialInfoScreens.length,
+                });
+              }
+            }
+          }
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось восстановить currentInfoScreenIndex из sessionStorage', err);
         }
       }
-    } catch (err: any) {
-      const isNotFound = err?.status === 404 || 
-                        err?.message?.includes('404') || 
-                        err?.message?.includes('No profile') ||
-                        err?.message?.includes('Profile not found');
       
-      if (!isNotFound) {
-        clientLogger.warn('⚠️ Ошибка при проверке профиля:', err?.message);
-      }
-    }
-  };
+      // ФИКС: Устанавливаем loading=true при загрузке анкеты
+      // Это гарантирует, что лоадер показывается до загрузки анкеты
+      // и инфо-экраны не показываются до завершения загрузки
+      setLoading(true);
+      setError(null);
 
-  // Проверка флагов перепрохождения
-  const checkRetakeFlags = async () => {
-    try {
-      const { getIsRetakingQuiz, getFullRetakeFromHome, setIsRetakingQuiz, setFullRetakeFromHome } = 
-        await import('@/lib/user-preferences');
-      const isRetakingFromStorage = await getIsRetakingQuiz();
-      const fullRetakeFromHome = await getFullRetakeFromHome();
-
-      if (isRetakingFromStorage || fullRetakeFromHome) {
+      // 1) telegram init + ожидание (race)
+      // ИСПРАВЛЕНО: initialize вызывается напрямую, не через зависимость useCallback
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         try {
-          const profile = await api.getCurrentProfile();
-          if (!profile || !profile.id) {
-            clientLogger.log('⚠️ Флаги перепрохождения установлены, но профиля нет - очищаем флаги');
-            await setIsRetakingQuiz(false);
-            await setFullRetakeFromHome(false);
-            return;
+          window.Telegram.WebApp.ready();
+          window.Telegram.WebApp.expand();
+        } catch (err) {
+          console.warn('⚠️ Error initializing Telegram WebApp:', err);
+        }
+      }
+
+      await Promise.race([
+        waitForTelegram(),
+        new Promise<void>((resolve) =>
+          setTimeout(() => {
+            clientLogger.log('⏱️ waitForTelegram timeout (5s) → continue');
+            resolve();
+          }, 5000)
+        ),
+      ]);
+
+      // Проверка initData (только в production)
+      // ИСПРАВЛЕНО: Делаем проверку более мягкой - не бросаем ошибку, а просто логируем предупреждение
+      // initData может быть недоступен сразу после waitForTelegram, но появиться позже
+      if (!isDev && typeof window !== 'undefined') {
+        const hasInitData = !!window.Telegram?.WebApp?.initData;
+        if (!hasInitData) {
+          clientLogger.warn('⚠️ Telegram initData not available after waitForTelegram, but continuing...');
+          // ИСПРАВЛЕНО: Не бросаем ошибку, а просто логируем предупреждение
+          // initData может появиться позже, или анкета может загрузиться без него (для публичных анкет)
+        }
+      }
+
+      // 2) загрузка анкеты (если нужна)
+      // ИСПРАВЛЕНО: Используем ref вместо state для проверки, чтобы избежать race conditions
+      // КРИТИЧНО: loadQuestionnaire объявлена как useCallback ниже, но ref устанавливается синхронно
+      // Поэтому проверяем ref напрямую, без ожидания
+      if (!questionnaireRef.current) {
+        // КРИТИЧНО: Проверяем, установлен ли ref. Если нет - ждем короткое время
+        // Это защита от race condition, когда init() вызывается до того, как useCallback создал функцию
+        if (!loadQuestionnaireRef.current) {
+          // Ждем максимум 1 секунду (10 попыток по 100ms)
+          let attempts = 0;
+          const maxAttempts = 10; // 10 * 100ms = 1 секунда максимум
+          while (!loadQuestionnaireRef.current && attempts < maxAttempts) {
+            clientLogger.log('⏳ Waiting for loadQuestionnaireRef.current to be set...', {
+              attempt: attempts + 1,
+              maxAttempts,
+            });
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
           }
-        } catch (profileErr: any) {
-          const isNotFound = profileErr?.status === 404 || 
-                            profileErr?.message?.includes('404') || 
-                            profileErr?.message?.includes('No profile') ||
-                            profileErr?.message?.includes('Profile not found');
-          if (isNotFound) {
-            clientLogger.log('⚠️ Профиля нет, но флаги перепрохождения установлены - очищаем флаги');
+        }
+        
+        if (loadQuestionnaireRef.current && !questionnaireRef.current) {
+          clientLogger.log('🟢 init() CALLING loadQuestionnaire()', {
+            timestamp: new Date().toISOString(),
+            hasLoadQuestionnaireRef: !!loadQuestionnaireRef.current,
+            hasQuestionnaireRef: !!questionnaireRef.current,
+            loading,
+          });
+          
+          const loadResult = await loadQuestionnaireRef.current();
+          
+          clientLogger.log('🟢 init() loadQuestionnaire() RETURNED', {
+            timestamp: new Date().toISOString(),
+            loadResult: loadResult ? 'questionnaire object' : 'null',
+            questionnaireId: loadResult?.id || null,
+            hasQuestionnaireRef: !!questionnaireRef.current,
+            questionnaireRefId: (questionnaireRef.current as Questionnaire | null)?.id || null,
+            loading,
+          });
+          
+          // ИСПРАВЛЕНО: Если loadResult null, это означает ошибку загрузки
+          // В этом случае не ждем установки ref, так как он уже установлен в null в loadQuestionnaire
+          if (!loadResult && !questionnaireRef.current) {
+            clientLogger.error('❌ loadQuestionnaire returned null - questionnaire failed to load', {
+              timestamp: new Date().toISOString(),
+            });
+            // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
+            setLoading(false);
+            // Ошибка уже установлена в loadQuestionnaire, не устанавливаем её снова
+            throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+          }
+          
+          // КРИТИЧНО: Ждем, пока questionnaire будет установлен в ref
+          // Это предотвращает завершение init() до того, как questionnaire появится в ref
+          // ИСПРАВЛЕНО: Ждем максимум 2 секунды (20 попыток по 100ms)
+          // ИСПРАВЛЕНО: Не ждем, если loadResult null (ошибка уже обработана выше)
+          if (loadResult && !questionnaireRef.current) {
+            let waitAttempts = 0;
+            const maxWaitAttempts = 20; // 20 * 100ms = 2 секунды максимум
+            while (!questionnaireRef.current && waitAttempts < maxWaitAttempts) {
+              clientLogger.log('⏳ Waiting for questionnaire to be set in ref after loadQuestionnaire...', {
+                attempt: waitAttempts + 1,
+                maxAttempts: maxWaitAttempts,
+                loadResult: loadResult ? 'has result' : 'null',
+              });
+              await new Promise(resolve => setTimeout(resolve, 100));
+              waitAttempts++;
+            }
+            
+            if (!questionnaireRef.current) {
+              clientLogger.error('❌ questionnaireRef.current not set after loadQuestionnaire, even after waiting', {
+                timestamp: new Date().toISOString(),
+                loadResult: loadResult ? 'had result' : 'was null',
+                waitAttempts,
+                maxWaitAttempts,
+              });
+              // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
+              setLoading(false);
+              setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+              throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+            }
+          }
+          
+          // ИСПРАВЛЕНО: Проверяем, что questionnaireRef.current не null перед использованием
+          if (!questionnaireRef.current) {
+            clientLogger.error('❌ questionnaireRef.current is null after loadQuestionnaire, even after waiting');
+            setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+            throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+          }
+          
+          // ИСПРАВЛЕНО: Сохраняем значение в переменную после проверки на null
+          // TypeScript теперь знает, что currentQuestionnaire не null
+          const currentQuestionnaire: Questionnaire = questionnaireRef.current;
+          
+          clientLogger.log('✅ init() questionnaireRef.current is set after loadQuestionnaire', {
+            timestamp: new Date().toISOString(),
+            questionnaireId: currentQuestionnaire.id,
+          });
+          
+          // КРИТИЧНО: Ждем, пока questionnaire будет установлен в state
+          // Это предотвращает завершение init() до того, как questionnaire появится в state
+          // ИСПРАВЛЕНО: Ждем максимум 1 секунду (10 попыток по 100ms)
+          // Используем замыкание для доступа к questionnaire state через ref
+          let stateWaitAttempts = 0;
+          const maxStateWaitAttempts = 10; // 10 * 100ms = 1 секунда максимум
+          while (stateWaitAttempts < maxStateWaitAttempts) {
+            // Проверяем через ref, который синхронизируется с state в useEffect
+            if (questionnaireRef.current) {
+              // Проверяем, что state обновился (через небольшую задержку для React batch updates)
+              await new Promise(resolve => setTimeout(resolve, 50));
+              break; // questionnaireRef установлен, значит state должен обновиться
+            }
+            clientLogger.log('⏳ Waiting for questionnaire state to update...', {
+              attempt: stateWaitAttempts + 1,
+              maxAttempts: maxStateWaitAttempts,
+            });
+            await new Promise(resolve => setTimeout(resolve, 100));
+            stateWaitAttempts++;
+          }
+          
+          clientLogger.log('✅ Questionnaire loaded and set in ref', {
+            questionnaireId: currentQuestionnaire.id,
+            waitedForState: stateWaitAttempts > 0,
+          });
+          
+          // ФИКС: Устанавливаем loading=false после успешной загрузки анкеты
+          // Это гарантирует, что лоадер скроется сразу после загрузки, а не ждет useEffect
+          setLoading(false);
+        } else if (!loadQuestionnaireRef.current) {
+          clientLogger.error('❌ loadQuestionnaireRef.current not set after waiting, cannot load questionnaire');
+          // КРИТИЧНО: Устанавливаем loading=false перед выбросом ошибки, чтобы не зависнуть на лоадере
+          setLoading(false);
+          setError('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+          throw new Error('Не удалось загрузить анкету. Пожалуйста, обновите страницу.');
+        }
+      }
+
+      // 3) прогресс/резюм
+      // ВОССТАНОВЛЕНО: Загружаем прогресс для всех пользователей (включая новых)
+      // Для новых пользователей прогресс загружается из KV кеша
+      // ИСПРАВЛЕНО: Используем только refs для проверки, чтобы не зависеть от state в зависимостях useCallback
+      // КРИТИЧНО: Не загружаем прогресс, если пользователь уже на вопросах
+      // Это предотвращает сброс currentInfoScreenIndex после перехода к вопросам
+      const initialInfoScreens = getInitialInfoScreens();
+      const isAlreadyOnQuestions = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+      
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData && 
+          !hasResumedRef.current && 
+          !loadProgressInProgressRef.current && !progressLoadInProgressRef.current &&
+          !isAlreadyOnQuestions) {
+        try {
+          // Загружаем прогресс для всех пользователей (новые пользователи получат прогресс из KV)
+          await Promise.race([
+            loadSavedProgressFromServer(),
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
+                resolve();
+              }, 5000);
+            }),
+          ]);
+        } catch (err) {
+          // При ошибке загрузки прогресса продолжаем без него
+          clientLogger.warn('⚠️ Ошибка проверки hasPlanProgress, загружаем прогресс:', err);
+          // КРИТИЧНО: Проверяем еще раз перед повторным вызовом
+          if (!isAlreadyOnQuestions && currentInfoScreenIndexRef.current < initialInfoScreens.length) {
+            await Promise.race([
+              loadSavedProgressFromServer(),
+              new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  clientLogger.warn('⚠️ Таймаут загрузки прогресса (5 секунд) - продолжаем без прогресса');
+                  resolve();
+                }, 5000);
+              }),
+            ]);
+          }
+        }
+      } else if (isAlreadyOnQuestions) {
+        clientLogger.log('⏸️ init(): пропущена загрузка прогресса, так как пользователь уже на вопросах', {
+          currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+          initialInfoScreensLength: initialInfoScreens.length,
+        });
+      }
+
+      // ФИКС: Принудительно стартуем с вопросов для нового пользователя
+      // Это гарантирует, что после загрузки анкеты новый пользователь увидит вопросы
+      // ВАЖНО: Защита от повторных сбросов
+      // ВАЖНО: Не выполняем, если пользователь уже на вопросах (currentInfoScreenIndex >= initialInfoScreens.length)
+      // Это предотвращает сброс currentInfoScreenIndex на 0 после перехода к вопросам
+      if (questionnaireRef.current && allQuestions.length > 0 && !firstScreenResetRef.current) {
+        // ФИКС: Начальные экраны - это только те, которые не имеют showAfterQuestionCode И не имеют showAfterInfoScreenId
+        const initialInfoScreensForReset = getInitialInfoScreens();
+        
+        // ФИКС: Не выполняем, если пользователь уже на вопросах
+        // Используем ref для синхронной проверки, так как state обновляется асинхронно
+        if (currentInfoScreenIndexRef.current >= initialInfoScreensForReset.length || currentInfoScreenIndex >= initialInfoScreensForReset.length) {
+          clientLogger.log('⏸️ init(): пропущено, так как пользователь уже на вопросах', {
+            currentInfoScreenIndex,
+            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
+            initialInfoScreensLength: initialInfoScreensForReset.length,
+          });
+        } else {
+          const hasNoSavedProgress = !savedProgress || !savedProgress.answers || Object.keys(savedProgress.answers || {}).length === 0;
+          // ФИКС: Проверяем, есть ли сохраненный currentQuestionIndex в sessionStorage
+          // Если есть, значит пользователь уже отвечал на вопросы, и не нужно сбрасывать индекс
+          let savedQuestionIndex: number | null = null;
+          let savedInfoScreenIndex: number | null = null;
+          if (typeof window !== 'undefined') {
             try {
-              await setIsRetakingQuiz(false);
-              await setFullRetakeFromHome(false);
-            } catch (clearError) {
-              // ignore
+              const saved = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+              if (saved !== null) {
+                const parsed = parseInt(saved, 10);
+                if (!isNaN(parsed) && parsed >= 0) {
+                  savedQuestionIndex = parsed;
+                }
+              }
+              // ФИКС: Также проверяем currentInfoScreenIndex - если он больше длины начальных экранов,
+              // значит пользователь уже прошел начальные экраны и отвечал на вопросы
+              const savedInfoScreen = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+              if (savedInfoScreen !== null) {
+                const parsed = parseInt(savedInfoScreen, 10);
+                if (!isNaN(parsed) && parsed >= 0) {
+                  savedInfoScreenIndex = parsed;
+                }
+              }
+            } catch (err) {
+              // Игнорируем ошибки sessionStorage
+            }
+          }
+          
+          // ФИКС: Проверяем, прошел ли пользователь начальные экраны
+          // Если да, значит он уже отвечал на вопросы, и не нужно сбрасывать индекс
+          const hasPassedInitialScreens = savedInfoScreenIndex !== null && savedInfoScreenIndex >= initialInfoScreensForReset.length;
+          
+          // ФИКС: ПРИОРИТЕТ - сначала восстанавливаем из sessionStorage, если есть сохраненный индекс
+          // Это предотвращает сброс на 0 после ошибки React или перемонтирования
+          if (savedQuestionIndex !== null && savedQuestionIndex >= 0) {
+            // ФИКС: Восстанавливаем currentQuestionIndex из sessionStorage после перемонтирования
+            // Это предотвращает сброс на 0 после ошибки React
+            clientLogger.log('🔄 Восстановление currentQuestionIndex из sessionStorage после перемонтирования (ПРИОРИТЕТ)', {
+              savedQuestionIndex,
+              currentQuestionIndex,
+              hasNoSavedProgress,
+              hasPassedInitialScreens,
+            });
+            setCurrentQuestionIndex(savedQuestionIndex);
+            // Также пропускаем начальные экраны, если пользователь уже на вопросах
+            if (currentInfoScreenIndex < initialInfoScreensForReset.length && hasPassedInitialScreens) {
+              setCurrentInfoScreenIndex(initialInfoScreensForReset.length);
+            }
+          } else {
+            // Только если НЕТ сохраненного индекса - проверяем, новый ли это пользователь
+            const isNewUser = hasNoSavedProgress && !hasResumed && !showResumeScreen && !isRetakingQuiz && !hasPassedInitialScreens;
+            
+            if (isNewUser) {
+              // Пропускаем все начальные инфо-скрины и стартуем с первого вопроса
+              if (currentInfoScreenIndex < initialInfoScreensForReset.length) {
+                firstScreenResetRef.current = true; // Помечаем, что сброс выполнен
+                clientLogger.log('🔧 ФИКС: Новый пользователь - пропускаем инфо-скрины, стартуем с вопросов', {
+                  currentInfoScreenIndex,
+                  initialInfoScreensLength: initialInfoScreensForReset.length,
+                  allQuestionsLength: allQuestions.length,
+                });
+                setCurrentInfoScreenIndex(initialInfoScreensForReset.length);
+                setPendingInfoScreen(null);
+                setCurrentQuestionIndex(0);
+                // ФИКС: Детальное логирование установки вопросов для диагностики
+                clientLogger.warn('🔧 УСТАНОВКА ВОПРОСОВ: setCurrentQuestionIndex(0) в init() для нового пользователя', {
+                  currentInfoScreenIndex: initialInfoScreensForReset.length,
+                  initialInfoScreensLength: initialInfoScreensForReset.length,
+                  allQuestionsLength: allQuestions.length,
+                  currentQuestionIndex: 0,
+                  isNewUser: true,
+                  hasNoSavedProgress: true,
+                  location: 'init()',
+                });
+              }
             }
           }
         }
       }
-    } catch (err: any) {
-      clientLogger.warn('⚠️ Ошибка при проверке флагов перепрохождения:', err?.message);
+
+      clientLogger.log('✅ init() DONE - all steps completed', { 
+        timestamp: new Date().toISOString(),
+        totalElapsed: Date.now() - initStartTime,
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+        loading,
+      });
+    } catch (e: any) {
+      clientLogger.error('❌ init() FAILED - exception caught', { 
+        timestamp: new Date().toISOString(),
+        error: e?.message,
+        stack: e?.stack?.substring(0, 500),
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+        loading,
+      });
+      setError('Ошибка загрузки. Пожалуйста, обновите страницу.');
+      // КРИТИЧНО: Устанавливаем loading=false при ошибке, чтобы не зависнуть на лоадере
+      setLoading(false);
+    } finally {
+      const totalElapsed = Date.now() - (initStartTimeRef.current || Date.now());
+      initCompletedRef.current = true;
+      initInProgressRef.current = false;
+      initStartTimeRef.current = null;
+      // ИСПРАВЛЕНО: Устанавливаем время завершения init() для показа второго лоадера
+      if (!initCompletedTimeRef.current) {
+        initCompletedTimeRef.current = Date.now();
+        clientLogger.log('⏱️ init() completed, starting fallback loader timer', {
+          timestamp: initCompletedTimeRef.current,
+        });
+      }
+      const loadingBeforeFinally = loading;
+      setLoading(false);
+      clientLogger.log('🏁 init() FINALLY - setting initCompletedRef=true and loading=false', { 
+        timestamp: new Date().toISOString(),
+        totalElapsed,
+        hasQuestionnaire: !!questionnaireRef.current,
+        questionnaireId: questionnaireRef.current?.id,
+        loadingBeforeFinally,
+        loadingAfterSet: false,
+      });
     }
-  };
+  }, [
+    waitForTelegram,
+    isDev,
+    loading,
+    currentInfoScreenIndex,
+    currentQuestionIndex,
+    savedProgress,
+    showResumeScreen,
+    hasResumed,
+    isRetakingQuiz,
+    allQuestions,
+    setLoading,
+    setError,
+    setCurrentInfoScreenIndex,
+    setCurrentQuestionIndex,
+    setPendingInfoScreen,
+    questionnaireRef,
+    currentInfoScreenIndexRef,
+    resumeCompletedRef,
+    initCalledRef,
+    initInProgressRef,
+    initCompletedRef,
+    isStartingOverRef,
+    hasResumedRef,
+    loadProgressInProgressRef,
+    progressLoadInProgressRef,
+    loadQuestionnaireRef,
+    firstScreenResetRef,
+    initStartTimeRef,
+    initCompletedTimeRef,
+    loadSavedProgressFromServer,
+  ]);
 
   return {
-    checkProfileAndRedirect,
-    checkRetakeFlags,
+    waitForTelegram,
+    getInitData,
+    init,
   };
 }
-
