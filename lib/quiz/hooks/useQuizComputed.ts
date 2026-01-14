@@ -419,7 +419,8 @@ export function useQuizComputed(params: UseQuizComputedParams) {
   // ГРУППА 5: Вычисление savedProgressAnswersCount
   // ============================================
   
-  const savedProgressAnswersCount = useMemo(() => Object.keys(savedProgress?.answers || {}).length, [savedProgress?.answers]);
+  // ИСПРАВЛЕНО: Используем стабильную зависимость для savedProgressAnswersCount
+  const savedProgressAnswersCount = useMemo(() => Object.keys(savedProgress?.answers || {}).length, [savedProgressAnswersKeysCount]);
 
   // ============================================
   // ГРУППА 6: Вычисление initialInfoScreens
