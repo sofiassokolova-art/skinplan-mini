@@ -523,7 +523,8 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
       const answersId = JSON.stringify(progressAnswers);
       const progressAnswersCount = Object.keys(progressAnswers).length;
       
-      if (answersId !== lastRestoredAnswersIdRef.current || progressAnswersCount > answersCountRef.current) {
+      // КРИТИЧНО: Восстанавливаем если answers пустые (после перемонтирования) или если количество увеличилось
+      if (answersId !== lastRestoredAnswersIdRef.current || progressAnswersCount > answersCountRef.current || answersCountRef.current === 0) {
         const currentAnswersId = JSON.stringify(answersRef.current);
         if (answersId !== currentAnswersId) {
           clientLogger.log('🔄 Восстанавливаем answers из React Query кэша (после ремоунта или обновления)', {
@@ -532,6 +533,9 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
             wasEmpty: answersCountRef.current === 0,
           });
           setAnswers(progressAnswers);
+          // Также обновляем ref синхронно для немедленного использования
+          answersRef.current = progressAnswers;
+          answersCountRef.current = progressAnswersCount;
           setSavedProgress({
             answers: progressAnswers,
             questionIndex: quizProgressFromQuery.progress.questionIndex || 0,

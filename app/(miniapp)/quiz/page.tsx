@@ -1040,9 +1040,11 @@ export default function QuizPage() {
   // ИСПРАВЛЕНО: Синхронное восстановление answers из React Query кэша и sessionStorage при монтировании
   // Это критично для предотвращения пересчета allQuestions с пустыми ответами после перемонтирования
   // КРИТИЧНО: Выполняем восстановление в useLayoutEffect для синхронного выполнения ДО рендера
+  // КРИТИЧНО: НЕ используем answers в зависимостях, чтобы избежать React error #300
+  // Используем answersCountRef для проверки пустоты вместо answers
   useLayoutEffect(() => {
     // КРИТИЧНО: Сначала пытаемся восстановить из sessionStorage (быстро и синхронно)
-    if (typeof window !== 'undefined' && Object.keys(answers).length === 0) {
+    if (typeof window !== 'undefined' && answersCountRef.current === 0) {
       try {
         const savedAnswersStr = sessionStorage.getItem('quiz_answers_backup');
         if (savedAnswersStr) {
@@ -1115,7 +1117,7 @@ export default function QuizPage() {
         }
       }
     }
-  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress, answers]); // ИСПРАВЛЕНО: Добавлен answers в зависимости для проверки пустоты
+  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress]); // ИСПРАВЛЕНО: Убран answers из зависимостей, используем answersCountRef вместо этого
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init
