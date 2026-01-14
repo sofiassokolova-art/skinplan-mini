@@ -1037,6 +1037,8 @@ export default function QuizPage() {
     answersCountRef.current = Object.keys(answers).length;
   }, [answers]);
   
+  // ИСПРАВЛЕНО: Синхронное восстановление answers из React Query кэша при монтировании
+  // Это критично для предотвращения пересчета allQuestions с пустыми ответами после перемонтирования
   useEffect(() => {
     // Не восстанавливаем, если React Query еще загружает
     if (isLoadingProgress) {
@@ -1051,7 +1053,8 @@ export default function QuizPage() {
       
       // Проверяем, не восстанавливали ли мы уже эти answers
       // ИСПРАВЛЕНО: Также проверяем количество answers, чтобы не пропустить восстановление
-      if (answersId !== lastRestoredAnswersIdRef.current || progressAnswersCount > answersCountRef.current) {
+      // КРИТИЧНО: Восстанавливаем если answers пустые (после перемонтирования) или если количество увеличилось
+      if (answersId !== lastRestoredAnswersIdRef.current || progressAnswersCount > answersCountRef.current || answersCountRef.current === 0) {
         // Проверяем, действительно ли answers изменились (используем ref для стабильности)
         const currentAnswersId = JSON.stringify(answersRef.current);
         if (answersId !== currentAnswersId) {
@@ -1059,8 +1062,13 @@ export default function QuizPage() {
             answersCount: progressAnswersCount,
             previousAnswersCount: answersCountRef.current,
             wasEmpty: answersCountRef.current === 0,
+            answersId: answersId.substring(0, 100), // Первые 100 символов для диагностики
           });
+          // КРИТИЧНО: Устанавливаем answers синхронно, чтобы allQuestions пересчитался с правильными ответами
           setAnswers(progressAnswers);
+          // Также обновляем ref синхронно для немедленного использования
+          answersRef.current = progressAnswers;
+          answersCountRef.current = progressAnswersCount;
           setSavedProgress({
             answers: progressAnswers,
             questionIndex: quizProgressFromQuery.progress.questionIndex || 0,
@@ -1070,7 +1078,7 @@ export default function QuizPage() {
         }
       }
     }
-  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null]); // ИСПРАВЛЕНО: Используем JSON.stringify для стабильности зависимостей
+  }, [isLoadingProgress, quizProgressFromQuery?.progress?.answers ? JSON.stringify(quizProgressFromQuery.progress.answers) : null, setAnswers, setSavedProgress]); // ИСПРАВЛЕНО: Используем JSON.stringify для стабильности зависимостей
 
   // ИСПРАВЛЕНО: Проверка профиля и определение isRetakingQuiz/showRetakeScreen
   // Вынесено в отдельный useEffect после завершения init

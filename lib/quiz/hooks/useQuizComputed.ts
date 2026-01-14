@@ -498,7 +498,12 @@ export function useQuizComputed(params: UseQuizComputedParams) {
     // ИСПРАВЛЕНО: Также проверяем ref в условии currentInfoScreenIndex < initialInfoScreens.length
     // Если ref показывает, что пользователь уже прошел начальные экраны, не блокируем
     const isStillOnInitialScreens = currentInfoScreenIndex < initialInfoScreens.length && currentInfoScreenIndexRef.current < initialInfoScreens.length;
-    const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && isStillOnInitialScreens) || (pendingInfoScreen && !isRetakingQuiz);
+    // ИСПРАВЛЕНО: Не блокируем вопросы, если мы уже на вопросах (currentInfoScreenIndex >= initialInfoScreens.length)
+    // pendingInfoScreen должен блокировать только если мы еще на начальных экранах
+    // КРИТИЧНО: Если мы уже на вопросах (прошли начальные экраны), pendingInfoScreen не должен блокировать
+    const isOnQuestions = currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length;
+    const shouldBlockPendingInfoScreen = pendingInfoScreen && !isRetakingQuiz && !isOnQuestions && isStillOnInitialScreens;
+    const shouldBlock = (!isPastInitialScreensAny && isShowingInitialInfoScreen && currentInitialInfoScreen && isStillOnInitialScreens) || shouldBlockPendingInfoScreen;
     if (shouldBlock && !showResumeScreen) {
       // ФИКС: Всегда логируем блокировку вопросов (warn уровень сохраняется в БД)
       clientLogger.warn('⏸️ currentQuestion: null (blocked by info screen)', {
@@ -516,6 +521,9 @@ export function useQuizComputed(params: UseQuizComputedParams) {
         hasResumed,
         savedProgressExists: !!savedProgress,
         answersCount: Object.keys(answers).length,
+        isOnQuestions: currentInfoScreenIndex >= initialInfoScreens.length || currentInfoScreenIndexRef.current >= initialInfoScreens.length,
+        isStillOnInitialScreens,
+        isPastInitialScreensAny,
       });
       return null;
     }

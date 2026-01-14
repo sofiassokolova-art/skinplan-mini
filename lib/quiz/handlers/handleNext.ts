@@ -394,8 +394,10 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
       }
       
       // ИСПРАВЛЕНО: Проверяем, нужно ли показать инфо-экран для СЛЕДУЮЩЕГО вопроса
+      // КРИТИЧНО: Не устанавливаем pendingInfoScreen, если мы еще на начальных экранах
+      // pendingInfoScreen должен устанавливаться только после перехода к вопросам
       const nextQuestion = allQuestions[newIndex];
-      if (nextQuestion && !isRetakingQuiz && nextQuestion.code) {
+      if (nextQuestion && !isRetakingQuiz && nextQuestion.code && currentInfoScreenIndex >= initialInfoScreens.length) {
         const infoScreen = getInfoScreenAfterQuestion(nextQuestion.code);
         if (infoScreen) {
           setPendingInfoScreen(infoScreen);
@@ -404,6 +406,8 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
             questionCode: nextQuestion.code,
             questionIndex: newIndex,
             infoScreenId: infoScreen.id,
+            currentInfoScreenIndex,
+            initialInfoScreensLength: initialInfoScreens.length,
           });
           return;
         }
