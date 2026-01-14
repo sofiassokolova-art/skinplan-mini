@@ -405,7 +405,9 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
     if (!hasAnyQuestions) {
       // ИСПРАВЛЕНО: Для нового пользователя (no profile) это нормально - начинаем анкету
       // Не бросаем error, а продолжаем с дефолтными info-экранами
-      if (isNewUser) {
+      // КРИТИЧНО: Проверяем isNewUserFromMeta, так как hasProfile может быть undefined
+      const isNewUserFinal = isNewUser || isNewUserFromMeta;
+      if (isNewUserFinal) {
         clientLogger.log('ℹ️ New user (no profile) - questionnaire has no questions, will start with default info screens', {
           hasGroups,
           hasQuestions,
@@ -417,6 +419,8 @@ export async function loadQuestionnaire(params: LoadQuestionnaireParams): Promis
           totalQuestionsInResponse,
           hasProfile,
           isNewUser,
+          isNewUserFromMeta,
+          isNewUserFinal,
         });
         // ИСПРАВЛЕНО: Создаем минимальный объект анкеты для нового пользователя
         // Это гарантирует, что questionnaireRef.current будет установлен
