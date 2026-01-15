@@ -529,6 +529,7 @@ export function QuizInfoScreen({
               width: '100%',
               maxWidth: '320px',
               marginBottom: '32px',
+              background: 'transparent',
             }}>
               <img
                 src={screen.image}
@@ -540,6 +541,8 @@ export function QuizInfoScreen({
                   border: 'none',
                   outline: 'none',
                   display: 'block',
+                  background: 'transparent',
+                  boxShadow: 'none',
                 }}
               />
             </div>
