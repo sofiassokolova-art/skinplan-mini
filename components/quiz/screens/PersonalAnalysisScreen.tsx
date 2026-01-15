@@ -25,31 +25,31 @@ function PersonalAnalysisScreenComponent({
       icon: (
         <img 
           src="/icons/detailed_3.PNG" 
-          alt="Детальный разбор" 
+          alt="Точная оценка" 
           style={{ width: '48px', height: '48px', objectFit: 'contain' }}
         />
       ),
-      text: 'Детальный разбор – морщины, линии, текстура',
+      text: 'Точная оценка состояния кожи',
     },
     {
       icon: (
         <img 
           src="/icons/hydration_3.PNG" 
-          alt="Уровень увлажнённости" 
+          alt="Индивидуальный уход" 
           style={{ width: '48px', height: '48px', objectFit: 'contain' }}
         />
       ),
-      text: 'Уровень увлажнённости – персональная оценка баланса влаги',
+      text: 'Индивидуально подобранные средства ухода',
     },
     {
       icon: (
         <img 
           src="/icons/face_3.PNG" 
-          alt="Поры" 
+          alt="Умная рутина" 
           style={{ width: '48px', height: '48px', objectFit: 'contain' }}
         />
       ),
-      text: 'Поры – точное выявление и измерение',
+      text: 'Умная рутина, которая работает в 3 раза эффективнее',
     },
   ];
 
@@ -164,18 +164,7 @@ function PersonalAnalysisScreenComponent({
             textAlign: 'center',
             color: '#000000',
           }}>
-            92% пользователей отмечают улучшение состояния кожи за 1 месяц
-          </div>
-          <div style={{
-            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-            fontWeight: 400,
-            fontSize: '14px',
-            lineHeight: '140%',
-            letterSpacing: '0px',
-            textAlign: 'center',
-            color: '#000000',
-          }}>
-            SkinIQ в 3 раза эффективнее обычных рутин
+            92% пользователей SkinIQ отмечают улучшение состояния кожи за 1 месяц
           </div>
         </div>
       </div>

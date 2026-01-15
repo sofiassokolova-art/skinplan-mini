@@ -1,6 +1,6 @@
 // app/(miniapp)/quiz/components/QuizQuestion.tsx
 // Компонент для рендеринга вопроса анкеты
-// Вынесен из page.tsx для упрощения основного компонента
+// ОБНОВЛЕНО: Новые стили - белый фон, черный текст, черный прогресс-бар с лаймовым прогрессом
 
 'use client';
 
@@ -38,6 +38,14 @@ export function QuizQuestion({
   const isLastQuestion = currentQuestionIndex === allQuestionsLength - 1;
   const hasInfoScreenAfter = !isRetakingQuiz && getInfoScreenAfterQuestion(question.code);
   const showSubmitButton = isLastQuestion && !hasInfoScreenAfter;
+  
+  // Первый вопрос (user_name) - специальный стиль (без прогресс-бара)
+  const isNameQuestion = question?.code === 'user_name' || question?.type === 'free_text';
+  const hideProgressBar = isNameQuestion;
+  
+  // Вопрос о целях (skin_goals) - лаймовый стиль с карточками
+  const isGoalsQuestion = question?.code === 'skin_goals';
+  const useLimeStyle = isGoalsQuestion && question?.type === 'multi_choice';
 
   return (
     <>
@@ -79,39 +87,44 @@ export function QuizQuestion({
         </button>
       )}
 
-      {/* Прогресс-бар */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{
-          width: '100%',
-          height: '6px',
-          backgroundColor: 'rgba(10, 95, 89, 0.1)',
-          borderRadius: '3px',
-          overflow: 'hidden',
-          position: 'relative',
+      {/* Прогресс-бар - черный фон с лаймовым прогрессом */}
+      {!hideProgressBar && (
+        <div style={{ 
+          marginBottom: '24px',
+          marginTop: useLimeStyle ? '60px' : '0',
         }}>
           <div style={{
-            width: `${allQuestionsLength > 0 ? ((currentQuestionIndex + 1) / allQuestionsLength) * 100 : 0}%`,
-            height: '100%',
-            backgroundColor: '#0A5F59',
+            width: '100%',
+            height: '6px',
+            backgroundColor: useLimeStyle ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.1)',
             borderRadius: '3px',
-            transition: 'width 0.3s ease',
-            boxShadow: '0 2px 8px rgba(10, 95, 89, 0.3)',
-          }} />
+            overflow: 'hidden',
+            position: 'relative',
+          }}>
+            <div style={{
+              width: `${allQuestionsLength > 0 ? ((currentQuestionIndex + 1) / allQuestionsLength) * 100 : 0}%`,
+              height: '100%',
+              backgroundColor: '#D5FE61',
+              borderRadius: '3px',
+              transition: 'width 0.3s ease',
+            }} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Заголовок вопроса */}
       <h2 className="quiz-title" style={{ 
-        fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+        fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
         fontSize: '24px', 
-        fontWeight: 'bold', 
-        color: '#0A5F59',
-        marginBottom: '24px'
+        fontWeight: 700, 
+        color: '#000000',
+        marginBottom: '24px',
+        marginTop: hideProgressBar ? '60px' : '0',
       }}>
         {question?.text || ''}
       </h2>
 
-      {/* Single Choice */}
+      {/* Single Choice - белые кнопки с серой окантовкой, #F2F2F2 при выборе */}
       {question?.type === 'single_choice' && question?.options && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {question.options.map((option) => {
@@ -127,15 +140,14 @@ export function QuizQuestion({
                 style={{
                   padding: '16px',
                   borderRadius: '16px',
-                  border: '1px solid rgba(10, 95, 89, 0.2)',
-                  backgroundColor: isSelected
-                    ? 'rgba(10, 95, 89, 0.1)'
-                    : 'rgba(255, 255, 255, 0.5)',
+                  border: '1px solid #E0E0E0',
+                  backgroundColor: isSelected ? '#F2F2F2' : '#FFFFFF',
                   cursor: 'pointer',
                   textAlign: 'left',
                   fontSize: '16px',
-                  color: '#0A5F59',
+                  color: '#000000',
                   transition: 'all 0.2s',
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
                 {option.label}
@@ -152,19 +164,20 @@ export function QuizQuestion({
                 style={{
                   width: '100%',
                   padding: '18px',
-                  borderRadius: '16px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
+                  borderRadius: '20px',
+                  backgroundColor: '#000000',
+                  color: '#FFFFFF',
                   border: 'none',
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                   transition: 'all 0.2s',
                   opacity: isSubmitting ? 0.7 : 1,
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
-                {isSubmitting ? 'Отправка...' : 'Получить план →'}
+                {isSubmitting ? 'Отправка...' : 'Получить план'}
               </button>
               {!isRetakingQuiz && (
                 <p style={{
@@ -178,7 +191,7 @@ export function QuizQuestion({
                   <Link
                     href="/terms"
                     style={{
-                      color: '#0A5F59',
+                      color: '#000000',
                       textDecoration: 'underline',
                     }}
                   >
@@ -196,14 +209,15 @@ export function QuizQuestion({
                   marginTop: '24px',
                   width: '100%',
                   padding: '16px',
-                  borderRadius: '16px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
+                  borderRadius: '20px',
+                  backgroundColor: '#000000',
+                  color: '#FFFFFF',
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '16px',
-                  fontWeight: 'bold',
+                  fontWeight: 600,
                   opacity: !answers[question.id] ? 0.5 : 1,
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
                 Далее
@@ -226,21 +240,21 @@ export function QuizQuestion({
             style={{
               padding: '16px',
               borderRadius: '16px',
-              border: '1px solid rgba(10, 95, 89, 0.2)',
-              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              border: '1px solid #000000',
+              backgroundColor: '#FFFFFF',
               fontSize: '16px',
-              color: '#0A5F59',
-              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              color: '#000000',
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               outline: 'none',
               transition: 'all 0.2s',
             }}
             onFocus={(e) => {
-              e.target.style.borderColor = '#0A5F59';
-              e.target.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+              e.target.style.borderColor = '#000000';
+              e.target.style.boxShadow = '0 0 0 2px rgba(0, 0, 0, 0.1)';
             }}
             onBlur={(e) => {
-              e.target.style.borderColor = 'rgba(10, 95, 89, 0.2)';
-              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+              e.target.style.borderColor = '#000000';
+              e.target.style.boxShadow = 'none';
             }}
           />
           {answers[question.id] && String(answers[question.id]).trim().length > 0 && (
@@ -250,13 +264,14 @@ export function QuizQuestion({
                 marginTop: '12px',
                 width: '100%',
                 padding: '16px',
-                borderRadius: '16px',
-                backgroundColor: '#0A5F59',
-                color: 'white',
+                borderRadius: '20px',
+                backgroundColor: '#D5FE61',
+                color: '#000000',
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: '16px',
-                fontWeight: 'bold',
+                fontWeight: 600,
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               }}
             >
               Далее
@@ -265,8 +280,134 @@ export function QuizQuestion({
         </div>
       )}
 
-      {/* Multi Choice */}
-      {question?.type === 'multi_choice' && question?.options && (
+      {/* Multi Choice - Lime Style (skin_goals) */}
+      {question?.type === 'multi_choice' && question?.options && useLimeStyle && (
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '16px',
+          backgroundColor: '#D5FE61',
+          borderRadius: '24px',
+          padding: '20px',
+        }}>
+          {question.options.map((option, index) => {
+            const currentAnswers = (answers[question.id] as string[]) || [];
+            const isSelected = currentAnswers.includes(option.value);
+            // Картинки для каждой опции skin_goals
+            const goalImages: Record<number, string> = {
+              0: '/wrinkles6.jpeg',      // Сократить морщины и мелкие линии
+              1: '/acne6.jpeg',          // Избавиться от акне и высыпаний
+              2: '/pores6.jpeg',         // Сделать поры менее заметными
+              3: '/puff6.jpeg',          // Уменьшить отёчность лица
+              4: '/pigmentation6.jpeg',  // Выровнять тон и пигментацию
+              5: '/tone6.jpeg',          // Улучшить текстуру и гладкость кожи
+            };
+            const imageUrl = goalImages[index] || '/tone6.jpeg';
+            
+            return (
+              <button
+                key={option.id}
+                onClick={() => {
+                  const newAnswers = isSelected
+                    ? currentAnswers.filter((v) => v !== option.value)
+                    : [...currentAnswers, option.value];
+                  onAnswer(question.id, newAnswers);
+                }}
+                style={{
+                  padding: '0',
+                  borderRadius: '16px',
+                  border: isSelected ? '2px solid #FFFFFF' : 'none',
+                  backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  overflow: 'hidden',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {/* Картинка */}
+                <div style={{
+                  width: '100%',
+                  height: '140px',
+                  backgroundColor: '#f0f0f0',
+                  overflow: 'hidden',
+                }}>
+                  <img 
+                    src={imageUrl}
+                    alt={option.label}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </div>
+                {/* Текст и чекбокс */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '16px',
+                  backgroundColor: isSelected ? '#D5FE61' : '#FFFFFF',
+                }}>
+                  <span style={{
+                    fontSize: '16px',
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  }}>
+                    {option.label}
+                  </span>
+                  {/* Кружок-чекбокс */}
+                  <div style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    backgroundColor: isSelected ? '#000000' : '#D5FE61',
+                    border: isSelected ? 'none' : '2px solid #D5FE61',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    {isSelected && (
+                      <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                        <path d="M1 5L5 9L13 1" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+          
+          {/* Кнопка "Далее" - черная */}
+          {answers[question.id] && (Array.isArray(answers[question.id]) ? (answers[question.id] as string[]).length > 0 : true) && (
+            <button
+              onClick={showSubmitButton ? onSubmit : onNext}
+              disabled={isSubmitting}
+              style={{
+                marginTop: '8px',
+                width: '100%',
+                padding: '18px',
+                borderRadius: '20px',
+                backgroundColor: '#000000',
+                color: '#FFFFFF',
+                border: 'none',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                fontSize: '16px',
+                fontWeight: 600,
+                opacity: isSubmitting ? 0.7 : 1,
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              }}
+            >
+              {showSubmitButton ? (isSubmitting ? 'Отправка...' : 'Получить план') : 'Продолжить'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Multi Choice - Default Style (белые кнопки с серой окантовкой, #F2F2F2 при выборе) */}
+      {question?.type === 'multi_choice' && question?.options && !useLimeStyle && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {question.options.map((option) => {
             const currentAnswers = (answers[question.id] as string[]) || [];
@@ -284,15 +425,14 @@ export function QuizQuestion({
                 style={{
                   padding: '16px',
                   borderRadius: '16px',
-                  border: '1px solid rgba(10, 95, 89, 0.2)',
-                  backgroundColor: isSelected
-                    ? 'rgba(10, 95, 89, 0.1)'
-                    : 'rgba(255, 255, 255, 0.5)',
+                  border: '1px solid #E0E0E0',
+                  backgroundColor: isSelected ? '#F2F2F2' : '#FFFFFF',
                   cursor: 'pointer',
                   textAlign: 'left',
                   fontSize: '16px',
-                  color: '#0A5F59',
+                  color: '#000000',
                   transition: 'all 0.2s',
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
                 {option.label}
@@ -309,19 +449,20 @@ export function QuizQuestion({
                 style={{
                   width: '100%',
                   padding: '18px',
-                  borderRadius: '16px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
+                  borderRadius: '20px',
+                  backgroundColor: '#000000',
+                  color: '#FFFFFF',
                   border: 'none',
                   cursor: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 'not-allowed' : 'pointer',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
                   opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0) || isSubmitting) ? 0.5 : 1,
                   transition: 'all 0.2s',
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
-                {isSubmitting ? 'Отправка...' : 'Получить план →'}
+                {isSubmitting ? 'Отправка...' : 'Получить план'}
               </button>
               {!isRetakingQuiz && (
                 <p style={{
@@ -335,7 +476,7 @@ export function QuizQuestion({
                   <Link
                     href="/terms"
                     style={{
-                      color: '#0A5F59',
+                      color: '#000000',
                       textDecoration: 'underline',
                     }}
                   >
@@ -353,14 +494,15 @@ export function QuizQuestion({
                   marginTop: '24px',
                   width: '100%',
                   padding: '16px',
-                  borderRadius: '16px',
-                  backgroundColor: '#0A5F59',
-                  color: 'white',
+                  borderRadius: '20px',
+                  backgroundColor: '#000000',
+                  color: '#FFFFFF',
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: '16px',
-                  fontWeight: 'bold',
+                  fontWeight: 600,
                   opacity: (!answers[question.id] || (Array.isArray(answers[question.id]) && (answers[question.id] as string[]).length === 0)) ? 0.5 : 1,
+                  fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 }}
               >
                 Далее
@@ -372,4 +514,3 @@ export function QuizQuestion({
     </>
   );
 }
-

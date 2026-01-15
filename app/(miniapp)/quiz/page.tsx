@@ -3063,165 +3063,127 @@ export default function QuizPage() {
       showRetakeScreen,
       logger: clientLogger, // Передаем clientLogger для логирования
     });
-    
-    // ИСПРАВЛЕНО: Считаем только ответы на вопросы, которые остались в allQuestions после фильтрации
-    // Это предотвращает завышение прогресса, когда часть вопросов была отфильтрована (например, pregnancy для мужчин)
-    const relevantQuestionIds = new Set(allQuestions.map(q => q.id.toString()));
-    const answeredCount = Object.keys(savedProgress.answers).filter(
-      questionId => relevantQuestionIds.has(questionId)
-    ).length;
-    const totalQuestions = allQuestions.length;
-    const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+
+    // Обработчик "Начать анкету заново"
+    const handleStartFromBeginning = () => {
+      clientLogger.log('🔄 Пользователь нажал "Начать анкету заново"');
+      
+      // Очищаем sessionStorage
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INFO_SCREEN_INDEX);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.QUESTION_INDEX);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.ANSWERS);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED);
+        clientLogger.log('✅ sessionStorage очищен для нового старта');
+      }
+      
+      // Сбрасываем состояние
+      setIsStartingOver(true);
+      isStartingOverRef.current = true;
+      
+      // Очищаем ответы и прогресс
+      setAnswers({});
+      setSavedProgress(null);
+      setShowResumeScreen(false);
+      setHasResumed(false);
+      hasResumedRef.current = false;
+      
+      // Сбрасываем на первый инфо экран
+      setCurrentInfoScreenIndex(0);
+      currentInfoScreenIndexRef.current = 0;
+      setCurrentQuestionIndex(0);
+      setPendingInfoScreen(null);
+      
+      // Очищаем прогресс на сервере
+      clearProgress();
+      
+      clientLogger.log('✅ Состояние сброшено, переход на первый инфо экран');
+    };
 
     return (
       <div style={{ 
         padding: '20px',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+        background: '#FFFFFF',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
       }}>
         <div style={{
-          width: '88%',
-          maxWidth: '420px',
-          backgroundColor: 'rgba(255, 255, 255, 0.58)',
-          backdropFilter: 'blur(26px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '44px',
-          padding: '36px 28px 32px 28px',
-          boxShadow: '0 16px 48px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08)',
+          width: '100%',
+          maxWidth: '360px',
+          padding: '0 20px',
         }}>
-          <h1 className="quiz-title" style={{
-            fontFamily: "'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+          {/* Заголовок */}
+          <h1 style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
-            fontSize: '32px',
-            lineHeight: '38px',
-            color: '#0A5F59',
+            fontSize: '28px',
+            lineHeight: '120%',
+            color: '#000000',
             margin: '0 0 16px 0',
             textAlign: 'center',
           }}>
             Вы не завершили анкету
           </h1>
 
+          {/* Подзаголовок */}
           <p style={{
-            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 400,
-            fontSize: '18px',
-            lineHeight: '1.5',
-            color: '#475467',
-            margin: '0 0 24px 0',
+            fontSize: '16px',
+            lineHeight: '140%',
+            color: '#000000',
+            margin: '0 0 40px 0',
             textAlign: 'center',
           }}>
-            Продолжите, чтобы получить персональный план ухода
+            Мы сохранили ваш прогресс — продолжите с того же места или начните заново
           </p>
 
-          {/* Прогресс */}
-          <div style={{
-            marginBottom: '28px',
-            padding: '16px',
-            backgroundColor: 'rgba(10, 95, 89, 0.08)',
-            borderRadius: '16px',
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginBottom: '8px',
-              fontSize: '14px',
-              color: '#0A5F59',
-              fontWeight: 600,
-            }}>
-              <span>Прогресс</span>
-              <span>{answeredCount} из {totalQuestions} вопросов</span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: 'rgba(10, 95, 89, 0.2)',
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                width: `${progressPercent}%`,
-                height: '100%',
-                backgroundColor: '#0A5F59',
-                transition: 'width 0.3s ease',
-              }} />
-            </div>
-          </div>
-
-          {/* Выгоды */}
-          <div style={{
-            marginBottom: '28px',
-            padding: '0',
-          }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: '#0A5F59',
-              marginBottom: '12px',
-            }}>
-              Что вы получите:
-            </h3>
-            {[
-              'Персональный план ухода на 12 недель',
-              'Рекомендации от косметолога-дерматолога',
-              'Точная диагностика типа и состояния кожи',
-            ].map((benefit, index) => (
-              <div key={index} style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                marginBottom: index < 2 ? '12px' : '0',
-              }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
-                  backgroundColor: '#0A5F59',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  marginTop: '2px',
-                }}>
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-                <span style={{
-                  fontSize: '15px',
-                  color: '#1F2A44',
-                  lineHeight: '1.5',
-                }}>
-                  {String(benefit || '')}
-                </span>
-              </div>
-            ))}
-          </div>
-
+          {/* Кнопки */}
           <div style={{
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',
           }}>
+            {/* Кнопка "Продолжить с вопроса N" */}
             <button
               onClick={resumeQuiz}
               style={{
                 width: '100%',
-                height: '64px',
-                background: '#0A5F59',
-                color: 'white',
+                height: '56px',
+                background: '#000000',
+                color: '#FFFFFF',
                 border: 'none',
-                borderRadius: '32px',
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                fontWeight: 500,
-                fontSize: '19px',
-                boxShadow: '0 8px 24px rgba(10, 95, 89, 0.3), 0 4px 12px rgba(10, 95, 89, 0.2)',
+                borderRadius: '20px',
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+              }}
+            >
+              Продолжить с вопроса {savedProgress.questionIndex + 1}
+            </button>
+
+            {/* Кнопка "Начать анкету заново" */}
+            <button
+              onClick={handleStartFromBeginning}
+              style={{
+                width: '100%',
+                height: '56px',
+                background: 'transparent',
+                color: '#000000',
+                border: '2px solid #000000',
+                borderRadius: '20px',
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
                 cursor: 'pointer',
               }}
             >
-              Продолжить с вопроса {savedProgress.questionIndex + 1} →
+              Начать анкету заново
             </button>
           </div>
         </div>
@@ -4226,11 +4188,31 @@ export default function QuizPage() {
     );
   }
 
+  // Определяем, нужен ли белый фон для вопросов
+  // ОБНОВЛЕНО: Все экраны вопросов теперь белые, кроме специальных (goals с lime)
+  const isQuestionScreen = !isShowingInitialInfoScreen && 
+    currentInfoScreenIndex >= initialInfoScreens.length &&
+    currentQuestion;
+
+  // Определяем, нужен ли лаймовый фон для вопроса о целях
+  const isGoalsQuestionWithLimeBg = currentQuestion?.code === 'skin_goals' &&
+    currentQuestion?.type === 'multi_choice' &&
+    !isShowingInitialInfoScreen &&
+    currentInfoScreenIndex >= initialInfoScreens.length;
+
+  // Определяем цвет фона
+  // ОБНОВЛЕНО: Все вопросы теперь на белом фоне (кроме goals)
+  const getBackgroundColor = () => {
+    if (isGoalsQuestionWithLimeBg) return '#D5FE61';
+    if (isQuestionScreen) return '#FFFFFF';
+    return 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)';
+  };
+
   return (
     <div style={{ 
       padding: '20px',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #F5FFFC 0%, #E8FBF7 100%)',
+      background: getBackgroundColor(),
       position: 'relative',
     }}>
       {/* Debug Panel (только в development) */}
@@ -4302,14 +4284,17 @@ export default function QuizPage() {
           )}
         </div>
       )}
-      <div style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.56)',
-        backdropFilter: 'blur(28px)',
-        borderRadius: '24px',
-        padding: '24px',
-        maxWidth: '600px',
-        margin: '0 auto',
-      }}>
+      {/* Контейнер вопроса - все вопросы без blur, белый фон */}
+      {(() => {
+        const isGoalsScreen = currentQuestion?.code === 'skin_goals' && currentQuestion?.type === 'multi_choice';
+        
+        return (
+          <div style={{
+            // Без контейнера blur - просто белый фон
+            maxWidth: '600px',
+            margin: '0 auto',
+            padding: isGoalsScreen ? '0' : '24px',
+          }}>
         {/* Проверка на существование вопроса */}
         {/* КРИТИЧНО: Не показываем "Вопрос не найден", если пользователь уже прошел начальные экраны */}
         {/* Это может быть временное состояние из-за гонки состояний, которое исправится в следующем рендере */}
@@ -4451,7 +4436,9 @@ export default function QuizPage() {
             showBackButton={currentQuestionIndex > 0 || currentInfoScreenIndex > 0}
           />
         )}
-      </div>
+          </div>
+        );
+      })()}
       
       {/* РЕФАКТОРИНГ: Используем компонент QuizFinalizingLoader */}
       <QuizFinalizingLoader
