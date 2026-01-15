@@ -3070,9 +3070,9 @@ export default function QuizPage() {
       
       // Очищаем sessionStorage
       if (typeof window !== 'undefined') {
-        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INFO_SCREEN_INDEX);
-        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.QUESTION_INDEX);
-        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.ANSWERS);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+        sessionStorage.removeItem('quiz_answers_backup');
         sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED);
         clientLogger.log('✅ sessionStorage очищен для нового старта');
       }
