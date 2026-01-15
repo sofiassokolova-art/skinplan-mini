@@ -379,7 +379,7 @@ export function QuizInfoScreen({
           <h1 style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
-            fontSize: '32px',
+            fontSize: '26px',
             lineHeight: '120%',
             letterSpacing: '0px',
             textAlign: 'center',
