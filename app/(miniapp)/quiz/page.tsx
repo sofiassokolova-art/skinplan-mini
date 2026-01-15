@@ -349,8 +349,14 @@ export default function QuizPage() {
   // КРИТИЧНО: Устанавливаем showResumeScreen = true, если есть savedProgress с >= 2 ответами
   // Это исправляет проблему, когда loadSavedProgressFromServer не вызывается или блокируется
   // Используем useEffect и ref, чтобы предотвратить бесконечный цикл обновлений
+  // ВАЖНО: Устанавливаем showResumeScreen только ПОСЛЕ того, как анкета загрузилась (!loading)
   const hasSetResumeScreenRef = useRef(false);
   useEffect(() => {
+    // КРИТИЧНО: Не устанавливаем showResumeScreen во время загрузки анкеты, чтобы не блокировать загрузку вопросов
+    if (loading) {
+      return;
+    }
+    
     // Проверяем, нужно ли установить showResumeScreen
     if (savedProgress && !showResumeScreen && !isStartingOver && !hasResumed) {
       const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
@@ -365,6 +371,7 @@ export default function QuizPage() {
           savedQuestionIndex,
           shouldShowProgressScreen,
           MIN_ANSWERS: QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN,
+          loading,
         });
         hasSetResumeScreenRef.current = true;
         setShowResumeScreen(true);
@@ -373,7 +380,7 @@ export default function QuizPage() {
       // Сбрасываем ref, если savedProgress удален или пользователь начал заново
       hasSetResumeScreenRef.current = false;
     }
-  }, [savedProgress, showResumeScreen, isStartingOver, hasResumed, setShowResumeScreen]);
+  }, [savedProgress, showResumeScreen, isStartingOver, hasResumed, loading]); // setShowResumeScreen не нужен в зависимостях (стабильная функция)
   
   // РЕФАКТОРИНГ: Используем хук useQuizComputed для всех вычисляемых значений
   // Вынесены: effectiveAnswers, answersCount, allQuestionsRaw, allQuestions, 
