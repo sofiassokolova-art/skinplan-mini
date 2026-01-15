@@ -4,6 +4,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import type { Questionnaire } from '@/lib/quiz/types';
 import type { InfoScreen } from '../info-screens';
 import { getNextInfoScreenAfterScreen } from '../info-screens';
@@ -536,33 +537,13 @@ export function QuizInfoScreen({
           boxSizing: 'border-box',
         }}
       >
-          {/* Картинка */}
+          {/* Картинка с плавной загрузкой */}
           {screen.image && (
-            <div style={{
-              width: '100%',
-              maxWidth: '320px',
-              marginBottom: '32px',
-              background: '#FFFFFF',
-              backgroundColor: '#FFFFFF',
-              borderRadius: '0',
-            }}>
-              <img
-                src={screen.image}
-                alt={screen.title}
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  objectFit: 'contain',
-                  border: 'none',
-                  outline: 'none',
-                  display: 'block',
-                  background: '#FFFFFF',
-                  backgroundColor: '#FFFFFF',
-                  boxShadow: 'none',
-                  borderRadius: '0',
-                }}
-              />
-            </div>
+            <ImageWithLoading 
+              src={screen.image}
+              alt={screen.title}
+              maxWidth="320px"
+            />
           )}
 
           {/* Заголовок */}
@@ -703,31 +684,13 @@ export function QuizInfoScreen({
           boxSizing: 'border-box',
         }}
       >
-          {/* Картинка */}
+          {/* Картинка с плавной загрузкой */}
           {screen.image && (
-            <div style={{
-              width: '100%',
-              maxWidth: '240px',
-              marginBottom: '32px',
-              background: '#FFFFFF',
-              borderRadius: '0',
-            }}>
-              <img
-                src={screen.image}
-                alt={screen.title}
-                style={{
-                  width: '100%',
-                  height: 'auto',
-                  objectFit: 'contain',
-                  border: 'none',
-                  outline: 'none',
-                  display: 'block',
-                  background: '#FFFFFF',
-                  backgroundColor: '#FFFFFF',
-                  boxShadow: 'none',
-                }}
-              />
-            </div>
+            <ImageWithLoading 
+              src={screen.image}
+              alt={screen.title}
+              maxWidth="240px"
+            />
           )}
 
           {/* Заголовок */}
