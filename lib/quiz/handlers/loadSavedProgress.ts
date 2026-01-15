@@ -219,11 +219,45 @@ export async function loadSavedProgressFromServer({
     // Профиль создается только после завершения анкеты (отправки ответов)
     // Поэтому для незавершенной анкеты профиля быть не должно
     // ВАЖНО: Проверяем только наличие ответов, а не наличие профиля
-    // ИСПРАВЛЕНО: Показываем экран прогресса только если есть минимум ответов или questionIndex >= минимума
-    // Также показываем экран резюме, если infoScreenIndex > 0 (пользователь уже начал проходить инфо-экраны)
+    // ИСПРАВЛЕНО: Показываем экран прогресса только если есть минимум 2 ответа
+    // Если 1 ответ (только имя) - показываем всю анкету заново (не показываем резюм-экран)
+    // Если >= 2 ответа - показываем резюм-экран
     const answersCount = response?.progress?.answers ? Object.keys(response.progress.answers).length : 0;
     const questionIndex = response?.progress?.questionIndex ?? -1;
     const infoScreenIndex = response?.progress?.infoScreenIndex ?? 0;
+    
+    // ВАЖНО: Если ровно 1 ответ (только имя) - НЕ показываем резюм-экран, показываем анкету заново
+    if (answersCount === 1) {
+      clientLogger.log('ℹ️ У пользователя 1 ответ (только имя), показываем анкету заново', {
+        answersCount,
+        questionIndex,
+        infoScreenIndex,
+      });
+      // Очищаем прогресс, чтобы показать все инфо-экраны заново
+      setSavedProgress(null);
+      setShowResumeScreen(false);
+      // Сбрасываем индексы на 0
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('quiz_currentInfoScreenIndex');
+          sessionStorage.removeItem('quiz_currentQuestionIndex');
+          sessionStorage.removeItem('quiz_answers_backup');
+          clientLogger.log('🧹 SessionStorage очищен (1 ответ - показываем анкету заново)');
+        } catch (err) {
+          clientLogger.warn('⚠️ Не удалось очистить sessionStorage:', err);
+        }
+      }
+      if (setCurrentInfoScreenIndex) {
+        setCurrentInfoScreenIndex(0);
+      }
+      if (currentInfoScreenIndexRef) {
+        currentInfoScreenIndexRef.current = 0;
+      }
+      progressLoadedRef.current = true;
+      setLoading(false);
+      return;
+    }
+    
     const shouldShowProgressScreen = 
       answersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
       questionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN ||
@@ -238,10 +272,10 @@ export async function loadSavedProgressFromServer({
       hasAnswers: !!response?.progress?.answers,
     });
     
-    // ИСПРАВЛЕНО: Показываем экран резюме, если есть прогресс И (есть ответы И достаточно ответов) ИЛИ (infoScreenIndex > 0)
+    // ИСПРАВЛЕНО: Показываем экран резюме только если >= 2 ответа
     // ВАЖНО: Если есть ответы (>= 2), показываем резюм-экран независимо от infoScreenIndex
-    const hasEnoughAnswers = response.progress?.answers && answersCount > 0 && shouldShowProgressScreen;
-    const isOnInfoScreens = infoScreenIndex > 0 && infoScreenIndex < initialInfoScreens.length;
+    const hasEnoughAnswers = response.progress?.answers && answersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN && shouldShowProgressScreen;
+    const isOnInfoScreens = infoScreenIndex > 0 && infoScreenIndex < initialInfoScreens.length && answersCount === 0; // Только если нет ответов
     
     if (response?.progress && (hasEnoughAnswers || isOnInfoScreens)) {
       // ФИКС: Если есть достаточно ответов, показываем резюм-экран независимо от текущего индекса
