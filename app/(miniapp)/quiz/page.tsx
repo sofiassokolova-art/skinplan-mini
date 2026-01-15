@@ -1446,42 +1446,36 @@ export default function QuizPage() {
           : currentInfoScreenIndex;
         const progressInfoIndex = response.progress.infoScreenIndex || 0;
         
-        if (currentInfoIndex >= initialInfoScreens.length) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах', {
+        // ИСПРАВЛЕНО: Если у пользователя есть прогресс с >= 2 ответами,
+        // НЕ блокируем установку savedProgress, даже если currentInfoIndex >= initialInfoScreens.length
+        // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" при заходе в анкету
+        // Блокируем только если пользователь УЖЕ продолжает анкету (hasResumed = true)
+        if (currentInfoIndex >= initialInfoScreens.length && !shouldShowProgressScreen) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах и нет прогресса для resume', {
             currentInfoScreenIndex,
             currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
             initialInfoScreensLength: initialInfoScreens.length,
             progressInfoScreenIndex: progressInfoIndex,
             currentInfoIndex,
             restoredIndex,
+            shouldShowProgressScreen,
           });
           return;
         }
         
         // КРИТИЧНО: Если текущий infoScreenIndex больше, чем в загруженном прогрессе, не загружаем прогресс
         // Это предотвращает откат назад после того, как пользователь прошел больше экранов
-        // ИСПРАВЛЕНО: Также проверяем, что если пользователь уже на вопросах (currentInfoIndex >= initialInfoScreens.length),
-        // то НИКОГДА не загружаем прогресс, даже если progressInfoIndex больше
-        // Это предотвращает редирект на первый экран после перехода к вопросам
-        if (currentInfoIndex >= initialInfoScreens.length) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как пользователь уже на вопросах (защита от редиректа)', {
+        // ИСПРАВЛЕНО: НЕ блокируем, если у пользователя есть прогресс для показа resume
+        // (shouldShowProgressScreen = true), чтобы пользователь увидел экран "Вы не завершили анкету"
+        if (currentInfoIndex > progressInfoIndex && currentInfoIndex > 0 && !shouldShowProgressScreen) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как текущий прогресс больше загруженного и нет прогресса для resume', {
             currentInfoScreenIndex,
             currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
             progressInfoScreenIndex: progressInfoIndex,
             currentInfoIndex,
             restoredIndex,
             initialInfoScreensLength: initialInfoScreens.length,
-          });
-          return;
-        }
-        if (currentInfoIndex > progressInfoIndex && currentInfoIndex > 0) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: пропущено, так как текущий прогресс больше загруженного', {
-            currentInfoScreenIndex,
-            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-            progressInfoScreenIndex: progressInfoIndex,
-            currentInfoIndex,
-            restoredIndex,
-            initialInfoScreensLength: initialInfoScreens.length,
+            shouldShowProgressScreen,
           });
           return;
         }
@@ -1522,33 +1516,33 @@ export default function QuizPage() {
           return;
         }
         
-        // КРИТИЧНО: Финальная проверка перед установкой savedProgress
-        // Если пользователь уже на вопросах, не устанавливаем savedProgress, чтобы не сбросить состояние
+        // ИСПРАВЛЕНО: Если у пользователя есть прогресс с >= 2 ответами,
+        // ВСЕГДА показываем экран resume, даже если currentInfoScreenIndex >= initialInfoScreens.length
+        // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" вместо вопроса
+        // Проверка currentInfoIndex >= initialInfoScreens.length блокирует показ resume ТОЛЬКО если
+        // пользователь УЖЕ продолжает анкету (hasResumed = true), а не просто находится на вопросах
         const finalCheckInfoIndex = currentInfoScreenIndexRef.current >= initialInfoScreens.length 
           ? currentInfoScreenIndexRef.current 
           : currentInfoScreenIndex;
-        if (finalCheckInfoIndex >= initialInfoScreens.length) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка - пользователь уже на вопросах, не устанавливаем savedProgress', {
+        
+        // Если у пользователя есть прогресс с >= 2 ответами и он еще не продолжил анкету,
+        // показываем экран resume независимо от currentInfoScreenIndex
+        const shouldShowResumeRegardless = shouldShowProgressScreen && !(hasResumedRef.current || hasResumed);
+        
+        // Блокируем установку savedProgress только если:
+        // 1. Пользователь уже на вопросах (finalCheckInfoIndex >= initialInfoScreens.length)
+        // И 2. Пользователь УЖЕ продолжает анкету (hasResumed = true)
+        // ИЛИ 3. У пользователя нет прогресса для показа resume (shouldShowProgressScreen = false)
+        if (finalCheckInfoIndex >= initialInfoScreens.length && !shouldShowResumeRegardless) {
+          clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка - пользователь уже на вопросах и продолжает анкету, не устанавливаем savedProgress', {
             currentInfoScreenIndex,
             currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
             initialInfoScreensLength: initialInfoScreens.length,
             progressInfoScreenIndex: progressInfoIndex,
             finalCheckInfoIndex,
-          });
-          return;
-        }
-        
-        // ИСПРАВЛЕНО: Финальная проверка ПЕРЕД установкой savedProgress
-        // Если пользователь уже на вопросах (currentInfoScreenIndexRef.current >= initialInfoScreens.length),
-        // НИКОГДА не устанавливаем savedProgress, даже если он найден на сервере
-        // Это предотвращает редирект на первый экран после перехода к вопросам
-        const finalCheckBeforeSet = currentInfoScreenIndexRef.current >= initialInfoScreens.length;
-        if (finalCheckBeforeSet) {
-          clientLogger.log('⏸️ loadSavedProgressFromServer: финальная проверка перед установкой - пользователь уже на вопросах, не устанавливаем savedProgress', {
-            currentInfoScreenIndex,
-            currentInfoScreenIndexRef: currentInfoScreenIndexRef.current,
-            initialInfoScreensLength: initialInfoScreens.length,
-            progressInfoScreenIndex: progressInfoIndex,
+            hasResumed: hasResumedRef.current || hasResumed,
+            shouldShowProgressScreen,
+            shouldShowResumeRegardless,
           });
           return;
         }
@@ -3038,13 +3032,29 @@ export default function QuizPage() {
     return retakeScreenContent;
   }
 
+  // КРИТИЧНО: Экран resume должен проверяться ПЕРВЫМ, перед всеми остальными проверками
+  // Это гарантирует, что пользователь увидит экран "Вы не завершили анкету" до любых других экранов
   // ВАЖНО: Не показываем экран "Вы не завершили анкету", если пользователь нажал "Начать заново"
   // или уже продолжил анкету
-  // ИСПРАВЛЕНО: Добавлена проверка на минимальное количество ответов (>= 5) для показа экрана прогресса
+  // ИСПРАВЛЕНО: Добавлена проверка на минимальное количество ответов (>= 2) для показа экрана прогресса
   const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
   const savedQuestionIndex = savedProgress?.questionIndex ?? -1;
   const shouldShowProgressScreen = savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
     savedQuestionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN;
+  
+  // КРИТИЧНО: Логируем проверку экрана resume для диагностики
+  if (savedProgress && (showResumeScreen || shouldShowProgressScreen)) {
+    clientLogger.log('🔍 Проверка экрана resume:', {
+      showResumeScreen,
+      hasSavedProgress: !!savedProgress,
+      savedAnswersCount,
+      savedQuestionIndex,
+      shouldShowProgressScreen,
+      isStartingOver: isStartingOverRef.current,
+      hasResumed: hasResumedRef.current,
+      willShowResume: showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current && shouldShowProgressScreen,
+    });
+  }
   
   if (showResumeScreen && savedProgress && !isStartingOverRef.current && !hasResumedRef.current && shouldShowProgressScreen) {
     // Получаем все вопросы с фильтрацией
