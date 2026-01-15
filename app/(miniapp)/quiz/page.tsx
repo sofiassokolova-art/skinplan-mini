@@ -3077,10 +3077,8 @@ export default function QuizPage() {
     return retakeScreenContent;
   }
 
-  // ИСПРАВЛЕНО: Перемещаем проверку резюм-экрана ПОСЛЕ вызова useQuizView
-  // useQuizView вызывается ниже, но резюм-экран проверяется в нем ПЕРВЫМ
-  // Здесь оставляем только базовую проверку для отображения UI резюм-экрана
-    // Получаем все вопросы с фильтрацией
+  // КРИТИЧНО: Проверка резюм-экрана перемещена ПОСЛЕ вызова useQuizView (ниже)
+  // Используем quizView.type === 'resume' для определения необходимости показа резюм-экрана
     // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
     const allQuestionsRaw = questionnaire ? [
       ...(questionnaire.groups || []).flatMap((g) => g.questions || []),
@@ -3306,6 +3304,167 @@ export default function QuizPage() {
     allQuestionsLength: allQuestions.length,
     isDev,
   });
+  
+  // ИСПРАВЛЕНО: Проверяем резюм-экран ПОСЛЕ вызова useQuizView
+  // Используем quizView.type === 'resume' как основную проверку
+  // useQuizView проверяет showResumeScreen ПЕРВЫМ, так что если showResumeScreen = true,
+  // quizView.type будет 'resume'
+  const savedAnswersCount = savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0;
+  const shouldShowResume = quizView.type === 'resume' &&
+                           showResumeScreen && 
+                           savedProgress && 
+                           savedAnswersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN &&
+                           !isStartingOverRef.current && 
+                           !hasResumedRef.current;
+  
+  if (shouldShowResume) {
+    // Получаем все вопросы с фильтрацией
+    // ИСПРАВЛЕНО: Добавляем проверку на существование groups и questions
+    const allQuestionsRaw = questionnaire ? [
+      ...(questionnaire.groups || []).flatMap((g) => g.questions || []),
+      ...(questionnaire.questions || []),
+    ] : [];
+    
+    // ИСПРАВЛЕНО: Используем единую функцию filterQuestions вместо дублирующей логики
+    // filterQuestions уже использует allAnswers (answers + savedProgress.answers) внутри
+    const allQuestions = filterQuestions({
+      questions: allQuestionsRaw,
+      answers,
+      savedProgressAnswers: savedProgress?.answers,
+      isRetakingQuiz,
+      showRetakeScreen,
+      logger: clientLogger, // Передаем clientLogger для логирования
+    });
+
+    // Обработчик "Начать анкету заново"
+    const handleStartFromBeginning = () => {
+      clientLogger.log('🔄 Пользователь нажал "Начать анкету заново"');
+      
+      // Очищаем sessionStorage
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_INFO_SCREEN);
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
+        sessionStorage.removeItem('quiz_answers_backup');
+        sessionStorage.removeItem(QUIZ_CONFIG.STORAGE_KEYS.INIT_CALLED);
+        clientLogger.log('✅ sessionStorage очищен для нового старта');
+      }
+      
+      // Сбрасываем состояние
+      setIsStartingOver(true);
+      isStartingOverRef.current = true;
+      
+      // Очищаем ответы и прогресс
+      setAnswers({});
+      setSavedProgress(null);
+      setShowResumeScreen(false);
+      setHasResumed(false);
+      hasResumedRef.current = false;
+      
+      // Сбрасываем на первый инфо экран
+      setCurrentInfoScreenIndex(0);
+      currentInfoScreenIndexRef.current = 0;
+      setCurrentQuestionIndex(0);
+      setPendingInfoScreen(null);
+      
+      // Очищаем прогресс на сервере
+      clearProgress();
+      
+      clientLogger.log('✅ Состояние сброшено, переход на первый инфо экран');
+    };
+
+    return (
+      <div style={{ 
+        padding: '20px',
+        minHeight: '100vh',
+        background: '#FFFFFF',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div 
+          className="animate-fade-in"
+          style={{
+            width: '100%',
+            maxWidth: '360px',
+            padding: '0 20px',
+          }}
+        >
+          {/* Заголовок */}
+          <h1 style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '28px',
+            lineHeight: '120%',
+            color: '#000000',
+            margin: '0 0 16px 0',
+            textAlign: 'center',
+          }}>
+            Вы не завершили анкету
+          </h1>
+
+          {/* Подзаголовок */}
+          <p style={{
+            fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 400,
+            fontSize: '16px',
+            lineHeight: '140%',
+            color: '#000000',
+            margin: '0 0 40px 0',
+            textAlign: 'center',
+          }}>
+            Мы сохранили ваш прогресс — продолжите с того же места или начните заново
+          </p>
+
+          {/* Кнопки */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}>
+            {/* Кнопка "Продолжить с вопроса N" */}
+            <button
+              onClick={resumeQuiz}
+              style={{
+                width: '100%',
+                height: '56px',
+                background: '#000000',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '20px',
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+              }}
+            >
+              Продолжить с вопроса {savedProgress.questionIndex + 1}
+            </button>
+
+            {/* Кнопка "Начать анкету заново" */}
+            <button
+              onClick={handleStartFromBeginning}
+              style={{
+                width: '100%',
+                height: '56px',
+                background: 'transparent',
+                color: '#000000',
+                border: '2px solid #000000',
+                borderRadius: '20px',
+                fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontSize: '16px',
+                cursor: 'pointer',
+              }}
+            >
+              Начать анкету заново
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Если показывается информационный экран между вопросами
   // При повторном прохождении пропускаем все info screens
