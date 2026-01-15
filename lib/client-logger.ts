@@ -3,13 +3,14 @@
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
+// ИСПРАВЛЕНО: Увеличен троттлинг для снижения нагрузки на /api/logs
 // Внутренний троттлинг для отправки логов на сервер, чтобы избежать спама одинаковыми сообщениями
-const LOG_THROTTLE_MS = 10_000; // 10 секунд для одинаковых сообщений (уменьшено для лучшей диагностики)
+const LOG_THROTTLE_MS = 30_000; // 30 секунд для одинаковых сообщений (увеличено для снижения нагрузки)
 const lastSentLogMap = new Map<string, number>();
 // Глобальный счетчик для ограничения количества логов в секунду
 let logsInLastSecond = 0;
 let lastSecondReset = Date.now();
-const MAX_LOGS_PER_SECOND = 10; // Максимум 10 логов в секунду (увеличено для диагностики)
+const MAX_LOGS_PER_SECOND = 3; // ИСПРАВЛЕНО: Максимум 3 лога в секунду (уменьшено с 10 для снижения нагрузки)
 
 const shouldSendToServer = (
   level: 'log' | 'warn' | 'debug' | 'error' | 'info',
@@ -71,16 +72,44 @@ const sendLogToServer = async (
       userAgent: navigator.userAgent,
     };
 
-    // ИСПРАВЛЕНО: Логируем в консоль для отладки (всегда, чтобы видеть, что логи отправляются)
-    console.debug('📤 Sending log to server:', { 
-      level, 
-      message: message.substring(0, 50),
-      hasInitData: !!initData,
-    });
+    // ИСПРАВЛЕНО: Не логируем в консоль каждый отправляемый лог (слишком много шума)
+    // Логируем только в development для отладки
+    if (isDevelopment) {
+      console.debug('📤 Sending log to server:', { 
+        level, 
+        message: message.substring(0, 50),
+        hasInitData: !!initData,
+      });
+    }
 
-    // Отправляем с таймаутом, чтобы не блокировать
+    // ИСПРАВЛЕНО: Используем requestIdleCallback или setTimeout для неблокирующей отправки
+    // Отправляем асинхронно, не блокируя основной поток
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      // Используем requestIdleCallback если доступен (не блокирует рендеринг)
+      (window as any).requestIdleCallback(() => {
+        sendLogFetch(logPayload, initData, level, message);
+      }, { timeout: 3000 });
+    } else {
+      // Fallback: отправляем с небольшой задержкой, чтобы не блокировать
+      setTimeout(() => {
+        sendLogFetch(logPayload, initData, level, message);
+      }, 100);
+    }
+  } catch (err: any) {
+    // Игнорируем ошибки отправки
+  }
+};
+
+// ИСПРАВЛЕНО: Вынесено в отдельную функцию для неблокирующей отправки
+const sendLogFetch = async (
+  logPayload: any, 
+  initData: string | null, 
+  level: 'log' | 'warn' | 'debug' | 'error' | 'info',
+  message: string
+) => {
+  try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // Увеличено до 5 секунд
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // Уменьшено до 3 секунд
 
     const response = await fetch('/api/logs', {
       method: 'POST',
@@ -90,32 +119,30 @@ const sendLogToServer = async (
       },
       body: JSON.stringify(logPayload),
       signal: controller.signal,
+      // ИСПРАВЛЕНО: Не ждем ответа - отправляем и забываем (fire and forget)
+      keepalive: true,
     });
 
     clearTimeout(timeoutId);
 
-    // ИСПРАВЛЕНО: Всегда логируем результат отправки для диагностики
-    if (response.ok) {
-      const result = await response.json();
-      console.debug('✅ Log sent successfully:', { 
-        level, 
-        saved: result.saved,
-        kvSaved: result.kvSaved,
-        dbSaved: result.dbSaved,
-      });
-    } else {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      console.warn('⚠️ Failed to send log:', { 
-        status: response.status, 
-        statusText: response.statusText,
-        error: errorText.substring(0, 200),
-        level,
-        message: message.substring(0, 50),
-      });
+    // ИСПРАВЛЕНО: Не логируем результат каждой отправки (слишком много шума)
+    // Логируем только ошибки и только в development
+    if (!response.ok) {
+      if (isDevelopment) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.warn('⚠️ Failed to send log:', { 
+          status: response.status, 
+          statusText: response.statusText,
+          error: errorText.substring(0, 200),
+          level,
+          message: message.substring(0, 50),
+        });
+      }
     }
   } catch (err: any) {
-    // ИСПРАВЛЕНО: Логируем ошибки отправки (но не создаем бесконечный цикл)
-    if (err?.name !== 'AbortError') {
+    // ИСПРАВЛЕНО: Не логируем каждую ошибку отправки (слишком много шума)
+    // Логируем только в development для отладки
+    if (isDevelopment && err?.name !== 'AbortError') {
       console.warn('⚠️ Error sending log to server:', {
         error: err?.message || err,
         errorName: err?.name,
@@ -142,55 +169,42 @@ export const clientLogger = {
   log: (...args: any[]) => {
     const message = formatMessage(...args);
     console.log(...args); // Всегда выводим в консоль
-    // ИСПРАВЛЕНО: Отправляем логи на сервер (в development все, в production только важные)
-    // Проверяем, является ли это важным логом (содержит эмодзи или ключевые слова)
-    const isImportantLog = 
-      // Эмодзи для важных событий
-      message.includes('✅') || message.includes('❌') || 
-      message.includes('⚠️') || message.includes('🔄') ||
-      message.includes('🔍') || message.includes('📥') ||
-      message.includes('🔵') || message.includes('🟢') ||
-      // Ключевые слова для загрузки анкеты
-      message.includes('questionnaire') || message.includes('анкет') ||
-      message.includes('loadQuestionnaire') || message.includes('init()') ||
-      message.includes('setQuestionnaire') || message.includes('questionnaireRef') ||
-      message.includes('RENDER') || message.includes('loading') ||
-      // Другие важные события
-      message.includes('Plan') || message.includes('fallback') ||
-      message.includes('redirect') || message.includes('error') ||
-      message.includes('CRITICAL') || message.includes('CALLED') ||
-      message.includes('RETURNED') || message.includes('EXECUTED') ||
-      message.includes('filterQuestions') || message.includes('filter') ||
-      message.includes('ВСЕ ВОПРОСЫ') || message.includes('ОТФИЛЬТРОВАНЫ') ||
-      // ИСПРАВЛЕНО: Добавляем ключевые слова для debouncing и кэширования
-      message.includes('debounced') || message.includes('кэш') ||
-      message.includes('Метаданные позиции') || message.includes('progressLoaded') ||
-      message.includes('loadSavedProgressFromServer');
+    // ИСПРАВЛЕНО: В production отправляем только критичные логи (error, критичные warn)
+  // В development отправляем больше, но все равно с троттлингом
+    // Проверяем, является ли это критичным логом
+    const isCriticalLog = 
+      // Только ошибки и критичные предупреждения
+      message.includes('❌') || 
+      (message.includes('⚠️') && (message.includes('error') || message.includes('Error') || message.includes('CRITICAL'))) ||
+      // Критичные события, которые нужны для диагностики
+      message.includes('CRITICAL') || 
+      message.includes('FATAL') ||
+      (message.includes('error') && (message.includes('API') || message.includes('fetch') || message.includes('network')));
     
-    // ФИКС: Уменьшаем количество логов, отправляемых на сервер
-    // Отправляем только критичные логи и ошибки, не отправляем частые логи рендеринга
-    const isFrequentLog = 
-      message.includes('📺') || // Логи рендеринга инфо-экранов
-      message.includes('🔍 Quiz page render') || // Логи рендеринга страницы
-      message.includes('📊 allQuestions state') || // Логи состояния вопросов
-      message.includes('💾 allQuestionsPrevRef') || // Логи синхронизации refs
-      message.includes('🔍 isShowingInitialInfoScreen') || // Логи вычисления инфо-экранов
-      message.includes('⏸️ currentQuestion') || // Логи текущего вопроса
-      message.includes('🔍 Состояние рендера'); // Логи состояния рендера
-    
-    // ИСПРАВЛЕНО: Отправляем только важные логи, исключая частые логи рендеринга
-    // В development все равно отправляем все логи для отладки
-    if (isDevelopment || (isImportantLog && !isFrequentLog)) {
-      try {
-        // ИСПРАВЛЕНО: В production отправляем важные log как 'info', чтобы они прошли проверку в sendLogToServer
-        const levelToSend = (!isDevelopment && isImportantLog) ? 'info' : 'log';
-        // ИСПРАВЛЕНО: Отправляем даже если троттлинг блокирует, для важных логов
-        // ИСПРАВЛЕНО: Для важных логов обходим троттлинг полностью
-        if (isImportantLog || shouldSendToServer(levelToSend, message)) {
-          sendLogToServer(levelToSend, message, args.length > 1 ? args.slice(1) : null);
+    // ИСПРАВЛЕНО: Отправляем в production ТОЛЬКО критичные логи
+    // В development отправляем больше, но все равно с усиленным троттлингом
+    if (isDevelopment) {
+      // В development: отправляем важные логи с троттлингом
+      const isImportantLog = 
+        message.includes('✅') || message.includes('❌') || 
+        message.includes('⚠️') || message.includes('🔄') ||
+        message.includes('CRITICAL') || message.includes('error');
+      
+      if (isImportantLog && shouldSendToServer('log', message)) {
+        try {
+          sendLogToServer('log', message, args.length > 1 ? args.slice(1) : null);
+        } catch (err) {
+          // Игнорируем ошибки отправки
         }
-      } catch (err) {
-        // Игнорируем ошибки отправки
+      }
+    } else {
+      // В production: отправляем ТОЛЬКО критичные логи
+      if (isCriticalLog && shouldSendToServer('info', message)) {
+        try {
+          sendLogToServer('info', message, args.length > 1 ? args.slice(1) : null);
+        } catch (err) {
+          // Игнорируем ошибки отправки
+        }
       }
     }
   },
@@ -198,11 +212,20 @@ export const clientLogger = {
   warn: (...args: any[]) => {
     const message = formatMessage(...args);
     console.warn(...args); // Предупреждения всегда выводим
-    // ИСПРАВЛЕНО: Предупреждения всегда отправляем на сервер (и в production, и в development)
-    // Добавляем try-catch для безопасности
+    // ИСПРАВЛЕНО: Предупреждения отправляем с троттлингом
+    // В production отправляем только критичные предупреждения
     try {
-      if (shouldSendToServer('warn', message)) {
-        sendLogToServer('warn', message, args.length > 1 ? args.slice(1) : null);
+      const isCriticalWarn = 
+        message.includes('CRITICAL') || 
+        message.includes('error') || 
+        message.includes('Error') ||
+        message.includes('failed') ||
+        message.includes('Failed');
+      
+      if (isDevelopment || isCriticalWarn) {
+        if (shouldSendToServer('warn', message)) {
+          sendLogToServer('warn', message, args.length > 1 ? args.slice(1) : null);
+        }
       }
     } catch (err) {
       // Игнорируем ошибки отправки, чтобы не создать бесконечный цикл
@@ -235,10 +258,17 @@ export const clientLogger = {
   info: (...args: any[]) => {
     const message = formatMessage(...args);
     console.info(...args);
-    // ИСПРАВЛЕНО: info логи всегда отправляем на сервер (и в production, и в development)
+    // ИСПРАВЛЕНО: info логи отправляем только в development или только критичные в production
     try {
-      if (shouldSendToServer('info', message)) {
-        sendLogToServer('info', message, args.length > 1 ? args.slice(1) : null);
+      const isCriticalInfo = 
+        message.includes('CRITICAL') || 
+        message.includes('error') || 
+        message.includes('Error');
+      
+      if (isDevelopment || isCriticalInfo) {
+        if (shouldSendToServer('info', message)) {
+          sendLogToServer('info', message, args.length > 1 ? args.slice(1) : null);
+        }
       }
     } catch (err) {
       // Игнорируем ошибки отправки
