@@ -90,13 +90,13 @@ export function QuizQuestion({
       {/* Прогресс-бар - черный фон с лаймовым прогрессом */}
       {!hideProgressBar && (
         <div style={{ 
-          marginBottom: '24px',
-          marginTop: useLimeStyle ? '60px' : '0',
+          marginBottom: useLimeStyle ? '16px' : '24px',
+          marginTop: '60px',
         }}>
           <div style={{
             width: '100%',
             height: '6px',
-            backgroundColor: useLimeStyle ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            backgroundColor: '#000000',
             borderRadius: '3px',
             overflow: 'hidden',
             position: 'relative',
@@ -118,7 +118,7 @@ export function QuizQuestion({
         fontSize: '24px', 
         fontWeight: 700, 
         color: '#000000',
-        marginBottom: '24px',
+        marginBottom: useLimeStyle ? '16px' : '24px',
         marginTop: hideProgressBar ? '60px' : '0',
       }}>
         {question?.text || ''}
@@ -307,11 +307,11 @@ export function QuizQuestion({
             return (
               <button
                 key={option.id}
-                onClick={() => {
+                onClick={async () => {
                   const newAnswers = isSelected
                     ? currentAnswers.filter((v) => v !== option.value)
                     : [...currentAnswers, option.value];
-                  onAnswer(question.id, newAnswers);
+                  await onAnswer(question.id, newAnswers);
                 }}
                 style={{
                   padding: '0',

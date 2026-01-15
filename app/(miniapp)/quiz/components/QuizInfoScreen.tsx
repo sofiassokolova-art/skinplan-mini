@@ -519,7 +519,7 @@ export function QuizInfoScreen({
           {screen.image && (
             <div style={{
               width: '100%',
-              maxWidth: '280px',
+              maxWidth: '320px',
               marginBottom: '32px',
             }}>
               <img
@@ -529,6 +529,9 @@ export function QuizInfoScreen({
                   width: '100%',
                   height: 'auto',
                   objectFit: 'contain',
+                  border: 'none',
+                  outline: 'none',
+                  display: 'block',
                 }}
               />
             </div>
@@ -538,7 +541,7 @@ export function QuizInfoScreen({
           <h1 style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontWeight: 700,
-            fontSize: '28px',
+            fontSize: '32px',
             lineHeight: '120%',
             letterSpacing: '0px',
             textAlign: 'left',
@@ -555,7 +558,7 @@ export function QuizInfoScreen({
             <div style={{
               fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontWeight: 400,
-              fontSize: '16px',
+              fontSize: '18px',
               lineHeight: '140%',
               letterSpacing: '0px',
               textAlign: 'left',
