@@ -120,7 +120,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'general_info_intro',
     title: 'Общая информация',
     subtitle: 'Поможет нам подобрать подходящий уход',
-    image: '/quiz4.png', // Временная картинка, будет заменена
+    image: '/info8.jpg',
     showAfterInfoScreenId: 'testimonials', // ИСПРАВЛЕНО: После экрана testimonials, а не вопроса
     ctaText: 'Продолжить',
   },
