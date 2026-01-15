@@ -553,6 +553,7 @@ export function QuizInfoScreen({
             margin: '0 0 16px 0',
             width: '100%',
             maxWidth: '320px',
+            whiteSpace: 'pre-line',
           }}>
             {screen.title}
           </h1>

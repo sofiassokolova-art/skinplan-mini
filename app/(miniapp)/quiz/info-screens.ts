@@ -61,7 +61,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 4) Расскажите о вашей цели
   {
     id: 'goals_intro',
-    title: 'Расскажите о вашей цели',
+    title: 'Расскажите о вашей\nцели',
     subtitle: 'Это поможет нам сделать рекомендации точнее',
     image: '/quiz4.png',
     ctaText: 'Продолжить',

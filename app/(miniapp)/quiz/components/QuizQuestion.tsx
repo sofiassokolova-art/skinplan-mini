@@ -288,8 +288,6 @@ export function QuizQuestion({
           backgroundColor: '#D5FE61',
           borderRadius: '24px',
           padding: '20px',
-          marginLeft: '-20px',
-          marginRight: '-20px',
           marginTop: '-40px',
           paddingTop: '60px',
         }}>
@@ -378,19 +376,19 @@ export function QuizQuestion({
                     }}>
                       {option.label}
                     </span>
-                    {/* Кружок-чекбокс */}
-                    <div style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      backgroundColor: isSelected ? '#000000' : '#D5FE61',
-                      border: isSelected ? 'none' : '2px solid #D5FE61',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
-                    }}>
+                  {/* Кружок-чекбокс */}
+                  <div style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    backgroundColor: isSelected ? '#000000' : '#D5FE61',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: isSelected ? 'none' : 'inset 0 2px 4px rgba(0, 0, 0, 0.15)',
+                  }}>
                       {isSelected && (
                         <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
                           <path d="M1 5L5 9L13 1" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

@@ -92,7 +92,7 @@ function PersonalAnalysisScreenComponent({
           style={{
             fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
             fontStyle: 'normal',
-            fontSize: '24px',
+            fontSize: '32px',
             lineHeight: '120%',
             letterSpacing: '0px',
             textAlign: 'center',
