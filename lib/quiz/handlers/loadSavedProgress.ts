@@ -219,14 +219,27 @@ export async function loadSavedProgressFromServer({
     // Профиль создается только после завершения анкеты (отправки ответов)
     // Поэтому для незавершенной анкеты профиля быть не должно
     // ВАЖНО: Проверяем только наличие ответов, а не наличие профиля
-    // ИСПРАВЛЕНО: Показываем экран прогресса только если есть минимум 5 ответов или questionIndex >= 5
+    // ИСПРАВЛЕНО: Показываем экран прогресса только если есть минимум ответов или questionIndex >= минимума
+    // Также показываем экран резюме, если infoScreenIndex > 0 (пользователь уже начал проходить инфо-экраны)
     const answersCount = response?.progress?.answers ? Object.keys(response.progress.answers).length : 0;
     const questionIndex = response?.progress?.questionIndex ?? -1;
+    const infoScreenIndex = response?.progress?.infoScreenIndex ?? 0;
     const shouldShowProgressScreen = 
       answersCount >= QUIZ_CONFIG.VALIDATION.MIN_ANSWERS_FOR_PROGRESS_SCREEN || 
-      questionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN;
+      questionIndex >= QUIZ_CONFIG.VALIDATION.MIN_QUESTION_INDEX_FOR_PROGRESS_SCREEN ||
+      (infoScreenIndex > 0 && infoScreenIndex < initialInfoScreens.length); // Если начал проходить инфо-экраны, но еще не дошел до вопросов
     
-    if (response?.progress && response.progress.answers && answersCount > 0 && shouldShowProgressScreen) {
+    clientLogger.log('🔍 Проверка показа экрана резюме:', {
+      answersCount,
+      questionIndex,
+      infoScreenIndex,
+      shouldShowProgressScreen,
+      hasProgress: !!response?.progress,
+      hasAnswers: !!response?.progress?.answers,
+    });
+    
+    // ИСПРАВЛЕНО: Показываем экран резюме, если есть прогресс И (есть ответы И достаточно ответов) ИЛИ (infoScreenIndex > 0)
+    if (response?.progress && ((response.progress.answers && answersCount > 0 && shouldShowProgressScreen) || (infoScreenIndex > 0 && infoScreenIndex < initialInfoScreens.length))) {
       // ФИКС: Не загружаем прогресс, если пользователь уже перешел к вопросам (currentInfoScreenIndex >= initialInfoScreens.length)
       // Это предотвращает сброс currentInfoScreenIndex на 0 после перехода к вопросам
       // ИСПРАВЛЕНО: Используем ref для синхронной проверки, так как state обновляется асинхронно
@@ -290,8 +303,9 @@ export async function loadSavedProgressFromServer({
       }
       
       clientLogger.log('✅ Найдены сохраненные ответы, показываем экран продолжения', {
-        answersCount: Object.keys(response.progress.answers).length,
+        answersCount: response.progress.answers ? Object.keys(response.progress.answers).length : 0,
         questionIndex: response.progress.questionIndex,
+        infoScreenIndex: response.progress.infoScreenIndex,
         hasProfile,
       });
       
@@ -358,7 +372,7 @@ export async function loadSavedProgressFromServer({
       }
       
       clientLogger.log('✅ Прогресс найден на сервере, показываем экран продолжения:', {
-        answersCount: Object.keys(response.progress.answers).length,
+        answersCount: response.progress.answers ? Object.keys(response.progress.answers).length : 0,
         questionIndex: response.progress.questionIndex,
         infoScreenIndex: response.progress.infoScreenIndex,
         hasProfile,

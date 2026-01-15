@@ -146,14 +146,63 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // ВОССТАНОВЛЕНО: Если ответов в БД нет, но есть прогресс в KV - используем его
+    // ИСПРАВЛЕНО: Если ответов в БД нет, проверяем KV и QuestionnaireProgress
+    // Если есть infoScreenIndex > 0, возвращаем прогресс даже без ответов
     if (userAnswers.length === 0) {
+      // Проверяем QuestionnaireProgress, даже если нет ответов
+      let savedProgress = null;
+      try {
+        savedProgress = await prisma.questionnaireProgress.findUnique({
+          where: {
+            userId_questionnaireId: {
+              userId,
+              questionnaireId: activeQuestionnaire.id,
+            },
+          },
+        });
+      } catch (error: any) {
+        if (error?.code !== 'P2021' && !error?.message?.includes('does not exist')) {
+          console.error('Error loading questionnaire progress:', error);
+        }
+      }
+
+      // Если есть прогресс в KV с ответами - используем его
       if (kvProgress && kvProgress.answers && Object.keys(kvProgress.answers).length > 0) {
         const duration = Date.now() - startTime;
         logApiRequest(method, path, 200, duration, userId);
         return NextResponse.json({
           progress: {
             answers: kvProgress.answers,
+            questionIndex: kvProgress.questionIndex ?? 0,
+            infoScreenIndex: kvProgress.infoScreenIndex ?? 0,
+            timestamp: kvProgress.timestamp ?? Date.now(),
+          },
+          isCompleted: false,
+        });
+      }
+
+      // Если есть прогресс в БД с infoScreenIndex > 0 - возвращаем его даже без ответов
+      if (savedProgress && savedProgress.infoScreenIndex > 0) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return NextResponse.json({
+          progress: {
+            answers: {},
+            questionIndex: savedProgress.questionIndex ?? 0,
+            infoScreenIndex: savedProgress.infoScreenIndex ?? 0,
+            timestamp: savedProgress.updatedAt?.getTime() ?? Date.now(),
+          },
+          isCompleted: false,
+        });
+      }
+      
+      // Если есть прогресс в KV с infoScreenIndex > 0 - возвращаем его даже без ответов
+      if (kvProgress && kvProgress.infoScreenIndex > 0) {
+        const duration = Date.now() - startTime;
+        logApiRequest(method, path, 200, duration, userId);
+        return NextResponse.json({
+          progress: {
+            answers: {},
             questionIndex: kvProgress.questionIndex ?? 0,
             infoScreenIndex: kvProgress.infoScreenIndex ?? 0,
             timestamp: kvProgress.timestamp ?? Date.now(),
