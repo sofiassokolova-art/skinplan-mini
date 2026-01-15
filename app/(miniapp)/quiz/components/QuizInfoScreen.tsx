@@ -687,7 +687,7 @@ export function QuizInfoScreen({
           {screen.image && (
             <div style={{
               width: '100%',
-              maxWidth: '320px',
+              maxWidth: '240px',
               marginBottom: '32px',
               background: '#FFFFFF',
               borderRadius: '0',
