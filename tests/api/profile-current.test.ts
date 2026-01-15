@@ -1,7 +1,7 @@
 // tests/api/profile-current.test.ts
 // API тесты для /api/profile/current
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { GET as getCurrentProfile } from '@/app/api/profile/current/route';
@@ -13,14 +13,69 @@ const prismaTest = hasDatabase
 
 const testUserId = 'test-user-api-profile-current';
 
+// Мокируем requireTelegramAuth на верхнем уровне
+let mockPrisma: typeof prismaTest | null = null;
+
+vi.mock('@/lib/auth/telegram-auth', async () => {
+  const actual = await vi.importActual('@/lib/auth/telegram-auth');
+  
+  return {
+    ...actual,
+    requireTelegramAuth: vi.fn(async (request: NextRequest) => {
+      if (!mockPrisma) {
+        mockPrisma = prismaTest;
+      }
+      
+      const telegramId = 'test-user-api-profile-current';
+      const user = await mockPrisma!.user.findUnique({
+        where: { telegramId },
+        select: { id: true },
+      });
+      
+      if (!user) {
+        return {
+          ok: false,
+          response: { status: 503, json: async () => ({ error: 'User not found' }) },
+        };
+      }
+      
+      return {
+        ok: true,
+        ctx: { 
+          userId: user.id,
+          telegramId,
+          user: { id: 123, first_name: 'Test' },
+        },
+      };
+    }),
+  };
+});
+
 describe('GET /api/profile/current', () => {
   beforeEach(async () => {
     if (!hasDatabase) return;
+    
+    mockPrisma = prismaTest;
+
+    // Создаем пользователя если его нет
+    await prismaTest.user.upsert({
+      where: { telegramId: testUserId },
+      update: {},
+      create: {
+        telegramId: testUserId,
+        username: 'test_user',
+      },
+    });
 
     // Очистка тестовых данных
-    await prismaTest.skinProfile.deleteMany({
-      where: { userId: testUserId },
+    const user = await prismaTest.user.findUnique({
+      where: { telegramId: testUserId },
     });
+    if (user) {
+      await prismaTest.skinProfile.deleteMany({
+        where: { userId: user.id },
+      });
+    }
   });
 
   afterAll(async () => {
@@ -33,14 +88,21 @@ describe('GET /api/profile/current', () => {
       return;
     }
 
+    // Получаем пользователя
+    const user = await prismaTest.user.findUnique({
+      where: { telegramId: testUserId },
+    });
+    if (!user) throw new Error('User not found');
+
     // Создаем тестовый профиль
     const profile = await prismaTest.skinProfile.create({
       data: {
-        userId: testUserId,
+        userId: user.id,
         version: 1,
         skinType: 'dry',
-        concerns: ['moisturizing', 'anti-aging'],
-        diagnoses: ['eczema'],
+        sensitivityLevel: 'low',
+        dehydrationLevel: 2,
+        acneLevel: 1,
       },
     });
 
@@ -51,13 +113,6 @@ describe('GET /api/profile/current', () => {
         'X-Telegram-Init-Data': initData,
       },
     });
-
-    vi.mock('@/lib/auth/telegram-auth', () => ({
-      requireTelegramAuth: vi.fn().mockResolvedValue({
-        ok: true,
-        ctx: { userId: testUserId },
-      }),
-    }));
 
     const response = await getCurrentProfile(request);
     const data = await response.json();
@@ -69,12 +124,18 @@ describe('GET /api/profile/current', () => {
     expect(data.data.skinType).toBe('dry');
   });
 
-  it('должен вернуть 404 если профиль не найден', async () => {
+  it('должен вернуть 200 с null если профиль не найден', async () => {
     if (!hasDatabase) return;
+
+    // Получаем пользователя
+    const user = await prismaTest.user.findUnique({
+      where: { telegramId: testUserId },
+    });
+    if (!user) throw new Error('User not found');
 
     // Убеждаемся, что профиля нет
     await prismaTest.skinProfile.deleteMany({
-      where: { userId: testUserId },
+      where: { userId: user.id },
     });
 
     const initData = 'test_init_data';
@@ -85,36 +146,37 @@ describe('GET /api/profile/current', () => {
       },
     });
 
-    vi.mock('@/lib/auth/telegram-auth', () => ({
-      requireTelegramAuth: vi.fn().mockResolvedValue({
-        ok: true,
-        ctx: { userId: testUserId },
-      }),
-    }));
-
     const response = await getCurrentProfile(request);
-    expect(response.status).toBe(404);
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.data).toBeNull();
   });
 
   it('должен вернуть последнюю версию профиля', async () => {
     if (!hasDatabase) return;
 
+    // Получаем пользователя
+    const user = await prismaTest.user.findUnique({
+      where: { telegramId: testUserId },
+    });
+    if (!user) throw new Error('User not found');
+
     // Создаем несколько версий профиля
     await prismaTest.skinProfile.createMany({
       data: [
         {
-          userId: testUserId,
+          userId: user.id,
           version: 1,
           skinType: 'dry',
-          concerns: ['moisturizing'],
-          diagnoses: [],
+          sensitivityLevel: 'low',
+          dehydrationLevel: 2,
         },
         {
-          userId: testUserId,
+          userId: user.id,
           version: 2,
           skinType: 'oily',
-          concerns: ['acne'],
-          diagnoses: [],
+          sensitivityLevel: 'medium',
+          acneLevel: 3,
         },
       ],
     });
@@ -126,13 +188,6 @@ describe('GET /api/profile/current', () => {
         'X-Telegram-Init-Data': initData,
       },
     });
-
-    vi.mock('@/lib/auth/telegram-auth', () => ({
-      requireTelegramAuth: vi.fn().mockResolvedValue({
-        ok: true,
-        ctx: { userId: testUserId },
-      }),
-    }));
 
     const response = await getCurrentProfile(request);
     const data = await response.json();

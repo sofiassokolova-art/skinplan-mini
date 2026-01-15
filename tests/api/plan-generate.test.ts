@@ -1,7 +1,7 @@
 // tests/api/plan-generate.test.ts
 // API тесты для /api/plan/generate
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { GET as generatePlan } from '@/app/api/plan/generate/route';
@@ -12,6 +12,52 @@ const prismaTest = hasDatabase
   : new PrismaClient();
 
 const testUserId = 'test-user-api-plan-generate';
+
+// Мокируем requireTelegramAuth на верхнем уровне
+let mockPrisma: typeof prismaTest | null = null;
+
+vi.mock('@/lib/auth/telegram-auth', async () => {
+  const actual = await vi.importActual('@/lib/auth/telegram-auth');
+  
+  return {
+    ...actual,
+    requireTelegramAuth: vi.fn(async (request: NextRequest) => {
+      if (!mockPrisma) {
+        mockPrisma = prismaTest;
+      }
+      
+      const telegramId = 'test-user-api-plan-generate';
+      const user = await mockPrisma!.user.findUnique({
+        where: { telegramId },
+        select: { id: true },
+      });
+      
+      if (!user) {
+        return {
+          ok: false,
+          response: { status: 503, json: async () => ({ error: 'User not found' }) },
+        };
+      }
+      
+      return {
+        ok: true,
+        ctx: { 
+          userId: user.id,
+          telegramId,
+          user: { id: 123, first_name: 'Test' },
+        },
+      };
+    }),
+  };
+});
+
+// Мокируем requireTelegramAuth на верхнем уровне
+vi.mock('@/lib/auth/telegram-auth', () => ({
+  requireTelegramAuth: vi.fn().mockResolvedValue({
+    ok: true,
+    ctx: { userId: 'test-user-api-plan-generate' },
+  }),
+}));
 
 describe('GET /api/plan/generate', () => {
   let testQuestionnaireId: number | null = null;
@@ -31,16 +77,28 @@ describe('GET /api/plan/generate', () => {
 
   beforeEach(async () => {
     if (!hasDatabase) return;
+    
+    mockPrisma = prismaTest;
+
+    // Создаем пользователя если его нет
+    const user = await prismaTest.user.upsert({
+      where: { telegramId: testUserId },
+      update: {},
+      create: {
+        telegramId: testUserId,
+        username: 'test_user',
+      },
+    });
 
     // Очистка тестовых данных
     await prismaTest.plan28.deleteMany({
-      where: { userId: testUserId },
+      where: { userId: user.id },
     });
     await prismaTest.skinProfile.deleteMany({
-      where: { userId: testUserId },
+      where: { userId: user.id },
     });
     await prismaTest.userAnswer.deleteMany({
-      where: { userId: testUserId },
+      where: { userId: user.id },
     });
 
     // Создаем тестовый профиль для генерации плана
@@ -51,10 +109,17 @@ describe('GET /api/plan/generate', () => {
       });
 
       if (questionnaire && questionnaire.questions.length >= 2) {
+        // Получаем пользователя
+        const user = await prismaTest.user.findUnique({
+          where: { telegramId: testUserId },
+        });
+        if (!user) throw new Error('User not found');
+
         // Создаем ответы
         await prismaTest.userAnswer.createMany({
           data: questionnaire.questions.slice(0, 2).map((q, idx) => ({
-            userId: testUserId,
+            userId: user.id,
+            questionnaireId: testQuestionnaireId!,
             questionId: q.id,
             answerValue: `test_answer_${idx}`,
           })),
@@ -63,11 +128,11 @@ describe('GET /api/plan/generate', () => {
         // Создаем профиль
         const profile = await prismaTest.skinProfile.create({
           data: {
-            userId: testUserId,
+            userId: user.id,
             version: 1,
             skinType: 'dry',
-            concerns: ['moisturizing'],
-            diagnoses: [],
+            sensitivityLevel: 'low',
+            dehydrationLevel: 2,
           },
         });
         testProfileId = profile.id;
@@ -96,13 +161,6 @@ describe('GET /api/plan/generate', () => {
       }
     );
 
-    vi.mock('@/lib/auth/telegram-auth', () => ({
-      requireTelegramAuth: vi.fn().mockResolvedValue({
-        ok: true,
-        ctx: { userId: testUserId },
-      }),
-    }));
-
     const response = await generatePlan(request);
     
     // План может генерироваться асинхронно, поэтому проверяем, что запрос принят
@@ -119,13 +177,6 @@ describe('GET /api/plan/generate', () => {
         'X-Telegram-Init-Data': initData,
       },
     });
-
-    vi.mock('@/lib/auth/telegram-auth', () => ({
-      requireTelegramAuth: vi.fn().mockResolvedValue({
-        ok: true,
-        ctx: { userId: testUserId },
-      }),
-    }));
 
     const response = await generatePlan(request);
     expect([400, 404]).toContain(response.status);

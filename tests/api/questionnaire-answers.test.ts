@@ -1,7 +1,7 @@
 // tests/api/questionnaire-answers.test.ts
 // API тесты для /api/questionnaire/answers
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { POST as postAnswers, GET as getAnswers } from '@/app/api/questionnaire/answers/route';
@@ -12,6 +12,44 @@ const prismaTest = hasDatabase
   : new PrismaClient();
 
 const testUserId = 'test-user-api-answers';
+
+// Мокируем requireTelegramAuth на верхнем уровне
+let mockPrisma: typeof prismaTest | null = null;
+
+vi.mock('@/lib/auth/telegram-auth', async () => {
+  const actual = await vi.importActual('@/lib/auth/telegram-auth');
+  
+  return {
+    ...actual,
+    requireTelegramAuth: vi.fn(async (request: NextRequest) => {
+      if (!mockPrisma) {
+        mockPrisma = prismaTest;
+      }
+      
+      const telegramId = 'test-user-api-answers';
+      const user = await mockPrisma!.user.findUnique({
+        where: { telegramId },
+        select: { id: true },
+      });
+      
+      if (!user) {
+        return {
+          ok: false,
+          response: { status: 503, json: async () => ({ error: 'User not found' }) },
+        };
+      }
+      
+      return {
+        ok: true,
+        ctx: { 
+          userId: user.id,
+          telegramId,
+          user: { id: 123, first_name: 'Test' },
+        },
+      };
+    }),
+  };
+});
 
 describe('POST /api/questionnaire/answers', () => {
   let testQuestionnaireId: number | null = null;
@@ -37,13 +75,25 @@ describe('POST /api/questionnaire/answers', () => {
 
   beforeEach(async () => {
     if (!hasDatabase) return;
+    
+    mockPrisma = prismaTest;
+
+    // Создаем пользователя если его нет
+    const user = await prismaTest.user.upsert({
+      where: { telegramId: testUserId },
+      update: {},
+      create: {
+        telegramId: testUserId,
+        username: 'test_user',
+      },
+    });
 
     // Очистка тестовых данных
     await prismaTest.userAnswer.deleteMany({
-      where: { userId: testUserId },
+      where: { userId: user.id },
     });
     await prismaTest.skinProfile.deleteMany({
-      where: { userId: testUserId },
+      where: { userId: user.id },
     });
   });
 
@@ -75,23 +125,24 @@ describe('POST /api/questionnaire/answers', () => {
       body: JSON.stringify(requestBody),
     });
 
-    // Мокаем requireTelegramAuth
-    vi.mock('@/lib/auth/telegram-auth', () => ({
-      requireTelegramAuth: vi.fn().mockResolvedValue({
-        ok: true,
-        ctx: { userId: testUserId },
-      }),
-    }));
-
     const response = await postAnswers(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
 
+    // Получаем пользователя
+    const user = await prismaTest.user.findUnique({
+      where: { telegramId: testUserId },
+    });
+    if (!user) throw new Error('User not found');
+
     // Проверяем, что ответы сохранились в БД
     const savedAnswers = await prismaTest.userAnswer.findMany({
-      where: { userId: testQuestionnaireId },
+      where: { 
+        userId: user.id,
+        questionnaireId: testQuestionnaireId,
+      },
       include: { question: true },
     });
 
@@ -144,8 +195,21 @@ describe('GET /api/questionnaire/answers', () => {
 
   beforeEach(async () => {
     if (!hasDatabase) return;
+    
+    mockPrisma = prismaTest;
+    
+    // Создаем пользователя если его нет
+    const user = await prismaTest.user.upsert({
+      where: { telegramId: testUserId },
+      update: {},
+      create: {
+        telegramId: testUserId,
+        username: 'test_user',
+      },
+    });
+    
     await prismaTest.userAnswer.deleteMany({
-      where: { userId: testUserId },
+      where: { userId: user.id },
     });
   });
 
@@ -166,15 +230,23 @@ describe('GET /api/questionnaire/answers', () => {
       return;
     }
 
+    // Получаем пользователя
+    const user = await prismaTest.user.findUnique({
+      where: { telegramId: testUserId },
+    });
+    if (!user) throw new Error('User not found');
+
     await prismaTest.userAnswer.createMany({
       data: [
         {
-          userId: testUserId,
+          userId: user.id,
+          questionnaireId: testQuestionnaireId!,
           questionId: questionnaire.questions[0].id,
           answerValue: 'test_answer_1',
         },
         {
-          userId: testUserId,
+          userId: user.id,
+          questionnaireId: testQuestionnaireId!,
           questionId: questionnaire.questions[1].id,
           answerValue: 'test_answer_2',
         },
@@ -188,13 +260,6 @@ describe('GET /api/questionnaire/answers', () => {
         'X-Telegram-Init-Data': initData,
       },
     });
-
-    vi.mock('@/lib/auth/telegram-auth', () => ({
-      requireTelegramAuth: vi.fn().mockResolvedValue({
-        ok: true,
-        ctx: { userId: testUserId },
-      }),
-    }));
 
     const response = await getAnswers(request);
     const data = await response.json();
