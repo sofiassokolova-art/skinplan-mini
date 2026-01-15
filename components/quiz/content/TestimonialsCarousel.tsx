@@ -55,6 +55,8 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
           flexShrink: 0,
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}>
           {/* Картинки до/после */}
           {(testimonial.beforeImage || testimonial.afterImage) && (
@@ -128,7 +130,12 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
           )}
 
           {/* Контент отзыва */}
-          <div style={{ padding: '16px 20px 20px' }}>
+          <div style={{ 
+            padding: '16px 20px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+          }}>
             {/* Лаймовые звезды */}
             <div style={{ 
               display: 'flex', 
@@ -144,21 +151,21 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
             <p style={{ 
               fontSize: '14px', 
               color: '#000000', 
-              marginBottom: '16px', 
               lineHeight: '1.5',
-              margin: '0 0 16px 0',
+              margin: '0 0 auto 0',
+              flex: 1,
             }}>
               {String(testimonial.text || '')}
             </p>
 
-            {/* Автор */}
+            {/* Автор и город - выровнены по низу */}
             <p style={{ 
               fontSize: '14px', 
               color: '#000000', 
               fontWeight: 600,
-              margin: 0,
+              margin: '16px 0 0 0',
             }}>
-              — {String(testimonial.author || 'Пользователь')}
+              — {String(testimonial.author || 'Пользователь')}{testimonial.city ? `, ${testimonial.city}` : ''}
             </p>
           </div>
         </div>

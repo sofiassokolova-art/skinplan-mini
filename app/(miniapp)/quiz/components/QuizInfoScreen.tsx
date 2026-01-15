@@ -61,6 +61,7 @@ export function QuizInfoScreen({
   const isHowItWorksScreen = screen.id === 'how_it_works';
   const isPersonalAnalysisScreen = screen.id === 'personal_analysis';
   const isGoalsIntroScreen = screen.id === 'goals_intro';
+  const isGeneralInfoIntroScreen = screen.id === 'general_info_intro';
 
   // РЕФАКТОРИНГ: Используем компонент WelcomeScreen
   if (isWelcomeScreen) {
@@ -368,10 +369,10 @@ export function QuizInfoScreen({
 
         {/* Фиксированная шапка с заголовком */}
         <div style={{
-          paddingTop: '80px',
+          paddingTop: '100px',
           paddingLeft: '20px',
           paddingRight: '20px',
-          paddingBottom: '16px',
+          paddingBottom: '24px',
           background: '#FFFFFF',
         }}>
           {/* Заголовок */}
@@ -381,7 +382,7 @@ export function QuizInfoScreen({
             fontSize: '24px',
             lineHeight: '120%',
             letterSpacing: '0px',
-            textAlign: 'left',
+            textAlign: 'center',
             color: '#000000',
             margin: '0 0 12px 0',
             maxWidth: '100%',
@@ -397,7 +398,7 @@ export function QuizInfoScreen({
               fontSize: '16px',
               lineHeight: '140%',
               letterSpacing: '0px',
-              textAlign: 'left',
+              textAlign: 'center',
               color: '#000000',
             }}>
               {screen.subtitle}
@@ -411,7 +412,8 @@ export function QuizInfoScreen({
           overflow: 'hidden',
           paddingLeft: '20px',
           paddingRight: '20px',
-          paddingBottom: '140px',
+          paddingTop: '20px',
+          paddingBottom: '180px',
         }}>
           {/* Слайдер отзывов */}
           {screen.content && Array.isArray(screen.content) && (
@@ -602,6 +604,163 @@ export function QuizInfoScreen({
               fontSize: '16px',
               cursor: 'pointer',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            {screen.ctaText || 'Продолжить'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Экран "Общая информация" (general_info_intro) - такая же верстка как у goals_intro
+  if (isGeneralInfoIntroScreen) {
+    return (
+      <div style={{ 
+        padding: 0,
+        margin: 0,
+        minHeight: '100vh',
+        background: '#FFFFFF',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        width: '100%',
+      }}>
+        {/* Кнопка "Назад" */}
+        {currentInfoScreenIndex > 0 && (
+          <button
+            onClick={() => setCurrentInfoScreenIndex(currentInfoScreenIndex - 1)}
+            style={{
+              position: 'absolute',
+              top: 'clamp(20px, 4vh, 40px)',
+              left: 'clamp(19px, 5vw, 24px)',
+              zIndex: 10,
+              width: '44px',
+              height: '44px',
+              background: 'transparent',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            <svg
+              width="12"
+              height="20"
+              viewBox="0 0 12 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10 2L2 10L10 18"
+                stroke="#1A1A1A"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        )}
+
+        {/* Контент */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          paddingTop: '100px',
+          paddingBottom: '120px',
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}>
+          {/* Картинка */}
+          {screen.image && (
+            <div style={{
+              width: '100%',
+              maxWidth: '320px',
+              marginBottom: '32px',
+            }}>
+              <img
+                src={screen.image}
+                alt={screen.title}
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  border: 'none',
+                  outline: 'none',
+                  display: 'block',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Заголовок */}
+          <h1 style={{
+            fontFamily: "var(--font-unbounded), 'Unbounded', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontWeight: 700,
+            fontSize: '32px',
+            lineHeight: '120%',
+            letterSpacing: '0px',
+            textAlign: 'left',
+            color: '#000000',
+            margin: '0 0 16px 0',
+            width: '100%',
+            maxWidth: '320px',
+            whiteSpace: 'pre-line',
+          }}>
+            {screen.title}
+          </h1>
+
+          {/* Подзаголовок */}
+          {screen.subtitle && (
+            <div style={{
+              fontFamily: "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 400,
+              fontSize: '18px',
+              lineHeight: '140%',
+              letterSpacing: '0px',
+              textAlign: 'left',
+              color: '#000000',
+              width: '100%',
+              maxWidth: '320px',
+            }}>
+              {screen.subtitle}
+            </div>
+          )}
+        </div>
+        
+        {/* Фиксированная кнопка "Продолжить" внизу экрана */}
+        <div style={{
+          position: 'fixed',
+          bottom: '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%',
+          maxWidth: '320px',
+          padding: '0 20px',
+          boxSizing: 'border-box',
+          zIndex: 100,
+        }}>
+          <button
+            onClick={handleNext}
+            style={{
+              width: '100%',
+              height: '56px',
+              borderRadius: '20px',
+              background: '#D5FE61',
+              color: '#000000',
+              border: 'none',
+              fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 600,
+              fontSize: '16px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(213, 254, 97, 0.3)',
             }}
           >
             {screen.ctaText || 'Продолжить'}

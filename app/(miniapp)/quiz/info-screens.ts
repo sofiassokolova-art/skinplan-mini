@@ -5,6 +5,7 @@ export interface Testimonial {
   stars: number;
   text: string;
   author: string;
+  city?: string;
   beforeImage?: string;
   afterImage?: string;
 }
@@ -61,7 +62,7 @@ export const INFO_SCREENS: InfoScreen[] = [
   // 4) Расскажите о вашей цели
   {
     id: 'goals_intro',
-    title: 'Расскажите о вашей\nцели',
+    title: 'Расскажите\nо вашей цели',
     subtitle: 'Это поможет нам сделать рекомендации точнее',
     image: '/quiz4.png',
     ctaText: 'Продолжить',
@@ -80,29 +81,33 @@ export const INFO_SCREENS: InfoScreen[] = [
     content: [
       {
         stars: 5,
-        text: '«С подобранным уходом ушли акне и следы постакне примерно за 3 месяца. Понравилось, что рекомендации не общие, а реально под мою кожу.»',
+        text: '«С подобранным уходом ушли акне и следы постакне примерно за 3 месяца. Понравилось, что рекомендации не общие, а реально под мою кожу»',
         author: 'Ольга',
+        city: 'Москва',
         beforeImage: '/icons/detailed_3.PNG',
         afterImage: '/icons/face_3.PNG',
       },
       {
         stars: 5,
-        text: '«Кожа стала заметно более увлажнённой и упругой. Раньше постоянно меняла средства, а тут наконец-то попали точно.»',
+        text: '«Кожа стала заметно более увлажнённой и упругой. Раньше постоянно меняла средства, а тут наконец-то попали точно»',
         author: 'Дарья',
+        city: 'Санкт-Петербург',
         beforeImage: '/icons/hydration_3.PNG',
         afterImage: '/icons/detailed_3.PNG',
       },
       {
         stars: 5,
-        text: '«Была проблема с покраснением и чувствительностью. Уже через месяц кожа стала спокойнее, меньше реагирует на всё подряд.»',
+        text: '«Была проблема с покраснением и чувствительностью. Уже через месяц кожа стала спокойнее, меньше реагирует на всё подряд»',
         author: 'Ирина',
+        city: 'Екатеринбург',
         beforeImage: '/icons/face_3.PNG',
         afterImage: '/icons/hydration_3.PNG',
       },
       {
         stars: 5,
-        text: '«Всегда мучилась с расширенными порами и жирным блеском. Сейчас макияж держится нормально, а блеск появляется только к вечеру.»',
+        text: '«Всегда мучилась с расширенными порами и жирным блеском. Сейчас макияж держится нормально, а блеск появляется только к вечеру»',
         author: 'Екатерина',
+        city: 'Казань',
         beforeImage: '/icons/detailed_3.PNG',
         afterImage: '/icons/face_3.PNG',
       },
@@ -115,6 +120,7 @@ export const INFO_SCREENS: InfoScreen[] = [
     id: 'general_info_intro',
     title: 'Общая информация',
     subtitle: 'Поможет нам подобрать подходящий уход',
+    image: '/quiz4.png', // Временная картинка, будет заменена
     showAfterInfoScreenId: 'testimonials', // ИСПРАВЛЕНО: После экрана testimonials, а не вопроса
     ctaText: 'Продолжить',
   },
