@@ -95,28 +95,63 @@ export async function getProductsForStep(
     // Fallback будет использован позже, если продуктов недостаточно
   }
 
-  // Нормализуем skinTypes: combo -> combination_dry, combination_oily, или просто combo
-  if (step.skin_types && step.skin_types.length > 0 && !isSPF) {
-    const normalizedSkinTypes: string[] = [];
+  // ИСПРАВЛЕНО: Применяем фильтрацию по типу кожи всегда, если указан profileClassification
+  // Если в шаге правила указаны skin_types - используем их, иначе используем тип кожи пользователя
+  if (!isSPF) {
+    let skinTypesToFilter: string[] = [];
     
-    for (const skinType of step.skin_types) {
-      normalizedSkinTypes.push(skinType);
-      // Если ищем 'combo', также ищем варианты
-      if (skinType === 'combo') {
-        normalizedSkinTypes.push('combination_dry');
-        normalizedSkinTypes.push('combination_oily');
-      }
-      // Если ищем 'dry', также ищем 'combination_dry'
-      if (skinType === 'dry') {
-        normalizedSkinTypes.push('combination_dry');
-      }
-      // Если ищем 'oily', также ищем 'combination_oily'
-      if (skinType === 'oily') {
-        normalizedSkinTypes.push('combination_oily');
-      }
+    if (step.skin_types && step.skin_types.length > 0) {
+      // Используем типы кожи из шага правила
+      skinTypesToFilter = step.skin_types;
+    } else if (profileClassification?.skinType) {
+      // ИСПРАВЛЕНО: Если в шаге не указаны типы кожи, используем тип кожи пользователя
+      // Это гарантирует, что продукты будут соответствовать типу кожи пользователя
+      skinTypesToFilter = [profileClassification.skinType];
     }
     
-    where.skinTypes = { hasSome: normalizedSkinTypes };
+    if (skinTypesToFilter.length > 0) {
+      const normalizedSkinTypes: string[] = [];
+      
+      for (const skinType of skinTypesToFilter) {
+        normalizedSkinTypes.push(skinType);
+        // Если ищем 'combo', также ищем варианты
+        if (skinType === 'combo') {
+          normalizedSkinTypes.push('combination_dry');
+          normalizedSkinTypes.push('combination_oily');
+        }
+        // Если ищем 'dry', также ищем 'combination_dry'
+        if (skinType === 'dry') {
+          normalizedSkinTypes.push('combination_dry');
+        }
+        // Если ищем 'oily', также ищем 'combination_oily'
+        if (skinType === 'oily') {
+          normalizedSkinTypes.push('combination_oily');
+        }
+        // ИСПРАВЛЕНО: Если ищем 'combination_dry', также ищем 'dry'
+        if (skinType === 'combination_dry') {
+          normalizedSkinTypes.push('dry');
+        }
+        // ИСПРАВЛЕНО: Если ищем 'combination_oily', также ищем 'oily'
+        if (skinType === 'combination_oily') {
+          normalizedSkinTypes.push('oily');
+        }
+      }
+      
+      // ИСПРАВЛЕНО: Используем OR для поддержки продуктов без указанных типов кожи (fallback)
+      // но приоритет отдаем продуктам с подходящими типами кожи
+      if (where.AND) {
+        where.AND = Array.isArray(where.AND) ? [...where.AND] : [where.AND];
+      } else {
+        where.AND = [];
+      }
+      
+      where.AND.push({
+        OR: [
+          { skinTypes: { hasSome: normalizedSkinTypes } },
+          { skinTypes: { isEmpty: true } }, // Продукты без указанных типов кожи (fallback)
+        ],
+      });
+    }
   }
 
   // Concerns: если указаны, ищем по ним, но не блокируем, если не найдено
