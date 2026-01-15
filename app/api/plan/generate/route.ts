@@ -650,6 +650,32 @@ export async function GET(request: NextRequest) {
       });
     }
     
+    // ИСПРАВЛЕНО: Устанавливаем hasPlanProgress = true после успешной генерации плана
+    // Это гарантирует, что пользователь не будет редиректиться на /quiz при следующем заходе
+    try {
+      await prisma.userPreferences.upsert({
+        where: { userId },
+        update: {
+          hasPlanProgress: true,
+        },
+        create: {
+          userId,
+          hasPlanProgress: true,
+        },
+      });
+      logger.info('hasPlanProgress set to true after plan generation', {
+        userId,
+        profileVersion: profile.version,
+      });
+    } catch (prefsError: any) {
+      // Ошибка установки hasPlanProgress не критична, но логируем
+      logger.warn('Failed to set hasPlanProgress (non-critical)', {
+        userId,
+        profileVersion: profile.version,
+        errorMessage: prefsError?.message,
+      });
+    }
+    
     logger.info('Plan generated successfully', {
       userId,
       weeksCount: plan.weeks?.length || 0,

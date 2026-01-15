@@ -806,6 +806,16 @@ export default function PlanPage() {
       const planResponse = plan as any;
       const planExpired = planResponse?.expired === true;
       
+      // ИСПРАВЛЕНО: Устанавливаем hasPlanProgress = true после успешной обработки плана
+      // Это гарантирует, что пользователь не будет редиректиться на /quiz при следующем заходе
+      try {
+        const { setHasPlanProgress } = await import('@/lib/user-preferences');
+        await setHasPlanProgress(true);
+        clientLogger.log('✅ hasPlanProgress установлен в true после успешной загрузки плана');
+      } catch (error) {
+        clientLogger.warn('⚠️ Ошибка при установке hasPlanProgress (некритично):', error);
+      }
+      
       safeSetPlanData({
         plan28: plan28 || undefined,
         weeks: plan.weeks || [],
