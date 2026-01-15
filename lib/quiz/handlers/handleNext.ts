@@ -12,6 +12,7 @@ export interface HandleNextParams {
   // Refs
   handleNextInProgressRef: React.MutableRefObject<boolean>;
   currentInfoScreenIndexRef: React.MutableRefObject<number>;
+  currentQuestionIndexRef?: React.MutableRefObject<number>;
   questionnaireRef: React.MutableRefObject<Questionnaire | null>;
   initCompletedRef: React.MutableRefObject<boolean>;
   
@@ -43,6 +44,7 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
   const {
     handleNextInProgressRef,
     currentInfoScreenIndexRef,
+    currentQuestionIndexRef,
     questionnaireRef,
     initCompletedRef,
     questionnaire,
@@ -674,7 +676,20 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
     // Переходим к следующему вопросу
     if (currentQuestionIndex < allQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
+      // КРИТИЧНО: Логируем переход к следующему вопросу для диагностики
+      clientLogger.warn('🔄 handleNext: переход к следующему вопросу', {
+        currentQuestionIndex,
+        newIndex,
+        allQuestionsLength: allQuestions.length,
+        currentQuestionCode: allQuestions[currentQuestionIndex]?.code || null,
+        nextQuestionCode: allQuestions[newIndex]?.code || null,
+        hasAnsweredCurrent: allQuestions[currentQuestionIndex] && answers[allQuestions[currentQuestionIndex].id] !== undefined,
+      });
       setCurrentQuestionIndex(newIndex);
+      // КРИТИЧНО: Обновляем ref синхронно для других функций
+      if (currentQuestionIndexRef) {
+        currentQuestionIndexRef.current = newIndex;
+      }
       // ФИКС: Сохраняем newIndex в sessionStorage для восстановления при перемонтировании
       if (typeof window !== 'undefined') {
         try {
@@ -685,6 +700,14 @@ export async function handleNext(params: HandleNextParams): Promise<void> {
         }
       }
       await saveProgress(answers, newIndex, currentInfoScreenIndex);
+    } else {
+      // КРИТИЧНО: Логируем, если не переходим к следующему вопросу
+      clientLogger.warn('⚠️ handleNext: не переходим к следующему вопросу', {
+        currentQuestionIndex,
+        allQuestionsLength: allQuestions.length,
+        isLastQuestion: currentQuestionIndex === allQuestions.length - 1,
+        condition: currentQuestionIndex < allQuestions.length - 1,
+      });
     }
   } finally {
     // ФИКС: Сбрасываем флаг после завершения handleNext

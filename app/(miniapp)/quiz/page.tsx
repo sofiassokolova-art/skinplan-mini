@@ -1785,6 +1785,7 @@ export default function QuizPage() {
     return handleNextFn({
       handleNextInProgressRef,
       currentInfoScreenIndexRef,
+      currentQuestionIndexRef,
       questionnaireRef,
       initCompletedRef,
       questionnaire,
@@ -2135,8 +2136,11 @@ export default function QuizPage() {
     
     // ФИКС: Проверяем, прошел ли пользователь начальные экраны
     // Если да, значит он уже отвечал на вопросы, и не нужно сбрасывать индекс
-              const initialInfoScreens = getInitialInfoScreens();
-    const hasPassedInitialScreens = savedInfoScreenIndexFromStorage !== null && savedInfoScreenIndexFromStorage >= initialInfoScreens.length;
+    const initialInfoScreens = getInitialInfoScreens();
+    // ИСПРАВЛЕНО: Проверяем как сохраненный индекс, так и текущий
+    // Это предотвращает сброс индекса после перехода к следующему вопросу
+    const hasPassedInitialScreens = (savedInfoScreenIndexFromStorage !== null && savedInfoScreenIndexFromStorage >= initialInfoScreens.length) ||
+                                     (currentInfoScreenIndex >= initialInfoScreens.length);
     
     const shouldResetToZero = hasNoSavedProgress && 
                                currentQuestionIndex > 0 && 
@@ -2161,25 +2165,45 @@ export default function QuizPage() {
     }
     
     // ФИКС: Если есть сохраненный индекс в sessionStorage, но currentQuestionIndex не совпадает - восстанавливаем
+    // ИСПРАВЛЕНО: НЕ восстанавливаем индекс, если пользователь уже активно отвечает
+    // Это предотвращает перезапись правильного индекса после перехода к следующему вопросу
+    // ИСПРАВЛЕНО: Также проверяем, прошел ли пользователь начальные инфо-экраны
+    // Это предотвращает восстановление индекса после перехода к следующему вопросу
+    const isActiveSession = currentQuestionIndex > 0 || 
+                            Object.keys(answers).length > 0 || 
+                            hasPassedInitialScreens;
     if (savedQuestionIndexFromStorage !== null && 
         savedQuestionIndexFromStorage !== currentQuestionIndex && 
-        savedQuestionIndexFromStorage < allQuestions.length) {
+        savedQuestionIndexFromStorage < allQuestions.length &&
+        !isActiveSession) {
       clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage', {
         savedQuestionIndex: savedQuestionIndexFromStorage,
         currentQuestionIndex,
         allQuestionsLength: allQuestions.length,
+        isActiveSession,
       });
       setCurrentQuestionIndex(savedQuestionIndexFromStorage);
       return;
+    } else if (savedQuestionIndexFromStorage !== null && isActiveSession) {
+      clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: пользователь активно отвечает', {
+        savedQuestionIndex: savedQuestionIndexFromStorage,
+        currentQuestionIndex,
+        answersCount: Object.keys(answers).length,
+      });
     }
     
     // ИСПРАВЛЕНО: Корректируем индекс СРАЗУ, если он невалидный
+    // КРИТИЧНО: НЕ сбрасываем индекс на 0, если пользователь уже прошел начальные инфо-экраны
+    // Это предотвращает сброс индекса после перехода к следующему вопросу
     if (isOutOfBounds && !isSubmitting && !showResumeScreen) {
       // Если анкета завершена — держим индекс на allQuestions.length для автоотправки.
       // Иначе корректируем на последний валидный вопрос или на 0 для нового пользователя.
+      // ИСПРАВЛЕНО: Проверяем, прошел ли пользователь начальные экраны перед сбросом на 0
+      const hasPassedInitialScreensForCorrection = currentInfoScreenIndex >= initialInfoScreens.length || 
+                                                   savedInfoScreenIndexFromStorage !== null && savedInfoScreenIndexFromStorage >= initialInfoScreens.length;
       const correctedIndex = isQuizCompleted
         ? allQuestions.length
-        : (hasNoSavedProgress && answersCount === 0 ? 0 : Math.max(0, Math.min(currentQuestionIndex, allQuestions.length - 1)));
+        : (hasNoSavedProgress && answersCount === 0 && !hasPassedInitialScreensForCorrection ? 0 : Math.max(0, Math.min(currentQuestionIndex, allQuestions.length - 1)));
       
       clientLogger.warn('⚠️ currentQuestionIndex выходит за пределы, корректируем', {
         currentQuestionIndex,
@@ -2194,6 +2218,9 @@ export default function QuizPage() {
         showRetakeScreen,
         hasQuestionnaire: !!questionnaire,
         hasNoSavedProgress,
+        hasPassedInitialScreensForCorrection,
+        currentInfoScreenIndex,
+        savedInfoScreenIndexFromStorage,
         allQuestionsRawLength: allQuestionsRaw.length,
       });
       

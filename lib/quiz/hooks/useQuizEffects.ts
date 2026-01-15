@@ -402,8 +402,17 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
           }
           
           // Восстановление currentQuestionIndex
+          // ИСПРАВЛЕНО: НЕ восстанавливаем индекс, если пользователь уже активно отвечает
+          // Это предотвращает перезапись правильного индекса после перехода к следующему вопросу
+          // ИСПРАВЛЕНО: Также проверяем, прошел ли пользователь начальные инфо-экраны
+          // Это предотвращает восстановление индекса после перехода к следующему вопросу
+          const initialInfoScreens = getInitialInfoScreens();
+          const hasPassedInitialScreens = currentInfoScreenIndex >= initialInfoScreens.length;
+          const isActiveSession = currentQuestionIndex > 0 || 
+                                  Object.keys(answers).length > 0 || 
+                                  hasPassedInitialScreens;
           const savedQuestionIndex = sessionStorage.getItem(QUIZ_CONFIG.STORAGE_KEYS.CURRENT_QUESTION);
-          if (savedQuestionIndex !== null) {
+          if (savedQuestionIndex !== null && !isActiveSession) {
             const questionIndex = parseInt(savedQuestionIndex, 10);
             if (!isNaN(questionIndex) && questionIndex >= 0) {
               const currentAllQuestionsLength = allQuestionsPrevRef.current.length || allQuestions.length;
@@ -416,6 +425,7 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                 clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (синхронно)', { 
                   questionIndex: validIndex,
                   allQuestionsLength: currentAllQuestionsLength,
+                  isActiveSession,
                 });
               } else {
                 setTimeout(() => {
@@ -427,10 +437,17 @@ export function useQuizEffects(params: UseQuizEffectsParams) {
                   clientLogger.log('🔄 Восстанавливаем currentQuestionIndex из sessionStorage (асинхронно)', { 
                     questionIndex: finalValidIndex,
                     allQuestionsLength: finalLength,
+                    isActiveSession,
                   });
                 }, 100);
               }
             }
+          } else if (savedQuestionIndex !== null && isActiveSession) {
+            clientLogger.log('⏸️ Пропускаем восстановление currentQuestionIndex: пользователь активно отвечает', {
+              savedQuestionIndex,
+              currentQuestionIndex,
+              answersCount: Object.keys(answers).length,
+            });
           }
           
           // Восстановление currentInfoScreenIndex
