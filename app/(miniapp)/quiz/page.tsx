@@ -4189,16 +4189,12 @@ export default function QuizPage() {
   }
 
   // Определяем, нужен ли белый фон для вопросов
-  // ОБНОВЛЕНО: Все экраны вопросов теперь белые, кроме специальных (goals с lime)
-  const isQuestionScreen = !isShowingInitialInfoScreen && 
-    currentInfoScreenIndex >= initialInfoScreens.length &&
-    currentQuestion;
+  // ОБНОВЛЕНО: Если есть currentQuestion - это экран вопроса (белый фон)
+  const isQuestionScreen = !!currentQuestion && !pendingInfoScreen && !showResumeScreen && !showRetakeScreen;
 
   // Определяем, нужен ли лаймовый фон для вопроса о целях
   const isGoalsQuestionWithLimeBg = currentQuestion?.code === 'skin_goals' &&
-    currentQuestion?.type === 'multi_choice' &&
-    !isShowingInitialInfoScreen &&
-    currentInfoScreenIndex >= initialInfoScreens.length;
+    currentQuestion?.type === 'multi_choice';
 
   // Определяем цвет фона
   // ОБНОВЛЕНО: Все вопросы теперь на белом фоне (кроме goals)
