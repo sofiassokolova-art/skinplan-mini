@@ -121,8 +121,8 @@ const sendLogFetch = async (
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000); // Таймаут 2 секунды
 
-    // ИСПРАВЛЕНО: Передаем initData в заголовках для авторизации
-    // Не ждем ответа - отправляем и забываем (fire and forget)
+    // ИСПРАВЛЕНО: Полностью fire-and-forget - НЕ ждем ответа вообще
+    // Не вызываем .then() или .await() - отправляем и забываем
     fetch('/api/logs', {
       method: 'POST',
       headers: {
@@ -132,19 +132,17 @@ const sendLogFetch = async (
       body: JSON.stringify(logPayload),
       keepalive: true, // Не блокирует закрытие страницы
       signal: controller.signal,
-    }).then((response) => {
-      clearTimeout(timeoutId);
-      // Не обрабатываем ответ - fire and forget
-      if (!response.ok && isDevelopment && level === 'error') {
-        // Только в development для error логируем 403/401 ошибки
-        if (response.status === 403 || response.status === 401) {
-          console.warn('⚠️ Log rejected by server (auth issue):', response.status);
-        }
-      }
     }).catch(() => {
       clearTimeout(timeoutId);
       // Игнорируем все ошибки - логирование не должно блокировать приложение
+      // Не логируем в консоль, чтобы не создавать еще больше запросов
     });
+    
+    // ИСПРАВЛЕНО: Очищаем timeout через небольшую задержку, если fetch не завершился
+    // Это предотвращает утечку памяти, но не блокирует основной поток
+    setTimeout(() => {
+      clearTimeout(timeoutId);
+    }, 2000);
   } catch (err: any) {
     // Игнорируем все ошибки - логирование не должно блокировать приложение
     // Не логируем в консоль, чтобы не создавать еще больше запросов
